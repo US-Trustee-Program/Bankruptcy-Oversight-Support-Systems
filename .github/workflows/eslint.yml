@@ -21,7 +21,7 @@ jobs:
     name: Run eslint scanning
     defaults:
       run:
-        working-directory: ./boss
+        working-directory: boss
     runs-on: ubuntu-latest
     permissions:
       contents: read
