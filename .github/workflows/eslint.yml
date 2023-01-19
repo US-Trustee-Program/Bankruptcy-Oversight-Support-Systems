@@ -11,10 +11,12 @@ name: ESLint
 
 on:
   push:
-    branches: [ "86-aggregate-case-info" ]
+    branches-ignore:
+      - main
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "86-aggregate-case-info" ]
+    branches:
+      - main
 
 jobs:
   eslint:
