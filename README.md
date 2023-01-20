@@ -12,11 +12,19 @@ The United States Trustee Program is the component of the Department of Justice 
 
 BOSS is a React application which acts as the main place for oversight work to take place.
 
+Note that any commands listed in this section should be run from the `boss` directory.
+
 #### Requirements
 
 Node version 18.13.0 or above.
 
 #### Running
+
+If you have never run the application before, major changes have been made since you last ran, or your `node_modules` folder has been deleted, you will first need to run the following command to install dependencies:
+
+```shell
+npm install
+```
 
 To run the application directly, execute...
 
