@@ -26,10 +26,8 @@ npm start
 
 This will serve the client on port 3000.
 
-## Development
+# Contributing
 
-### Additional Requirements
+## Style and Secrets Enforcement
 
-In addition to any application-specific requirement, the following are required for any contribution to the repository:
-
-- [Pre-Commit](https://pre-commit.com)
+[pre-commit](https://pre-commit.com) allows us to make use of hooks that enforce style and prevent secrets from being committed to the repo. As such, it is expected that all code pushed to the repository have had these pre-commit hooks executed on all files created or updated. The configuration can be seen in `.pre-commit-config.yaml`.
