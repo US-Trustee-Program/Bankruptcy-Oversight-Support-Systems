@@ -10,6 +10,8 @@ repos:
       rev: ''  # Use the sha / tag you want to point at
       hooks:
         - id: eslint
+          files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
+          types: [ file ]
           additional_dependencies:
           -   eslint@8.32.0
           -   eslint-config-prettier@8.6.0
