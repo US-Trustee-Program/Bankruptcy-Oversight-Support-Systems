@@ -16,7 +16,7 @@ jobs:
   build:
     defaults:
       run:
-        working-directory: boss
+        working-directory: gui
 
     runs-on: ubuntu-latest
 
