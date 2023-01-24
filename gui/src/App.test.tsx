@@ -2,8 +2,12 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders Total Active Cases', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+
+  const h1 = screen.getByText(/Total Active Cases/i);
+  expect(h1).toBeInTheDocument();
+
+  const p = screen.getByText(/[0-9]+/);
+  expect(p).toBeInTheDocument();
 });
