@@ -23,7 +23,7 @@ jobs:
     name: Run eslint scanning
     defaults:
       run:
-        working-directory: boss
+        working-directory: gui
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,5 +49,5 @@ jobs:
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: boss/eslint-results.sarif
+          sarif_file: gui/eslint-results.sarif
           wait-for-processing: true
