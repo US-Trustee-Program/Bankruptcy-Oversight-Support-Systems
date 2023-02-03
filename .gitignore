@@ -1,5 +1,9 @@
 # IDEs
 
+## Keep the environment config out of the repo
+.env
+.env.*
+
 ## JetBrains
 *.iml
 *.iws
