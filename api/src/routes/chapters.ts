@@ -4,7 +4,7 @@ import logging from '../config/logging';
 
 const router = express.Router();
 
-router.post('/create-table', (req: Request, res: Response, next: NextFunction) => {
+router.get('/create-table', (req: Request, res: Response, next: NextFunction) => {
   logging.info('chapter CREATE table', 'request: ', req);
   controller.createChapterTable(req, res, next);
 });
