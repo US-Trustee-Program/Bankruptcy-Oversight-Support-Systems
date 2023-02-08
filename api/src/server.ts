@@ -2,8 +2,8 @@ import http from 'http';
 import express from 'express';
 import logging from './config/logging';
 import config from './config/config';
-import bookRoutes from './routes/book';
 import basicRoutes from './routes/basic';
+import chapterRoutes from './routes/chapters';
 
 const NAMESPACE = 'Server';
 const app = express();
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 
 /** Routes go here */
 app.use('/', basicRoutes);
-app.use('/books', bookRoutes);
+app.use('/chapters', chapterRoutes);
 
 /** Error handling */
 app.use((req, res, next) => {

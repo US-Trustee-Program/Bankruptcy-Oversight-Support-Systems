@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import logging from '../config/logging';
-import { Connect, Query } from '../config/mssql';
+//import { Connect, Query } from '../config/mssql';
+import { Connect } from '../config/mssql';
 
 const NAMESPACE = 'Chapters';
 
@@ -32,6 +33,9 @@ const createChapterTable = async (req: Request, res: Response, next: NextFunctio
   */
   Connect()
     .then((connection) => {
+      console.log('Yay we connected');
+      console.log(connection);
+      /*
       Query(connection, query)
         .then((result) => {
           logging.info(NAMESPACE, 'Case created: ', result);
@@ -53,6 +57,7 @@ const createChapterTable = async (req: Request, res: Response, next: NextFunctio
           logging.info(NAMESPACE, 'Closing connection.');
           connection.close();
         });
+      */
     })
     .catch((error) => {
       logging.error(NAMESPACE, error.message, error);
