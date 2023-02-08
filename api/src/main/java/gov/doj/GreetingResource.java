@@ -10,7 +10,9 @@ public class GreetingResource {
 
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public String hello() {
-        return "Hello from RESTEasy Reactive";
+    public void hello() {
+        RuntimeObjectFactory.init();
+        CaseListUseCase useCase = new CaseListUseCase();
+        useCase.connect();
     }
 }
