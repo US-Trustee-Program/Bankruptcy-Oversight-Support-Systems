@@ -14,8 +14,8 @@ public class CaseListUseCase {
         presenter.onSuccess(cases.toString());
     }
 
-    public void connect() {
+    public void addCase(String caseData) {
         PersistenceGateway dbGateway = ObjectFactory.getObjectByAbstractClass(PersistenceGateway.class);
-        dbGateway.connect();
+        dbGateway.addCase(caseData);
     }
 }
