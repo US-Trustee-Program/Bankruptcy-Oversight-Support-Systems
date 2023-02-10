@@ -32,7 +32,7 @@ To run the application directly, execute...
 npm start
 ```
 
-This will serve the client on port 3000.
+This will serve the client on port 3000
 
 # Contributing
 
