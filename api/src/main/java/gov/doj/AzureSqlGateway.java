@@ -7,13 +7,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class AzureSqlGateway implements PersistenceGateway {
-    // jdbc:sqlserver://boss-acms-dev.database.windows.net:1433;
-    // database=boss-dev;
-    // encrypt=true;
-    // trustServerCertificate=false;
-    // hostNameInCertificate=*.database.windows.net;
-    // loginTimeout=30;
-    // Authentication=ActiveDirectoryIntegrated
     public void connect() {
         String connectionUrl =
                 "";
@@ -35,5 +28,10 @@ public class AzureSqlGateway implements PersistenceGateway {
         catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void addCase(String caseData) {
+
     }
 }

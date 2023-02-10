@@ -13,6 +13,6 @@ public class GreetingResource {
     public void hello() {
         RuntimeObjectFactory.init();
         CaseListUseCase useCase = new CaseListUseCase();
-        useCase.connect();
+        useCase.addCase("");
     }
 }

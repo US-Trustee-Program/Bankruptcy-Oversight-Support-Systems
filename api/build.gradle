@@ -13,6 +13,8 @@ dependencies {
     implementation 'io.quarkus:quarkus-jdbc-mssql'
     implementation 'io.quarkus:quarkus-resteasy-reactive'
     implementation 'io.quarkus:quarkus-arc'
+    implementation group: 'com.microsoft.sqlserver', name: 'mssql-jdbc', version: '12.2.0.jre11'
+    implementation group: 'com.azure', name: 'azure-identity', version: '1.8.0'
     testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'io.rest-assured:rest-assured'
 }

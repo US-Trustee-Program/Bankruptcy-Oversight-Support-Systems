@@ -1,5 +1,5 @@
 package gov.doj;
 
 public interface PersistenceGateway {
-    public void connect();
+    public void addCase(String caseData);
 }
