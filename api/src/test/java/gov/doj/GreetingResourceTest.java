@@ -17,4 +17,10 @@ public class GreetingResourceTest {
              .statusCode(204);
     }
 
+    @Test
+    public void testGetCases(){
+
+        given().when().get("/getCases").then().statusCode(204);
+    }
+
 }
