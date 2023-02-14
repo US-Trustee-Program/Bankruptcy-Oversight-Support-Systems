@@ -1,9 +1,11 @@
-package gov.doj;
+package gov.doj.adapters.gateways;
+
+import gov.doj.usecases.PersistenceGateway;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class LocalPersistence implements PersistenceGateway {
+public class LocalPersistenceGateway implements PersistenceGateway {
     List<String> caseList = new ArrayList<>();
 
     @Override

@@ -1,4 +1,6 @@
-package gov.doj;
+package gov.doj.adapters.presenters;
+
+import gov.doj.Presenter;
 
 public class JsonPresenter implements Presenter {
 

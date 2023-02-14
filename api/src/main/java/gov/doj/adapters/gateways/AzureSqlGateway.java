@@ -1,4 +1,6 @@
-package gov.doj;
+package gov.doj.adapters.gateways;
+
+import gov.doj.usecases.PersistenceGateway;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
