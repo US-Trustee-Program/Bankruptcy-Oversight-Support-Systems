@@ -29,8 +29,8 @@
 
 #gradle
 */**/.gradle/
-*/**/gradlew*
-
+*/**/gradlew
+*/**/gradlew.bat
 
 # BlueJ files
 *.ctxt
