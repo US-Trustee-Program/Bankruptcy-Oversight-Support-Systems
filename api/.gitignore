@@ -1,6 +1,9 @@
 # Gradle
 .gradle/
+*/**/.gradle/
+*/**/gradlew*
 build/
+
 
 # Eclipse
 .project
