@@ -1,9 +1,8 @@
 # Gradle
 .gradle/
-*/**/.gradle/
-*/**/gradlew*
+gradlew
+gradlew.bat
 build/
-
 
 # Eclipse
 .project
