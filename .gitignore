@@ -27,6 +27,11 @@
 # Log file
 *.log
 
+#gradle
+*/**/.gradle/
+*/**/gradlew*
+
+
 # BlueJ files
 *.ctxt
 
