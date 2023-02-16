@@ -1,5 +1,7 @@
 package gov.doj.usecases;
 
+import java.util.List;
+
 public interface PersistenceGateway {
-    public void addCase(String caseData);
+    public List<String> getCases();
 }
