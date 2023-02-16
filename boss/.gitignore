@@ -11,6 +11,10 @@
 # production
 /build
 
+#gradle
+*/**/.gradle/
+*/**/gradlew*
+
 # misc
 .env.local
 .env.development.local
