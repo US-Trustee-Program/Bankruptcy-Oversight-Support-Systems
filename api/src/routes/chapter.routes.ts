@@ -10,4 +10,4 @@ const router = express.Router();
 
 router.get('', makeCallback(controller.getAllChapters));
 
-export = router;
+export default router;

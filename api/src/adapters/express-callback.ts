@@ -1,8 +1,12 @@
 import { Request, Response } from 'express';
 import { HttpResponse } from './types/http';
+import log from './logging.service';
+
+const NAMESPACE = 'EXPRESS-CALLBACK';
 
 export default function makeExpressCallback (controller: Function) {
   return (req: Request, res: Response) => {
+    log('info', NAMESPACE, 'Calling express callback');
     const httpRequest: Object = {
       body: req.body,
       query: req.query,
@@ -19,12 +23,13 @@ export default function makeExpressCallback (controller: Function) {
     }
 
     controller(httpRequest)
-      .then((httpResponse: HttpResponse) => {
-        if (httpResponse.headers) {
-          res.set(httpResponse.headers)
-        }
+      .then(async (httpResponse: HttpResponse) => {
         res.type('json');
-        res.status(httpResponse.statusCode).send(httpResponse.body);
+        if (httpResponse.headers) {
+          await res.set(httpResponse.headers)
+        }
+        await res.status(httpResponse.statusCode)
+        await res.send(httpResponse.body);
       })
       .catch((e: Error) => res.status(500).send({ error: 'An unknown error occurred.' }));
   }

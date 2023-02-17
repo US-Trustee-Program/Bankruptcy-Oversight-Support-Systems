@@ -36,4 +36,4 @@ router.delete('/:caseId', (req: Request, res: Response, next: NextFunction) => {
 });
 */
 
-export = router;
+export default router;
