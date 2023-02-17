@@ -1,8 +1,8 @@
-import database from '../adapters/data-access.proxy';
-import {
-  makeListChapters
-} from './chapters';
+import proxyData from '../adapters/data-access.proxy';
+import { PersistenceGateway } from './persistence-gateway.int';
+import { makeListChapters } from './chapters';
 
-const listChapters = makeListChapters({ database });
+const database: PersistenceGateway = await proxyData();
+const listChapters = makeListChapters(database);
 
 export { listChapters };

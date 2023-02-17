@@ -28,6 +28,7 @@ const getAll = (table: string): DbRecord => {
     success: true
   };
 
+  log('info', NAMESPACE, 'Chapter list found', results);
   return results;
 }
 

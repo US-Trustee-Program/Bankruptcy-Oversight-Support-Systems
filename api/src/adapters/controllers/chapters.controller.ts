@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import log from '../logging.service';
-import { getChapterList } from '../../use-cases/chapters';
+import { listChapters } from '../../use-cases';
 
 const NAMESPACE = 'CHAPTERS-CONTROLLER';
 
@@ -12,12 +12,12 @@ const getAllChapters = async (httpRequest: Request) => {
   };
 
   try {
-    const chapterList = getChapterList();
+    const chapterList = await listChapters();
 
     return {
       headers: headers,
       statusCode: 200,
-      body: { chapterList }
+      body: chapterList
     };
   } catch(e: any) {
     // TODO: Error logging

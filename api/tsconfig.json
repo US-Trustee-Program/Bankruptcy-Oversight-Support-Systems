@@ -1,18 +1,24 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
+    "target": "ES2017",
+    "module": "ESNext",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./build",
     "removeComments": true,
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmitOnError": true,
     "forceConsistentCasingInFileNames": true,
-    "typeRoots": ["./interfaceAdapters/types"]
+    "typeRoots": ["./adapters/types"]
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "ts-node": {
+    "experimentalSpecifierResolution": "node"
   }
 }

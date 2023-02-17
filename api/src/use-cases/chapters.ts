@@ -10,9 +10,11 @@ function getAll(): {} {
 }
 */
 
-function makeListChapters ( database: Object ) {
+import { PersistenceGateway } from './persistence-gateway.int';
+
+function makeListChapters ( database: PersistenceGateway ) {
   return async function listChapters () {
-    return await database.getAll()
+    return await database.getAll('chapters')
   }  
 }
 

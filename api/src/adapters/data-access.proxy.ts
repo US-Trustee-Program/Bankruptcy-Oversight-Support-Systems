@@ -7,20 +7,15 @@
 import config from '../configs/default.config';
 import { PersistenceGateway } from '../use-cases/persistence-gateway.int';
 
-let database: PersistenceGateway;
-
-async function loadDatabase(moduleName: string): Promise<Object> {
-  return await import(moduleName);
+async function proxyData(): Promise<PersistenceGateway> {
+  let database: PersistenceGateway;
+  if (config.dbMock) {
+    database = await import('./gateways/local.inmemory.gateway');
+    return database;
+  } else {
+    database = await import('./gateways/azure.sql.gateway');
+    return database;
+  }
 }
 
-if (config.dbMock) {
-  import('./gateways/local.inmemory.gateway').then(db => {
-    database = db;
-  });
-} else {
-  import('./gateways/azure.sql.gateway').then(db => {
-    database = db;
-  });
-}
-
-export default database;
+export default proxyData;

@@ -20,4 +20,4 @@ router.get('/healthcheck', (req: Request, res: Response, next: NextFunction) => 
 });
 */
 
-export = router;
+export default router;
