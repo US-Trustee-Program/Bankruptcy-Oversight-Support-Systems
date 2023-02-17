@@ -1,17 +1,10 @@
 import mysql from 'mysql2';
-import config from './config';
-import logging from './logging';
-
-const params = {
-  user: config.mssql.user,
-  password: config.mssql.pass,
-  host: config.mssql.host,
-  database: config.mssql.database
-};
+import config from '../configs/default.config';
+import logging from './logging.service';
 
 const Connect = async () =>
   new Promise<mysql.Connection>((resolve, reject) => {
-    const connection = mysql.createConnection(params);
+    const connection = mysql.createConnection(config.dbConfig);
 
     connection.connect((error) => {
       if (error) {

@@ -1,21 +1,38 @@
+import express, { Request, Response, NextFunction } from 'express';
 import http from 'http';
-import express from 'express';
-import logging from './config/logging';
-import config from './config/config';
-import basicRoutes from './routes/basic';
-import chapterRoutes from './routes/chapters';
+import log from './adapters/logging.service';
+import config from './configs/default.config';
+import loadRoutes from './routes/index.routes';
+import { AppConfig } from './adapters/types/basic';
 
 const NAMESPACE = 'Server';
+
+// insiration for using this method of extending the Express object came from this article:
+// https://stackoverflow.com/questions/37377731/extend-express-request-object-using-typescript
+declare global {
+  namespace Express {
+    interface Request {
+      config?: AppConfig;
+    }
+  }
+}
+
 const app = express();
+
+/** Setup global configuration */
+app.use((req: Request, res: Response, next: NextFunction) => {
+  req.config = config;
+  next();
+});
 
 /** Log the request */
 app.use((req, res, next) => {
   /** Log the req */
-  logging.info(NAMESPACE, `METHOD: [${req.method}] - URL: [${req.url}] - IP: [${req.socket.remoteAddress}]`);
+  log('info', NAMESPACE, `METHOD: [${req.method}] - URL: [${req.url}] - REQUEST - IP: [${req.socket.remoteAddress}]`);
 
   res.on('finish', () => {
     /** Log the res */
-    logging.info(NAMESPACE, `METHOD: [${req.method}] - URL: [${req.url}] - STATUS: [${res.statusCode}] - IP: [${req.socket.remoteAddress}]`);
+    log('info', NAMESPACE, `METHOD: [${req.method}] - URL: [${req.url}] - STATUS: [${res.statusCode}] - IP: [${req.socket.remoteAddress}]`);
   });
 
   next();
@@ -39,8 +56,7 @@ app.use((req, res, next) => {
 });
 
 /** Routes go here */
-app.use('/', basicRoutes);
-app.use('/chapters', chapterRoutes);
+loadRoutes(app);
 
 /** Error handling */
 app.use((req, res, next) => {
@@ -53,4 +69,4 @@ app.use((req, res, next) => {
 
 /** Create the server */
 const httpServer = http.createServer(app);
-httpServer.listen(config.server.port, () => logging.info(NAMESPACE, `Server is running ${config.server.hostname}:${config.server.port}`));
+httpServer.listen(config.server.port, () => log('info', NAMESPACE, `Server is running ${config.server.hostname}:${config.server.port}`));
