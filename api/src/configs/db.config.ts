@@ -9,7 +9,7 @@ const MSSQL_PASS = process.env.MSSQL_HOST || '';
 const MSSQL_ENCRYPT = process.env.MSSQL_ENCRYPT || 'true';
 const MSSQL_TRUST_UNSIGNED_CERT = process.env.MSSQL_TRUST_UNSIGNED_CERT || 'false';
 
-const MSSQL = {
+const dbConfig = {
   server: MSSQL_HOST,
   database: MSSQL_DATABASE,
   user: MSSQL_USER,
@@ -25,17 +25,4 @@ const MSSQL = {
   }
 };
 
-const SERVER_HOSTNAME = process.env.SERVER_HOSTNAME || 'localhost';
-const SERVER_PORT = process.env.SERVER_PORT || 8080;
-
-const SERVER = {
-  hostname: SERVER_HOSTNAME,
-  port: SERVER_PORT
-};
-
-const config = {
-  mssql: MSSQL,
-  server: SERVER
-};
-
-export default config;
+export default dbConfig;
