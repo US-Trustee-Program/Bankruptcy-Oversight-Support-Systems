@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import logging from '../logging.service';
 //import { getAllFrom, createRecord, getRecord, updateRecord, deleteRecord } from '../models/mock/cases.model';
-import cases from '../models/mock/cases.model';
+import cases from '../mock-data/mock/cases.model';
 
 const NAMESPACE = 'CASES-CONTROLLER';
 
@@ -23,7 +23,7 @@ const getAllCases = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-  /*
+/*
           // success
           return res.status(200).json({
             results
@@ -122,7 +122,7 @@ const updateCase = async (req: Request, res: Response, next: NextFunction) => {
   const record = new caseRecord({
     caseId: req.params.caseId,
     analyst: req.body.analyst,
-    chapter: req.body.chapter,
+    chapter: req.body.chapter
   });
 
   let result = cases.updateRecord(record);

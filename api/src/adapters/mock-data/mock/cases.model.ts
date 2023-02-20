@@ -10,7 +10,7 @@ type caseRecord = {
 
 let caseTable: caseRecord[] = [];
 
-function createRecord(data: { analyst: string, chapter: string }): boolean {
+function createRecord(data: { analyst: string; chapter: string }): boolean {
   const length = caseTable.length;
 
   caseTable.push({

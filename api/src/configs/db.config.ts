@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { IDbConfig } from '../adapters/types/database.d';
 
 dotenv.config();
 
@@ -10,7 +11,7 @@ const MSSQL_ENCRYPT = process.env.MSSQL_ENCRYPT || 'true';
 const MSSQL_TRUST_UNSIGNED_CERT = process.env.MSSQL_TRUST_UNSIGNED_CERT || 'false';
 const AZURE_MANAGED_IDENTITY = process.env.AZURE_MANAGED_IDENTITY || '';
 
-const dbConfig = {
+const dbConfig: IDbConfig = {
   server: MSSQL_HOST,
   database: MSSQL_DATABASE,
   user: MSSQL_USER,

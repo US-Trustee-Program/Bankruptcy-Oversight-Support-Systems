@@ -8,7 +8,7 @@ const getAllChapters = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Getting all chapters.');
 
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   };
 
   try {
@@ -19,7 +19,7 @@ const getAllChapters = async (httpRequest: Request) => {
       statusCode: 200,
       body: chapterList
     };
-  } catch(e: any) {
+  } catch (e: any) {
     // TODO: Error logging
     log('error', NAMESPACE, e.message, e);
     return {
@@ -28,7 +28,7 @@ const getAllChapters = async (httpRequest: Request) => {
       body: {
         error: e.message
       }
-    }
+    };
   }
 };
 
