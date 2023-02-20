@@ -10,12 +10,12 @@ function getAll(): {} {
 }
 */
 
-import { PersistenceGateway } from './persistence-gateway.int';
+import { PersistenceGateway } from '../adapters/types/persistence-gateway';
 
-function makeListChapters ( database: PersistenceGateway ) {
-  return async function listChapters () {
-    return await database.getAll('chapters')
-  }  
+function makeListChapters(database: PersistenceGateway) {
+  return async function listChapters() {
+    return await database.getAll('chapters');
+  };
 }
 
-export { makeListChapters }
+export { makeListChapters };

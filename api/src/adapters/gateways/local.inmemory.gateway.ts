@@ -1,13 +1,19 @@
 import log from '../logging.service';
-import { DbRecord, RecordObj } from '../types/basic';
+import { RecordObj } from '../types/basic';
+import { DbRecord } from '../types/database';
+import mockData, { getProperty } from '../mock-data/';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';
 
-function validateTableName (tableName: string) {
+function validateTableName(tableName: string) {}
+
+async function query(table: string, data: Object): Promise<boolean | Object[][]> {
+  const data = getProperty(mockData, table);
+  //console.log(mockData[table]);
   return true;
 }
 
-const getAll = (table: string): DbRecord => {
+const getAll = async (table: string): Promise<DbRecord> => {
   log('info', NAMESPACE, 'Get all chapters');
 
   if (!validateTableName) {
@@ -29,41 +35,37 @@ const getAll = (table: string): DbRecord => {
   };
 
   log('info', NAMESPACE, 'Chapter list found', results);
-  return results;
-}
 
-const getRecord = (table: string, id: number): DbRecord => {
+  return results;
+};
+
+const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
 
-  const results: DbRecord = 
-    {
-      message: '',
-      count: 0,
-      body: {},
-      success: true,
-    };
+  const results: DbRecord = {
+    message: '',
+    count: 0,
+    body: {},
+    success: true
+  };
 
   return results;
-}
+};
 
-const createRecord = (table: string, fields: RecordObj[]): boolean => {
+const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean> => {
   log('info', NAMESPACE, `Create record for ${table}`, fields);
 
   return true;
-}
+};
 
-const updateRecord = (table: string, fields: RecordObj[]): boolean => {
+const updateRecord = async (table: string, fields: RecordObj[]): Promise<boolean> => {
   log('info', NAMESPACE, `Update record for ${table}`, fields);
-
   return true;
-}
+};
 
-const deleteRecord = (table: string, id: number): boolean => {
+const deleteRecord = async (table: string, id: number): Promise<boolean> => {
   log('info', NAMESPACE, `Delete record ${id} for ${table}`);
-
   return true;
-}
+};
 
-export {
-  createRecord, getAll, getRecord, updateRecord, deleteRecord
-}
+export { createRecord, getAll, getRecord, updateRecord, deleteRecord };

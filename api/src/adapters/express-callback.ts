@@ -4,7 +4,7 @@ import log from './logging.service';
 
 const NAMESPACE = 'EXPRESS-CALLBACK';
 
-export default function makeExpressCallback (controller: Function) {
+export default function makeExpressCallback(controller: Function) {
   return (req: Request, res: Response) => {
     log('info', NAMESPACE, 'Calling express callback');
     const httpRequest: Object = {
@@ -18,19 +18,19 @@ export default function makeExpressCallback (controller: Function) {
       headers: {
         'Content-Type': req.get('Content-Type'),
         Referer: req.get('referer'),
-        'User-Agent': req.get('User-Agent'),
-      },
-    }
+        'User-Agent': req.get('User-Agent')
+      }
+    };
 
     controller(httpRequest)
       .then(async (httpResponse: HttpResponse) => {
         res.type('json');
         if (httpResponse.headers) {
-          await res.set(httpResponse.headers)
+          await res.set(httpResponse.headers);
         }
-        await res.status(httpResponse.statusCode)
+        await res.status(httpResponse.statusCode);
         await res.send(httpResponse.body);
       })
       .catch((e: Error) => res.status(500).send({ error: 'An unknown error occurred.' }));
-  }
+  };
 }

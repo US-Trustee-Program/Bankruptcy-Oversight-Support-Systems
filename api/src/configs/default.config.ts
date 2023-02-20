@@ -1,5 +1,6 @@
-import { ServerType, AppConfig } from '../adapters/types/basic';
 import dotenv from 'dotenv';
+import { ServerType, AppConfig } from '../adapters/types/basic';
+import dbConfig from './db.config';
 
 dotenv.config();
 
@@ -12,14 +13,6 @@ const SERVER: ServerType = {
 };
 
 let dbMock = Boolean(process.env.DATABASE_MOCK);
-let dbConfig = {};
-
-// dynamically load Database config if we are not in mock mode
-if (!dbMock) {
-  import('./db.config').then((db) => {
-    dbConfig = db;
-  });
-}
 
 const config: AppConfig = {
   dbMock,
