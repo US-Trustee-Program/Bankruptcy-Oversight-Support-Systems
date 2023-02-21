@@ -5,8 +5,8 @@ dotenv.config();
 
 const MSSQL_HOST = process.env.MSSQL_HOST || 'localhost';
 const MSSQL_DATABASE = process.env.MSSQL_DATABASE || 'nodebooks';
-const MSSQL_USER = process.env.MSSQL_HOST || 'root';
-const MSSQL_PASS = process.env.MSSQL_HOST || '';
+const MSSQL_USER = process.env.MSSQL_USER || 'root';
+const MSSQL_PASS = process.env.MSSQL_PASS || '';
 const MSSQL_ENCRYPT = process.env.MSSQL_ENCRYPT || 'true';
 const MSSQL_TRUST_UNSIGNED_CERT = process.env.MSSQL_TRUST_UNSIGNED_CERT || 'false';
 const AZURE_MANAGED_IDENTITY = process.env.AZURE_MANAGED_IDENTITY || '';
