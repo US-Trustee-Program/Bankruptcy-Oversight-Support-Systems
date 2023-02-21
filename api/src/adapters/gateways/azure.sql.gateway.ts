@@ -1,4 +1,4 @@
-import * as mssql from 'mssql';
+import mssql, { ISqlType } from 'mssql';
 import config from '../../configs/default.config';
 import log from '../logging.service';
 import { RecordObj } from '../types/basic';
@@ -9,40 +9,33 @@ const NAMESPACE = 'AZURE-SQL-MODULE';
 
 const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
 
-const Connect = async () =>
-  new Promise<mssql.ConnectionPool>(async (resolve, reject) => {
-    try {
-      const connection: mssql.ConnectionPool = await mssql.connect(config.dbConfig);
-      resolve(connection);
-    } catch (error) {
-      reject(error);
-      return;
-    }
-  });
-
-const Query = async (connection: mssql.ConnectionPool, query: string) =>
-  new Promise((resolve, reject) => {
-    log('info', 'MSSQL', `Query: ${query}`, connection);
-    const request = new mssql.Request(connection);
-
-    try {
-      const result = request.query(query);
-      resolve(result);
-    } catch (error) {
-      reject(error);
-    }
-  });
-
 function validateTableName(tableName: string) {
   return true;
 }
 
-async function runQuery(tableName: string, query: string): Promise<QueryResults> {
+type DBTableFieldSpec = {
+  name: string;
+  type: mssql.ISqlTypeFactoryWithNoParams;
+  value: any;
+}
+
+async function runQuery(tableName: string, query: string, input?: DBTableFieldSpec[]): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
-    const connection: mssql.ConnectionPool = await Connect();
-    const results = Query(connection, query);
+    const pool = new mssql.ConnectionPool(config.dbConfig);
+    const connection = await pool.connect();
+
+    log('info', 'MSSQL', `Query: ${query}`);
+
+    const request = await connection.request();
+
+    if (typeof input != "undefined") {
+      input.forEach(item => {
+        request.input(item.name, item.type, item.value);
+      });
+    }
+    const results = await request.query(query);
 
     log('info', NAMESPACE, `Retrieved ${tableName}: `, results);
 
@@ -53,6 +46,7 @@ async function runQuery(tableName: string, query: string): Promise<QueryResults>
     };
 
     log('info', NAMESPACE, 'Closing connection.');
+
     connection.close();
 
     return queryResult;
@@ -70,7 +64,7 @@ async function runQuery(tableName: string, query: string): Promise<QueryResults>
 }
 
 const getAll = async (table: string): Promise<DbRecord> => {
-  let query = `SELECT * FROM ${table}`;
+  const query = `SELECT * FROM ${table}`;
   const queryResult: QueryResults = await runQuery(table, query);
   let results: DbRecord;
 
@@ -94,8 +88,13 @@ const getAll = async (table: string): Promise<DbRecord> => {
 };
 
 const getRecord = async (table: string, id: number): Promise<DbRecord> => {
-  let query = `SELECT * FROM ${table} WHERE id = '${id}'`;
-  const queryResult = runQuery(table, query);
+  let query = `SELECT * FROM ${table} WHERE id = @id`;
+  const input: DBTableFieldSpec[] = [{
+    name: 'id',
+    type: mssql.Int,
+    value: id,
+  }]
+  const queryResult = runQuery(table, query, input);
 
   const results: DbRecord = {
     message: '',
@@ -113,32 +112,48 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean
 
   for (const fieldName in fields) {
     fieldNameArr.push(fieldName);
-    fieldValueArr.push(fields[fieldName]);
+    fieldValueArr.push("'" + fields[fieldName] + "'");
   }
 
-  const query = `INSERT INTO ${table} (${fieldNameArr.join(',')}) VALUES ()`;
+  const query = `INSERT INTO ${table} (${fieldNameArr.join(',')}) VALUES (${fieldValueArr.join(',')})`;
 
-  return true;
+  const queryResult = runQuery(table, query);
+
+  return Boolean(queryResult);
 };
 
-const updateRecord = async (table: string, fields: RecordObj[]): Promise<boolean> => {
-  let fieldNameArr = [];
-  let fieldValueArr = [];
+const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<boolean> => {
+  let nameValuePairs = [];
 
   for (const fieldName in fields) {
-    fieldNameArr.push(fieldName);
-    fieldValueArr.push(fields[fieldName]);
+    nameValuePairs.push(fieldName + "='" + fields[fieldName] + "'");
   }
 
-  const query = `INSERT INTO ${table} (${fieldNameArr.join(',')}) VALUES ()`;
+  const query = `UPDATE ${table} SET (${nameValuePairs.join(',')}) WHERE id = @id`;
 
-  return true;
+  const input: DBTableFieldSpec[] = [{
+    name: 'id',
+    type: mssql.Int,
+    value: id,
+  }]
+  const queryResult = runQuery(table, query, input);
+
+  return Boolean(queryResult);
 };
 
 const deleteRecord = async (table: string, id: number): Promise<boolean> => {
   log('info', NAMESPACE, `Deleting record ${id} from ${table}`);
 
-  return true;
+  const query = `DELETE FROM ${table} WHERE id = @id`;
+
+  const input: DBTableFieldSpec[] = [{
+    name: 'id',
+    type: mssql.Int,
+    value: id,
+  }]
+  const queryResult = runQuery(table, query, input);
+
+  return Boolean(queryResult);
 };
 
 export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
