@@ -10,8 +10,10 @@ import { PersistenceGateway } from './types/persistence-gateway';
 async function proxyData(): Promise<PersistenceGateway> {
   let database: PersistenceGateway;
   if (config.dbMock) {
+    console.log("using local in-memory database");
     return await import('./gateways/local.inmemory.gateway');
   } else {
+    console.log("using MSSQL database");
     return await import('./gateways/azure.sql.gateway');
   }
 }

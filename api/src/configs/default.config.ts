@@ -12,7 +12,7 @@ const SERVER: ServerType = {
   port: SERVER_PORT as number
 };
 
-let dbMock = Boolean(process.env.DATABASE_MOCK);
+let dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
 
 const config: AppConfig = {
   dbMock,
