@@ -7,7 +7,7 @@ import { DefaultAzureCredential } from '@azure/identity';
 
 const NAMESPACE = 'AZURE-SQL-MODULE';
 
-const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
+//const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
 
 function validateTableName(tableName: string) {
   return true;
@@ -21,6 +21,9 @@ type DBTableFieldSpec = {
 
 async function runQuery(tableName: string, query: string, input?: DBTableFieldSpec[]): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
+  if (!validateTableName(tableName)) {
+    throw new Error(`Invalid table name ${tableName}`);
+  }
 
   try {
     const pool = new mssql.ConnectionPool(config.dbConfig);
@@ -69,18 +72,20 @@ const getAll = async (table: string): Promise<DbRecord> => {
   let results: DbRecord;
 
   if (queryResult.success) {
+    const records = (queryResult.results as mssql.IResult<any>).recordset;
+    const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
     results = {
+      success: true,
       message: `${table} list`,
-      count: 0,
-      body: queryResult,
-      success: true
+      count: rowsAffected,
+      body: records, 
     };
   } else {
     results = {
+      success: false,
       message: queryResult.message,
       count: 0,
-      body: queryResult,
-      success: false
+      body: {},
     };
   }
 
@@ -89,19 +94,29 @@ const getAll = async (table: string): Promise<DbRecord> => {
 
 const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   let query = `SELECT * FROM ${table} WHERE id = @id`;
+  let results: DbRecord;
   const input: DBTableFieldSpec[] = [{
     name: 'id',
     type: mssql.Int,
     value: id,
   }]
-  const queryResult = runQuery(table, query, input);
+  const queryResult = await runQuery(table, query, input);
 
-  const results: DbRecord = {
-    message: '',
-    count: 1,
-    body: queryResult,
-    success: true
+  if (queryResult.success) {
+    results = {
+      message: '',
+      count: 1,
+      body: (queryResult.results as mssql.IResult<any>).recordset,
+      success: true
   };
+  } else {
+    results = {
+      message: queryResult.message,
+      count: 0,
+      body: {},
+      success: false
+    };
+  }
 
   return results;
 };

@@ -9,9 +9,11 @@ import cases from './cases.mock';
 //  return o[propertyName]; // o[propertyName] is of type T[K]
 //}
 async function getProperty(table: string, item: string) {
+  console.log(`importing ${table}`);
   const obj = await import(`./${table}.mock`);
+  console.log(`returning ${table}[${item}]`);
+  console.log(obj[item]);
   return obj[item];
-
 }
 /*
 export default { chapters, cases };

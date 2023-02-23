@@ -1,40 +1,40 @@
 import { NextFunction, Request, Response } from 'express';
-import logging from '../logging.service';
-//import { getAllFrom, createRecord, getRecord, updateRecord, deleteRecord } from '../models/mock/cases.model';
-import cases from '../mock-data/mock/cases.model';
+import log from '../logging.service';
+import { addCase, listCases, getCase, updateCase, deleteCase } from '../../use-cases';
+import { RecordObj } from '../types/basic';
 
 const NAMESPACE = 'CASES-CONTROLLER';
 
-const getAllCases = async (req: Request, res: Response, next: NextFunction) => {
-  logging.info(NAMESPACE, 'Getting all cases.');
+const getAllCases = async (httpRequest: Request) => {
+  log('info', NAMESPACE, 'Getting all cases.');
 
-  const result = cases.getAll();
+  const headers = {
+    'Content-Type': 'application/json'
+  };
 
-  if (result && result.hasOwnProperty('success')) {
-    return res.status(200).json({
-      message: 'cases list',
-      count: 1,
-      body: result
-    });
-  } else {
-    return res.status(404).json({
-      message: 'Record not found'
-    });
+  try {
+    const caseList = await listCases();
+
+    // success
+    return {
+      headers: headers,
+      statusCode: 200,
+      body: caseList,
+    };
+  } catch (e: any) {
+    log('error', NAMESPACE, e.message, e);
+    // 404 Not Found Error
+    return {
+      headers,
+      statusCode: 404,
+      body: {
+        error: e.message,
+      }
+    };
   }
 };
 
 /*
-          // success
-          return res.status(200).json({
-            results
-          });
-
-          // 404 Not Found Error
-          return res.status(404).json({
-            message: error.message,
-            error
-          });
-
           // connection error
           // 503 service unavailable
           return res.status(503).json({
@@ -43,8 +43,9 @@ const getAllCases = async (req: Request, res: Response, next: NextFunction) => {
           });
   */
 
+/*
 const getCase = async (req: Request, res: Response, next: NextFunction) => {
-  logging.info(NAMESPACE, `Getting single case ${req.params.caseId}.`);
+  log('info', NAMESPACE, `Getting single case ${req.params.caseId}.`);
 
   let result = cases.getRecord(req.params.caseId);
 
@@ -60,22 +61,37 @@ const getCase = async (req: Request, res: Response, next: NextFunction) => {
     });
   }
 };
+*/
 
-const createCase = async (req: Request, res: Response, next: NextFunction) => {
-  logging.info(NAMESPACE, 'Inserting Case');
+const createCase = async (httpRequest: Request) => {
+  log('info', NAMESPACE, 'Inserting Case');
 
-  let { analyst, chapter } = req.body;
-  logging.info(NAMESPACE, 'analyst and chapter passed in', req.body);
+  const headers = {
+    'Content-Type': 'application/json'
+  };
 
-  if (cases.createRecord({ analyst, chapter })) {
-    return res.status(200).json({
-      message: 'inserted case'
-    });
-  } else {
-    return res.status(500).json({
-      message: 'failed to inserted case'
-    });
-  }
+  try {
+    let { analyst, chapter } = httpRequest.body;
+    log('info', NAMESPACE, 'analyst and chapter passed in', httpRequest.body);
+
+    const record: RecordObj[] = [
+      {
+        fieldName: 'foo',
+        fieldValue: 'foo',
+      },
+    ];
+
+    const result = await addCase(record);
+
+    if (cases.createRecord({ analyst, chapter })) {
+      return res.status(200).json({
+        message: 'inserted case'
+      });
+    } else {
+      return res.status(500).json({
+        message: 'failed to inserted case'
+      });
+    }
 
   /*
   let query = `INSERT INTO Cases (analyst, chapter) VALUES ("${analyst}", "${chapter}")`;
@@ -84,14 +100,14 @@ const createCase = async (req: Request, res: Response, next: NextFunction) => {
     .then((connection) => {
       Query(connection, query)
         .then((result) => {
-          logging.info(NAMESPACE, 'Case created: ', result);
+          log('info', NAMESPACE, 'Case created: ', result);
 
           return res.status(200).json({
             result
           });
         })
         .catch((error) => {
-          logging.error(NAMESPACE, error.message, error);
+          log('error', NAMESPACE, error.message, error);
 
           // 400 bad request
           return res.status(400).json({
@@ -100,12 +116,12 @@ const createCase = async (req: Request, res: Response, next: NextFunction) => {
           });
         })
         .finally(() => {
-          logging.info(NAMESPACE, 'Closing connection.');
+          log('info', NAMESPACE, 'Closing connection.');
           connection.close();
         });
     })
     .catch((error) => {
-      logging.error(NAMESPACE, error.message, error);
+      log('error', NAMESPACE, error.message, error);
 
       // 503 service unavailable
       return res.status(503).json({
@@ -116,8 +132,9 @@ const createCase = async (req: Request, res: Response, next: NextFunction) => {
   */
 };
 
+/*
 const updateCase = async (req: Request, res: Response, next: NextFunction) => {
-  logging.info(NAMESPACE, 'Updating Case');
+  log('info', NAMESPACE, 'Updating Case');
 
   const record = new caseRecord({
     caseId: req.params.caseId,
@@ -131,7 +148,7 @@ const updateCase = async (req: Request, res: Response, next: NextFunction) => {
 
   const index = caseTable.findIndex((item) => item.caseid == +req.params.caseId);
 
-  logging.info(NAMESPACE, 'original record: ', caseTable[index]);
+  log('info', NAMESPACE, 'original record: ', caseTable[index]);
 
   caseTable[index] = {
     caseid: +req.params.caseId,
@@ -139,12 +156,13 @@ const updateCase = async (req: Request, res: Response, next: NextFunction) => {
     chapter
   };
 
-  logging.info(NAMESPACE, 'record updated: ', caseTable[index]);
+  log('info', NAMESPACE, 'record updated: ', caseTable[index]);
 
   return res.status(200).json({
     message: 'updated cases'
   });
 
+  */
   /*
   let query = `UPDATE Cases SET (analyst="${analyst}", chapter="${chapter}") WHERE CaseId=${req.params.caseId}`;
 
@@ -152,14 +170,14 @@ const updateCase = async (req: Request, res: Response, next: NextFunction) => {
     .then((connection) => {
       Query(connection, query)
         .then((result) => {
-          logging.info(NAMESPACE, 'Case updated: ', result);
+          log('info', NAMESPACE, 'Case updated: ', result);
 
           return res.status(200).json({
             result
           });
         })
         .catch((error) => {
-          logging.error(NAMESPACE, error.message, error);
+          log('error', NAMESPACE, error.message, error);
 
           // 400 bad request
           return res.status(400).json({
@@ -168,12 +186,12 @@ const updateCase = async (req: Request, res: Response, next: NextFunction) => {
           });
         })
         .finally(() => {
-          logging.info(NAMESPACE, 'Closing connection.');
+          log('info', NAMESPACE, 'Closing connection.');
           connection.close();
         });
     })
     .catch((error) => {
-      logging.error(NAMESPACE, error.message, error);
+      log('error', NAMESPACE, error.message, error);
 
       // 503 service unavailable
       return res.status(503).json({
@@ -182,10 +200,11 @@ const updateCase = async (req: Request, res: Response, next: NextFunction) => {
       });
     });
   */
-};
+//};
 
+/*
 const deleteCase = async (req: Request, res: Response, next: NextFunction) => {
-  logging.info(NAMESPACE, `Deleting Case ${req.params.caseId}`);
+  log('info', NAMESPACE, `Deleting Case ${req.params.caseId}`);
 
   caseTable = caseTable.filter((theCase) => theCase.caseid != +req.params.caseId);
 
@@ -202,14 +221,14 @@ const deleteCase = async (req: Request, res: Response, next: NextFunction) => {
     .then((connection) => {
       Query(connection, query)
         .then((result) => {
-          logging.info(NAMESPACE, 'Case deleted: ', result);
+          log('info', NAMESPACE, 'Case deleted: ', result);
 
           return res.status(200).json({
             result
           });
         })
         .catch((error) => {
-          logging.error(NAMESPACE, error.message, error);
+          log('error', NAMESPACE, error.message, error);
 
           // 400 bad request
           return res.status(400).json({
@@ -218,12 +237,12 @@ const deleteCase = async (req: Request, res: Response, next: NextFunction) => {
           });
         })
         .finally(() => {
-          logging.info(NAMESPACE, 'Closing connection.');
+          log('info', NAMESPACE, 'Closing connection.');
           connection.close();
         });
     })
     .catch((error) => {
-      logging.error(NAMESPACE, error.message, error);
+      log('error', NAMESPACE, error.message, error);
 
       // 503 service unavailable
       return res.status(503).json({
@@ -232,6 +251,8 @@ const deleteCase = async (req: Request, res: Response, next: NextFunction) => {
       });
     });
   */
-};
+//};
 
-export default { createCase, getAllCases, getCase, updateCase, deleteCase };
+//export default { createCase, getAllCases, getCase, updateCase, deleteCase };
+//export default { createCase, getAllCases, getCase };
+export default { createCase, getAllCases };

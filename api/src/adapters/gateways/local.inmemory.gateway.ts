@@ -1,8 +1,3 @@
-/*
- * Refactor this code to manage an in-memory data object.  Only the initial retrieve list needs to load the default data.
- * All other interaction should use an in memory data system.
- */
-
 import log from '../logging.service';
 import { RecordObj } from '../types/basic';
 import { DbRecord } from '../types/database';
@@ -10,26 +5,40 @@ import { getProperty } from '../mock-data/';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';
 
-function validateTableName(tableName: string) {}
+type ObjectStrKeyVal = {
+  [key: string]: string;
+}
+type ObjectKeyValArrayKeyVal = {
+  [key: string]: ObjectStrKeyVal[];
+}
 
-async function query(table: string, item: string): Promise<boolean | Object[][]> {
-  return await getProperty(table, item);
+const mockData: ObjectKeyValArrayKeyVal = {};
+
+function validateTableName(tableName: string) {
+  return tableName.match(/^[a-z]+[a-z0-9]*$/i);
 }
 
 const getAll = async (table: string): Promise<DbRecord> => {
+  let list: ObjectStrKeyVal[] = [];
+
   log('info', NAMESPACE, `Get all from ${table}`);
 
   if (!validateTableName) {
     throw new Error('Invalid database table name');
   }
 
-  const list = await getProperty(table, 'list');
+  if (mockData.hasOwnProperty(table)) {
+    list = mockData[table];
+  } else {
+    list = await getProperty(table, 'list');
+    mockData[table] = list;
+  }
 
   const results: DbRecord = {
+    success: true,
     message: `${table} list`,
     count: list.length,
     body: list,
-    success: true
   };
 
   log('info', NAMESPACE, `list from ${table} found`, results);
@@ -38,14 +47,19 @@ const getAll = async (table: string): Promise<DbRecord> => {
 };
 
 const getRecord = async (table: string, id: number): Promise<DbRecord> => {
+  let list: ObjectStrKeyVal = {};
+
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
 
-  const list = await getProperty(table, 'oneRecord');
+  if (mockData.hasOwnProperty(table)) {
+    const data = mockData[table].filter(rec => rec[`${table}_id`] == `${id}`).pop();
+    if (data) list = data;
+  }
 
   const results: DbRecord = {
     message: `${table} record`,
-    count: list.length,
-    body: list,
+    count: 1,
+    body: [list],
     success: true
   };
 
@@ -57,17 +71,56 @@ const getRecord = async (table: string, id: number): Promise<DbRecord> => {
 const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean> => {
   log('info', NAMESPACE, `Create record for ${table}`, fields);
 
-  return true;
+  let newRecord: ObjectStrKeyVal = {};
+
+  fields.map(field => {
+    newRecord[field.fieldName] = field.fieldValue as string;
+  });
+
+  if (mockData.hasOwnProperty(table)) {
+    mockData[table].push(newRecord);
+    return true;
+  } else {
+    return false;
+  }
 };
 
 const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<boolean> => {
   log('info', NAMESPACE, `Update record for ${table}`, fields);
-  return true;
+
+  let newRecord: ObjectStrKeyVal = {};
+
+  if (mockData.hasOwnProperty(table)) {
+    for (let i = 0; i < mockData[table].length; i++) {
+      let oldRecord = mockData[table][i];
+      if (oldRecord[`${table}_id`] == `${id}`) {
+        fields.map(field => {
+          newRecord[field.fieldName] = field.fieldValue as string;
+        });
+
+        mockData[table][i] = newRecord;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
 };
 
 const deleteRecord = async (table: string, id: number): Promise<boolean> => {
   log('info', NAMESPACE, `Delete record ${id} for ${table}`);
-  return true;
+
+  if (mockData.hasOwnProperty(table)) {
+    const data = mockData[table].filter(rec => rec[`${table}_id`] != `${id}`);
+    if (data) {
+      mockData[table] = data;
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
 };
 
 export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
