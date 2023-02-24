@@ -18,6 +18,10 @@ public class AzureSqlGateway implements PersistenceGateway {
         Properties properties = new Properties();
         properties.load(AzureSqlGateway.class.getClassLoader().getResourceAsStream("application.properties"));
 
+        //read password from the env
+        String password =  org.eclipse.microprofile.config.ConfigProvider.getConfig().getValue("password", String.class);
+        properties.put("password", password);
+
         try (Connection connection = DriverManager.getConnection(properties.getProperty("url"), properties);
              Statement statement = connection.createStatement();){
 
@@ -27,7 +31,7 @@ public class AzureSqlGateway implements PersistenceGateway {
             // Print results from select statement
             while (resultSet.next()) {
                 cases.add(resultSet.getString(1) + " " + resultSet.getString(2));
-                //System.out.println(resultSet.getString(1) + " " + resultSet.getString(2));
+                System.out.println(resultSet.getString(1) + " " + resultSet.getString(2));
             }
 
             return cases;
