@@ -7,17 +7,18 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import java.util.*;
 
 @Path("/cases")
 public class CaseListController {
     CaseListController() {
-        RuntimeObjectFactory.init();
+        RuntimeObjectFactory.initCloud();
     }
 
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public void getCases() {
+    public List<String> getCases() {
         CaseListUseCase useCase = new CaseListUseCase();
-        useCase.getCases("");
+        return useCase.getCases("");
     }
 }

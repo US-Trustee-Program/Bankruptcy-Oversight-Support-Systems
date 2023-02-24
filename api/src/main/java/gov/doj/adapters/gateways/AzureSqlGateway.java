@@ -7,36 +7,43 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
+import java.util.*;
 
 public class AzureSqlGateway implements PersistenceGateway {
-    public void connect() {
-        String connectionUrl =
-                "";
+    public List<String> connect() throws Exception{
 
+        List<String> cases = new ArrayList<>();
         ResultSet resultSet = null;
 
-        try (Connection connection = DriverManager.getConnection(connectionUrl);
-             Statement statement = connection.createStatement();) {
+        Properties properties = new Properties();
+        properties.load(AzureSqlGateway.class.getClassLoader().getResourceAsStream("application.properties"));
 
-            // Create and execute a SELECT SQL statement.
-            String selectSql = "SELECT TOP 10 Title, FirstName, LastName from SalesLT.Customer";
+        try (Connection connection = DriverManager.getConnection(properties.getProperty("url"), properties);
+             Statement statement = connection.createStatement();){
+
+            String selectSql = "SELECT case_id, case_number  from Cases";
             resultSet = statement.executeQuery(selectSql);
 
             // Print results from select statement
             while (resultSet.next()) {
-                System.out.println(resultSet.getString(2) + " " + resultSet.getString(3));
+                cases.add(resultSet.getString(1) + " " + resultSet.getString(2));
+                //System.out.println(resultSet.getString(1) + " " + resultSet.getString(2));
             }
+
+            return cases;
+
         }
         catch (SQLException e) {
-            e.printStackTrace();
+
+            throw new RuntimeException(e);
         }
     }
-
-
-
     @Override
     public List<String> getCases() {
-        return null;
+        try {
+            return connect();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
