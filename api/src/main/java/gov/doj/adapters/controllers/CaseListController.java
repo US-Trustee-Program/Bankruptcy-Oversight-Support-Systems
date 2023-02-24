@@ -11,10 +11,6 @@ import java.util.*;
 
 @Path("/cases")
 public class CaseListController {
-    CaseListController() {
-        RuntimeObjectFactory.initCloud();
-    }
-
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     public List<String> getCases() {
