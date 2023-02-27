@@ -48,19 +48,16 @@ const createCase = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Inserting Case');
 
   try {
-    let { analyst, chapter } = httpRequest.body;
     log('info', NAMESPACE, 'analyst and chapter passed in', httpRequest.body);
 
-    const record: RecordObj[] = [
-      {
-        fieldName: 'analyst',
-        fieldValue: analyst,
-      },
-      {
-        fieldName: 'chapter',
-        fieldValue: chapter,
-      },
-    ];
+    let record: RecordObj[] = [];
+
+    for (let rec in httpRequest.body) {
+      record.push({
+        fieldName: rec,
+        fieldValue: httpRequest.body[rec],
+      } as RecordObj);
+    }
 
     const result = await useCase.addCase(record);
 
@@ -76,23 +73,16 @@ const updateCase = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Updating Case');
 
   try {
-    let { analyst, chapter } = httpRequest.body;
     const caseId = +httpRequest.params.caseId;
 
-    const record: RecordObj[] = [
-      {
-        fieldName: 'case_id',
-        fieldValue: caseId,
-      },
-      {
-        fieldName: 'analyst',
-        fieldValue: analyst,
-      },
-      {
-        fieldName: 'chapter',
-        fieldValue: chapter,
-      },
-    ];
+    let record: RecordObj[] = [];
+
+    for (let rec in httpRequest.body) {
+      record.push({
+        fieldName: rec,
+        fieldValue: httpRequest.body[rec],
+      } as RecordObj);
+    }
 
     const result = useCase.updateCase(caseId, record);
 

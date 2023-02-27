@@ -13,3 +13,10 @@ export type AppConfig = {
   dbConfig: IDbConfig;
   server: ServerType;
 };
+
+export type ObjectKeyVal = {
+  [key: string]: string | number;
+}
+export type ObjectKeyValArrayKeyVal = {
+  [key: string]: ObjectKeyVal[];
+}
