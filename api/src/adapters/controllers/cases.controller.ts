@@ -84,7 +84,8 @@ const updateCase = async (httpRequest: Request) => {
       } as RecordObj);
     }
 
-    const result = useCase.updateCase(caseId, record);
+    const result = await useCase.updateCase(caseId, record);
+    console.log(result);
 
     // success
     return httpSuccess(result);

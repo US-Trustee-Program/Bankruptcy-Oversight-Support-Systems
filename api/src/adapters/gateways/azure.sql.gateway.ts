@@ -1,7 +1,7 @@
 import mssql, { ISqlType } from 'mssql';
 import config from '../../configs/default.config';
 import log from '../logging.service';
-import { RecordObj } from '../types/basic';
+import { RecordObj, ObjectKeyVal } from '../types/basic';
 import { DbRecord, QueryResults, DbTableFieldSpec } from '../types/database';
 //import { DefaultAzureCredential } from '@azure/identity';
 
@@ -87,7 +87,7 @@ const getAll = async (table: string): Promise<DbRecord> => {
 };
 
 const getRecord = async (table: string, id: number): Promise<DbRecord> => {
-  let query = `SELECT * FROM ${table} WHERE id = @id`;
+  let query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
   let results: DbRecord;
   const input: DbTableFieldSpec[] = [{
     name: 'id',
@@ -131,35 +131,37 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean
   return Boolean(queryResult);
 };
 
-const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<DbRecord> => {
-  let nameValuePairs = [];
+const updateRecord = async (table: string, id: number, fieldArr: RecordObj[]): Promise<DbRecord> => {
+  let nameValuePairs: string[] = [];
 
-  for (const fieldName in fields) {
-    nameValuePairs.push(fieldName + "='" + fields[fieldName] + "'");
-  }
+  console.log(fieldArr);
+  fieldArr.forEach((fields: ObjectKeyVal) => {
+    nameValuePairs.push(fields['fieldName'] + "='" + fields['fieldValue'] + "'");
+  })
+  console.log(nameValuePairs);
 
-  const query = `UPDATE ${table} SET (${nameValuePairs.join(',')}) WHERE id = @id`;
+  const query = `UPDATE ${table} SET ${nameValuePairs.join(',')} WHERE ${table}_id = @id`;
 
   const input: DbTableFieldSpec[] = [{
     name: 'id',
     type: mssql.Int,
     value: id,
   }]
-  const queryResult = runQuery(table, query, input);
+  const queryResult = await runQuery(table, query, input);
 
   if (Boolean(queryResult)) {
     return {
       success: true,
       count: 1,
       message: '',
-      body: fields
+      body: fieldArr,
     }
   } else {
     return {
       success: false,
       count: 0,
       message: `${table} could not be updated with the given data.`,
-      body: fields,
+      body: fieldArr,
     }
   }
 };
