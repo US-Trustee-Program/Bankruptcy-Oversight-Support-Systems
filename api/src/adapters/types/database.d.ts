@@ -1,15 +1,21 @@
 export type DbRecord = {
+  success: boolean;
   message: string;
   count: number;
   body: Object;
-  success: boolean;
 };
 
-type QueryResults = {
+export type QueryResults = {
+  success: boolean;
   results: void | Object;
   message: string;
-  success: boolean;
 };
+
+export type DbTableFieldSpec = {
+  name: string;
+  type: mssql.ISqlTypeFactoryWithNoParams;
+  value: any;
+}
 
 export interface IDbConfig {
   server: string;

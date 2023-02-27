@@ -2,24 +2,18 @@ import mssql, { ISqlType } from 'mssql';
 import config from '../../configs/default.config';
 import log from '../logging.service';
 import { RecordObj } from '../types/basic';
-import { DbRecord, QueryResults } from '../types/database';
-import { DefaultAzureCredential } from '@azure/identity';
+import { DbRecord, QueryResults, DbTableFieldSpec } from '../types/database';
+//import { DefaultAzureCredential } from '@azure/identity';
 
 const NAMESPACE = 'AZURE-SQL-MODULE';
 
 //const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
 
 function validateTableName(tableName: string) {
-  return true;
+  return tableName.match(/^[a-z]+[a-z0-9]*$/i);
 }
 
-type DBTableFieldSpec = {
-  name: string;
-  type: mssql.ISqlTypeFactoryWithNoParams;
-  value: any;
-}
-
-async function runQuery(tableName: string, query: string, input?: DBTableFieldSpec[]): Promise<QueryResults> {
+async function runQuery(tableName: string, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
   if (!validateTableName(tableName)) {
     throw new Error(`Invalid table name ${tableName}`);
@@ -95,7 +89,7 @@ const getAll = async (table: string): Promise<DbRecord> => {
 const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   let query = `SELECT * FROM ${table} WHERE id = @id`;
   let results: DbRecord;
-  const input: DBTableFieldSpec[] = [{
+  const input: DbTableFieldSpec[] = [{
     name: 'id',
     type: mssql.Int,
     value: id,
@@ -146,7 +140,7 @@ const updateRecord = async (table: string, id: number, fields: RecordObj[]): Pro
 
   const query = `UPDATE ${table} SET (${nameValuePairs.join(',')}) WHERE id = @id`;
 
-  const input: DBTableFieldSpec[] = [{
+  const input: DbTableFieldSpec[] = [{
     name: 'id',
     type: mssql.Int,
     value: id,
@@ -161,7 +155,7 @@ const deleteRecord = async (table: string, id: number): Promise<boolean> => {
 
   const query = `DELETE FROM ${table} WHERE id = @id`;
 
-  const input: DBTableFieldSpec[] = [{
+  const input: DbTableFieldSpec[] = [{
     name: 'id',
     type: mssql.Int,
     value: id,

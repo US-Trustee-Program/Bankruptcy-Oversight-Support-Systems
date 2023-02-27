@@ -1,36 +1,22 @@
 import { NextFunction, Request, Response } from 'express';
 import log from '../logging.service';
-import { addCase, listCases, getCase, updateCase, deleteCase } from '../../use-cases';
+import useCase from '../../use-cases';
 import { RecordObj } from '../types/basic';
+import { httpError, httpSuccess } from '../utils/http';
 
 const NAMESPACE = 'CASES-CONTROLLER';
 
 const getAllCases = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Getting all cases.');
 
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
   try {
-    const caseList = await listCases();
+    const caseList = await useCase.listCases();
 
     // success
-    return {
-      headers: headers,
-      statusCode: 200,
-      body: caseList,
-    };
+    return httpSuccess(caseList);
   } catch (e: any) {
-    log('error', NAMESPACE, e.message, e);
     // 404 Not Found Error
-    return {
-      headers,
-      statusCode: 404,
-      body: {
-        error: e.message,
-      }
-    };
+    return httpError(e, 404);
   }
 };
 
@@ -43,32 +29,23 @@ const getAllCases = async (httpRequest: Request) => {
           });
   */
 
-/*
-const getCase = async (req: Request, res: Response, next: NextFunction) => {
-  log('info', NAMESPACE, `Getting single case ${req.params.caseId}.`);
+const getCase = async (httpRequest: Request) => {
+  log('info', NAMESPACE, `Getting single case ${httpRequest.params.caseId}.`);
 
-  let result = cases.getRecord(req.params.caseId);
+  try {
+    const caseId = +httpRequest.params.caseId;
+    const result = await useCase.getCase(caseId);
 
-  if (result && result.hasOwnProperty('success')) {
-    return res.status(200).json({
-      message: 'cases list',
-      count: 1,
-      body: result
-    });
-  } else {
-    return res.status(404).json({
-      message: 'Record not found'
-    });
+    // success
+    return httpSuccess(result);
+  } catch (e: any) {
+    // 404 Not Found Error
+    return httpError(e, 404);
   }
 };
-*/
 
 const createCase = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Inserting Case');
-
-  const headers = {
-    'Content-Type': 'application/json'
-  };
 
   try {
     let { analyst, chapter } = httpRequest.body;
@@ -76,183 +53,66 @@ const createCase = async (httpRequest: Request) => {
 
     const record: RecordObj[] = [
       {
-        fieldName: 'foo',
-        fieldValue: 'foo',
+        fieldName: 'analyst',
+        fieldValue: analyst,
+      },
+      {
+        fieldName: 'chapter',
+        fieldValue: chapter,
       },
     ];
 
-    const result = await addCase(record);
+    const result = await useCase.addCase(record);
 
-    if (cases.createRecord({ analyst, chapter })) {
-      return res.status(200).json({
-        message: 'inserted case'
-      });
-    } else {
-      return res.status(500).json({
-        message: 'failed to inserted case'
-      });
-    }
-
-  /*
-  let query = `INSERT INTO Cases (analyst, chapter) VALUES ("${analyst}", "${chapter}")`;
-
-  Connect()
-    .then((connection) => {
-      Query(connection, query)
-        .then((result) => {
-          log('info', NAMESPACE, 'Case created: ', result);
-
-          return res.status(200).json({
-            result
-          });
-        })
-        .catch((error) => {
-          log('error', NAMESPACE, error.message, error);
-
-          // 400 bad request
-          return res.status(400).json({
-            message: error.message,
-            error
-          });
-        })
-        .finally(() => {
-          log('info', NAMESPACE, 'Closing connection.');
-          connection.close();
-        });
-    })
-    .catch((error) => {
-      log('error', NAMESPACE, error.message, error);
-
-      // 503 service unavailable
-      return res.status(503).json({
-        message: error.message,
-        error
-      });
-    });
-  */
+    // success
+    return httpSuccess(result);
+  } catch (e: any) {
+    // 400 Error creating record
+    return httpError(e, 400);
+  }
 };
 
-/*
-const updateCase = async (req: Request, res: Response, next: NextFunction) => {
+const updateCase = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Updating Case');
 
-  const record = new caseRecord({
-    caseId: req.params.caseId,
-    analyst: req.body.analyst,
-    chapter: req.body.chapter
-  });
+  try {
+    let { analyst, chapter } = httpRequest.body;
+    const caseId = +httpRequest.params.caseId;
 
-  let result = cases.updateRecord(record);
+    const record: RecordObj[] = [
+      {
+        fieldName: 'case_id',
+        fieldValue: caseId,
+      },
+      {
+        fieldName: 'analyst',
+        fieldValue: analyst,
+      },
+      {
+        fieldName: 'chapter',
+        fieldValue: chapter,
+      },
+    ];
 
-  let { analyst, chapter } = req.body;
+    const result = useCase.updateCase(caseId, record);
 
-  const index = caseTable.findIndex((item) => item.caseid == +req.params.caseId);
+    // success
+    return httpSuccess(result);
+  } catch (e: any) {
+    // 400 Error updating record
+    return httpError(e, 400);
+  }
+};
 
-  log('info', NAMESPACE, 'original record: ', caseTable[index]);
+const deleteCase = async (httpRequest: Request) => {
+  log('info', NAMESPACE, `Deleting case ${httpRequest.params.caseId}.`);
 
-  caseTable[index] = {
-    caseid: +req.params.caseId,
-    analyst,
-    chapter
-  };
+  try {
+    const result = await useCase.deleteCase(+httpRequest.params.caseId);
+    return httpSuccess(result);
+  } catch (e: any) {
+    return httpError(e, 400);
+  }
+};
 
-  log('info', NAMESPACE, 'record updated: ', caseTable[index]);
-
-  return res.status(200).json({
-    message: 'updated cases'
-  });
-
-  */
-  /*
-  let query = `UPDATE Cases SET (analyst="${analyst}", chapter="${chapter}") WHERE CaseId=${req.params.caseId}`;
-
-  Connect()
-    .then((connection) => {
-      Query(connection, query)
-        .then((result) => {
-          log('info', NAMESPACE, 'Case updated: ', result);
-
-          return res.status(200).json({
-            result
-          });
-        })
-        .catch((error) => {
-          log('error', NAMESPACE, error.message, error);
-
-          // 400 bad request
-          return res.status(400).json({
-            message: error.message,
-            error
-          });
-        })
-        .finally(() => {
-          log('info', NAMESPACE, 'Closing connection.');
-          connection.close();
-        });
-    })
-    .catch((error) => {
-      log('error', NAMESPACE, error.message, error);
-
-      // 503 service unavailable
-      return res.status(503).json({
-        message: error.message,
-        error
-      });
-    });
-  */
-//};
-
-/*
-const deleteCase = async (req: Request, res: Response, next: NextFunction) => {
-  log('info', NAMESPACE, `Deleting Case ${req.params.caseId}`);
-
-  caseTable = caseTable.filter((theCase) => theCase.caseid != +req.params.caseId);
-
-  return res.status(200).json({
-    message: 'deleted case'
-  });
-
-  /*
-  let { analyst, chapter } = req.body;
-
-  let query = `DELETE from Cases WHERE CaseId=${req.params.caseId}`;
-
-  Connect()
-    .then((connection) => {
-      Query(connection, query)
-        .then((result) => {
-          log('info', NAMESPACE, 'Case deleted: ', result);
-
-          return res.status(200).json({
-            result
-          });
-        })
-        .catch((error) => {
-          log('error', NAMESPACE, error.message, error);
-
-          // 400 bad request
-          return res.status(400).json({
-            message: error.message,
-            error
-          });
-        })
-        .finally(() => {
-          log('info', NAMESPACE, 'Closing connection.');
-          connection.close();
-        });
-    })
-    .catch((error) => {
-      log('error', NAMESPACE, error.message, error);
-
-      // 503 service unavailable
-      return res.status(503).json({
-        message: error.message,
-        error
-      });
-    });
-  */
-//};
-
-//export default { createCase, getAllCases, getCase, updateCase, deleteCase };
-//export default { createCase, getAllCases, getCase };
-export default { createCase, getAllCases };
+export default { createCase, getAllCases, getCase, updateCase, deleteCase };
