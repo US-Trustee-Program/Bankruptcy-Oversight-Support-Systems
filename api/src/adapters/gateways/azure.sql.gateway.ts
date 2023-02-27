@@ -131,7 +131,7 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean
   return Boolean(queryResult);
 };
 
-const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<boolean> => {
+const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<DbRecord> => {
   let nameValuePairs = [];
 
   for (const fieldName in fields) {
@@ -147,7 +147,21 @@ const updateRecord = async (table: string, id: number, fields: RecordObj[]): Pro
   }]
   const queryResult = runQuery(table, query, input);
 
-  return Boolean(queryResult);
+  if (Boolean(queryResult)) {
+    return {
+      success: true,
+      count: 1,
+      message: '',
+      body: fields
+    }
+  } else {
+    return {
+      success: false,
+      count: 0,
+      message: `${table} could not be updated with the given data.`,
+      body: fields,
+    }
+  }
 };
 
 const deleteRecord = async (table: string, id: number): Promise<boolean> => {
