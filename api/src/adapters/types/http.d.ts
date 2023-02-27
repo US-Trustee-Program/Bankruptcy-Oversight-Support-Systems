@@ -1,7 +1,7 @@
 export type HttpResponse = {
   headers: {
-    ContentType: String;
-    LastModified: String;
+    'Content-Type': String;
+    'Last-Modified': String;
   };
   statusCode: number;
   body: Object;

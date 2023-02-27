@@ -11,4 +11,6 @@ const updateCase = makeUpdateCase(database);
 const deleteCase = makeDeleteCase(database);
 const listChapters = makeListChapters(database);
 
-export { addCase, listCases, getCase, updateCase, deleteCase, listChapters };
+export default {
+  addCase, listCases, getCase, updateCase, deleteCase, listChapters
+}
