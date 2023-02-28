@@ -61,11 +61,14 @@ jobs:
       - run: npm run build --if-present
       - run: npm test
 
-      - name: Upload artifact for deployment job
+      - name: Tar files
+        run: tar -cvf ustp-boss.tar .
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: node-app
-          path: .
+          name: ustp-boss
+          path: ustp-boss.tar
 
   deploy:
     runs-on: ubuntu-latest
@@ -89,7 +92,10 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: node-app
+          name: ustp-boss
+
+      - name: Tar files
+        run: tar -xp ustp-boss.tar .
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
