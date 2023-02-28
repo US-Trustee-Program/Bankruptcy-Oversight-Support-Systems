@@ -2,7 +2,7 @@ import mssql, { ISqlType } from 'mssql';
 import config from '../../configs/default.config';
 import log from '../logging.service';
 import { RecordObj, ObjectKeyVal } from '../types/basic';
-import { DbRecord, QueryResults, DbTableFieldSpec } from '../types/database';
+import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database';
 //import { DefaultAzureCredential } from '@azure/identity';
 
 const NAMESPACE = 'AZURE-SQL-MODULE';
@@ -60,11 +60,11 @@ async function runQuery(tableName: string, query: string, input?: DbTableFieldSp
   }
 }
 
-const getAll = async (table: string): Promise<DbRecord> => {
+const getAll = async (table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
   const queryResult: QueryResults = await runQuery(table, query);
   console.log(queryResult.results);
-  let results: DbRecord;
+  let results: DbResult;
 
   if (queryResult.success) {
     const records = (queryResult.results as mssql.IResult<any>).recordset;
@@ -87,9 +87,9 @@ const getAll = async (table: string): Promise<DbRecord> => {
   return results;
 };
 
-const getRecord = async (table: string, id: number): Promise<DbRecord> => {
+const getRecord = async (table: string, id: number): Promise<DbResult> => {
   let query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
-  let results: DbRecord;
+  let results: DbResult;
   const input: DbTableFieldSpec[] = [{
     name: 'id',
     type: mssql.Int,
@@ -97,7 +97,12 @@ const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   }]
   const queryResult = await runQuery(table, query, input);
 
-  if (queryResult.success) {
+  if (
+    Boolean(queryResult) &&
+    queryResult.success &&
+    typeof((queryResult as any).results.rowsAffected) != 'undefined' &&
+    (queryResult as any).results.rowsAffected[0] === 1
+  ) {
     results = {
       message: '',
       count: 1,
@@ -116,7 +121,7 @@ const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   return results;
 };
 
-const createRecord = async (table: string, fieldArr: RecordObj[]): Promise<boolean> => {
+const createRecord = async (table: string, fieldArr: RecordObj[]): Promise<DbResult> => {
   let fieldNameArr: string[] = [];
   let fieldValueArr: string[] = [];
 
@@ -125,23 +130,43 @@ const createRecord = async (table: string, fieldArr: RecordObj[]): Promise<boole
     fieldValueArr.push("'" + fields['fieldValue'] + "'");
   })
 
+  const presentation: object = generatePresentationRecord(table, 0, fieldArr);
+
   const query = `INSERT INTO ${table} (${fieldNameArr.join(',')}) VALUES (${fieldValueArr.join(',')})`;
 
-  const queryResult = runQuery(table, query);
+  const queryResult = await runQuery(table, query);
 
-  return Boolean(queryResult);
+  if (
+    Boolean(queryResult) &&
+    typeof((queryResult as any).results.rowsAffected) != 'undefined' &&
+    (queryResult as any).results.rowsAffected[0] === 1
+  ) {
+    return {
+      success: true,
+      count: 1,
+      message: '',
+      body: presentation,
+    }
+  } else {
+    return {
+      success: false,
+      count: 0,
+      message: `${table} could not be updated with the given data.`,
+      body: presentation,
+    }
+  }
 };
 
-const updateRecord = async (table: string, id: number, fieldArr: RecordObj[]): Promise<DbRecord> => {
+const updateRecord = async (table: string, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
   let nameValuePairs: string[] = [];
 
-  console.log(fieldArr);
   fieldArr.forEach((fields: ObjectKeyVal) => {
     nameValuePairs.push(fields['fieldName'] + "='" + fields['fieldValue'] + "'");
   })
-  console.log(nameValuePairs);
 
   const query = `UPDATE ${table} SET ${nameValuePairs.join(',')} WHERE ${table}_id = @id`;
+
+  const presentation: object = generatePresentationRecord(table, id, fieldArr);
 
   const input: DbTableFieldSpec[] = [{
     name: 'id',
@@ -150,24 +175,28 @@ const updateRecord = async (table: string, id: number, fieldArr: RecordObj[]): P
   }]
   const queryResult = await runQuery(table, query, input);
 
-  if (Boolean(queryResult)) {
+  if (
+    Boolean(queryResult) &&
+    typeof((queryResult as any).results.rowsAffected) != 'undefined' &&
+    (queryResult as any).results.rowsAffected[0] === 1
+  ) {
     return {
       success: true,
       count: 1,
       message: '',
-      body: fieldArr,
+      body: presentation,
     }
   } else {
     return {
       success: false,
       count: 0,
       message: `${table} could not be updated with the given data.`,
-      body: fieldArr,
+      body: presentation,
     }
   }
 };
 
-const deleteRecord = async (table: string, id: number): Promise<boolean> => {
+const deleteRecord = async (table: string, id: number): Promise<DbResult> => {
   log('info', NAMESPACE, `Deleting record ${id} from ${table}`);
 
   const query = `DELETE FROM ${table} WHERE ${table}_id = @id`;
@@ -177,9 +206,40 @@ const deleteRecord = async (table: string, id: number): Promise<boolean> => {
     type: mssql.Int,
     value: id,
   }]
-  const queryResult = runQuery(table, query, input);
+  const queryResult = await runQuery(table, query, input);
 
-  return Boolean(queryResult);
+  if (
+    Boolean(queryResult) &&
+    typeof((queryResult as any).results.rowsAffected) != 'undefined' &&
+    (queryResult as any).results.rowsAffected[0] === 1
+  ) {
+    return {
+      success: true,
+      count: 1,
+      message: `Record ${id} successfully deleted`,
+      body: {}
+    }
+  } else {
+    return {
+      success: false,
+      count: 0,
+      message: `Record ${id} could not be deleted`,
+      body: {}
+    }
+  }
 };
 
+function generatePresentationRecord(table: string, id: string | number, fieldArr: RecordObj[]): object {
+  let resultObj: ObjectKeyVal = {
+    [`${table}_id`]: id
+  };
+
+  fieldArr.forEach((fields: ObjectKeyVal) => {
+    resultObj[fields['fieldName']] = fields['fieldValue'];
+  })
+
+  return resultObj;
+}
+
 export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
+

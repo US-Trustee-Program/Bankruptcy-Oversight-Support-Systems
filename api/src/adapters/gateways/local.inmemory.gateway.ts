@@ -1,6 +1,6 @@
 import log from '../logging.service';
 import { ObjectKeyVal, ObjectKeyValArrayKeyVal, RecordObj } from '../types/basic';
-import { DbRecord } from '../types/database';
+import { DbResult } from '../types/database';
 import { getProperty } from '../mock-data/';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';
@@ -11,7 +11,7 @@ function validateTableName(tableName: string) {
   return tableName.match(/^[a-z]+[a-z0-9]*$/i);
 }
 
-const getAll = async (table: string): Promise<DbRecord> => {
+const getAll = async (table: string): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
 
   log('info', NAMESPACE, `Get all from ${table}`);
@@ -27,7 +27,7 @@ const getAll = async (table: string): Promise<DbRecord> => {
     mockData[table] = list;
   }
 
-  const results: DbRecord = {
+  const results: DbResult = {
     success: true,
     message: `${table} list`,
     count: list.length,
@@ -39,7 +39,7 @@ const getAll = async (table: string): Promise<DbRecord> => {
   return results;
 };
 
-const getRecord = async (table: string, id: number): Promise<DbRecord> => {
+const getRecord = async (table: string, id: number): Promise<DbResult> => {
   let list: ObjectKeyVal = {};
 
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
@@ -49,7 +49,7 @@ const getRecord = async (table: string, id: number): Promise<DbRecord> => {
     if (data) list = data;
   }
 
-  const results: DbRecord = {
+  const results: DbResult = {
     message: `${table} record`,
     count: 1,
     body: [list],
@@ -61,7 +61,7 @@ const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   return results;
 };
 
-const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean> => {
+const createRecord = async (table: string, fields: RecordObj[]): Promise<DbResult> => {
   log('info', NAMESPACE, `Create record for ${table}`, fields);
 
   let newRecord: ObjectKeyVal = {};
@@ -87,13 +87,23 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean
 
   if (mockData.hasOwnProperty(table)) {
     mockData[table].push(newRecord);
-    return true;
+    return {
+      success: true,
+      count: 1,
+      message: '',
+      body: newRecord
+    }
   } else {
-    return false;
+    return {
+      success: false,
+      count: 0,
+      message: `data ${table} could not be found.`,
+      body: {},
+    }
   }
 };
 
-const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<DbRecord> => {
+const updateRecord = async (table: string, id: number, fields: RecordObj[]): Promise<DbResult> => {
   log('info', NAMESPACE, `Update record for ${table}`, fields);
 
   let newRecord: ObjectKeyVal = {};
@@ -129,19 +139,34 @@ const updateRecord = async (table: string, id: number, fields: RecordObj[]): Pro
   }
 };
 
-const deleteRecord = async (table: string, id: number): Promise<boolean> => {
+const deleteRecord = async (table: string, id: number): Promise<DbResult> => {
   log('info', NAMESPACE, `Delete record ${id} for ${table}`);
 
   if (mockData.hasOwnProperty(table)) {
     const data = mockData[table].filter(rec => rec[`${table}_id`] != id);
     if (data) {
       mockData[table] = data;
-      return true;
+      return {
+        success: true,
+        count: 1,
+        message: `Record ${id} successfully deleted`,
+        body: {}
+      }
     } else {
-      return false;
+      return {
+        success: false,
+        count: 0,
+        message: `Record ${id} could not be deleted`,
+        body: {}
+      }
     }
   } else {
-    return false;
+    return {
+      success: false,
+      count: 0,
+      message: `Record ${id} could not be found`,
+      body: {}
+    }
   }
 };
 
