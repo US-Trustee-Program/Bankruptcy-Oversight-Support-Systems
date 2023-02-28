@@ -62,11 +62,12 @@ jobs:
       - run: npm test
 
       - name: Tar files
+        id: archive
         run: |
           tar -cvf ustp-boss.tar .
 
       - name: Upload Artifact
-        needs: [Tar files]
+        if: steps.archive.outcome == 'success'
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
