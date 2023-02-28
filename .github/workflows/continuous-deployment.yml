@@ -62,10 +62,8 @@ jobs:
       - run: npm test
 
       - name: Tar files
-        run: tar -cvf ustp-boss.tar .
-
-      - name: Sleep for 30s
         run: |
+          tar -cvf ustp-boss.tar .
           sleep 30s
           ls
 
