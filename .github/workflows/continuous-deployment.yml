@@ -64,10 +64,9 @@ jobs:
       - name: Tar files
         run: tar -cvf ustp-boss.tar .
 
-      - name: Sleep for 10s
+      - name: Sleep for 30s
         run: |
-          ls
-          sleep 10s
+          sleep 30s
           ls
 
       - name: Upload Artifact
