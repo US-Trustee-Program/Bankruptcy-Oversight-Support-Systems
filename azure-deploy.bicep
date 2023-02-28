@@ -15,4 +15,10 @@ resource bossClientDev 'Microsoft.Web/sites@2021-01-15' = {
   properties: {
     serverFarmId: serverFarmId
   }
+  resource bossClientSource 'sourcecontrols' = {
+    name: 'web'
+    properties: {
+      repoUrl: 'https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/gui/'
+    }
+  }
 }
