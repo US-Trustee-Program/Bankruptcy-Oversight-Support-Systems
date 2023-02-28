@@ -11,12 +11,14 @@ import java.util.List;
 public class RuntimeObjectFactory extends ObjectFactory {
     public static void init() {
         registerObject(Presenter.class, new JsonPresenter());
+
         List<String> profiles = ConfigUtils.getProfiles();
         if (profiles.contains("dev") && !profiles.contains("azure")) {
             initLocal();
         } else {
             initProd();
         }
+
     }
 
     private static void initLocal() {
