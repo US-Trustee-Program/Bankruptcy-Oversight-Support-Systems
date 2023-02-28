@@ -1,5 +1,6 @@
 package gov.doj.adapters.gateways;
 
+import gov.doj.entities.Case;
 import gov.doj.usecases.PersistenceGateway;
 
 import java.util.ArrayList;
@@ -19,5 +20,25 @@ public class LocalPersistenceGateway implements PersistenceGateway {
     @Override
     public List<String> getCases() {
         return caseList;
+    }
+
+    @Override
+    public List<String> getCase(long caseId) {
+        return null;
+    }
+
+    @Override
+    public long createCase(Case aCaseObj) {
+        return 0;
+    }
+
+    @Override
+    public void updateCase(Case aCaseObj) {
+
+    }
+
+    @Override
+    public void deleteCase(long casesId) {
+
     }
 }
