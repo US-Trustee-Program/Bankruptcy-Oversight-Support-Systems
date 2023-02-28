@@ -1,4 +1,4 @@
-export type DbRecord = {
+export type DbResult = {
   success: boolean;
   message: string;
   count: number;
