@@ -63,6 +63,7 @@ async function runQuery(tableName: string, query: string, input?: DbTableFieldSp
 const getAll = async (table: string): Promise<DbRecord> => {
   const query = `SELECT * FROM ${table}`;
   const queryResult: QueryResults = await runQuery(table, query);
+  console.log(queryResult.results);
   let results: DbRecord;
 
   if (queryResult.success) {
@@ -115,14 +116,14 @@ const getRecord = async (table: string, id: number): Promise<DbRecord> => {
   return results;
 };
 
-const createRecord = async (table: string, fields: RecordObj[]): Promise<boolean> => {
-  let fieldNameArr = [];
-  let fieldValueArr = [];
+const createRecord = async (table: string, fieldArr: RecordObj[]): Promise<boolean> => {
+  let fieldNameArr: string[] = [];
+  let fieldValueArr: string[] = [];
 
-  for (const fieldName in fields) {
-    fieldNameArr.push(fieldName);
-    fieldValueArr.push("'" + fields[fieldName] + "'");
-  }
+  fieldArr.forEach((fields: ObjectKeyVal) => {
+    fieldNameArr.push(`${fields['fieldName']}`);
+    fieldValueArr.push("'" + fields['fieldValue'] + "'");
+  })
 
   const query = `INSERT INTO ${table} (${fieldNameArr.join(',')}) VALUES (${fieldValueArr.join(',')})`;
 
@@ -169,7 +170,7 @@ const updateRecord = async (table: string, id: number, fieldArr: RecordObj[]): P
 const deleteRecord = async (table: string, id: number): Promise<boolean> => {
   log('info', NAMESPACE, `Deleting record ${id} from ${table}`);
 
-  const query = `DELETE FROM ${table} WHERE id = @id`;
+  const query = `DELETE FROM ${table} WHERE ${table}_id = @id`;
 
   const input: DbTableFieldSpec[] = [{
     name: 'id',
