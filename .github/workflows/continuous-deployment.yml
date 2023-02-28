@@ -64,7 +64,7 @@ jobs:
       - name: Tar files
         id: archive
         run: |
-          tar -cvf ustp-boss.tar .
+          tar -cvf ustp-boss.tar ./build
 
       - name: Upload Artifact
         if: steps.archive.outcome == 'success'
