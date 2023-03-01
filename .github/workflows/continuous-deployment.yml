@@ -61,7 +61,7 @@ jobs:
       - run: npm run build --if-present
       - run: npm test
 
-      - name: Tar files
+      - name: Archive the build directory
         id: archive
         run: |
           mkdir artifacts
@@ -103,7 +103,7 @@ jobs:
         with:
           name: ustp-boss
 
-      - name: Tar files
+      - name: Unarchive the build
         run: tar -xfp artifacts/ustp-boss.tar build/
 
       - name: 'Deploy to Azure WebApp'
