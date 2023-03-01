@@ -103,7 +103,9 @@ jobs:
           name: ustp-boss
 
       - name: Tar files
-        run: tar -xfp artifacts/ustp-boss.tar build/
+        run: |
+          mkdir artifacts
+          tar -xfp artifacts/ustp-boss.tar build/
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
