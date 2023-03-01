@@ -64,7 +64,7 @@ jobs:
       - name: Tar files
         id: archive
         run: |
-          tar -cvf ustp-boss.tar ./build
+          tar -cvf artifacts/ustp-boss.tar ./build
           ls
 
       - name: Upload Artifact
@@ -72,7 +72,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
-          path: ustp-boss.tar
+          path: artifacts/
+          if-no-files-found: error
 
   deploy:
     runs-on: ubuntu-latest
@@ -102,7 +103,7 @@ jobs:
           name: ustp-boss
 
       - name: Tar files
-        run: tar -xfp ustp-boss.tar .
+        run: tar -xfp artifacts/ustp-boss.tar build/
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
@@ -111,4 +112,4 @@ jobs:
           app-name: 'ustp-boss'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          package: build/
