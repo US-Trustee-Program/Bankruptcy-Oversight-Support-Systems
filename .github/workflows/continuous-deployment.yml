@@ -64,7 +64,8 @@ jobs:
       - name: Tar files
         id: archive
         run: |
-          tar -cvf artifacts/ustp-boss.tar build/
+          mkdir artifacts
+          tar -cvf ustp-boss.tar ./build
           ls
 
       - name: Upload Artifact
@@ -103,9 +104,7 @@ jobs:
           name: ustp-boss
 
       - name: Tar files
-        run: |
-          mkdir artifacts
-          tar -xfp artifacts/ustp-boss.tar build/
+        run: tar -xfp artifacts/ustp-boss.tar build/
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
