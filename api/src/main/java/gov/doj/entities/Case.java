@@ -4,16 +4,34 @@ import java.sql.Timestamp;
 
 public class Case {
     protected long cases_id;
-    protected String staff1;
-    protected String staff2;
-    protected String idi_status;
-    protected Timestamp idi_date;
-    protected int chapters_id;
+    public String staff1;
+    public String staff2;
+    public String idi_status;
+    public Timestamp idi_date;
+    public int chapters_id;
     public Case(){
     }
 
     public Case(long id){
         this.cases_id = id;
+    }
+
+    public Case(long id, String staff1, String staff2, String idi_status, Timestamp timeStamp, int chapters_id)
+    {
+        this.cases_id = id;
+        this.staff1 = staff1;
+        this.staff2 = staff2;
+        this.idi_status = idi_status;
+        this.idi_date = timeStamp;
+        this.chapters_id = chapters_id;
+    }
+
+    public Case(String staff1, String staff2, String idiStatus, Timestamp idiDate, int chaptersId) {
+        this.staff1 = staff1;
+        this.staff2 = staff2;
+        this.idi_status = idiStatus;
+        this.idi_date = idiDate;
+        this.chapters_id = chapters_id;
     }
 
     public long getCases_id() {

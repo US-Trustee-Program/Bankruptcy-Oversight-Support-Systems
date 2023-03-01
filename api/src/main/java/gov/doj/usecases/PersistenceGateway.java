@@ -2,15 +2,16 @@ package gov.doj.usecases;
 
 import gov.doj.entities.Case;
 import java.util.List;
+import java.util.Optional;
 
 public interface PersistenceGateway {
-    List<String> getCases();
+    List<Case> getCases();
 
-    List<String> getCase(long caseId);
+    Optional<Case> getCase(long caseId);
 
-    long createCase(Case aCaseObj);
+    boolean createCase(Case aCaseObj);
 
-    void updateCase(Case aCaseObj);
+    boolean updateCase(Case aCaseObj);
 
-    void deleteCase(long casesId);
+    boolean deleteCase(long casesId);
 }
