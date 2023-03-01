@@ -65,8 +65,10 @@ jobs:
         id: archive
         run: |
           mkdir artifacts
-          tar -cvf artifacts/ustp-boss.tar ./build
+          tar -cvf ustp-boss.tar ./build
           ls
+          mv ustp-boss.tar artifacts/ustp-boss.tar
+          ls artifacts
 
       - name: Upload Artifact
         if: steps.archive.outcome == 'success'
