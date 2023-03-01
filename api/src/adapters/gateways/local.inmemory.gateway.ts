@@ -51,7 +51,7 @@ const getRecord = async (table: string, id: number): Promise<DbResult> => {
   }
 
   if (mockData.hasOwnProperty(table)) {
-    const data = list.filter(rec => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
+    const data = list.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
     if (data) record = data;
   }
 
@@ -59,7 +59,7 @@ const getRecord = async (table: string, id: number): Promise<DbResult> => {
     message: `${table} record`,
     count: 1,
     body: [record],
-    success: true
+    success: true,
   };
 
   log('info', NAMESPACE, `record from ${table} found`, results);
@@ -79,7 +79,7 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<DbResul
 
   // fetch a new ID by scanning all existing id's and finding the biggest number, then incrementing
   let id = 1;
-  mockData[table].forEach(rec => {
+  mockData[table].forEach((rec) => {
     if (+rec[`${table}_id`] > id) {
       id = +rec[`${table}_id`];
     }
@@ -87,7 +87,7 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<DbResul
   id++;
   newRecord[`${table}_id`] = id;
 
-  fields.map(field => {
+  fields.map((field) => {
     newRecord[field.fieldName] = field.fieldValue as string;
   });
 
@@ -97,15 +97,15 @@ const createRecord = async (table: string, fields: RecordObj[]): Promise<DbResul
       success: true,
       count: 1,
       message: '',
-      body: newRecord
-    }
+      body: newRecord,
+    };
   } else {
     return {
       success: false,
       count: 0,
       message: `data ${table} could not be found.`,
       body: {},
-    }
+    };
   }
 };
 
@@ -121,7 +121,7 @@ const updateRecord = async (table: string, id: number, fields: RecordObj[]): Pro
       if (oldRecord[`${table}_id`] == id) {
         console.log('record found', oldRecord);
         newRecord[`${table}_id`] = id;
-        fields.map(field => {
+        fields.map((field) => {
           newRecord[field.fieldName] = field.fieldValue as string;
         });
 
@@ -133,15 +133,15 @@ const updateRecord = async (table: string, id: number, fields: RecordObj[]): Pro
       success: true,
       count: 1,
       message: '',
-      body: newRecord
-    }
+      body: newRecord,
+    };
   } else {
     return {
       success: false,
       count: 0,
       message: `data ${table} could not be found.`,
       body: {},
-    }
+    };
   }
 };
 
@@ -149,30 +149,30 @@ const deleteRecord = async (table: string, id: number): Promise<DbResult> => {
   log('info', NAMESPACE, `Delete record ${id} for ${table}`);
 
   if (mockData.hasOwnProperty(table)) {
-    const data = mockData[table].filter(rec => rec[`${table}_id`] != id);
+    const data = mockData[table].filter((rec) => rec[`${table}_id`] != id);
     if (data) {
       mockData[table] = data;
       return {
         success: true,
         count: 1,
         message: `Record ${id} successfully deleted`,
-        body: {}
-      }
+        body: {},
+      };
     } else {
       return {
         success: false,
         count: 0,
         message: `Record ${id} could not be deleted`,
-        body: {}
-      }
+        body: {},
+      };
     }
   } else {
     return {
       success: false,
       count: 0,
       message: `Record ${id} could not be found`,
-      body: {}
-    }
+      body: {},
+    };
   }
 };
 

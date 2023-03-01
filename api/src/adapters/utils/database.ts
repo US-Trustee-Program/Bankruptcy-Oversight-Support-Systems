@@ -1,6 +1,6 @@
 import mssql from 'mssql';
-import log from "../logging.service";
-import { DbTableFieldSpec, QueryResults } from "../types/database";
+import log from '../logging.service';
+import { DbTableFieldSpec, QueryResults } from '../types/database';
 import config from '../../configs/default.config';
 
 const NAMESPACE = 'DATABASE-UTILITY';
@@ -23,8 +23,8 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
 
     const request = await connection.request();
 
-    if (typeof input != "undefined") {
-      input.forEach(item => {
+    if (typeof input != 'undefined') {
+      input.forEach((item) => {
         request.input(item.name, item.type, item.value);
       });
     }
@@ -35,7 +35,7 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
     const queryResult: QueryResults = {
       results,
       message: '',
-      success: true
+      success: true,
     };
 
     log('info', NAMESPACE, 'Closing connection.');
@@ -49,7 +49,7 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
     const queryResult: QueryResults = {
       results: {},
       message: (error as Error).message,
-      success: false
+      success: false,
     };
 
     return queryResult;

@@ -5,4 +5,4 @@ const getChaptersList = async (): Promise<DbResult> => {
   return await getAll('chapters');
 };
 
-export { getChaptersList }
+export { getChaptersList };

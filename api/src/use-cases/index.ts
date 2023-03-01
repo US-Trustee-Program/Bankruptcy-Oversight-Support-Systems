@@ -3,8 +3,8 @@ import { ChaptersPersistenceGateway, CasePersistenceGateway } from '../adapters/
 import { makeAddCase, makeListCases, makeGetCase, makeUpdateCase, makeDeleteCase } from './cases';
 import { makeListChapters } from './chapters';
 
-const casesDb: CasePersistenceGateway = await proxyData('cases') as CasePersistenceGateway;
-const chapterDb: ChaptersPersistenceGateway = await proxyData('chapters') as ChaptersPersistenceGateway;
+const casesDb: CasePersistenceGateway = (await proxyData('cases')) as CasePersistenceGateway;
+const chapterDb: ChaptersPersistenceGateway = (await proxyData('chapters')) as ChaptersPersistenceGateway;
 const addCase = makeAddCase(casesDb);
 const listCases = makeListCases(casesDb);
 const getCase = makeGetCase(casesDb);
@@ -13,5 +13,10 @@ const deleteCase = makeDeleteCase(casesDb);
 const listChapters = makeListChapters(chapterDb);
 
 export default {
-  addCase, listCases, getCase, updateCase, deleteCase, listChapters
-}
+  addCase,
+  listCases,
+  getCase,
+  updateCase,
+  deleteCase,
+  listChapters,
+};

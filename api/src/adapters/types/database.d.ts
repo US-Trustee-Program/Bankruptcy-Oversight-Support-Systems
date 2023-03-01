@@ -15,7 +15,7 @@ export type DbTableFieldSpec = {
   name: string;
   type: mssql.ISqlTypeFactoryWithNoParams;
   value: any;
-}
+};
 
 export interface IDbConfig {
   server: string;
