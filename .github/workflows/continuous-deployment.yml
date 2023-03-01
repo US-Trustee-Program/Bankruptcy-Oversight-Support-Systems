@@ -64,7 +64,7 @@ jobs:
       - name: Tar files
         id: archive
         run: |
-          tar -cvf artifacts/ustp-boss.tar ./build
+          tar -cvf artifacts/ustp-boss.tar build/
           ls
 
       - name: Upload Artifact
