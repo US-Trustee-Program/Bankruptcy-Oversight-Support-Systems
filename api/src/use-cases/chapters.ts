@@ -1,10 +1,10 @@
-import { PersistenceGateway } from '../adapters/types/persistence-gateway';
+import { ChaptersPersistenceGateway } from '../adapters/types/persistence-gateway';
 
 const NAMESPACE = 'CHAPTERS-USE-CASE';
 
-function makeListChapters(database: PersistenceGateway) {
+function makeListChapters(database: ChaptersPersistenceGateway) {
   return async function listChapters() {
-    return await database.getAll('chapters');
+    return await database.getChaptersList();
   };
 }
 

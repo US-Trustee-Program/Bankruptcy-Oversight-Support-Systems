@@ -1,35 +1,35 @@
 import { RecordObj } from '../adapters/types/basic';
-import { PersistenceGateway } from '../adapters/types/persistence-gateway';
+import { CasePersistenceGateway } from '../adapters/types/persistence-gateway';
 
 const NAMESPACE = 'CASES-USE-CASE';
 
-function makeAddCase(database: PersistenceGateway) {
+function makeAddCase(database: CasePersistenceGateway) {
   return async function addCase(fields: RecordObj[]) {
-    return await database.createRecord('cases', fields);
+    return await database.createCase(fields);
   }
 }
 
-function makeListCases(database: PersistenceGateway) {
+function makeListCases(database: CasePersistenceGateway ) {
   return async function listCases() {
-    return await database.getAll('cases');
+    return await database.getCaseList();
   };
 }
 
-function makeGetCase(database: PersistenceGateway) {
+function makeGetCase(database: CasePersistenceGateway) {
   return async function getCase(id: number) {
-    return await database.getRecord('cases', id);
+    return await database.getCase(id);
   };
 }
 
-function makeUpdateCase(database: PersistenceGateway) {
+function makeUpdateCase(database: CasePersistenceGateway) {
   return async function updateCase(id: number, fields: RecordObj[]) {
-    return await database.updateRecord('cases', id, fields);
+    return await database.updateCase(id, fields);
   }
 }
 
-function makeDeleteCase(database: PersistenceGateway) {
+function makeDeleteCase(database: CasePersistenceGateway) {
   return async function deleteCase(id: number) {
-    return await database.deleteRecord('cases', id);
+    return await database.deleteCase(id);
   }
 }
 
