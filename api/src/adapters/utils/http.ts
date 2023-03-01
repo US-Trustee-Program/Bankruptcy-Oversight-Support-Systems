@@ -1,5 +1,5 @@
-import log from "../logging.service";
-import { HttpResponse } from "../types/http";
+import log from '../logging.service';
+import { HttpResponse } from '../types/http';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
 
@@ -26,4 +26,3 @@ export function httpError(error: any, code: number): HttpResponse {
     },
   };
 }
-

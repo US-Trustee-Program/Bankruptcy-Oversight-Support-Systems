@@ -16,7 +16,7 @@ export type AppConfig = {
 
 export type ObjectKeyVal = {
   [key: string]: string | number;
-}
+};
 export type ObjectKeyValArrayKeyVal = {
   [key: string]: ObjectKeyVal[];
-}
+};

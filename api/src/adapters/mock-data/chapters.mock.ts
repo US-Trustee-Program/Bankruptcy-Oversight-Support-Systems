@@ -5,9 +5,7 @@ const list = [
   { chapters_id: 4, chapter_name: 'Chapter 12' },
   { chapters_id: 5, chapter_name: 'Chapter 15' },
   { chapters_id: 6, chapter_name: 'Chapter 17' },
-  { chapters_id: 7, chapter_name: 'Chapter 19' }
+  { chapters_id: 7, chapter_name: 'Chapter 19' },
 ];
 
-export {
-  list
-};
+export { list };

@@ -18,8 +18,8 @@ export default function makeExpressCallback(controller: Function) {
       headers: {
         'Content-Type': req.get('Content-Type'),
         Referer: req.get('referer'),
-        'User-Agent': req.get('User-Agent')
-      }
+        'User-Agent': req.get('User-Agent'),
+      },
     };
 
     controller(httpRequest)

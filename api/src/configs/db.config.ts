@@ -20,12 +20,12 @@ const dbConfig: IDbConfig = {
   pool: {
     max: 10,
     min: 0,
-    idleTimeoutMillis: 30000
+    idleTimeoutMillis: 30000,
   },
   options: {
     encrypt: Boolean(MSSQL_ENCRYPT),
-    trustServerCertificate: Boolean(MSSQL_TRUST_UNSIGNED_CERT)
-  }
+    trustServerCertificate: Boolean(MSSQL_TRUST_UNSIGNED_CERT),
+  },
 };
 
 export default dbConfig;

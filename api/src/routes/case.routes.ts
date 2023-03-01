@@ -10,7 +10,7 @@ import makeCallback from './../adapters/express-callback';
 
 const router = express.Router();
 
-router.post('/create', makeCallback(controller.createCase))
+router.post('/create', makeCallback(controller.createCase));
 router.get('', makeCallback(controller.getAllCases));
 router.get('/:caseId', makeCallback(controller.getCase));
 router.put('/:caseId', makeCallback(controller.updateCase));

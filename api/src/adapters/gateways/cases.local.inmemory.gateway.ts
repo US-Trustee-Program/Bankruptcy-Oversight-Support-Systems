@@ -15,12 +15,12 @@ async function initializeCases(): Promise<ObjectKeyVal[]> {
   mockData['chapters'] = await getProperty('chapters', 'list');
   caseList = await getProperty(table, 'list');
   for (let i = 0; i < mockData['chapters'].length; i++) {
-    chaptersList.push(mockData['chapters'][i].chapter_name as string)
+    chaptersList.push(mockData['chapters'][i].chapter_name as string);
   }
   caseList.forEach((rec: ObjectKeyVal) => {
     const chapterId = rec['chapters_id'];
     rec['chapter_title'] = chaptersList[+chapterId];
-  })
+  });
   return caseList;
 }
 
@@ -67,7 +67,7 @@ const getCase = async (id: number): Promise<DbResult> => {
   }
 
   if (mockData.hasOwnProperty(table)) {
-    const data = caseList.filter(rec => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
+    const data = caseList.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
     if (data) record = data;
   }
 
@@ -75,7 +75,7 @@ const getCase = async (id: number): Promise<DbResult> => {
     message: `${table} record`,
     count: 1,
     body: [record],
-    success: true
+    success: true,
   };
 
   log('info', NAMESPACE, `record from ${table} found`, results);
@@ -85,14 +85,14 @@ const getCase = async (id: number): Promise<DbResult> => {
 
 const createCase = async (fieldArr: RecordObj[]): Promise<DbResult> => {
   return await createRecord(table, fieldArr);
-}
+};
 
 const updateCase = async (id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
   return await updateRecord(table, id, fieldArr);
-}
+};
 
 const deleteCase = async (id: number): Promise<DbResult> => {
   return await deleteRecord(table, id);
-}
+};
 
-export { getCaseList, getCase, createCase, updateCase, deleteCase }
+export { getCaseList, getCase, createCase, updateCase, deleteCase };
