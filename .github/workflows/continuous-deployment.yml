@@ -98,7 +98,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'ustp-boss'
+          app-name: 'ustp-boss-dev'
           slot-name: 'Develop'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C244FD26B4824B7DA6C0D6826ECA1745 }}
-          package: .
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C1F0C8DD8E96487AA5641A2D39E2017B }}
+          package: build
