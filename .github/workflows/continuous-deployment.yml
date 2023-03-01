@@ -65,7 +65,7 @@ jobs:
         id: archive
         run: |
           mkdir artifacts
-          tar -cvf ustp-boss.tar ./build
+          tar -cvf artifacts/ustp-boss.tar ./build
           ls
 
       - name: Upload Artifact
