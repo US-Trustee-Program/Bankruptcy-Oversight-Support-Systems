@@ -1,11 +1,9 @@
 import log from '../logging.service';
 import { ObjectKeyVal, ObjectKeyValArrayKeyVal, RecordObj } from '../types/basic';
 import { DbResult } from '../types/database';
-import { getProperty } from '../mock-data/';
+import { getProperty, mockData } from '../mock-data/';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';
-
-const mockData: ObjectKeyValArrayKeyVal = {};
 
 function validateTableName(tableName: string) {
   return tableName.match(/^[a-z]+[a-z0-9]*$/i);
@@ -40,19 +38,27 @@ const getAll = async (table: string): Promise<DbResult> => {
 };
 
 const getRecord = async (table: string, id: number): Promise<DbResult> => {
-  let list: ObjectKeyVal = {};
+  let list: ObjectKeyVal[] = [];
+  let record: ObjectKeyVal = {};
 
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
 
   if (mockData.hasOwnProperty(table)) {
-    const data = mockData[table].filter(rec => rec[`${table}_id`] == `${id}`).pop();
-    if (data) list = data;
+    list = mockData[table];
+  } else {
+    list = await getProperty(table, 'list');
+    mockData[table] = list;
+  }
+
+  if (mockData.hasOwnProperty(table)) {
+    const data = list.filter(rec => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
+    if (data) record = data;
   }
 
   const results: DbResult = {
     message: `${table} record`,
     count: 1,
-    body: [list],
+    body: [record],
     success: true
   };
 
@@ -170,4 +176,4 @@ const deleteRecord = async (table: string, id: number): Promise<DbResult> => {
   }
 };
 
-export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
+export { createRecord, getAll, getRecord, updateRecord, deleteRecord, validateTableName };
