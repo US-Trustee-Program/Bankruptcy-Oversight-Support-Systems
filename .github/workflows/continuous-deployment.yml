@@ -61,11 +61,18 @@ jobs:
       - run: npm run build --if-present
       - run: npm test
 
-      - name: Upload artifact for deployment job
+      - name: Tar files
+        id: archive
+        run: |
+          tar -cvf ustp-boss.tar ./build
+          ls
+
+      - name: Upload Artifact
+        if: steps.archive.outcome == 'success'
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
-          path: gui/build/
+          path: ustp-boss.tar
 
   deploy:
     runs-on: ubuntu-latest
@@ -94,7 +101,8 @@ jobs:
         with:
           name: ustp-boss
 
-      - run: ls
+      - name: Tar files
+        run: tar -xfp ustp-boss.tar .
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
@@ -103,4 +111,4 @@ jobs:
           app-name: 'ustp-boss'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: build/
+          package: .
