@@ -70,6 +70,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build, eslint]
+    environment:
+      name: 'Develop'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     steps:
 
       - uses: actions/checkout@main
@@ -96,5 +99,6 @@ jobs:
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'ustp-boss'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          slot-name: 'Develop'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C244FD26B4824B7DA6C0D6826ECA1745 }}
           package: .
