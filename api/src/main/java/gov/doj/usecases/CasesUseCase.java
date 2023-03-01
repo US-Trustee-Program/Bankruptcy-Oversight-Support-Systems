@@ -4,6 +4,7 @@ import gov.doj.ObjectFactory;
 import gov.doj.Presenter;
 import gov.doj.entities.*;
 import java.util.List;
+import java.util.Optional;
 
 public class CasesUseCase {
 
@@ -16,35 +17,35 @@ public class CasesUseCase {
         presenter = ObjectFactory.getObjectByAbstractClass(Presenter.class);
     }
 
-    public List<String> getCases(){
-        List<String> cases = persistenceGateway.getCases();
+    public List<Case> getCases(){
+        List<Case> cases = persistenceGateway.getCases();
         presenter.onSuccess(cases.toString());
         return cases;
     }
 
-    public List<String> getCaseById(long cases_id){
-        List<String> aCase = persistenceGateway.getCase(cases_id);
+    public Optional<Case> getCaseById(long cases_id){
+        Optional<Case> aCase = persistenceGateway.getCase(cases_id);
         presenter.onSuccess(aCase.toString());
         return aCase;
     }
 
-    public long createCase(Case aCaseObj){
+    public boolean createCase(Case aCaseObj){
 
-        long case_id = persistenceGateway.createCase(aCaseObj);
-        presenter.onSuccess(case_id);
-        return case_id;
+        boolean caseCreated = persistenceGateway.createCase(aCaseObj);
+        presenter.onSuccess(caseCreated);
+        return caseCreated;
     }
 
     public boolean updateCase(Case aCaseObj)
     {
-        persistenceGateway.updateCase(aCaseObj);
+        boolean caseUpdated = persistenceGateway.updateCase(aCaseObj);
         presenter.onSuccess("true");
         return true;
     }
 
     public boolean deleteCase(long cases_id)
     {
-        persistenceGateway.deleteCase(cases_id);
+        boolean caseDeleted = persistenceGateway.deleteCase(cases_id);
         presenter.onSuccess("true");
         return true;
     }

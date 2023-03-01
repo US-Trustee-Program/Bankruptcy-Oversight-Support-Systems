@@ -4,10 +4,8 @@ import gov.doj.entities.Case;
 import gov.doj.usecases.PersistenceGateway;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 public class LocalPersistenceGateway implements PersistenceGateway {
     List<String> caseList = new ArrayList<>();
@@ -18,27 +16,29 @@ public class LocalPersistenceGateway implements PersistenceGateway {
     }
 
     @Override
-    public List<String> getCases() {
-        return caseList;
+    public List<Case> getCases() {
+        return new ArrayList<>();
     }
 
     @Override
-    public List<String> getCase(long caseId) {
+    public Optional<Case> getCase(long caseId) {
         return null;
     }
 
     @Override
-    public long createCase(Case aCaseObj) {
-        return 0;
+    public boolean createCase(Case aCaseObj) {
+        return false;
     }
 
     @Override
-    public void updateCase(Case aCaseObj) {
+    public boolean updateCase(Case aCaseObj) {
 
+        return false;
     }
 
     @Override
-    public void deleteCase(long casesId) {
+    public boolean deleteCase(long casesId) {
 
+        return false;
     }
 }
