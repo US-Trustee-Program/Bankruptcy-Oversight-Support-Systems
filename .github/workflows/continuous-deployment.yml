@@ -76,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
-          path: artifacts/
+          path: gui/artifacts/
           if-no-files-found: error
 
   deploy:
