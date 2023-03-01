@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
-          path: ./build
+          path: /build
 
   deploy:
     runs-on: ubuntu-latest
