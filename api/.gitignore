@@ -10,5 +10,3 @@ certs/**/*
 *.key
 *.mobileprovision
 *.orig.*
-
-package-lock.json
