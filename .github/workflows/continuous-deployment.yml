@@ -50,6 +50,10 @@ jobs:
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
+      - name: Create artifacts directory
+        - run: |
+          mkdir artifacts
+          touch hello-world.txt
       - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -64,10 +68,8 @@ jobs:
       - name: Archive the build directory
         id: archive
         run: |
-          mkdir artifacts
-          tar -cvf ustp-boss.tar ./build
-          ls
-          mv ustp-boss.tar artifacts/ustp-boss.tar
+          tar -cvf artifacts/ustp-boss.tar ./build
+          echo 'The artifacts directory:'
           ls artifacts
 
       - name: Upload Artifact
@@ -75,7 +77,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
-          path: artifactsTest
+          path: artifacts
           if-no-files-found: error
 
   deploy:
