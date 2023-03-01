@@ -51,9 +51,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: |
-        mkdir artifacts
-        touch hello-world.txt
+      - name: Set up artifacts directory
+        - run: |
+            mkdir artifacts
+            echo "Hello World!" > artifacts.hello-world.txt
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
