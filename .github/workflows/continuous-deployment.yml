@@ -94,7 +94,6 @@ jobs:
         with:
           name: ustp-boss
 
-      - name: See files
       - run: ls
 
       - name: 'Deploy to Azure WebApp'
