@@ -93,7 +93,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./azure-deploy.bicep
-          parameters: 'location=eastus serverFarmId=${{ secrets.SERVER_FARM_ID }}'
+          parameters: 'location=eastus'
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
