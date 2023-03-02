@@ -105,6 +105,7 @@ jobs:
 
       - name: Unarchive the build
         run: |
+          ls
           mkdir build
           cd build
           tar -xf ustp-boss.tar
