@@ -18,7 +18,7 @@ resource webApplication 'Microsoft.Web/sites@2021-01-15' = {
   properties: {
     siteConfig: {
       appSettings: []
-      linuxFxVersion: 'node|18'
+      linuxFxVersion: 'NODE:18-lts'
       alwaysOn: true
       ftpsState: 'Enabled'
     }
