@@ -5,7 +5,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: 'boss-server-farm'
 }
 
-resource name_resource 'Microsoft.Web/sites@2021-01-15' = {
+resource webApplication 'Microsoft.Web/sites@2021-01-15' = {
   name: 'ustp-boss-dev'
   location: location
   tags: {
