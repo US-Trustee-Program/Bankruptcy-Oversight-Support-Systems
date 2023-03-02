@@ -1,18 +1,31 @@
+param subscriptionId string
 param location string
-param serverFarmId string
+param resourceGroupName string
 
-resource bossServerFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
+resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: 'boss-server-farm'
 }
 
-resource bossClientDev 'Microsoft.Web/sites@2021-01-15' = {
+resource name_resource 'Microsoft.Web/sites@2018-11-01' = {
   name: 'ustp-boss-dev'
   location: location
   tags: {
-    'hidden-related:${resourceGroup().id}/providers/Microsoft.Web/serverfarms/boss-server-farm': 'Resource'
+    acms: 'uat'
   }
   properties: {
-    serverFarmId: serverFarmId
+    name: 'ustp-boss-dev'
+    siteConfig: {
+      appSettings: []
+      linuxFxVersion: 'NODE:18-lts'
+      alwaysOn: true
+      ftpsState: 'Enabled'
+    }
+    serverFarmId: '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroupName}/providers/Microsoft.Web/serverfarms/boss-server-farm'
+    clientAffinityEnabled: false
+    virtualNetworkSubnetId: null
+    httpsOnly: true
+    publicNetworkAccess: 'Enabled'
   }
+  dependsOn: []
 }
