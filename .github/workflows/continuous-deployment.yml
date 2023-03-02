@@ -70,7 +70,6 @@ jobs:
           tar -cvf artifacts/ustp-boss.tar ./build
 
       - name: Upload Artifact
-        if: steps.archive.outcome == 'success'
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
@@ -105,7 +104,11 @@ jobs:
           name: ustp-boss
 
       - name: Unarchive the build
-        run: tar -xfp ustp-boss.tar build/
+        run: |
+          mkdir build
+          cd build
+          tar -xf ustp-boss.tar
+          cd ..
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
