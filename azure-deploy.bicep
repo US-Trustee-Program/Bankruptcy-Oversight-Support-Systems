@@ -7,7 +7,7 @@ resource bossServerFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
 }
 
 resource bossClientDev 'Microsoft.Web/sites@2021-01-15' = {
-  name: 'ustp-boss'
+  name: 'ustp-boss-dev'
   location: location
   tags: {
     'hidden-related:${resourceGroup().id}/providers/Microsoft.Web/serverfarms/boss-server-farm': 'Resource'
