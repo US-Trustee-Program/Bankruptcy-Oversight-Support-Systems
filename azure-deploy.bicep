@@ -9,7 +9,7 @@ resource name_resource 'Microsoft.Web/sites@2021-01-15' = {
   name: 'ustp-boss-dev'
   location: location
   tags: {
-    acms: 'uat'
+    acms: 'dev'
   }
   properties: {
     siteConfig: {
