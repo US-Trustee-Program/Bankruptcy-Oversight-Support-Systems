@@ -3,7 +3,13 @@ param location string
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: 'boss-server-farm'
+  properties: {
+    reserved: true
+  }
   kind: 'linux'
+  properties: {
+    reserved: true
+  }
 }
 
 resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
@@ -16,7 +22,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
   properties: {
     siteConfig: {
       appSettings: []
-      linuxFxVersion: 'NODE|18 LTS'
+      linuxFxVersion: 'NODE|18-lts'
       alwaysOn: true
       ftpsState: 'Enabled'
     }
