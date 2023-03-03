@@ -3,6 +3,11 @@ param location string
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: 'boss-server-farm'
+  sku: {
+    name: 'P1V2'
+    size: 'P1V2'
+    capacity: 1
+  }
   properties: {
     reserved: true
   }
