@@ -7,9 +7,6 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
     reserved: true
   }
   kind: 'linux'
-  properties: {
-    reserved: true
-  }
 }
 
 resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
