@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-const app = express();
+export const app = express();
 
 /** Setup global configuration */
 app.use((req: Request, res: Response, next: NextFunction) => {

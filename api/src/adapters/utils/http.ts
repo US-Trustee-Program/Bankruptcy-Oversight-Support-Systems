@@ -8,7 +8,7 @@ const commonHeaders = {
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(body: any): HttpResponse {
+export function httpSuccess(body: any = {}): HttpResponse {
   return {
     headers: commonHeaders,
     statusCode: 200,
