@@ -1,16 +1,29 @@
-import proxyData from '../adapters/data-access.proxy';
+import { RecordObj } from '../adapters/types/basic';
 import { ChaptersPersistenceGateway, CasePersistenceGateway } from '../adapters/types/persistence-gateway';
-import { makeAddCase, makeListCases, makeGetCase, makeUpdateCase, makeDeleteCase } from './cases';
-import { makeListChapters } from './chapters';
 
-const casesDb: CasePersistenceGateway = (await proxyData('cases')) as CasePersistenceGateway;
-const chapterDb: ChaptersPersistenceGateway = (await proxyData('chapters')) as ChaptersPersistenceGateway;
-const addCase = makeAddCase(casesDb);
-const listCases = makeListCases(casesDb);
-const getCase = makeGetCase(casesDb);
-const updateCase = makeUpdateCase(casesDb);
-const deleteCase = makeDeleteCase(casesDb);
-const listChapters = makeListChapters(chapterDb);
+async function listChapters(database: ChaptersPersistenceGateway) {
+  return await database.getChaptersList();
+}
+
+async function addCase(database: CasePersistenceGateway, fields: RecordObj[]) {
+  return await database.createCase(fields);
+}
+
+async function listCases(database: CasePersistenceGateway) {
+  return await database.getCaseList();
+}
+
+async function getCase(database: CasePersistenceGateway, id: number) {
+  return await database.getCase(id);
+}
+
+async function updateCase(database: CasePersistenceGateway, id: number, fields: RecordObj[]) {
+  return await database.updateCase(id, fields);
+}
+
+async function deleteCase(database: CasePersistenceGateway, id: number) {
+  return await database.deleteCase(id);
+}
 
 export default {
   addCase,

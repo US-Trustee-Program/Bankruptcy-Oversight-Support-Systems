@@ -9,7 +9,6 @@ const table = 'cases';
 const getCaseList = async (): Promise<DbResult> => {
   const query = `SELECT a.*, b.title AS chapter_title FROM cases AS a LEFT JOIN chapters AS b ON a.chapters_id = b.chapters_id`;
   const queryResult: QueryResults = await runQuery(table, query);
-  console.log(queryResult.results);
   let results: DbResult;
 
   if (queryResult.success) {

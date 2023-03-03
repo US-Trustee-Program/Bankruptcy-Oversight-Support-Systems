@@ -1,16 +1,20 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request } from 'express';
 import log from '../logging.service';
 import useCase from '../../use-cases';
 import { RecordObj } from '../types/basic';
 import { httpError, httpSuccess } from '../utils/http';
+import proxyData from '../data-access.proxy';
+import { CasePersistenceGateway } from '../types/persistence-gateway';
 
 const NAMESPACE = 'CASES-CONTROLLER';
+
+const casesDb: CasePersistenceGateway = (await proxyData('cases')) as CasePersistenceGateway;
 
 const getAllCases = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Getting all cases.');
 
   try {
-    const caseList = await useCase.listCases();
+    const caseList = await useCase.listCases(casesDb);
 
     // success
     return httpSuccess(caseList);
@@ -20,21 +24,12 @@ const getAllCases = async (httpRequest: Request) => {
   }
 };
 
-/*
-          // connection error
-          // 503 service unavailable
-          return res.status(503).json({
-            message: error.message,
-            error
-          });
-  */
-
 const getCase = async (httpRequest: Request) => {
   log('info', NAMESPACE, `Getting single case ${httpRequest.params.caseId}.`);
 
   try {
     const caseId = +httpRequest.params.caseId;
-    const result = await useCase.getCase(caseId);
+    const result = await useCase.getCase(casesDb, caseId);
 
     // success
     return httpSuccess(result);
@@ -59,7 +54,7 @@ const createCase = async (httpRequest: Request) => {
       } as RecordObj);
     }
 
-    const result = await useCase.addCase(record);
+    const result = await useCase.addCase(casesDb, record);
 
     // success
     return httpSuccess(result);
@@ -84,7 +79,7 @@ const updateCase = async (httpRequest: Request) => {
       } as RecordObj);
     }
 
-    const result = await useCase.updateCase(caseId, record);
+    const result = await useCase.updateCase(casesDb, caseId, record);
     console.log(result);
 
     // success
@@ -99,7 +94,7 @@ const deleteCase = async (httpRequest: Request) => {
   log('info', NAMESPACE, `Deleting case ${httpRequest.params.caseId}.`);
 
   try {
-    const result = await useCase.deleteCase(+httpRequest.params.caseId);
+    const result = await useCase.deleteCase(casesDb, +httpRequest.params.caseId);
     return httpSuccess(result);
   } catch (e: any) {
     return httpError(e, 400);

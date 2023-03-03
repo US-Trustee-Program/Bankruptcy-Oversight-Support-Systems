@@ -55,7 +55,6 @@ const getCaseList = async (): Promise<DbResult> => {
 const getCase = async (id: number): Promise<DbResult> => {
   let caseList: ObjectKeyVal[] = [];
   let record: ObjectKeyVal = {};
-  let chaptersList: string[] = [];
 
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
 
