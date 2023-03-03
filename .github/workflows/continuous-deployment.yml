@@ -114,13 +114,13 @@ jobs:
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         with:
-          resourceGroupName: '<RESOURCE_GROUP_NAME>'
-          appName: '<WEBAPP_NAME>'
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          appName: 'ustp-boss'
 
       - name: 'Deploy to Azure WebApp'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'ustp-boss-dev'
+          app-name: 'ustp-boss'
           publish-profile: ${{ steps.webapp.outputs.profile }}
           package: build/
