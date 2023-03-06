@@ -108,14 +108,5 @@ jobs:
           tar -xf ../ustp-boss.tar
           cd ..
 
-      - name: Get WebApp publish profile
-        id: webapp
-        uses: aliencube/publish-profile-actions@v1
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-        with:
-          resourceGroupName: ${{ secrets.AZURE_RG }}
-          appName: 'ustp-boss'
-
       - name: 'Deploy to Azure WebApp'
         run: az webapp up --html --name ustp-boss
