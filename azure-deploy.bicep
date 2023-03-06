@@ -1,5 +1,4 @@
 param location string
-param app-name string = 'ustp-boss'
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
@@ -56,7 +55,6 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
 resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   parent: webApplication
   name: 'web'
-  location: location
   properties: {
     numberOfWorkers: 1
     defaultDocuments: [

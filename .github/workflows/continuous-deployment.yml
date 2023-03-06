@@ -94,7 +94,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./azure-deploy.bicep
-          parameters: 'location=eastus'
+          parameters: 'location=eastus app-name=ustp-boss'
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
