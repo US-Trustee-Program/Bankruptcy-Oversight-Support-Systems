@@ -118,9 +118,4 @@ jobs:
           appName: 'ustp-boss'
 
       - name: 'Deploy to Azure WebApp'
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'ustp-boss'
-          publish-profile: ${{ steps.webapp.outputs.profile }}
-          package: build/
+        run: az webapp up --html --name ustp-boss
