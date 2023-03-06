@@ -1,5 +1,5 @@
 param location string
-param app-name string
+param appName string
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
@@ -16,7 +16,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
 }
 
 resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
-  name: '${app-name}'
+  name: '${appName}'
   location: location
   tags: {
     acms: 'dev'
@@ -26,12 +26,12 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
     enabled: true
     hostNameSslStates: [
       {
-        name: '${app-name}.azurewebsites.net'
+        name: '${appName}.azurewebsites.net'
         sslState: 'Disabled'
         hostType: 'Standard'
       }
       {
-        name: '${app-name}.scm.azurewebsites.net'
+        name: '${appName}.scm.azurewebsites.net'
         sslState: 'Disabled'
         hostType: 'Repository'
       }
@@ -130,7 +130,7 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 
 resource hostNameBindings 'Microsoft.Web/sites/hostNameBindings@2022-03-01' = {
   parent: webApplication
-  name: '${app-name}.azurewebsites.net'
+  name: '${appName}.azurewebsites.net'
   location: location
   properties: {
     siteName: 'tut-express-one'
