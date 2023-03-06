@@ -123,4 +123,3 @@ jobs:
         with:
           app-name: 'ustp-boss'
           publish-profile: ${{ steps.webapp.outputs.profile }}
-          package: build/
