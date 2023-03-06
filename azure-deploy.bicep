@@ -1,4 +1,5 @@
 param location string
+param app-name string
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
