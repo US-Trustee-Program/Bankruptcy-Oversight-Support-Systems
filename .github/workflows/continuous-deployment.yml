@@ -106,7 +106,7 @@ jobs:
           mkdir build
           cd build
           tar -xf ../ustp-boss.tar
-          cd ..steps:
+          cd ..
 
       - name: Get WebApp publish profile
         id: webapp
