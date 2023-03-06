@@ -5,13 +5,24 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: 'boss-server-farm'
   sku: {
-    name: 'P1V2'
-    size: 'P1V2'
+    name: 'P1v2'
+    tier: 'PremiumV2'
+    size: 'P1v2'
+    family: 'Pv2'
     capacity: 1
   }
-  kind: 'linux'
+  kind: 'app'
   properties: {
-    reserved: true
+    perSiteScaling: false
+    elasticScaleEnabled: false
+    maximumElasticWorkerCount: 1
+    isSpot: false
+    reserved: false
+    isXenon: false
+    hyperV: false
+    targetWorkerCount: 0
+    targetWorkerSizeId: 0
+    zoneRedundant: false
   }
 }
 
@@ -21,7 +32,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
   tags: {
     acms: 'dev'
   }
-  kind: 'app,linux'
+  kind: 'app'
   properties: {
     enabled: true
     hostNameSslStates: [
@@ -37,12 +48,11 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
       }
     ]
     serverFarmId: serverFarm.id
-    reserved: true
+    reserved: false
     siteConfig: {
       numberOfWorkers: 1
-      linuxFxVersion: 'NODE|18-lts'
       acrUseManagedIdentityCreds: false
-      alwaysOn: false
+      alwaysOn: true
       http20Enabled: true
       functionAppScaleLimit: 0
       minimumElasticInstanceCount: 0
@@ -70,7 +80,7 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
       'hostingstart.html'
     ]
     netFrameworkVersion: 'v4.0'
-    linuxFxVersion: 'NODE|18-lts'
+    phpVersion: '5.6'
     requestTracingEnabled: false
     remoteDebuggingEnabled: false
     httpLoggingEnabled: true
@@ -80,13 +90,13 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     scmType: 'None'
     use32BitWorkerProcess: true
     webSocketsEnabled: false
-    alwaysOn: false
+    alwaysOn: true
     managedPipelineMode: 'Integrated'
     virtualApplications: [
       {
         virtualPath: '/'
         physicalPath: 'site\\wwwroot'
-        preloadEnabled: false
+        preloadEnabled: true
       }
     ]
     loadBalancing: 'LeastRequests'
