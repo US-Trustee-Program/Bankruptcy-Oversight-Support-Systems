@@ -16,7 +16,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
 }
 
 resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
-  name: '${appName}'
+  name: appName
   location: location
   tags: {
     acms: 'dev'
@@ -36,7 +36,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
         hostType: 'Repository'
       }
     ]
-    serverFarmId: 'boss-server-farm'
+    serverFarmId: serverFarm.id
     reserved: true
     siteConfig: {
       numberOfWorkers: 1
@@ -131,7 +131,6 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 resource hostNameBindings 'Microsoft.Web/sites/hostNameBindings@2022-03-01' = {
   parent: webApplication
   name: '${appName}.azurewebsites.net'
-  location: location
   properties: {
     siteName: 'tut-express-one'
     hostNameType: 'Verified'
