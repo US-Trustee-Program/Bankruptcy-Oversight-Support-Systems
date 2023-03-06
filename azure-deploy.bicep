@@ -78,7 +78,6 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     acrUseManagedIdentityCreds: false
     logsDirectorySizeLimit: 100
     detailedErrorLoggingEnabled: false
-    //publishingUsername: '$tut-express-one'
     scmType: 'None'
     use32BitWorkerProcess: true
     webSocketsEnabled: false
