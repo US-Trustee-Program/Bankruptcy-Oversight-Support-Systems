@@ -14,6 +14,6 @@ We will utilize Azure Resource Manager with Bicep files. Bicep files offer sever
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences

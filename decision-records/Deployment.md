@@ -12,6 +12,6 @@ We will utilize GitHub Actions to deploy to Flexion environments and an Azure Fu
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences
