@@ -1,0 +1,112 @@
+name: Continuous Deployment
+
+on: [push]
+
+jobs:
+  eslint:
+    name: Run eslint scanning
+    defaults:
+      run:
+        working-directory: gui
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install ESLint
+        run: |
+          npm install eslint@8.10.0
+          npm install @microsoft/eslint-formatter-sarif@2.1.7
+
+      - name: Run ESLint
+        run: npx eslint .
+          --config .eslintrc.json
+          --ext .js,.jsx,.ts,.tsx
+          --format @microsoft/eslint-formatter-sarif
+          --output-file eslint-results.sarif
+        continue-on-error: true
+
+      - name: Upload analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: gui/eslint-results.sarif
+          wait-for-processing: true
+
+  build:
+    defaults:
+      run:
+        working-directory: gui
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+
+      - name: Archive the build directory
+        id: archive
+        run: |
+          mkdir artifacts
+          tar -cvf artifacts/ustp-boss.tar ./build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ustp-boss
+          path: gui/artifacts/
+          if-no-files-found: error
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, eslint]
+    if: github.ref == 'refs/heads/main'
+    steps:
+
+      - uses: actions/checkout@main
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Run Bicep deploy
+        uses: azure/arm-deploy@v1
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./azure-deploy.bicep
+          parameters: 'location=eastus appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
+
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v3
+        with:
+          name: ustp-boss
+
+      - name: Unarchive the build
+        run: |
+          tar -xf ustp-boss.tar
+
+      - name: Deploy to Azure WebApp
+        run: |
+          cd build
+          echo "Contents of build folder:"
+          ls
+          az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
