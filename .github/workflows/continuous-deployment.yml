@@ -101,7 +101,7 @@ jobs:
 
       - name: Unarchive the build
         run: |
-          tar -xf ../ustp-boss.tar
+          tar -xf ustp-boss.tar
 
       - name: Deploy to Azure WebApp
         run: |
