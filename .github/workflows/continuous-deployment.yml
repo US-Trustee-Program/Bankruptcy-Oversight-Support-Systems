@@ -111,4 +111,4 @@ jobs:
       - name: 'Deploy to Azure WebApp'
         run: |
           cd build
-          az webapp up --html --name ustp-boss
+          az webapp up --html --name ustp-boss-cd
