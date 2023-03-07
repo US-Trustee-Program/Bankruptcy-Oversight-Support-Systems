@@ -78,7 +78,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build, eslint]
-    if: github.ref == 'refs/heads/main'
+#    if: github.ref == 'refs/heads/main'
     steps:
 
       - uses: actions/checkout@main
