@@ -109,4 +109,6 @@ jobs:
       - name: Deploy to Azure WebApp
         run: |
           cd build
+          echo "Contents of build folder:"
+          ls
           az webapp up --html --name ustp-boss
