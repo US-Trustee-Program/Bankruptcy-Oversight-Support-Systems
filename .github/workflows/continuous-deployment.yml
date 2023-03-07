@@ -88,13 +88,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Run Bicep deploy
-        uses: azure/arm-deploy@v1
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
-          template: ./azure-deploy.bicep
-          parameters: 'location=eastus appName=ustp-boss'
+#      - name: Run Bicep deploy
+#        uses: azure/arm-deploy@v1
+#        with:
+#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+#          resourceGroupName: ${{ secrets.AZURE_RG }}
+#          template: ./azure-deploy.bicep
+#          parameters: 'location=eastus appName=ustp-boss'
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
@@ -109,4 +109,6 @@ jobs:
           cd ..
 
       - name: 'Deploy to Azure WebApp'
-        run: az webapp up --html --name ustp-boss
+        run: |
+          cd build
+          az webapp up --html --name ustp-boss
