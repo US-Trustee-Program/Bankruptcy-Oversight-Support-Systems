@@ -2,10 +2,8 @@ name: Continuous Deployment
 
 on: [push]
 
-
 jobs:
   eslint:
-    if: ${{ false }}  # disable for now
     name: Run eslint scanning
     defaults:
       run:
@@ -62,7 +60,7 @@ jobs:
 
       - run: npm ci
       - run: npm run build --if-present
-#      - run: npm test
+      - run: npm test
 
       - name: Archive the build directory
         id: archive
@@ -108,7 +106,7 @@ jobs:
           tar -xf ../ustp-boss.tar
           cd ..
 
-      - name: 'Deploy to Azure WebApp'
+      - name: Deploy to Azure WebApp
         run: |
           cd build
           az webapp up --html --name ustp-boss
