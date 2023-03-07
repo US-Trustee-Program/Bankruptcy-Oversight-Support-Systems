@@ -137,12 +137,3 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     }
   }
 }
-
-resource hostNameBindings 'Microsoft.Web/sites/hostNameBindings@2022-03-01' = {
-  parent: webApplication
-  name: '${appName}.azurewebsites.net'
-  properties: {
-    siteName: 'tut-express-one'
-    hostNameType: 'Verified'
-  }
-}
