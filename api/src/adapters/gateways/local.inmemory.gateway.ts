@@ -1,5 +1,5 @@
 import log from '../logging.service';
-import { ObjectKeyVal, ObjectKeyValArrayKeyVal, RecordObj } from '../types/basic';
+import { ObjectKeyVal, RecordObj } from '../types/basic';
 import { DbResult } from '../types/database';
 import { getProperty, mockData } from '../mock-data/';
 
@@ -116,16 +116,16 @@ const updateRecord = async (table: string, id: number, fields: RecordObj[]): Pro
 
   if (mockData.hasOwnProperty(table)) {
     for (let i = 0; i < mockData[table].length; i++) {
-      console.log(`Searching for ${id}`);
+      log('info', NAMESPACE, `Searching for ${id}`);
       let oldRecord = mockData[table][i];
       if (oldRecord[`${table}_id`] == id) {
-        console.log('record found', oldRecord);
+        log('info', NAMESPACE, 'record found', oldRecord);
         newRecord[`${table}_id`] = id;
         fields.map((field) => {
           newRecord[field.fieldName] = field.fieldValue as string;
         });
 
-        console.log(`New record: `, newRecord);
+        log('info', NAMESPACE, `New record: `, newRecord);
         mockData[table][i] = newRecord;
       }
     }

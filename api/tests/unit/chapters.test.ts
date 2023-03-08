@@ -1,3 +1,5 @@
+import {describe, it, expect } from '@jest/globals';
+
 describe('chapters-endpoints', () => {
 
   describe('Get full chapters list', () => {
