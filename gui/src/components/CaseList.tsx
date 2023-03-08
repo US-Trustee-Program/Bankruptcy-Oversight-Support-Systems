@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Api, { ResponseData } from '../models/api';
+import './CaseList.scss';
 
 type caseType = {
-  caseid: number;
-  chapter: number;
-  analyst: string;
+  cases_id: number;
+  chapters_id: number;
+  idi_date: string;
+  idi_status: string;
+  staff1: string;
+  staff2: string;
 };
 
 //export const CaseList: React.FC<caseType> = () => {
@@ -15,34 +19,48 @@ export const CaseList = () => {
     count: 0,
     body: [{}],
   });
+  let isWaiting = false;
 
   useEffect(() => {
-    async function fetchList() {
-      setCaseList(await api.list('/cases'));
-    }
+    const fetchList = async () => {
+      isWaiting = true;
+      api.list('/cases').then((res) => {
+        setCaseList(res);
+        isWaiting = false;
+      });
+    };
 
-    fetchList();
-  });
+    if (!isWaiting) {
+      fetchList();
+    }
+  }, [caseList.count > 0]);
 
   return (
-    <div>
+    <div className="case-list">
       <h1>Case List</h1>
       <table>
         <thead>
           <tr>
             <th>Case Number</th>
             <th>Chapter</th>
-            <th>Analyst</th>
+            <th>Staff 1</th>
+            <th>Staff 2</th>
+            <th>IDI Date</th>
+            <th>IDI Status</th>
           </tr>
         </thead>
         <tbody>
-          {(caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
-            <tr key={idx}>
-              <td>{theCase.caseid}</td>
-              <td>Chapter {theCase.chapter}</td>
-              <td>{theCase.analyst}</td>
-            </tr>
-          ))}
+          {caseList.count > 0 &&
+            (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
+              <tr key={idx}>
+                <td>{theCase.cases_id}</td>
+                <td>Chapter {theCase.chapters_id}</td>
+                <td>{theCase.staff1}</td>
+                <td>{theCase.staff2}</td>
+                <td>{theCase.idi_date}</td>
+                <td>{theCase.idi_status}</td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>
