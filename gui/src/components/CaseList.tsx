@@ -5,6 +5,7 @@ import './CaseList.scss';
 type caseType = {
   cases_id: number;
   chapters_id: number;
+  chapter_title: string;
   idi_date: string;
   idi_status: string;
   staff1: string;
@@ -54,7 +55,7 @@ export const CaseList = () => {
             (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
               <tr key={idx}>
                 <td>{theCase.cases_id}</td>
-                <td>Chapter {theCase.chapters_id}</td>
+                <td>{theCase.chapter_title}</td>
                 <td>{theCase.staff1}</td>
                 <td>{theCase.staff2}</td>
                 <td>{theCase.idi_date}</td>
