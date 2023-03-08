@@ -19,7 +19,6 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "mssql": "^9.1.1",
-    "mysql2": "^3.0.1",
     "tedious": "^15.1.2"
   },
   "devDependencies": {
@@ -28,7 +27,6 @@
     "@types/express": "^4.17.8",
     "@types/jest": "^29.4.0",
     "@types/mssql": "^8.1.2",
-    "@types/mysql": "^2.15.16",
     "@types/supertest": "^2.0.12",
     "jest": "^29.4.3",
     "supertest": "^6.3.3",
