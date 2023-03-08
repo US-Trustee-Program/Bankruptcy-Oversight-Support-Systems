@@ -5,13 +5,13 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PersistenceGateway {
-    List<Case> getCases();
+  List<Case> getCases();
 
-    Optional<Case> getCase(long caseId);
+  Optional<Case> getCase(long caseId);
 
-    boolean createCase(Case aCaseObj);
+  boolean createCase(Case aCaseObj);
 
-    boolean updateCase(Case aCaseObj);
+  boolean updateCase(Case aCaseObj);
 
-    boolean deleteCase(long casesId);
+  boolean deleteCase(long casesId);
 }
