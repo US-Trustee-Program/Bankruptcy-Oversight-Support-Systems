@@ -1,27 +1,40 @@
-import {describe, it, expect } from '@jest/globals';
+import {describe, it } from 'mocha';
+import chai, { expect } from 'chai';
+import chaiHttp from 'chai-http';
 import { app } from './../../src/server';
-import * as request from 'supertest';
+
+chai.use(chaiHttp);
+const request = chai.request;
 
 describe('basic-endpoints', () => {
 
   describe('hello world', () => {
-    it('should return "Hello World"', () => {
-      /* having issues with top-level await in server.js *--/
-      request(app).get('/')
-        .expect(200, {
-          "message": "Hello World",
-          "count": 1,
-          "body": "hello",
-          "success": true
-        });
-      /**/
-      expect(true).toBe(true);
+    it('should return "status 200 and message: Hello World"', () => {
+      return request(app).get('/')
+        .then(res => {
+          expect(res).to.have.status(200);
+          expect(res.body).to.eql({
+            "message": "Hello World",
+            "count": 1,
+            "body": "hello",
+            "success": true
+          });
+      });
     });
   });
 
   describe('health check', () => {
-    it('should return "Health Check OK"', () => {
-      expect(true).toBe(true);
+    it('should return "status 200 and message: Health Check OK"', () => {
+      return request(app).get('/healthcheck')
+        .then(res => {
+          expect(res).to.have.status(200);
+          expect(res.body).to.eql({
+            "message": "Health Check OK",
+            "count": 1,
+            "body": "OK",
+            "success": true
+          });
+      });
     });
   });
 
