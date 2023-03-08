@@ -6,6 +6,9 @@
 
 import config from '../configs/default.config';
 import { PersistenceGateway } from './types/persistence-gateway';
+import log from './logging.service';
+
+const NAMESPACE = 'DATA-ACCESS-PROXY';
 
 /**
  * Method: proxyData
@@ -21,10 +24,10 @@ import { PersistenceGateway } from './types/persistence-gateway';
 async function proxyData(table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
   let database: PersistenceGateway;
   if (config.dbMock || mock) {
-    console.log('using local in-memory database');
+    log('info', NAMESPACE, 'using local in-memory database');
     return await import(`./gateways/${table}.local.inmemory.gateway`);
   } else {
-    console.log('using MSSQL database');
+    log('info', NAMESPACE, 'using MSSQL database');
     return await import(`./gateways/${table}.azure.sql.gateway`);
   }
 }
