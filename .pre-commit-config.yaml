@@ -17,6 +17,9 @@ repos:
           -   eslint-config-prettier@8.6.0
           -   eslint-plugin-prettier@4.2.1
           -   eslint-plugin-react@7.32.1
+          -   typescript
+          -   '@typescript-eslint/eslint-plugin'
+          -   '@typescript-eslint/parser'
   -   repo: https://github.com/Yelp/detect-secrets
       rev: v1.4.0
       hooks:
