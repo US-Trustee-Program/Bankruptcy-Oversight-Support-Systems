@@ -23,13 +23,21 @@ public class Driver {
 
                     IDataLoader dataLoader = (IDataLoader) loaderMap.map.get(loaderKey);
 
-                    System.out.println("Initializing the loader with the file : " + loaderFilePath);
-                    dataLoader.initialize(loaderFilePath);
+                    if(dataLoader == null){
 
-                    System.out.println("Starting the load run...");
-                    dataLoader.run();
+                        System.out.println("No Data loader process found for : " + loaderKey);
 
-                    System.out.println("Load Complete.");
+                    }
+                    else{
+
+                        System.out.println("Initializing the loader with the file : " + loaderFilePath);
+                        dataLoader.initialize(loaderFilePath);
+
+                        System.out.println("Starting the load run...");
+                        dataLoader.run();
+
+                        System.out.println("Load Complete.");
+                    }
 
                 });
             }
