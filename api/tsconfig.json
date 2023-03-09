@@ -15,8 +15,8 @@
     "forceConsistentCasingInFileNames": true,
     "typeRoots": ["./adapters/types"],
     "types": [
-      "@types/jest",
-      "jest",
+      "@types/mocha",
+      "@types/chai",
       "node"
     ]
   },
@@ -28,6 +28,7 @@
     "test/unit/**/*"
   ],
   "ts-node": {
-    "experimentalSpecifierResolution": "node"
+    "experimentalSpecifierResolution": "node",
+    "files": true
   }
 }
