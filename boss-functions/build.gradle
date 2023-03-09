@@ -1,9 +1,9 @@
 plugins {
-    id "com.microsoft.azure.azurefunctions"
+    id "com.microsoft.azure.azurefunctions" version "1.10.0"
 }
 apply plugin: "java"
 
-group 'gov.doj'
+group 'com.example'
 version '1.0.0-SNAPSHOT'
 
 dependencies {
@@ -22,7 +22,7 @@ repositories {
 azurefunctions {
     // subscription = '<your subscription id>'
     resourceGroup = 'java-functions-group'
-    appName = 'boss-functions-1678373550729' // please rename the function name
+    appName = 'azure-function-examples-1678375231216' // please rename the function name
     pricingTier = 'Consumption' // refers https://github.com/microsoft/azure-maven-plugins/tree/develop/azure-functions-maven-plugin#supported-pricing-tiers for all valid values
     region = 'westus'
     runtime {
