@@ -5,45 +5,44 @@ import java.util.Properties;
 
 public class Driver {
 
-    private static LoaderMap loaderMap = new LoaderMap();
-    public static void main(String[] args) {
+  private static LoaderMap loaderMap = new LoaderMap();
 
-        try {
+  public static void main(String[] args) {
 
-            Properties csvProperties = new Properties();
-            csvProperties.load(Driver.class.getClassLoader().getResourceAsStream("csvfiles.properties"));
+    try {
 
-            if(!csvProperties.isEmpty()) {
-                csvProperties.forEach((k, v) -> {
+      Properties csvProperties = new Properties();
+      csvProperties.load(Driver.class.getClassLoader().getResourceAsStream("csvfiles.properties"));
 
-                    System.out.println("CSV Loader : " + k + " CSV File Path : " + v);
+      if (!csvProperties.isEmpty()) {
+        csvProperties.forEach(
+            (k, v) -> {
+              System.out.println("CSV Loader : " + k + " CSV File Path : " + v);
 
-                    String loaderKey = k.toString().toLowerCase();
-                    String loaderFilePath = v.toString().toLowerCase();
+              String loaderKey = k.toString().toLowerCase();
+              String loaderFilePath = v.toString().toLowerCase();
 
-                    IDataLoader dataLoader = (IDataLoader) loaderMap.map.get(loaderKey);
+              IDataLoader dataLoader = (IDataLoader) loaderMap.map.get(loaderKey);
 
-                    if(dataLoader == null){
+              if (dataLoader == null) {
 
-                        System.out.println("No Data loader process found for : " + loaderKey);
+                System.out.println("No Data loader process found for : " + loaderKey);
 
-                    }
-                    else{
+              } else {
 
-                        System.out.println("Initializing the loader with the file : " + loaderFilePath);
-                        dataLoader.initialize(loaderFilePath);
+                System.out.println("Initializing the loader with the file : " + loaderFilePath);
+                dataLoader.initialize(loaderFilePath);
 
-                        System.out.println("Starting the load run...");
-                        dataLoader.run();
+                System.out.println("Starting the load run...");
+                dataLoader.run();
 
-                        System.out.println("Load Complete.");
-                    }
+                System.out.println("Load Complete.");
+              }
+            });
+      }
 
-                });
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
+  }
 }
