@@ -10,6 +10,7 @@ public class LoaderMap {
 
     map.put("cmmcd", new CMMCDLoader());
     map.put("cmmhr", new CMMHRLoader());
+    map.put("cmhor", new CMHORLoader());
   }
 
   public void addLoader(String loaderName, Object loaderObject) {
