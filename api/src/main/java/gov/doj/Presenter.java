@@ -1,7 +1,7 @@
 package gov.doj;
 
 public interface Presenter {
-    void onSuccess(Object content);
+  void onSuccess(Object content);
 
-    void onFailure(Exception e);
+  void onFailure(Exception e);
 }
