@@ -1,33 +1,28 @@
 package gov.doj;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.containsString;
+
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.containsString;
-
 @QuarkusTest
 public class CaseListTest {
 
-    @BeforeAll
-    public static void init()
-    {
-        TestObjectFactory.init();
-    }
-    @Test
-    public void testGetCases(){
+  @BeforeAll
+  public static void init() {
+    TestObjectFactory.init();
+  }
 
-        given().when().get("/cases").then().statusCode(204);
-    }
+  @Test
+  public void testGetCases() {
 
-    @Test
-    public void testGetCasesEndPoint(){
-        given()
-                .when().get("/cases")
-                .then()
-                .statusCode(200)
-                .body(containsString("1"));
+    given().when().get("/cases").then().statusCode(204);
+  }
 
-    }
+  @Test
+  public void testGetCasesEndPoint() {
+    given().when().get("/cases").then().statusCode(200).body(containsString("1"));
+  }
 }

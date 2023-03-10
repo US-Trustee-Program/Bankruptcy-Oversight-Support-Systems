@@ -6,17 +6,17 @@ import io.quarkus.runtime.annotations.QuarkusMain;
 
 @QuarkusMain
 public class Application {
-    public static void main(String... args) {
-        Quarkus.run(BOSS.class, args);
-    }
+  public static void main(String... args) {
+    Quarkus.run(BOSS.class, args);
+  }
 
-    public static class BOSS implements QuarkusApplication {
+  public static class BOSS implements QuarkusApplication {
 
-        @Override
-        public int run(String... args) throws Exception {
-            RuntimeObjectFactory.init();
-            Quarkus.waitForExit();
-            return 0;
-        }
+    @Override
+    public int run(String... args) throws Exception {
+      RuntimeObjectFactory.init();
+      Quarkus.waitForExit();
+      return 0;
     }
+  }
 }
