@@ -1,3 +1,6 @@
 
 # CSV Files
 /csvfiles/*
+
+# Secrets
+.env
