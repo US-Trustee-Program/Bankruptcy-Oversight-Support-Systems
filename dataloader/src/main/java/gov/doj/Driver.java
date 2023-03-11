@@ -1,6 +1,10 @@
 package gov.doj;
 
+import com.microsoft.sqlserver.jdbc.SQLServerDriver;
+
 import java.io.IOException;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Properties;
 
 public class Driver {
@@ -8,11 +12,17 @@ public class Driver {
   private static LoaderMap loaderMap = new LoaderMap();
 
   public static void main(String[] args) {
+      try {
+          DriverManager.registerDriver(new SQLServerDriver());
+      } catch (SQLException e) {
+          throw new RuntimeException(e);
+      }
 
-    try {
-
+      try {
       Properties csvProperties = new Properties();
       csvProperties.load(Driver.class.getClassLoader().getResourceAsStream("csvfiles.properties"));
+//      String password = System.getenv("password");
+//      csvProperties.put("password", password);
 
       if (!csvProperties.isEmpty()) {
         csvProperties.forEach(

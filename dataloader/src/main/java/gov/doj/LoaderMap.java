@@ -7,10 +7,10 @@ public class LoaderMap {
   protected HashMap<String, Object> map = new HashMap<>();
 
   public LoaderMap() {
-
-    map.put("cmmcd", new CMMCDLoader());
-    map.put("cmmhr", new CMMHRLoader());
-    map.put("cmhor", new CMHORLoader());
+        map.put("cmmcd", new CMMCDLoader());
+        map.put("cmmhr", new CMMHRLoader());
+        map.put("cmhor", new CMHORLoader());
+//    map.put("cmmdb", new CMMDBLoader());
   }
 
   public void addLoader(String loaderName, Object loaderObject) {
