@@ -12,17 +12,17 @@ public class Driver {
   private static LoaderMap loaderMap = new LoaderMap();
 
   public static void main(String[] args) {
-      try {
-          DriverManager.registerDriver(new SQLServerDriver());
-      } catch (SQLException e) {
-          throw new RuntimeException(e);
-      }
+    try {
+      DriverManager.registerDriver(new SQLServerDriver());
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
 
-      try {
+    try {
       Properties csvProperties = new Properties();
       csvProperties.load(Driver.class.getClassLoader().getResourceAsStream("csvfiles.properties"));
-//      String password = System.getenv("password");
-//      csvProperties.put("password", password);
+      //      String password = System.getenv("password");
+      //      csvProperties.put("password", password);
 
       if (!csvProperties.isEmpty()) {
         csvProperties.forEach(
