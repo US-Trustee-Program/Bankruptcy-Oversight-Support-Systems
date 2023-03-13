@@ -8,7 +8,7 @@ public class LoaderMap {
 
   public LoaderMap() {
     map.put("cmmcd", new CMMCDLoader());
-    map.put("cmmhr", new CMMHRLoader());
+    map.put("cmhmr", new CMHMRLoader());
     map.put("cmhor", new CMHORLoader());
     //    map.put("cmmdb", new CMMDBLoader());
   }
