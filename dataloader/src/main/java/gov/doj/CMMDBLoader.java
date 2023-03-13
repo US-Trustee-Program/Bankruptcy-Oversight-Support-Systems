@@ -6,8 +6,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.Statement;
 
 public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
 
@@ -19,6 +18,7 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
 
   @Override
   public void run() {
+    clearTable();
     loadTable();
   }
 
@@ -47,309 +47,120 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
       while ((lineText = lineReader.readLine()) != null) {
         int index = 0;
         String[] data = lineText.split(",");
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setDouble(index + 1, Double.parseDouble(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setString(index + 1, data[index++]);
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        statement.setString(index + 1, data[index++]);
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        if (data[index] == null
-            || data[index].equals("NULL")
-            || data[index].isEmpty()
-            || data[index].contains("NULL")) {
-          statement.setNull(index + 1, Types.TIMESTAMP);
-        } else {
-          statement.setTimestamp(index + 1, Timestamp.valueOf(data[index++]));
-        }
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
-        statement.setInt(index + 1, Integer.parseInt(data[index++]));
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setDouble(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setString(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setTimestamp(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
+        SqlStatementHelper.setInt(index, data[index++], statement);
 
         boolean rowInserted = statement.executeUpdate() > 0;
 
@@ -362,5 +173,15 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
   }
 
   @Override
-  public void clearTable() {}
+  public void clearTable() {
+    try (Connection connection = getConnection()) {
+
+      String truncateSql = "TRUNCATE TABLE dbo.CMMCD";
+      Statement statement = connection.createStatement();
+      statement.executeUpdate(truncateSql);
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
 }
