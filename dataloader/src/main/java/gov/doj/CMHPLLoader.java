@@ -47,47 +47,49 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
       while ((lineText = lineReader.readLine()) != null) {
         int index = 0;
         String[] data = lineText.split(",");
-        SqlStatementHelper.setString(index, data[index++], statement);    // DELETE_CODE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CASE_DIV
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CASE_YEAR
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CASE_NUMBER
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RECORD_SEQ_NBR
-        SqlStatementHelper.setString(index, data[index++], statement);    // PLEADING_CODE
-        SqlStatementHelper.setString(index, data[index++], statement);    // PLEADOR_TYPE
-        SqlStatementHelper.setString(index, data[index++], statement);    // PLEADORS_NAME
-        SqlStatementHelper.setInt(index, data[index++], statement);       // PLEADING_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // ACTION_DATE
-        SqlStatementHelper.setString(index, data[index++], statement);    // PLEADING_DISP
-        SqlStatementHelper.setInt(index, data[index++], statement);       // DISPOSITION_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // ENTRY_DATE
-        SqlStatementHelper.setString(index, data[index++].substring(0,30), statement); // DESCRIPTION_30
-        SqlStatementHelper.setInt(index, data[index++], statement);       // PLEADING_SORT_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // HEARING_SEQUENCE
-        SqlStatementHelper.setString(index, data[index++], statement);    // COURT_DISPOSITION
-        SqlStatementHelper.setInt(index, data[index++], statement);       // COURT_DISPOSITION_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // REGION_CODE
-        SqlStatementHelper.setString(index, data[index++], statement);    // GROUP_DESIGNATOR
+        SqlStatementHelper.setString(index, data[index++], statement); // DELETE_CODE
+        SqlStatementHelper.setInt(index, data[index++], statement); // CASE_DIV
+        SqlStatementHelper.setInt(index, data[index++], statement); // CASE_YEAR
+        SqlStatementHelper.setInt(index, data[index++], statement); // CASE_NUMBER
+        SqlStatementHelper.setInt(index, data[index++], statement); // RECORD_SEQ_NBR
+        SqlStatementHelper.setString(index, data[index++], statement); // PLEADING_CODE
+        SqlStatementHelper.setString(index, data[index++], statement); // PLEADOR_TYPE
+        SqlStatementHelper.setString(index, data[index++], statement); // PLEADORS_NAME
+        SqlStatementHelper.setInt(index, data[index++], statement); // PLEADING_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_DATE
+        SqlStatementHelper.setString(index, data[index++], statement); // PLEADING_DISP
+        SqlStatementHelper.setInt(index, data[index++], statement); // DISPOSITION_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
+        SqlStatementHelper.setString(
+            index, data[index++].substring(0, 30), statement); // DESCRIPTION_30
+        SqlStatementHelper.setInt(index, data[index++], statement); // PLEADING_SORT_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // HEARING_SEQUENCE
+        SqlStatementHelper.setString(index, data[index++], statement); // COURT_DISPOSITION
+        SqlStatementHelper.setInt(index, data[index++], statement); // COURT_DISPOSITION_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // REGION_CODE
+        SqlStatementHelper.setString(index, data[index++], statement); // GROUP_DESIGNATOR
 
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RGN_CREATE_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RGN_UPDATE_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CDB_CREATE_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CDB_UPDATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // CDB_CREATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // CDB_UPDATE_DATE
 
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // PLEADING_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // ACTION_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // DISPOSITION_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // ENTRY_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // PLEADING_SORT_DATE_DT
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // COURT_DISPOSITION_DATE_DT
+        SqlStatementHelper.setTimestamp(
+            index, data[index++], statement); // COURT_DISPOSITION_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CASE_FULL_ACMS
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // UPDATE_DATE
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE 
-        SqlStatementHelper.setInt(index, data[index++], statement);       // id
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RRN
+        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // id
+        SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
         boolean rowInserted = statement.executeUpdate() > 0;
 
