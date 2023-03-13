@@ -7,9 +7,14 @@ public class LoaderMap {
   protected HashMap<String, Object> map = new HashMap<>();
 
   public LoaderMap() {
-    map.put("cmmcd", new CMMCDLoader());
-    map.put("cmmhr", new CMMHRLoader());
     map.put("cmhor", new CMHORLoader());
+    map.put("cmhmr", new CMHMRLoader());
+    map.put("cmhpl", new CMHPLLoader());
+    map.put("cmhrp", new CMHRPLoader());
+    map.put("cmmal", new CMMALLoader());
+    map.put("cmmcd", new CMMCDLoader());
+    // map.put("cmmhr", new CMMHRLoader());
+    map.put("cmmpr", new CMMPRLoader());
     //    map.put("cmmdb", new CMMDBLoader());
   }
 
