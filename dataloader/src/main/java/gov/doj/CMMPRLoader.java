@@ -47,53 +47,53 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
       while ((lineText = lineReader.readLine()) != null) {
         int index = 0;
         String[] data = lineText.split(",");
-        SqlStatementHelper.setString(index, data[index++], statement);    // DELETE_CODE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // UST_PROF_CODE
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_TYPE
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_LAST_NAME
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_FIRST_NAME
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_MI
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_ADDRESS1
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_ADDRESS2
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_CITY
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_STATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // PROF_ZIP
-        SqlStatementHelper.setInt(index, data[index++], statement);       // PROF_FAX_NBR
-        SqlStatementHelper.setInt(index, data[index++], statement);       // PROF_COMMERCIAL_PHONE_NBR
-        SqlStatementHelper.setInt(index, data[index++], statement);       // BOND_AMOUNT
-        SqlStatementHelper.setInt(index, data[index++], statement);       // BOND_DATE
-        SqlStatementHelper.setString(index, data[index++], statement);    // BOND_COMPANY_CODE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // BOND_TOTAL_AMOUNT
-        SqlStatementHelper.setInt(index, data[index++], statement);       // BOND_EXPIRATION_DATE
-        SqlStatementHelper.setString(index, data[index++], statement);    // USER_FREE_SPACE_10
-        SqlStatementHelper.setInt(index, data[index++], statement);       // SOC_SEC_NUM
+        SqlStatementHelper.setString(index, data[index++], statement); // DELETE_CODE
+        SqlStatementHelper.setInt(index, data[index++], statement); // UST_PROF_CODE
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_TYPE
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_LAST_NAME
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_FIRST_NAME
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_MI
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_ADDRESS1
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_ADDRESS2
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_CITY
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_STATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // PROF_ZIP
+        SqlStatementHelper.setInt(index, data[index++], statement); // PROF_FAX_NBR
+        SqlStatementHelper.setInt(index, data[index++], statement); // PROF_COMMERCIAL_PHONE_NBR
+        SqlStatementHelper.setInt(index, data[index++], statement); // BOND_AMOUNT
+        SqlStatementHelper.setInt(index, data[index++], statement); // BOND_DATE
+        SqlStatementHelper.setString(index, data[index++], statement); // BOND_COMPANY_CODE
+        SqlStatementHelper.setInt(index, data[index++], statement); // BOND_TOTAL_AMOUNT
+        SqlStatementHelper.setInt(index, data[index++], statement); // BOND_EXPIRATION_DATE
+        SqlStatementHelper.setString(index, data[index++], statement); // USER_FREE_SPACE_10
+        SqlStatementHelper.setInt(index, data[index++], statement); // SOC_SEC_NUM
 
-        SqlStatementHelper.setInt(index, data[index++], statement);       // TOTAL_FEES_MTD
-        SqlStatementHelper.setInt(index, data[index++], statement);       // TOTAL_NBR_CASES_MTD
-        SqlStatementHelper.setInt(index, data[index++], statement);       // TOTAL_FEES_YTD
-        SqlStatementHelper.setInt(index, data[index++], statement);       // TOTAL_NBR_CASES_YTD
-        SqlStatementHelper.setInt(index, data[index++], statement);       // TOTAL_FEES_LSTYR
-        SqlStatementHelper.setInt(index, data[index++], statement);       // TOTAL_NBR_CASES_LSTYR
+        SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_FEES_MTD
+        SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_NBR_CASES_MTD
+        SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_FEES_YTD
+        SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_NBR_CASES_YTD
+        SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_FEES_LSTYR
+        SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_NBR_CASES_LSTYR
 
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_STATE_NAME
-        SqlStatementHelper.setString(index, data[index++], statement);    // COURT_ASSIGNED_NBR
-        SqlStatementHelper.setInt(index, data[index++], statement);       // STAFF_1
-        SqlStatementHelper.setInt(index, data[index++], statement);       // STAFF_2
-        SqlStatementHelper.setString(index, data[index++], statement);    // PROF_STATUS
-        SqlStatementHelper.setString(index, data[index++], statement);    // ACTION_CODE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // ACTION_START_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // ACTION_END_DATE
-        SqlStatementHelper.setString(index, data[index++], statement);    // USER_FREE_SPACE_31
-        SqlStatementHelper.setString(index, data[index++], statement);    // USER_FREE_SPACE_2
-        SqlStatementHelper.setInt(index, data[index++], statement);       // ENTRY_DATE
-        SqlStatementHelper.setString(index, data[index++], statement);    // USER_ID
-        SqlStatementHelper.setInt(index, data[index++], statement);       // REGION_CODE
-        SqlStatementHelper.setString(index, data[index++], statement);    // GROUP_DESIGNATOR
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_STATE_NAME
+        SqlStatementHelper.setString(index, data[index++], statement); // COURT_ASSIGNED_NBR
+        SqlStatementHelper.setInt(index, data[index++], statement); // STAFF_1
+        SqlStatementHelper.setInt(index, data[index++], statement); // STAFF_2
+        SqlStatementHelper.setString(index, data[index++], statement); // PROF_STATUS
+        SqlStatementHelper.setString(index, data[index++], statement); // ACTION_CODE
+        SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_START_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_END_DATE
+        SqlStatementHelper.setString(index, data[index++], statement); // USER_FREE_SPACE_31
+        SqlStatementHelper.setString(index, data[index++], statement); // USER_FREE_SPACE_2
+        SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
+        SqlStatementHelper.setString(index, data[index++], statement); // USER_ID
+        SqlStatementHelper.setInt(index, data[index++], statement); // REGION_CODE
+        SqlStatementHelper.setString(index, data[index++], statement); // GROUP_DESIGNATOR
 
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RGN_CREATE_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RGN_UPDATE_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CDB_CREATE_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement);       // CDB_UPDATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // CDB_CREATE_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // CDB_UPDATE_DATE
 
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // BOND_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // BOND_EXPIRATION_DATE_DT
@@ -105,9 +105,9 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // UPDATE_DATE
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE 
-        SqlStatementHelper.setInt(index, data[index++], statement);       // id
-        SqlStatementHelper.setInt(index, data[index++], statement);       // RRN
+        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE
+        SqlStatementHelper.setInt(index, data[index++], statement); // id
+        SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
         boolean rowInserted = statement.executeUpdate() > 0;
 
