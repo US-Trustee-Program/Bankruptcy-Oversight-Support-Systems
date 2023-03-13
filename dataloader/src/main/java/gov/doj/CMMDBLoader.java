@@ -68,9 +68,11 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setCharString(index, data[index++], statement);
         SqlStatementHelper.setInt(index, data[index++], statement);
         SqlStatementHelper.setCharString(index, data[index++], statement);
-        SqlStatementHelper.setCharString(index, SqlStatementHelper.maxChars(data[index++], 30), statement);
+        SqlStatementHelper.setCharString(
+            index, SqlStatementHelper.maxChars(data[index++], 30), statement);
         SqlStatementHelper.setCharString(index, data[index++], statement);
-        SqlStatementHelper.setCharString(index, SqlStatementHelper.maxChars(data[index++], 20), statement);
+        SqlStatementHelper.setCharString(
+            index, SqlStatementHelper.maxChars(data[index++], 20), statement);
         SqlStatementHelper.setCharString(index, data[index++], statement);
         SqlStatementHelper.setInt(index, data[index++], statement);
         SqlStatementHelper.setInt(index, data[index++], statement);
@@ -196,5 +198,6 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
 
     } catch (SQLException e) {
       e.printStackTrace();
-    }}
+    }
+  }
 }
