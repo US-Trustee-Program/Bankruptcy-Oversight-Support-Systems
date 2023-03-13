@@ -68,8 +68,8 @@ public class CMHORLoader extends AbstractDataLoader implements IDataLoader {
         statement.setInt(7, Integer.parseInt(data[6]));   // COURT_DATE
         statement.setString(8, data[7]);                  // CURRENT_CHAPTER
         statement.setInt(9, Integer.parseInt(data[8]));   // ENTRY_DATE
-        statement.setString(10, data[9]);                 // USER_ID
-        statement.setString(11, data[10]);                // DESCRIPTION_30
+        statement.setString(10, data[9].substring(0, 10));   // USER_ID
+        statement.setString(11, data[10].substring(0, 30));  // DESCRIPTION_30
         statement.setInt(12, Integer.parseInt(data[11])); // HEARING_SEQUENCE
         statement.setInt(13, Integer.parseInt(data[12])); // QB_SENT_DATE
         statement.setString(14, data[13]);                // QB_POSTING_USER
