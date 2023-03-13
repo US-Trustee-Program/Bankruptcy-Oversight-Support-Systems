@@ -7,8 +7,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
 
 public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
 
@@ -184,5 +182,6 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
 
     } catch (SQLException e) {
       e.printStackTrace();
-    }}
+    }
+  }
 }
