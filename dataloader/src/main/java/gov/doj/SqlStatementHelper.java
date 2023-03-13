@@ -6,8 +6,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 
 public class SqlStatementHelper {
-  public static void setString(int index, String data, PreparedStatement statement) {
-    System.out.println("Index: " + index + ", Data: " + data + ", setString.");
+  public static void setCharString(int index, String data, PreparedStatement statement) {
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.CHAR);
@@ -19,8 +18,19 @@ public class SqlStatementHelper {
     }
   }
 
+  public static void setVarCharString(int index, String data, PreparedStatement statement) {
+    try {
+      if (data == null || data.isEmpty() || data.contains("NULL")) {
+        statement.setNull(index + 1, Types.VARCHAR);
+      } else {
+        statement.setString(index + 1, data);
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public static void setInt(int index, String data, PreparedStatement statement) {
-    System.out.println("Index: " + index + ", Data: " + data + ", setInt.");
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.INTEGER);
@@ -32,8 +42,19 @@ public class SqlStatementHelper {
     }
   }
 
+  public static void setLong(int index, String data, PreparedStatement statement) {
+    try {
+      if (data == null || data.isEmpty() || data.contains("NULL")) {
+        statement.setNull(index + 1, Types.INTEGER);
+      } else {
+        statement.setLong(index + 1, Long.parseLong(data));
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public static void setDouble(int index, String data, PreparedStatement statement) {
-    System.out.println("Index: " + index + ", Data: " + data + ", setDouble.");
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.DOUBLE);
@@ -46,7 +67,6 @@ public class SqlStatementHelper {
   }
 
   public static void setTimestamp(int index, String data, PreparedStatement statement) {
-    System.out.println("Index: " + index + ", Data: " + data + ", setTimestamp.");
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.TIMESTAMP);
@@ -55,6 +75,14 @@ public class SqlStatementHelper {
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  public static String maxChars(String data, int maxLength) {
+    if (data.length() <= maxLength) {
+      return data;
+    } else {
+      return data.substring(0, maxLength - 1);
     }
   }
 }
