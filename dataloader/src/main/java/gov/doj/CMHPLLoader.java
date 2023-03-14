@@ -13,7 +13,7 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
   protected ConnectionManager connectionManager;
 
   public CMHPLLoader() {
-    connectionManager = new ConnectionManager();
+    connectionManager = ConnectionManager.getInstance();
   }
 
   @Override
@@ -30,7 +30,7 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
   @Override
   public void loadTable() {
     String sql =
-        "SET IDENTITY_INSERT dbo.CMMCD ON;INSERT INTO dbo.CMMCD"
+        "SET IDENTITY_INSERT dbo.CMHPL ON;INSERT INTO dbo.CMHPL"
             + " (DELETE_CODE,CASE_DIV,CASE_YEAR,CASE_NUMBER,RECORD_SEQ_NBR,PLEADING_CODE,PLEADOR_TYPE,PLEADORS_NAME,PLEADING_DATE,ACTION_DATE,PLEADING_DISP,DISPOSITION_DATE,ENTRY_DATE,DESCRIPTION_30,PLEADING_SORT_DATE,HEARING_SEQUENCE,COURT_DISPOSITION,COURT_DISPOSITION_DATE,REGION_CODE,GROUP_DESIGNATOR,RGN_CREATE_DATE,RGN_UPDATE_DATE,CDB_CREATE_DATE,CDB_UPDATE_DATE,PLEADING_DATE_DT,ACTION_DATE_DT,DISPOSITION_DATE_DT,ENTRY_DATE_DT,PLEADING_SORT_DATE_DT,COURT_DISPOSITION_DATE_DT,RGN_CREATE_DATE_DT,RGN_UPDATE_DATE_DT,CDB_CREATE_DATE_DT,CDB_UPDATE_DATE_DT,CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE,id,RRN)"
             + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
@@ -47,27 +47,27 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
       while ((lineText = lineReader.readLine()) != null) {
         int index = 0;
         String[] data = lineText.split(",");
-        SqlStatementHelper.setString(index, data[index++], statement); // DELETE_CODE
+        SqlStatementHelper.setCharString(index, data[index++], statement); // DELETE_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_DIV
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_YEAR
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_NUMBER
         SqlStatementHelper.setInt(index, data[index++], statement); // RECORD_SEQ_NBR
-        SqlStatementHelper.setString(index, data[index++], statement); // PLEADING_CODE
-        SqlStatementHelper.setString(index, data[index++], statement); // PLEADOR_TYPE
-        SqlStatementHelper.setString(index, data[index++], statement); // PLEADORS_NAME
+        SqlStatementHelper.setCharString(index, data[index++], statement); // PLEADING_CODE
+        SqlStatementHelper.setCharString(index, data[index++], statement); // PLEADOR_TYPE
+        SqlStatementHelper.setCharString(index, data[index++], statement); // PLEADORS_NAME
         SqlStatementHelper.setInt(index, data[index++], statement); // PLEADING_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_DATE
-        SqlStatementHelper.setString(index, data[index++], statement); // PLEADING_DISP
+        SqlStatementHelper.setCharString(index, data[index++], statement); // PLEADING_DISP
         SqlStatementHelper.setInt(index, data[index++], statement); // DISPOSITION_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
-        SqlStatementHelper.setString(
+        SqlStatementHelper.setCharString(
             index, data[index++].substring(0, 30), statement); // DESCRIPTION_30
         SqlStatementHelper.setInt(index, data[index++], statement); // PLEADING_SORT_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // HEARING_SEQUENCE
-        SqlStatementHelper.setString(index, data[index++], statement); // COURT_DISPOSITION
+        SqlStatementHelper.setCharString(index, data[index++], statement); // COURT_DISPOSITION
         SqlStatementHelper.setInt(index, data[index++], statement); // COURT_DISPOSITION_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // REGION_CODE
-        SqlStatementHelper.setString(index, data[index++], statement); // GROUP_DESIGNATOR
+        SqlStatementHelper.setCharString(index, data[index++], statement); // GROUP_DESIGNATOR
 
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
@@ -103,9 +103,10 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
 
   @Override
   public void clearTable() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
-      String truncateSql = "TRUNCATE TABLE dbo.CMMCD";
+      String truncateSql = "TRUNCATE TABLE dbo.CMHPL";
       Statement statement = connection.createStatement();
       statement.executeUpdate(truncateSql);
 
