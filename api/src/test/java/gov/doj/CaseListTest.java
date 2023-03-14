@@ -17,8 +17,7 @@ public class CaseListTest {
 
   @Test
   public void testGetCases() {
-
-    given().when().get("/cases").then().statusCode(204);
+    given().when().get("/cases").then().statusCode(200);
   }
 
   @Test
