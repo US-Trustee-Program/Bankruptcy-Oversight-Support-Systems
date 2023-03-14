@@ -44,7 +44,6 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
     try (BufferedReader lineReader = new BufferedReader(new FileReader(getCsvFilePath()))) {
       PreparedStatement statement = connection.prepareStatement(sql);
 
-      int count = 0;
       String lineText = null;
 
       lineReader.readLine(); // skip the header line
@@ -168,10 +167,6 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement);
         SqlStatementHelper.setInt(index, data[index++], statement);
         SqlStatementHelper.setInt(index, data[index++], statement);
-
-        boolean rowInserted = statement.executeUpdate() > 0;
-
-        count++;
       }
     } catch (IOException | SQLException e) {
       throw new RuntimeException(e);
