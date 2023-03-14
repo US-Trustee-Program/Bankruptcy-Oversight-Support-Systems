@@ -7,6 +7,8 @@ import java.text.SimpleDateFormat;
 
 public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
+  protected ConnectionManager connectionManager;
+
   private final String tableName = "dbo.CMMAL";
 
   public CMMALLoader() {
@@ -15,6 +17,7 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
   public void initialize(String filePath) {
     setCsvFilePath(filePath);
+    connectionManager = ConnectionManager.getInstance();
   }
 
   @Override
@@ -44,7 +47,7 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
               + " CDB_UPDATE_DATE_DT,CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE,id,RRN )  VALUES("
               + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, )";
 
-      Connection connection = getConnection();
+      Connection connection = this.connectionManager.getConnection();
       PreparedStatement statement = connection.prepareStatement(sql);
 
       int count = 0;
@@ -103,7 +106,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
   @Override
   public void clearTable() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String truncateSql = "TRUNCATE TABLE dbo.CMMAL";
       Statement statement = connection.createStatement();
@@ -115,7 +119,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   }
 
   private boolean setIdentityInsertOn() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String identitySql = "SET IDENTITY_INSERT dbo.CMMAL ON";
       Statement statement = connection.createStatement();
@@ -128,7 +133,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   }
 
   private void setIdentityInsertOff() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String identitySql = "SET IDENTITY_INSERT dbo.CMMAL OFF";
       Statement statement = connection.createStatement();

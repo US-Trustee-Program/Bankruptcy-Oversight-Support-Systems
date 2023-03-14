@@ -5,6 +5,8 @@ import java.sql.*;
 
 public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
 
+  protected ConnectionManager connectionManager;
+
   private final String tableName = "dbo.CMMCD";
 
   public CMMCDLoader() {
@@ -13,6 +15,7 @@ public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
 
   public void initialize(String filePath) {
     setCsvFilePath(filePath);
+    connectionManager = ConnectionManager.getInstance();
   }
 
   @Override
@@ -39,7 +42,7 @@ public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
               + " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
               + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-      Connection connection = getConnection();
+      Connection connection = this.connectionManager.getConnection();
       PreparedStatement statement = connection.prepareStatement(sql);
 
       int count = 0;
@@ -172,7 +175,8 @@ public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
 
   @Override
   public void clearTable() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String truncateSql = "TRUNCATE TABLE dbo.CMMCD";
       Statement statement = connection.createStatement();
@@ -184,7 +188,8 @@ public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
   }
 
   private boolean setIdentityInsertOn() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String identitySql = "SET IDENTITY_INSERT dbo.CMMCD ON";
       Statement statement = connection.createStatement();
@@ -197,7 +202,8 @@ public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
   }
 
   private void setIdentityInsertOff() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String identitySql = "SET IDENTITY_INSERT dbo.CMMCD OFF";
       Statement statement = connection.createStatement();
