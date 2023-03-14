@@ -34,15 +34,15 @@ public class CaseListController {
   @Path("/{caseId}")
   public String getCaseById(long caseId) throws JsonProcessingException {
 
-    Optional<Case> _case = caseUseCase.getCaseById(caseId);
+    Optional<Case> bCase = caseUseCase.getCaseById(caseId);
 
-    Case caseValue = _case.get();
+    Case caseValue = bCase.get();
     if (caseValue.getCases_id() == 0) {
       return "No Cases found with case Id : " + " " + caseId;
     } else {
 
       ObjectMapper objectMapper = new ObjectMapper();
-      String json = objectMapper.writeValueAsString(_case.get());
+      String json = objectMapper.writeValueAsString(bCase.get());
 
       return json;
     }
