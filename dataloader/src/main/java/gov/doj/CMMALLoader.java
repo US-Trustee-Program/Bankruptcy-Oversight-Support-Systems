@@ -30,8 +30,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
             + " DELETE_CODE,CASE_DIV,CASE_YEAR,CASE_NUMBER,SEQ_NBR,FEDERAL_ID,BLANK_06,SOC_SEC_NUM,DEBTOR_NAME,"
             + " ENTRY_DATE,REGION_CODE,GROUP_DESIGNATOR,RGN_CREATE_DATE,RGN_UPDATE_DATE,CDB_CREATE_DATE,"
             + " CDB_UPDATE_DATE,ENTRY_DATE_DT,RGN_CREATE_DATE_DT,RGN_UPDATE_DATE_DT,CDB_CREATE_DATE_DT,"
-            + " CDB_UPDATE_DATE_DT,CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE,id,RRN )  VALUES("
-            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, )";
+            + " CDB_UPDATE_DATE_DT,CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE,id,RRN )  VALUES( ?,"
+            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, )";
 
     Connection connection = this.connectionManager.getConnection();
 
@@ -56,12 +56,15 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_NUMBER
         SqlStatementHelper.setInt(index, data[index++], statement); // SEQ_NBR
         SqlStatementHelper.setInt(index, data[index++], statement); // FEDERAL_ID
-        SqlStatementHelper.setCharString(index, data[index++].substring(0, 6), statement); // BLANK_06
+        SqlStatementHelper.setCharString(
+            index, data[index++].substring(0, 6), statement); // BLANK_06
         SqlStatementHelper.setInt(index, data[index++], statement); // SOC SEC NUM
         SqlStatementHelper.setCharString(index, data[index++], statement); // DEBTOR_NAME
         SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
-        SqlStatementHelper.setCharString(index, data[index++].substring(0, 2), statement); // REGION_CODE
-        SqlStatementHelper.setCharString(index, data[index++].substring(0, 2), statement); // GROUP_DESIGNATOR
+        SqlStatementHelper.setCharString(
+            index, data[index++].substring(0, 2), statement); // REGION_CODE
+        SqlStatementHelper.setCharString(
+            index, data[index++].substring(0, 2), statement); // GROUP_DESIGNATOR
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // CDB_CREATE_DATE
@@ -73,7 +76,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setCharString(index, data[index++], statement); // CASE_FULL_ACMS - varchar
+        SqlStatementHelper.setCharString(
+            index, data[index++], statement); // CASE_FULL_ACMS - varchar
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // UPDATE_DATE
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE
 

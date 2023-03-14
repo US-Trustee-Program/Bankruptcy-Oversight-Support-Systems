@@ -41,8 +41,9 @@ public class CMHORLoader extends AbstractDataLoader implements IDataLoader {
             + " PARENT_CASE_NBR,CONSOLIDATION_TYPE,REGION_CODE,GROUP_DESIGNATOR,RGN_CREATE_DATE,RGN_UPDATE_DATE,"
             + " CDB_CREATE_DATE,CDB_UPDATE_DATE,"
             + " COURT_DATE_DT,ENTRY_DATE_DT,QB_SENT_DATE_DT,RGN_CREATE_DATE_DT,RGN_UPDATE_DATE_DT,CDB_CREATE_DATE_DT,CDB_UPDATE_DATE_DT,"
-            + " CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE, id, RRN)"
-            + " VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            + " CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE, id, RRN) VALUES( ?, ?, ?, ?, ?, ?, ?,"
+            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+            + " ?)";
 
     Connection connection = this.connectionManager.getConnection();
 
@@ -89,8 +90,12 @@ public class CMHORLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setVarCharString(index, data[index++], 10, statement); // CASE_FULL_ACMS - varchar
-        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // UPDATE_DATE (using NULL rather than actual string because data in input file is messed up and will cause an exception)
+        SqlStatementHelper.setVarCharString(
+            index, data[index++], 10, statement); // CASE_FULL_ACMS - varchar
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // UPDATE_DATE (using NULL rather than actual string because data in input
+                        // file is messed up and will cause an exception)
         SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
@@ -123,5 +128,4 @@ public class CMHORLoader extends AbstractDataLoader implements IDataLoader {
       e.printStackTrace();
     }
   }
-
 }
