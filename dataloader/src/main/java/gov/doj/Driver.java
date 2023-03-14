@@ -21,8 +21,6 @@ public class Driver {
     try {
       Properties csvProperties = new Properties();
       csvProperties.load(Driver.class.getClassLoader().getResourceAsStream("csvfiles.properties"));
-      //      String password = System.getenv("password");
-      //      csvProperties.put("password", password);
 
       if (!csvProperties.isEmpty()) {
         csvProperties.forEach(

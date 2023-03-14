@@ -25,19 +25,4 @@ public class AbstractDataLoader {
   protected void setCsvFilePath(String csvFilePath) {
     this.csvFilePath = csvFilePath;
   }
-
-  protected Connection getConnection() throws SQLException {
-    Connection connection = null;
-
-    try {
-
-      Properties properties = new Properties();
-      properties.load(Driver.class.getClassLoader().getResourceAsStream("application.properties"));
-      connection = DriverManager.getConnection(properties.getProperty("url"), properties);
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    return connection;
-  }
 }
