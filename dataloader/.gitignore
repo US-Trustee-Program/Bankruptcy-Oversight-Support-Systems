@@ -35,4 +35,4 @@ nb-configuration.xml
 /csvfiles/*
 
 # Secrets
-/.env
+/src/main/resources/.env

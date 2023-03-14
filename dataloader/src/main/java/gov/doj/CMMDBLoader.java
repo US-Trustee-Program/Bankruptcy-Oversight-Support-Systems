@@ -18,7 +18,7 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
   private int federalId = 20230001;
 
   public CMMDBLoader() {
-    connectionManager = new ConnectionManager();
+    connectionManager = ConnectionManager.getInstance();
   }
 
   @Override
@@ -190,7 +190,8 @@ public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
 
   @Override
   public void clearTable() {
-    try (Connection connection = getConnection()) {
+    Connection connection = this.connectionManager.getConnection();
+    try {
 
       String truncateSql = "TRUNCATE TABLE dbo.CMMDB";
       Statement statement = connection.createStatement();
