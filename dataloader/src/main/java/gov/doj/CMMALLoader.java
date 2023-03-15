@@ -32,9 +32,9 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
       // setup hash of existing federal id numbers
       JsonReader parser = Json.createReader(new FileReader("federalIdHashmap.json"));
       JsonObject hashData = parser.readObject();
-      Map<String, JsonValue> federalIdMap = new HashMap<>(hashData); 
-      //fedIdMap.forEach((k, v) -> federalIdMap.put(k, v));
-    } catch(Exception e) {
+      Map<String, JsonValue> federalIdMap = new HashMap<>(hashData);
+      // fedIdMap.forEach((k, v) -> federalIdMap.put(k, v));
+    } catch (Exception e) {
       System.out.println(e.getMessage());
     }
   }
