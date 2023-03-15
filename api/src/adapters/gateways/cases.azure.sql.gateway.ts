@@ -7,7 +7,30 @@ import { createRecord, updateRecord, deleteRecord } from './azure.sql.gateway';
 const table = 'cases';
 
 const getCaseList = async (): Promise<DbResult> => {
-  const query = `SELECT a.*, b.title AS chapter_title FROM cases AS a LEFT JOIN chapters AS b ON a.chapters_id = b.chapters_id`;
+  //const query = `SELECT a.*, b.title AS chapter_title FROM cases AS a LEFT JOIN chapters AS b ON a.chapters_id = b.chapters_id`;
+  const query = "SELECT " +
+    " debtor.CASE_DIV" +
+    ", debtor.CASE_YEAR" +
+    ", debtor.CASE_NUMBER" +
+    ", debtor.STAFF1_PROF_CODE" +
+    ", debtor.STAFF2_PROF_CODE" +
+    ", debtor.CURR_CASE_CHAPT " +
+//        ", professional.PROF_FIRST_NAME" +
+//        ", professional.UST_PROF_CODE" +
+  " FROM " +
+    " dbo.CMMDB debtor " +
+//        "LEFT OUTER JOIN" +
+//          "dbo.CMMPR professional" +
+//          "ON" +
+//            "debtor.STAFF1_PROF_CODE = professional.UST_PROF_CODE" +
+//            "OR" +
+//            "debtor.STAFF2_PROF_CODE = professional.UST_PROF_CODE" +
+  " WHERE " +
+    " 1 = 1 " +
+    " AND debtor.CURR_CASE_CHAPT = '11' ";
+    //" AND (debtor.STAFF1_PROF_CODE = ? " +
+    //" OR debtor.STAFF2_PROF_CODE = ? )";
+
   const queryResult: QueryResults = await runQuery(table, query);
   let results: DbResult;
 
