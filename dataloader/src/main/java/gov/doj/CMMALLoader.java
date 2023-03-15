@@ -4,8 +4,7 @@ import java.io.*;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
-// import javax.json.JsonObject;
-// import javax.json.JsonReader;
+import javax.json.*;
 
 public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
@@ -29,11 +28,15 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   public void initialize(String filePath) {
     setCsvFilePath(filePath);
 
-    // setup hash of existing federal id numbers
-    // JsonReader parser = new JsonReader(new
-    // FileReader("/dataloader/src/main/resources/federalIdHashmap.json"));
-    // JsonObject hashData = parser.readObject();
-    // hashData.foreach((k, v) -> federalIdMap.put(k, v));
+    try {
+      // setup hash of existing federal id numbers
+      JsonReader parser = Json.createReader(new FileReader("federalIdHashmap.json"));
+      JsonObject hashData = parser.readObject();
+      Map<String, JsonValue> federalIdMap = new HashMap<>(hashData); 
+      //fedIdMap.forEach((k, v) -> federalIdMap.put(k, v));
+    } catch(Exception e) {
+      System.out.println(e.getMessage());
+    }
   }
 
   @Override
