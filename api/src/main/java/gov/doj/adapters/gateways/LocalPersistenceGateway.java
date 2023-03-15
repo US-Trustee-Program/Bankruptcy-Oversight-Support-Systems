@@ -3,7 +3,9 @@ package gov.doj.adapters.gateways;
 import gov.doj.entities.Case;
 import gov.doj.usecases.PersistenceGateway;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class LocalPersistenceGateway implements PersistenceGateway {
@@ -21,6 +23,11 @@ public class LocalPersistenceGateway implements PersistenceGateway {
   @Override
   public List<Case> getCases() {
     return new ArrayList<>();
+  }
+
+  @Override
+  public Map<String, List<String>> getCasesByProfCode(int userProfCode) {
+    return new HashMap<>();
   }
 
   @Override
