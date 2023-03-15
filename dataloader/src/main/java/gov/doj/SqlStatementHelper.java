@@ -41,7 +41,7 @@ public class SqlStatementHelper {
     String finalData = data;
 
     if (length > 0 && length < data.length()) {
-      finalData = data.trim().substring(0, length);
+      finalData = data.substring(0, length-1).trim();
     }
 
     setCharString(index, finalData, statement);

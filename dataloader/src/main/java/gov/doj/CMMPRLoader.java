@@ -1,5 +1,7 @@
 package gov.doj;
 
+import com.microsoft.sqlserver.jdbc.StringUtils;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -49,24 +51,25 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         String[] data = lineText.split(",");
         SqlStatementHelper.setCharString(index, data[index++], statement); // DELETE_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // UST_PROF_CODE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_TYPE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_LAST_NAME
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_FIRST_NAME
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_MI
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_ADDRESS1
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_ADDRESS2
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_CITY
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_STATE
+        SqlStatementHelper.setCharString(index, data[index++], 2,statement); // PROF_TYPE
+        SqlStatementHelper.setCharString(index, data[index++], 30, statement); // PROF_LAST_NAME
+        SqlStatementHelper.setCharString(index, data[index++], 20, statement); // PROF_FIRST_NAME
+        SqlStatementHelper.setCharString(index, data[index++], 1, statement); // PROF_MI
+        SqlStatementHelper.setCharString(index, data[index++], 30, statement); // PROF_ADDRESS1
+        SqlStatementHelper.setCharString(index, data[index++], 30, statement); // PROF_ADDRESS2
+        SqlStatementHelper.setCharString(index, data[index++], 20, statement); // PROF_CITY
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // PROF_STATE
         SqlStatementHelper.setInt(index, data[index++], statement); // PROF_ZIP
-        SqlStatementHelper.setInt(index, data[index++], statement); // PROF_FAX_NBR
-        SqlStatementHelper.setInt(index, data[index++], statement); // PROF_COMMERCIAL_PHONE_NBR
+        //SqlStatementHelper.setInt(index, data[index++], statement); // PROF_FAX_NBR
+        statement.setLong(index+1, setLongValue(data[index++]));// PROF_FAX_NBR
+        statement.setLong(index+1, setLongValue(data[index++])); // PROF_COMMERCIAL_PHONE_NBR
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_AMOUNT
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_DATE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // BOND_COMPANY_CODE
+        SqlStatementHelper.setCharString(index, data[index++], 8, statement); // BOND_COMPANY_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_TOTAL_AMOUNT
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_EXPIRATION_DATE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // USER_FREE_SPACE_10
-        SqlStatementHelper.setInt(index, data[index++], statement); // SOC_SEC_NUM
+        SqlStatementHelper.setCharString(index, data[index++], 10, statement); // USER_FREE_SPACE_10
+        SqlStatementHelper.setInt(index, extractSocSecNumericFormat(data[index++]), statement); // SOC_SEC_NUM
 
         SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_FEES_MTD
         SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_NBR_CASES_MTD
@@ -75,20 +78,20 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_FEES_LSTYR
         SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_NBR_CASES_LSTYR
 
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_STATE_NAME
-        SqlStatementHelper.setCharString(index, data[index++], statement); // COURT_ASSIGNED_NBR
+        SqlStatementHelper.setCharString(index, data[index++], 20, statement); // PROF_STATE_NAME
+        SqlStatementHelper.setCharString(index, data[index++], 11, statement); // COURT_ASSIGNED_NBR
         SqlStatementHelper.setInt(index, data[index++], statement); // STAFF_1
         SqlStatementHelper.setInt(index, data[index++], statement); // STAFF_2
-        SqlStatementHelper.setCharString(index, data[index++], statement); // PROF_STATUS
-        SqlStatementHelper.setCharString(index, data[index++], statement); // ACTION_CODE
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // PROF_STATUS
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // ACTION_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_START_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_END_DATE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // USER_FREE_SPACE_31
-        SqlStatementHelper.setCharString(index, data[index++], statement); // USER_FREE_SPACE_2
+        SqlStatementHelper.setCharString(index, data[index++], 31, statement); // USER_FREE_SPACE_31
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // USER_FREE_SPACE_2
         SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // USER_ID
+        SqlStatementHelper.setCharString(index, data[index++], 10, statement); // USER_ID
         SqlStatementHelper.setInt(index, data[index++], statement); // REGION_CODE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // GROUP_DESIGNATOR
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // GROUP_DESIGNATOR
 
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
@@ -104,8 +107,8 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // UPDATE_DATE
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE
+        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // UPDATE_DATE; Setting NULL since csv file is messed up for the column
+        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE; Setting NULL since csv file is messed up for the column
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
@@ -131,5 +134,21 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
     } catch (SQLException e) {
       e.printStackTrace();
     }
+  }
+
+  private String extractSocSecNumericFormat(String socsecString){
+
+      if(socsecString != null)
+        return socsecString.replaceAll("[\\s\\-]" , "");
+      else
+        return socsecString;
+  }
+
+  private int setIntValue(String val){
+      return StringUtils.isEmpty(val) ? 0 : Integer.parseInt(val);
+  }
+
+  private long setLongValue(String val){
+    return StringUtils.isEmpty(val) ? 0 : Long.parseLong(val);
   }
 }
