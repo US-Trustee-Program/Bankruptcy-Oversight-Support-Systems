@@ -95,7 +95,7 @@ public class CMHORLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(
             index++, "NULL",
             statement); // UPDATE_DATE (using NULL rather than actual string because data in input
-                        // file is messed up and will cause an exception)
+        // file is messed up and will cause an exception)
         SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
