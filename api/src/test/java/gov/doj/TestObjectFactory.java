@@ -1,6 +1,6 @@
 package gov.doj;
 
-import gov.doj.adapters.gateways.AzureSqlGateway;
+import gov.doj.adapters.gateways.LocalPersistenceGateway;
 import gov.doj.adapters.presenters.JsonPresenter;
 import gov.doj.usecases.PersistenceGateway;
 
@@ -11,6 +11,6 @@ public class TestObjectFactory extends ObjectFactory {
 
     // List<String> profiles = ConfigUtils.getProfiles(); // uncomment this when a test
     // context/profile is added later
-    registerObject(PersistenceGateway.class, new AzureSqlGateway()); // switch back to Local
+    registerObject(PersistenceGateway.class, new LocalPersistenceGateway());
   }
 }

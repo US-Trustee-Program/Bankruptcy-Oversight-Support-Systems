@@ -5,7 +5,10 @@ import gov.doj.usecases.PersistenceGateway;
 import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class AzureSqlGateway implements PersistenceGateway {
@@ -36,8 +39,8 @@ public class AzureSqlGateway implements PersistenceGateway {
         Timestamp idi_date = resultSet.getTimestamp("idi_date");
         int chapters_id = resultSet.getInt("chapters_id");
 
-        Case _case = new Case(id, staff1, staff2, idi_status, idi_date, chapters_id);
-        casesList.add(_case);
+        Case bCase = new Case(id, staff1, staff2, idi_status, idi_date, chapters_id);
+        casesList.add(bCase);
 
         System.out.println(
             resultSet.getString(1)
@@ -59,6 +62,67 @@ public class AzureSqlGateway implements PersistenceGateway {
     }
 
     return casesList;
+  }
+
+  @Override
+  public Map<String, List<String>> getCasesByProfCode(int userProfCode) {
+    Map<String, List<String>> caseMap = new HashMap<>();
+    ResultSet resultSet = null;
+    String selectSql =
+        "SELECT "
+            + "debtor.CASE_DIV "
+            + ", debtor.CASE_YEAR "
+            + ", debtor.CASE_NUMBER "
+            + ", debtor.STAFF1_PROF_CODE "
+            + ", debtor.STAFF2_PROF_CODE "
+            + ", professional.PROF_FIRST_NAME "
+            + ", professional.UST_PROF_CODE "
+            + "FROM "
+            + "[dbo].[CMMDB] debtor "
+            + "LEFT OUTER JOIN "
+            + "[dbo].[CMMPR] professional "
+            + "ON "
+            + "debtor.STAFF1_PROF_CODE = professional.UST_PROF_CODE "
+            + "OR "
+            + "debtor.STAFF2_PROF_CODE = professional.UST_PROF_CODE "
+            + "WHERE "
+            + "1 = 1 "
+            + "AND debtor.STAFF1_PROF_CODE = ? "
+            + "OR debtor.STAFF2_PROF_CODE = ? ";
+
+    try (Connection connection = this.connectionManager.getConnection();
+        PreparedStatement statement = connection.prepareStatement(selectSql)) {
+
+      statement.setString(1, String.valueOf(userProfCode));
+      statement.setString(2, String.valueOf(userProfCode));
+      resultSet = statement.executeQuery();
+
+      while (resultSet.next()) {
+        String caseNumber =
+            resultSet.getInt("CASE_DIV")
+                + "-"
+                + resultSet.getInt("CASE_YEAR")
+                + "-"
+                + resultSet.getInt("CASE_NUMBER");
+        int staff1 = resultSet.getInt("STAFF1_PROF_CODE");
+        int staff2 = resultSet.getInt("STAFF2_PROF_CODE");
+        int matchedStaff = resultSet.getInt("UST_PROF_CODE");
+        String staffName = resultSet.getString("PROF_FIRST_NAME").trim();
+        caseMap.put(
+            caseNumber,
+            Arrays.asList(
+                caseNumber,
+                Integer.toString(staff1),
+                Integer.toString(staff2),
+                Integer.toString(matchedStaff),
+                staffName));
+      }
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    return caseMap;
   }
 
   @Override

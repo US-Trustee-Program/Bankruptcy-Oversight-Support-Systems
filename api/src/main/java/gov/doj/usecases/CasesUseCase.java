@@ -4,6 +4,7 @@ import gov.doj.ObjectFactory;
 import gov.doj.Presenter;
 import gov.doj.entities.*;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class CasesUseCase {
@@ -20,6 +21,12 @@ public class CasesUseCase {
     List<Case> cases = persistenceGateway.getCases();
     presenter.onSuccess(cases.toString());
     return cases;
+  }
+
+  public Map<String, List<String>> getCasesByProfCode(int userProfCode) {
+    Map<String, List<String>> caseMap = persistenceGateway.getCasesByProfCode(userProfCode);
+    presenter.onSuccess(caseMap.toString());
+    return caseMap;
   }
 
   public Optional<Case> getCaseById(long cases_id) {

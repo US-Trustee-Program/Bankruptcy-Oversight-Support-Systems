@@ -7,6 +7,7 @@ import gov.doj.usecases.CasesUseCase;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -19,14 +20,23 @@ public class CaseListController {
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  public String getCases() throws JsonProcessingException {
+  public String getCases(@QueryParam("prof_code") Integer userProfCode)
+      throws JsonProcessingException {
+    if (userProfCode == null) {
+      List<Case> cases = caseUseCase.getCases();
 
-    List<Case> cases = caseUseCase.getCases();
+      ObjectMapper objectMapper = new ObjectMapper();
+      String json = objectMapper.writeValueAsString(cases);
 
-    ObjectMapper objectMapper = new ObjectMapper();
-    String json = objectMapper.writeValueAsString(cases);
+      return json;
+    } else {
+      Map<String, List<String>> caseMap = caseUseCase.getCasesByProfCode(userProfCode);
 
-    return json;
+      ObjectMapper objectMapper = new ObjectMapper();
+      String json = objectMapper.writeValueAsString(caseMap);
+
+      return json;
+    }
   }
 
   @GET
