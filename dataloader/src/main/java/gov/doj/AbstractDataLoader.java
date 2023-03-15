@@ -20,6 +20,4 @@ public class AbstractDataLoader {
   protected void setCsvFilePath(String csvFilePath) {
     this.csvFilePath = csvFilePath;
   }
-
-
 }
