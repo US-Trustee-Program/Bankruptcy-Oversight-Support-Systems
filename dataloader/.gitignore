@@ -36,3 +36,4 @@ nb-configuration.xml
 
 # Secrets
 /src/main/resources/.env
+/src/main/resources/federalIdHashmap.json
