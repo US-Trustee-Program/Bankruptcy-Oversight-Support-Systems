@@ -47,23 +47,23 @@ public class CMHRPLoader extends AbstractDataLoader implements IDataLoader {
       while ((lineText = lineReader.readLine()) != null) {
         int index = 0;
         String[] data = lineText.split(",");
-        SqlStatementHelper.setCharString(index, data[index++], statement); // DELETE_CODE
+        SqlStatementHelper.setCharString(index, data[index++], 1, statement); // DELETE_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_DIV
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_YEAR
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_NUMBER
         SqlStatementHelper.setInt(index, data[index++], statement); // RECORD_SEQ_NBR
-        SqlStatementHelper.setCharString(index, data[index++], statement); // REPORT_CODE
-        SqlStatementHelper.setInt(index, data[index++], statement); // REPORT_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement); // REPORT_PERIOD
-        SqlStatementHelper.setCharString(index, data[index++], statement); // REPORT_REVIEW_CODE
-        SqlStatementHelper.setInt(index, data[index++], statement); // ACTION_DATE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // DESCRIPTION_30
-        SqlStatementHelper.setCharString(index, data[index++], statement); // USER_ID
-        SqlStatementHelper.setInt(index, data[index++], statement); // DISP_DATE
+        SqlStatementHelper.setCharString(index, data[index++], 3, statement); // REPORT_CODE
+        SqlStatementHelper.setLong(index, data[index++], statement); // REPORT_DATE
+        SqlStatementHelper.setLong(index, data[index++], statement); // REPORT_PERIOD
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // REPORT_REVIEW_CODE
+        SqlStatementHelper.setLong(index, data[index++], statement); // ACTION_DATE
+        SqlStatementHelper.setCharString(index, data[index++], 30, statement); // DESCRIPTION_30
+        SqlStatementHelper.setCharString(index, data[index++], 10, statement); // USER_ID
+        SqlStatementHelper.setLong(index, data[index++], statement); // DISP_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // RPHRSQ_HSEQ
-        SqlStatementHelper.setInt(index, data[index++], statement); // SPMTDT_DATE
-        SqlStatementHelper.setInt(index, data[index++], statement); // REGION_CODE
-        SqlStatementHelper.setCharString(index, data[index++], statement); // GROUP_DESIGNATOR
+        SqlStatementHelper.setLong(index, data[index++], statement); // SPMTDT_DATE
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // REGION_CODE
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // GROUP_DESIGNATOR
 
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
@@ -79,9 +79,9 @@ public class CMHRPLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setCharString(index, data[index++], statement); // CASE_FULL_ACMS
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // UPDATE_DATE
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE
+        SqlStatementHelper.setVarCharString(index, data[index++], 10, statement); // CASE_FULL_ACMS
+        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // UPDATE_DATE
+        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
