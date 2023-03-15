@@ -1,17 +1,24 @@
 package gov.doj;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
 import java.io.*;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
-import javax.json.*;
 
 public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
-
   private final Map<String, Integer> federalIdMap = new HashMap<>();
-  private int federalId = 20230001;
+  private int federalId = 20231001;
+  private String federalIdFileName = "federalIdHashMap.json";
+
 
   public CMMALLoader() {
     setLoaderName("CMMAL");
@@ -27,14 +34,20 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   @Override
   public void initialize(String filePath) {
     setCsvFilePath(filePath);
+    setUpFederalIdMap();
+  }
 
-    try {
-      // setup hash of existing federal id numbers
-      JsonReader parser = Json.createReader(new FileReader("federalIdHashmap.json"));
-      JsonObject hashData = parser.readObject();
-      Map<String, JsonValue> federalIdMap = new HashMap<>(hashData);
-      // fedIdMap.forEach((k, v) -> federalIdMap.put(k, v));
-    } catch (Exception e) {
+  private void setUpFederalIdMap() {
+    try{
+
+        ClassLoader classLoader = getClass().getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(federalIdFileName);
+        JsonReader parser = Json.createReader(inputStream);
+        JsonObject hashData = parser.readObject();
+        Map<String, JsonValue> federalIdMap = new HashMap<>(hashData);
+
+    }
+    catch (Exception e){
       System.out.println(e.getMessage());
     }
   }
@@ -47,7 +60,7 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
             + " ENTRY_DATE,REGION_CODE,GROUP_DESIGNATOR,RGN_CREATE_DATE,RGN_UPDATE_DATE,CDB_CREATE_DATE,"
             + " CDB_UPDATE_DATE,ENTRY_DATE_DT,RGN_CREATE_DATE_DT,RGN_UPDATE_DATE_DT,CDB_CREATE_DATE_DT,"
             + " CDB_UPDATE_DATE_DT,CASE_FULL_ACMS,UPDATE_DATE,REPLICATED_DATE,id,RRN )  VALUES( ?,"
-            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, )";
+            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     Connection connection = this.connectionManager.getConnection();
 
@@ -100,12 +113,12 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
-        /*
+
         boolean rowInserted = statement.executeUpdate() > 0;
 
         count++;
         System.out.println("RowInserted : " + rowInserted + ". Row Number : " + count);
-        */
+
       }
 
     } catch (FileNotFoundException e) {
