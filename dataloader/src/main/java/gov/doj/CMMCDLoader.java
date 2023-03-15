@@ -11,11 +11,11 @@ public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
 
   public CMMCDLoader() {
     setLoaderName("CMMCD");
+    connectionManager = ConnectionManager.getInstance();
   }
 
   public void initialize(String filePath) {
     setCsvFilePath(filePath);
-    connectionManager = ConnectionManager.getInstance();
   }
 
   @Override
