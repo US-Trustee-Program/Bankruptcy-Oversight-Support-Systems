@@ -2,10 +2,17 @@ package gov.doj;
 
 import java.io.*;
 import java.sql.*;
+import java.util.HashMap;
+import java.util.Map;
+// import javax.json.JsonObject;
+// import javax.json.JsonReader;
 
 public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
+
+  private final Map<String, Integer> federalIdMap = new HashMap<>();
+  private int federalId = 20230001;
 
   public CMMALLoader() {
     setLoaderName("CMMAL");
@@ -21,6 +28,12 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   @Override
   public void initialize(String filePath) {
     setCsvFilePath(filePath);
+
+    // setup hash of existing federal id numbers
+    // JsonReader parser = new JsonReader(new
+    // FileReader("/dataloader/src/main/resources/federalIdHashmap.json"));
+    // JsonObject hashData = parser.readObject();
+    // hashData.foreach((k, v) -> federalIdMap.put(k, v));
   }
 
   @Override
@@ -40,8 +53,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
       PreparedStatement statement = connection.prepareStatement(sql);
 
-      int count = 0;
       String lineText = null;
+      int count = 0;
 
       lineReader.readLine(); // skip the header line
 
@@ -50,44 +63,46 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         String[] data = lineText.split(",");
 
         // System.out.println("data:" + Arrays.toString(data));
-        SqlStatementHelper.setCharString(index, data[index++], statement); // DELETE_CODE
+        SqlStatementHelper.setCharString(index, data[index++], 1, statement); // DELETE_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_DIV
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_YEAR
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_NUMBER
         SqlStatementHelper.setInt(index, data[index++], statement); // SEQ_NBR
-        SqlStatementHelper.setInt(index, data[index++], statement); // FEDERAL_ID
-        SqlStatementHelper.setCharString(
-            index, data[index++].substring(0, 6), statement); // BLANK_06
-        SqlStatementHelper.setInt(index, data[index++], statement); // SOC SEC NUM
+        SqlStatementHelper.setInt(
+            index, numericizeFederalId(data[index++]), statement); // FEDERAL_ID
+        SqlStatementHelper.setCharString(index, data[index++], 6, statement); // BLANK_06
+        SqlStatementHelper.setInt(
+            index, data[index++].replaceAll("[^0-9]", ""), statement); // SOC SEC NUM
         SqlStatementHelper.setCharString(index, data[index++], statement); // DEBTOR_NAME
         SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
-        SqlStatementHelper.setCharString(
-            index, data[index++].substring(0, 2), statement); // REGION_CODE
-        SqlStatementHelper.setCharString(
-            index, data[index++].substring(0, 2), statement); // GROUP_DESIGNATOR
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // REGION_CODE
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // GROUP_DESIGNATOR
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_CREATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // RGN_UPDATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // CDB_CREATE_DATE
         SqlStatementHelper.setInt(index, data[index++], statement); // CDB_UPDATE_DATE
-
-        // -- DATETIME FIELDS -- //
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // ENTRY_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setCharString(
-            index, data[index++], statement); // CASE_FULL_ACMS - varchar
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // UPDATE_DATE
-        SqlStatementHelper.setTimestamp(index, data[index++], statement); // REPLICATED_DATE
+        SqlStatementHelper.setVarCharString(
+            index, data[index++], 10, statement); // CASE_FULL_ACMS - varchar
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // UPDATE_DATE (using NULL rather than actual string because data in input
+        // file is messed up and will cause an exception)
+        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE
 
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
+        /*
         boolean rowInserted = statement.executeUpdate() > 0;
 
         count++;
         System.out.println("RowInserted : " + rowInserted + ". Row Number : " + count);
+        */
       }
 
     } catch (FileNotFoundException e) {
@@ -96,6 +111,16 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
       throw new RuntimeException(e);
     } catch (SQLException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private String numericizeFederalId(String hash) {
+    if (federalIdMap.containsKey(hash)) {
+      return federalIdMap.get(hash).toString();
+    } else {
+      System.out.println("Hash " + hash + " mapped to " + federalId + ".");
+      federalIdMap.put(hash, federalId++);
+      return federalIdMap.get(hash).toString();
     }
   }
 
