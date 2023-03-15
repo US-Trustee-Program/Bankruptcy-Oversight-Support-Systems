@@ -7,7 +7,6 @@ import java.util.Map;
 // import javax.json.JsonObject;
 // import javax.json.JsonReader;
 
-import netscape.javascript.JSObject;
 
 public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
@@ -32,7 +31,8 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
     setCsvFilePath(filePath);
 
     // setup hash of existing federal id numbers
-    // JsonReader parser = new JsonReader(new FileReader("/dataloader/src/main/resources/federalIdHashmap.json"));
+    // JsonReader parser = new JsonReader(new
+    // FileReader("/dataloader/src/main/resources/federalIdHashmap.json"));
     // JsonObject hashData = parser.readObject();
     // hashData.foreach((k, v) -> federalIdMap.put(k, v));
   }
@@ -69,9 +69,11 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_YEAR
         SqlStatementHelper.setInt(index, data[index++], statement); // CASE_NUMBER
         SqlStatementHelper.setInt(index, data[index++], statement); // SEQ_NBR
-        SqlStatementHelper.setInt(index, numericizeFederalId(data[index++]), statement); // FEDERAL_ID
+        SqlStatementHelper.setInt(
+            index, numericizeFederalId(data[index++]), statement); // FEDERAL_ID
         SqlStatementHelper.setCharString(index, data[index++], 6, statement); // BLANK_06
-        SqlStatementHelper.setInt(index, data[index++].replaceAll("[^0-9]", ""), statement); // SOC SEC NUM
+        SqlStatementHelper.setInt(
+            index, data[index++].replaceAll("[^0-9]", ""), statement); // SOC SEC NUM
         SqlStatementHelper.setCharString(index, data[index++], statement); // DEBTOR_NAME
         SqlStatementHelper.setInt(index, data[index++], statement); // ENTRY_DATE
         SqlStatementHelper.setCharString(index, data[index++], 2, statement); // REGION_CODE
@@ -85,8 +87,12 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setVarCharString(index, data[index++], 10, statement); // CASE_FULL_ACMS - varchar
-        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // UPDATE_DATE (using NULL rather than actual string because data in input file is messed up and will cause an exception)
+        SqlStatementHelper.setVarCharString(
+            index, data[index++], 10, statement); // CASE_FULL_ACMS - varchar
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // UPDATE_DATE (using NULL rather than actual string because data in input
+                        // file is messed up and will cause an exception)
         SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE
 
         SqlStatementHelper.setInt(index, data[index++], statement); // id

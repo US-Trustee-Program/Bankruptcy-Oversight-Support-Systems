@@ -46,10 +46,9 @@ public class CMHHRLoader extends AbstractDataLoader implements IDataLoader {
               + ",[DISPOSITION_DATE],[CURRENT_CASE_CHAPTER],[PRINT_CALENDAR]"
               + ",[DESCRIPTION_30],[ENTRY_DATE],[USER_ID],[REGION_CODE],[GROUP_DESIGNATOR]"
               + ",[RGN_CREATE_DATE],[RGN_UPDATE_DATE],[CDB_CREATE_DATE],[CDB_UPDATE_DATE],[HEARING_DATE_DT],[DISPOSITION_DATE_DT]"
-              + ",[ENTRY_DATE_DT],[RGN_CREATE_DATE_DT],[RGN_UPDATE_DATE_DT],[CDB_CREATE_DATE_DT],[CDB_UPDATE_DATE_DT]"
-              + ",[CASE_FULL_ACMS],[UPDATE_DATE],[REPLICATED_DATE],[id],[RRN]) VALUES(?, ?, ?, ?,"
-              + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
-              + " ?, ?, ?, ?)";
+              + ",[ENTRY_DATE_DT],[RGN_CREATE_DATE_DT],[RGN_UPDATE_DATE_DT],[CDB_CREATE_DATE_DT],[CDB_UPDATE_DATE_DT],[CASE_FULL_ACMS],[UPDATE_DATE],[REPLICATED_DATE],[id],[RRN])"
+              + " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+              + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
       Connection connection = this.connectionManager.getConnection();
       PreparedStatement statement = connection.prepareStatement(insertSql);
