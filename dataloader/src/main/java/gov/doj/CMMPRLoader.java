@@ -51,7 +51,7 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         String[] data = lineText.split(",");
         SqlStatementHelper.setCharString(index, data[index++], statement); // DELETE_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // UST_PROF_CODE
-        SqlStatementHelper.setCharString(index, data[index++], 2,statement); // PROF_TYPE
+        SqlStatementHelper.setCharString(index, data[index++], 2, statement); // PROF_TYPE
         SqlStatementHelper.setCharString(index, data[index++], 30, statement); // PROF_LAST_NAME
         SqlStatementHelper.setCharString(index, data[index++], 20, statement); // PROF_FIRST_NAME
         SqlStatementHelper.setCharString(index, data[index++], 1, statement); // PROF_MI
@@ -60,16 +60,17 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setCharString(index, data[index++], 20, statement); // PROF_CITY
         SqlStatementHelper.setCharString(index, data[index++], 2, statement); // PROF_STATE
         SqlStatementHelper.setInt(index, data[index++], statement); // PROF_ZIP
-        //SqlStatementHelper.setInt(index, data[index++], statement); // PROF_FAX_NBR
-        statement.setLong(index+1, setLongValue(data[index++]));// PROF_FAX_NBR
-        statement.setLong(index+1, setLongValue(data[index++])); // PROF_COMMERCIAL_PHONE_NBR
+        // SqlStatementHelper.setInt(index, data[index++], statement); // PROF_FAX_NBR
+        statement.setLong(index + 1, setLongValue(data[index++])); // PROF_FAX_NBR
+        statement.setLong(index + 1, setLongValue(data[index++])); // PROF_COMMERCIAL_PHONE_NBR
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_AMOUNT
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_DATE
         SqlStatementHelper.setCharString(index, data[index++], 8, statement); // BOND_COMPANY_CODE
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_TOTAL_AMOUNT
         SqlStatementHelper.setInt(index, data[index++], statement); // BOND_EXPIRATION_DATE
         SqlStatementHelper.setCharString(index, data[index++], 10, statement); // USER_FREE_SPACE_10
-        SqlStatementHelper.setInt(index, extractSocSecNumericFormat(data[index++]), statement); // SOC_SEC_NUM
+        SqlStatementHelper.setInt(
+            index, extractSocSecNumericFormat(data[index++]), statement); // SOC_SEC_NUM
 
         SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_FEES_MTD
         SqlStatementHelper.setInt(index, data[index++], statement); // TOTAL_NBR_CASES_MTD
@@ -107,8 +108,12 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // RGN_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
-        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // UPDATE_DATE; Setting NULL since csv file is messed up for the column
-        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE; Setting NULL since csv file is messed up for the column
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // UPDATE_DATE; Setting NULL since csv file is messed up for the column
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // REPLICATED_DATE; Setting NULL since csv file is messed up for the column
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
@@ -136,19 +141,17 @@ public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
     }
   }
 
-  private String extractSocSecNumericFormat(String socsecString){
+  private String extractSocSecNumericFormat(String socsecString) {
 
-      if(socsecString != null)
-        return socsecString.replaceAll("[\\s\\-]" , "");
-      else
-        return socsecString;
+    if (socsecString != null) return socsecString.replaceAll("[\\s\\-]", "");
+    else return socsecString;
   }
 
-  private int setIntValue(String val){
-      return StringUtils.isEmpty(val) ? 0 : Integer.parseInt(val);
+  private int setIntValue(String val) {
+    return StringUtils.isEmpty(val) ? 0 : Integer.parseInt(val);
   }
 
-  private long setLongValue(String val){
+  private long setLongValue(String val) {
     return StringUtils.isEmpty(val) ? 0 : Long.parseLong(val);
   }
 }

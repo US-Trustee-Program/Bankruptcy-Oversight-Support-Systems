@@ -19,7 +19,7 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
   @Override
   public void run() {
     clearTable();
-     loadTable();
+    loadTable();
   }
 
   @Override
@@ -86,8 +86,13 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_CREATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CDB_UPDATE_DATE_DT
         SqlStatementHelper.setTimestamp(index, data[index++], statement); // CASE_FULL_ACMS
-        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // UPDATE_DATE Story #111 ; using NULL since data is messed up in the input csv for this column.
-        SqlStatementHelper.setTimestamp(index++, "NULL", statement); // REPLICATED_DATE Story #111, set timestamp columns to null.
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // UPDATE_DATE Story #111 ; using NULL since data is messed up in the input
+                        // csv for this column.
+        SqlStatementHelper.setTimestamp(
+            index++, "NULL",
+            statement); // REPLICATED_DATE Story #111, set timestamp columns to null.
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
