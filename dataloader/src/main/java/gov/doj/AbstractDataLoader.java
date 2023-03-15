@@ -1,6 +1,5 @@
 package gov.doj;
 
-
 public class AbstractDataLoader {
 
   private String loaderName;

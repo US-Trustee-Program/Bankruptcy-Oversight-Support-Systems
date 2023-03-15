@@ -6,7 +6,16 @@ import java.sql.Timestamp;
 import java.sql.Types;
 
 public class SqlStatementHelper {
+  /**
+   * setCharString - Formats a fixed character string and properly handles NULL
+   *
+   * @param index - used to determine which SQL template placeholder to fill
+   * @param data - value to set data field to
+   * @param statement - SQL statement to update
+   */
   public static void setCharString(int index, String data, PreparedStatement statement) {
+    // added for debugging.  Uncomment if needed.
+    // System.out.println("Char String " + data + " : " + index);
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.CHAR);
@@ -18,7 +27,29 @@ public class SqlStatementHelper {
     }
   }
 
+  /**
+   * setCharString - Formats a fixed length character string and properly handles NULL. Forces max
+   * length.
+   *
+   * @param index - used to determine which SQL template placeholder to fill
+   * @param data - value to set data field to
+   * @param length - length expected by database. Data will be tuncated to this length if too long.
+   * @param statement - SQL statement to update
+   */
+  public static void setCharString(
+      int index, String data, int length, PreparedStatement statement) {
+    String finalData = data;
+
+    if (length > 0 && length < data.length()) {
+      finalData = data.trim().substring(0, length);
+    }
+
+    setCharString(index, finalData, statement);
+  }
+
   public static void setVarCharString(int index, String data, PreparedStatement statement) {
+    // added for debugging.  Uncomment if needed.
+    // System.out.println("Variable Length Char String " + data + " : " + index);
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.VARCHAR);
@@ -30,7 +61,20 @@ public class SqlStatementHelper {
     }
   }
 
+  public static void setVarCharString(
+      int index, String data, int length, PreparedStatement statement) {
+    String finalData = data;
+
+    if (length > 0 && length < data.length()) {
+      finalData = data.trim().substring(0, length);
+    }
+
+    setVarCharString(index, finalData, statement);
+  }
+
   public static void setInt(int index, String data, PreparedStatement statement) {
+    // added for debugging.  Uncomment if needed.
+    // System.out.println("Int " + data + " : " + index);
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.INTEGER);
@@ -43,6 +87,8 @@ public class SqlStatementHelper {
   }
 
   public static void setLong(int index, String data, PreparedStatement statement) {
+    // added for debugging.  Uncomment if needed.
+    // System.out.println("Long " + data + " : " + index);
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.INTEGER);
@@ -55,6 +101,8 @@ public class SqlStatementHelper {
   }
 
   public static void setDouble(int index, String data, PreparedStatement statement) {
+    // added for debugging.  Uncomment if needed.
+    // System.out.println("Double " + data + " : " + index);
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.DOUBLE);
@@ -67,6 +115,8 @@ public class SqlStatementHelper {
   }
 
   public static void setTimestamp(int index, String data, PreparedStatement statement) {
+    // added for debugging.  Uncomment if needed.
+    // System.out.println("timestamp data " + data + " : " + index);
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
         statement.setNull(index + 1, Types.TIMESTAMP);
@@ -78,6 +128,13 @@ public class SqlStatementHelper {
     }
   }
 
+  /**
+   * maxChars - Truncates data without trimming.
+   *
+   * @param data - string to truncate
+   * @param maxLength - max length of string. If string is shorter, just return string.
+   * @return - truncated string
+   */
   public static String maxChars(String data, int maxLength) {
     if (data.length() <= maxLength) {
       return data;
