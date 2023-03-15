@@ -19,7 +19,6 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   private int federalId = 20231001;
   private String federalIdFileName = "federalIdHashMap.json";
 
-
   public CMMALLoader() {
     setLoaderName("CMMAL");
     connectionManager = ConnectionManager.getInstance();
@@ -38,16 +37,15 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
   }
 
   private void setUpFederalIdMap() {
-    try{
+    try {
 
-        ClassLoader classLoader = getClass().getClassLoader();
-        InputStream inputStream = classLoader.getResourceAsStream(federalIdFileName);
-        JsonReader parser = Json.createReader(inputStream);
-        JsonObject hashData = parser.readObject();
-        Map<String, JsonValue> federalIdMap = new HashMap<>(hashData);
+      ClassLoader classLoader = getClass().getClassLoader();
+      InputStream inputStream = classLoader.getResourceAsStream(federalIdFileName);
+      JsonReader parser = Json.createReader(inputStream);
+      JsonObject hashData = parser.readObject();
+      Map<String, JsonValue> federalIdMap = new HashMap<>(hashData);
 
-    }
-    catch (Exception e){
+    } catch (Exception e) {
       System.out.println(e.getMessage());
     }
   }
@@ -113,12 +111,10 @@ public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setInt(index, data[index++], statement); // id
         SqlStatementHelper.setInt(index, data[index++], statement); // RRN
 
-
         boolean rowInserted = statement.executeUpdate() > 0;
 
         count++;
         System.out.println("RowInserted : " + rowInserted + ". Row Number : " + count);
-
       }
 
     } catch (FileNotFoundException e) {
