@@ -78,7 +78,7 @@ public class CMHMRLoader extends AbstractDataLoader implements IDataLoader {
     }
   }
 
-  private static void setValuesToInsert(PreparedStatement statement, String[] data)
+  private void setValuesToInsert(PreparedStatement statement, String[] data)
       throws SQLException {
     statement.setString(1, data[0]); // [DELETE_CODE]
     statement.setInt(2, Integer.parseInt(data[1])); // CASE_DIV
@@ -104,7 +104,7 @@ public class CMHMRLoader extends AbstractDataLoader implements IDataLoader {
     statement.setInt(22, Integer.parseInt(data[21])); // CDB_CREATE_DATE
     statement.setInt(23, Integer.parseInt(data[22])); // CDB_UPDATE_DATE
 
-    // Nullify timestamp columns - story#111
+
 
     if (data[23] == null || data[23] == "NULL" || data[23].isEmpty() || data[23].contains("NULL")) {
       statement.setNull(24, Types.TIMESTAMP); // REPORT_DATE_DT
@@ -182,6 +182,20 @@ public class CMHMRLoader extends AbstractDataLoader implements IDataLoader {
     statement.setInt(36, Integer.parseInt(data[35])); // RRN
   }
 
+  private void setTimeStamp(int dataIndex, String data, PreparedStatement statement) {
+
+    try {
+      if (data == null || data.isEmpty() || data.contains("NULL")) {
+
+        statement.setNull(dataIndex + 1, Types.TIMESTAMP);
+      } else {
+        // statement.setTimestamp(dataIndex+1, Timestamp.valueOf(data)); //Nullify timestamp columns - story#111
+        statement.setNull(dataIndex+1, Types.TIMESTAMP);
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
   @Override
   public void clearTable() {
     Connection connection = this.connectionManager.getConnection();
