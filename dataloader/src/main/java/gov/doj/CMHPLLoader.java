@@ -89,7 +89,7 @@ public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
         SqlStatementHelper.setTimestamp(
             index++, "NULL",
             statement); // UPDATE_DATE Story #111 ; using NULL since data is messed up in the input
-                        // csv for this column.
+        // csv for this column.
         SqlStatementHelper.setTimestamp(
             index++, "NULL",
             statement); // REPLICATED_DATE Story #111, set timestamp columns to null.
