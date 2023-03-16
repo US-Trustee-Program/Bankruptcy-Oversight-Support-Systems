@@ -1,4 +1,4 @@
-import { httpSuccess } from "../utils/http";
+import { httpSuccess } from "../utils/http.js";
 
 const NAMESPACE = 'BASIC-ENDPOINTS-CONTROLLER';
 

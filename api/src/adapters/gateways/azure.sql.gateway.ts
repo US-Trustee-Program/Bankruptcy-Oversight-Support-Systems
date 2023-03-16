@@ -1,8 +1,8 @@
 import mssql, { ISqlType } from 'mssql';
-import log from '../logging.service';
-import { RecordObj, ObjectKeyVal } from '../types/basic';
-import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database';
-import { runQuery } from '../utils/database';
+import log from '../logging.service.js';
+import { RecordObj, ObjectKeyVal } from '../types/basic.js';
+import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database.js';
+import { runQuery } from '../utils/database.js';
 
 //import { DefaultAzureCredential } from '@azure/identity';
 
