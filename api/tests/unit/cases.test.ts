@@ -13,7 +13,7 @@ describe('cases-endpoints', () => {
     staff2: string;
     idi_status: string;
     idi_date: string;
-    chapters_id: string; 
+    chapters_id: string;
   }
   let list: CaseList[];
   let casesMock: {list: CaseList[]};
