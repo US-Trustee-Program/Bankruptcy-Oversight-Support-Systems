@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import log from '../logging.service.js';
-import useCase from '../../use-cases/';
+import useCase from '../../use-cases/index.js';
 import { httpSuccess, httpError } from '../utils/http.js';
 import proxyData from '../data-access.proxy.js';
 import { ChaptersPersistenceGateway } from '../types/persistence-gateway.js';

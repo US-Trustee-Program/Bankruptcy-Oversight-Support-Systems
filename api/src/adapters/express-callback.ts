@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { HttpResponse } from './types/http';
-import log from './logging.service';
+import log from './logging.service.js';
 
 const NAMESPACE = 'EXPRESS-CALLBACK';
 

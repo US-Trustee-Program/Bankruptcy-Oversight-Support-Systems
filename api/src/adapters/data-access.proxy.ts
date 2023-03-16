@@ -4,9 +4,9 @@
  *   - an Azure SQL connection otherwise
  */
 
-import config from '../configs/default.config';
+import config from '../configs/default.config.js';
 import { PersistenceGateway } from './types/persistence-gateway';
-import log from './logging.service';
+import log from './logging.service.js';
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
@@ -25,10 +25,10 @@ async function proxyData(table: string, mock: boolean = false): Promise<Persiste
   let database: PersistenceGateway;
   if (config.dbMock || mock) {
     log('info', NAMESPACE, 'using local in-memory database');
-    return await import(`./gateways/${table}.local.inmemory.gateway`);
+    return await import(`./gateways/${table}.local.inmemory.gateway.js`);
   } else {
     log('info', NAMESPACE, 'using MSSQL database');
-    return await import(`./gateways/${table}.azure.sql.gateway`);
+    return await import(`./gateways/${table}.azure.sql.gateway.js`);
   }
 }
 

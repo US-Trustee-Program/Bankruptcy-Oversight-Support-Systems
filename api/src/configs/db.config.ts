@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { IDbConfig } from '../adapters/types/database.d';
 
 dotenv.config();
+console.log(process.env);
 
 const MSSQL_HOST = process.env.MSSQL_HOST || 'localhost';
 const MSSQL_DATABASE = process.env.MSSQL_DATABASE || 'nodebooks';

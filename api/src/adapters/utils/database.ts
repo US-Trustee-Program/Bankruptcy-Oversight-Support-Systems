@@ -1,7 +1,7 @@
 import mssql from 'mssql';
-import log from '../logging.service';
-import { DbTableFieldSpec, QueryResults } from '../types/database';
-import config from '../../configs/default.config';
+import log from '../logging.service.js';
+import { DbTableFieldSpec, QueryResults } from '../types/database.js';
+import config from '../../configs/default.config.js';
 
 const NAMESPACE = 'DATABASE-UTILITY';
 

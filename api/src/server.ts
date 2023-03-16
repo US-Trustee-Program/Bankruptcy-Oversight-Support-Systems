@@ -1,9 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express';
 import http from 'http';
-import log from './adapters/logging.service';
-import config from './configs/default.config';
-import loadRoutes from './routes/index.routes';
-import { AppConfig } from './adapters/types/basic';
+import log from './adapters/logging.service.js';
+import config from './configs/default.config.js';
+import loadRoutes from './routes/index.routes.js';
+import { AppConfig } from './adapters/types/basic.js';
+
 
 const NAMESPACE = 'Server';
 
