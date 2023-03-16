@@ -12,14 +12,14 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
 
 /**
  * Method: proxyData
- *  
+ *
  * @param table A particular primary DB table that we will be working with
  * @param mock This parameter defaults to false, which should be the normal operation.
  *               As false, it will use an environment variable to determine if it should provide
  *               an in-memory data object as a mock database, or to use an actual Azure database.
  *               This parameter is provided for Unit Tests, in which we probably want to use a local
  *               in-memory data object regardless of the environment variable set.
- * @returns An object of type PersistenceGateway 
+ * @returns An object of type PersistenceGateway
  */
 async function proxyData(table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
   let database: PersistenceGateway;
