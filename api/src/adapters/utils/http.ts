@@ -1,4 +1,4 @@
-import log from '../logging.service';
+import log from '../logging.service.js';
 import { HttpResponse } from '../types/http';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';

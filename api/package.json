@@ -8,7 +8,8 @@
     "build": "rm -rf build && tsc",
     "format": "prettier --write src/",
     "start": "npm run build && cd build && node server.js",
-    "start-dev": "nodemon --esm src/server.ts",
+    "start:local": "npm run build && cp src/.env build/ && cd build && node server.js",
+    "start:dev": "nodemon --esm src/server.ts",
     "test": "DATABASE_MOCK='true' mocha --exit -r ts-node/register tests/unit/**/*.test.ts"
   },
   "author": "",

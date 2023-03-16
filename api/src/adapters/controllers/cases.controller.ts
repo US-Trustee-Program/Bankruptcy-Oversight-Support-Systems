@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import log from '../logging.service.js';
-import useCase from '../../use-cases/';
+import useCase from '../../use-cases/index.js';
 import { RecordObj } from '../types/basic.js';
 import { httpError, httpSuccess } from '../utils/http.js';
 import proxyData from '../data-access.proxy.js';

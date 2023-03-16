@@ -1,4 +1,4 @@
-import { ObjectKeyValArrayKeyVal } from '../types/basic';
+import { ObjectKeyValArrayKeyVal } from '../types/basic.js';
 
 async function getProperty(table: string, item: string) {
   console.log(`importing ${table}`);

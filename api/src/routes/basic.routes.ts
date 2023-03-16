@@ -4,8 +4,8 @@
  */
 
 import express from 'express';
-import controller from '../adapters/controllers/basic.controller';
-import makeCallback from './../adapters/express-callback';
+import controller from '../adapters/controllers/basic.controller.js';
+import makeCallback from './../adapters/express-callback.js';
 
 const router = express.Router();
 
