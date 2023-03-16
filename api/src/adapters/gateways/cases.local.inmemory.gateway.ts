@@ -1,8 +1,8 @@
-import log from '../logging.service';
-import { getProperty, mockData } from '../mock-data';
-import { ObjectKeyVal, RecordObj } from '../types/basic';
-import { DbResult } from '../types/database';
-import { createRecord, updateRecord, deleteRecord, validateTableName } from './local.inmemory.gateway';
+import log from '../logging.service.js';
+import { getProperty, mockData } from '../mock-data/';
+import { ObjectKeyVal, RecordObj } from '../types/basic.js';
+import { DbResult } from '../types/database.js';
+import { createRecord, updateRecord, deleteRecord, validateTableName } from './local.inmemory.gateway.js';
 
 const NAMESPACE = 'CASES-LOCAL-INMEMORY-DATA-MODULE';
 

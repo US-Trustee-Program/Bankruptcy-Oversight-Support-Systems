@@ -1,6 +1,6 @@
-import log from '../logging.service';
-import { ObjectKeyVal, RecordObj } from '../types/basic';
-import { DbResult } from '../types/database';
+import log from '../logging.service.js';
+import { ObjectKeyVal, RecordObj } from '../types/basic.js';
+import { DbResult } from '../types/database.js';
 import { getProperty, mockData } from '../mock-data/';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';

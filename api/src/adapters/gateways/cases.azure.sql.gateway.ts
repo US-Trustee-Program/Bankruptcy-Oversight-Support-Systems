@@ -1,8 +1,8 @@
 import mssql from 'mssql';
-import { RecordObj } from '../types/basic';
-import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
-import { runQuery } from '../utils/database';
-import { createRecord, updateRecord, deleteRecord } from './azure.sql.gateway';
+import { RecordObj } from '../types/basic.js';
+import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database.js';
+import { runQuery } from '../utils/database.js';
+import { createRecord, updateRecord, deleteRecord } from './azure.sql.gateway.js';
 
 const table = 'cases';
 

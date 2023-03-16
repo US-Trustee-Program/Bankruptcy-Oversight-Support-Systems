@@ -1,9 +1,9 @@
 import { Request } from 'express';
-import log from '../logging.service';
-import useCase from '../../use-cases';
-import { httpSuccess, httpError } from '../utils/http';
-import proxyData from '../data-access.proxy';
-import { ChaptersPersistenceGateway } from '../types/persistence-gateway';
+import log from '../logging.service.js';
+import useCase from '../../use-cases/';
+import { httpSuccess, httpError } from '../utils/http.js';
+import proxyData from '../data-access.proxy.js';
+import { ChaptersPersistenceGateway } from '../types/persistence-gateway.js';
 
 const NAMESPACE = 'CHAPTERS-CONTROLLER';
 

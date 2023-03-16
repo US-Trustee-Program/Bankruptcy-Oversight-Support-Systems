@@ -1,10 +1,10 @@
 import { Request } from 'express';
-import log from '../logging.service';
-import useCase from '../../use-cases';
-import { RecordObj } from '../types/basic';
-import { httpError, httpSuccess } from '../utils/http';
-import proxyData from '../data-access.proxy';
-import { CasePersistenceGateway } from '../types/persistence-gateway';
+import log from '../logging.service.js';
+import useCase from '../../use-cases/';
+import { RecordObj } from '../types/basic.js';
+import { httpError, httpSuccess } from '../utils/http.js';
+import proxyData from '../data-access.proxy.js';
+import { CasePersistenceGateway } from '../types/persistence-gateway.js';
 
 const NAMESPACE = 'CASES-CONTROLLER';
 

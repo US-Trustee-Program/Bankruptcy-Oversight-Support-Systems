@@ -1,5 +1,5 @@
-import { DbResult } from '../types/database';
-import { getAll } from './azure.sql.gateway';
+import { DbResult } from '../types/database.js';
+import { getAll } from './azure.sql.gateway.js';
 
 const getChaptersList = async (): Promise<DbResult> => {
   return await getAll('chapters');
