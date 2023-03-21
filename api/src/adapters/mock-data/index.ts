@@ -1,10 +1,7 @@
 import { ObjectKeyValArrayKeyVal } from '../types/basic.js';
 
 async function getProperty(table: string, item: string) {
-  console.log(`importing ${table}`);
   const obj = await import(`./${table}.mock`);
-  console.log(`returning ${table}[${item}]`);
-  console.log(obj[item]);
   return obj[item];
 }
 

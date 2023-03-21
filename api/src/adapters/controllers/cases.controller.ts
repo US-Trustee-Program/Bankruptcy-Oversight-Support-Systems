@@ -80,7 +80,6 @@ const updateCase = async (httpRequest: Request) => {
     }
 
     const result = await useCase.updateCase(casesDb, caseId, record);
-    console.log(result);
 
     // success
     return httpSuccess(result);

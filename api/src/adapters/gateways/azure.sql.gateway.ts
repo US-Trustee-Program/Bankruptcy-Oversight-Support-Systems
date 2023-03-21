@@ -13,7 +13,6 @@ const NAMESPACE = 'AZURE-SQL-MODULE';
 const getAll = async (table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
   const queryResult: QueryResults = await runQuery(table, query);
-  console.log(queryResult.results);
   let results: DbResult;
 
   if (queryResult.success) {
