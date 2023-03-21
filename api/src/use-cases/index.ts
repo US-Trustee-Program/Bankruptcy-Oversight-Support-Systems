@@ -1,9 +1,5 @@
 import { RecordObj } from '../adapters/types/basic';
-import { ChaptersPersistenceGateway, CasePersistenceGateway } from '../adapters/types/persistence-gateway';
-
-async function listChapters(database: ChaptersPersistenceGateway) {
-  return await database.getChaptersList();
-}
+import { CasePersistenceGateway } from '../adapters/types/persistence-gateway';
 
 async function addCase(database: CasePersistenceGateway, fields: RecordObj[]) {
   return await database.createCase(fields);
@@ -31,5 +27,4 @@ export default {
   getCase,
   updateCase,
   deleteCase,
-  listChapters,
 };

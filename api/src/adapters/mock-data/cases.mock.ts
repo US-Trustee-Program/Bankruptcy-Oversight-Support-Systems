@@ -1,13 +1,14 @@
 const list = [
-  { cases_id: 1, staff1: 'Adam', staff2: 'Chava', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 2, staff1: 'Cayin', staff2: 'Chavel', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 3, staff1: 'Seth', staff2: 'Enosh', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 4, staff1: 'Enoch', staff2: 'Noah', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 5, staff1: 'Shem', staff2: 'Ham', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 6, staff1: 'Micah', staff2: 'David', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 7, staff1: 'Isaiah', staff2: 'Marry', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 8, staff1: 'Aaron', staff2: 'Yosi', idi_status: '', idi_date: '', chapters_id: '3' },
-  { cases_id: 9, staff1: 'Sarah', staff2: 'Matt', idi_status: '', idi_date: '', chapters_id: '3' },
+  { CASE_DIV: 400, STAFF1_PROF_CODE: 'Adam', STAFF2_PROF_CODE: 'Chava', CASE_YEAR: '22', CASE_NUMBER: '90000', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 401, STAFF1_PROF_CODE: 'Cayin', STAFF2_PROF_CODE: 'Chavel', CASE_YEAR: '22', CASE_NUMBER: '90001', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 402, STAFF1_PROF_CODE: 'Seth', STAFF2_PROF_CODE: 'Enosh', CASE_YEAR: '22', CASE_NUMBER: '90002', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 403, STAFF1_PROF_CODE: 'Enoch', STAFF2_PROF_CODE: 'Noah', CASE_YEAR: '22', CASE_NUMBER: '90003', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 404, STAFF1_PROF_CODE: 'Shem', STAFF2_PROF_CODE: 'Ham', CASE_YEAR: '23', CASE_NUMBER: '90004', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 405, STAFF1_PROF_CODE: 'Micah', STAFF2_PROF_CODE: 'David', CASE_YEAR: '23', CASE_NUMBER: '90005', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 406, STAFF1_PROF_CODE: 'Isaiah', STAFF2_PROF_CODE: 'Marry', CASE_YEAR: '23', CASE_NUMBER: '90006', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 407, STAFF1_PROF_CODE: 'Aaron', STAFF2_PROF_CODE: 'Yosi', CASE_YEAR: '23', CASE_NUMBER: '90007', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 408, STAFF1_PROF_CODE: 'Sarah', STAFF2_PROF_CODE: 'Matt', CASE_YEAR: '24', CASE_NUMBER: '90008', CURR_CASE_CHAPT: '11' },
+  { CASE_DIV: 409, STAFF1_PROF_CODE: 'Marta', STAFF2_PROF_CODE: 'Elizabeth', CASE_YEAR: '24', CASE_NUMBER: '90009', CURR_CASE_CHAPT: '11' },
 ];
 
 export { list };

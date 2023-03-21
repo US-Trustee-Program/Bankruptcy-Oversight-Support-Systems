@@ -10,17 +10,8 @@ const table = 'cases';
 
 async function initializeCases(): Promise<ObjectKeyVal[]> {
   let caseList: ObjectKeyVal[] = [];
-  let chaptersList: string[] = [];
 
-  mockData['chapters'] = await getProperty('chapters', 'list');
   caseList = await getProperty(table, 'list');
-  for (let i = 0; i < mockData['chapters'].length; i++) {
-    chaptersList.push(mockData['chapters'][i].chapter_name as string);
-  }
-  caseList.forEach((rec: ObjectKeyVal) => {
-    const chapterId = rec['chapters_id'];
-    rec['chapter_title'] = chaptersList[+chapterId];
-  });
   return caseList;
 }
 
@@ -55,6 +46,7 @@ const getCaseList = async (): Promise<DbResult> => {
 const getCase = async (id: number): Promise<DbResult> => {
   let caseList: ObjectKeyVal[] = [];
   let record: ObjectKeyVal = {};
+  let results: DbResult;
 
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
 
@@ -66,18 +58,32 @@ const getCase = async (id: number): Promise<DbResult> => {
   }
 
   if (mockData.hasOwnProperty(table)) {
-    const data = caseList.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
-    if (data) record = data;
+    //const data = caseList.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
+    const data = caseList.filter((rec) => rec['CASE_DIV'] == `${id}`).pop();
+    if (data) {
+      log('info', NAMESPACE, `record from ${table} found`, data);
+      results = {
+        message: `${table} record`,
+        count: 1,
+        body: [data],
+        success: true,
+      };
+    } else {
+      results = {
+        message: `record not found`,
+        count: 0,
+        body: {},
+        success: false,
+      };
+    }
+  } else {
+    results = {
+      message: `record not found`,
+      count: 0,
+      body: {},
+      success: false,
+    };
   }
-
-  const results: DbResult = {
-    message: `${table} record`,
-    count: 1,
-    body: [record],
-    success: true,
-  };
-
-  log('info', NAMESPACE, `record from ${table} found`, results);
 
   return results;
 };
@@ -87,11 +93,70 @@ const createCase = async (fieldArr: RecordObj[]): Promise<DbResult> => {
 };
 
 const updateCase = async (id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
-  return await updateRecord(table, id, fieldArr);
+  log('info', NAMESPACE, `Update record for ${table}`, fieldArr);
+
+  let newRecord: ObjectKeyVal = {};
+
+  if (mockData.hasOwnProperty(table)) {
+    for (let i = 0; i < mockData[table].length; i++) {
+      log('info', NAMESPACE, `Searching for ${id}`);
+      let oldRecord = mockData[table][i];
+      if (oldRecord[`CASE_DIV`] == id) {
+        log('info', NAMESPACE, 'record found', oldRecord);
+        newRecord[`CASE_DIV`] = id;
+        fieldArr.map((field) => {
+          newRecord[field.fieldName] = field.fieldValue as string;
+        });
+
+        log('info', NAMESPACE, `New record: `, newRecord);
+        mockData[table][i] = newRecord;
+      }
+    }
+    return {
+      success: true,
+      count: 1,
+      message: '',
+      body: newRecord,
+    };
+  } else {
+    return {
+      success: false,
+      count: 0,
+      message: `data ${table} could not be found.`,
+      body: {},
+    };
+  }
 };
 
 const deleteCase = async (id: number): Promise<DbResult> => {
-  return await deleteRecord(table, id);
+  log('info', NAMESPACE, `Delete record ${id} for ${table}`);
+
+  if (mockData.hasOwnProperty(table)) {
+    const data = mockData[table].filter((rec) => rec[`CASE_DIV`] != id);
+    if (data) {
+      mockData[table] = data;
+      return {
+        success: true,
+        count: 1,
+        message: `Record ${id} successfully deleted`,
+        body: {},
+      };
+    } else {
+      return {
+        success: false,
+        count: 0,
+        message: `Record ${id} could not be deleted`,
+        body: {},
+      };
+    }
+  } else {
+    return {
+      success: false,
+      count: 0,
+      message: `Record ${id} could not be found`,
+      body: {},
+    };
+  }
 };
 
 export { getCaseList, getCase, createCase, updateCase, deleteCase };
