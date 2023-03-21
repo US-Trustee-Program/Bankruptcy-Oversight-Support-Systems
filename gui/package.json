@@ -51,7 +51,7 @@
   },
   "scripts": {
     "start": "sh .env && react-scripts start",
-    "build": "react-scripts build && cp src/staticwebapp.config.json build/",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint .",
