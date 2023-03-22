@@ -1,0 +1,10 @@
+{
+  "loader": "ts-node/esm",
+  "extension": ["ts", "tsx", "js", "jsx"],
+  "spec": [
+    "tests/**/*.test.{js,ts,jsx,tsx}"
+  ],
+  "watch-files": [
+    "src/**/*.{js,ts,jsx,tsx,json}"
+  ]
+}
