@@ -15,6 +15,7 @@ public class LoaderMap {
     map.put("cmmcd", new CMMCDLoader());
     map.put("cmhhr", new CMHHRLoader());
     map.put("cmmpr", new CMMPRLoader());
+    map.put("cmmpt", new CMMPTLoader());
     //    map.put("cmmdb", new CMMDBLoader());
   }
 
