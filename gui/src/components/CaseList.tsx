@@ -3,16 +3,14 @@ import Api, { ResponseData } from '../models/api';
 import './CaseList.scss';
 
 type caseType = {
-  cases_id: number;
-  chapters_id: number;
-  chapter_title: string;
-  idi_date: string;
-  idi_status: string;
-  staff1: string;
-  staff2: string;
+  CASE_DIV: number;
+  CASE_YEAR: number;
+  CASE_NUMBER: number;
+  CURR_CASE_CHAPT: string;
+  STAFF1_PROF_CODE: number;
+  STAFF2_PROF_CODE: number;
 };
 
-//export const CaseList: React.FC<caseType> = () => {
 export const CaseList = () => {
   const api = new Api();
   const [caseList, setCaseList] = useState<ResponseData>({
@@ -42,24 +40,24 @@ export const CaseList = () => {
       <table>
         <thead>
           <tr>
+            <th>Case Div</th>
+            <th>Case Year</th>
             <th>Case Number</th>
             <th>Chapter</th>
-            <th>Staff</th>
-            <th>IDI Date</th>
-            <th>IDI Status</th>
+            <th>Staff 1</th>
+            <th>Staff 2</th>
           </tr>
         </thead>
         <tbody>
           {caseList.count > 0 &&
             (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
               <tr key={idx}>
-                <td>{theCase.cases_id}</td>
-                <td>{theCase.chapter_title}</td>
-                <td>
-                  {theCase.staff1}, {theCase.staff2}
-                </td>
-                <td>{theCase.idi_date.substring(0, 10)}</td>
-                <td>{theCase.idi_status}</td>
+                <td>{theCase.CASE_DIV}</td>
+                <td>{theCase.CASE_YEAR}</td>
+                <td>{theCase.CASE_NUMBER}</td>
+                <td>{theCase.CURR_CASE_CHAPT}</td>
+                <td>{theCase.STAFF1_PROF_CODE}</td>
+                <td>{theCase.STAFF2_PROF_CODE}</td>
               </tr>
             ))}
         </tbody>
