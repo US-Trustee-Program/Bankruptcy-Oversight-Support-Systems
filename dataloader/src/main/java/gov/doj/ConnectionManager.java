@@ -14,11 +14,15 @@ public class ConnectionManager {
   private ConnectionManager() {
     properties = new Properties();
     try {
-      properties.load(Driver.class.getClassLoader().getResourceAsStream("application.properties"));
-      properties.load(Driver.class.getClassLoader().getResourceAsStream(".env"));
+        properties.load(getClass().getClassLoader().getResourceAsStream("application.properties"));
+        properties.load(Driver.class.getClassLoader().getResourceAsStream(".env"));
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }catch (Exception e){
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
+
   }
 
   public static ConnectionManager getInstance() {
