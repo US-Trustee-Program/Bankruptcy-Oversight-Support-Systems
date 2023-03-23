@@ -26,7 +26,6 @@
       "react-dom/next",
       "@types/mocha",
       "@types/chai",
-      "mocha",
       "node"
     ]
   },
@@ -34,7 +33,6 @@
     "node_modules"
   ],
   "include": [
-    "src/**/*",
-    "tests/**/*"
+    "src/**/*"
   ]
 }
