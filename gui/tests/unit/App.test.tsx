@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../../src/App';
 
-test('renders Total Active Cases', () => {
+test('renders Total Active Cases', async () => {
   render(
     <BrowserRouter>
       <App />
