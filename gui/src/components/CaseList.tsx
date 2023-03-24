@@ -19,7 +19,6 @@ type caseType = {
   STAFF2_PROF_CODE: number;
 };
 
-//export const CaseList: React.FC<caseType> = () => {
 export const CaseList = () => {
   const api = new Api();
   const [caseList, setCaseList] = useState<ResponseData>({
