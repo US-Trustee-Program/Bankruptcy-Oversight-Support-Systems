@@ -62,19 +62,41 @@ jobs:
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }}'
 
-# TODO : Uncomment for testing bicep deployment
-#      - name: Download artifact from build job
-#        uses: actions/download-artifact@v3
-#        with:
-#          name: ustp-boss
-#
-#      - name: Unarchive the build
-#        run: |
-#          tar -xf ustp-boss.tar
-#
-#      - name: Deploy to Azure WebApp
-#        run: |
-#          cd build
-#          echo "Contents of build folder:"
-#          ls
-#          az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v3
+        with:
+          name: ustp-boss
+
+      - name: Unarchive the build
+        run: |
+          tar -xf ustp-boss.tar
+
+      - name: Deploy to Azure WebApp
+        run: |
+          cd build
+          echo "Contents of build folder:"
+          ls
+          az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
+
+      - name: Deploy Node API to Azure
+        run: |
+          newip=$(az container create \
+            --os-type Linux \
+            --resource-group bankruptcy-oversight-support-systems \
+            --name ustp-boss-dev-api \
+            --image ustpbossregistry.azurecr.io/ustp/backend:latest \
+            --cpu 1 \
+            --memory 1 \
+            --vnet ustp-boss-dev-vnet \
+            --subnet ustp-boss-dev-vnet-api-backend \
+            --registry-username ${{ ACR_USERNAME }} \
+            --registry-password ${{ ACR_TOKEN }} \
+            --query ipAddress.ip \
+            --output tsv)
+          
+          az network application-gateway address-pool update \
+            --resource-group bankruptcy-oversight-support-systems \
+            --gateway-name ustp-boss-dev-api-agw \
+            --name ustp-boss-dev-api-agw-https-backend-targets \
+            --remove backendAddresses 0 \
+            --add backendAddresses ipAddress=${newip}
