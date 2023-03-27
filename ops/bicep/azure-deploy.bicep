@@ -214,10 +214,12 @@ output apiPublicIpAddress string = ustpApiAgwPublicIp.properties.ipAddress
 
 var apiAgwName = '${appName}-api-agw'
 var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
+var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
 var apiAgwHttpsCertName = '${apiAgwName}-https-cert'
 var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
 var apiAgwHttpsBackendTargetsName = '${apiAgwName}-https-backend-targets'
 var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
+var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
 
 var agwAssignedIdentity = '${subscription().id}/resourcegroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${serviceAccountManagedId}'
 
@@ -269,6 +271,12 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
     sslProfiles: []
     frontendPorts: [
       {
+        name: 'port_80'
+        properties: {
+          port: 80
+        }
+      }
+      {
         name: 'port_443'
         properties: {
           port: 443
@@ -314,6 +322,18 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           }
         }
       }
+      {
+        name: apiAgwHttpListenerName
+        properties: {
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendIp')
+          }
+          frontendPort: {
+            id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', apiAgwName, 'port_80')
+          }
+          protocol: 'Http'
+        }
+      }
     ]
     listeners: []
     urlPathMaps: []
@@ -325,6 +345,22 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           priority: 100
           httpListener: {
             id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
+          }
+          backendAddressPool: {
+            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwHttpsBackendTargetsName)
+          }
+          backendHttpSettings: {
+            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', apiAgwName, apiAgwHttpBackendSettingsName)
+          }
+        }
+      }
+      {
+        name: apiAgwHttpRoutingRuleName
+        properties: {
+          ruleType: 'Basic'
+          priority: 200
+          httpListener: {
+            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpListenerName)
           }
           backendAddressPool: {
             id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwHttpsBackendTargetsName)
