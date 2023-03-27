@@ -37,33 +37,33 @@ export default class Api {
   }
 
   public async list(path: string): Promise<ResponseData> {
-    //try {
-    const response = await fetch(this._host + path, {
-      method: 'GET',
-      headers: {
-        'content-type': 'application/json;charset=UTF-8',
-      },
-    });
+    try {
+      const response = await fetch(this._host + path, {
+        method: 'GET',
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    console.log(response);
-    if (response.ok) {
-      console.log('Response was OK');
-      console.log(data);
-      return data;
-    } else {
-      return Promise.reject(
-        new Error(`404 Error - Not Found ${data?.toString()} - Response was not OK`),
-      );
-    }
-    /*} catch (e) {
+      console.log(response);
+      if (response.ok) {
+        console.log('Response was OK');
+        console.log(data);
+        return data;
+      } else {
+        return Promise.reject(
+          new Error(`404 Error - Not Found ${data?.toString()} - Response was not OK`),
+        );
+      }
+    } catch (e) {
       return Promise.reject(
         //new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
-        new Error(`404 Error - Not found - caught error`),
+        //new Error(`404 Error - Not found - caught error`),
+        console.error(e),
       );
     }
-    */
   }
 
   public async read(path: string, id: string): Promise<ResponseData> {
