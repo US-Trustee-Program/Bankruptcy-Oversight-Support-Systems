@@ -54,13 +54,14 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Run Bicep deploy
-        uses: azure/arm-deploy@v1
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
-          template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }}'
+# TODO : commented for testing container deployment
+#      - name: Run Bicep deploy
+#        uses: azure/arm-deploy@v1
+#        with:
+#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+#          resourceGroupName: ${{ secrets.AZURE_RG }}
+#          template: ./ops/bicep/azure-deploy.bicep
+#          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }}'
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
@@ -93,10 +94,13 @@ jobs:
             --registry-password ${{ secrets.ACR_TOKEN }} \
             --query ipAddress.ip \
             --output tsv)
-          
-          az network application-gateway address-pool update \
-            --resource-group bankruptcy-oversight-support-systems \
-            --gateway-name ustp-boss-dev-api-agw \
-            --name ustp-boss-dev-api-agw-https-backend-targets \
-            --remove backendAddresses 0 \
-            --add backendAddresses ipAddress=${newip}
+            
+          echo $newip
+
+# TODO Commented for testing
+#          az network application-gateway address-pool update \
+#            --resource-group bankruptcy-oversight-support-systems \
+#            --gateway-name ustp-boss-dev-api-agw \
+#            --name ustp-boss-dev-api-agw-https-backend-targets \
+#            --remove backendAddresses 0 \
+#            --add backendAddresses ipAddress=${newip}
