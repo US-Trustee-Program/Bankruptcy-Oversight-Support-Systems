@@ -47,6 +47,7 @@ export default class Api {
 
       const data = await response.json();
 
+      console.log(response);
       if (response.ok) {
         return data;
       } else {
