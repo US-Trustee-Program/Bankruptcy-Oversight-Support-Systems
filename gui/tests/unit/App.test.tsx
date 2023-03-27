@@ -26,12 +26,14 @@ const mockCaseList = {
   ],
 };
 
-const mockFetchList = () =>
-  Promise.resolve({
+const mockFetchList = () => {
+  console.log('mocking fetch...');
+  return Promise.resolve({
     ok: true,
     status: 200,
     json: () => Promise.resolve(mockCaseList),
   } as Response);
+};
 
 describe('Base App Tests', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
