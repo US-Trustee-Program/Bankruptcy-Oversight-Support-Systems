@@ -18,50 +18,59 @@ export const CaseList = () => {
     count: 0,
     body: [{}],
   });
-  let isWaiting = false;
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchList = async () => {
-      isWaiting = true;
+      setIsLoading(true);
       api.list('/cases').then((res) => {
         setCaseList(res);
-        isWaiting = false;
+        setIsLoading(false);
       });
     };
 
-    if (!isWaiting) {
+    if (!isLoading) {
       fetchList();
     }
   }, [caseList.count > 0]);
 
-  return (
-    <div className="case-list">
-      <h1>Case List</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Case Div</th>
-            <th>Case Year</th>
-            <th>Case Number</th>
-            <th>Chapter</th>
-            <th>Staff 1</th>
-            <th>Staff 2</th>
-          </tr>
-        </thead>
-        <tbody>
-          {caseList.count > 0 &&
-            (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
-              <tr key={idx}>
-                <td>{theCase.CASE_DIV}</td>
-                <td>{theCase.CASE_YEAR}</td>
-                <td>{theCase.CASE_NUMBER}</td>
-                <td>{theCase.CURR_CASE_CHAPT}</td>
-                <td>{theCase.STAFF1_PROF_CODE}</td>
-                <td>{theCase.STAFF2_PROF_CODE}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <div className="case-list">
+        <h1>Case List</h1>
+        <p>Loading...</p>
+      </div>
+    );
+  } else {
+    return (
+      <div className="case-list">
+        <h1>Case List</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Case Div</th>
+              <th>Case Year</th>
+              <th>Case Number</th>
+              <th>Chapter</th>
+              <th>Staff 1</th>
+              <th>Staff 2</th>
+            </tr>
+          </thead>
+          <tbody>
+            {caseList.count > 0 &&
+              (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
+                <tr key={idx}>
+                  <td>{theCase.CASE_DIV}</td>
+                  <td>{theCase.CASE_YEAR}</td>
+                  <td>{theCase.CASE_NUMBER}</td>
+                  <td>{theCase.CURR_CASE_CHAPT}</td>
+                  <td>{theCase.STAFF1_PROF_CODE}</td>
+                  <td>{theCase.STAFF2_PROF_CODE}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 };

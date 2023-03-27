@@ -54,7 +54,7 @@
     "start": "sh .env && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --watchAll=false --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}'",
-    "test:watch": "react-scripts test --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}'",
+    "test:watch": "react-scripts test --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage",
     "eject": "react-scripts eject",
     "lint": "eslint .",
     "lint:fix": "eslint --fix",

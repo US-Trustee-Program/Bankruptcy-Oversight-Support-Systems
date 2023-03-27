@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen, waitForElementToBeRemoved } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../../src/App';
 
@@ -46,17 +46,15 @@ describe('Base App Tests', () => {
   });
 
   test('/ renders Case List', async () => {
-    act(() => {
-      render(
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>,
-      );
-    });
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
 
-    expect(1).toBe(1);
     expect(fetchMock).toHaveBeenCalled();
-    /*
+    await waitForElementToBeRemoved(() => screen.queryByText('Loading...'));
+
     const h1 = screen.getByText(/Case List/i);
     expect(h1).toBeInTheDocument();
 
@@ -67,6 +65,8 @@ describe('Base App Tests', () => {
     expect(tableHeader[3].textContent).toBe('Chapter');
     expect(tableHeader[4].textContent).toBe('Staff 1');
     expect(tableHeader[5].textContent).toBe('Staff 2');
-    */
+
+    const tableRows = screen.getAllByRole('row');
+    expect(tableRows).toHaveLength(mockCaseList.body.length + 1);
   });
 });
