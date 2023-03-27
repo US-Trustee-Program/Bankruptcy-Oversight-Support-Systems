@@ -50,6 +50,7 @@ export default class Api {
       console.log(response);
       if (response.ok) {
         console.log('Response was OK');
+        console.log(data);
         return data;
       } else {
         return Promise.reject(
