@@ -95,12 +95,9 @@ jobs:
             --query ipAddress.ip \
             --output tsv)
             
-          echo $newip
-
-# TODO Commented for testing
-#          az network application-gateway address-pool update \
-#            --resource-group bankruptcy-oversight-support-systems \
-#            --gateway-name ustp-boss-dev-api-agw \
-#            --name ustp-boss-dev-api-agw-https-backend-targets \
-#            --remove backendAddresses 0 \
-#            --add backendAddresses ipAddress=${newip}
+          echo "Adding ips to backend pool: ${newip}"
+          az network application-gateway address-pool update \
+            --resource-group bankruptcy-oversight-support-systems \
+            --gateway-name ustp-boss-dev-api-agw \
+            --name ustp-boss-dev-api-agw-https-backend-targets \
+            --servers ${newip}
