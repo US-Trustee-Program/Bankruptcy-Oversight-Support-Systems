@@ -58,10 +58,9 @@ export default class Api {
         );
       }
     } catch (e) {
+      console.error(e);
       return Promise.reject(
-        //new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
-        //new Error(`404 Error - Not found - caught error`),
-        console.error(e),
+        new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
       );
     }
   }
