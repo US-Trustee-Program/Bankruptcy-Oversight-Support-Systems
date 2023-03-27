@@ -89,8 +89,8 @@ jobs:
             --memory 1 \
             --vnet ustp-boss-dev-vnet \
             --subnet ustp-boss-dev-vnet-api-backend \
-            --registry-username ${{ ACR_USERNAME }} \
-            --registry-password ${{ ACR_TOKEN }} \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_TOKEN }} \
             --query ipAddress.ip \
             --output tsv)
           
