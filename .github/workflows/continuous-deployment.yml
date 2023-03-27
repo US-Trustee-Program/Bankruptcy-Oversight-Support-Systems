@@ -27,7 +27,7 @@ jobs:
 
       - run: npm ci
       - run: npm run build --if-present
-#      - run: CI=true npm test
+      - run: CI=true npm test
 
       - name: Archive the build directory
         id: archive
@@ -60,7 +60,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} apiAgwPublicIpAddress=${{ secrets.AZ_API_PUBLIC_IP }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }}'
 
 # TODO : Uncomment for testing bicep deployment
 #      - name: Download artifact from build job

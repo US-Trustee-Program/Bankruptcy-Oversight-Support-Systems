@@ -9,10 +9,6 @@ param serviceAccountManagedId string
 @secure()
 param apiAgwSSLCertId string
 
-@description('Static ip address for application gateway')
-@secure()
-param apiAgwPublicIpAddress string
-
 param location string = resourceGroup().location
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
@@ -192,37 +188,34 @@ resource ustpSubnetApiBackend 'Microsoft.Network/virtualNetworks/subnets@2021-03
     ]
     delegations: [
       {
+        name: 'Microsoft.ContainerInstance.containerGroups'
         properties: {
           serviceName: 'Microsoft.ContainerInstance/containerGroups'
         }
-        type: 'Microsoft.Network/virtualNetworks/subnets/delegations'
+        //     type: 'Microsoft.Network/virtualNetworks/subnets/delegations'
       }
     ]
   }
 }
 
-// NOTE: **ustpApiAgwPublicIP** will not be needed when it is time to set this gateway with a private ip
-var apiAgwPublicIP = '${appName}-api-agw-public-ip'
-resource ustpApiAgwPublicIP 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
-  name: apiAgwPublicIP
+var apiAgwPublicIp = '${appName}-api-agw-public-ip'
+resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
+  name: apiAgwPublicIp
   location: location
   sku: {
     name: 'Standard'
     tier: 'Regional'
   }
   properties: {
-    ipAddress: apiAgwPublicIpAddress
-    publicIPAddressVersion: 'IPv4'
     publicIPAllocationMethod: 'Static'
-    idleTimeoutInMinutes: 4
-    ipTags: []
   }
 }
+output apiPublicIpAddress string = ustpApiAgwPublicIp.properties.ipAddress
 
 var apiAgwName = '${appName}-api-agw'
 var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
 var apiAgwHttpsCertName = '${apiAgwName}-https-cert'
-var apiAgwHttpsBackendSettingsName = '${apiAgwName}-https-backend-settings'
+var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
 var apiAgwHttpsBackendTargetsName = '${apiAgwName}-https-backend-targets'
 var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
 
@@ -255,11 +248,10 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
     ]
     frontendIPConfigurations: [
       {
-        name: 'agwPublicFrontendIpIPv4'
+        name: 'appGatewayFrontendIp'
         properties: {
-          privateIPAllocationMethod: 'Dynamic'
           publicIPAddress: {
-            id: ustpApiAgwPublicIP.id
+            id: ustpApiAgwPublicIp.id
           }
         }
       }
@@ -287,36 +279,14 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
       {
         name: apiAgwHttpsBackendTargetsName
         properties: {
-          backendAddresses: [ {
-              ipAddress: '10.0.1.4'
-            }, {
-              ipAddress: '10.0.1.5'
-            }, {
-              ipAddress: '10.0.1.6'
-            }, {
-              ipAddress: '10.0.1.7'
-            }, {
-              ipAddress: '10.0.1.8'
-            }, {
-              ipAddress: '10.0.1.9'
-            }, {
-              ipAddress: '10.0.1.10'
-            }, {
-              ipAddress: '10.0.1.11'
-            }, {
-              ipAddress: '10.0.1.12'
-            }, {
-              ipAddress: '10.0.1.13'
-            }, {
-              ipAddress: '10.0.1.14'
-            } ]
+          backendAddresses: []
         }
       }
     ]
     loadDistributionPolicies: []
     backendHttpSettingsCollection: [
       {
-        name: apiAgwHttpsBackendSettingsName
+        name: apiAgwHttpBackendSettingsName
         properties: {
           port: 8080
           protocol: 'Http'
@@ -333,7 +303,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: apiAgwHttpsListenerName
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'agwPublicFrontendIpIPv4')
+            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendIp')
           }
           frontendPort: {
             id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', apiAgwName, 'port_443')
@@ -352,7 +322,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: apiAgwHttpsRoutingRuleName
         properties: {
           ruleType: 'Basic'
-          priority: 1
+          priority: 100
           httpListener: {
             id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
           }
@@ -360,7 +330,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
             id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwHttpsBackendTargetsName)
           }
           backendHttpSettings: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', apiAgwName, apiAgwHttpsBackendSettingsName)
+            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', apiAgwName, apiAgwHttpBackendSettingsName)
           }
         }
       }
