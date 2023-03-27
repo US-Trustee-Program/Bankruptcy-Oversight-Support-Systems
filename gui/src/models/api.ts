@@ -58,7 +58,8 @@ export default class Api {
       }
     } catch (e: unknown) {
       return Promise.reject(
-        new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
+        //new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
+        new Error(`404 Error - Not found - caught error`),
       );
     }
   }
