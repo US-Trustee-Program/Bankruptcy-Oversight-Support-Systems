@@ -49,12 +49,17 @@ export default class Api {
 
       console.log(response);
       if (response.ok) {
+        console.log('Response was OK');
         return data;
       } else {
-        return Promise.reject(new Error(`404 Error - Not Found ${data?.toString()}`));
+        return Promise.reject(
+          new Error(`404 Error - Not Found ${data?.toString()} - Response was not OK`),
+        );
       }
     } catch (e: unknown) {
-      return Promise.reject(new Error(`404 Error - Not found ${(e as Error).message}`));
+      return Promise.reject(
+        new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
+      );
     }
   }
 
