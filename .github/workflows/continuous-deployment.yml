@@ -78,6 +78,7 @@ jobs:
           echo "Contents of build folder:"
           ls
           az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
+          az webapp vnet-integration add --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} --vnet ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet --subnet ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-webapp-subnet
 
       - name: Deploy Node API to Azure
         run: |

@@ -198,19 +198,15 @@ resource ustpSubnetApiBackend 'Microsoft.Network/virtualNetworks/subnets@2021-03
   }
 }
 
-var apiAgwPublicIp = '${appName}-api-agw-public-ip'
-resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
-  name: apiAgwPublicIp
-  location: location
-  sku: {
-    name: 'Standard'
-    tier: 'Regional'
-  }
+var webappSubnetName = '${appName}-vnet-webapp'
+var webappAddressPrefix = '10.0.2.0/28'
+resource ustpSubnetWebapp 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
+  parent: ustpVirtualNetwork
+  name: webappSubnetName
   properties: {
-    publicIPAllocationMethod: 'Static'
+    addressPrefix: webappAddressPrefix
   }
 }
-output apiPublicIpAddress string = ustpApiAgwPublicIp.properties.ipAddress
 
 var apiAgwName = '${appName}-api-agw'
 var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
@@ -252,8 +248,10 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
       {
         name: 'appGatewayFrontendIp'
         properties: {
-          publicIPAddress: {
-            id: ustpApiAgwPublicIp.id
+          privateIPAddress: '10.0.1.8'
+          privateIPAllocationMethod: 'static'
+          subnet: {
+            id: ustpSubnetApiAgw.id
           }
         }
       }
@@ -344,6 +342,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           ruleType: 'Basic'
           priority: 100
           httpListener: {
+            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
             id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
           }
           backendAddressPool: {
