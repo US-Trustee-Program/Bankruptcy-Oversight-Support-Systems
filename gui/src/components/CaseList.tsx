@@ -7,8 +7,19 @@ type caseType = {
   CASE_YEAR: number;
   CASE_NUMBER: number;
   CURR_CASE_CHAPT: string;
+  GROUP_DESIGNATOR: string;
   STAFF1_PROF_CODE: number;
+  STAFF1_PROF_FIRST_NAME: string;
+  STAFF1_PROF_LAST_NAME: string;
+  STAFF1_PROF_TYPE: string;
+  STAFF1_PROF_TYPE_DESC: string;
   STAFF2_PROF_CODE: number;
+  STAFF2_PROF_FIRST_NAME: string;
+  STAFF2_PROF_LAST_NAME: string;
+  STAFF2_PROF_TYPE: string;
+  STAFF2_PROF_TYPE_DESC: string;
+  HEARING_CODE: string;
+  HEARING_DISP: string;
 };
 
 export const CaseList = () => {
@@ -19,11 +30,19 @@ export const CaseList = () => {
     body: [{}],
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [staff1Label, setStaff1Label] = useState<string>('');
+  const [staff2Label, setStaff2Label] = useState<string>('');
 
   useEffect(() => {
     const fetchList = async () => {
       setIsLoading(true);
       api.list('/cases').then((res) => {
+        (res.body as []).forEach((row) => {
+          if (row['CURR_CASE_CHAPT'] == '11') {
+            setStaff1Label('Trial Attorney');
+            setStaff2Label('Auditor');
+          }
+        });
         setCaseList(res);
         setIsLoading(false);
       });
@@ -47,13 +66,34 @@ export const CaseList = () => {
         <h1>Case List</h1>
         <table>
           <thead>
-            <tr>
+            <tr className="staff-headings">
+              <th colSpan={5}></th>
+              <th colSpan={4} className="staff-label">
+                Staff 1 {staff1Label}
+              </th>
+              <th colSpan={4} className="staff-label">
+                Staff 2 {staff2Label}
+              </th>
+              <th colSpan={2}></th>
+            </tr>
+          </thead>
+          <thead>
+            <tr className="base-headings">
               <th>Case Div</th>
               <th>Case Year</th>
               <th>Case Number</th>
               <th>Chapter</th>
-              <th>Staff 1</th>
-              <th>Staff 2</th>
+              <th>Group Designator</th>
+              <th>Professional Code</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Type</th>
+              <th>Professional Code</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Type</th>
+              <th>Hearing Code</th>
+              <th>Hearing Disposition</th>
             </tr>
           </thead>
           <tbody>
@@ -64,8 +104,17 @@ export const CaseList = () => {
                   <td>{theCase.CASE_YEAR}</td>
                   <td>{theCase.CASE_NUMBER}</td>
                   <td>{theCase.CURR_CASE_CHAPT}</td>
+                  <td>{theCase.GROUP_DESIGNATOR}</td>
                   <td>{theCase.STAFF1_PROF_CODE}</td>
+                  <td>{theCase.STAFF1_PROF_FIRST_NAME}</td>
+                  <td>{theCase.STAFF1_PROF_LAST_NAME}</td>
+                  <td>{theCase.STAFF1_PROF_TYPE}</td>
                   <td>{theCase.STAFF2_PROF_CODE}</td>
+                  <td>{theCase.STAFF2_PROF_FIRST_NAME}</td>
+                  <td>{theCase.STAFF2_PROF_LAST_NAME}</td>
+                  <td>{theCase.STAFF2_PROF_TYPE}</td>
+                  <td>{theCase.HEARING_CODE}</td>
+                  <td>{theCase.HEARING_DISP}</td>
                 </tr>
               ))}
           </tbody>
