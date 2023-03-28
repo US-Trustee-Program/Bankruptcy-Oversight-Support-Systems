@@ -11,6 +11,9 @@ param apiAgwSSLCertId string
 
 param location string = resourceGroup().location
 
+@secure()
+param agwPrivateIP string
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: 'boss-server-farm'
@@ -248,7 +251,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
       {
         name: 'appGatewayFrontendIp'
         properties: {
-          privateIPAddress: '10.0.1.8'
+          privateIPAddress: agwPrivateIP
           privateIPAllocationMethod: 'static'
           subnet: {
             id: ustpSubnetApiAgw.id

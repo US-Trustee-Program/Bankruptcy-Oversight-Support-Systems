@@ -26,7 +26,9 @@ jobs:
           cache-dependency-path: gui/package-lock.json
 
       - run: npm ci
-      - run: npm run build --if-present
+      - run: |
+          export REACT_APP_SERVER_HOSTNAME=${{ secrets.REACT_APP_SERVER_HOSTNAME }}
+          npm run build --if-present
       - run: CI=true npm test
 
       - name: Archive the build directory
@@ -54,14 +56,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-# TODO : commented for testing container deployment
-#      - name: Run Bicep deploy
-#        uses: azure/arm-deploy@v1
-#        with:
-#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-#          resourceGroupName: ${{ secrets.AZURE_RG }}
-#          template: ./ops/bicep/azure-deploy.bicep
-#          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }}'
+      - name: Run Bicep deploy
+        uses: azure/arm-deploy@v1
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./ops/bicep/azure-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
