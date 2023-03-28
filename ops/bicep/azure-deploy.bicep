@@ -346,7 +346,6 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           priority: 100
           httpListener: {
             id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
-            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
           }
           backendAddressPool: {
             id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwHttpsBackendTargetsName)
