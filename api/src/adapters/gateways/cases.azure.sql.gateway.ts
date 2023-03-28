@@ -6,29 +6,38 @@ import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql
 
 const table = 'cases';
 
-const getCaseList = async (): Promise<DbResult> => {
-  const query = "SELECT " +
-    " debtor.CASE_DIV" +
-    ", debtor.CASE_YEAR" +
-    ", debtor.CASE_NUMBER" +
-    ", debtor.STAFF1_PROF_CODE" +
-    ", debtor.STAFF2_PROF_CODE" +
-    ", debtor.CURR_CASE_CHAPT " +
-//        ", professional.PROF_FIRST_NAME" +
-//        ", professional.UST_PROF_CODE" +
-  " FROM " +
-    " dbo.CMMDB debtor " +
-//        "LEFT OUTER JOIN" +
-//          "dbo.CMMPR professional" +
-//          "ON" +
-//            "debtor.STAFF1_PROF_CODE = professional.UST_PROF_CODE" +
-//            "OR" +
-//            "debtor.STAFF2_PROF_CODE = professional.UST_PROF_CODE" +
-  " WHERE " +
-    " 1 = 1 " +
-    " AND debtor.CURR_CASE_CHAPT = '11' ";
-    //" AND (debtor.STAFF1_PROF_CODE = ? " +
-    //" OR debtor.STAFF2_PROF_CODE = ? )";
+const getCaseList = async (chapter: string = ''): Promise<DbResult> => {
+  let query = `
+    select a.CURR_CASE_CHAPT
+      , a.CASE_DIV 
+      , a.CASE_YEAR
+      , a.CASE_NUMBER
+      , a.GROUP_DESIGNATOR
+      , a.STAFF1_PROF_CODE
+      , b1.PROF_FIRST_NAME as 'STAFF1_PROF_FIRST_NAME'
+      , b1.PROF_LAST_NAME as 'STAFF1_PROF_LAST_NAME'   
+      , c1.PROF_TYPE as 'STAFF1_PROF_TYPE' 
+      , c1.PROF_TYPE_DESC as 'STAFF1_PROF_TYPE_DESC'
+      , a.STAFF2_PROF_CODE
+      , b2.PROF_FIRST_NAME as 'STAFF2_PROF_FIRST_NAME'
+      , b2.PROF_LAST_NAME as 'STAFF2_PROF_LAST_NAME'
+      , c2.PROF_TYPE as 'STAFF2_PROF_TYPE' 
+      , c2.PROF_TYPE_DESC as 'STAFF2_PROF_TYPE_DESC' 
+      , h.HEARING_CODE
+      , h.HEARING_DISP
+    from [dbo].[CMMDB] a
+    left outer join [dbo].[CMMPR] b1 on a.GROUP_DESIGNATOR = b1.GROUP_DESIGNATOR and a.STAFF1_PROF_CODE = b1.UST_PROF_CODE
+    left outer join [dbo].[CMMPR] b2 on a.GROUP_DESIGNATOR = b2.GROUP_DESIGNATOR and a.STAFF2_PROF_CODE = b2.UST_PROF_CODE
+    inner join [dbo].[CMMPT] c1 on a.GROUP_DESIGNATOR = c1.GROUP_DESIGNATOR and b1.PROF_TYPE = c1.PROF_TYPE
+    inner join [dbo].[CMMPT] c2 on a.GROUP_DESIGNATOR = c2.GROUP_DESIGNATOR and b2.PROF_TYPE = c2.PROF_TYPE 
+    left outer join [dbo].[CMHHR] h on a.CASE_DIV = h.CASE_DIV and a.CASE_YEAR = h.CASE_YEAR and a.CASE_NUMBER = h.CASE_NUMBER
+    WHERE a.CURR_CASE_CHAPT = '11'`;
+
+  /*
+  if (chapter.length > 0) {
+    query += ` WHERE a.CURR_CASE_CHAPT = ?`;
+  }
+  */
 
   const queryResult: QueryResults = await runQuery(table, query);
   let results: DbResult;
