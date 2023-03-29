@@ -68,9 +68,8 @@ jobs:
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
 
       - name: Run Post Bicep configurations
-        env:
-          backendSubnetId=${{ steps.bicepDeployment.outputs.outBackendSubnetId.value }}
         run: |
+          backendSubnetId=${{ steps.bicepDeployment.outputs.outBackendSubnetId.value }}
           count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
           echo "Subnet match count ${count}"
           if [[ -eq 0 $count ]]; then
