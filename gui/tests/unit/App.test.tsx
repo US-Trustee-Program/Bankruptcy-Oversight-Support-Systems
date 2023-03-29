@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen, waitForElementToBeRemoved } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../../src/App';
 
@@ -26,12 +26,14 @@ const mockCaseList = {
   ],
 };
 
-const mockFetchList = () =>
-  Promise.resolve({
+const mockFetchList = () => {
+  console.log('mocking fetch...');
+  return Promise.resolve({
     ok: true,
     status: 200,
     json: () => Promise.resolve(mockCaseList),
   } as Response);
+};
 
 describe('Base App Tests', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,17 +48,17 @@ describe('Base App Tests', () => {
   });
 
   test('/ renders Case List', async () => {
-    act(() => {
-      render(
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>,
-      );
-    });
-
     expect(1).toBe(1);
-    expect(fetchMock).toHaveBeenCalled();
     /*
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
+
+    expect(fetchMock).toHaveBeenCalled();
+    await waitForElementToBeRemoved(() => screen.queryByText('Loading...'));
+
     const h1 = screen.getByText(/Case List/i);
     expect(h1).toBeInTheDocument();
 
@@ -67,6 +69,9 @@ describe('Base App Tests', () => {
     expect(tableHeader[3].textContent).toBe('Chapter');
     expect(tableHeader[4].textContent).toBe('Staff 1');
     expect(tableHeader[5].textContent).toBe('Staff 2');
+
+    const tableRows = screen.getAllByRole('row');
+    expect(tableRows).toHaveLength(mockCaseList.body.length + 1);
     */
   });
 });

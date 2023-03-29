@@ -38,7 +38,6 @@ export default class Api {
 
   public async list(path: string): Promise<ResponseData> {
     try {
-      console.log('attempting to run fetch...', this._host + path);
       const response = await fetch(this._host + path, {
         method: 'GET',
         headers: {
@@ -48,14 +47,21 @@ export default class Api {
 
       const data = await response.json();
 
+      console.log(response);
       if (response.ok) {
+        console.log('Response was OK');
+        console.log(data);
         return data;
       } else {
-        console.log('if we arrive here, then fetch mock was never called.');
-        return Promise.reject(new Error(`404 Error - Not Found ${data?.toString()}`));
+        return Promise.reject(
+          new Error(`404 Error - Not Found ${data?.toString()} - Response was not OK`),
+        );
       }
-    } catch (e: unknown) {
-      return Promise.reject(new Error(`404 Error - Not found ${(e as Error).message}`));
+    } catch (e) {
+      console.error(e);
+      return Promise.reject(
+        new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
+      );
     }
   }
 

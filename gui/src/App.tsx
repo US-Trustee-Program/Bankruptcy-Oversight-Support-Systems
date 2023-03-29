@@ -12,7 +12,6 @@ function App() {
         <Route path="/" element={<Home />}></Route>
         <Route path="*" element={<NotFound />}></Route>
       </Routes>
-      <CaseList></CaseList>
     </div>
   );
 }
