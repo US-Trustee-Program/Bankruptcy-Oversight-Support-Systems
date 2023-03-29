@@ -28,6 +28,8 @@ jobs:
       - run: npm ci
       - run: |
           export REACT_APP_SERVER_HOSTNAME=${{ secrets.REACT_APP_SERVER_HOSTNAME }}
+          export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
+          export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           npm run build --if-present
       - run: CI=true npm test
 
