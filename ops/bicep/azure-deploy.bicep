@@ -264,7 +264,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: 'appGatewayFrontendPrivateIp'
         properties: {
           privateIPAddress: agwPrivateIP
-          privateIPAllocationMethod: 'static'
+          privateIPAllocationMethod: 'Static'
           subnet: {
             id: ustpSubnetApiAgw.id
           }
