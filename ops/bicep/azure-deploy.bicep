@@ -171,6 +171,7 @@ resource ustpSubnetApiAgw 'Microsoft.Network/virtualNetworks/subnets@2021-03-01'
   name: apiAgwSubnetName
   properties: {
     addressPrefix: apiAgwSubnetAddressPrefix
+    privateEndpointNetworkPolicies: 'Enabled'
   }
 }
 
@@ -181,6 +182,7 @@ resource ustpSubnetApiBackend 'Microsoft.Network/virtualNetworks/subnets@2021-03
   name: apiBackendSubnetName
   properties: {
     addressPrefix: apiBackendAddressPrefix
+    privateEndpointNetworkPolicies: 'Enabled'
     serviceEndpoints: [
       {
         service: 'Microsoft.Sql'
@@ -195,7 +197,6 @@ resource ustpSubnetApiBackend 'Microsoft.Network/virtualNetworks/subnets@2021-03
         properties: {
           serviceName: 'Microsoft.ContainerInstance/containerGroups'
         }
-        //     type: 'Microsoft.Network/virtualNetworks/subnets/delegations'
       }
     ]
   }
@@ -208,6 +209,7 @@ resource ustpSubnetWebapp 'Microsoft.Network/virtualNetworks/subnets@2021-03-01'
   name: webappSubnetName
   properties: {
     addressPrefix: webappAddressPrefix
+    privateEndpointNetworkPolicies: 'Enabled'
   }
 }
 
