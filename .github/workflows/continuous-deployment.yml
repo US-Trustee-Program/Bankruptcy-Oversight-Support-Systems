@@ -59,12 +59,24 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Run Bicep deploy
+        id: bicepDeployment
         uses: azure/arm-deploy@v1
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
+
+      - name: Run Post Bicep configurations
+        env:
+          backendSubnetId=${{ steps.bicepDeployment.outputs.outBackendSubnetId.value }}
+        run: |
+          count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
+          echo "Subnet match count ${count}"
+          if [[ -eq 0 $count ]]; then
+            echo "Creating new vnet-rule"
+            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
+          fi
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
@@ -91,8 +103,7 @@ jobs:
             --resource-group bankruptcy-oversight-support-systems \
             --name ustp-boss-dev-api \
             --image ustpbossregistry.azurecr.io/ustp/backend:latest \
-            --cpu 1 \
-            --memory 1 \
+            --ports 8080 \
             --vnet ustp-boss-dev-vnet \
             --subnet ustp-boss-dev-vnet-api-backend \
             --registry-username ${{ secrets.ACR_USERNAME }} \
