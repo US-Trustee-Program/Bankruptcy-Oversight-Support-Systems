@@ -23,6 +23,9 @@ export interface IDbConfig {
   user: string;
   password: string;
   azureManagedIdentity: string;
+  authentication: {
+    type: string;
+  },
   pool: {
     max: number;
     min: number;

@@ -2,6 +2,7 @@ import mssql from 'mssql';
 import log from '../logging.service.js';
 import { DbTableFieldSpec, QueryResults } from '../types/database.js';
 import config from '../../configs/default.config.js';
+//import { DefaultAzureCredential } from '@azure/identity';
 
 const NAMESPACE = 'DATABASE-UTILITY';
 
@@ -16,6 +17,9 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
   }
 
   try {
+    // should actually not need the following.  The config should take care of it.
+    // see https://learn.microsoft.com/en-us/azure/azure-sql/database/connect-query-nodejs?view=azuresql&tabs=macos
+    //const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
     const pool = new mssql.ConnectionPool(config.dbConfig);
     const connection = await pool.connect();
 

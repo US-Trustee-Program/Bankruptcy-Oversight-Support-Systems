@@ -5,8 +5,8 @@ async function addCase(database: CasePersistenceGateway, fields: RecordObj[]) {
   return await database.createCase(fields);
 }
 
-async function listCases(database: CasePersistenceGateway) {
-  return await database.getCaseList();
+async function listCases(database: CasePersistenceGateway, chapterFilter: String) {
+  return await database.getCaseList(chapterFilter);
 }
 
 async function getCase(database: CasePersistenceGateway, id: number) {

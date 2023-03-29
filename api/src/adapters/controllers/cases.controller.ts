@@ -14,7 +14,7 @@ const getAllCases = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Getting all cases.');
 
   try {
-    const caseList = await useCase.listCases(casesDb);
+    const caseList = await useCase.listCases(casesDb, '11');
 
     // success
     return httpSuccess(caseList);
