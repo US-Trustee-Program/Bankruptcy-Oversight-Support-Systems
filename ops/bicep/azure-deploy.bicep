@@ -203,11 +203,22 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
         properties: {
           addressPrefix: webappAddressPrefix
           privateEndpointNetworkPolicies: 'Enabled'
+          delegations: [
+            {
+              name: 'Microsoft.Web/serverfarms'
+              properties: {
+                serviceName: 'Microsoft.Web/serverfarms'
+              }
+            }
+          ]
         }
       }
     ]
   }
 }
+
+
+
 output outVnetId string = ustpVirtualNetwork.id
 output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
 output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
