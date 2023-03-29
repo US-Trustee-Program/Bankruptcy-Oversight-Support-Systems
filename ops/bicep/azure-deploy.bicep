@@ -222,6 +222,16 @@ var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
 
 var agwAssignedIdentity = '${subscription().id}/resourcegroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${serviceAccountManagedId}'
 
+var apiAgwPublicIp = '${appName}-api-agw-public-ip'
+resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
+  name: apiAgwPublicIp
+  location: location
+  sku: {
+    name: 'Standard'
+    tier: 'Regional'
+  }
+}
+
 resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-09-01' = {
   name: apiAgwName
   location: location
@@ -249,12 +259,20 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
     ]
     frontendIPConfigurations: [
       {
-        name: 'appGatewayFrontendIp'
+        name: 'appGatewayFrontendPrivateIp'
         properties: {
           privateIPAddress: agwPrivateIP
           privateIPAllocationMethod: 'static'
           subnet: {
             id: ustpSubnetApiAgw.id
+          }
+        }
+      }
+      {
+        name: 'appGatewayFrontendPublicIp'
+        properties: {
+          publicIPAddress: {
+            id: ustpApiAgwPublicIp.id
           }
         }
       }
@@ -312,7 +330,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: apiAgwHttpsListenerName
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendIp')
+            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendPrivateIp')
           }
           frontendPort: {
             id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', apiAgwName, 'port_443')
@@ -327,7 +345,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: apiAgwHttpListenerName
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendIp')
+            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendPrivateIp')
           }
           frontendPort: {
             id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', apiAgwName, 'port_80')
@@ -383,4 +401,5 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
       maxCapacity: 2
     }
   }
+  dependsOn: [ ustpVirtualNetwork ]
 }
