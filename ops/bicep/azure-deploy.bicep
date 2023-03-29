@@ -232,6 +232,9 @@ resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
     name: 'Standard'
     tier: 'Regional'
   }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
 }
 
 resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-09-01' = {
