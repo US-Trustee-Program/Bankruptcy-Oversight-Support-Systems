@@ -153,6 +153,12 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 
 var virtualNetworkName = '${appName}-vnet'
 var virtualNetworkAddressPrefixes = [ '10.0.0.0/16' ]
+var apiAgwSubnetName = '${appName}-vnet-api-agw'
+var apiAgwSubnetAddressPrefix = '10.0.0.0/28'
+var apiBackendSubnetName = '${appName}-vnet-api-backend'
+var apiBackendAddressPrefix = '10.0.1.0/28'
+var webappSubnetName = '${appName}-vnet-webapp'
+var webappAddressPrefix = '10.0.2.0/28'
 resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
   name: virtualNetworkName
   location: location
@@ -161,55 +167,45 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
       addressPrefixes: virtualNetworkAddressPrefixes
     }
     enableDdosProtection: false
-  }
-}
-
-var apiAgwSubnetName = '${appName}-vnet-api-agw'
-var apiAgwSubnetAddressPrefix = '10.0.0.0/28'
-resource ustpSubnetApiAgw 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  parent: ustpVirtualNetwork
-  name: apiAgwSubnetName
-  properties: {
-    addressPrefix: apiAgwSubnetAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
-  }
-}
-
-var apiBackendSubnetName = '${appName}-vnet-api-backend'
-var apiBackendAddressPrefix = '10.0.1.0/28'
-resource ustpSubnetApiBackend 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  parent: ustpVirtualNetwork
-  name: apiBackendSubnetName
-  properties: {
-    addressPrefix: apiBackendAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
-    serviceEndpoints: [
+    subnets: [
       {
-        service: 'Microsoft.Sql'
-        locations: [
-          location
-        ]
-      }
-    ]
-    delegations: [
-      {
-        name: 'Microsoft.ContainerInstance.containerGroups'
+        name: apiAgwSubnetName
         properties: {
-          serviceName: 'Microsoft.ContainerInstance/containerGroups'
+          addressPrefix: apiAgwSubnetAddressPrefix
+          privateEndpointNetworkPolicies: 'Enabled'
+        }
+      }
+      {
+        name: apiBackendSubnetName
+        properties: {
+          addressPrefix: apiBackendAddressPrefix
+          privateEndpointNetworkPolicies: 'Enabled'
+          serviceEndpoints: [
+            {
+              service: 'Microsoft.Sql'
+              locations: [
+                location
+              ]
+            }
+          ]
+          delegations: [
+            {
+              name: 'Microsoft.ContainerInstance.containerGroups'
+              properties: {
+                serviceName: 'Microsoft.ContainerInstance/containerGroups'
+              }
+            }
+          ]
+        }
+      }
+      {
+        name: webappSubnetName
+        properties: {
+          addressPrefix: webappAddressPrefix
+          privateEndpointNetworkPolicies: 'Enabled'
         }
       }
     ]
-  }
-}
-
-var webappSubnetName = '${appName}-vnet-webapp'
-var webappAddressPrefix = '10.0.2.0/28'
-resource ustpSubnetWebapp 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  parent: ustpVirtualNetwork
-  name: webappSubnetName
-  properties: {
-    addressPrefix: webappAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
   }
 }
 
@@ -234,6 +230,9 @@ resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
   }
   properties: {
     publicIPAllocationMethod: 'Static'
+    ddosSettings: {
+      protectionMode: 'VirtualNetworkInherited'
+    }
   }
 }
 
@@ -257,7 +256,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: 'agwIpConfig'
         properties: {
           subnet: {
-            id: ustpSubnetApiAgw.id
+            id: resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
           }
         }
       }
@@ -269,7 +268,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           privateIPAddress: agwPrivateIP
           privateIPAllocationMethod: 'Static'
           subnet: {
-            id: ustpSubnetApiAgw.id
+            id: resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
           }
         }
       }
