@@ -208,6 +208,9 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
     ]
   }
 }
+output outVnetId string = ustpVirtualNetwork.id
+output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
+output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
 
 var apiAgwName = '${appName}-api-agw'
 var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
