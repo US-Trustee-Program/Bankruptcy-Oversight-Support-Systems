@@ -4,11 +4,7 @@ import { RecordObj, ObjectKeyVal } from '../types/basic.js';
 import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database.js';
 import { runQuery } from '../utils/database.js';
 
-//import { DefaultAzureCredential } from '@azure/identity';
-
 const NAMESPACE = 'AZURE-SQL-MODULE';
-
-//const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
 
 const getAll = async (table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
