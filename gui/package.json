@@ -25,6 +25,7 @@
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react": "^7.32.1",
+    "fetch-mock": "^9.11.0",
     "prettier": "2.8.3",
     "sass": "^1.58.3"
   },
@@ -52,7 +53,8 @@
   "scripts": {
     "start": "sh .env && react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test --watchAll=false --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}'",
+    "test:watch": "react-scripts test --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage",
     "eject": "react-scripts eject",
     "lint": "eslint .",
     "lint:fix": "eslint --fix",
