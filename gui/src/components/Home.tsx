@@ -1,9 +1,9 @@
-import { CaseList } from './CaseList';
+import Login from './Login';
 
 function Home() {
   return (
     <div className="home">
-      <CaseList />
+      <Login />
     </div>
   );
 }
