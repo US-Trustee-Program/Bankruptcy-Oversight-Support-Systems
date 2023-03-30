@@ -84,7 +84,7 @@ jobs:
 
       - name: Build and Push Docker Container
         run: |
-          docker build --file src/main/docker/Dockerfile.jvm --tag ustp-boss-api-node .
+          docker build --file Dockerfile --tag ustp-boss-api-node .
           docker push ustp-boss-api-node
 
   deploy:
