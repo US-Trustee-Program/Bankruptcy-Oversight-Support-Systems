@@ -59,20 +59,25 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Run Bicep deploy
-        id: bicepDeployment
         uses: azure/arm-deploy@v1
+        id: deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
+      
+      - run: |
+          echo ${{ steps.deploy.outputs.outVnetId.value }}
+          echo ${{ steps.deploy.outputs.outWebappSubnetId.value }}
+          echo ${{ steps.deploy.outputs.outBackendSubnetId.value }}
 
       - name: Run Post Bicep configurations
         run: |
-          backendSubnetId=${{ steps.bicepDeployment.outputs.outBackendSubnetId.value }}
+          backendSubnetId=${{ steps.deploy.outputs.outBackendSubnetId.value }}
           count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
           echo "Subnet match count ${count}"
-          if [[ -eq 0 $count ]]; then
+          if [[ $count -eq 0 ]]; then
             echo "Creating new vnet-rule"
             az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
           fi
@@ -92,8 +97,6 @@ jobs:
           echo "Contents of build folder:"
           ls
           az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-          echo "vnet ${{ steps.bicepDeployment.outputs.outVnetId.value }}"
-          echo "subnet ${{ steps.bicepDeployment.outputs.outWebappSubnetId.value}}"
           az webapp vnet-integration add --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} --resource-group bankruptcy-oversight-support-systems --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
       - name: Deploy Node API to Azure
         run: |
