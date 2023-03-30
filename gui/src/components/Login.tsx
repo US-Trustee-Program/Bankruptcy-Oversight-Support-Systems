@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import api from '../models/api';
 
 export const Login = () => {
   const [userId, setUserId] = useState<string>('');
 
   const sendUserId = (userName: string) => {
-    api.post('/login', { userName: userName }).then((res) => {
-      (res.body as []).forEach((row) => {});
-    });
+    console.log(userName);
   };
 
   return (
