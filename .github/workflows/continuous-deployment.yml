@@ -89,7 +89,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build-frontend, build-backend]
     #if: github.ref == 'refs/heads/main' # TODO : This is for testing deployment on the branch
     steps:
 
