@@ -3,7 +3,7 @@ name: Continuous Deployment
 on: [push]
 
 jobs:
-  build:
+  build-frontend:
     defaults:
       run:
         working-directory: gui
@@ -33,18 +33,59 @@ jobs:
           npm run build --if-present
       - run: CI=true npm test
 
-      - name: Archive the build directory
+      - name: Archive the frontend build directory
         id: archive
         run: |
           mkdir artifacts
           tar -cvf artifacts/ustp-boss.tar ./build
 
-      - name: Upload Artifact
+      - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ustp-boss
           path: gui/artifacts/
           if-no-files-found: error
+
+  build-backend:
+    defaults:
+      run:
+        working-directory: api
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - run: npm ci
+      - run: CI=true npm test
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure Container Registry Login
+        uses: Azure/docker-login@v1
+        with:
+          login-server: ustpbossregistry.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_TOKEN }}
+
+      - name: Build and Push Docker Container
+        run: |
+          docker build --file src/main/docker/Dockerfile.jvm --tag ustp-boss-api-node .
+          docker push ustp-boss-api-node
 
   deploy:
     runs-on: ubuntu-latest
@@ -58,29 +99,29 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Run Bicep deploy
-        uses: azure/arm-deploy@v1
-        id: deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
-          template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
-      
-      - run: |
-          echo ${{ steps.deploy.outputs.outVnetId }}
-          echo ${{ steps.deploy.outputs.outWebappSubnetId }}
-          echo ${{ steps.deploy.outputs.outBackendSubnetId }}
-
-      - name: Run Post Bicep configurations
-        run: |
-          backendSubnetId=${{ steps.deploy.outputs.outBackendSubnetId }}
-          count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
-          echo "Subnet match count ${count}"
-          if [[ $count -eq 0 ]]; then
-            echo "Creating new vnet-rule"
-            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
-          fi
+#      - name: Run Bicep deploy
+#        uses: azure/arm-deploy@v1
+#        id: deploy
+#        with:
+#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+#          resourceGroupName: ${{ secrets.AZURE_RG }}
+#          template: ./ops/bicep/azure-deploy.bicep
+#          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
+#
+#      - run: |
+#          echo ${{ steps.deploy.outputs.outVnetId }}
+#          echo ${{ steps.deploy.outputs.outWebappSubnetId }}
+#          echo ${{ steps.deploy.outputs.outBackendSubnetId }}
+#
+#      - name: Run Post Bicep configurations
+#        run: |
+#          backendSubnetId=${{ steps.deploy.outputs.outBackendSubnetId }}
+#          count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
+#          echo "Subnet match count ${count}"
+#          if [[ $count -eq 0 ]]; then
+#            echo "Creating new vnet-rule"
+#            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
+#          fi
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
@@ -98,13 +139,14 @@ jobs:
           ls
           az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
           az webapp vnet-integration add --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} --resource-group bankruptcy-oversight-support-systems --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
+
       - name: Deploy Node API to Azure
         run: |
           newip=$(az container create \
             --os-type Linux \
             --resource-group bankruptcy-oversight-support-systems \
             --name ustp-boss-dev-api \
-            --image ustpbossregistry.azurecr.io/ustp/backend:latest \
+            --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
             --ports 8080 \
             --vnet ustp-boss-dev-vnet \
             --subnet ustp-boss-dev-vnet-api-backend \
