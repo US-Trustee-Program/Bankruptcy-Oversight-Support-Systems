@@ -23,7 +23,6 @@ type caseType = {
 };
 
 export const CaseList = () => {
-  const api = new Api();
   const [caseList, setCaseList] = useState<ResponseData>({
     message: '',
     count: 0,
@@ -36,7 +35,7 @@ export const CaseList = () => {
   useEffect(() => {
     const fetchList = async () => {
       setIsLoading(true);
-      api.list('/cases').then((res) => {
+      Api.list('/cases').then((res) => {
         (res.body as []).forEach((row) => {
           if (row['CURR_CASE_CHAPT'] == '11') {
             setStaff1Label('Trial Attorney');
