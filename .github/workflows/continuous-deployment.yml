@@ -99,29 +99,29 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-#      - name: Run Bicep deploy
-#        uses: azure/arm-deploy@v1
-#        id: deploy
-#        with:
-#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-#          resourceGroupName: ${{ secrets.AZURE_RG }}
-#          template: ./ops/bicep/azure-deploy.bicep
-#          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
-#
-#      - run: |
-#          echo ${{ steps.deploy.outputs.outVnetId }}
-#          echo ${{ steps.deploy.outputs.outWebappSubnetId }}
-#          echo ${{ steps.deploy.outputs.outBackendSubnetId }}
-#
-#      - name: Run Post Bicep configurations
-#        run: |
-#          backendSubnetId=${{ steps.deploy.outputs.outBackendSubnetId }}
-#          count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
-#          echo "Subnet match count ${count}"
-#          if [[ $count -eq 0 ]]; then
-#            echo "Creating new vnet-rule"
-#            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
-#          fi
+      - name: Run Bicep deploy
+        uses: azure/arm-deploy@v1
+        id: deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./ops/bicep/azure-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
+
+      - run: |
+          echo ${{ steps.deploy.outputs.outVnetId }}
+          echo ${{ steps.deploy.outputs.outWebappSubnetId }}
+          echo ${{ steps.deploy.outputs.outBackendSubnetId }}
+
+      - name: Run Post Bicep configurations
+        run: |
+          backendSubnetId=${{ steps.deploy.outputs.outBackendSubnetId }}
+          count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
+          echo "Subnet match count ${count}"
+          if [[ $count -eq 0 ]]; then
+            echo "Creating new vnet-rule"
+            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
+          fi
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
