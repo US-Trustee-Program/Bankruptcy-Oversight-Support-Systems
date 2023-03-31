@@ -84,7 +84,7 @@ jobs:
 
       - name: Build and Push Docker Container
         run: |
-          docker build --file Dockerfile --tag ustp-boss-api-node .
+          docker build --file Dockerfile --tag ustpbossregistry.azurecr.io/ustp-boss-api-node .
           docker push ustpbossregistry.azurecr.io/ustp-boss-api-node
 
   deploy:
