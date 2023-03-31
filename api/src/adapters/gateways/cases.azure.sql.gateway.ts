@@ -6,7 +6,7 @@ import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql
 
 const table = 'cases';
 
-const getCaseList = async (chapter: string = ''): Promise<DbResult> => {
+const getCaseList = async (caseOptions: {chapter: string, professionalId: number} = {chapter: '', professionalId: 0}): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `
@@ -32,18 +32,30 @@ const getCaseList = async (chapter: string = ''): Promise<DbResult> => {
     left outer join [dbo].[CMMPR] b2 on a.GROUP_DESIGNATOR = b2.GROUP_DESIGNATOR and a.STAFF2_PROF_CODE = b2.UST_PROF_CODE
     inner join [dbo].[CMMPT] c1 on a.GROUP_DESIGNATOR = c1.GROUP_DESIGNATOR and b1.PROF_TYPE = c1.PROF_TYPE
     inner join [dbo].[CMMPT] c2 on a.GROUP_DESIGNATOR = c2.GROUP_DESIGNATOR and b2.PROF_TYPE = c2.PROF_TYPE 
-    left outer join [dbo].[CMHHR] h on a.CASE_DIV = h.CASE_DIV and a.CASE_YEAR = h.CASE_YEAR and a.CASE_NUMBER = h.CASE_NUMBER `;
+    left outer join [dbo].[CMHHR] h on a.CASE_DIV = h.CASE_DIV and a.CASE_YEAR = h.CASE_YEAR and a.CASE_NUMBER = h.CASE_NUMBER 
+    WHERE 1=1 `;
 
-  if (chapter.length > 0) {
-    query += ` WHERE a.CURR_CASE_CHAPT = @chapt`;
+  if (caseOptions.chapter.length > 0) {
+    query += ` AND a.CURR_CASE_CHAPT = @chapt`;
 
-    input = [
+    input.push(
       {
         name: 'chapt',
         type: mssql.Char,
-        value: chapter,
+        value: caseOptions.chapter,
       },
-    ];
+    );
+  }
+  if (caseOptions.professionalId > 0) {
+    query += ` AND (a.STAFF1_PROF_CODE = @professionalId OR a.STAFF2_PROF_CODE = @professionalId)`;
+
+    input.push(
+      {
+        name: 'professionalId',
+        type: mssql.Int,
+        value: caseOptions.professionalId
+      },
+    );
   }
 
   const queryResult: QueryResults = await runQuery(table, query, input);
