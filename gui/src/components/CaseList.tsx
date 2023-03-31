@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAppSelector } from '../store/store';
 import Api, { ResponseData } from '../models/api';
 import './CaseList.scss';
 
@@ -23,6 +24,7 @@ type caseType = {
 };
 
 export const CaseList = () => {
+  const user = useAppSelector((state) => state.user.user);
   const [caseList, setCaseList] = useState<ResponseData>({
     message: '',
     count: 0,
@@ -31,11 +33,21 @@ export const CaseList = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [staff1Label, setStaff1Label] = useState<string>('');
   const [staff2Label, setStaff2Label] = useState<string>('');
+  let name = 'any staff';
+  if (user.id > 0) {
+    name = `${user.firstName} ${user.lastName}`;
+  }
+
+  // temporarily hard code a chapter, until we provide a way for the user to select one
+  const chapter = '11';
 
   useEffect(() => {
     const fetchList = async () => {
       setIsLoading(true);
-      Api.list('/cases').then((res) => {
+      Api.list('/cases', {
+        chapter,
+        professionalId: user.id,
+      }).then((res) => {
         (res.body as []).forEach((row) => {
           if (row['CURR_CASE_CHAPT'] == '11') {
             setStaff1Label('Trial Attorney');
@@ -62,7 +74,7 @@ export const CaseList = () => {
   } else {
     return (
       <div className="case-list">
-        <h1>Case List</h1>
+        <h1>Case List for {name}</h1>
         <table>
           <thead>
             <tr className="staff-headings">
