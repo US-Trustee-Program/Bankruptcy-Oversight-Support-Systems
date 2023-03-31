@@ -10,10 +10,14 @@ export type PersistenceGateway = {
 
 export type CasePersistenceGateway = {
   createCase(fields: RecordObj[]): Promise<DbResult>;
-  getCaseList(chapterFilter: String): Promise<DbResult>;
+  getCaseList(fields: ObjectKeyVal): Promise<DbResult>;
   getCase(id: number): Promise<DbResult>;
   updateCase(id: number, fields: RecordObj[]): Promise<DbResult>;
   deleteCase(id: number): Promise<DbResult>;
+};
+
+export type UserPersistenceGateway = {
+  login({firstName: string, lastName: string}): Promise<DbResult>;
 };
 
 export type ChaptersPersistenceGateway = {

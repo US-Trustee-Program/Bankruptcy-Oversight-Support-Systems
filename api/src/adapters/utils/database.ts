@@ -12,9 +12,12 @@ function validateTableName(tableName: string) {
 
 export async function runQuery(tableName: string, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
+  /*
+   * Why am I doing this? Perhaps when using this generic runQuery for things like deletes and updates.
   if (!validateTableName(tableName)) {
     throw new Error(`Invalid table name ${tableName}`);
   }
+  */
 
   try {
     // should actually not need the following.  The config should take care of it.
@@ -23,7 +26,7 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
     const pool = new mssql.ConnectionPool(config.dbConfig);
     const connection = await pool.connect();
 
-    log('info', 'MSSQL', `Query: ${query}`);
+    log('info', NAMESPACE, `Query: ${query}`);
 
     const request = await connection.request();
 
@@ -33,8 +36,6 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
       });
     }
     const results = await request.query(query);
-
-    log('info', NAMESPACE, `Retrieved ${tableName}: `, results);
 
     const queryResult: QueryResults = {
       results,

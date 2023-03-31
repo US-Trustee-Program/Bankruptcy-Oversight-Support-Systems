@@ -1,12 +1,16 @@
 import { RecordObj } from '../adapters/types/basic';
-import { CasePersistenceGateway } from '../adapters/types/persistence-gateway';
+import { CasePersistenceGateway, UserPersistenceGateway } from '../adapters/types/persistence-gateway';
+
+async function login(database: UserPersistenceGateway, userName: {firstName: string, lastName: string}) {
+  return await database.login(userName);
+}
 
 async function addCase(database: CasePersistenceGateway, fields: RecordObj[]) {
   return await database.createCase(fields);
 }
 
-async function listCases(database: CasePersistenceGateway, chapterFilter: String) {
-  return await database.getCaseList(chapterFilter);
+async function listCases(database: CasePersistenceGateway, fields: {chapter: string, professionalId: number}) {
+  return await database.getCaseList(fields);
 }
 
 async function getCase(database: CasePersistenceGateway, id: number) {
@@ -27,4 +31,5 @@ export default {
   getCase,
   updateCase,
   deleteCase,
+  login,
 };

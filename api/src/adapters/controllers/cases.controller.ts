@@ -14,7 +14,15 @@ const getAllCases = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Getting all cases.');
 
   try {
-    const caseList = await useCase.listCases(casesDb, '11');
+    let profId = 0;
+    let chapter = '';
+    if (httpRequest.query.professionalId) {
+      profId = httpRequest.query.professionalId as unknown as number;
+    }
+    if (httpRequest.query.chapter) {
+      chapter = httpRequest.query.chapter as string;
+    }
+    const caseList = await useCase.listCases(casesDb, { chapter, professionalId: profId });
 
     // success
     return httpSuccess(caseList);
