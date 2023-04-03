@@ -26,8 +26,6 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
     const pool = new mssql.ConnectionPool(config.dbConfig);
     const connection = await pool.connect();
 
-    log('info', NAMESPACE, `Query: ${query}`);
-
     const request = await connection.request();
 
     if (typeof input != 'undefined') {

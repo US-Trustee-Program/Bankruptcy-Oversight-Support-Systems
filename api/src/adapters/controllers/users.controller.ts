@@ -12,7 +12,6 @@ const login = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Fetching a user id.');
 
   try {
-    console.log(httpRequest.body);
     if (httpRequest.body && 'firstName' in httpRequest.body && 'lastName' in httpRequest.body) {
       const firstName = httpRequest.body.firstName as string;
       const lastName = httpRequest.body.lastName as string;
