@@ -143,7 +143,7 @@ jobs:
           
           az resource update -g $resourceGroupName -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n $webappName
-          az webapp vnet-integration add -n $webappName -g resourceGroupName --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
+          az webapp vnet-integration add -n $webappName -g $resourceGroupName --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
           az resource update -g $resourceGroupName -n $webAppName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Deploy Node API to Azure
