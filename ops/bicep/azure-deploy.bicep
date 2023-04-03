@@ -69,7 +69,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
       http20Enabled: true
       functionAppScaleLimit: 0
       minimumElasticInstanceCount: 0
-      publicNetworkAccess: Disabled
+      publicNetworkAccess: 'Disabled'
     }
     clientAffinityEnabled: false
     httpsOnly: false
