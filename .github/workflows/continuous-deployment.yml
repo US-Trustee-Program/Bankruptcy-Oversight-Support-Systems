@@ -137,8 +137,14 @@ jobs:
           cd build
           echo "Contents of build folder:"
           ls
-          az webapp up --html --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-          az webapp vnet-integration add --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} --resource-group bankruptcy-oversight-support-systems --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
+          
+          webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
+          resourceGroupName=bankruptcy-oversight-support-systems
+          
+          az resource update -g $resourceGroupName -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az webapp up --html -n $webappName
+          az webapp vnet-integration add -n $webappName -g resourceGroupName --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
+          az resource update -g $resourceGroupName -n $webAppName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Deploy Node API to Azure
         run: |
