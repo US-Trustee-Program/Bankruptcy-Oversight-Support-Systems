@@ -37,7 +37,7 @@ const login = async (userName: { firstName: string, lastName: string }): Promise
     const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
     results = {
       success: true,
-      message: `User record`,
+      message: `user record`,
       count: rowsAffected,
       body: records,
     };
