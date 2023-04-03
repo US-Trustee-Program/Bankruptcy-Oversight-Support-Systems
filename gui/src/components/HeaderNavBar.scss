@@ -1,0 +1,13 @@
+.nav-bar {
+  background-color: navy;
+  width: calc(100% - 30px);
+  padding: 15px;
+  text-align: right;
+  a {
+    color: white;
+    text-transform: uppercase;
+    font-weight: bold;
+    text-decoration: none;
+    padding-right: 15px;
+  }
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useAppSelector } from '../store/store';
 import Api, { ResponseData } from '../models/api';
 import './CaseList.scss';
@@ -33,36 +33,44 @@ export const CaseList = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [staff1Label, setStaff1Label] = useState<string>('');
   const [staff2Label, setStaff2Label] = useState<string>('');
+
+  const chapterOptions = ['05', '7A', '7B', '11', '12', '13', '15'];
+
   let name = 'any staff';
   if (user.id > 0) {
     name = `${user.firstName} ${user.lastName}`;
   }
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
-  const chapter = '11';
+  const [chapter, setChapter] = useState<string>('11');
+  const updateChapterFilter = (e: ChangeEvent<HTMLSelectElement>) => {
+    setChapter(e.target.value);
+  };
+
+  const fetchList = async () => {
+    setIsLoading(true);
+    Api.list('/cases', {
+      chapter,
+      professionalId: user.id,
+    }).then((res) => {
+      (res.body as []).forEach((row) => {
+        if (row['CURR_CASE_CHAPT'] == '11') {
+          setStaff1Label('Trial Attorney');
+          setStaff2Label('Auditor');
+        }
+      });
+      setCaseList(res);
+      setIsLoading(false);
+    });
+  };
 
   useEffect(() => {
-    const fetchList = async () => {
-      setIsLoading(true);
-      Api.list('/cases', {
-        chapter,
-        professionalId: user.id,
-      }).then((res) => {
-        (res.body as []).forEach((row) => {
-          if (row['CURR_CASE_CHAPT'] == '11') {
-            setStaff1Label('Trial Attorney');
-            setStaff2Label('Auditor');
-          }
-        });
-        setCaseList(res);
-        setIsLoading(false);
-      });
-    };
+    fetchList();
 
     if (!isLoading) {
       fetchList();
     }
-  }, [caseList.count > 0]);
+  }, [caseList.count > 0, chapter]);
 
   if (isLoading) {
     return (
@@ -74,7 +82,21 @@ export const CaseList = () => {
   } else {
     return (
       <div className="case-list">
-        <h1>Case List for {name}</h1>
+        <h1>
+          Case List for {name} chapter {chapter}
+        </h1>
+        <div className="chapter-filter">
+          <label htmlFor="chapter-filter-input">
+            <select id="chapter-filter-input" onChange={updateChapterFilter}>
+              <option>Filter by chapter</option>
+              {chapterOptions.map((option, index) => (
+                <option key={index} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <table>
           <thead>
             <tr className="staff-headings">
