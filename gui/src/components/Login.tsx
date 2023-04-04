@@ -33,7 +33,6 @@ export const Login = () => {
         }
       })
       .then(() => {
-        console.log('navigating to cases screen');
         navigate('/cases');
       })
       .catch((e) => {
@@ -44,11 +43,21 @@ export const Login = () => {
   return (
     <div>
       <label htmlFor="first-name">First name: </label>
-      <input id="first-name" onChange={(e) => (firstName.current = e.target.value)}></input>
+      <input
+        id="first-name"
+        data-testid="first-name-input"
+        onChange={(e) => (firstName.current = e.target.value)}
+      ></input>
       <br />
       <label htmlFor="last-name">Last name: </label>
-      <input id="last-name" onChange={(e) => (lastName.current = e.target.value)}></input>
-      <button onClick={() => sendUserName()}>Get my Cases</button>
+      <input
+        id="last-name"
+        data-testid="last-name-input"
+        onChange={(e) => (lastName.current = e.target.value)}
+      ></input>
+      <button data-testid="login-button" onClick={() => sendUserName()}>
+        Get my Cases
+      </button>
     </div>
   );
 };
