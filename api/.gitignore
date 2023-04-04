@@ -10,3 +10,5 @@ certs/**/*
 *.key
 *.mobileprovision
 *.orig.*
+
+coverage

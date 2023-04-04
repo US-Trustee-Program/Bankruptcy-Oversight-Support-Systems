@@ -4,14 +4,6 @@
   "description": "",
   "main": "src/server.ts",
   "type": "module",
-  "scripts": {
-    "build": "rm -rf build && tsc",
-    "format": "prettier --write src/",
-    "start": "npm run build && cd build && node server.js",
-    "start:local": "npm run build && cd build && node server.js",
-    "start:dev": "nodemon --esm src/server.ts",
-    "test": "DATABASE_MOCK='true' mocha --exit -r ts-node/register tests/unit/**/*.test.ts"
-  },
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -31,12 +23,23 @@
     "@types/mssql": "^8.1.2",
     "@types/sinon": "^10.0.13",
     "@types/supertest": "^2.0.12",
+    "c8": "^7.13.0",
     "chai": "^4.3.7",
     "chai-http": "^4.3.0",
     "mocha": "^10.2.0",
     "sinon": "^15.0.1",
+    "source-map-support": "^0.5.21",
     "supertest": "^6.3.3",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.1.2"
+  },
+  "scripts": {
+    "build": "rm -rf build && tsc",
+    "format": "prettier --write src/",
+    "start": "npm run build && cd build && node server.js",
+    "start:local": "npm run build && cd build && node server.js",
+    "start:dev": "nodemon --esm src/server.ts",
+    "test": "DATABASE_MOCK='true' mocha --exit -r ts-node/register tests/unit/**/*.test.ts",
+    "test:coverage": "npm run build && c8 --reporter=text --require ts-node/register --require source-map-support/register npm run test"
   }
 }
