@@ -159,6 +159,7 @@ jobs:
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_TOKEN }} \
             --query ipAddress.ip \
+            --environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' \
             --output tsv)
             
           echo "Adding ips to backend pool: ${newip}"
