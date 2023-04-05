@@ -143,19 +143,20 @@ jobs:
           
           az resource update -g $resourceGroupName -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n $webappName
-          az webapp vnet-integration add -n $webappName -g $resourceGroupName --vnet ustp-boss-dev-vnet --subnet ustp-boss-dev-vnet-webapp
+          az webapp vnet-integration add -n $webappName -g $resourceGroupName --vnet ${webappName}-vnet --subnet ${webappName}-vnet-webapp
           az resource update -g $resourceGroupName -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Deploy Node API to Azure
         run: |
+          webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
           newip=$(az container create \
             --os-type Linux \
             --resource-group bankruptcy-oversight-support-systems \
-            --name ustp-boss-dev-api \
+            --name ${webappName}-api \
             --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
             --ports 8080 \
-            --vnet ustp-boss-dev-vnet \
-            --subnet ustp-boss-dev-vnet-api-backend \
+            --vnet ${webappName}-vnet \
+            --subnet ${webappName}-vnet-api-backend \
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_TOKEN }} \
             --query ipAddress.ip \
@@ -165,6 +166,6 @@ jobs:
           echo "Adding ips to backend pool: ${newip}"
           az network application-gateway address-pool update \
             --resource-group bankruptcy-oversight-support-systems \
-            --gateway-name ustp-boss-dev-api-agw \
-            --name ustp-boss-dev-api-agw-https-backend-targets \
+            --gateway-name ${webappName}-api-agw \
+            --name ${webappName}-api-agw-https-backend-targets \
             --servers ${newip}
