@@ -142,23 +142,30 @@ jobs:
       - name: Deploy Node API to Azure
         run: |
           webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-          newip=$(az container create \
-            --os-type Linux \
-            --resource-group bankruptcy-oversight-support-systems \
-            --name ${webappName}-api \
-            --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
-            --ports 8080 \
-            --vnet ${webappName}-vnet \
-            --subnet ${webappName}-vnet-api-backend \
-            --registry-username ${{ secrets.ACR_USERNAME }} \
-            --registry-password ${{ secrets.ACR_TOKEN }} \
-            --query ipAddress.ip \
-            --secure-environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' 'MSSQL_PASS'='${{ secrets.AZ_MSSQL_PASS }}' \
-            --output tsv)
-            
-          echo "Adding ips to backend pool: ${newip}"
-          az network application-gateway address-pool update \
-            --resource-group bankruptcy-oversight-support-systems \
-            --gateway-name ${webappName}-api-agw \
-            --name ${webappName}-api-agw-https-backend-targets \
-            --servers ${newip}
+          count=$(az container list --query "length([?name=='${webappName}-api'])")
+          
+          if [[ $count -eq 0 ]]; then
+            newip=$(az container create \
+              --os-type Linux \
+              --resource-group bankruptcy-oversight-support-systems \
+              --name ${webappName}-api \
+              --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
+              --ports 8080 \
+              --vnet ${webappName}-vnet \
+              --subnet ${webappName}-vnet-api-backend \
+              --registry-username ${{ secrets.ACR_USERNAME }} \
+              --registry-password ${{ secrets.ACR_TOKEN }} \
+              --query ipAddress.ip \
+              --secure-environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' 'MSSQL_PASS'='${{ secrets.AZ_MSSQL_PASS }}' \
+              --output tsv)
+          
+            echo "Adding ips to backend pool: ${newip}"
+            az network application-gateway address-pool update \
+              --resource-group bankruptcy-oversight-support-systems \
+              --gateway-name ${webappName}-api-agw \
+              --name ${webappName}-api-agw-https-backend-targets \
+              --servers ${newip}
+          else
+            echo "Restarting existing container group"
+            az container restart --name ${webappName}-api --resource-group bankruptcy-oversight-support-systems
+          fi
