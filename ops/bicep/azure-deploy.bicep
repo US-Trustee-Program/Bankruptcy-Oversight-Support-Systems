@@ -1,13 +1,15 @@
 @description('Sets an application name')
 param appName string
 
-@description('Managed Identity name with access Azure KeyVault')
+@description('Base-64 encoded .pfx to enable TLS for api')
+@maxLength(4096)
+@minLength(2048)
 @secure()
-param serviceAccountManagedId string
+param apiCertData string
 
-@description('Location for self-signed TLS certificate stored in KeyVault')
+@description('TLS Cert password for api')
 @secure()
-param apiAgwSSLCertId string
+param apiCertPass string
 
 param location string = resourceGroup().location
 
@@ -152,6 +154,71 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   }
 }
 
+var keyVaultManagedIdentityName = '${appName}-mi-keyvault'
+resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: keyVaultManagedIdentityName
+  location: location
+}
+var ustpKeyVaultManagedIdentityId = ustpKeyVaultManagedIdentity.id
+
+var keyVaultName = '${appName}-kv'
+resource ustpKeyVault 'Microsoft.KeyVault/vaults@2022-11-01' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    enableRbacAuthorization: true
+    tenantId: tenant().tenantId
+    sku: {
+      name: 'standard'
+      family: 'A'
+    }
+  }
+}
+
+// TODO: Testing approach to insert tls certificate as a secret
+var certDataName = '${appName}-tlsCertData'
+resource ustpApiTlsCertData 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
+  parent: ustpKeyVault
+  name: certDataName
+  properties: {
+    value: apiCertData
+    contentType: 'application/x-pkcs12'
+    attributes: {
+      enabled: true
+    }
+
+  }
+}
+// TODO: Testing approach to insert tls certificate as a secret
+var certPassName = '${appName}-tlsCertPass'
+resource ustpApiTlsCertPass 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
+  parent: ustpKeyVault
+  name: certPassName
+  properties: {
+    value: apiCertPass
+    attributes: {
+      enabled: true
+    }
+  }
+}
+
+@description('This is the built-in Key Vault Administrator role. See https://docs.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-administrator')
+resource keyVaultAdministratorRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: subscription()
+  name: '00482a5a-887f-4fb3-b363-3b7fe8e74483'
+}
+
+var keyVaultRoleAssignmentName = '${appName}-keyvault-role-assignment'
+resource ustpKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: keyVaultRoleAssignmentName
+  scope: ustpKeyVault
+  properties: {
+    roleDefinitionId: keyVaultAdministratorRoleDefinition.id
+    principalId: ustpKeyVaultManagedIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 var virtualNetworkName = '${appName}-vnet'
 var virtualNetworkAddressPrefixes = [ '10.0.0.0/16' ]
 var apiAgwSubnetName = '${appName}-vnet-api-agw'
@@ -230,9 +297,6 @@ var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
 var apiAgwHttpsBackendTargetsName = '${apiAgwName}-https-backend-targets'
 var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
 var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
-
-var agwAssignedIdentity = '${subscription().id}/resourcegroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${serviceAccountManagedId}'
-
 var apiAgwPublicIp = '${appName}-api-agw-public-ip'
 resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
   name: apiAgwPublicIp
@@ -255,8 +319,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${agwAssignedIdentity}': {
-      }
+      '${ustpKeyVaultManagedIdentityId}': {}
     }
   }
   properties: {
@@ -298,7 +361,8 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
       {
         name: apiAgwHttpsCertName
         properties: {
-          keyVaultSecretId: apiAgwSSLCertId
+          data: ustpApiTlsCertData.properties.value
+          password: ustpApiTlsCertPass.properties.value
         }
       }
     ]

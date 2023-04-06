@@ -106,12 +106,8 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} serviceAccountManagedId=${{ secrets.AZ_KEYVAULT_MI_NAME }} apiAgwSSLCertId=${{ secrets.AZ_KEYVAULT_API_AGW_CERT_URL }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} apiCertData=${{ secrets.API_CERT_DATA }} apiCertPass=${{ secrets.API_CERT_PASS }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }}'
 
-      - run: |
-          echo ${{ steps.deploy.outputs.outVnetId }}
-          echo ${{ steps.deploy.outputs.outWebappSubnetId }}
-          echo ${{ steps.deploy.outputs.outBackendSubnetId }}
 
       - name: Run Post Bicep configurations
         run: |
