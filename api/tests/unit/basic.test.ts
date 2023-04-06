@@ -14,7 +14,7 @@ describe('basic-endpoints', () => {
         .then(res => {
           expect(res).to.have.status(200);
           expect(res.body).to.eql({
-            "message": "Hello World!",
+            "message": "Hello World!!",
             "count": 1,
             "body": "hello",
             "success": true
