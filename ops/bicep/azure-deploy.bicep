@@ -299,12 +299,12 @@ output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks
 output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
 
 var apiAgwName = '${appName}-api-agw'
-var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
+// var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
 var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
-var apiAgwHttpsCertName = '${apiAgwName}-https-cert'
+// var apiAgwHttpsCertName = '${apiAgwName}-https-cert'
 var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
 var apiAgwBackendTargetsName = '${apiAgwName}-https-backend-targets'
-var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
+// var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
 var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
 var apiAgwPublicIp = '${appName}-api-agw-public-ip'
 resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
