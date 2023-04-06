@@ -14,7 +14,7 @@ const getHealthCheck = async (httpRequest: Request) => {
 
 const getHello = async (httpRequest: Request) => {
   const response = {
-    message: 'Hello World',
+    message: 'Hello World!',
     count: 1,
     body: 'hello',
     success: true,
