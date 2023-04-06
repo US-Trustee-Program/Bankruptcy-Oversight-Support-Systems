@@ -1,15 +1,15 @@
 @description('Sets an application name')
 param appName string
 
-@description('Base-64 encoded .pfx to enable TLS for api')
-@maxLength(4096)
-@minLength(2048)
-@secure()
-param apiCertData string
+// @description('Base-64 encoded .pfx to enable TLS for api')
+// @maxLength(4096)
+// @minLength(2048)
+// @secure()
+// param apiCertData string
 
-@description('TLS Cert password for api')
-@secure()
-param apiCertPass string
+// @description('TLS Cert password for api')
+// @secure()
+// param apiCertPass string
 
 param location string = resourceGroup().location
 
@@ -149,8 +149,7 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     preWarmedInstanceCount: 0
     functionsRuntimeScaleMonitoringEnabled: false
     minimumElasticInstanceCount: 0
-    azureStorageAccounts: {
-    }
+    azureStorageAccounts: {}
   }
 }
 
@@ -159,61 +158,71 @@ resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIden
   name: keyVaultManagedIdentityName
   location: location
 }
-var ustpKeyVaultManagedIdentityId = ustpKeyVaultManagedIdentity.id
 
 var keyVaultName = '${appName}-kv'
 resource ustpKeyVault 'Microsoft.KeyVault/vaults@2022-11-01' = {
   name: keyVaultName
   location: location
   properties: {
-    enableRbacAuthorization: true
+    accessPolicies: []
+    publicNetworkAccess: 'Disabled'
+    enableRbacAuthorization: false
     tenantId: tenant().tenantId
     sku: {
       name: 'standard'
       family: 'A'
     }
-  }
-}
-
-// TODO: Testing approach to insert tls certificate as a secret
-var certDataName = '${appName}-tlsCertData'
-resource ustpApiTlsCertData 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
-  parent: ustpKeyVault
-  name: certDataName
-  properties: {
-    value: apiCertData
-    contentType: 'application/x-pkcs12'
-    attributes: {
-      enabled: true
-    }
-
-  }
-}
-// TODO: Testing approach to insert tls certificate as a secret
-var certPassName = '${appName}-tlsCertPass'
-resource ustpApiTlsCertPass 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
-  parent: ustpKeyVault
-  name: certPassName
-  properties: {
-    value: apiCertPass
-    attributes: {
-      enabled: true
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: []
     }
   }
 }
 
-@description('This is the built-in Key Vault Administrator role. See https://docs.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-administrator')
-resource keyVaultAdministratorRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+//@description('Store base 64 encoded .pfx and pass as secret')
+// var certDataName = '${appName}-tlsCertData'
+// resource ustpApiTlsCertData 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
+//   parent: ustpKeyVault
+//   name: certDataName
+//   properties: {
+//     value: apiCertData
+//     contentType: 'application/x-pkcs12'
+//     attributes: {
+//       enabled: true
+//     }
+//   }
+// }
+// var certPassName = '${appName}-tlsCertPass'
+// resource ustpApiTlsCertPass 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
+//   parent: ustpKeyVault
+//   name: certPassName
+//   properties: {
+//     value: apiCertPass
+//     attributes: {
+//       enabled: true
+//     }
+//   }
+// }
+
+// @description('This is the built-in Key Vault Administrator role. See https://docs.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-administrator')
+// resource keyVaultAdministratorRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+//   scope: subscription()
+//   name: '00482a5a-887f-4fb3-b363-3b7fe8e74483'
+// }
+@description('This is the built-in Key Vault Reader role.')
+resource keyVaultReaderRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: subscription()
-  name: '00482a5a-887f-4fb3-b363-3b7fe8e74483'
+  name: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 }
 
-var keyVaultRoleAssignmentName = '${appName}-keyvault-role-assignment'
+var keyVaultRoleAssignmentGuid = guid(ustpKeyVault.id, ustpKeyVaultManagedIdentity.id, keyVaultReaderRoleDefinition.id)
 resource ustpKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: keyVaultRoleAssignmentName
+  name: keyVaultRoleAssignmentGuid
   scope: ustpKeyVault
   properties: {
-    roleDefinitionId: keyVaultAdministratorRoleDefinition.id
+    roleDefinitionId: keyVaultReaderRoleDefinition.id
     principalId: ustpKeyVaultManagedIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -294,7 +303,7 @@ var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
 var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
 var apiAgwHttpsCertName = '${apiAgwName}-https-cert'
 var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
-var apiAgwHttpsBackendTargetsName = '${apiAgwName}-https-backend-targets'
+var apiAgwBackendTargetsName = '${apiAgwName}-https-backend-targets'
 var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
 var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
 var apiAgwPublicIp = '${appName}-api-agw-public-ip'
@@ -319,7 +328,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${ustpKeyVaultManagedIdentityId}': {}
+      '${ustpKeyVaultManagedIdentity.id}': {}
     }
   }
   properties: {
@@ -358,13 +367,14 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
       }
     ]
     sslCertificates: [
-      {
-        name: apiAgwHttpsCertName
-        properties: {
-          data: ustpApiTlsCertData.properties.value
-          password: ustpApiTlsCertPass.properties.value
-        }
-      }
+      // TODO : implementation still work in progress
+      // {
+      //   name: apiAgwHttpsCertName
+      //   properties: {
+      //     data: ustpApiTlsCertData.properties.value
+      //     password: ustpApiTlsCertPass.properties.value
+      //   }
+      // }
     ]
     trustedRootCertificates: []
     trustedClientCertificates: []
@@ -385,7 +395,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
     ]
     backendAddressPools: [
       {
-        name: apiAgwHttpsBackendTargetsName
+        name: apiAgwBackendTargetsName
         properties: {
           backendAddresses: []
         }
@@ -407,21 +417,21 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
     ]
     backendSettingsCollection: []
     httpListeners: [
-      {
-        name: apiAgwHttpsListenerName
-        properties: {
-          frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendPrivateIp')
-          }
-          frontendPort: {
-            id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', apiAgwName, 'port_443')
-          }
-          protocol: 'Https'
-          sslCertificate: {
-            id: resourceId('Microsoft.Network/applicationGateways/sslCertificates', apiAgwName, apiAgwHttpsCertName)
-          }
-        }
-      }
+      // {
+      //   name: apiAgwHttpsListenerName
+      //   properties: {
+      //     frontendIPConfiguration: {
+      //       id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', apiAgwName, 'appGatewayFrontendPrivateIp')
+      //     }
+      //     frontendPort: {
+      //       id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', apiAgwName, 'port_443')
+      //     }
+      //     protocol: 'Https'
+      //     sslCertificate: {
+      //       id: resourceId('Microsoft.Network/applicationGateways/sslCertificates', apiAgwName, apiAgwHttpsCertName)
+      //     }
+      //   }
+      // }
       {
         name: apiAgwHttpListenerName
         properties: {
@@ -438,22 +448,22 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
     listeners: []
     urlPathMaps: []
     requestRoutingRules: [
-      {
-        name: apiAgwHttpsRoutingRuleName
-        properties: {
-          ruleType: 'Basic'
-          priority: 100
-          httpListener: {
-            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
-          }
-          backendAddressPool: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwHttpsBackendTargetsName)
-          }
-          backendHttpSettings: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', apiAgwName, apiAgwHttpBackendSettingsName)
-          }
-        }
-      }
+      // {
+      //   name: apiAgwHttpsRoutingRuleName
+      //   properties: {
+      //     ruleType: 'Basic'
+      //     priority: 100
+      //     httpListener: {
+      //       id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpsListenerName)
+      //     }
+      //     backendAddressPool: {
+      //       id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwBackendTargetsName)
+      //     }
+      //     backendHttpSettings: {
+      //       id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', apiAgwName, apiAgwHttpBackendSettingsName)
+      //     }
+      //   }
+      // }
       {
         name: apiAgwHttpRoutingRuleName
         properties: {
@@ -463,7 +473,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
             id: resourceId('Microsoft.Network/applicationGateways/httpListeners', apiAgwName, apiAgwHttpListenerName)
           }
           backendAddressPool: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwHttpsBackendTargetsName)
+            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', apiAgwName, apiAgwBackendTargetsName)
           }
           backendHttpSettings: {
             id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', apiAgwName, apiAgwHttpBackendSettingsName)
