@@ -10,7 +10,7 @@ export const Header = () => {
           <em className="usa-logo__text">
             <img
               className="usa-banner__header"
-              src={require('../assets/ust-banner-photo.webp')}
+              src="https://ustpbossimages.blob.core.windows.net/images/ust-banner-photo.webp"
               alt="U.S. Trustee Program banner"
             />
           </em>
