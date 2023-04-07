@@ -77,7 +77,7 @@ export const CaseList = () => {
   } else {
     return (
       <div className="case-list">
-        <h1>
+        <h1 data-testid="case-list-heading">
           Case List for {name} chapter {chapter}
         </h1>
         <table>

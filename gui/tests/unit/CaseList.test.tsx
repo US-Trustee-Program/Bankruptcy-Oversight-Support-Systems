@@ -1,6 +1,8 @@
-import { render, screen, waitForElementToBeRemoved } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import App from '../../src/App';
+import { store } from '../../src/store/store';
+import { Provider } from 'react-redux';
+import { CaseList } from '../../src/components/CaseList';
 
 const mockCaseList = {
   success: true,
@@ -36,42 +38,42 @@ const mockFetchList = () => {
 };
 
 describe('Base App Tests', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let fetchMock: any = undefined;
-
-  beforeEach(() => {
-    fetchMock = jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
   test('/ renders Case List', async () => {
-    expect(1).toBe(1);
-    /*
     render(
       <BrowserRouter>
-        <App />
+        <Provider store={store}>
+          <CaseList />
+        </Provider>
       </BrowserRouter>,
     );
 
-    expect(fetchMock).toHaveBeenCalled();
-    await waitForElementToBeRemoved(() => screen.queryByText('Loading...'));
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+    const loadingMsg = await screen.findAllByText('Loading...');
 
-    const h1 = screen.getByText(/Case List/i);
+    let h1 = screen.getByText(/^Case List$/i);
     expect(h1).toBeInTheDocument();
+    expect(loadingMsg[0]).toBeInTheDocument();
 
-    const tableHeader = screen.getAllByRole('columnheader');
-    expect(tableHeader[0].textContent).toBe('Case Div');
-    expect(tableHeader[1].textContent).toBe('Case Year');
-    expect(tableHeader[2].textContent).toBe('Case Number');
-    expect(tableHeader[3].textContent).toBe('Chapter');
-    expect(tableHeader[4].textContent).toBe('Staff 1');
-    expect(tableHeader[5].textContent).toBe('Staff 2');
+    await waitFor(
+      async () => {
+        expect(fetchMock).toHaveBeenCalled();
+        expect(loadingMsg[0]).not.toBeInTheDocument();
 
-    const tableRows = screen.getAllByRole('row');
-    expect(tableRows).toHaveLength(mockCaseList.body.length + 1);
-    */
+        h1 = screen.getByTestId('case-list-heading');
+        expect(h1.textContent).toBe('Case List for any staff chapter 11');
+
+        const tableHeader = screen.getAllByRole('columnheader');
+        expect(tableHeader[4].textContent).toBe('Case Div');
+        expect(tableHeader[5].textContent).toBe('Case Year');
+        expect(tableHeader[6].textContent).toBe('Case Number');
+        expect(tableHeader[7].textContent).toBe('Chapter');
+        expect(tableHeader[8].textContent).toBe('Group Designator');
+        expect(tableHeader[9].textContent).toBe('Professional Code');
+
+        const tableRows = screen.getAllByRole('row');
+        expect(tableRows).toHaveLength(mockCaseList.body.length + 2);
+      },
+      { timeout: 100 },
+    );
   });
 });
