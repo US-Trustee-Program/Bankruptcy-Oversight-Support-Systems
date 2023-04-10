@@ -12,6 +12,7 @@ param appName string
 // param apiCertPass string
 
 param location string = resourceGroup().location
+param readerGuid string
 
 @secure()
 param agwPrivateIP string
@@ -214,7 +215,7 @@ resource ustpKeyVault 'Microsoft.KeyVault/vaults@2022-11-01' = {
 @description('This is the built-in Key Vault Reader role.')
 resource keyVaultReaderRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: subscription()
-  name: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+  name: readerGuid
 }
 
 var keyVaultRoleAssignmentGuid = guid(ustpKeyVault.id, ustpKeyVaultManagedIdentity.id, keyVaultReaderRoleDefinition.id)
