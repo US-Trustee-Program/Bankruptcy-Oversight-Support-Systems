@@ -1,4 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
+//import { render, screen, waitFor, renderHook } from '@testing-library/react';
+//import { ReactElement, JSXElementConstructor, ReactFragment, ReactPortal } from 'react';
+//import { addUser } from '../../src/store/features/UserSlice';
+//import { useAppDispatch } from '../../src/store/store';
 import { BrowserRouter } from 'react-router-dom';
 import { store } from '../../src/store/store';
 import { Provider } from 'react-redux';
@@ -10,20 +14,46 @@ const mockCaseList = {
   count: 99,
   body: [
     {
-      CASE_DIV: 481,
-      CASE_YEAR: 22,
-      CASE_NUMBER: 91419,
-      STAFF1_PROF_CODE: 2416,
-      STAFF2_PROF_CODE: 2675,
+      CASE_YEAR_AND_NUMBER: '22-481',
+      CURRENT_CHAPTER_FILE_DATE: 20230523,
       CURR_CASE_CHAPT: '11',
+      DEBTOR1_NAME: 'John Doe',
+      HEARING_CODE: 'IDI',
+      HEARING_DATE: 20230501,
+      HEARING_DISP: 'Disposition info goes here.',
+      HEARING_TIME: 930,
+      STAFF1_PROF_NAME: 'Debbie Jones',
+      STAFF1_PROF_TYPE_DESC: '',
+      STAFF2_PROF_NAME: 'Frank Moore',
+      STAFF2_PROF_TYPE_DESC: '',
     },
     {
-      CASE_DIV: 481,
-      CASE_YEAR: 22,
-      CASE_NUMBER: 93500,
-      STAFF1_PROF_CODE: 2416,
-      STAFF2_PROF_CODE: 2675,
+      CASE_YEAR_AND_NUMBER: '22-495',
+      CURRENT_CHAPTER_FILE_DATE: 20230607,
       CURR_CASE_CHAPT: '11',
+      DEBTOR1_NAME: 'Jane Doe',
+      HEARING_CODE: 'IDI',
+      HEARING_DATE: 20230601,
+      HEARING_DISP: 'Disposition info goes here.',
+      HEARING_TIME: 1145,
+      STAFF1_PROF_NAME: 'Jessie Thomas',
+      STAFF1_PROF_TYPE_DESC: '',
+      STAFF2_PROF_NAME: 'Arnold Banks',
+      STAFF2_PROF_TYPE_DESC: '',
+    },
+    {
+      CASE_YEAR_AND_NUMBER: '22-501',
+      CURRENT_CHAPTER_FILE_DATE: 20230607,
+      CURR_CASE_CHAPT: '11',
+      DEBTOR1_NAME: 'Roger Moore',
+      HEARING_CODE: 'IDI',
+      HEARING_DATE: 20230601,
+      HEARING_DISP: 'Disposition info goes here.',
+      HEARING_TIME: 1145,
+      STAFF1_PROF_NAME: 'Jessie Thomas',
+      STAFF1_PROF_TYPE_DESC: '',
+      STAFF2_PROF_NAME: 'John Jones',
+      STAFF2_PROF_TYPE_DESC: '',
     },
   ],
 };
@@ -38,7 +68,9 @@ const mockFetchList = () => {
 };
 
 describe('Base App Tests', () => {
-  test('/ renders Case List', async () => {
+  test('/cases renders Full Case List (All staff)', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+
     render(
       <BrowserRouter>
         <Provider store={store}>
@@ -47,7 +79,6 @@ describe('Base App Tests', () => {
       </BrowserRouter>,
     );
 
-    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
     const loadingMsg = await screen.findAllByText('Loading...');
 
     let h1 = screen.getByText(/^Case List$/i);
@@ -63,17 +94,57 @@ describe('Base App Tests', () => {
         expect(h1.textContent).toBe('Case List for any staff chapter 11');
 
         const tableHeader = screen.getAllByRole('columnheader');
-        expect(tableHeader[4].textContent).toBe('Case Div');
-        expect(tableHeader[5].textContent).toBe('Case Year');
-        expect(tableHeader[6].textContent).toBe('Case Number');
-        expect(tableHeader[7].textContent).toBe('Chapter');
-        expect(tableHeader[8].textContent).toBe('Group Designator');
-        expect(tableHeader[9].textContent).toBe('Professional Code');
+        expect(tableHeader[0].textContent).toBe('Case Number');
+        expect(tableHeader[1].textContent).toBe('Debtor Name');
+        expect(tableHeader[2].textContent).toBe('Current Chapter Date');
+        expect(tableHeader[3].textContent).toBe('Hearing Code');
+        expect(tableHeader[4].textContent).toBe('Initial Hearing Date/Time');
+        expect(tableHeader[5].textContent).toBe('Hearing Disposition');
+        expect(tableHeader[6].textContent).toBe('Trial Attorney');
+        expect(tableHeader[7].textContent).toBe('Auditor');
 
         const tableRows = screen.getAllByRole('row');
-        expect(tableRows).toHaveLength(mockCaseList.body.length + 2);
+        expect(tableRows).toHaveLength(mockCaseList.body.length + 1);
       },
       { timeout: 100 },
     );
   });
+
+  /*
+  test('/cases renders Case List for given staff member', async () => {
+    const firstName = 'Jessie';
+    const lastName = 'Thomas';
+    const userData = { id: 123, firstName, lastName };
+    const userWrapper = (
+      children: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ReactElement<any, string | JSXElementConstructor<any>>,
+    ) => <Provider store={store}>{children}</Provider>;
+    renderHook(
+      () => {
+        const dispatch = useAppDispatch();
+        dispatch(addUser(userData));
+      },
+      {
+        userWrapper,
+      },
+    );
+    jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseList />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const h1 = screen.getByTestId('case-list-heading');
+        expect(h1.textContent).toBe(`Case List for ${firstName} ${lastName} chapter 11`);
+      },
+      { timeout: 100 },
+    );
+  });
+  */
 });
