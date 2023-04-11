@@ -1,39 +1,38 @@
 @use '../styles/abstracts/colors';
+@use '../styles/abstracts/tables';
 
 .case-list {
-  $caseListBorder: 1px solid #c6c6c6;
 
   h1 {
     text-align: center;
   }
 
   table {
-    border: $caseListBorder;
-    border-collapse: collapse;
+    border: tables.$tableBorder;
+    border-collapse: tables.$tableBorderCollapse;
+    border-radius: tables.$tableBorderRadius;
+    overflow: hidden;
     margin: auto;
     .case-headings {
       border: 1px solid colors.$eagle;
       background-color: colors.$eagle;
-      color: white;
+      color: tables.$tableHeaderForeground;
       th {
-        border-color: colors.$gold;
+        border-color: tables.$tableHeaderBorderColor;
       }
     }
     th, td {
-      padding: 10px;
-      border-right: $caseListBorder;
+      padding: tables.$tableCellPadding;
+      border-right: tables.$tableBorder;
     }
     td {
-      border-top: $caseListBorder;
+      border-top: tables.$tableBorder;
     }
     th:last-child, td:last-child {
       border-right: none;
     }
-    tr.staff-headings th.staff-label {
-      background: #fed8b1;
-    }
     tr:nth-child(odd) td {
-      background: #f6f6f6;
+      background: tables.$tableBodyBackgroundOddRows;
     }
   }
 }
