@@ -1,0 +1,48 @@
+@use '../styles/abstracts/colors';
+
+.boss-header .usa-banner > * {
+  vertical-align: middle;
+  line-height: normal;
+}
+
+.boss-header {
+  background-color: colors.$navy;
+  width: calc(100% - 100px);
+  padding: 15px 50px;
+  position: relative;
+
+  .doj-logo {
+    height: 125px;
+    width: 125px;
+  }
+
+  .site-title {
+    display: inline-block;
+    color: white;
+    padding: 0 30px;
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 2.5rem;
+    .sub-title {
+      display: block;
+      font-size: 1.5rem;
+    }
+  }
+
+  .nav-bar {
+    position: absolute;
+    display: inline-block;
+    text-align: right;
+    right: 15px;
+    height: 125px;
+    a {
+      vertical-align: middle;
+      color: white;
+      text-transform: uppercase;
+      font-weight: bold;
+      text-decoration: none;
+      padding-right: 15px;
+    }
+  }
+
+}

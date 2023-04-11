@@ -1,21 +1,27 @@
-$caseListBorder: 1px solid #c6c6c6;
+.case-list {
+  $caseListBorder: 1px solid #c6c6c6;
 
-.case-list table {
-  border: $caseListBorder;
-  th, td {
-    padding: 10px;
-    border-right: $caseListBorder;
+  h1 {
+    text-align: center;
   }
-  td {
-    border-top: $caseListBorder;
-  }
-  th:last-child, td:last-child {
-    border-right: none;
-  }
-  tr.staff-headings th.staff-label {
-    background: #fed8b1;
-  }
-  tr:nth-child(odd) td {
-    background: #f6f6f6;
+
+  table {
+    border: $caseListBorder;
+    th, td {
+      padding: 10px;
+      border-right: $caseListBorder;
+    }
+    td {
+      border-top: $caseListBorder;
+    }
+    th:last-child, td:last-child {
+      border-right: none;
+    }
+    tr.staff-headings th.staff-label {
+      background: #fed8b1;
+    }
+    tr:nth-child(odd) td {
+      background: #f6f6f6;
+    }
   }
 }
