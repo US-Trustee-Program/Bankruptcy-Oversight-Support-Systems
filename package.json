@@ -1,8 +1,9 @@
 {
-  "name": "boss",
+  "name": "BOSS",
   "version": "0.1.0",
   "private": true,
-  "license": "ISC",
+  "license": "CC0 v1.0",
+  "description": "Bankruptcy Oversight Support System",
   "scripts": {
     "start:api": "cd api && npm run start",
     "start:api:local": "cd api && npm run start:local",

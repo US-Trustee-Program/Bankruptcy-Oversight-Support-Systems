@@ -1,11 +1,11 @@
 {
-  "name": "api",
+  "name": "BOSS API",
   "version": "0.1.0",
-  "description": "",
+  "description": "Bankruptcy Oversight Support System - Application Programming Interface",
   "main": "src/server.ts",
   "type": "module",
   "author": "",
-  "license": "ISC",
+  "license": "CC0 v1.0",
   "dependencies": {
     "@azure/identity": "^3.1.3",
     "body-parser": "^1.19.0",
