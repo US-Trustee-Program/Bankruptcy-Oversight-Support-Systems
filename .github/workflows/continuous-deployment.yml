@@ -104,7 +104,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }} vnetResourceGroup=bankruptcy-oversight-support-systems'
 
       - name: Run Post Bicep configurations
         run: |

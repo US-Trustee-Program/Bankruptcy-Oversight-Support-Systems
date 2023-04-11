@@ -12,6 +12,7 @@ param appName string
 // param apiCertPass string
 
 param location string = resourceGroup().location
+param vnetResourceGroup string
 param readerGuid string
 
 @secure()
@@ -239,7 +240,7 @@ var webappSubnetName = '${appName}-vnet-webapp'
 var webappAddressPrefix = '10.0.2.0/28'
 resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
   name: virtualNetworkName
-  location: location
+  location: resourceGroup(vnetResourceGroup)
   properties: {
     addressSpace: {
       addressPrefixes: virtualNetworkAddressPrefixes
