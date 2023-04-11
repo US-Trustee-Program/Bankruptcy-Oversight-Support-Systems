@@ -104,11 +104,20 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }} vnetResourceGroup=bankruptcy-oversight-support-systems'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
+      
+      - name: Run Network Bicep deploy
+        uses: azure/arm-deploy@v1
+        id: network-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./ops/bicep/azure-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
 
       - name: Run Post Bicep configurations
         run: |
-          backendSubnetId=${{ steps.deploy.outputs.outBackendSubnetId }}
+          backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}
           count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
           echo "Subnet match count ${count}"
           if [[ $count -eq 0 ]]; then
