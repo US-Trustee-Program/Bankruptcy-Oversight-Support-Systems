@@ -1,0 +1,24 @@
+@use '../styles/abstracts/colors';
+
+.login-form {
+  background: colors.$navy;
+  border: 2px solid colors.$eagle;
+  border-radius: 5px;
+  color: white;
+  padding: 20px;
+  display: inline-block;
+  margin: auto;
+  width: 300px;
+
+  .row {
+    margin: 10px;
+    text-align: left;
+    label {
+      display: inline-block;
+      width: 100px;
+    }
+    input {
+      width: 170px;
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import './Home.scss';
 import Login from './Login';
 
 function Home() {
