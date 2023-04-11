@@ -8,6 +8,7 @@ param readerGuid string
 param agwPrivateIP string
 param virtualNetworkName string
 param apiAgwSubnetName string
+param apiBackendSubnetName string
 
 var keyVaultManagedIdentityName = '${appName}-mi-keyvault'
 resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -88,7 +89,7 @@ resource ustpKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@202
 var virtualNetworkAddressPrefixes = [ '10.0.0.0/16' ]
 // var apiAgwSubnetName = '${appName}-vnet-api-agw'
 var apiAgwSubnetAddressPrefix = '10.0.0.0/28'
-var apiBackendSubnetName = '${appName}-vnet-api-backend'
+// var apiBackendSubnetName = '${appName}-vnet-api-backend'
 var apiBackendAddressPrefix = '10.0.1.0/28'
 var webappSubnetName = '${appName}-vnet-webapp'
 var webappAddressPrefix = '10.0.2.0/28'
