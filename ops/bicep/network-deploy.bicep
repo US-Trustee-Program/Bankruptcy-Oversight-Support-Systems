@@ -6,6 +6,7 @@ param readerGuid string
 
 @secure()
 param agwPrivateIP string
+param virtualNetworkName string
 
 var keyVaultManagedIdentityName = '${appName}-mi-keyvault'
 resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -82,7 +83,7 @@ resource ustpKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@202
   }
 }
 
-var virtualNetworkName = '${appName}-vnet'
+// var virtualNetworkName = '${appName}-vnet'
 var virtualNetworkAddressPrefixes = [ '10.0.0.0/16' ]
 var apiAgwSubnetName = '${appName}-vnet-api-agw'
 var apiAgwSubnetAddressPrefix = '10.0.0.0/28'
