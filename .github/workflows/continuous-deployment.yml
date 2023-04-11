@@ -113,7 +113,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/network-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet apiAgwSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-api-agw apiBackendSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-api-backend'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet apiAgwSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-api-agw apiBackendSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-api-backend webappSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-webapp'
 
       - name: Run Post Bicep configurations
         run: |
