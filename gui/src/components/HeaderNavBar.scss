@@ -7,6 +7,7 @@
 
 .boss-header {
   background-color: colors.$navy;
+  border-bottom: 3px solid colors.$gold;
   width: calc(100% - 100px);
   padding: 15px 50px;
   position: relative;
@@ -42,6 +43,10 @@
       font-weight: bold;
       text-decoration: none;
       padding-right: 15px;
+    }
+    a:hover {
+      color: colors.$gold;
+      text-decoration: underline;
     }
   }
 

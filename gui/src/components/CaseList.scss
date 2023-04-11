@@ -1,3 +1,5 @@
+@use '../styles/abstracts/colors';
+
 .case-list {
   $caseListBorder: 1px solid #c6c6c6;
 
@@ -7,6 +9,16 @@
 
   table {
     border: $caseListBorder;
+    border-collapse: collapse;
+    margin: auto;
+    .case-headings {
+      border: 1px solid colors.$eagle;
+      background-color: colors.$eagle;
+      color: white;
+      th {
+        border-color: colors.$gold;
+      }
+    }
     th, td {
       padding: 10px;
       border-right: $caseListBorder;

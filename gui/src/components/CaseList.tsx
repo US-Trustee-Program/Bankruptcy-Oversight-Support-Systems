@@ -77,7 +77,7 @@ export const CaseList = () => {
         </h1>
         <table>
           <thead>
-            <tr className="base-headings">
+            <tr className="case-headings">
               <th>Case Number</th>
               <th>Debtor Name</th>
               <th>Current Chapter Date</th>
