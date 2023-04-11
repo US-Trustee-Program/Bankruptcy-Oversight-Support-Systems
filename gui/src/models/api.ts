@@ -11,12 +11,27 @@ export type ResponseError = {
   error: object;
 };
 
-export default class Api {
-  private _host = `${config.protocol}://${config.server}:${config.port}`;
+export type ObjectKeyVal = {
+  [key: string]: string | number;
+};
 
-  public async create(path: string, body: object): Promise<ResponseData> {
+export default class Api {
+  private static _host = `${config.protocol}://${config.server}:${config.port}`;
+
+  public static createPath(path: string, params: ObjectKeyVal) {
+    if (params && Object.keys(params).length > 0) {
+      const paramArr: string[] = [];
+      Object.entries(params).forEach(([key, value]) => {
+        paramArr.push(`${key}=${value}`);
+      });
+      path += '?' + paramArr.join('&');
+    }
+    return path;
+  }
+
+  public static async post(path: string, body: object): Promise<ResponseData> {
     try {
-      const response = await fetch(this._host + path, {
+      const response = await fetch(Api._host + path, {
         method: 'POST',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
@@ -36,9 +51,32 @@ export default class Api {
     }
   }
 
-  public async list(path: string): Promise<ResponseData> {
+  public static async create(path: string, body: object): Promise<ResponseData> {
     try {
-      const response = await fetch(this._host + path, {
+      const response = await fetch(Api._host + path, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return data;
+      } else {
+        return Promise.reject(new Error(`500 Error - Invalid Request ${data?.toString()}`));
+      }
+    } catch (e: unknown) {
+      return Promise.reject(new Error(`500 Error - Invalid Request ${(e as Error).message}`));
+    }
+  }
+
+  public static async list(path: string, options: ObjectKeyVal): Promise<ResponseData> {
+    try {
+      const pathStr = Api.createPath(path, options);
+      const response = await fetch(Api._host + pathStr, {
         method: 'GET',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
@@ -65,9 +103,9 @@ export default class Api {
     }
   }
 
-  public async read(path: string, id: string): Promise<ResponseData> {
+  public static async read(path: string, id: string): Promise<ResponseData> {
     try {
-      const response = await fetch(`${this._host}${path}/${id}`, {
+      const response = await fetch(`${Api._host}${path}/${id}`, {
         method: 'GET',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
@@ -86,9 +124,9 @@ export default class Api {
     }
   }
 
-  public async update(path: string, id: string, body: object): Promise<ResponseData> {
+  public static async update(path: string, id: string, body: object): Promise<ResponseData> {
     try {
-      const response = await fetch(`${this._host}${path}/${id}`, {
+      const response = await fetch(`${Api._host}${path}/${id}`, {
         method: 'PATCH',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
@@ -108,9 +146,9 @@ export default class Api {
     }
   }
 
-  public async replace(path: string, id: string, body: object): Promise<ResponseData> {
+  public static async replace(path: string, id: string, body: object): Promise<ResponseData> {
     try {
-      const response = await fetch(`${this._host}${path}/${id}`, {
+      const response = await fetch(`${Api._host}${path}/${id}`, {
         method: 'PUT',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
@@ -130,9 +168,9 @@ export default class Api {
     }
   }
 
-  public async del(path: string, id: string) {
+  public static async del(path: string, id: string) {
     try {
-      const response = await fetch(`${this._host}${path}/${id}`, {
+      const response = await fetch(`${Api._host}${path}/${id}`, {
         method: 'DELETE',
       });
 
