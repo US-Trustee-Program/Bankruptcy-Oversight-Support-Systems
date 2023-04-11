@@ -1,0 +1,13 @@
+{
+  "name": "boss",
+  "version": "0.1.0",
+  "private": true,
+  "license": "ISC",
+  "scripts": {
+    "start:api": "cd api && npm run start",
+    "start:api:local": "cd api && npm run start:local",
+    "start:api:dev": "cd api && npm run start:dev",
+    "start:gui": "cd gui && npm run start"
+  }
+}
+
