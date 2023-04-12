@@ -152,9 +152,9 @@ jobs:
         run: |
           webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
           count=$(az container list --query "length([?name=='${webappName}-api'])")
-          
+          apiIpAddress=
           if [[ $count -eq 0 ]]; then
-            newip=$(az container create \
+            apiIpAddress=$(az container create \
               --os-type Linux \
               --resource-group bankruptcy-oversight-support-systems \
               --name ${webappName}-api \
@@ -167,14 +167,15 @@ jobs:
               --query ipAddress.ip \
               --secure-environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' 'MSSQL_PASS'='${{ secrets.AZ_MSSQL_PASS }}' \
               --output tsv)
-          
-            echo "Adding ips to backend pool: ${newip}"
-            az network application-gateway address-pool update \
-              --resource-group bankruptcy-oversight-support-systems \
-              --gateway-name ${webappName}-api-agw \
-              --name ${webappName}-api-agw-https-backend-targets \
-              --servers ${newip}
           else
             echo "Restarting existing container group"
             az container restart --name ${webappName}-api --resource-group bankruptcy-oversight-support-systems
+            apiIpAddress=$(az container show -n ${webappName}-api -g bankruptcy-oversight-support-systems --query ipAddress.ip -o tsv)
           fi
+          
+          echo "Adding ips to backend pool: ${apiIpAddress}"
+          az network application-gateway address-pool update \
+            --resource-group bankruptcy-oversight-support-systems \
+            --gateway-name ${webappName}-api-agw \
+            --name ${webappName}-api-agw-https-backend-targets \
+            --servers ${apiIpAddress}
