@@ -7,7 +7,6 @@ param readerGuid string
 @secure()
 param agwPrivateIP string
 
-param vnetResourceGroupName string
 param virtualNetworkName string
 param apiAgwSubnetName string
 param apiBackendSubnetName string
@@ -94,24 +93,22 @@ var webappAddressPrefix = '10.0.2.0/28'
 
 // look into `what if?`
 // consider resource lock for prod
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2021-03-01' existing = {
+resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
   name: virtualNetworkName
-  scope: resourceGroup(vnetResourceGroupName)
 }
 
-resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  name: '${ustpVirtualNetwork}/${apiAgwSubnetName}'
+resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  name: apiAgwSubnetName
+  parent: ustpVirtualNetwork
   properties: {
     addressPrefix: apiAgwSubnetAddressPrefix
     privateEndpointNetworkPolicies: 'Enabled'
   }
-  dependsOn: [
-    ustpVirtualNetwork
-  ]
 }
 
-resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  name: '${ustpVirtualNetwork}/${apiBackendSubnetName}'
+resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  name: apiBackendSubnetName
+  parent: ustpVirtualNetwork
   properties: {
     addressPrefix: apiBackendAddressPrefix
     privateEndpointNetworkPolicies: 'Enabled'
@@ -132,13 +129,11 @@ resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01'
       }
     ]
   }
-  dependsOn: [
-    ustpVirtualNetwork
-  ]
 }
 
-resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  name: '${ustpVirtualNetwork}/${webappSubnetName}'
+resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  parent: ustpVirtualNetwork
+  name: webappSubnetName
   properties: {
     addressPrefix: webappAddressPrefix
     privateEndpointNetworkPolicies: 'Enabled'
@@ -151,9 +146,6 @@ resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
       }
     ]
   }
-  dependsOn: [
-    ustpVirtualNetwork
-  ]
 }
 
 
