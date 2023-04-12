@@ -6,6 +6,8 @@ param readerGuid string
 
 @secure()
 param agwPrivateIP string
+
+param vnetResourceGroupName string
 param virtualNetworkName string
 param apiAgwSubnetName string
 param apiBackendSubnetName string
@@ -86,71 +88,75 @@ resource ustpKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@202
   }
 }
 
-// var virtualNetworkName = '${appName}-vnet'
-var virtualNetworkAddressPrefixes = [ '10.0.0.0/16' ]
-// var apiAgwSubnetName = '${appName}-vnet-api-agw'
 var apiAgwSubnetAddressPrefix = '10.0.0.0/28'
-// var apiBackendSubnetName = '${appName}-vnet-api-backend'
 var apiBackendAddressPrefix = '10.0.1.0/28'
-// var webappSubnetName = '${appName}-vnet-webapp'
 var webappAddressPrefix = '10.0.2.0/28'
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
+
+// look into `what if?`
+// consider resource lock for prod
+resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2021-03-01' existing = {
   name: virtualNetworkName
-  location: location
+  scope: resourceGroup(vnetResourceGroupName)
+}
+
+resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
+  name: apiAgwSubnetName
   properties: {
-    addressSpace: {
-      addressPrefixes: virtualNetworkAddressPrefixes
-    }
-    enableDdosProtection: false
-    subnets: [
+    addressPrefix: apiAgwSubnetAddressPrefix
+    privateEndpointNetworkPolicies: 'Enabled'
+  }
+  dependsOn: [
+    ustpVirtualNetwork
+  ]
+}
+
+resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
+  name: apiBackendSubnetName
+  properties: {
+    addressPrefix: apiBackendAddressPrefix
+    privateEndpointNetworkPolicies: 'Enabled'
+    serviceEndpoints: [
       {
-        name: apiAgwSubnetName
-        properties: {
-          addressPrefix: apiAgwSubnetAddressPrefix
-          privateEndpointNetworkPolicies: 'Enabled'
-        }
+        service: 'Microsoft.Sql'
+        locations: [
+          location
+        ]
       }
+    ]
+    delegations: [
       {
-        name: apiBackendSubnetName
+        name: 'Microsoft.ContainerInstance.containerGroups'
         properties: {
-          addressPrefix: apiBackendAddressPrefix
-          privateEndpointNetworkPolicies: 'Enabled'
-          serviceEndpoints: [
-            {
-              service: 'Microsoft.Sql'
-              locations: [
-                location
-              ]
-            }
-          ]
-          delegations: [
-            {
-              name: 'Microsoft.ContainerInstance.containerGroups'
-              properties: {
-                serviceName: 'Microsoft.ContainerInstance/containerGroups'
-              }
-            }
-          ]
-        }
-      }
-      {
-        name: webappSubnetName
-        properties: {
-          addressPrefix: webappAddressPrefix
-          privateEndpointNetworkPolicies: 'Enabled'
-          delegations: [
-            {
-              name: 'Microsoft.Web/serverfarms'
-              properties: {
-                serviceName: 'Microsoft.Web/serverfarms'
-              }
-            }
-          ]
+          serviceName: 'Microsoft.ContainerInstance/containerGroups'
         }
       }
     ]
   }
+  dependsOn: [
+    ustpVirtualNetwork
+  ]
 }
+
+resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
+  name: webappSubnetName
+  properties: {
+    addressPrefix: webappAddressPrefix
+    privateEndpointNetworkPolicies: 'Enabled'
+    delegations: [
+      {
+        name: 'Microsoft.Web/serverfarms'
+        properties: {
+          serviceName: 'Microsoft.Web/serverfarms'
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    ustpVirtualNetwork
+  ]
+}
+
+
 output outVnetId string = ustpVirtualNetwork.id
 output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
 output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
