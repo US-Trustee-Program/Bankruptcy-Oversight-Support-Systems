@@ -100,7 +100,7 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2021-03-01' exist
 }
 
 resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  name: apiAgwSubnetName
+  name: '${ustpVirtualNetwork}/${apiAgwSubnetName}'
   properties: {
     addressPrefix: apiAgwSubnetAddressPrefix
     privateEndpointNetworkPolicies: 'Enabled'
@@ -111,7 +111,7 @@ resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-
 }
 
 resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  name: apiBackendSubnetName
+  name: '${ustpVirtualNetwork}/${apiBackendSubnetName}'
   properties: {
     addressPrefix: apiBackendAddressPrefix
     privateEndpointNetworkPolicies: 'Enabled'
@@ -138,7 +138,7 @@ resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01'
 }
 
 resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-03-01' = {
-  name: webappSubnetName
+  name: '${ustpVirtualNetwork}/${webappSubnetName}'
   properties: {
     addressPrefix: webappAddressPrefix
     privateEndpointNetworkPolicies: 'Enabled'
