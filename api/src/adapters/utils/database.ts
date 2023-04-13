@@ -58,3 +58,16 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
     return queryResult;
   }
 }
+
+export function padCaseNumber(caseNumber: string): string {
+  const caseArr = caseNumber.split('-');
+  if (caseArr.length != 2) {
+    throw Error(`Supplied case number has an incorrect format.  Expecting 2 hyphanated numbers but got ${caseNumber}.`)
+  }
+
+  while (caseArr[1].length < 5) {
+    caseArr[1] = '0' + caseArr[1];
+  }
+
+  return caseArr.join('-');
+}
