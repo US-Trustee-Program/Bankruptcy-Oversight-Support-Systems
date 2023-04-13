@@ -33,6 +33,9 @@ param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
 @description('Webapp private endpoint subnet ip ranges')
 param webappPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
 
+@description('Web Application ID')
+param webApplicationId string
+
 // look into `what if?`
 // consider resource lock for prod
 /*
@@ -332,9 +335,6 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
   name: 'privatelink.azurewebsites.net-vnet-link'
 }
 
-resource webApplication 'Microsoft.Web/sites@2022-03-01' existing = {
-  name: appName
-}
 var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
 var webappPrivateEndpointConnectionName = '${appName}-webapp-private-endpoint-connection'
 resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
@@ -345,7 +345,7 @@ resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-0
       {
         name: webappPrivateEndpointConnectionName
         properties: {
-          privateLinkServiceId: webApplication.id
+          privateLinkServiceId: webApplicationId
           groupIds: [
             'sites'
           ]

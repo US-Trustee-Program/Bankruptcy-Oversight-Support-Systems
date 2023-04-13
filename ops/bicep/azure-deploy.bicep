@@ -139,3 +139,5 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     azureStorageAccounts: {}
   }
 }
+
+output outwebApplicationId string = webApplication.id
