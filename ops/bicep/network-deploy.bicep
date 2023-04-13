@@ -39,6 +39,9 @@ param webApplicationId string
 @description('API Application Gateway Name')
 param apiAgwName string = '${appName}-api-agw'
 
+@description('API Application Gateway Public IP Name')
+param apiAgwPublicIp string = '${appName}-api-agw-public-ip'
+
 // look into `what if?`
 // consider resource lock for prod
 /*
@@ -128,7 +131,7 @@ var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
 var apiAgwBackendTargetsName = '${apiAgwName}-https-backend-targets'
 // var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
 var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
-var apiAgwPublicIp = '${appName}-api-agw-public-ip'
+// var apiAgwPublicIp = '${appName}-api-agw-public-ip'
 
 resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
   name: apiAgwPublicIp
