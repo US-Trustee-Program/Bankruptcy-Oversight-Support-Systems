@@ -10,7 +10,7 @@ const getCaseList = async (caseOptions: {chapter: string, professionalId: number
   let input: DbTableFieldSpec[] = [];
 
   let query = `select a.CURR_CASE_CHAPT 
-      , CONCAT(a.CASE_YEAR, '-', a.CASE_NUMBER) as 'CASE_YEAR_AND_NUMBER'
+      , CONCAT(a.CASE_YEAR, '-', REPLICATE('0', 5-DATALENGTH(LTRIM(a.CASE_NUMBER))), a.CASE_NUMBER) as 'CASE_YEAR_AND_NUMBER'
       , a.DEBTOR1_NAME
       , a.CURRENT_CHAPTER_FILE_DATE     
       , rTrim(b1.PROF_FIRST_NAME)  + ' ' + rTrim(b1.PROF_LAST_NAME) as 'STAFF1_PROF_NAME'     
