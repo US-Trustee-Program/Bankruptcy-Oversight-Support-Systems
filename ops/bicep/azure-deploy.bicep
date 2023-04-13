@@ -1,16 +1,6 @@
 @description('Sets an application name')
 param appName string
 
-// @description('Base-64 encoded .pfx to enable TLS for api')
-// @maxLength(4096)
-// @minLength(2048)
-// @secure()
-// param apiCertData string
-
-// @description('TLS Cert password for api')
-// @secure()
-// param apiCertPass string
-
 param location string = resourceGroup().location
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {

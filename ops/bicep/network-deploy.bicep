@@ -2,101 +2,49 @@
 param appName string
 
 param location string = resourceGroup().location
-param readerGuid string
 
-@secure()
-param agwPrivateIP string
+@description('Application\'s target virtual network name')
+param virtualNetworkName string = '${appName}-vnet'
 
-param virtualNetworkName string
-param apiAgwSubnetName string
-param apiBackendSubnetName string
-param webappSubnetName string
+@description('API application gateway subnet name')
+param apiAgwSubnetName string = '${virtualNetworkName}-api-agw'
 
-var keyVaultManagedIdentityName = '${appName}-mi-keyvault'
-resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: keyVaultManagedIdentityName
-  location: location
-}
+@description('API application gateway subnet ip ranges')
+param apiAgwSubnetAddressPrefix string = '10.0.0.0/28'
 
-var keyVaultName = '${appName}-kv'
-resource ustpKeyVault 'Microsoft.KeyVault/vaults@2022-11-01' = {
-  name: keyVaultName
-  location: location
-  properties: {
-    accessPolicies: []
-    publicNetworkAccess: 'Disabled'
-    enableRbacAuthorization: false
-    tenantId: tenant().tenantId
-    sku: {
-      name: 'standard'
-      family: 'A'
-    }
-    networkAcls: {
-      bypass: 'AzureServices'
-      defaultAction: 'Deny'
-      ipRules: []
-      virtualNetworkRules: []
-    }
-  }
-}
+@description('API application gateway private Ip')
+param agwPrivateIP string = '10.0.0.8'
 
-//@description('Store base 64 encoded .pfx and pass as secret')
-// var certDataName = '${appName}-tlsCertData'
-// resource ustpApiTlsCertData 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
-//   parent: ustpKeyVault
-//   name: certDataName
-//   properties: {
-//     value: apiCertData
-//     contentType: 'application/x-pkcs12'
-//     attributes: {
-//       enabled: true
-//     }
-//   }
-// }
-// var certPassName = '${appName}-tlsCertPass'
-// resource ustpApiTlsCertPass 'Microsoft.KeyVault/vaults/secrets@2022-11-01' = {
-//   parent: ustpKeyVault
-//   name: certPassName
-//   properties: {
-//     value: apiCertPass
-//     attributes: {
-//       enabled: true
-//     }
-//   }
-// }
+@description('API backend subnet name')
+param apiBackendSubnetName string = '${virtualNetworkName}-api-backend'
 
-// @description('This is the built-in Key Vault Administrator role. See https://docs.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-administrator')
-// resource keyVaultAdministratorRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-//   scope: subscription()
-//   name: '00482a5a-887f-4fb3-b363-3b7fe8e74483'
-// }
-@description('This is the built-in Key Vault Reader role.')
-resource keyVaultReaderRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: subscription()
-  name: readerGuid
-}
+@description('API backend instance subnet ip ranges')
+param apiBackendAddressPrefix string = '10.0.1.0/28'
 
-var keyVaultRoleAssignmentGuid = guid(ustpKeyVault.id, ustpKeyVaultManagedIdentity.id, keyVaultReaderRoleDefinition.id)
-resource ustpKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: keyVaultRoleAssignmentGuid
-  scope: ustpKeyVault
-  properties: {
-    roleDefinitionId: keyVaultReaderRoleDefinition.id
-    principalId: ustpKeyVaultManagedIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
+@description('Webapp subnet name')
+param webappSubnetName string = '${virtualNetworkName}-webapp'
 
-var apiAgwSubnetAddressPrefix = '10.0.0.0/28'
-var apiBackendAddressPrefix = '10.0.1.0/28'
-var webappAddressPrefix = '10.0.2.0/28'
+@description('Webapp subnet ip ranges')
+param webappAddressPrefix string = '10.0.2.0/28'
+
+@description('Webapp private endpoint name')
+param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
+
+@description('Webapp private endpoint subnet ip ranges')
+param webappPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
 
 // look into `what if?`
 // consider resource lock for prod
+/*
+  USTP BOSS Virtual Network
+*/
 resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
   name: virtualNetworkName
 }
 
+/*
+  USTP BOSS Subnets
+*/
 resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
   name: apiAgwSubnetName
   parent: ustpVirtualNetwork
@@ -148,12 +96,24 @@ resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
   }
 }
 
+resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  name: webappPrivateEndpointSubnetName
+  parent: ustpVirtualNetwork
+  properties: {
+    addressPrefix: webappPrivateEndpointSubnetAddressPrefix
+    serviceEndpoints: []
+    delegations: []
+    privateEndpointNetworkPolicies: 'Disabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
+  }
+}
 
-output outVnetId string = ustpVirtualNetwork.id
-output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
-output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
-output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
-
+/*
+  Application Gateway
+*/
+resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: '${appName}-mi-keyvault'
+}
 var apiAgwName = '${appName}-api-agw'
 // var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
 var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
@@ -163,6 +123,7 @@ var apiAgwBackendTargetsName = '${apiAgwName}-https-backend-targets'
 // var apiAgwHttpsRoutingRuleName = '${apiAgwName}-https-routing-rule'
 var apiAgwHttpRoutingRuleName = '${apiAgwName}-http-routing-rule'
 var apiAgwPublicIp = '${appName}-api-agw-public-ip'
+
 resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
   name: apiAgwPublicIp
   location: location
@@ -350,3 +311,80 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
   }
   dependsOn: [ ustpVirtualNetwork ]
 }
+
+/*
+  Resolves webapp DNS to a private IP via Private DNS Zone and Private Endpoint Link
+*/
+resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' = {
+  name: 'privatelink.azurewebsites.net'
+  location: 'global'
+}
+
+resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2018-09-01' = {
+  parent: ustpPrivateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: ustpVirtualNetwork.id
+    }
+  }
+  name: 'privatelink.azurewebsites.net-vnet-link'
+}
+
+resource webApplication 'Microsoft.Web/sites@2022-03-01' existing = {
+  name: appName
+}
+var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
+var webappPrivateEndpointConnectionName = '${appName}-webapp-private-endpoint-connection'
+resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
+  name: webappPrivateEndpointName
+  location: location
+  properties: {
+    privateLinkServiceConnections: [
+      {
+        name: webappPrivateEndpointConnectionName
+        properties: {
+          privateLinkServiceId: webApplication.id
+          groupIds: [
+            'sites'
+          ]
+          privateLinkServiceConnectionState: {
+            status: 'Approved'
+            actionsRequired: 'None'
+          }
+        }
+      }
+    ]
+    manualPrivateLinkServiceConnections: []
+    subnet: {
+      id: webappPrivateEndpointSubnet.id
+    }
+    ipConfigurations: []
+    customDnsConfigs: []
+  }
+}
+
+resource ustpPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
+  parent: ustpWebappPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'privatelink_azurewebsites_net'
+        properties: {
+          privateDnsZoneId: ustpPrivateDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
+/*
+  Bicep outputs
+*/
+output outVnetId string = ustpVirtualNetwork.id
+output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
+output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
+output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
+output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
