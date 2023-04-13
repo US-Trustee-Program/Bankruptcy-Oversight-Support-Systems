@@ -36,6 +36,9 @@ param webappPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
 @description('Web Application ID')
 param webApplicationId string
 
+@description('API Application Gateway Name')
+param apiAgwName string = '${appName}-api-agw'
+
 // look into `what if?`
 // consider resource lock for prod
 /*
@@ -117,7 +120,7 @@ resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@
 //resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
 //  name: '${appName}-mi-keyvault'
 //}
-var apiAgwName = '${appName}-api-agw'
+// var apiAgwName = '${appName}-api-agw'
 // var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
 var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
 // var apiAgwHttpsCertName = '${apiAgwName}-https-cert'
