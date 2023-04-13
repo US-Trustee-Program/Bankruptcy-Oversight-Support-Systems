@@ -140,4 +140,4 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   }
 }
 
-output outwebApplicationId string = webApplication.id
+output outwebApplicationId string = resourceId( 'Microsoft.Web/sites', appName)
