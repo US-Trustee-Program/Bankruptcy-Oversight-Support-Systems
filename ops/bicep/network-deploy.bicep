@@ -111,9 +111,9 @@ resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@
 /*
   Application Gateway
 */
-resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: '${appName}-mi-keyvault'
-}
+//resource ustpKeyVaultManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+//  name: '${appName}-mi-keyvault'
+//}
 var apiAgwName = '${appName}-api-agw'
 // var apiAgwHttpsListenerName = '${apiAgwName}-https-listener'
 var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
@@ -142,12 +142,12 @@ resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
 resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-09-01' = {
   name: apiAgwName
   location: location
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${ustpKeyVaultManagedIdentity.id}': {}
-    }
-  }
+//  identity: {
+//    type: 'UserAssigned'
+//    userAssignedIdentities: {
+//      '${ustpKeyVaultManagedIdentity.id}': {}
+//    }
+//  }
   properties: {
     sku: {
       name: 'Standard_v2'
