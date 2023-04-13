@@ -27,7 +27,7 @@ jobs:
 
       - run: npm ci
       - run: |
-          export REACT_APP_SERVER_HOSTNAME=${{ secrets.REACT_APP_SERVER_HOSTNAME }}
+          export REACT_APP_SERVER_HOSTNAME=${{ vars.REACT_APP_SERVER_HOSTNAME }}
           export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
           export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           npm run build --if-present
@@ -106,6 +106,15 @@ jobs:
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
       
+      - name: Run KeyVault Bicep deploy
+        uses: azure/arm-deploy@v1
+        id: keyvault-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./ops/bicep/keyvault-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
+
       - name: Run Network Bicep deploy
         uses: azure/arm-deploy@v1
         id: network-deploy
@@ -113,16 +122,16 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
           template: ./ops/bicep/network-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ secrets.REACT_APP_SERVER_HOSTNAME }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet apiAgwSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-api-agw apiBackendSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-api-backend webappSubnetName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-webapp'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'
 
       - name: Run Post Bicep configurations
         run: |
           backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}
-          count=$(az sql server vnet-rule list -g bankruptcy-oversight-support-systems --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
+          count=$(az sql server vnet-rule list -g ${{ secrets.AZURE_RG }} --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
           echo "Subnet match count ${count}"
           if [[ $count -eq 0 ]]; then
             echo "Creating new vnet-rule"
-            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g bankruptcy-oversight-support-systems --subnet ${backendSubnetId}
+            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g ${{ secrets.AZURE_RG }} --subnet ${backendSubnetId}
           fi
 
       - name: Download artifact from build job
@@ -139,14 +148,13 @@ jobs:
           cd build
           echo "Contents of build folder:"
           ls
-          
+
           webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-          resourceGroupName=bankruptcy-oversight-support-systems
           
-          az resource update -g $resourceGroupName -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az resource update -g ${{ secrets.AZURE_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n $webappName
-          az webapp vnet-integration add -n $webappName -g $resourceGroupName --vnet ${webappName}-vnet --subnet ${webappName}-vnet-webapp
-          az resource update -g $resourceGroupName -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+          az webapp vnet-integration add -n $webappName -g ${{ secrets.AZURE_RG }} --vnet ${webappName}-vnet --subnet ${webappName}-vnet-webapp
+          az resource update -g ${{ secrets.AZURE_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Deploy Node API to Azure
         run: |
@@ -156,7 +164,7 @@ jobs:
           if [[ $count -eq 0 ]]; then
             apiIpAddress=$(az container create \
               --os-type Linux \
-              --resource-group bankruptcy-oversight-support-systems \
+              --resource-group ${{ secrets.AZURE_RG }} \
               --name ${webappName}-api \
               --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
               --ports 8080 \
@@ -169,13 +177,13 @@ jobs:
               --output tsv)
           else
             echo "Restarting existing container group"
-            az container restart --name ${webappName}-api --resource-group bankruptcy-oversight-support-systems
-            apiIpAddress=$(az container show -n ${webappName}-api -g bankruptcy-oversight-support-systems --query ipAddress.ip -o tsv)
+            az container restart --name ${webappName}-api -g ${{ secrets.AZURE_RG }}
+            apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZURE_RG }} --query ipAddress.ip -o tsv)
           fi
           
           echo "Adding ips to backend pool: ${apiIpAddress}"
           az network application-gateway address-pool update \
-            --resource-group bankruptcy-oversight-support-systems \
+            --resource-group ${{ secrets.AZURE_RG }} \
             --gateway-name ${webappName}-api-agw \
             --name ${webappName}-api-agw-https-backend-targets \
             --servers ${apiIpAddress}
