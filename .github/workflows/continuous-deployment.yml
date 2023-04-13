@@ -99,7 +99,7 @@ jobs:
 
       - name: Run Bicep deploy
         uses: azure/arm-deploy@v1
-        id: deploy
+        id: azure-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZURE_RG }}
