@@ -1,8 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
-//import { render, screen, waitFor, renderHook } from '@testing-library/react';
-//import { ReactElement, JSXElementConstructor, ReactFragment, ReactPortal } from 'react';
-//import { addUser } from '../../src/store/features/UserSlice';
-//import { useAppDispatch } from '../../src/store/store';
+import { render, screen, waitFor, renderHook } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { addUser } from '../../src/store/features/UserSlice';
+import { useAppDispatch } from '../../src/store/store';
 import { BrowserRouter } from 'react-router-dom';
 import { store } from '../../src/store/store';
 import { Provider } from 'react-redux';
@@ -110,22 +109,20 @@ describe('Base App Tests', () => {
     );
   });
 
-  /*
   test('/cases renders Case List for given staff member', async () => {
     const firstName = 'Jessie';
     const lastName = 'Thomas';
     const userData = { id: 123, firstName, lastName };
-    const userWrapper = (
-      children: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ReactElement<any, string | JSXElementConstructor<any>>,
-    ) => <Provider store={store}>{children}</Provider>;
+    const userWrapper = ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    );
     renderHook(
       () => {
         const dispatch = useAppDispatch();
         dispatch(addUser(userData));
       },
       {
-        userWrapper,
+        wrapper: userWrapper,
       },
     );
     jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
@@ -146,5 +143,4 @@ describe('Base App Tests', () => {
       { timeout: 100 },
     );
   });
-  */
 });
