@@ -1,5 +1,11 @@
 # IDEs
 
+## Keep the environment config out of the repo
+*/**/.env
+*/**/.env.*
+.env
+.env.*
+
 ## JetBrains
 *.iml
 *.iws
@@ -7,12 +13,14 @@
 .idea/
 
 ## VSCODE
+.vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+*/**/.vscode
 
 ### Local History for Visual Studio Code
 .history/
@@ -44,3 +52,6 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+
+# secrets
+*/**/.secrets.baseline
