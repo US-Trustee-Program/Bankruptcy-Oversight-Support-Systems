@@ -41,7 +41,7 @@ export const CaseList = () => {
     setIsLoading(true);
     Api.list('/cases', {
       chapter,
-      professionalId: user.id,
+      professional_id: user.id,
     }).then((res) => {
       (res.body as []).forEach((row) => {
         if (row['CURR_CASE_CHAPT'] == '11') {

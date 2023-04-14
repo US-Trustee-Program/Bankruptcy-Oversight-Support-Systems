@@ -1,6 +1,7 @@
 package gov.doj.ustp;
 
 import gov.doj.ustp.entities.Case;
+import gov.doj.ustp.entities.User;
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -15,7 +16,7 @@ import static gov.doj.ustp.SqlQueryConstants.PROF_CODE_QUERY;
 public class SqlServerGateway {
   private String uri = "jdbc:sqlserver://boss-acms-dev.database.windows.net:1433;database=ACMS_REP_SUB;user=CloudSA32e9dec1@boss-acms-dev;password=tmt0AZR*zug7xaz9dpd;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;";
 
-  public Integer getProfCode(String firstName, String lastName) {
+  public User getProfCode(String firstName, String lastName) {
     try (Connection conn = DriverManager.getConnection(uri);
          PreparedStatement stmt = conn.prepareStatement(PROF_CODE_QUERY)) {
       stmt.setString(1, firstName);
@@ -24,8 +25,10 @@ public class SqlServerGateway {
       Integer profCode = null;
       if (rs.next()) {
         profCode = rs.getInt("UST_PROF_CODE");
+        firstName = rs.getString("PROF_FIRST_NAME").trim();
+        lastName = rs.getString("PROF_LAST_NAME").trim();
       }
-      return profCode;
+      return new User(profCode, firstName, lastName);
     } catch (SQLException e) {
       System.out.println(e.getMessage());
       throw new RuntimeException(e);
