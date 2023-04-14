@@ -212,12 +212,12 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           port: 80
         }
       }
-      {
-        name: 'port_443'
-        properties: {
-          port: 443
-        }
-      }
+      // {
+      //   name: 'port_443'
+      //   properties: {
+      //     port: 443
+      //   }
+      // }
     ]
     backendAddressPools: [
       {
