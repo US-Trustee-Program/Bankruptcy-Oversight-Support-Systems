@@ -11,6 +11,7 @@ import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 import gov.doj.ustp.entities.Case;
+import gov.doj.ustp.entities.User;
 import gov.doj.ustp.entities.UserRequest;
 
 import java.time.LocalDate;
@@ -30,9 +31,10 @@ public class Function {
             final ExecutionContext context) {
 
         final Integer professionalId = Integer.parseInt(request.getQueryParameters().get("professional_id"));
+        final String chapter = request.getQueryParameters().get("chapter");
 
         SqlServerGateway sqlServerGateway = new SqlServerGateway();
-        List<Case> cases = sqlServerGateway.getCases("11", professionalId);
+        List<Case> cases = sqlServerGateway.getCases(chapter, professionalId);
         Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
@@ -67,11 +69,12 @@ public class Function {
             return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Please pass a first_name and last_name on the query string").build();
         } else {
             SqlServerGateway sqlServerGateway = new SqlServerGateway();
-            Integer professionalId = sqlServerGateway.getProfCode(firstName, lastName);
-            if (professionalId == null) {
+            User professional = sqlServerGateway.getProfCode(firstName, lastName);
+            if (professional == null) {
                 return request.createResponseBuilder(HttpStatus.NOT_FOUND).body("No professional by that name was found.").build();
             }
-            return request.createResponseBuilder(HttpStatus.OK).body(professionalId).build();
+            Gson gson = new GsonBuilder().create();
+            return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(professional)).build();
         }
     }
 }

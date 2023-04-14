@@ -16,18 +16,18 @@ export const Login = () => {
     console.log('sending user names to login endpoint');
     await Api.post('/api/login', { first_name: firstName.current, last_name: lastName.current })
       .then((userDetails) => {
-        if (userDetails.body && Array.isArray(userDetails.body)) {
-          const userRecord = userDetails.body[0];
+        if (userDetails) {
+          const userRecord = userDetails;
           if (
-            'professional_id' in userRecord &&
-            'first_name' in userRecord &&
-            'last_name' in userRecord
+            'professionalId' in userRecord &&
+            'firstName' in userRecord &&
+            'lastName' in userRecord
           ) {
             dispatch(
               addUser({
-                id: userRecord.professional_id as number,
-                firstName: (userRecord.first_name as string).trim(),
-                lastName: (userRecord.last_name as string).trim(),
+                id: userRecord['professionalId'] as number,
+                firstName: (userRecord['firstName'] as string).trim(),
+                lastName: (userRecord['lastName'] as string).trim(),
               }),
             );
           }
