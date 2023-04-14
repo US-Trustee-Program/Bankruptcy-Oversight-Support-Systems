@@ -16,7 +16,7 @@ jobs:
   build:
     defaults:
       run:
-        working-directory: api
+        working-directory: api/node
 
     runs-on: ubuntu-latest
 
