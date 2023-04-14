@@ -1,5 +1,7 @@
 package gov.doj.ustp;
 
+import gov.doj.ustp.entities.Case;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
