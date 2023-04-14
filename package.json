@@ -5,9 +5,9 @@
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System",
   "scripts": {
-    "start:api": "cd api && npm run start",
-    "start:api:local": "cd api && npm run start:local",
-    "start:api:dev": "cd api && npm run start:dev",
+    "start:node:api": "cd api/node && npm run start",
+    "start:node:api:local": "cd api/node && npm run start:local",
+    "start:node:api:dev": "cd api/node && npm run start:dev",
     "start:gui": "cd gui && npm run start"
   }
 }
