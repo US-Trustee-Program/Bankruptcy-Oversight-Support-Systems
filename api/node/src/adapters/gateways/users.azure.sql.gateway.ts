@@ -5,14 +5,14 @@ import { runQuery } from '../utils/database.js';
 const login = async (userName: { firstName: string, lastName: string }): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
-  let query = `SELECT 
+  let query = `SELECT
       PROF_FIRST_NAME AS first_name,
       PROF_MI AS middle_initial,
       PROF_LAST_NAME AS last_name,
       UST_PROF_CODE AS professional_id
     FROM CMMPR
     WHERE
-      DELETE_CODE <> 'D' 
+      DELETE_CODE <> 'D'
       AND PROF_FIRST_NAME = @firstName AND PROF_LAST_NAME = @lastName
   `;
 

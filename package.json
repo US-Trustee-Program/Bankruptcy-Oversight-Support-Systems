@@ -11,4 +11,3 @@
     "start:gui": "cd gui && npm run start"
   }
 }
-
