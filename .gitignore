@@ -55,3 +55,6 @@ hs_err_pid*
 
 # secrets
 */**/.secrets.baseline
+
+# Azure
+**/.azure/
