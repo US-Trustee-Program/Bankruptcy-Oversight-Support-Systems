@@ -1,15 +1,25 @@
 import './App.scss';
 import { Routes, Route } from 'react-router-dom';
-import { Home } from './components/Home';
+import Home from './components/Home';
+import NotFound from './components/NotFound';
 import { CaseList } from './components/CaseList';
+import { HeaderNavBar } from './components/HeaderNavBar';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
 
 function App() {
   return (
     <div className="App">
-      <Routes>
-        <Route path="/" element={<Home />}></Route>
-        <Route path="/cases" element={<CaseList />}></Route>
-      </Routes>
+      <Provider store={store}>
+        <HeaderNavBar />
+        <div className="body">
+          <Routes>
+            <Route path="/cases" element={<CaseList />}></Route>
+            <Route path="/" element={<Home />}></Route>
+            <Route path="*" element={<NotFound />}></Route>
+          </Routes>
+        </div>
+      </Provider>
     </div>
   );
 }

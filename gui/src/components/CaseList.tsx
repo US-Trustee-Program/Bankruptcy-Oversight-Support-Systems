@@ -1,76 +1,154 @@
 import { useState, useEffect } from 'react';
+import { useAppSelector } from '../store/store';
 import Api, { ResponseData } from '../models/api';
 import './CaseList.scss';
 
-/*
-"CASE_DIV": 481,
-            "CASE_YEAR": 22,
-            "CASE_NUMBER": 91419,
-            "STAFF1_PROF_CODE": 2416,
-            "STAFF2_PROF_CODE": 2675,
-            "CURR_CASE_CHAPT": "11"
-*/
 type caseType = {
-  CASE_DIV: number;
-  CASE_YEAR: number;
-  CASE_NUMBER: number;
+  CASE_YEAR_AND_NUMBER: string;
+  CURRENT_CHAPTER_FILE_DATE: number;
   CURR_CASE_CHAPT: string;
-  STAFF1_PROF_CODE: number;
-  STAFF2_PROF_CODE: number;
+  DEBTOR1_NAME: string;
+  HEARING_CODE: string;
+  HEARING_DATE: number;
+  HEARING_DISP: string;
+  HEARING_TIME: number;
+  STAFF1_PROF_NAME: string;
+  STAFF1_PROF_TYPE_DESC: string;
+  STAFF2_PROF_NAME: string;
+  STAFF2_PROF_TYPE_DESC: string;
 };
 
-//export const CaseList: React.FC<caseType> = () => {
 export const CaseList = () => {
-  const api = new Api();
+  const user = useAppSelector((state) => state.user.user);
   const [caseList, setCaseList] = useState<ResponseData>({
     message: '',
     count: 0,
     body: [{}],
   });
-  let isWaiting = false;
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [staff1Label, setStaff1Label] = useState<string>('');
+  const [staff2Label, setStaff2Label] = useState<string>('');
+
+  let name = 'any staff';
+  if (user.id > 0) {
+    name = `${user.firstName} ${user.lastName}`;
+  }
+
+  // temporarily hard code a chapter, until we provide a way for the user to select one
+  const chapter = '11';
+
+  const fetchList = async () => {
+    setIsLoading(true);
+    Api.list('/cases', {
+      chapter,
+      professionalId: user.id,
+    }).then((res) => {
+      (res.body as []).forEach((row) => {
+        if (row['CURR_CASE_CHAPT'] == '11') {
+          setStaff1Label('Trial Attorney');
+          setStaff2Label('Auditor');
+        }
+      });
+      setCaseList(res);
+      setIsLoading(false);
+    });
+  };
 
   useEffect(() => {
-    const fetchList = async () => {
-      isWaiting = true;
-      api.list('/cases').then((res) => {
-        setCaseList(res);
-        isWaiting = false;
-      });
-    };
+    fetchList();
 
-    if (!isWaiting) {
+    if (!isLoading) {
       fetchList();
     }
-  }, [caseList.count > 0]);
+  }, [caseList.count > 0, chapter]);
 
-  return (
-    <div className="case-list">
-      <h1>Case List</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Case Div</th>
-            <th>Case Year</th>
-            <th>Case Number</th>
-            <th>Chapter</th>
-            <th>Staff 1</th>
-            <th>Staff 2</th>
-          </tr>
-        </thead>
-        <tbody>
-          {caseList.count > 0 &&
-            (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => (
-              <tr key={idx}>
-                <td>{theCase.CASE_DIV}</td>
-                <td>{theCase.CASE_YEAR}</td>
-                <td>{theCase.CASE_NUMBER}</td>
-                <td>{theCase.CURR_CASE_CHAPT}</td>
-                <td>{theCase.STAFF1_PROF_CODE}</td>
-                <td>{theCase.STAFF2_PROF_CODE}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <div className="case-list">
+        <h1>Case List</h1>
+        <p>Loading...</p>
+      </div>
+    );
+  } else {
+    return (
+      <div className="case-list">
+        <h1 data-testid="case-list-heading">
+          Case List for {name} chapter {chapter}
+        </h1>
+        <table>
+          <thead>
+            <tr className="case-headings">
+              <th>Case Number</th>
+              <th>Debtor Name</th>
+              <th>Current Chapter Date</th>
+              <th>Hearing Code</th>
+              <th>Initial Hearing Date/Time</th>
+              <th>Hearing Disposition</th>
+              <th>{staff1Label}</th>
+              <th>{staff2Label}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {caseList.count > 0 &&
+              (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => {
+                const chapterStr = theCase.CURRENT_CHAPTER_FILE_DATE.toString();
+                const chapterYear = chapterStr.substring(0, 4);
+                const chapterMonth = chapterStr.substring(4, 6);
+                const chapterDay = chapterStr.substring(6, 8);
+                const chapterDateStr = `${chapterMonth}/${chapterDay}/${chapterYear}`;
+
+                let hearingDateStr = '',
+                  hearingYear = '',
+                  hearingMonth = '',
+                  hearingDay = '',
+                  hearingTimeStr = '',
+                  hearingHour = 0,
+                  hearingHourStr = '',
+                  timeFormat = '',
+                  hearingMinute = '',
+                  hearingDateTimeStr = '';
+
+                if (theCase.HEARING_DATE > 0) {
+                  hearingDateStr = theCase.HEARING_DATE.toString();
+                  hearingYear = hearingDateStr.substring(0, 4);
+                  hearingMonth = hearingDateStr.substring(4, 6);
+                  hearingDay = hearingDateStr.substring(6, 8);
+                  hearingDateTimeStr = `${hearingMonth}/${hearingDay}/${hearingYear}`;
+                }
+                if (theCase.HEARING_TIME > 0) {
+                  hearingTimeStr = theCase.HEARING_TIME.toString();
+                  if (theCase.HEARING_TIME < 1000) {
+                    hearingMinute = hearingTimeStr.substring(1, 3);
+                    hearingHour = hearingTimeStr.substring(0, 1) as unknown as number;
+                  } else {
+                    hearingMinute = hearingTimeStr.substring(2, 4);
+                    hearingHour = hearingTimeStr.substring(0, 2) as unknown as number;
+                  }
+                  timeFormat = 'am';
+                  if (hearingHour > 12) {
+                    timeFormat = 'pm';
+                    hearingHour -= 12;
+                  }
+                  hearingHourStr = hearingHour.toString();
+                  hearingDateTimeStr += ` ${hearingHourStr}:${hearingMinute} ${timeFormat}`;
+                }
+
+                return (
+                  <tr key={idx}>
+                    <td>{theCase.CASE_YEAR_AND_NUMBER}</td>
+                    <td>{theCase.DEBTOR1_NAME}</td>
+                    <td>{chapterDateStr}</td>
+                    <td>{theCase.HEARING_CODE}</td>
+                    <td>{hearingDateTimeStr}</td>
+                    <td>{theCase.HEARING_DISP}</td>
+                    <td>{theCase.STAFF1_PROF_NAME}</td>
+                    <td>{theCase.STAFF2_PROF_NAME}</td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 };

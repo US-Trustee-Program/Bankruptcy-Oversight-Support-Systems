@@ -1,8 +1,12 @@
-export const Home = () => {
+import './Home.scss';
+import Login from './Login';
+
+function Home() {
   return (
-    <div>
-      <h1>Total Active Cases:</h1>
-      <p>154,221</p>
+    <div className="home">
+      <Login />
     </div>
   );
-};
+}
+
+export default Home;

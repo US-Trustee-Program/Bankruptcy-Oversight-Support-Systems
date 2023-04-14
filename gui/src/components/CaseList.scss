@@ -1,18 +1,38 @@
-$caseListBorder: 1px solid #c6c6c6;
+@use '../styles/abstracts/colors';
+@use '../styles/abstracts/tables';
 
-.case-list table {
-  border: $caseListBorder;
-  th, td {
-    padding: 10px;
-    border-right: $caseListBorder;
+.case-list {
+
+  h1 {
+    text-align: center;
   }
-  td {
-    border-top: $caseListBorder;
-  }
-  th:last-child, td:last-child {
-    border-right: none;
-  }
-  tr:nth-child(odd) td {
-    background: #f6f6f6;
+
+  table {
+    border: tables.$tableBorder;
+    border-collapse: tables.$tableBorderCollapse;
+    border-radius: tables.$tableBorderRadius;
+    overflow: hidden;
+    margin: auto;
+    .case-headings {
+      border: 1px solid colors.$eagle;
+      background-color: colors.$eagle;
+      color: tables.$tableHeaderForeground;
+      th {
+        border-color: tables.$tableHeaderBorderColor;
+      }
+    }
+    th, td {
+      padding: tables.$tableCellPadding;
+      border-right: tables.$tableBorder;
+    }
+    td {
+      border-top: tables.$tableBorder;
+    }
+    th:last-child, td:last-child {
+      border-right: none;
+    }
+    tr:nth-child(odd) td {
+      background: tables.$tableBodyBackgroundOddRows;
+    }
   }
 }
