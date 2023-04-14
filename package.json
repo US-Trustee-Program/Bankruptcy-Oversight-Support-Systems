@@ -1,0 +1,14 @@
+{
+  "name": "BOSS",
+  "version": "0.1.0",
+  "private": true,
+  "license": "CC0 v1.0",
+  "description": "Bankruptcy Oversight Support System",
+  "scripts": {
+    "start:node:api": "cd api/node && npm run start",
+    "start:node:api:local": "cd api/node && npm run start:local",
+    "start:node:api:dev": "cd api/node && npm run start:dev",
+    "start:gui": "cd gui && npm run start"
+  }
+}
+
