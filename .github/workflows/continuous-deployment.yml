@@ -124,6 +124,24 @@ jobs:
           template: ./ops/bicep/network-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet webApplicationId=${{ steps.azure-deploy.outputs.outwebApplicationId }}'
 
+      - name: Provision API Application Gateway
+        uses: azure/arm-deploy@v1
+        id: api-agw-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./ops/bicep/appgateway-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'
+
+      - name: Provision Webapp Private Endpoint
+        uses: azure/arm-deploy@v1
+        id: webapp-private-endpoint-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZURE_RG }}
+          template: ./ops/bicep/private-endpoint-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet webApplicationId=${{ steps.azure-deploy.outputs.outwebApplicationId }}'
+
       - name: Run Post Bicep configurations
         run: |
           backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}

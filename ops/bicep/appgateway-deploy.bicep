@@ -1,10 +1,10 @@
 @description('Sets an application name')
 param appName string
 
+param location string = resourceGroup().location
+
 @description('API Application Gateway Name')
 param apiAgwName string = '${appName}-api-agw'
-
-param location string = resourceGroup().location
 
 @description('Application\'s target virtual network name')
 param virtualNetworkName string = '${appName}-vnet'
@@ -33,7 +33,6 @@ resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
   }
 }
 
-// Declare variables for this resource
 var apiAgwHttpListenerName = '${apiAgwName}-http-listener'
 var apiAgwHttpBackendSettingsName = '${apiAgwName}-http-backend-settings'
 var apiAgwBackendTargetsName = '${apiAgwName}-https-backend-targets'
@@ -77,8 +76,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         }
       }
     ]
-    sslCertificates: [
-    ]
+    sslCertificates: []
     trustedRootCertificates: []
     trustedClientCertificates: []
     sslProfiles: []
