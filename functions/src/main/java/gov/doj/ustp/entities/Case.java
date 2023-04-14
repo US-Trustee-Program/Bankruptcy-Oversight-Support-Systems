@@ -1,4 +1,4 @@
-package gov.doj.ustp;
+package gov.doj.ustp.entities;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
