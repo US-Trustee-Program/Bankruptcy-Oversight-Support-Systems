@@ -2,6 +2,7 @@
   "name": "BOSS GUI",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:3000",
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System - Graphical Frontend User Interface",
   "dependencies": {
