@@ -4,18 +4,18 @@ import Api, { ResponseData } from '../models/api';
 import './CaseList.scss';
 
 type caseType = {
-  CASE_YEAR_AND_NUMBER: string;
-  CURRENT_CHAPTER_FILE_DATE: number;
-  CURR_CASE_CHAPT: string;
-  DEBTOR1_NAME: string;
-  HEARING_CODE: string;
-  HEARING_DATE: number;
-  HEARING_DISP: string;
-  HEARING_TIME: number;
-  STAFF1_PROF_NAME: string;
-  STAFF1_PROF_TYPE_DESC: string;
-  STAFF2_PROF_NAME: string;
-  STAFF2_PROF_TYPE_DESC: string;
+  caseNumber: string;
+  currentChapterFileDate: number;
+  currentCaseChapter: string;
+  debtor1Name: string;
+  hearingCode: string;
+  hearingDate: number;
+  hearingDisposition: string;
+  hearingTime: number;
+  staff1ProfName: string;
+  staff1ProfDescription: string;
+  staff2ProfName: string;
+  staff2ProfDescription: string;
 };
 
 export const CaseList = () => {
@@ -91,7 +91,7 @@ export const CaseList = () => {
           <tbody>
             {caseList.count > 0 &&
               (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => {
-                const chapterStr = theCase.CURRENT_CHAPTER_FILE_DATE.toString();
+                const chapterStr = theCase.currentChapterFileDate.toString();
                 const chapterYear = chapterStr.substring(0, 4);
                 const chapterMonth = chapterStr.substring(4, 6);
                 const chapterDay = chapterStr.substring(6, 8);
@@ -108,16 +108,16 @@ export const CaseList = () => {
                   hearingMinute = '',
                   hearingDateTimeStr = '';
 
-                if (theCase.HEARING_DATE > 0) {
-                  hearingDateStr = theCase.HEARING_DATE.toString();
+                if (theCase.hearingDate > 0) {
+                  hearingDateStr = theCase.hearingDate.toString();
                   hearingYear = hearingDateStr.substring(0, 4);
                   hearingMonth = hearingDateStr.substring(4, 6);
                   hearingDay = hearingDateStr.substring(6, 8);
                   hearingDateTimeStr = `${hearingMonth}/${hearingDay}/${hearingYear}`;
                 }
-                if (theCase.HEARING_TIME > 0) {
-                  hearingTimeStr = theCase.HEARING_TIME.toString();
-                  if (theCase.HEARING_TIME < 1000) {
+                if (theCase.hearingTime > 0) {
+                  hearingTimeStr = theCase.hearingTime.toString();
+                  if (theCase.hearingTime < 1000) {
                     hearingMinute = hearingTimeStr.substring(1, 3);
                     hearingHour = hearingTimeStr.substring(0, 1) as unknown as number;
                   } else {
@@ -135,14 +135,14 @@ export const CaseList = () => {
 
                 return (
                   <tr key={idx}>
-                    <td>{theCase.CASE_YEAR_AND_NUMBER}</td>
-                    <td>{theCase.DEBTOR1_NAME}</td>
+                    <td>{theCase.caseNumber}</td>
+                    <td>{theCase.debtor1Name}</td>
                     <td>{chapterDateStr}</td>
-                    <td>{theCase.HEARING_CODE}</td>
+                    <td>{theCase.hearingCode}</td>
                     <td>{hearingDateTimeStr}</td>
-                    <td>{theCase.HEARING_DISP}</td>
-                    <td>{theCase.STAFF1_PROF_NAME}</td>
-                    <td>{theCase.STAFF2_PROF_NAME}</td>
+                    <td>{theCase.hearingDisposition}</td>
+                    <td>{theCase.staff1ProfName}</td>
+                    <td>{theCase.staff2ProfName}</td>
                   </tr>
                 );
               })}
