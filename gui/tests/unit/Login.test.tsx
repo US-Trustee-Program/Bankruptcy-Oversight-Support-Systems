@@ -14,10 +14,10 @@ const mockLoginResponse = {
   count: 1,
   body: [
     {
-      first_name: 'Roger',
-      middle_initial: ' ',
-      last_name: 'Moore',
-      professional_id: 123,
+      firstName: 'Roger',
+      middleInitial: ' ',
+      lastName: 'Moore',
+      professionalId: 123,
     },
   ],
 };
