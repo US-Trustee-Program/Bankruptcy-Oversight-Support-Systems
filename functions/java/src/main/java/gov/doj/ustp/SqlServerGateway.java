@@ -18,7 +18,7 @@ public class SqlServerGateway {
 
   public List<User> getProfessionals(String firstName, String lastName) {
     try (Connection conn = DriverManager.getConnection(uri);
-         PreparedStatement stmt = conn.prepareStatement(PROF_CODE_QUERY)) {
+        PreparedStatement stmt = conn.prepareStatement(PROF_CODE_QUERY)) {
       stmt.setString(1, firstName);
       stmt.setString(2, lastName);
       ResultSet rs = stmt.executeQuery();
@@ -40,7 +40,7 @@ public class SqlServerGateway {
   public List<Case> getCases(String chapter, Integer professionalCode) {
     List<Case> cases = new ArrayList<>();
     try (Connection conn = DriverManager.getConnection(uri);
-         PreparedStatement stmt = conn.prepareStatement(CASE_LIST_QUERY)) {
+        PreparedStatement stmt = conn.prepareStatement(CASE_LIST_QUERY)) {
       stmt.setString(1, chapter);
       stmt.setInt(2, professionalCode);
       stmt.setInt(3, professionalCode);
@@ -55,12 +55,14 @@ public class SqlServerGateway {
         }
         caseObj.setCaseNumber(caseNumber);
         caseObj.setDebtor1Name(rs.getString("DEBTOR1_NAME"));
-        caseObj.setCurrentChapterFileLocalDate(getLocalDate(rs.getString("CURRENT_CHAPTER_FILE_DATE")));
+        caseObj.setCurrentChapterFileLocalDate(
+            getLocalDate(rs.getString("CURRENT_CHAPTER_FILE_DATE")));
         caseObj.setStaff1ProfName(rs.getString("STAFF1_PROF_NAME"));
         caseObj.setStaff1ProfDescription(rs.getString("STAFF1_PROF_TYPE_DESC"));
         caseObj.setStaff2ProfName(rs.getString("STAFF2_PROF_NAME"));
         caseObj.setStaff2ProfDescription(rs.getString("STAFF2_PROF_TYPE_DESC"));
-        caseObj.setHearingLocalDateTime(getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
+        caseObj.setHearingLocalDateTime(
+            getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
         caseObj.setHearingCode(rs.getString("HEARING_CODE"));
         caseObj.setHearingDisposition(rs.getString("HEARING_DISP"));
         cases.add(caseObj);
@@ -75,9 +77,9 @@ public class SqlServerGateway {
 
   private LocalDate getLocalDate(String dateString) {
     int length = dateString.length();
-    int dayOfMonth = Integer.parseInt(dateString.substring(length-2, length));
-    int month = Integer.parseInt(dateString.substring(length-4, length-2));
-    int year = Integer.parseInt(dateString.substring(0, length-4));
+    int dayOfMonth = Integer.parseInt(dateString.substring(length - 2, length));
+    int month = Integer.parseInt(dateString.substring(length - 4, length - 2));
+    int year = Integer.parseInt(dateString.substring(0, length - 4));
     return LocalDate.of(year, month, dayOfMonth);
   }
 
@@ -101,4 +103,3 @@ public class SqlServerGateway {
     return LocalDateTime.of(getLocalDate(dateString), getLocalTime(timeString));
   }
 }
-
