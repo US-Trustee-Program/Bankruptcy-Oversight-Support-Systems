@@ -18,6 +18,9 @@ param agwPrivateIP string = '10.0.0.8'
 @description('API Application Gateway Public IP Name')
 param apiAgwPublicIp string = '${appName}-api-agw-public-ip'
 
+@description('Subnet Id')
+param subnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
+
 resource ustpApiAgwPublicIp 'Microsoft.Network/publicIPAddresses@2022-09-01' = {
   name: apiAgwPublicIp
   location: location
@@ -51,7 +54,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
         name: 'agwIpConfig'
         properties: {
           subnet: {
-            id: resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
+            id: subnetId
           }
         }
       }
@@ -63,7 +66,7 @@ resource ustpAPIApplicationGateway 'Microsoft.Network/applicationGateways@2022-0
           privateIPAddress: agwPrivateIP
           privateIPAllocationMethod: 'Static'
           subnet: {
-            id: resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
+            id: subnetId
           }
         }
       }
