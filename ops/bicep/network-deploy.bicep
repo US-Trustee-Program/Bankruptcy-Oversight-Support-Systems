@@ -24,8 +24,12 @@ param webappSubnetName string = '${virtualNetworkName}-webapp'
 @description('Webapp subnet ip ranges')
 param webappAddressPrefix string = '10.0.2.0/28'
 
-// look into `what if?`
-// consider resource lock for prod
+@description('Webapp private endpoint subnet name')
+param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
+
+@description('Webapp private endpoint subnet ip ranges')
+param webappPrivateEndpointSubnetAddressPrefix string = '10.0.3.0/28'
+
 /*
   USTP BOSS Virtual Network
 */
@@ -94,6 +98,18 @@ resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
   ]
 }
 
+resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  parent: ustpVirtualNetwork
+  name: webappPrivateEndpointSubnetName
+  properties: {
+    addressPrefix: webappPrivateEndpointSubnetAddressPrefix
+    serviceEndpoints: []
+    delegations: []
+    privateEndpointNetworkPolicies: 'Disabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
+  }
+}
+
 /*
   Bicep outputs
 */
@@ -101,3 +117,4 @@ output outVnetId string = ustpVirtualNetwork.id
 output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
 output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
 output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
+output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
