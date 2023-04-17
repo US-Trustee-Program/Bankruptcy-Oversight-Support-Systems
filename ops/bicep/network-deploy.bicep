@@ -68,6 +68,9 @@ resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01'
       }
     ]
   }
+  dependsOn: [
+    apiAppGatewaySubnet
+  ]
 }
 
 resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
@@ -85,6 +88,10 @@ resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
       }
     ]
   }
+  dependsOn: [
+    apiAppGatewaySubnet
+    apiBackendSubnet
+  ]
 }
 
 /*
