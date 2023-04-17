@@ -13,7 +13,7 @@ describe('cases-endpoints', () => {
     STAFF2_PROF_CODE: string;
     CASE_YEAR: string;
     CASE_NUMBER: string;
-    CURR_CASE_CHAPT: string; 
+    CURR_CASE_CHAPT: string;
   }
   let list: CaseList[];
   let casesMock: {list: CaseList[]};
