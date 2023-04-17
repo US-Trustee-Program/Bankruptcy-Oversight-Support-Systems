@@ -10,6 +10,7 @@ import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
+import gov.doj.ustp.entities.BossResponse;
 import gov.doj.ustp.entities.Case;
 import gov.doj.ustp.entities.User;
 import gov.doj.ustp.entities.UserRequest;
@@ -35,12 +36,13 @@ public class Function {
 
         SqlServerGateway sqlServerGateway = new SqlServerGateway();
         List<Case> cases = sqlServerGateway.getCases(chapter, professionalId);
+        BossResponse response = new BossResponse.Builder().count(cases.size()).body(cases).build();
         Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
 
-        return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(cases)).build();
+        return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(response)).build();
     }
 
     @FunctionName("login")
@@ -67,16 +69,19 @@ public class Function {
             lastName = userRequest.getLastName();
         }
 
+        Gson gson = new GsonBuilder().create();
         if (firstName == null || lastName == null) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Please pass a first_name and last_name on the query string").build();
+            BossResponse response = new BossResponse.Builder().message("Please pass a first_name and last_name on the query string.").build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(gson.toJson(response)).build();
         } else {
             SqlServerGateway sqlServerGateway = new SqlServerGateway();
-            User professional = sqlServerGateway.getProfCode(firstName, lastName);
-            if (professional == null) {
-                return request.createResponseBuilder(HttpStatus.NOT_FOUND).body("No professional by that name was found.").build();
+            List<User> professionals = sqlServerGateway.getProfessionals(firstName, lastName);
+            if (professionals == null) {
+                BossResponse response = new BossResponse.Builder().message("No professionals by that name was found.").build();
+                return request.createResponseBuilder(HttpStatus.NOT_FOUND).body(gson.toJson(response)).build();
             }
-            Gson gson = new GsonBuilder().create();
-            return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(professional)).build();
+            BossResponse response = new BossResponse.Builder().body(professionals).build();
+            return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(response)).build();
         }
     }
 }

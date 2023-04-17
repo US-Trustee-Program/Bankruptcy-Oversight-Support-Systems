@@ -16,19 +16,21 @@ import static gov.doj.ustp.SqlQueryConstants.PROF_CODE_QUERY;
 public class SqlServerGateway {
   private String uri = "jdbc:sqlserver://boss-acms-dev.database.windows.net:1433;database=ACMS_REP_SUB;user=CloudSA32e9dec1@boss-acms-dev;password=tmt0AZR*zug7xaz9dpd;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;";
 
-  public User getProfCode(String firstName, String lastName) {
+  public List<User> getProfessionals(String firstName, String lastName) {
     try (Connection conn = DriverManager.getConnection(uri);
          PreparedStatement stmt = conn.prepareStatement(PROF_CODE_QUERY)) {
       stmt.setString(1, firstName);
       stmt.setString(2, lastName);
       ResultSet rs = stmt.executeQuery();
       Integer profCode = null;
-      if (rs.next()) {
+      List<User> professionals = new ArrayList<>();
+      while (rs.next()) {
         profCode = rs.getInt("UST_PROF_CODE");
         firstName = rs.getString("PROF_FIRST_NAME").trim();
         lastName = rs.getString("PROF_LAST_NAME").trim();
+        professionals.add(new User(profCode, firstName, lastName));
       }
-      return new User(profCode, firstName, lastName);
+      return professionals;
     } catch (SQLException e) {
       System.out.println(e.getMessage());
       throw new RuntimeException(e);
@@ -53,12 +55,12 @@ public class SqlServerGateway {
         }
         caseObj.setCaseNumber(caseNumber);
         caseObj.setDebtor1Name(rs.getString("DEBTOR1_NAME"));
-        caseObj.setCurrentChapterFileDate(getLocalDate(rs.getString("CURRENT_CHAPTER_FILE_DATE")));
+        caseObj.setCurrentChapterFileLocalDate(getLocalDate(rs.getString("CURRENT_CHAPTER_FILE_DATE")));
         caseObj.setStaff1ProfName(rs.getString("STAFF1_PROF_NAME"));
         caseObj.setStaff1ProfDescription(rs.getString("STAFF1_PROF_TYPE_DESC"));
         caseObj.setStaff2ProfName(rs.getString("STAFF2_PROF_NAME"));
         caseObj.setStaff2ProfDescription(rs.getString("STAFF2_PROF_TYPE_DESC"));
-        caseObj.setHearingDate(getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
+        caseObj.setHearingLocalDateTime(getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
         caseObj.setHearingCode(rs.getString("HEARING_CODE"));
         caseObj.setHearingDisposition(rs.getString("HEARING_DISP"));
         cases.add(caseObj);
