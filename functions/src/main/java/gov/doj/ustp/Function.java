@@ -73,12 +73,12 @@ public class Function {
             return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(gson.toJson(response)).build();
         } else {
             SqlServerGateway sqlServerGateway = new SqlServerGateway();
-            User professional = sqlServerGateway.getProfCode(firstName, lastName);
-            if (professional == null) {
-                BossResponse response = new BossResponse.Builder().message("No professional by that name was found.").build();
+            List<User> professionals = sqlServerGateway.getProfessionals(firstName, lastName);
+            if (professionals == null) {
+                BossResponse response = new BossResponse.Builder().message("No professionals by that name was found.").build();
                 return request.createResponseBuilder(HttpStatus.NOT_FOUND).body(gson.toJson(response)).build();
             }
-            BossResponse response = new BossResponse.Builder().body(professional).build();
+            BossResponse response = new BossResponse.Builder().body(professionals).build();
             return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(response)).build();
         }
     }
