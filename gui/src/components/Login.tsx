@@ -14,10 +14,13 @@ export const Login = () => {
 
   const sendUserName = async () => {
     console.log('sending user names to login endpoint');
-    await Api.post('/api/login', { first_name: firstName.current, last_name: lastName.current })
+    await Api.post('/login', {
+      first_name: firstName.current,
+      last_name: lastName.current,
+    })
       .then((userDetails) => {
-        if (userDetails) {
-          const userRecord = userDetails;
+        if (userDetails.body && Array.isArray(userDetails.body)) {
+          const userRecord = userDetails.body[0];
           if (
             'professionalId' in userRecord &&
             'firstName' in userRecord &&
