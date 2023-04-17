@@ -34,7 +34,8 @@ public class Case {
 
   public void setCurrentChapterFileLocalDate(LocalDate currentChapterFileLocalDate) {
     this.currentChapterFileLocalDate = currentChapterFileLocalDate;
-    this.currentChapterFileDate = Long.parseLong(currentChapterFileLocalDate.toString().replaceAll("-", ""));
+    this.currentChapterFileDate =
+        Long.parseLong(currentChapterFileLocalDate.toString().replaceAll("-", ""));
   }
 
   public String getCurrentCaseChapter() {
@@ -68,8 +69,10 @@ public class Case {
   public void setHearingLocalDateTime(LocalDateTime hearingLocalDateTime) {
     this.hearingLocalDateTime = hearingLocalDateTime;
     if (Objects.nonNull(hearingLocalDateTime)) {
-      this.hearingDate = Long.parseLong(hearingLocalDateTime.toLocalDate().toString().replaceAll("-", ""));
-      this.hearingTime = Integer.parseInt(hearingLocalDateTime.toLocalTime().toString().replaceAll(":", ""));
+      this.hearingDate =
+          Long.parseLong(hearingLocalDateTime.toLocalDate().toString().replaceAll("-", ""));
+      this.hearingTime =
+          Integer.parseInt(hearingLocalDateTime.toLocalTime().toString().replaceAll(":", ""));
     }
   }
 
