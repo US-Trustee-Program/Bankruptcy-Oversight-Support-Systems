@@ -14,7 +14,7 @@ import static gov.doj.ustp.SqlQueryConstants.CASE_LIST_QUERY;
 import static gov.doj.ustp.SqlQueryConstants.PROF_CODE_QUERY;
 
 public class SqlServerGateway {
-  private String uri = "jdbc:sqlserver://boss-acms-dev.database.windows.net:1433;database=ACMS_REP_SUB;user=CloudSA32e9dec1@boss-acms-dev;password=tmt0AZR*zug7xaz9dpd;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;";
+  private final String uri = System.getenv("SQL_SERVER_CONN_STRING");
 
   public List<User> getProfessionals(String firstName, String lastName) {
     try (Connection conn = DriverManager.getConnection(uri);
@@ -22,13 +22,13 @@ public class SqlServerGateway {
       stmt.setString(1, firstName);
       stmt.setString(2, lastName);
       ResultSet rs = stmt.executeQuery();
-      Integer profCode = null;
       List<User> professionals = new ArrayList<>();
       while (rs.next()) {
-        profCode = rs.getInt("UST_PROF_CODE");
+        Integer profCode = rs.getInt("UST_PROF_CODE");
         firstName = rs.getString("PROF_FIRST_NAME").trim();
         lastName = rs.getString("PROF_LAST_NAME").trim();
-        professionals.add(new User(profCode, firstName, lastName));
+        String middleInitial = rs.getString("PROF_MI").trim();
+        professionals.add(new User(profCode, firstName, lastName, middleInitial));
       }
       return professionals;
     } catch (SQLException e) {
