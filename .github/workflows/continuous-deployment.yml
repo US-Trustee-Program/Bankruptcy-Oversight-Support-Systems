@@ -97,6 +97,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Init Virtual Network
+        uses: azure/arm-deploy@v1
+        id: vnet-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
+          template: ./ops/bicep/vnet-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
+
       - name: Run Bicep deploy
         uses: azure/arm-deploy@v1
         id: azure-deploy
