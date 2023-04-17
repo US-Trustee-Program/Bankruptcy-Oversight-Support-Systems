@@ -2,14 +2,18 @@ package gov.doj.ustp.entities;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public class Case {
   private String caseNumber;
-  private LocalDate currentChapterFileDate;
+  private LocalDate currentChapterFileLocalDate;
+  private Long currentChapterFileDate;
   private String currentCaseChapter;
   private String debtor1Name;
   private String hearingCode;
-  private LocalDateTime hearingDate;
+  private LocalDateTime hearingLocalDateTime;
+  private Long hearingDate;
+  private Integer hearingTime;
   private String hearingDisposition;
   private String staff1ProfName;
   private String staff1ProfDescription;
@@ -24,12 +28,13 @@ public class Case {
     this.caseNumber = caseNumber;
   }
 
-  public LocalDate getCurrentChapterFileDate() {
-    return currentChapterFileDate;
+  public LocalDate getCurrentChapterFileLocalDate() {
+    return currentChapterFileLocalDate;
   }
 
-  public void setCurrentChapterFileDate(LocalDate currentChapterFileDate) {
-    this.currentChapterFileDate = currentChapterFileDate;
+  public void setCurrentChapterFileLocalDate(LocalDate currentChapterFileLocalDate) {
+    this.currentChapterFileLocalDate = currentChapterFileLocalDate;
+    this.currentChapterFileDate = Long.parseLong(currentChapterFileLocalDate.toString().replaceAll("-", ""));
   }
 
   public String getCurrentCaseChapter() {
@@ -56,12 +61,16 @@ public class Case {
     this.hearingCode = hearingCode;
   }
 
-  public LocalDateTime getHearingDate() {
-    return hearingDate;
+  public LocalDateTime getHearingLocalDateTime() {
+    return hearingLocalDateTime;
   }
 
-  public void setHearingDate(LocalDateTime hearingDate) {
-    this.hearingDate = hearingDate;
+  public void setHearingLocalDateTime(LocalDateTime hearingLocalDateTime) {
+    this.hearingLocalDateTime = hearingLocalDateTime;
+    if (Objects.nonNull(hearingLocalDateTime)) {
+      this.hearingDate = Long.parseLong(hearingLocalDateTime.toLocalDate().toString().replaceAll("-", ""));
+      this.hearingTime = Integer.parseInt(hearingLocalDateTime.toLocalTime().toString().replaceAll(":", ""));
+    }
   }
 
   public String getHearingDisposition() {

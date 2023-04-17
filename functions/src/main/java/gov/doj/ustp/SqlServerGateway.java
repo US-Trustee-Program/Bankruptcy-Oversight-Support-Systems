@@ -53,12 +53,12 @@ public class SqlServerGateway {
         }
         caseObj.setCaseNumber(caseNumber);
         caseObj.setDebtor1Name(rs.getString("DEBTOR1_NAME"));
-        caseObj.setCurrentChapterFileDate(getLocalDate(rs.getString("CURRENT_CHAPTER_FILE_DATE")));
+        caseObj.setCurrentChapterFileLocalDate(getLocalDate(rs.getString("CURRENT_CHAPTER_FILE_DATE")));
         caseObj.setStaff1ProfName(rs.getString("STAFF1_PROF_NAME"));
         caseObj.setStaff1ProfDescription(rs.getString("STAFF1_PROF_TYPE_DESC"));
         caseObj.setStaff2ProfName(rs.getString("STAFF2_PROF_NAME"));
         caseObj.setStaff2ProfDescription(rs.getString("STAFF2_PROF_TYPE_DESC"));
-        caseObj.setHearingDate(getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
+        caseObj.setHearingLocalDateTime(getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
         caseObj.setHearingCode(rs.getString("HEARING_CODE"));
         caseObj.setHearingDisposition(rs.getString("HEARING_DISP"));
         cases.add(caseObj);
