@@ -52,15 +52,17 @@ public class Function {
         HttpRequestMessage<Optional<String>> request,
         final ExecutionContext context) {
 
+        //Get first and last names from Query Params
         final String firstNameQuery = request.getQueryParameters().get("first_name");
         final String lastNameQuery = request.getQueryParameters().get("last_name");
         String firstName = firstNameQuery;
         String lastName = lastNameQuery;
 
+        //Try-get first and last names from the request body, if present
         String requestBody = request.getBody().orElse("{}");
-
-        if (requestBody != null) {
-            UserRequest userRequest = new Gson().fromJson(requestBody, UserRequest.class);
+        UserRequest userRequest = new Gson().fromJson(requestBody, UserRequest.class);
+        if(userRequest.getFirstName() != null && userRequest.getLastName() != null)
+        {
             firstName = userRequest.getFirstName();
             lastName = userRequest.getLastName();
         }
