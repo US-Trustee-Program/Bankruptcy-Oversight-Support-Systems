@@ -10,14 +10,14 @@ describe('users-endpoints', () => {
   describe('Login (mock login)', async () => {
     it('when supplied a first and last name, should return a record containing professional id', () => {
       const names = {
-        firstName: 'Joe',
-        lastName: 'Bob'
+        first_name: 'Joe',
+        last_name: 'Bob'
       };
       const expectedResult = [{
-        first_name: names.firstName,
-        last_name: names.lastName,
-        middle_initial: ' ',
-        professional_id: 123
+        firstName: names.first_name,
+        lastName: names.last_name,
+        middleInitial: ' ',
+        professionalId: 123
       }];
       return request(app).post('/users/login/').send(names)
         .then(res => {

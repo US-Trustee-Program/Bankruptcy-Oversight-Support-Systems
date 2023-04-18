@@ -8,12 +8,12 @@ const request = chai.request;
 
 describe('cases-endpoints', () => {
   type CaseList = {
-    CASE_DIV: number;
-    STAFF1_PROF_CODE: string;
-    STAFF2_PROF_CODE: string;
-    CASE_YEAR: string;
-    CASE_NUMBER: string;
-    CURR_CASE_CHAPT: string;
+    caseDiv: number;
+    staff1ProfCode: string;
+    staff2ProfCode: string;
+    caseYear: string;
+    caseNumber: string;
+    currentCaseChapter: string;
   }
   let list: CaseList[];
   let casesMock: {list: CaseList[]};
@@ -56,11 +56,22 @@ describe('cases-endpoints', () => {
   describe('Post new record to cases', async () => {
     it('should return detail for a single case that was added to list, and list should be updated to include new record', () => {
       const newRecord = {
-        STAFF1_PROF_CODE: 'Joe',
-        STAFF2_PROF_CODE: 'Johnson',
-        CASE_YEAR: '22',
-        CASE_NUMBER: '12345',
-        CURR_CASE_CHAPT: '11'
+        staff1ProfCode: '123',
+        staff1ProfFirstName: 'Joe',
+        staff1ProfLastName: 'Jones',
+        staff1ProfType: 'ST',
+        staff1ProfTypeDescription: 'STAFF MEMBER        ',
+        staff2ProfCode: '456',
+        staff2ProfFirstName: 'Stacy',
+        staff2ProfLastName: 'Went',
+        staff2ProfType: 'ST',
+        staff2ProfTypeDescription: 'STAFF MEMBER        ',
+        groupDesignator: 'CI',
+        caseYear: '22',
+        caseNumber: '12345',
+        currentCaseChapter: '11',
+        hearingCode: '012',
+        hearingDisposition: 'HD'
       };
 
       request(app).post('/cases/create').send(newRecord)
@@ -92,14 +103,25 @@ describe('cases-endpoints', () => {
   describe('Put record to cases', async () => {
     it('should return detail for a single case that was added to list, and list should be updated to include new record', () => {
       const newRecord = {
-        STAFF1_PROF_CODE: 'Eoj',
-        STAFF2_PROF_CODE: 'Nosnhoj',
-        CASE_YEAR: '11',
-        CASE_NUMBER: '54321',
-        CURR_CASE_CHAPT: '22'
+        staff1ProfCode: '321',
+        staff1ProfFirstName: 'Eoj',
+        staff1ProfLastName: 'Nosnhoj',
+        staff1ProfType: 'ST',
+        staff1ProfTypeDescription: 'STAFF MEMBER        ',
+        staff2ProfCode: '654',
+        staff2ProfFirstName: 'YcatS',
+        staff2ProfLastName: 'Tnew',
+        staff2ProfType: 'ST',
+        staff2ProfTypeDescription: 'STAFF MEMBER        ',
+        groupDesignator: 'CI',
+        caseYear: '22',
+        caseNumber: '54321',
+        currentCaseChapter: '11',
+        hearingCode: '210',
+        hearingDisposition: 'HD'
       };
 
-      const returnVal = Object.assign({CASE_DIV: 402}, newRecord);
+      const returnVal = Object.assign({caseDiv: 402}, newRecord);
 
       request(app).put('/cases/402').send(newRecord)
         .then(res => {
@@ -127,7 +149,7 @@ describe('cases-endpoints', () => {
 
   describe('Delete case 403', async () => {
     it('should return "Record 403 successfully deleted"', () => {
-      const newList = list.filter((rec) => rec[`CASE_DIV`] != 403);
+      const newList = list.filter((rec) => rec[`caseDiv`] != 403);
       request(app).delete('/cases/403')
         .then(res => {
           expect(res).to.have.status(200);
