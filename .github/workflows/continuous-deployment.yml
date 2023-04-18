@@ -105,6 +105,7 @@ jobs:
           resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
           template: ./ops/bicep/vnet-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
+          failOnStdErr: false
 
       - name: Run Bicep deploy
         uses: azure/arm-deploy@v1
