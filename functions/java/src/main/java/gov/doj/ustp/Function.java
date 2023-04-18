@@ -50,11 +50,20 @@ public class Function {
   public HttpResponseMessage login(
       @HttpTrigger(
               name = "req",
-              methods = {HttpMethod.POST},
+              methods = {HttpMethod.POST, HttpMethod.OPTIONS},
               authLevel = AuthorizationLevel.ANONYMOUS,
               route = "users/login")
           HttpRequestMessage<Optional<String>> request,
       final ExecutionContext context) {
+    if (request.getHttpMethod() == HttpMethod.OPTIONS) {
+      // Return an empty response with the appropriate headers to handle the preflight request
+      return request
+          .createResponseBuilder(HttpStatus.NO_CONTENT)
+          .header("Access-Control-Allow-Origin", "*")
+          .header("Access-Control-Allow-Methods", "POST")
+          .header("Access-Control-Allow-Headers", "Content-Type")
+          .build();
+    }
 
     // Get first and last names from Query Params
     final String firstNameQuery = request.getQueryParameters().get("first_name");
