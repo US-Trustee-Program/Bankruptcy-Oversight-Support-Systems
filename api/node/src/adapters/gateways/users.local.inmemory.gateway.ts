@@ -9,10 +9,10 @@ const login = async (userName: { firstName: string, lastName: string }): Promise
     count: 1,
     body: [
       {
-          "first_name": userName.firstName,
-          "middle_initial": " ",
-          "last_name": userName.lastName,
-          "professional_id": 123
+          "firstName": userName.firstName,
+          "middleInitial": " ",
+          "lastName": userName.lastName,
+          "professionalId": 123
       }
     ],
   };

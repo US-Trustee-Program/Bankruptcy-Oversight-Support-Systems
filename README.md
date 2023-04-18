@@ -32,7 +32,7 @@ To run the application directly, execute...
 npm start
 ```
 
-This will serve the client on port 3000.
+This will serve the client on port 3000
 
 # Contributing
 
@@ -49,3 +49,25 @@ This will serve the client on port 3000.
 When you install `pre-commit`, your package manager may install an older version such as `1.1.0`. There is a [known issue](https://github.com/Yelp/detect-secrets/issues/452) with that specific version and newer versions of Python. If in the execution of your pre-commit hooks you encounter an error like the following, you may need to update your version of `pre-commit`.
 
 > [scan]  ERROR   No plugins to scan with!
+
+### Azure Functions
+
+#### Requirements
+    JDK Version 17 or above.
+
+    Azure Functions Core Tools version 4
+
+    Installation tool like Homebrew
+
+Azure Functions Core Tools lets you develop and test functions on your local computer from the command prompt or terminal.
+
+Core Tools let functions connect to live Azure Services and even deploy a function app to your Azure Subscription.
+
+1) In your local.settings.json, ensure that the JAVA_HOME parameter points to your JDK \Home\Contents folder.
+2) Install Azure Functions Core Tools Package, Version 4, if not already installed.
+
+```shell
+brew tap azure/functions
+brew install azure-functions-core-tools@4
+```
+Build and Run the AzureFunction.

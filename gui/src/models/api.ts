@@ -16,7 +16,9 @@ export type ObjectKeyVal = {
 };
 
 export default class Api {
-  private static _host = `${config.protocol}://${config.server}:${config.port}`;
+  private static _host = `${config.protocol}://${config.server}:${config.port}${
+    config.basePath ?? ''
+  }`;
 
   public static createPath(path: string, params: ObjectKeyVal) {
     if (params && Object.keys(params).length > 0) {
