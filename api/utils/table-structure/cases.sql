@@ -9,12 +9,12 @@ CREATE TABLE [dbo].[Cases](
 	[idi_status] [varchar](16) DEFAULT NULL,
 	[idi_date] [datetime] DEFAULT NULL,
 	[chapters_id] [int] NOT NULL,
-  
+
   CONSTRAINT chapters_id
     FOREIGN KEY (chapters_id)
     REFERENCES Chapters (chapters_id)
 ) ON [PRIMARY]
-ALTER TABLE [dbo].[Cases] ADD  CONSTRAINT [PK_Cases] PRIMARY KEY CLUSTERED 
+ALTER TABLE [dbo].[Cases] ADD  CONSTRAINT [PK_Cases] PRIMARY KEY CLUSTERED
 (
 	[cases_id] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]

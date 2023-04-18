@@ -124,7 +124,7 @@ jobs:
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
-      
+
       - name: Run KeyVault Bicep deploy
         uses: azure/arm-deploy@v1
         id: keyvault-deploy
@@ -187,7 +187,7 @@ jobs:
           ls
 
           webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-          
+
           az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n $webappName
           az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
@@ -217,7 +217,7 @@ jobs:
             az container restart --name ${webappName}-api -g ${{ secrets.AZ_APP_RG }}
             apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZ_APP_RG }} --query ipAddress.ip -o tsv)
           fi
-          
+
           echo "Adding ips to backend pool: ${apiIpAddress}"
           az network application-gateway address-pool update \
             --resource-group ${{ secrets.AZ_APP_RG }} \
