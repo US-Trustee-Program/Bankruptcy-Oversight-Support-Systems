@@ -190,6 +190,5 @@ const list = [
     hearingDisposition: "HD"
   },
 ];
-    
+
 export { list };
-    
