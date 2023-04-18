@@ -97,6 +97,16 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Check for existing virtual network resource
+        id: check-vnet-resource
+        run: |
+          count=$(az network vnet list -g ustp-network-rg --query "length([?name=='${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'])")
+          if [[ $count -eq 0 ]]; then
+            echo "createVnet=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "createVnet=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Init Virtual Network
         uses: azure/arm-deploy@v1
         id: vnet-deploy
@@ -104,8 +114,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
           template: ./ops/bicep/vnet-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
-          failOnStdErr: false
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} createVnet=${{ steps.check-vnet-resource.outputs.createVnet }}'
 
       - name: Run Bicep deploy
         uses: azure/arm-deploy@v1
