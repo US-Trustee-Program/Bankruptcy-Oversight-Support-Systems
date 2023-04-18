@@ -6,10 +6,10 @@ const login = async (userName: { firstName: string, lastName: string }): Promise
   let input: DbTableFieldSpec[] = [];
 
   let query = `SELECT
-      PROF_FIRST_NAME AS first_name,
-      PROF_MI AS middle_initial,
-      PROF_LAST_NAME AS last_name,
-      UST_PROF_CODE AS professional_id
+      PROF_FIRST_NAME AS firstName,
+      PROF_MI AS middleInitial,
+      PROF_LAST_NAME AS lastName,
+      UST_PROF_CODE AS professionalId
     FROM CMMPR
     WHERE
       DELETE_CODE <> 'D'

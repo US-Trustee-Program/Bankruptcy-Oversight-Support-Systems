@@ -16,8 +16,8 @@ const getAllCases = async (httpRequest: Request) => {
   try {
     let profId = 0;
     let chapter = '';
-    if (httpRequest.query.professionalId) {
-      profId = httpRequest.query.professionalId as unknown as number;
+    if (httpRequest.query.professional_id) {
+      profId = httpRequest.query.professional_id as unknown as number;
     }
     if (httpRequest.query.chapter) {
       chapter = httpRequest.query.chapter as string;

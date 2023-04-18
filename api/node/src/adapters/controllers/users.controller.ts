@@ -12,9 +12,9 @@ const login = async (httpRequest: Request) => {
   log('info', NAMESPACE, 'Fetching a user id.');
 
   try {
-    if (httpRequest.body && 'firstName' in httpRequest.body && 'lastName' in httpRequest.body) {
-      const firstName = httpRequest.body.firstName as string;
-      const lastName = httpRequest.body.lastName as string;
+    if (httpRequest.body && 'first_name' in httpRequest.body && 'last_name' in httpRequest.body) {
+      const firstName = httpRequest.body.first_name as string;
+      const lastName = httpRequest.body.last_name as string;
       const user = await useCase.login(usersDb, { firstName, lastName });
 
       // success
