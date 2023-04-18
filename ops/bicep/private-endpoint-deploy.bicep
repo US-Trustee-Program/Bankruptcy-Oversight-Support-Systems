@@ -3,33 +3,14 @@ param appName string
 
 param location string = resourceGroup().location
 
-@description('Application\'s target virtual network name')
-param virtualNetworkName string = '${appName}-vnet'
+@description('Target virtual network resource id to deploy private endpoint resources')
+param webappPrivateEndpointVirtualNetworkId string
 
-@description('Webapp private endpoint subnet ip ranges')
-param webappPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
+@description('Target subnet resource id')
+param webappPrivateEndpointSubnetId string
 
 @description('Web Application ID')
 param webApplicationId string
-
-@description('Webapp private endpoint name')
-param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
-
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
-  name: virtualNetworkName
-}
-
-resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  name: webappPrivateEndpointSubnetName
-  parent: ustpVirtualNetwork
-  properties: {
-    addressPrefix: webappPrivateEndpointSubnetAddressPrefix
-    serviceEndpoints: []
-    delegations: []
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
-  }
-}
 
 /*
   Resolves webapp DNS to a private IP via Private DNS Zone and Private Endpoint Link
@@ -45,7 +26,7 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
   properties: {
     registrationEnabled: false
     virtualNetwork: {
-      id: ustpVirtualNetwork.id
+      id: webappPrivateEndpointVirtualNetworkId
     }
   }
   name: 'privatelink.azurewebsites.net-vnet-link'
@@ -74,7 +55,7 @@ resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-0
     ]
     manualPrivateLinkServiceConnections: []
     subnet: {
-      id: webappPrivateEndpointSubnet.id
+      id: webappPrivateEndpointSubnetId
     }
     ipConfigurations: []
     customDnsConfigs: []
@@ -95,5 +76,3 @@ resource ustpPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
     ]
   }
 }
-
-output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
