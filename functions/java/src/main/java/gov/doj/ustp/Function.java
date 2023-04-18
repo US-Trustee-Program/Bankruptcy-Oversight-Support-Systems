@@ -52,7 +52,8 @@ public class Function {
       @HttpTrigger(
               name = "req",
               methods = {HttpMethod.POST},
-              authLevel = AuthorizationLevel.ANONYMOUS)
+              authLevel = AuthorizationLevel.ANONYMOUS,
+              route = "users/login")
           HttpRequestMessage<Optional<String>> request,
       final ExecutionContext context) {
 
