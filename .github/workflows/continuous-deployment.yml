@@ -83,7 +83,7 @@ jobs:
           password: ${{ secrets.ACR_TOKEN }}
 
       - name: Build API Container and Publish to Registry
-        run: az acr build -f Dockerfile -t ustpbossregistry.azurecr.io/ustp-boss-api-node -r ustpbossregistry.azurecr.io .
+        run: az acr build -f Dockerfile -t ${{ secrets.ACR_REGISTRY }}/ustp-boss-api-node -r ${{ secrets.ACR_REGISTRY }} .
 
   deploy:
     runs-on: ubuntu-latest
@@ -190,8 +190,8 @@ jobs:
           
           az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n $webappName
-          az webapp vnet-integration add -n $webappName -g ${{ secrets.AZ_APP_RG }} --vnet ${webappName}-vnet --subnet ${webappName}-vnet-webapp
           az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+          az webapp vnet-integration add -n $webappName -g ${{ secrets.AZ_APP_RG }} --vnet ${{ steps.network-deploy.outputs.outVnetId }} --subnet ${{ steps.network-deploy.outputs.outWebappSubnetId }}
 
       - name: Deploy Node API to Azure
         run: |
@@ -203,10 +203,10 @@ jobs:
               --os-type Linux \
               --resource-group ${{ secrets.AZ_APP_RG }} \
               --name ${webappName}-api \
-              --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
+              --image ${{ secrets.ACR_REGISTRY }}/ustp-boss-api-node:latest \
               --ports 8080 \
-              --vnet ${webappName}-vnet \
-              --subnet ${webappName}-vnet-api-backend \
+              --vnet ${{ steps.network-deploy.outputs.outVnetId }} \
+              --subnet ${{ steps.network-deploy.outputs.outBackendSubnetId }} \
               --registry-username ${{ secrets.ACR_USERNAME }} \
               --registry-password ${{ secrets.ACR_TOKEN }} \
               --query ipAddress.ip \
