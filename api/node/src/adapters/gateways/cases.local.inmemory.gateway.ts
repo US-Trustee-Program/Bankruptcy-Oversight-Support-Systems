@@ -59,7 +59,7 @@ const getCase = async (id: number): Promise<DbResult> => {
 
   if (mockData.hasOwnProperty(table)) {
     //const data = caseList.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
-    const data = caseList.filter((rec) => rec['CASE_DIV'] == `${id}`).pop();
+    const data = caseList.filter((rec) => rec['caseDiv'] == `${id}`).pop();
     if (data) {
       log('info', NAMESPACE, `record from ${table} found`, data);
       results = {
@@ -101,9 +101,9 @@ const updateCase = async (id: number, fieldArr: RecordObj[]): Promise<DbResult> 
     for (let i = 0; i < mockData[table].length; i++) {
       log('info', NAMESPACE, `Searching for ${id}`);
       let oldRecord = mockData[table][i];
-      if (oldRecord[`CASE_DIV`] == id) {
+      if (oldRecord[`caseDiv`] == id) {
         log('info', NAMESPACE, 'record found', oldRecord);
-        newRecord[`CASE_DIV`] = id;
+        newRecord[`caseDiv`] = id;
         fieldArr.map((field) => {
           newRecord[field.fieldName] = field.fieldValue as string;
         });
@@ -132,7 +132,7 @@ const deleteCase = async (id: number): Promise<DbResult> => {
   log('info', NAMESPACE, `Delete record ${id} for ${table}`);
 
   if (mockData.hasOwnProperty(table)) {
-    const data = mockData[table].filter((rec) => rec[`CASE_DIV`] != id);
+    const data = mockData[table].filter((rec) => rec[`caseDiv`] != id);
     if (data) {
       mockData[table] = data;
       return {
