@@ -27,8 +27,6 @@ repositories {
 azurefunctions {
     resourceGroup = 'bankruptcy-oversight-support-systems'
     appName = 'ustp-boss-java-function'
-    pricingTier = 'Consumption'
-    region = 'eastus'
     runtime {
         os = 'Linux'
         javaVersion = 'Java 17'
