@@ -14,7 +14,6 @@ import gov.doj.ustp.entities.BossResponse;
 import gov.doj.ustp.entities.Case;
 import gov.doj.ustp.entities.User;
 import gov.doj.ustp.entities.UserRequest;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;

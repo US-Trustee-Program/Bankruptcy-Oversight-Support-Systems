@@ -1,7 +1,6 @@
 package gov.doj;
 
 import com.microsoft.sqlserver.jdbc.StringUtils;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;

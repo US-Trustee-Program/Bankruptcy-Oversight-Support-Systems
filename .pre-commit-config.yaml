@@ -34,21 +34,3 @@ repos:
     hooks:
       - id: pretty-format-java
         args: [ --autofix ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

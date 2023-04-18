@@ -1,9 +1,5 @@
 package gov.doj;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
 import java.io.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,6 +7,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
 
 public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
 
