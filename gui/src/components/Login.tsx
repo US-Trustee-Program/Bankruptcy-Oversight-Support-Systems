@@ -14,7 +14,7 @@ export const Login = () => {
 
   const sendUserName = async () => {
     console.log('sending user names to login endpoint');
-    await Api.post('/login', {
+    await Api.post('/users/login', {
       first_name: firstName.current,
       last_name: lastName.current,
     })
