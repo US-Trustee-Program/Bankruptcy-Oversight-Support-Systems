@@ -150,7 +150,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/appgateway-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} ${{ steps.network-deploy.outputs.outAgwSubnetId }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} apiAgwSubnetId=${{ steps.network-deploy.outputs.outAgwSubnetId }}'
 
       - name: Provision Webapp Private Endpoint
         uses: azure/arm-deploy@v1
