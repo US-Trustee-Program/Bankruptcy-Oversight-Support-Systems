@@ -111,7 +111,7 @@ jobs:
         id: azure-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
+          resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
       
@@ -120,7 +120,7 @@ jobs:
         id: keyvault-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
+          resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/keyvault-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
 
@@ -129,7 +129,7 @@ jobs:
         id: network-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
+          resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
           template: ./ops/bicep/network-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'
 
@@ -138,18 +138,18 @@ jobs:
         id: api-agw-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
+          resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/appgateway-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} ${{ steps.network-deploy.outputs.outAgwSubnetId }}'
 
       - name: Provision Webapp Private Endpoint
         uses: azure/arm-deploy@v1
         id: webapp-private-endpoint-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZURE_RG }}
+          resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/private-endpoint-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet webApplicationId=${{ steps.azure-deploy.outputs.outwebApplicationId }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outwebApplicationId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} webappPrivateEndpointVirtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }}'
 
       - name: Run Post Bicep configurations
         run: |
@@ -178,10 +178,10 @@ jobs:
 
           webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
           
-          az resource update -g ${{ secrets.AZURE_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n $webappName
-          az webapp vnet-integration add -n $webappName -g ${{ secrets.AZURE_RG }} --vnet ${webappName}-vnet --subnet ${webappName}-vnet-webapp
-          az resource update -g ${{ secrets.AZURE_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+          az webapp vnet-integration add -n $webappName -g ${{ secrets.AZ_APP_RG }} --vnet ${webappName}-vnet --subnet ${webappName}-vnet-webapp
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Deploy Node API to Azure
         run: |
@@ -191,7 +191,7 @@ jobs:
           if [[ $count -eq 0 ]]; then
             apiIpAddress=$(az container create \
               --os-type Linux \
-              --resource-group ${{ secrets.AZURE_RG }} \
+              --resource-group ${{ secrets.AZ_APP_RG }} \
               --name ${webappName}-api \
               --image ustpbossregistry.azurecr.io/ustp-boss-api-node:latest \
               --ports 8080 \
@@ -204,13 +204,13 @@ jobs:
               --output tsv)
           else
             echo "Restarting existing container group"
-            az container restart --name ${webappName}-api -g ${{ secrets.AZURE_RG }}
-            apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZURE_RG }} --query ipAddress.ip -o tsv)
+            az container restart --name ${webappName}-api -g ${{ secrets.AZ_APP_RG }}
+            apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZ_APP_RG }} --query ipAddress.ip -o tsv)
           fi
           
           echo "Adding ips to backend pool: ${apiIpAddress}"
           az network application-gateway address-pool update \
-            --resource-group ${{ secrets.AZURE_RG }} \
+            --resource-group ${{ secrets.AZ_APP_RG }} \
             --gateway-name ${webappName}-api-agw \
             --name ${webappName}-api-agw-https-backend-targets \
             --servers ${apiIpAddress}
