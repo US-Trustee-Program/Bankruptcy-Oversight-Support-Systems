@@ -1,0 +1,11 @@
+@use './colors';
+
+$tableBorder: 1px solid #c6c6c6;
+$tableBorderRadius: 5px;
+$tableBorderCollapse: collapse;
+$tableHeaderBackground: colors.$eagle;
+$tableHeaderBorderColor: colors.$gold;
+$tableHeaderForeground: white;
+$tableCellPadding: 10px;
+$tableBodyBackgroundOddRows: #f6f6f6;
+$tableBodyBackgroundEvenRows: white;

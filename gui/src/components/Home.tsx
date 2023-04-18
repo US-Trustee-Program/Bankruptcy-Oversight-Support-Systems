@@ -1,9 +1,10 @@
-import { CaseList } from './CaseList';
+import './Home.scss';
+import Login from './Login';
 
 function Home() {
   return (
     <div className="home">
-      <CaseList />
+      <Login />
     </div>
   );
 }
