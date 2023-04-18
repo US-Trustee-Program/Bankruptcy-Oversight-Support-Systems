@@ -1,17 +1,16 @@
 package gov.doj.ustp;
 
+import static gov.doj.ustp.SqlQueryConstants.CASE_LIST_QUERY;
+import static gov.doj.ustp.SqlQueryConstants.PROF_CODE_QUERY;
+
 import gov.doj.ustp.entities.Case;
 import gov.doj.ustp.entities.User;
-
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import static gov.doj.ustp.SqlQueryConstants.CASE_LIST_QUERY;
-import static gov.doj.ustp.SqlQueryConstants.PROF_CODE_QUERY;
 
 public class SqlServerGateway {
   private final String uri = System.getenv("SQL_SERVER_CONN_STRING");
