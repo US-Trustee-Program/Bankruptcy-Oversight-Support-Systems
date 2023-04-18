@@ -49,7 +49,7 @@ jobs:
   build-backend:
     defaults:
       run:
-        working-directory: api
+        working-directory: api/node
 
     runs-on: ubuntu-latest
 
