@@ -57,7 +57,7 @@ const getCaseList = async (caseOptions: {chapter: string, professionalId: number
   let results: DbResult;
 
   if (queryResult.success) {
-    const body = { staff1Label: '', staff2Label: '', caseList: [] }
+    const body = { staff1Label: '', staff2Label: '', caseList: {} }
     body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
     const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
     results = {
