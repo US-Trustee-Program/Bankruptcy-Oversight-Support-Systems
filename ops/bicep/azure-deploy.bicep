@@ -3,9 +3,12 @@ param appName string
 
 param location string = resourceGroup().location
 
+@description('Webapp Application service plan name')
+param webappAspName string = 'ustp-boss-server-farm'
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
-  name: 'boss-server-farm'
+  name: webappAspName
   sku: {
     name: 'P1v2'
     tier: 'PremiumV2'
@@ -19,7 +22,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
     elasticScaleEnabled: false
     maximumElasticWorkerCount: 1
     isSpot: false
-    reserved: false // set base os to Linux
+    reserved: false // set true for Linux
     isXenon: false
     hyperV: false
     targetWorkerCount: 0
@@ -140,4 +143,5 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   }
 }
 
-output outwebApplicationId string = resourceId('Microsoft.Web/sites', appName)
+output outServerAppServicePlanId string = serverFarm.id
+output outwebApplicationId string = webApplication.id
