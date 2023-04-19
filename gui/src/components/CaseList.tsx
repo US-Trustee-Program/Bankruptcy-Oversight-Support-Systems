@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/store';
-import Api, { ResponseData } from '../models/api';
+import Api, { ResponseData, CaseListBody } from '../models/api';
 import './CaseList.scss';
 
 type caseType = {
@@ -23,7 +23,7 @@ export const CaseList = () => {
   const [caseList, setCaseList] = useState<ResponseData>({
     message: '',
     count: 0,
-    body: {staff1Label: String, staff2Label: String, caseList: [{}]},
+    body: {} as CaseListBody, //{staff1Label: String, staff2Label: String, caseList: [{}]},
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
