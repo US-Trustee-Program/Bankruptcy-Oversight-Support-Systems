@@ -12,11 +12,14 @@ param webappPrivateEndpointSubnetId string
 @description('Web Application ID')
 param webApplicationId string
 
+@description('Private DNS Zone nam for private link')
+param privateDNSZoneName string = 'privatelink.azurewebsites.net'
+
 /*
   Resolves webapp DNS to a private IP via Private DNS Zone and Private Endpoint Link
 */
 resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' = {
-  name: 'privatelink.azurewebsites.net'
+  name: privateDNSZoneName
   location: 'global'
 }
 
@@ -29,7 +32,7 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
       id: webappPrivateEndpointVirtualNetworkId
     }
   }
-  name: 'privatelink.azurewebsites.net-vnet-link'
+  name: '${privateDNSZoneName}-vnet-link'
 }
 
 var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
@@ -68,7 +71,7 @@ resource ustpPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
   properties: {
     privateDnsZoneConfigs: [
       {
-        name: 'privatelink_azurewebsites_net'
+        name: 'privatelink_azurewebsites'
         properties: {
           privateDnsZoneId: ustpPrivateDnsZone.id
         }
