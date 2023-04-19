@@ -23,11 +23,9 @@ export const CaseList = () => {
   const [caseList, setCaseList] = useState<ResponseData>({
     message: '',
     count: 0,
-    body: [{}],
+    body: {staff1Label: String, staff2Label: String, caseList: [{}]},
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [staff1Label, setStaff1Label] = useState<string>('');
-  const [staff2Label, setStaff2Label] = useState<string>('');
 
   let name = 'any staff';
   if (user.id > 0) {
@@ -86,13 +84,13 @@ export const CaseList = () => {
               <th>Hearing Code</th>
               <th>Initial Hearing Date/Time</th>
               <th>Hearing Disposition</th>
-              <th>{staff1Label}</th>
-              <th>{staff2Label}</th>
+              <th>{caseList.body.staff1Label}</th>
+              <th>{caseList.body.staff2Label}</th>
             </tr>
           </thead>
           <tbody>
             {caseList.count > 0 &&
-              (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => {
+              (caseList.body.caseList as Array<caseType>).map((theCase: caseType, idx: number) => {
                 const chapterStr = theCase.currentChapterFileDate.toString();
                 const chapterYear = chapterStr.substring(0, 4);
                 const chapterMonth = chapterStr.substring(4, 6);
