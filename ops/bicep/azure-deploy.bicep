@@ -4,7 +4,7 @@ param appName string
 param location string = resourceGroup().location
 
 @description('Webapp Application service plan name')
-param webappAspName string = 'ustp-boss-server-farm'
+param webappAspName string = 'boss-server-farm'
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
