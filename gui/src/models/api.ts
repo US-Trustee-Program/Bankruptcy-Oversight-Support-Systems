@@ -4,7 +4,7 @@ export type CaseListBody = {
   staff1Label: string;
   staff2Label: string;
   caseList: Array<object>;
-}
+};
 
 export type ResponseData = {
   message: string;
