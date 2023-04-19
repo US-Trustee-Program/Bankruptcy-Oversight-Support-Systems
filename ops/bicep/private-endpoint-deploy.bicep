@@ -15,15 +15,18 @@ param webApplicationId string
 @description('Private DNS Zone nam for private link')
 param privateDNSZoneName string = 'privatelink.azurewebsites.net'
 
+@description('Array of resource ids of virtual network to link to private dns zone')
+param linkVnetIds array = []
+
 /*
   Resolves webapp DNS to a private IP via Private DNS Zone and Private Endpoint Link
 */
-resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' = {
+resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateDNSZoneName
   location: 'global'
 }
 
-resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2018-09-01' = {
+resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
   parent: ustpPrivateDnsZone
   location: 'global'
   properties: {
@@ -34,6 +37,19 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
   }
   name: '${privateDNSZoneName}-vnet-link'
 }
+
+// optional step to include additional link to existing PrivateDnsZone
+resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for vnetId in linkVnetIds: {
+  parent: ustpPrivateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: vnetId
+    }
+  }
+  name: 'ustp-${uniqueString(resourceGroup().id, vnetId)}-vnet-link'
+}]
 
 var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
 var webappPrivateEndpointConnectionName = '${appName}-webapp-private-endpoint-connection'
