@@ -1,15 +1,19 @@
 import config from '../configuration/apiConfiguration';
 
-export type CaseListBody = {
-  staff1Label: string;
-  staff2Label: string;
-  caseList: Array<object>;
+export type CaseListResponseData = {
+  message: string;
+  count: number;
+  body: {
+    staff1Label: string;
+    staff2Label: string;
+    caseList: Array<object>;
+  };
 };
 
 export type ResponseData = {
   message: string;
   count: number;
-  body: object | Array<object> | CaseListBody;
+  body: object | Array<object>;
 };
 
 export type ResponseError = {

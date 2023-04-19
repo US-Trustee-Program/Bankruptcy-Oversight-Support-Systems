@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/store';
-import Api, { ResponseData, CaseListBody } from '../models/api';
+import Api, { CaseListResponseData } from '../models/api';
 import './CaseList.scss';
 
 type caseType = {
@@ -20,10 +20,14 @@ type caseType = {
 
 export const CaseList = () => {
   const user = useAppSelector((state) => state.user.user);
-  const [caseList, setCaseList] = useState<ResponseData>({
+  const [caseList, setCaseList] = useState<CaseListResponseData>({
     message: '',
     count: 0,
-    body: {} as CaseListBody, //{staff1Label: String, staff2Label: String, caseList: [{}]},
+    body: {
+      staff1Label: '',
+      staff2Label: '',
+      caseList: [{}],
+    },
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -41,15 +45,7 @@ export const CaseList = () => {
       chapter,
       professional_id: user.id,
     }).then((res) => {
-      /*
-      (res.body as []).forEach((row) => {
-        if (row['currentCaseChapter'] == '11') {
-          setStaff1Label('Trial Attorney');
-          setStaff2Label('Auditor');
-        }
-      });
-      */
-      setCaseList(res);
+      setCaseList(res as CaseListResponseData);
       setIsLoading(false);
     });
   };
