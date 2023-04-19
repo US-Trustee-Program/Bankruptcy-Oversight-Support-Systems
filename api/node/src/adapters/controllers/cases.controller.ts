@@ -22,10 +22,10 @@ const getAllCases = async (httpRequest: Request) => {
     if (httpRequest.query.chapter) {
       chapter = httpRequest.query.chapter as string;
     }
-    const caseList = await useCase.listCases(casesDb, { chapter, professionalId: profId });
+    const result = await useCase.listCases(casesDb, { chapter, professionalId: profId });
 
     // success
-    return httpSuccess(caseList);
+    return httpSuccess(result);
   } catch (e: any) {
     // 404 Not Found Error
     return httpError(e, 404);

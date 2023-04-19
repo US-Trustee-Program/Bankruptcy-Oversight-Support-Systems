@@ -57,13 +57,14 @@ const getCaseList = async (caseOptions: {chapter: string, professionalId: number
   let results: DbResult;
 
   if (queryResult.success) {
-    const records = (queryResult.results as mssql.IResult<any>).recordset;
+    const body = { staff1Label: '', staff2Label: '', caseList: [] }
+    body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
     const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
     results = {
       success: true,
       message: `${table} list`,
       count: rowsAffected,
-      body: records,
+      body,
     };
   } else {
     results = {
