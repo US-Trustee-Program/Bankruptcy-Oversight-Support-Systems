@@ -43,12 +43,14 @@ export const CaseList = () => {
       chapter,
       professional_id: user.id,
     }).then((res) => {
+      /*
       (res.body as []).forEach((row) => {
         if (row['currentCaseChapter'] == '11') {
           setStaff1Label('Trial Attorney');
           setStaff2Label('Auditor');
         }
       });
+      */
       setCaseList(res);
       setIsLoading(false);
     });
