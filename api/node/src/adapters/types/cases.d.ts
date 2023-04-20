@@ -4,5 +4,5 @@ import mssql from "mssql";
 export type CaseListRecordSet = {
   staff1Label: string;
   staff2Label: string;
-  caseList: ObjectKeyVal[]; 
+  caseList: ObjectKeyVal[];
 }
