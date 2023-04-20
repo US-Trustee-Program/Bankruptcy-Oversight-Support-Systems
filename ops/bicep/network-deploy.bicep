@@ -30,6 +30,18 @@ param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
 @description('Webapp private endpoint subnet ip ranges')
 param webappPrivateEndpointSubnetAddressPrefix string = '10.0.3.0/28'
 
+@description('Backend Azure Functions subnet name')
+param backendFunctionsSubnetName string = '${virtualNetworkName}-function-app'
+
+@description('Backend Azure Functions subnet ip ranges')
+param backendFunctionsSubnetAddressPrefix string = '10.0.4.0/28'
+
+@description('Backend private endpoint subnet name')
+param backendPrivateEndpointSubnetName string = '${virtualNetworkName}-function-pe'
+
+@description('Backend private endpoint subnet ip ranges')
+param backendPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
+
 /*
   USTP BOSS Virtual Network
 */
@@ -72,9 +84,6 @@ resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01'
       }
     ]
   }
-  dependsOn: [
-    apiAppGatewaySubnet
-  ]
 }
 
 resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
@@ -92,10 +101,6 @@ resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
       }
     ]
   }
-  dependsOn: [
-    apiAppGatewaySubnet
-    apiBackendSubnet
-  ]
 }
 
 resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
@@ -110,6 +115,44 @@ resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@
   }
 }
 
+resource backendPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  parent: ustpVirtualNetwork
+  name: backendPrivateEndpointSubnetName
+  properties: {
+    addressPrefix: backendPrivateEndpointSubnetAddressPrefix
+    serviceEndpoints: []
+    delegations: []
+    privateEndpointNetworkPolicies: 'Disabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
+  }
+}
+
+resource backendFunctionsSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
+  parent: ustpVirtualNetwork
+  name: backendFunctionsSubnetName
+  properties: {
+    addressPrefix: backendFunctionsSubnetAddressPrefix
+    serviceEndpoints: [
+      {
+        service: 'Microsoft.Sql'
+        locations: [
+          location
+        ]
+      }
+    ]
+    delegations: [
+      {
+        name: 'Microsoft.Web/serverfarms'
+        properties: {
+          serviceName: 'Microsoft.Web/serverfarms'
+        }
+      }
+    ]
+    privateEndpointNetworkPolicies: 'Disabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
+  }
+}
+
 /*
   Bicep outputs
 */
@@ -118,3 +161,5 @@ output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/sub
 output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
 output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
 output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
+output outBackendFuncSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, backendFunctionsSubnetName)
+output outBackendFuncPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, backendPrivateEndpointSubnetName)
