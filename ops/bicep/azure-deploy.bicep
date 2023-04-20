@@ -6,6 +6,9 @@ param location string = resourceGroup().location
 @description('Webapp Application service plan name')
 param webappAspName string = 'boss-server-farm'
 
+@description('Webapp subnet resource id for vnet integration')
+param webappSubnetId string
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: webappAspName
@@ -65,8 +68,8 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
     }
     clientAffinityEnabled: false
     httpsOnly: false
+    virtualNetworkSubnetId: webappSubnetId
   }
-  dependsOn: []
 }
 
 resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
@@ -144,4 +147,5 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 }
 
 output outServerAppServicePlanId string = serverFarm.id
-output outwebApplicationId string = webApplication.id
+output outWebappName string = webApplication.name
+output outWebappId string = webApplication.id
