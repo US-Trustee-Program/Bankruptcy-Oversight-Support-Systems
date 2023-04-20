@@ -13,10 +13,10 @@ param functionsStorageName string = 'ustp${uniqueString(resourceGroup().id, appN
 param functionsAppName string = '${appName}-function-app'
 
 @description('Azure functions runtime environment')
-param functionsRuntime string
+param functionsRuntime string = 'java'
 
 @description('Azure functions version')
-param functionsVersion string
+param functionsVersion string = '~4'
 
 /*
   App service plan (hosting plan) for Azure functions instances
@@ -31,7 +31,7 @@ resource ustpFunctionsServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
     family: 'Pv2'
     capacity: 1
   }
-  kind: 'app'
+  kind: 'linux'
   properties: {
     perSiteScaling: false
     elasticScaleEnabled: false
@@ -68,25 +68,15 @@ resource ustpFunctionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionsAppName
   location: location
-  kind: 'functionapp'
-  identity: {
-    type: 'SystemAssigned'
-  }
+  kind: 'functionapp,linux'
   properties: {
+    enabled: true
     serverFarmId: ustpFunctionsServicePlan.id
     siteConfig: {
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${functionsStorageName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${ustpFunctionsStorageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${functionsStorageName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${ustpFunctionsStorageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionsAppName)
         }
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
@@ -97,9 +87,11 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: functionsRuntime
         }
       ]
-      ftpsState: 'FtpsOnly'
-      minTlsVersion: '1.2'
+      numberOfWorkers: 1
+      linuxFxVersion: 'Java|17'
+      alwaysOn: true
     }
-    httpsOnly: true
+    httpsOnly: false
+    redundancyMode: 'None'
   }
 }
