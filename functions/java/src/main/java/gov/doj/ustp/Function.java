@@ -45,13 +45,18 @@ public class Function {
             .create();
     BossResponse response;
     if (!chapter.equals("11")) {
-      response = new BossResponse.Builder().message("Only chapter 11 is currently supported.").build();
-      return request.createResponseBuilder(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).body(gson.toJson(response)).build();
+      response =
+          new BossResponse.Builder().message("Only chapter 11 is currently supported.").build();
+      return request
+          .createResponseBuilder(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+          .body(gson.toJson(response))
+          .build();
     }
 
     SqlServerGateway sqlServerGateway = new SqlServerGateway();
     List<Case> cases = sqlServerGateway.getCases(chapter, professionalId);
-    CaseListResponseBody body = new CaseListResponseBody(CHAPTER_11_STAFF1_LABEL, CHAPTER_11_STAFF2_LABEL, cases);
+    CaseListResponseBody body =
+        new CaseListResponseBody(CHAPTER_11_STAFF1_LABEL, CHAPTER_11_STAFF2_LABEL, cases);
     response = new BossResponse.Builder().count(cases.size()).body(body).build();
 
     return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(response)).build();
