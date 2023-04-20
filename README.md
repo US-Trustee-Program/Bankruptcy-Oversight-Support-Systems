@@ -12,7 +12,7 @@ The United States Trustee Program is the component of the Department of Justice 
 
 CAMS is a React application which acts as the main place for oversight work to take place.
 
-Note that any commands listed in this section should be run from the `cams` directory.
+Note that any commands listed in this section should be run from the `gui` directory.
 
 #### Requirements
 
