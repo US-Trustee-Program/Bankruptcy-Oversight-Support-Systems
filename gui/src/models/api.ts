@@ -97,10 +97,7 @@ export default class Api {
 
       const data = await response.json();
 
-      console.log(response);
       if (response.ok) {
-        console.log('Response was OK');
-        console.log(data);
         return data;
       } else {
         return Promise.reject(
