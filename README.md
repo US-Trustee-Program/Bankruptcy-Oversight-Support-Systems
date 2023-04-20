@@ -6,13 +6,58 @@ The United States Trustee Program is the component of the Department of Justice 
 
 [Learn More](https://www.justice.gov/ust/about-program)
 
-## Applications
+# Applications
 
-### Frontend
+## Frontend
 
 BOSS is a React application which acts as the main place for oversight work to take place.
 
-Note that any commands listed in this section should be run from the `boss` directory.
+Note that any commands listed in this section should be run from the `gui` directory.
+
+### Requirements
+
+Node version 18.13.0 or above.
+
+### Running
+
+If you have never run the application before, major changes have been made since you last ran, or your `node_modules` folder has been deleted, you will first need to run the following command to install dependencies:
+
+```shell
+npm install
+```
+
+To run the application directly, execute:
+
+```shell
+npm start
+```
+
+This will serve the client on port 3000.
+
+#### Prerequisites
+
+You will need to have a file named `.env` placed in the `gui` directory. The contents of that file must be:
+
+```
+REACT_APP_BASE_PATH={the base path of the backend, if any}
+REACT_APP_SERVER_HOSTNAME={the TLD of the backend}
+REACT_APP_SERVER_PORT={the port the backend is served on}
+REACT_APP_SERVER_PROTOCOL=http[s]
+```
+
+> NOTE:
+> - Replace the curly braces and their contents with the appropriate string.
+> - `[s]` denotes the `s` should be added to `http` where appropriate or left off where not, no `[` or `]` should be included.
+
+## Backend
+
+Multiple options for the backend are being evaluated.
+
+### Node Webservice
+
+A webservice implemented in Node can be found in the `api/node` directory.
+
+Note that any commands listed in this section should be run from the `api/node` directory.
 
 #### Requirements
 
@@ -26,13 +71,112 @@ If you have never run the application before, major changes have been made since
 npm install
 ```
 
-To run the application directly, execute...
+To run the application directly, execute:
 
 ```shell
-npm start
+npm run start:dev
 ```
 
-This will serve the client on port 3000
+This will serve the web service on port 8080.
+
+To build and run a production build, execute:
+
+```shell
+npm run build
+serve -s build
+```
+
+#### Prerequisites
+
+You will need to have a file named `.env` placed in the `api/node` directory. The contents of that file must be:
+
+```
+MSSQL_HOST=
+MSSQL_DATABASE=
+MSSQL_USER=
+MSSQL_PASS=
+MSSQL_ENCRYPT=
+MSSQL_TRUST_UNSIGNED_CERT=
+AZURE_MANAGED_IDENTITY=
+```
+
+### Java Webservice
+
+A webservice implemented in Java can be found in the `api/java` directory.
+
+#### Requirements
+
+Java version 17 or above.
+
+#### Running
+
+Note that any commands listed in this section should be run from the `api/java` directory.
+
+To build the webservice, execute:
+
+```shell
+./gradlew build
+```
+
+To build a `jar` file, execute:
+
+```shell
+./gradlew build jar
+```
+
+#### Prerequisites
+
+You will need to provide an environment variable named `password` which is the SQL Server Admin password, used to obtain SQL Authentication.
+
+### Java Function
+
+An Azure Function App implemented in Java.
+
+#### Requirements
+
+Java version 17 or above.
+
+#### Running
+
+Note that any commands listed in this section should be run from the `functions/java` directory.
+
+To build, execute:
+
+```shell
+./gradlew build
+```
+
+To run the Function locally, execute:
+
+```shell
+./gradlew azureFunctionsRun
+```
+
+To package the Function for deployment, execute:
+
+```shell
+./gradlew azureFunctionsPackageZip
+```
+
+#### Prerequisites
+
+You will need to have the [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cmacos%2Ccsharp%2Cportal%2Cbash#install-the-azure-functions-core-tools) installed.
+
+You will need to have a file named local.settings.json placed in the `functions/java` directory. The contents of that file must be:
+
+```
+{
+    "IsEncrypted": false,
+    "Values": {
+        "FUNCTIONS_WORKER_RUNTIME": "java",
+        "JAVA_HOME": "{the path to the home directory of the JDK you wish to use}",
+        "SQL_SERVER_CONN_STRING": "{the connection string}"
+    },
+    "Host": {
+        "CORS": "*"
+    }
+}
+```
 
 # Contributing
 
@@ -49,25 +193,3 @@ This will serve the client on port 3000
 When you install `pre-commit`, your package manager may install an older version such as `1.1.0`. There is a [known issue](https://github.com/Yelp/detect-secrets/issues/452) with that specific version and newer versions of Python. If in the execution of your pre-commit hooks you encounter an error like the following, you may need to update your version of `pre-commit`.
 
 > [scan]  ERROR   No plugins to scan with!
-
-### Azure Functions
-
-#### Requirements
-    JDK Version 17 or above.
-
-    Azure Functions Core Tools version 4
-
-    Installation tool like Homebrew
-
-Azure Functions Core Tools lets you develop and test functions on your local computer from the command prompt or terminal.
-
-Core Tools let functions connect to live Azure Services and even deploy a function app to your Azure Subscription.
-
-1) In your local.settings.json, ensure that the JAVA_HOME parameter points to your JDK \Home\Contents folder.
-2) Install Azure Functions Core Tools Package, Version 4, if not already installed.
-
-```shell
-brew tap azure/functions
-brew install azure-functions-core-tools@4
-```
-Build and Run the AzureFunction.
