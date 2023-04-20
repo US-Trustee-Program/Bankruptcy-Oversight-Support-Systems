@@ -206,7 +206,7 @@ jobs:
           az functionapp config appsettings set \
             --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
             --resource-group ${{ secrets.AZ_APP_RG }} \
-            --settings ${{ secrets.AZ_SQL_CONN_STR }}
+            --settings "${{ secrets.AZ_SQL_CONN_STR }}"
 
           az functionapp cors add \
             -g ${{ secrets.AZ_APP_RG }} \
