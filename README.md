@@ -1,4 +1,4 @@
-# Bankruptcy Oversight Support Systems (BOSS)
+# CAMS
 
 ## [United States Trustee Program](https://www.justice.gov/ust)
 
@@ -10,9 +10,9 @@ The United States Trustee Program is the component of the Department of Justice 
 
 ### Frontend
 
-BOSS is a React application which acts as the main place for oversight work to take place.
+CAMS is a React application which acts as the main place for oversight work to take place.
 
-Note that any commands listed in this section should be run from the `boss` directory.
+Note that any commands listed in this section should be run from the `cams` directory.
 
 #### Requirements
 
