@@ -5,4 +5,5 @@ export type CaseListRecordSet = {
   staff1Label: string;
   staff2Label: string;
   caseList: ObjectKeyVal[];
+  initialized: boolean;
 }

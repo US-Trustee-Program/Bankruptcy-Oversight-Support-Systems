@@ -1,5 +1,4 @@
 import { ObjectKeyValArrayKeyVal } from '../types/basic.js';
-import { CaseListRecordSet } from '../types/cases.js';
 
 async function getProperty(table: string, item: string) {
   const obj = await import(`./${table}.mock`);
@@ -11,7 +10,8 @@ const caseListMockData = {
   cases:  {
     staff1Label: '',
     staff2Label: '',
-    caseList: [{ }]
+    caseList: [{}],
+    initialized: false,
   }
 };
 

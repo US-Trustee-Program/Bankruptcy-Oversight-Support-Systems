@@ -33,7 +33,6 @@ describe('cases-endpoints', () => {
       return request(app).get('/cases/')
         .then(res => {
           expect(res).to.have.status(200);
-          console.log(res.body);
           expect(res.body).to.eql({
             "message": "cases list",
             "count": 10,
@@ -44,7 +43,6 @@ describe('cases-endpoints', () => {
     });
   });
 
-  /*
   describe('Get details of case 402', async () => {
     it('should return detail for a single cases matching mock case number 3', () => {
       return request(app).get('/cases/402')
@@ -60,6 +58,7 @@ describe('cases-endpoints', () => {
     });
   });
 
+  /*
   describe('Post new record to cases', async () => {
     it('should return detail for a single case that was added to list, and list should be updated to include new record', () => {
       const newRecord = {
@@ -189,6 +188,5 @@ describe('cases-endpoints', () => {
       });
     });
   });
-  */
-
+/**/
 });
