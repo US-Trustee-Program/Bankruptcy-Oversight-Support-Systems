@@ -48,7 +48,7 @@ public class Function {
       response =
           new BossResponse.Builder().message("Only chapter 11 is currently supported.").build();
       return request
-          .createResponseBuilder(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+          .createResponseBuilder(HttpStatus.BAD_REQUEST)
           .body(gson.toJson(response))
           .build();
     }
