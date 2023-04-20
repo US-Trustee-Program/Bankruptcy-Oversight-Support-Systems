@@ -194,6 +194,5 @@ const list = {
     },
   ]
 };
-    
+
 export { list };
-    
