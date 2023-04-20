@@ -11,54 +11,57 @@ const mockCaseList = {
   success: true,
   message: 'cases list',
   count: 99,
-  body: [
-    {
-      caseNumber: '22-481',
-      currentChapterFileDate: 20230523,
-      currentCaseChapter: '11',
-      debtor1Name: 'John Doe',
-      hearingCode: 'IDI',
-      hearingDate: 20230501,
-      hearingDisposition: 'Disposition info goes here.',
-      hearingTime: 930,
-      staff1ProfName: 'Debbie Jones',
-      staff1ProfDescription: '',
-      staff2ProfName: 'Frank Moore',
-      staff2ProfDescription: '',
-    },
-    {
-      caseNumber: '22-495',
-      currentChapterFileDate: 20230607,
-      currentCaseChapter: '11',
-      debtor1Name: 'Jane Doe',
-      hearingCode: 'IDI',
-      hearingDate: 20230601,
-      hearingDisposition: 'Disposition info goes here.',
-      hearingTime: 1145,
-      staff1ProfName: 'Jessie Thomas',
-      staff1ProfDescription: '',
-      staff2ProfName: 'Arnold Banks',
-      staff2ProfDescription: '',
-    },
-    {
-      caseNumber: '22-501',
-      currentChapterFileDate: 20230607,
-      currentCaseChapter: '11',
-      debtor1Name: 'Roger Moore',
-      hearingCode: 'IDI',
-      hearingDate: 20230601,
-      hearingDisposition: 'Disposition info goes here.',
-      hearingTime: 1145,
-      staff1ProfName: 'Jessie Thomas',
-      staff1ProfDescription: '',
-      staff2ProfName: 'John Jones',
-      staff2ProfDescription: '',
-    },
-  ],
+  body: {
+    staff1Label: 'Trial Attorney',
+    staff2Label: 'Auditor',
+    caseList: [
+      {
+        caseNumber: '22-481',
+        currentChapterFileDate: 20230523,
+        currentCaseChapter: '11',
+        debtor1Name: 'John Doe',
+        hearingCode: 'IDI',
+        hearingDate: 20230501,
+        hearingDisposition: 'Disposition info goes here.',
+        hearingTime: 930,
+        staff1ProfName: 'Debbie Jones',
+        staff1ProfDescription: '',
+        staff2ProfName: 'Frank Moore',
+        staff2ProfDescription: '',
+      },
+      {
+        caseNumber: '22-495',
+        currentChapterFileDate: 20230607,
+        currentCaseChapter: '11',
+        debtor1Name: 'Jane Doe',
+        hearingCode: 'IDI',
+        hearingDate: 20230601,
+        hearingDisposition: 'Disposition info goes here.',
+        hearingTime: 1145,
+        staff1ProfName: 'Jessie Thomas',
+        staff1ProfDescription: '',
+        staff2ProfName: 'Arnold Banks',
+        staff2ProfDescription: '',
+      },
+      {
+        caseNumber: '22-501',
+        currentChapterFileDate: 20230607,
+        currentCaseChapter: '11',
+        debtor1Name: 'Roger Moore',
+        hearingCode: 'IDI',
+        hearingDate: 20230601,
+        hearingDisposition: 'Disposition info goes here.',
+        hearingTime: 1501,
+        staff1ProfName: 'Jessie Thomas',
+        staff1ProfDescription: '',
+        staff2ProfName: 'John Jones',
+        staff2ProfDescription: '',
+      },
+    ],
+  },
 };
 
 const mockFetchList = () => {
-  console.log('mocking fetch...');
   return Promise.resolve({
     ok: true,
     status: 200,
@@ -103,7 +106,7 @@ describe('Base App Tests', () => {
         expect(tableHeader[7].textContent).toBe('Auditor');
 
         const tableRows = screen.getAllByRole('row');
-        expect(tableRows).toHaveLength(mockCaseList.body.length + 1);
+        expect(tableRows).toHaveLength(mockCaseList.body.caseList.length + 1);
       },
       { timeout: 100 },
     );
