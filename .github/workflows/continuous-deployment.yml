@@ -199,7 +199,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/functions-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=17 functionsVersion=~4'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=17 functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
 
       - name: Run Post Bicep configurations
         run: |
@@ -270,4 +270,7 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
-          az functionapp deployment source config-zip -g ${{ secrets.AZ_APP_RG }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app --src ./ustp-boss-java-function.zip
+          az functionapp deployment source config-zip \
+            -g ${{ secrets.AZ_APP_RG }} \
+            -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
+            --src ./ustp-boss-java-function.zip

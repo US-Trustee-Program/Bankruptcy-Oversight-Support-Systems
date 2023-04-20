@@ -18,6 +18,9 @@ param functionsRuntime string = 'java'
 @description('Azure functions version')
 param functionsVersion string = '~4'
 
+@description('Azure functions backend subnet resource id for vnet integration')
+param backendFuncSubnetId string
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -88,10 +91,11 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         }
       ]
       numberOfWorkers: 1
-      linuxFxVersion: 'Java|17'
+      linuxFxVersion: 'JAVA|17'
       alwaysOn: true
     }
     httpsOnly: false
     redundancyMode: 'None'
+    virtualNetworkSubnetId: backendFuncSubnetId
   }
 }
