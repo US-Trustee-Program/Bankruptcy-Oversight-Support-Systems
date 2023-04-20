@@ -264,9 +264,9 @@ jobs:
             --servers ${apiIpAddress}
 
       - name: Fetch Azure Functions build artifact
-          uses: actions/download-artifact@v3
-          with:
-            name: ustp-boss-java-function
+        uses: actions/download-artifact@v3
+        with:
+          name: ustp-boss-java-function
 
       - name: Deploy Azure Functions backend
         run: |
