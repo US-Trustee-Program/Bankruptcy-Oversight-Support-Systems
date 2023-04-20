@@ -115,7 +115,6 @@ jobs:
           path: functions/java/build/azure-functions/ustp-boss-java-function.zip
           if-no-files-found: error
 
-
   deploy:
     runs-on: ubuntu-latest
     needs: [build-frontend, build-backend, build-functions-backend]
@@ -147,24 +146,6 @@ jobs:
           template: ./ops/bicep/vnet-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} createVnet=${{ steps.check-vnet-resource.outputs.createVnet }}'
 
-      - name: Run Bicep deploy
-        uses: azure/arm-deploy@v1
-        id: azure-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}'
-
-      - name: Run KeyVault Bicep deploy
-        uses: azure/arm-deploy@v1
-        id: keyvault-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/keyvault-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
-
       - name: Run Network Bicep deploy
         uses: azure/arm-deploy@v1
         id: network-deploy
@@ -173,6 +154,25 @@ jobs:
           resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
           template: ./ops/bicep/network-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'
+
+      - name: Run Webapp Bicep deploy
+        uses: azure/arm-deploy@v1
+        id: azure-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZ_APP_RG }}
+          template: ./ops/bicep/azure-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webappSubnetId=${{ steps.network-deploy.outputs.outWebappSubnetId }}'
+
+      # TODO : Need to revisit if this is needed
+      # - name: Run KeyVault Bicep deploy
+      #   uses: azure/arm-deploy@v1
+      #   id: keyvault-deploy
+      #   with:
+      #     subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+      #     resourceGroupName: ${{ secrets.AZ_APP_RG }}
+      #     template: ./ops/bicep/keyvault-deploy.bicep
+      #     parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
 
       - name: Provision API Application Gateway
         uses: azure/arm-deploy@v1
@@ -190,7 +190,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/private-endpoint-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outwebApplicationId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} webappPrivateEndpointVirtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outWebappId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} webappPrivateEndpointVirtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }}'
 
       - name: Provision Azure Functions backend
         uses: azure/arm-deploy@v1
@@ -211,6 +211,7 @@ jobs:
             az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g ${{ secrets.AZURE_RG }} --subnet ${backendSubnetId}
           fi
 
+    # deploy-services: # TODO : Create a separate job to retrieve build artifacts and deploy services
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
@@ -226,12 +227,9 @@ jobs:
           echo "Contents of build folder:"
           ls
 
-          webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
-          az webapp up --html -n $webappName
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
-          az webapp vnet-integration add -n $webappName -g ${{ secrets.AZ_APP_RG }} --vnet ${{ steps.network-deploy.outputs.outVnetId }} --subnet ${{ steps.network-deploy.outputs.outWebappSubnetId }}
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az webapp up --html -n ${{ steps.azure-deploy.outputs.outWebappName }}
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Deploy Node API to Azure
         run: |
@@ -264,3 +262,12 @@ jobs:
             --gateway-name ${webappName}-api-agw \
             --name ${webappName}-api-agw-https-backend-targets \
             --servers ${apiIpAddress}
+
+      - name: Fetch Azure Functions build artifact
+          uses: actions/download-artifact@v3
+          with:
+            name: ustp-boss-java-function
+
+      - name: Deploy Azure Functions backend
+        run: |
+          az functionapp deployment source config-zip -g ${{ secrets.AZ_APP_RG }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app --src ./ustp-boss-java-function.zip
