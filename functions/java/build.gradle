@@ -21,6 +21,7 @@ targetCompatibility = '17'
 compileJava.options.encoding = 'UTF-8'
 
 repositories {
+    google()
     mavenCentral()
 }
 
