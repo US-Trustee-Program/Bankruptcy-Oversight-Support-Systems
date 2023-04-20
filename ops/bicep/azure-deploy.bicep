@@ -149,3 +149,4 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 output outServerAppServicePlanId string = serverFarm.id
 output outWebappName string = webApplication.name
 output outWebappId string = webApplication.id
+output outWebappUrl string = webApplication.properties.hostNameSslStates[0].name
