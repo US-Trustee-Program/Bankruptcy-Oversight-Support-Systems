@@ -199,8 +199,15 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/functions-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=17 functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=java functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
 
+      - name: Set Azure Functions app settings
+        run: |
+          az functionapp config appsettings set \
+            --name appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
+            --resource-group ${{ secrets.AZ_APP_RG }} \
+            --settings ${{ secrets.AZ_SQL_CONN_STR }}
+            
       - name: Run Post Bicep configurations
         run: |
           backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}
