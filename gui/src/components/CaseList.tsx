@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/store';
-import Api, { ResponseData } from '../models/api';
+import Api, { CaseListResponseData } from '../models/api';
 import './CaseList.scss';
 
 type caseType = {
@@ -20,14 +20,16 @@ type caseType = {
 
 export const CaseList = () => {
   const user = useAppSelector((state) => state.user.user);
-  const [caseList, setCaseList] = useState<ResponseData>({
+  const [caseList, setCaseList] = useState<CaseListResponseData>({
     message: '',
     count: 0,
-    body: [{}],
+    body: {
+      staff1Label: '',
+      staff2Label: '',
+      caseList: [{}],
+    },
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [staff1Label, setStaff1Label] = useState<string>('');
-  const [staff2Label, setStaff2Label] = useState<string>('');
 
   let name = 'any staff';
   if (user.id > 0) {
@@ -43,13 +45,7 @@ export const CaseList = () => {
       chapter,
       professional_id: user.id,
     }).then((res) => {
-      (res.body as []).forEach((row) => {
-        if (row['currentCaseChapter'] == '11') {
-          setStaff1Label('Trial Attorney');
-          setStaff2Label('Auditor');
-        }
-      });
-      setCaseList(res);
+      setCaseList(res as CaseListResponseData);
       setIsLoading(false);
     });
   };
@@ -84,13 +80,13 @@ export const CaseList = () => {
               <th>Hearing Code</th>
               <th>Initial Hearing Date/Time</th>
               <th>Hearing Disposition</th>
-              <th>{staff1Label}</th>
-              <th>{staff2Label}</th>
+              <th>{caseList.body.staff1Label}</th>
+              <th>{caseList.body.staff2Label}</th>
             </tr>
           </thead>
           <tbody>
             {caseList.count > 0 &&
-              (caseList.body as Array<caseType>).map((theCase: caseType, idx: number) => {
+              (caseList.body.caseList as Array<caseType>).map((theCase: caseType, idx: number) => {
                 const chapterStr = theCase.currentChapterFileDate.toString();
                 const chapterYear = chapterStr.substring(0, 4);
                 const chapterMonth = chapterStr.substring(4, 6);

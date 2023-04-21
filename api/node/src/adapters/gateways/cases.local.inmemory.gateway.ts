@@ -1,22 +1,30 @@
 import log from '../logging.service.js';
-import { getProperty, mockData } from '../mock-data/';
+import { caseListMockData, getProperty, mockData } from '../mock-data/';
 import { ObjectKeyVal, RecordObj } from '../types/basic.js';
+import { CaseListRecordSet } from '../types/cases.js';
 import { DbResult } from '../types/database.js';
-import { createRecord, updateRecord, deleteRecord, validateTableName } from './local.inmemory.gateway.js';
+import { createRecord, validateTableName } from './local.inmemory.gateway.js';
 
 const NAMESPACE = 'CASES-LOCAL-INMEMORY-DATA-MODULE';
 
 const table = 'cases';
 
-async function initializeCases(): Promise<ObjectKeyVal[]> {
-  let caseList: ObjectKeyVal[] = [];
+async function initializeCases(): Promise<CaseListRecordSet> {
+  let caseList: CaseListRecordSet;
 
-  caseList = await getProperty(table, 'list');
+  if (caseListMockData.cases.initialized) {
+    return caseListMockData[table];
+  } else {
+    caseList = await getProperty(table, 'list');
+    caseList.initialized = true;
+    caseListMockData[table] = caseList;
+  }
+
   return caseList;
 }
 
 const getCaseList = async (): Promise<DbResult> => {
-  let caseList: ObjectKeyVal[] = [];
+  let caseListRecords: CaseListRecordSet;
 
   log('info', NAMESPACE, `Get all from ${table}`);
 
@@ -24,18 +32,13 @@ const getCaseList = async (): Promise<DbResult> => {
     throw new Error('Invalid database table name');
   }
 
-  if (mockData.hasOwnProperty(table)) {
-    caseList = mockData[table];
-  } else {
-    caseList = await initializeCases();
-    mockData[table] = caseList;
-  }
+  caseListRecords = await initializeCases();
 
   const results: DbResult = {
     success: true,
     message: `${table} list`,
-    count: caseList.length,
-    body: caseList,
+    count: caseListRecords.caseList.length,
+    body: caseListRecords,
   };
 
   log('info', NAMESPACE, `list from ${table} found`, results);
@@ -44,38 +47,23 @@ const getCaseList = async (): Promise<DbResult> => {
 };
 
 const getCase = async (id: number): Promise<DbResult> => {
-  let caseList: ObjectKeyVal[] = [];
+  let caseListRecords: CaseListRecordSet;
   let record: ObjectKeyVal = {};
   let results: DbResult;
 
   log('info', NAMESPACE, `Fetch record ${id} from ${table}`);
 
-  if (mockData.hasOwnProperty(table)) {
-    caseList = mockData[table];
-  } else {
-    caseList = await initializeCases();
-    mockData[table] = caseList;
-  }
+  caseListRecords = await initializeCases();
 
-  if (mockData.hasOwnProperty(table)) {
-    //const data = caseList.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
-    const data = caseList.filter((rec) => rec['caseDiv'] == `${id}`).pop();
-    if (data) {
-      log('info', NAMESPACE, `record from ${table} found`, data);
-      results = {
-        message: `${table} record`,
-        count: 1,
-        body: [data],
-        success: true,
-      };
-    } else {
-      results = {
-        message: `record not found`,
-        count: 0,
-        body: {},
-        success: false,
-      };
-    }
+  const data = caseListRecords.caseList.filter((rec) => rec['caseDiv'] == `${id}`).pop();
+  if (data) {
+    log('info', NAMESPACE, `record from ${table} found`, data);
+    results = {
+      message: `${table} record`,
+      count: 1,
+      body: [data],
+      success: true,
+    };
   } else {
     results = {
       message: `record not found`,

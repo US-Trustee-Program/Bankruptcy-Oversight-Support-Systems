@@ -1,5 +1,15 @@
 import config from '../configuration/apiConfiguration';
 
+export type CaseListResponseData = {
+  message: string;
+  count: number;
+  body: {
+    staff1Label: string;
+    staff2Label: string;
+    caseList: Array<object>;
+  };
+};
+
 export type ResponseData = {
   message: string;
   count: number;
@@ -87,10 +97,7 @@ export default class Api {
 
       const data = await response.json();
 
-      console.log(response);
       if (response.ok) {
-        console.log('Response was OK');
-        console.log(data);
         return data;
       } else {
         return Promise.reject(

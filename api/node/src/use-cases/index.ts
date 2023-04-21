@@ -1,5 +1,6 @@
 import { RecordObj } from '../adapters/types/basic';
 import { CasePersistenceGateway, UserPersistenceGateway } from '../adapters/types/persistence-gateway';
+import { ObjectKeyVal } from '../../../../gui/src/models/api';
 
 async function login(database: UserPersistenceGateway, userName: {firstName: string, lastName: string}) {
   return await database.login(userName);
@@ -10,7 +11,18 @@ async function addCase(database: CasePersistenceGateway, fields: RecordObj[]) {
 }
 
 async function listCases(database: CasePersistenceGateway, fields: {chapter: string, professionalId: number}) {
-  return await database.getCaseList(fields);
+  const result = await database.getCaseList(fields);
+  result.body.staff1Label = 'Trial Attorney';
+  result.body.staff2Label = 'Auditor';
+
+  // TODO: When we start returning multiple chapters, we need to define the staff labels at the case level
+  // result.body.forEach((brCase: ObjectKeyVal) => {
+  //   if (brCase['currentCaseChapter'] == '11') {
+  //     brCase['staff1Label'] = 'Trial Attorney';
+  //     brCase['staff2Label'] = 'Auditor';
+  //   }
+  // })
+  return result;
 }
 
 async function getCase(database: CasePersistenceGateway, id: number) {

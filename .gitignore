@@ -64,3 +64,6 @@ hs_err_pid*
 
 # Azure
 **/.azure/
+
+# OSX
+**/.DS_Store

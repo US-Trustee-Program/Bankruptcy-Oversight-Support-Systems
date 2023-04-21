@@ -12,6 +12,7 @@ import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 import gov.doj.ustp.entities.BossResponse;
 import gov.doj.ustp.entities.Case;
+import gov.doj.ustp.entities.CaseListResponseBody;
 import gov.doj.ustp.entities.User;
 import gov.doj.ustp.entities.UserRequest;
 import java.time.LocalDate;
@@ -20,6 +21,9 @@ import java.util.List;
 import java.util.Optional;
 
 public class Function {
+
+  public static final String CHAPTER_11_STAFF2_LABEL = "Auditor";
+  public static final String CHAPTER_11_STAFF1_LABEL = "Trial Attorney";
 
   @FunctionName("cases")
   public HttpResponseMessage getCases(
@@ -34,14 +38,26 @@ public class Function {
         Integer.parseInt(request.getQueryParameters().get("professional_id"));
     final String chapter = request.getQueryParameters().get("chapter");
 
-    SqlServerGateway sqlServerGateway = new SqlServerGateway();
-    List<Case> cases = sqlServerGateway.getCases(chapter, professionalId);
-    BossResponse response = new BossResponse.Builder().count(cases.size()).body(cases).build();
     Gson gson =
         new GsonBuilder()
             .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
+    BossResponse response;
+    if (!chapter.equals("11")) {
+      response =
+          new BossResponse.Builder().message("Only chapter 11 is currently supported.").build();
+      return request
+          .createResponseBuilder(HttpStatus.BAD_REQUEST)
+          .body(gson.toJson(response))
+          .build();
+    }
+
+    SqlServerGateway sqlServerGateway = new SqlServerGateway();
+    List<Case> cases = sqlServerGateway.getCases(chapter, professionalId);
+    CaseListResponseBody body =
+        new CaseListResponseBody(CHAPTER_11_STAFF1_LABEL, CHAPTER_11_STAFF2_LABEL, cases);
+    response = new BossResponse.Builder().count(cases.size()).body(body).build();
 
     return request.createResponseBuilder(HttpStatus.OK).body(gson.toJson(response)).build();
   }
