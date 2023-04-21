@@ -1,4 +1,4 @@
-# CAMS
+# CAse Management System (CAMS)
 
 ## [United States Trustee Program](https://www.justice.gov/ust)
 
