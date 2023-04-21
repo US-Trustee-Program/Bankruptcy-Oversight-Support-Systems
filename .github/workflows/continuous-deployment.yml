@@ -215,7 +215,7 @@ jobs:
             -g ${{ secrets.AZ_APP_RG }} \
             -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
             --allowed-origins https://${{ steps.azure-deploy.outputs.outWebappUrl }}
-            
+
       - name: Run Post Bicep configurations
         run: |
           backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}
