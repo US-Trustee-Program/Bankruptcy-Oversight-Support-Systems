@@ -183,14 +183,15 @@ jobs:
       #     template: ./ops/bicep/keyvault-deploy.bicep
       #     parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
 
-      - name: Provision API Application Gateway
-        uses: azure/arm-deploy@v1
-        id: api-agw-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/appgateway-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} apiAgwSubnetId=${{ steps.network-deploy.outputs.outAgwSubnetId }}'
+# TODO : Testing functions backend only. Need to update how agwPrivateIP is set
+#      - name: Provision API Application Gateway
+#        uses: azure/arm-deploy@v1
+#        id: api-agw-deploy
+#        with:
+#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+#          resourceGroupName: ${{ secrets.AZ_APP_RG }}
+#          template: ./ops/bicep/appgateway-deploy.bicep
+#          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} apiAgwSubnetId=${{ steps.network-deploy.outputs.outAgwSubnetId }}'
 
       - name: Provision Webapp Private Endpoint
         uses: azure/arm-deploy@v1
@@ -244,37 +245,38 @@ jobs:
           az webapp up --html -n ${{ steps.azure-deploy.outputs.outWebappName }}
           az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
-      - name: Deploy Node API to Azure
-        run: |
-          webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-          count=$(az container list --query "length([?name=='${webappName}-api'])")
-          apiIpAddress=
-          if [[ $count -eq 0 ]]; then
-            apiIpAddress=$(az container create \
-              --os-type Linux \
-              --resource-group ${{ secrets.AZ_APP_RG }} \
-              --name ${webappName}-api \
-              --image ${{ secrets.ACR_REGISTRY }}/ustp-boss-api-node:latest \
-              --ports 8080 \
-              --vnet ${{ steps.network-deploy.outputs.outVnetId }} \
-              --subnet ${{ steps.network-deploy.outputs.outBackendSubnetId }} \
-              --registry-username ${{ secrets.ACR_USERNAME }} \
-              --registry-password ${{ secrets.ACR_TOKEN }} \
-              --query ipAddress.ip \
-              --secure-environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' 'MSSQL_PASS'='${{ secrets.AZ_MSSQL_PASS }}' \
-              --output tsv)
-          else
-            echo "Restarting existing container group"
-            az container restart --name ${webappName}-api -g ${{ secrets.AZ_APP_RG }}
-            apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZ_APP_RG }} --query ipAddress.ip -o tsv)
-          fi
-
-          echo "Adding ips to backend pool: ${apiIpAddress}"
-          az network application-gateway address-pool update \
-            --resource-group ${{ secrets.AZ_APP_RG }} \
-            --gateway-name ${webappName}-api-agw \
-            --name ${webappName}-api-agw-https-backend-targets \
-            --servers ${apiIpAddress}
+# TODO : Testing functions backend only
+#      - name: Deploy Node API to Azure
+#        run: |
+#          webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
+#          count=$(az container list --query "length([?name=='${webappName}-api'])")
+#          apiIpAddress=
+#          if [[ $count -eq 0 ]]; then
+#            apiIpAddress=$(az container create \
+#              --os-type Linux \
+#              --resource-group ${{ secrets.AZ_APP_RG }} \
+#              --name ${webappName}-api \
+#              --image ${{ secrets.ACR_REGISTRY }}/ustp-boss-api-node:latest \
+#              --ports 8080 \
+#              --vnet ${{ steps.network-deploy.outputs.outVnetId }} \
+#              --subnet ${{ steps.network-deploy.outputs.outBackendSubnetId }} \
+#              --registry-username ${{ secrets.ACR_USERNAME }} \
+#              --registry-password ${{ secrets.ACR_TOKEN }} \
+#              --query ipAddress.ip \
+#              --secure-environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' 'MSSQL_PASS'='${{ secrets.AZ_MSSQL_PASS }}' \
+#              --output tsv)
+#          else
+#            echo "Restarting existing container group"
+#            az container restart --name ${webappName}-api -g ${{ secrets.AZ_APP_RG }}
+#            apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZ_APP_RG }} --query ipAddress.ip -o tsv)
+#          fi
+#
+#          echo "Adding ips to backend pool: ${apiIpAddress}"
+#          az network application-gateway address-pool update \
+#            --resource-group ${{ secrets.AZ_APP_RG }} \
+#            --gateway-name ${webappName}-api-agw \
+#            --name ${webappName}-api-agw-https-backend-targets \
+#            --servers ${apiIpAddress}
 
       - name: Fetch Azure Functions build artifact
         uses: actions/download-artifact@v3
