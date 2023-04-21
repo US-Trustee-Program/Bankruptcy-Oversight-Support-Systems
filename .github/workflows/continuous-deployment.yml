@@ -190,7 +190,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/private-endpoint-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outWebappId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} webappPrivateEndpointVirtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outWebappId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} virtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }}'
 
       - name: Provision Azure Functions backend
         uses: azure/arm-deploy@v1
