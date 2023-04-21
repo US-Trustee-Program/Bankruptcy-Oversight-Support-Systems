@@ -283,7 +283,9 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
+          az resource update --ids ${{ steps.functions-java-deploy.outputs.outFunctionAppId }} --set properties.publicNetworkAccess=Enabled
           az functionapp deployment source config-zip \
             -g ${{ secrets.AZ_APP_RG }} \
-            -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
+            -n ${{ steps.functions-java-deploy.outputs.outFunctionAppName }} \
             --src ./ustp-boss-java-function.zip
+          az resource update --ids ${{ steps.functions-java-deploy.outputs.outFunctionAppId }} --set properties.publicNetworkAccess=Disabled
