@@ -43,6 +43,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
   kind: 'app'
   properties: {
     enabled: true
+    serverFarmId: serverFarm.id
     hostNameSslStates: [
       {
         name: '${appName}.azurewebsites.net'
@@ -55,7 +56,6 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
         hostType: 'Repository'
       }
     ]
-    serverFarmId: serverFarm.id
     reserved: false
     siteConfig: {
       numberOfWorkers: 1
@@ -68,6 +68,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
     }
     clientAffinityEnabled: false
     httpsOnly: false
+    redundancyMode: 'None'
     virtualNetworkSubnetId: webappSubnetId
   }
 }

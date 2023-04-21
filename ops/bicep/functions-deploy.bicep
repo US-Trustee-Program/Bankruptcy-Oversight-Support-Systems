@@ -93,7 +93,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
       numberOfWorkers: 1
       linuxFxVersion: 'JAVA|17'
       alwaysOn: true
+      http20Enabled: true
+      functionAppScaleLimit: 0
+      minimumElasticInstanceCount: 0
+      publicNetworkAccess: 'Disabled'
     }
+    clientAffinityEnabled: false
     httpsOnly: false
     redundancyMode: 'None'
     virtualNetworkSubnetId: backendFuncSubnetId
