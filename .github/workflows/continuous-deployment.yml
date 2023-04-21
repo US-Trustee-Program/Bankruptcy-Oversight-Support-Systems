@@ -164,6 +164,15 @@ jobs:
           template: ./ops/bicep/azure-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webappSubnetId=${{ steps.network-deploy.outputs.outWebappSubnetId }}'
 
+      - name: Provision Azure Functions backend
+        uses: azure/arm-deploy@v1
+        id: functions-java-deploy
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: ${{ secrets.AZ_APP_RG }}
+          template: ./ops/bicep/functions-deploy.bicep
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=java functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
+
       # TODO : Need to revisit if this is needed
       # - name: Run KeyVault Bicep deploy
       #   uses: azure/arm-deploy@v1
@@ -190,17 +199,9 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/private-endpoint-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outWebappId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} virtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }}'
+          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outWebappId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} virtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }} functionsPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outBackendFuncPrivateEndpointSubnetId }} functionsAppId=${{ steps.functions-java-deploy.outputs.outFunctionAppId }}'
 
-      - name: Provision Azure Functions backend
-        uses: azure/arm-deploy@v1
-        id: functions-java-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/functions-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=java functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
-
+      # Below are some additional configurations post bicep
       - name: Set Azure Functions app settings
         run: |
           az functionapp config appsettings set \
