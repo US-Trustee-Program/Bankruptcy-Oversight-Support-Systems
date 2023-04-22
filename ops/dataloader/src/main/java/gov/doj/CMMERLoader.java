@@ -113,8 +113,7 @@ public class CMMERLoader extends AbstractDataLoader implements IDataLoader {
     }
   }
 
-  private String removeQuotesAround(String inputString)
-  {
+  private String removeQuotesAround(String inputString) {
     return inputString.replaceAll("^\"|\"$", "");
   }
 
