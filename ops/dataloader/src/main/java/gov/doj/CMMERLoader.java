@@ -75,12 +75,12 @@ public class CMMERLoader extends AbstractDataLoader implements IDataLoader {
 
   private void setValuesToInsert(PreparedStatement statement, String[] data) throws SQLException {
 
-    statement.setString(1, data[0]); // [DELETE_CODE]
+    statement.setString(1, removeQuotesAround(data[0])); // [DELETE_CODE]
     statement.setString(2, data[1]); // [EVENT_TYPE]
     statement.setString(3, data[2]); // [EVENT_CODE]
     statement.setString(4, data[3]); // [REVIEW_CODE]
-    statement.setString(5, data[4]); // [REVIEW_CODE_DESC]
-    statement.setString(6, data[5]); // [USER_ID]
+    statement.setString(5, removeQuotesAround(data[4])); // [REVIEW_CODE_DESC]
+    statement.setString(6, removeQuotesAround(data[5])); // [USER_ID]
     statement.setInt(7, Integer.parseInt(data[6])); // [ENTRY_DATE]
     statement.setString(8, data[7]); // [REGION_CODE]
     statement.setString(9, data[8]); // [GROUP_DESIGNATOR]
@@ -103,14 +103,19 @@ public class CMMERLoader extends AbstractDataLoader implements IDataLoader {
     try {
       if (data == null || data.isEmpty() || data.contains("NULL")) {
 
-        statement.setNull(dataIndex + 1, Types.TIMESTAMP);
+        statement.setNull(dataIndex, Types.TIMESTAMP);
       } else {
         // statement.setTimestamp(dataIndex+1, Timestamp.valueOf(data));
-        statement.setNull(dataIndex + 1, Types.TIMESTAMP); // Nullify timestamp columns - story#111
+        statement.setNull(dataIndex, Types.TIMESTAMP); // Nullify timestamp columns - story#111
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private String removeQuotesAround(String inputString)
+  {
+    return inputString.replaceAll("^\"|\"$", "");
   }
 
   @Override
