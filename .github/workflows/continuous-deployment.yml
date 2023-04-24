@@ -55,45 +55,6 @@ jobs:
           path: gui/artifacts/
           if-no-files-found: error
 
-  build-backend:
-    defaults:
-      run:
-        working-directory: api/node
-
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: api/node/package-lock.json
-
-      - run: npm ci
-      - run: CI=true npm test
-
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Azure Container Registry Login
-        uses: Azure/docker-login@v1
-        with:
-          login-server: ustpbossregistry.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_TOKEN }}
-
-      - name: Build API Container and Publish to Registry
-        run: az acr build -f Dockerfile -t ${{ secrets.ACR_REGISTRY }}/ustp-boss-api-node -r ${{ secrets.ACR_REGISTRY }} .
-
   build-functions-backend:
     defaults:
       run:
@@ -119,7 +80,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build-frontend, build-backend, build-functions-backend]
-    #if: github.ref == 'refs/heads/main' # TODO : This is for testing deployment on the branch
+    if: github.ref == 'refs/heads/main'
     steps:
 
       - uses: actions/checkout@main
@@ -174,26 +135,6 @@ jobs:
           template: ./ops/bicep/functions-deploy.bicep
           parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=java functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
 
-      # TODO : Need to revisit if this is needed
-      # - name: Run KeyVault Bicep deploy
-      #   uses: azure/arm-deploy@v1
-      #   id: keyvault-deploy
-      #   with:
-      #     subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-      #     resourceGroupName: ${{ secrets.AZ_APP_RG }}
-      #     template: ./ops/bicep/keyvault-deploy.bicep
-      #     parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} readerGuid=${{ secrets.KEYVAULT_READER_ROLE_GUID }}'
-
-# TODO : Testing functions backend only. Need to update how agwPrivateIP is set
-#      - name: Provision API Application Gateway
-#        uses: azure/arm-deploy@v1
-#        id: api-agw-deploy
-#        with:
-#          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-#          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-#          template: ./ops/bicep/appgateway-deploy.bicep
-#          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} agwPrivateIP=${{ vars.REACT_APP_SERVER_HOSTNAME }} apiAgwSubnetId=${{ steps.network-deploy.outputs.outAgwSubnetId }}'
-
       - name: Provision Webapp Private Endpoint
         uses: azure/arm-deploy@v1
         id: webapp-private-endpoint-deploy
@@ -216,6 +157,7 @@ jobs:
             -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
             --allowed-origins https://${{ steps.azure-deploy.outputs.outWebappUrl }}
 
+      #TODO : need to add vnet for functions backend to allow sql access
       - name: Run Post Bicep configurations
         run: |
           backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}
@@ -245,39 +187,6 @@ jobs:
           az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az webapp up --html -n ${{ steps.azure-deploy.outputs.outWebappName }}
           az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
-
-# TODO : Testing functions backend only
-#      - name: Deploy Node API to Azure
-#        run: |
-#          webappName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
-#          count=$(az container list --query "length([?name=='${webappName}-api'])")
-#          apiIpAddress=
-#          if [[ $count -eq 0 ]]; then
-#            apiIpAddress=$(az container create \
-#              --os-type Linux \
-#              --resource-group ${{ secrets.AZ_APP_RG }} \
-#              --name ${webappName}-api \
-#              --image ${{ secrets.ACR_REGISTRY }}/ustp-boss-api-node:latest \
-#              --ports 8080 \
-#              --vnet ${{ steps.network-deploy.outputs.outVnetId }} \
-#              --subnet ${{ steps.network-deploy.outputs.outBackendSubnetId }} \
-#              --registry-username ${{ secrets.ACR_USERNAME }} \
-#              --registry-password ${{ secrets.ACR_TOKEN }} \
-#              --query ipAddress.ip \
-#              --secure-environment-variables 'MSSQL_HOST'='${{ secrets.AZ_MSSQL_HOST }}' 'MSSQL_DATABASE'='${{ secrets.AZ_MSSQL_DATABASE }}' 'MSSQL_USER'='${{ secrets.AZ_MSSQL_USER }}' 'MSSQL_ENCRYPT'='${{ secrets.AZ_MSSQL_ENCRYPT }}' 'MSSQL_TRUST_UNSIGNED_CERT'='${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}' 'MSSQL_PASS'='${{ secrets.AZ_MSSQL_PASS }}' \
-#              --output tsv)
-#          else
-#            echo "Restarting existing container group"
-#            az container restart --name ${webappName}-api -g ${{ secrets.AZ_APP_RG }}
-#            apiIpAddress=$(az container show -n ${webappName}-api -g ${{ secrets.AZ_APP_RG }} --query ipAddress.ip -o tsv)
-#          fi
-#
-#          echo "Adding ips to backend pool: ${apiIpAddress}"
-#          az network application-gateway address-pool update \
-#            --resource-group ${{ secrets.AZ_APP_RG }} \
-#            --gateway-name ${webappName}-api-agw \
-#            --name ${webappName}-api-agw-https-backend-targets \
-#            --servers ${apiIpAddress}
 
       - name: Fetch Azure Functions build artifact
         uses: actions/download-artifact@v3

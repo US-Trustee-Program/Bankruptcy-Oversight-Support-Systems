@@ -9,6 +9,9 @@ param webappAspName string = 'cams-server-farm'
 @description('Webapp subnet resource id for vnet integration')
 param webappSubnetId string
 
+@description('Private DNS Zone used for application')
+param privateDnsZoneName string
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   name: webappAspName
@@ -144,6 +147,59 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     functionsRuntimeScaleMonitoringEnabled: false
     minimumElasticInstanceCount: 0
     azureStorageAccounts: {}
+  }
+}
+
+/*
+  Webapp private endpoint setup
+*/
+resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+  name: privateDnsZoneName
+}
+var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
+var webappPrivateEndpointConnectionName = '${appName}-webapp-private-endpoint-connection'
+resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
+  name: webappPrivateEndpointName
+  location: location
+  properties: {
+    privateLinkServiceConnections: [
+      {
+        name: webappPrivateEndpointConnectionName
+        properties: {
+          privateLinkServiceId: webApplication.id
+          groupIds: [
+            'sites'
+          ]
+          privateLinkServiceConnectionState: {
+            status: 'Approved'
+            actionsRequired: 'None'
+          }
+        }
+      }
+    ]
+    manualPrivateLinkServiceConnections: []
+    subnet: {
+      id: webappSubnetId
+    }
+    ipConfigurations: []
+    customDnsConfigs: []
+  }
+  dependsOn: [
+    ustpPrivateDnsZone
+  ]
+}
+resource ustpWebappPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
+  parent: ustpWebappPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'privatelink_azurewebsites'
+        properties: {
+          privateDnsZoneId: ustpPrivateDnsZone.id
+        }
+      }
+    ]
   }
 }
 

@@ -6,17 +6,11 @@ param location string = resourceGroup().location
 @description('Application\'s target virtual network name')
 param virtualNetworkName string = '${appName}-vnet'
 
-@description('API application gateway subnet name')
-param apiAgwSubnetName string = '${virtualNetworkName}-api-agw'
+@description('Private DNS Zone name for private link')
+param privateDNSZoneName string = 'privatelink.azurewebsites.net'
 
-@description('API application gateway subnet ip ranges')
-param apiAgwSubnetAddressPrefix string = '10.0.0.0/28'
-
-@description('API backend subnet name')
-param apiBackendSubnetName string = '${virtualNetworkName}-api-backend'
-
-@description('API backend instance subnet ip ranges')
-param apiBackendAddressPrefix string = '10.0.1.0/28'
+@description('Optional array of resource ids of virtual network to link to private dns zone')
+param linkVnetIds array = []
 
 @description('Webapp subnet name')
 param webappSubnetName string = '${virtualNetworkName}-webapp'
@@ -50,42 +44,45 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
 }
 
 /*
-  USTP BOSS Subnets
+  Private DNS Zone and linked virtual networks
 */
-resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  name: apiAgwSubnetName
-  parent: ustpVirtualNetwork
-  properties: {
-    addressPrefix: apiAgwSubnetAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
+resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: privateDNSZoneName
+  location: 'global'
+  tags: {
+    appName: appName
   }
 }
 
-resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  name: apiBackendSubnetName
-  parent: ustpVirtualNetwork
+resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: ustpPrivateDnsZone
+  location: 'global'
   properties: {
-    addressPrefix: apiBackendAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
-    serviceEndpoints: [
-      {
-        service: 'Microsoft.Sql'
-        locations: [
-          location
-        ]
-      }
-    ]
-    delegations: [
-      {
-        name: 'Microsoft.ContainerInstance.containerGroups'
-        properties: {
-          serviceName: 'Microsoft.ContainerInstance/containerGroups'
-        }
-      }
-    ]
+    registrationEnabled: false
+    virtualNetwork: {
+      id: ustpVirtualNetwork.id
+    }
   }
+  name: '${privateDNSZoneName}-vnet-link'
 }
 
+// optional step to include additional link to existing PrivateDnsZone
+resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for vnetId in linkVnetIds: {
+  parent: ustpPrivateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: vnetId
+    }
+  }
+  name: 'ustp-${uniqueString(resourceGroup().id, vnetId)}-vnet-link'
+}]
+
+/*
+  USTP BOSS Subnets
+  NOTE: Below subnet configuration can be moved to where each services is setup
+*/
 resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
   parent: ustpVirtualNetwork
   name: webappSubnetName
@@ -157,8 +154,6 @@ resource backendFunctionsSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-
   Bicep outputs
 */
 output outVnetId string = ustpVirtualNetwork.id
-output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
-output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
 output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
 output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
 output outBackendFuncSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, backendFunctionsSubnetName)

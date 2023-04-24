@@ -21,6 +21,9 @@ param functionsVersion string = '~4'
 @description('Azure functions backend subnet resource id for vnet integration')
 param backendFuncSubnetId string
 
+@description('Private DNS Zone used for application')
+param privateDnsZoneName string
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -105,5 +108,58 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   }
 }
 
+/*
+  Backend functionapp private endpoint setup
+*/
+resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+  name: privateDnsZoneName
+}
+var functionsPrivateEndpointName = '${appName}-function-app-private-endpoint'
+var functionsPrivateEndpointConnectionName = '${appName}-function-app-private-endpoint-connection'
+resource ustpFunctionsPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
+  name: functionsPrivateEndpointName
+  location: location
+  properties: {
+    privateLinkServiceConnections: [
+      {
+        name: functionsPrivateEndpointConnectionName
+        properties: {
+          privateLinkServiceId: functionApp.id
+          groupIds: [
+            'sites'
+          ]
+          privateLinkServiceConnectionState: {
+            status: 'Approved'
+            actionsRequired: 'None'
+          }
+        }
+      }
+    ]
+    manualPrivateLinkServiceConnections: []
+    subnet: {
+      id: backendFuncSubnetId
+    }
+    ipConfigurations: []
+    customDnsConfigs: []
+  }
+  dependsOn: [
+    ustpPrivateDnsZone
+  ]
+}
+
+resource ustpFunctionsPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
+  parent: ustpFunctionsPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'privatelink_azurewebsites'
+        properties: {
+          privateDnsZoneId: ustpPrivateDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
 output outFunctionAppName string = functionApp.name
-output outFunctionAppId string =  functionApp.id
