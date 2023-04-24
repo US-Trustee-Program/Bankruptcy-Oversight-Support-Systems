@@ -3,6 +3,7 @@ package gov.doj.ustp.entities;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import gov.doj.ustp.entities.ReviewCodeDescriptionLookUp;
 
 public class Case {
   private String caseNumber;
@@ -20,6 +21,13 @@ public class Case {
   private String staff2ProfName;
   private String staff2ProfDescription;
 
+  private String hearingDescription;
+
+  private ReviewCodeDescriptionLookUp reviewDescriptionLookUp;
+  public Case()
+  {
+    reviewDescriptionLookUp = new ReviewCodeDescriptionLookUp();
+  }
   public String getCaseNumber() {
     return caseNumber;
   }
@@ -114,5 +122,20 @@ public class Case {
 
   public void setStaff2ProfDescription(String staff2ProfDescription) {
     this.staff2ProfDescription = staff2ProfDescription;
+  }
+
+  public String getHearingDescription() {
+    if (this.hearingDescription == null || this.hearingDescription == "")
+    {
+        setHearingDescription(this.hearingDisposition);
+    }
+    return this.hearingDescription;
+  }
+  public void setHearingDescription(String reviewCode){
+    if ((reviewCode == null) || (reviewCode == "")) {
+       this.hearingDescription = " ";
+    } else {
+       this.hearingDescription = ReviewCodeDescriptionLookUp.getDescription(this.hearingDisposition);
+    }
   }
 }
