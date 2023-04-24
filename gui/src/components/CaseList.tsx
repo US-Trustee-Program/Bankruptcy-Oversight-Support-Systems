@@ -11,6 +11,7 @@ type caseType = {
   hearingCode: string;
   hearingDate: number;
   hearingDisposition: string;
+  hearingDescription: string;
   hearingTime: number;
   staff1ProfName: string;
   staff1ProfDescription: string;
@@ -136,7 +137,7 @@ export const CaseList = () => {
                     <td>{chapterDateStr}</td>
                     <td>{theCase.hearingCode}</td>
                     <td>{hearingDateTimeStr}</td>
-                    <td>{theCase.hearingDisposition}</td>
+                    <td>{theCase.hearingDescription}</td>
                     <td>{theCase.staff1ProfName}</td>
                     <td>{theCase.staff2ProfName}</td>
                   </tr>

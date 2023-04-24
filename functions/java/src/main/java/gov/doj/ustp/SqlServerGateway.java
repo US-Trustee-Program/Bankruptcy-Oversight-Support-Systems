@@ -64,6 +64,7 @@ public class SqlServerGateway {
             getLocalDateTime(rs.getString("HEARING_DATE"), rs.getString("HEARING_TIME")));
         caseObj.setHearingCode(rs.getString("HEARING_CODE"));
         caseObj.setHearingDisposition(rs.getString("HEARING_DISP"));
+        caseObj.setHearingDescription(rs.getString("HEARING_DISP"));
         cases.add(caseObj);
       }
 
