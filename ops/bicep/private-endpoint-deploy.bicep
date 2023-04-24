@@ -3,46 +3,36 @@ param appName string
 
 param location string = resourceGroup().location
 
-@description('Application\'s target virtual network name')
-param virtualNetworkName string = '${appName}-vnet'
-
-@description('Webapp private endpoint subnet ip ranges')
-param webappPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
-
-@description('Web Application ID')
-param webApplicationId string
-
-@description('Webapp private endpoint name')
-param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
-
-@description('Private DNS Zone nam for private link')
+@description('Private DNS Zone name for private link')
 param privateDNSZoneName string = 'privatelink.azurewebsites.net'
 
-@description('Array of resource ids of virtual network to link to private dns zone')
+@description('Target virtual network resource id for private DNS zone')
+param virtualNetworkId string
+
+@description('Optional array of resource ids of virtual network to link to private dns zone')
 param linkVnetIds array = []
 
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
-  name: virtualNetworkName
-}
+@description('Target subnet resource id for webapp private endpoint')
+param webappPrivateEndpointSubnetId string
 
-resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  name: webappPrivateEndpointSubnetName
-  parent: ustpVirtualNetwork
-  properties: {
-    addressPrefix: webappPrivateEndpointSubnetAddressPrefix
-    serviceEndpoints: []
-    delegations: []
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
-  }
-}
+@description('Web Application resource id')
+param webApplicationId string
+
+@description('Target subnet resource id for backend functionapp private endpoint')
+param functionsPrivateEndpointSubnetId string
+
+@description('Backend functionapp resource id')
+param functionsAppId string
 
 /*
-  Resolves webapp DNS to a private IP via Private DNS Zone and Private Endpoint Link
+  Private DNS Zone and linked virtual networks
 */
 resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateDNSZoneName
   location: 'global'
+  tags: {
+    appName: appName
+  }
 }
 
 resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
@@ -51,12 +41,13 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
   properties: {
     registrationEnabled: false
     virtualNetwork: {
-      id: ustpVirtualNetwork.id
+      id: virtualNetworkId
     }
   }
   name: '${privateDNSZoneName}-vnet-link'
 }
 
+// optional step to include additional link to existing PrivateDnsZone
 resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for vnetId in linkVnetIds: {
   parent: ustpPrivateDnsZone
   location: 'global'
@@ -69,6 +60,9 @@ resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetwor
   name: 'ustp-${uniqueString(resourceGroup().id, vnetId)}-vnet-link'
 }]
 
+/*
+  Webapp private endpoint setup
+*/
 var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
 var webappPrivateEndpointConnectionName = '${appName}-webapp-private-endpoint-connection'
 resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
@@ -92,14 +86,17 @@ resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-0
     ]
     manualPrivateLinkServiceConnections: []
     subnet: {
-      id: webappPrivateEndpointSubnet.id
+      id: webappPrivateEndpointSubnetId
     }
     ipConfigurations: []
     customDnsConfigs: []
   }
+  dependsOn: [
+    ustpPrivateDnsZone
+  ]
 }
 
-resource ustpPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
+resource ustpWebappPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
   parent: ustpWebappPrivateEndpoint
   name: 'default'
   properties: {
@@ -114,4 +111,53 @@ resource ustpPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
   }
 }
 
-output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
+/*
+  Backend functionapp private endpoint setup
+*/
+var functionsPrivateEndpointName = '${appName}-function-app-private-endpoint'
+var functionsPrivateEndpointConnectionName = '${appName}-function-app-private-endpoint-connection'
+resource ustpFunctionsPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
+  name: functionsPrivateEndpointName
+  location: location
+  properties: {
+    privateLinkServiceConnections: [
+      {
+        name: functionsPrivateEndpointConnectionName
+        properties: {
+          privateLinkServiceId: functionsAppId
+          groupIds: [
+            'sites'
+          ]
+          privateLinkServiceConnectionState: {
+            status: 'Approved'
+            actionsRequired: 'None'
+          }
+        }
+      }
+    ]
+    manualPrivateLinkServiceConnections: []
+    subnet: {
+      id: functionsPrivateEndpointSubnetId
+    }
+    ipConfigurations: []
+    customDnsConfigs: []
+  }
+  dependsOn: [
+    ustpPrivateDnsZone
+  ]
+}
+
+resource ustpFunctionsPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
+  parent: ustpFunctionsPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'privatelink_azurewebsites'
+        properties: {
+          privateDnsZoneId: ustpPrivateDnsZone.id
+        }
+      }
+    ]
+  }
+}

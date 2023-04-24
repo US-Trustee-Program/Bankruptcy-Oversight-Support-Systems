@@ -1,5 +1,11 @@
+@use 'styles/abstracts/colors';
+
 .App {
-  padding: 50px;
+  padding: 0;
+
+  .body {
+    padding: 50px;
+  }
 
   .App-logo {
     height: 40vmin;
@@ -7,7 +13,7 @@
   }
 
   .App-header {
-    background-color: #282c34;
+    background-color: colors.$eagle;
     min-height: 100vh;
     display: flex;
     flex-direction: column;

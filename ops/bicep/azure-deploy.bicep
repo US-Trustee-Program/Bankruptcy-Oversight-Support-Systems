@@ -3,9 +3,15 @@ param appName string
 
 param location string = resourceGroup().location
 
+@description('Webapp Application service plan name')
+param webappAspName string = 'boss-server-farm'
+
+@description('Webapp subnet resource id for vnet integration')
+param webappSubnetId string
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
-  name: 'boss-server-farm'
+  name: webappAspName
   sku: {
     name: 'P1v2'
     tier: 'PremiumV2'
@@ -19,7 +25,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
     elasticScaleEnabled: false
     maximumElasticWorkerCount: 1
     isSpot: false
-    reserved: false // set base os to Linux
+    reserved: false // set true for Linux
     isXenon: false
     hyperV: false
     targetWorkerCount: 0
@@ -37,6 +43,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
   kind: 'app'
   properties: {
     enabled: true
+    serverFarmId: serverFarm.id
     hostNameSslStates: [
       {
         name: '${appName}.azurewebsites.net'
@@ -49,7 +56,6 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
         hostType: 'Repository'
       }
     ]
-    serverFarmId: serverFarm.id
     reserved: false
     siteConfig: {
       numberOfWorkers: 1
@@ -62,8 +68,9 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
     }
     clientAffinityEnabled: false
     httpsOnly: false
+    redundancyMode: 'None'
+    virtualNetworkSubnetId: webappSubnetId
   }
-  dependsOn: []
 }
 
 resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
@@ -140,4 +147,7 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   }
 }
 
-output outwebApplicationId string = resourceId('Microsoft.Web/sites', appName)
+output outServerAppServicePlanId string = serverFarm.id
+output outWebappName string = webApplication.name
+output outWebappId string = webApplication.id
+output outWebappUrl string = webApplication.properties.hostNameSslStates[0].name
