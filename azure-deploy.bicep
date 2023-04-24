@@ -3,7 +3,7 @@ param appName string
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
-  name: 'boss-server-farm'
+  name: 'cams-server-farm'
   sku: {
     name: 'P1v2'
     tier: 'PremiumV2'
