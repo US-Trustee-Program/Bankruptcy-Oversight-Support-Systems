@@ -79,7 +79,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-frontend, build-backend, build-functions-backend]
+    needs: [build-frontend, build-functions-backend]
     if: github.ref == 'refs/heads/main'
     steps:
 
