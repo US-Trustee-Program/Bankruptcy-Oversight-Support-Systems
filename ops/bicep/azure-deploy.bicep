@@ -4,7 +4,7 @@ param appName string
 param location string = resourceGroup().location
 
 @description('Webapp Application service plan name')
-param webappAspName string = 'boss-server-farm'
+param webappAspName string = 'cams-server-farm'
 
 @description('Webapp subnet resource id for vnet integration')
 param webappSubnetId string
