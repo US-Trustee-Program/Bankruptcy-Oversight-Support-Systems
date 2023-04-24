@@ -17,4 +17,3 @@ export interface IDbConfig {
     trustServerCertificate: boolean | undefined;
   };
 }
-
