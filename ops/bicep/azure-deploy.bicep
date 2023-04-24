@@ -67,7 +67,7 @@ resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
       publicNetworkAccess: 'Disabled'
     }
     clientAffinityEnabled: false
-    httpsOnly: false
+    httpsOnly: true
     redundancyMode: 'None'
     virtualNetworkSubnetId: webappSubnetId
   }

@@ -99,7 +99,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
       publicNetworkAccess: 'Disabled'
     }
     clientAffinityEnabled: false
-    httpsOnly: false
+    httpsOnly: true
     redundancyMode: 'None'
     virtualNetworkSubnetId: backendFuncSubnetId
   }
