@@ -41,12 +41,12 @@ jobs:
         id: archive
         run: |
           mkdir artifacts
-          tar -cvf artifacts/ustp-boss.tar ./build
+          tar -cvf artifacts/ustp-cams.tar ./build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ustp-boss
+          name: ustp-cams
           path: gui/artifacts/
           if-no-files-found: error
 
@@ -73,11 +73,11 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ustp-boss
+          name: ustp-cams
 
       - name: Unarchive the build
         run: |
-          tar -xf ustp-boss.tar
+          tar -xf ustp-cams.tar
 
       - name: Deploy to Azure WebApp
         run: |
