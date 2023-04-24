@@ -6,7 +6,7 @@ export class UsersController {
   }
 
   async getUser() {
-    // TODO 
+    // TODO
     console.log("work in progress")
   }
 }
