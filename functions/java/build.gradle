@@ -26,7 +26,7 @@ repositories {
 
 azurefunctions {
     resourceGroup = 'bankruptcy-oversight-support-systems'
-    appName = 'ustp-boss-java-function'
+    appName = 'ustp-cams-java-function'
     runtime {
         os = 'Linux'
         javaVersion = 'Java 17'
