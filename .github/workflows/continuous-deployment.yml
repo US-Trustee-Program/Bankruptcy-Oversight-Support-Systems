@@ -108,7 +108,6 @@ jobs:
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
           template: ./ops/bicep/ustp-cams.bicep
           parameters: appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} deployVnet=${{ steps.check-vnet-resource.outputs.createVnet }} deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet linkVnetIds=[] deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployBackendFunctions=true backendFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} databaseConnectionString=${{ secrets.AZ_SQL_CONN_STR }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}
-          additionalArguments: --verbose
 
     # deploy-services: # TODO : Create a separate job to retrieve build artifacts and deploy services
       - name: Download artifact from build job
