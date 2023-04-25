@@ -139,6 +139,6 @@ jobs:
           az resource update --ids ${{ steps.functions-java-deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Enabled
           az functionapp deployment source config-zip \
             -g ${{ secrets.AZ_APP_RG }} \
-            -n ${{ steps.functions-java-deploy.outputs.functionAppName }} \
+            -n ${{ steps.azure-deploy.outputs.functionAppName }} \
             --src ./ustp-cams-java-function.zip
           az resource update --ids ${{ steps.functions-java-deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Disabled
