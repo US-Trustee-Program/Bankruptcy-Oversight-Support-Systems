@@ -105,7 +105,7 @@ jobs:
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/vnet-deploy.bicep
+          template: ./ops/bicep/ustp-cams.bicep
           parameters: |
             appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
             deployVnet=${{ steps.check-vnet-resource.outputs.createVnet }}
