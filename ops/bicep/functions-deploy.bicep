@@ -113,7 +113,7 @@ module backendSubnet './network-subnet-deploy.bicep' = {
 }
 
 /*
-  Private endpoint creation in target virtual network. 
+  Private endpoint creation in target virtual network.
 */
 module backendPrivateEndpoint './network-subnet-pe-deploy.bicep' = {
   name: '${appName}-backend-pe-module'
