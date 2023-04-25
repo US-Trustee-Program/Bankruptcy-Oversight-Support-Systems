@@ -1,21 +1,22 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions"
 import { UsersController } from '../adapters/controllers/users.controller';
+import { httpError, httpSuccess } from "../adapters/utils/http.js";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
     const firstName = (req.query.first_name || (req.body && req.body.first_name));
     const lastName = (req.query.last_name || (req.body && req.body.last_name));
+    const usersController = new UsersController();
 
-    const HEADERS = {'Content-Type': 'application/json'}
-
-    const responseMessage = name
-        ? "Hello, " + name + ". This HTTP triggered function executed successfully."
-        : "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.";
-
-    context.res = {
-        // status: 200, /* Defaults to 200 */
-        body: responseMessage
-    };
-
+    try {
+        if (firstName && lastName) {
+            const user = await usersController.getUser({ firstName, lastName });
+            context.res = httpSuccess(user);
+        } else {
+            context.res = httpError(new Error('Required parameters absent: firstName and lastName.'), 400);
+        }
+    } catch (e) {
+        context.res = httpError(e, 404);
+    }
 };
 
 export default httpTrigger;

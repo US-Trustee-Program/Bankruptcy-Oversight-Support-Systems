@@ -1,4 +1,7 @@
-import { IDbConfig } from '../types/database.d.js';
+import * as dotenv from 'dotenv';
+import { IDbConfig } from '../adapters/types/database.js';
+
+dotenv.config();
 
 const dbConfig: IDbConfig = {
   server: process.env.MSSQL_HOST,

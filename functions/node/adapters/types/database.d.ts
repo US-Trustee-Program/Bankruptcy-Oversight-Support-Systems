@@ -1,3 +1,24 @@
+import * as mssql from 'mssql';
+
+export type DbResult = {
+  success: boolean;
+  message: string;
+  count: number;
+  body: Object;
+};
+
+export type QueryResults = {
+  success: boolean;
+  results: void | Object;
+  message: string;
+};
+
+export type DbTableFieldSpec = {
+  name: string;
+  type: mssql.ISqlTypeFactoryWithNoParams;
+  value: any;
+};
+
 export interface IDbConfig {
   server: string;
   database: string;
