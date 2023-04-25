@@ -136,9 +136,9 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
-          az resource update --ids ${{ steps.azure-deploy.outputs.outputs.functionAppId }} --set properties.publicNetworkAccess=Enabled
+          az resource update --ids ${{ steps.azure-deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Enabled
           az functionapp deployment source config-zip \
             -g ${{ secrets.AZ_APP_RG }} \
             -n ${{ steps.azure-deploy.outputs.functionAppName }} \
             --src ./ustp-cams-java-function.zip
-          az resource update --ids ${{ steps.azure-deploy.outputs.outputs.functionAppId }} --set properties.publicNetworkAccess=Disabled
+          az resource update --ids ${{ steps.azure-deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Disabled
