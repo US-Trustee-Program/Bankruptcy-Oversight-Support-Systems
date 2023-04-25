@@ -6,23 +6,54 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param functionsAspName string = '${appName}-functions-asp'
 
-@description('Storage account name. Default creates unique name from resource group id and application name')
-param functionsStorageName string = 'ustp${uniqueString(resourceGroup().id, appName)}func'
-
 @description('Azure functions app name')
 param functionsAppName string = '${appName}-function-app'
 
+@description('Existing Private DNS Zone used for application')
+param privateDnsZoneName string
+
+@description('Existing virtual network name')
+param virtualNetworkName string
+
+@description('Resource group name of target virtual network')
+param virtualNetworkResourceGroupName string
+
+@description('Backend Azure Functions subnet name')
+param backendFunctionsSubnetName string = '${virtualNetworkName}-function-app'
+
+@description('Backend Azure Functions subnet ip ranges')
+param backendFunctionsSubnetAddressPrefix string = '10.0.4.0/28'
+
+@description('Backend private endpoint subnet name')
+param backendPrivateEndpointSubnetName string = '${virtualNetworkName}-function-pe'
+
+@description('Backend private endpoint subnet ip ranges')
+param backendPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
+
 @description('Azure functions runtime environment')
+@allowed([
+  'java'
+])
 param functionsRuntime string = 'java'
 
 @description('Azure functions version')
 param functionsVersion string = '~4'
 
-@description('Azure functions backend subnet resource id for vnet integration')
-param backendFuncSubnetId string
+@description('Storage account name. Default creates unique name from resource group id and application name')
+param functionsStorageName string = 'ustp${uniqueString(resourceGroup().id, appName)}func'
 
-@description('Private DNS Zone used for application')
-param privateDnsZoneName string
+@description('List of origins to allow')
+param corsAllowOrigins array = []
+
+@description('Database connection string')
+@secure()
+param databaseConnectionString string = ''
+
+@description('Resource group name of database server')
+param sqlServerResourceGroupName string = ''
+
+@description('Database server name')
+param sqlServerName string
 
 /*
   App service plan (hosting plan) for Azure functions instances
@@ -53,6 +84,52 @@ resource ustpFunctionsServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
 }
 
 /*
+  Subnet creation in target virtual network
+*/
+module backendSubnet './network-subnet-deploy.bicep' = {
+  name: '${appName}-backend-subnet-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    virtualNetworkName: virtualNetworkName
+    subnetName: backendFunctionsSubnetName
+    subnetAddressPrefix: backendFunctionsSubnetAddressPrefix
+    subnetServiceEndpoints: [
+      {
+        service: 'Microsoft.Sql'
+        locations: [
+          location
+        ]
+      }
+    ]
+    subnetDelegations: [
+      {
+        name: 'Microsoft.Web/serverfarms'
+        properties: {
+          serviceName: 'Microsoft.Web/serverfarms'
+        }
+      }
+    ]
+  }
+}
+
+/*
+  Private endpoint creation in target virtual network. 
+*/
+module backendPrivateEndpoint './network-subnet-pe-deploy.bicep' = {
+  name: '${appName}-backend-pe-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    prefixName: appName
+    location: location
+    virtualNetworkName: virtualNetworkName
+    privateDnsZoneName: privateDnsZoneName
+    privateEndpointSubnetName: backendPrivateEndpointSubnetName
+    privateEndpointSubnetAddressPrefix: backendPrivateEndpointSubnetAddressPrefix
+    privateLinkServiceId: functionApp.id
+  }
+}
+
+/*
   Storage resource for Azure functions
 */
 resource ustpFunctionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
@@ -71,6 +148,20 @@ resource ustpFunctionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-
 /*
   Create functionapp
 */
+var defaultAppSettings = concat([
+    {
+      name: 'AzureWebJobsStorage'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${functionsStorageName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${ustpFunctionsStorageAccount.listKeys().keys[0].value}'
+    }
+    {
+      name: 'FUNCTIONS_EXTENSION_VERSION'
+      value: functionsVersion
+    }
+    {
+      name: 'FUNCTIONS_WORKER_RUNTIME'
+      value: functionsRuntime
+    }
+  ], empty(databaseConnectionString) ? [] : [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ])
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionsAppName
   location: location
@@ -79,20 +170,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     enabled: true
     serverFarmId: ustpFunctionsServicePlan.id
     siteConfig: {
-      appSettings: [
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${functionsStorageName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${ustpFunctionsStorageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: functionsVersion
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: functionsRuntime
-        }
-      ]
+      appSettings: defaultAppSettings
       numberOfWorkers: 1
       linuxFxVersion: 'JAVA|17'
       alwaysOn: true
@@ -104,62 +182,30 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     redundancyMode: 'None'
-    virtualNetworkSubnetId: backendFuncSubnetId
+    virtualNetworkSubnetId: backendSubnet.outputs.subnetId
   }
 }
 
-/*
-  Backend functionapp private endpoint setup
-*/
-resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  name: privateDnsZoneName
-}
-var functionsPrivateEndpointName = '${appName}-function-app-private-endpoint'
-var functionsPrivateEndpointConnectionName = '${appName}-function-app-private-endpoint-connection'
-resource ustpFunctionsPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
-  name: functionsPrivateEndpointName
-  location: location
+var setCors = length(corsAllowOrigins) > 0
+resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = if (setCors) {
+  parent: functionApp
+  name: 'web'
   properties: {
-    privateLinkServiceConnections: [
-      {
-        name: functionsPrivateEndpointConnectionName
-        properties: {
-          privateLinkServiceId: functionApp.id
-          groupIds: [
-            'sites'
-          ]
-          privateLinkServiceConnectionState: {
-            status: 'Approved'
-            actionsRequired: 'None'
-          }
-        }
-      }
-    ]
-    manualPrivateLinkServiceConnections: []
-    subnet: {
-      id: backendFuncSubnetId
+    cors: {
+      allowedOrigins: corsAllowOrigins
     }
-    ipConfigurations: []
-    customDnsConfigs: []
-  }
-  dependsOn: [
-    ustpPrivateDnsZone
-  ]
-}
-
-resource ustpFunctionsPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
-  parent: ustpFunctionsPrivateEndpoint
-  name: 'default'
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'privatelink_azurewebsites'
-        properties: {
-          privateDnsZoneId: ustpPrivateDnsZone.id
-        }
-      }
-    ]
   }
 }
 
-output outFunctionAppName string = functionApp.name
+module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = {
+  scope: resourceGroup(sqlServerResourceGroupName)
+  name: '${appName}-sql-vnet-rule-module'
+  params: {
+    prefixName: appName
+    sqlServerName: sqlServerName
+    subnetId: backendSubnet.outputs.subnetId
+  }
+}
+
+output functionAppName string = functionApp.name
+output functionAppId string = functionApp.id

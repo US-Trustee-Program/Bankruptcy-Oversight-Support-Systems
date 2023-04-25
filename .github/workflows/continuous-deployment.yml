@@ -73,8 +73,8 @@ jobs:
       - name: Upload Java Azure Functions Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ustp-boss-java-function
-          path: functions/java/build/azure-functions/ustp-boss-java-function.zip
+          name: ustp-cams-java-function
+          path: functions/java/build/azure-functions/ustp-cams-java-function.zip
           if-no-files-found: error
 
   deploy:
@@ -99,74 +99,27 @@ jobs:
             echo "createVnet=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Init Virtual Network
-        uses: azure/arm-deploy@v1
-        id: vnet-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
-          template: ./ops/bicep/vnet-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} createVnet=${{ steps.check-vnet-resource.outputs.createVnet }}'
-
-      - name: Run Network Bicep deploy
-        uses: azure/arm-deploy@v1
-        id: network-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_NETWORK_RG }}
-          template: ./ops/bicep/network-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet'
-
-      - name: Run Webapp Bicep deploy
+      - name: Deploy Azure resources
         uses: azure/arm-deploy@v1
         id: azure-deploy
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/azure-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webappSubnetId=${{ steps.network-deploy.outputs.outWebappSubnetId }}'
-
-      - name: Provision Azure Functions backend
-        uses: azure/arm-deploy@v1
-        id: functions-java-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/functions-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} functionsRuntime=java functionsVersion=~4 backendFuncSubnetId=${{ steps.network-deploy.outputs.outBackendFuncSubnetId }}'
-
-      - name: Provision Webapp Private Endpoint
-        uses: azure/arm-deploy@v1
-        id: webapp-private-endpoint-deploy
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ secrets.AZ_APP_RG }}
-          template: ./ops/bicep/private-endpoint-deploy.bicep
-          parameters: 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} webApplicationId=${{ steps.azure-deploy.outputs.outWebappId }} webappPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outWebappPrivateEndpointSubnetId }} virtualNetworkId=${{ steps.network-deploy.outputs.outVnetId }} functionsPrivateEndpointSubnetId=${{ steps.network-deploy.outputs.outBackendFuncPrivateEndpointSubnetId }} functionsAppId=${{ steps.functions-java-deploy.outputs.outFunctionAppId }}'
-
-      # Below are some additional configurations post bicep
-      - name: Set Azure Functions app settings
-        run: |
-          az functionapp config appsettings set \
-            --name ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
-            --resource-group ${{ secrets.AZ_APP_RG }} \
-            --settings "${{ secrets.AZ_SQL_CONN_STR }}"
-
-          az functionapp cors add \
-            -g ${{ secrets.AZ_APP_RG }} \
-            -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-function-app \
-            --allowed-origins https://${{ steps.azure-deploy.outputs.outWebappUrl }}
-
-      #TODO : need to add vnet for functions backend to allow sql access
-      - name: Run Post Bicep configurations
-        run: |
-          backendSubnetId=${{ steps.network-deploy.outputs.outBackendSubnetId }}
-          count=$(az sql server vnet-rule list -g ${{ secrets.AZURE_RG }} --server ${{ secrets.AZ_SQL_SERVER_NAME }} -o json --query "length([?virtualNetworkSubnetId=='${backendSubnetId}'])")
-          echo "Subnet match count ${count}"
-          if [[ $count -eq 0 ]]; then
-            echo "Creating new vnet-rule"
-            az sql server vnet-rule create -s ${{ secrets.AZ_SQL_SERVER_NAME }} -n ${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet-rule -g ${{ secrets.AZURE_RG }} --subnet ${backendSubnetId}
-          fi
+          template: ./ops/bicep/vnet-deploy.bicep
+          parameters: |
+            appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}
+            deployVnet=${{ steps.check-vnet-resource.outputs.createVnet }}
+            deployNetwork=true
+            networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }}
+            virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet
+            linkVnetIds=[]
+            deployWebapp=true
+            webappResourceGroupName=${{ secrets.AZ_APP_RG }}
+            deployBackendFunctions=true
+            backendFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }}
+            databaseConnectionString=${{ secrets.AZ_SQL_CONN_STR }}
+            sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }}
+            sqlServerResourceGroupName=${{ secrets.AZURE_RG }}
 
     # deploy-services: # TODO : Create a separate job to retrieve build artifacts and deploy services
       - name: Download artifact from build job
@@ -184,20 +137,20 @@ jobs:
           echo "Contents of build folder:"
           ls
 
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
-          az webapp up --html -n ${{ steps.azure-deploy.outputs.outWebappName }}
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.outWebappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az webapp up --html -n ${{ steps.azure-deploy.outputs.webappName }}
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ steps.azure-deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
       - name: Fetch Azure Functions build artifact
         uses: actions/download-artifact@v3
         with:
-          name: ustp-boss-java-function
+          name: ustp-cams-java-function
 
       - name: Deploy Azure Functions backend
         run: |
-          az resource update --ids ${{ steps.functions-java-deploy.outputs.outFunctionAppId }} --set properties.publicNetworkAccess=Enabled
+          az resource update --ids ${{ steps.functions-java-deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Enabled
           az functionapp deployment source config-zip \
             -g ${{ secrets.AZ_APP_RG }} \
-            -n ${{ steps.functions-java-deploy.outputs.outFunctionAppName }} \
-            --src ./ustp-boss-java-function.zip
-          az resource update --ids ${{ steps.functions-java-deploy.outputs.outFunctionAppId }} --set properties.publicNetworkAccess=Disabled
+            -n ${{ steps.functions-java-deploy.outputs.functionAppName }} \
+            --src ./ustp-cams-java-function.zip
+          az resource update --ids ${{ steps.functions-java-deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Disabled

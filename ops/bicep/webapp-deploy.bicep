@@ -3,14 +3,32 @@ param appName string
 
 param location string = resourceGroup().location
 
-@description('Webapp Application service plan name')
-param webappAspName string = 'cams-server-farm'
+@description('Webapp application name')
+param webappName string = '${appName}-webapp'
 
-@description('Webapp subnet resource id for vnet integration')
-param webappSubnetId string
+@description('Webapp Application service plan name')
+param webappAspName string = '${webappName}-asp'
 
 @description('Private DNS Zone used for application')
 param privateDnsZoneName string
+
+@description('Existing virtual network name')
+param virtualNetworkName string
+
+@description('Resource group name of target virtual network')
+param virtualNetworkResourceGroupName string
+
+@description('Webapp subnet name')
+param webappSubnetName string = '${virtualNetworkName}-webapp'
+
+@description('Webapp subnet ip ranges')
+param webappSubnetAddressPrefix string = '10.0.2.0/28'
+
+@description('Webapp private endpoint subnet name')
+param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
+
+@description('Webapp private endpoint subnet ip ranges')
+param webappPrivateEndpointSubnetAddressPrefix string = '10.0.3.0/28'
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
@@ -37,47 +55,77 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
   }
 }
 
-resource webApplication 'Microsoft.Web/sites@2022-03-01' = {
-  name: appName
-  location: location
-  tags: {
-    acms: 'dev'
+/*
+  Subnet creation in target virtual network
+*/
+module webappSubnet './network-subnet-deploy.bicep' = {
+  name: '${webappName}-subnet-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    virtualNetworkName: virtualNetworkName
+    subnetName: webappSubnetName
+    subnetAddressPrefix: webappSubnetAddressPrefix
+    subnetServiceEndpoints: []
+    subnetDelegations: [
+      {
+        name: 'Microsoft.Web/serverfarms'
+        properties: {
+          serviceName: 'Microsoft.Web/serverfarms'
+        }
+      }
+    ]
   }
+}
+
+/*
+  Private endpoint creation in target virtual network. 
+*/
+module backendPrivateEndpoint './network-subnet-pe-deploy.bicep' = {
+  name: '${webappName}-pe-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    prefixName: webappName
+    location: location
+    virtualNetworkName: virtualNetworkName
+    privateDnsZoneName: privateDnsZoneName
+    privateEndpointSubnetName: webappPrivateEndpointSubnetName
+    privateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
+    privateLinkServiceId: webapp.id
+  }
+}
+
+/*
+  Create webapp
+*/
+resource webapp 'Microsoft.Web/sites@2022-03-01' = {
+  name: webappName
+  location: location
   kind: 'app'
   properties: {
     enabled: true
     serverFarmId: serverFarm.id
     hostNameSslStates: [
       {
-        name: '${appName}.azurewebsites.net'
+        name: '${webappName}.azurewebsites.net'
         sslState: 'Disabled'
         hostType: 'Standard'
       }
       {
-        name: '${appName}.scm.azurewebsites.net'
+        name: '${webappName}.scm.azurewebsites.net'
         sslState: 'Disabled'
         hostType: 'Repository'
       }
     ]
     reserved: false
-    siteConfig: {
-      numberOfWorkers: 1
-      acrUseManagedIdentityCreds: false
-      alwaysOn: true
-      http20Enabled: true
-      functionAppScaleLimit: 0
-      minimumElasticInstanceCount: 0
-      publicNetworkAccess: 'Disabled'
-    }
     clientAffinityEnabled: false
     httpsOnly: true
     redundancyMode: 'None'
-    virtualNetworkSubnetId: webappSubnetId
+    virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
 }
 
-resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
-  parent: webApplication
+resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
+  parent: webapp
   name: 'web'
   properties: {
     numberOfWorkers: 1
@@ -147,63 +195,10 @@ resource webApplicationConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     functionsRuntimeScaleMonitoringEnabled: false
     minimumElasticInstanceCount: 0
     azureStorageAccounts: {}
+    publicNetworkAccess: 'Disabled'
   }
 }
 
-/*
-  Webapp private endpoint setup
-*/
-resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  name: privateDnsZoneName
-}
-var webappPrivateEndpointName = '${appName}-webapp-private-endpoint'
-var webappPrivateEndpointConnectionName = '${appName}-webapp-private-endpoint-connection'
-resource ustpWebappPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
-  name: webappPrivateEndpointName
-  location: location
-  properties: {
-    privateLinkServiceConnections: [
-      {
-        name: webappPrivateEndpointConnectionName
-        properties: {
-          privateLinkServiceId: webApplication.id
-          groupIds: [
-            'sites'
-          ]
-          privateLinkServiceConnectionState: {
-            status: 'Approved'
-            actionsRequired: 'None'
-          }
-        }
-      }
-    ]
-    manualPrivateLinkServiceConnections: []
-    subnet: {
-      id: webappSubnetId
-    }
-    ipConfigurations: []
-    customDnsConfigs: []
-  }
-  dependsOn: [
-    ustpPrivateDnsZone
-  ]
-}
-resource ustpWebappPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
-  parent: ustpWebappPrivateEndpoint
-  name: 'default'
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'privatelink_azurewebsites'
-        properties: {
-          privateDnsZoneId: ustpPrivateDnsZone.id
-        }
-      }
-    ]
-  }
-}
-
-output outServerAppServicePlanId string = serverFarm.id
-output outWebappName string = webApplication.name
-output outWebappId string = webApplication.id
-output outWebappUrl string = webApplication.properties.hostNameSslStates[0].name
+output webappName string = webapp.name
+output webappId string = webapp.id
+output webappUrl string = webapp.properties.hostNameSslStates[0].name
