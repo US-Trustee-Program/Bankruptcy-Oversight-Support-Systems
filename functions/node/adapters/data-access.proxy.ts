@@ -6,7 +6,8 @@
 
 import config from '../configs/index.js';
 import { PersistenceGateway } from './types/persistence-gateway';
-import log from '../adapters/services/logger.service.js';
+import log from './services/logger.service.js';
+import { LogContext } from './types/basic.d';
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
@@ -21,13 +22,13 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
  *               in-memory data object regardless of the environment variable set.
  * @returns An object of type PersistenceGateway
  */
-async function proxyData(table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
+async function proxyData(context: LogContext, table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
   let database: PersistenceGateway;
   if (config.dbMock || mock) {
-    log.info(NAMESPACE, 'using local in-memory database');
+    log.info(context, NAMESPACE, 'using local in-memory database');
     return await import(`./gateways/${table}.local.inmemory.gateway.js`);
   } else {
-    log.info(NAMESPACE, 'using MSSQL database');
+    log.info(context, NAMESPACE, 'using MSSQL database');
     return await import(`./gateways/${table}.azure.sql.gateway.js`);
   }
 }

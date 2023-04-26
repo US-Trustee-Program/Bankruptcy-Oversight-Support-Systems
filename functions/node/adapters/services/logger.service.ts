@@ -1,19 +1,7 @@
-//import pine from 'pine';
-const pine = require('pine');
-
-const logger = pine();
-
-const consoleMap = {
-  info: logger.info,
-  warn: logger.warn,
-  error: logger.error,
-  debug: logger.debug,
-};
-
-type ObjectKey = keyof typeof consoleMap;
+import { LogContext } from '../types/basic.d';
 
 export default class log {
-  private static logMessage(logType: string, namespace: string, message: string, data?: any) {
+  private static logMessage(context: LogContext, logType: string, namespace: string, message: string, data?: any) {
     logType = logType.toLowerCase();
 
     if (!['info', 'warn', 'error', 'debug'].includes(logType)) {
@@ -21,25 +9,25 @@ export default class log {
     }
 
     if (data) {
-        consoleMap[logType as ObjectKey](`[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`);
+        context.log(`[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`);
     } else {
-        consoleMap[logType as ObjectKey](`[${logType.toUpperCase}] [${namespace}] ${message}`);
+        context.log(`[${logType.toUpperCase}] [${namespace}] ${message}`);
     }
   }
 
-  public static info(namespace: string, message: string, data?: any) {
-    log.logMessage('info', namespace, message, data);
+  public static info(context: LogContext, namespace: string, message: string, data?: any) {
+    log.logMessage(context, 'info', namespace, message, data);
   }
 
-  public static warn(namespace: string, message: string, data?: any) {
-    log.logMessage('warn', namespace, message, data);
+  public static warn(context: LogContext, namespace: string, message: string, data?: any) {
+    log.logMessage(context, 'warn', namespace, message, data);
   }
 
-  public static error(namespace: string, message: string, data?: any) {
-    log.logMessage('error', namespace, message, data);
+  public static error(context: LogContext, namespace: string, message: string, data?: any) {
+    log.logMessage(context, 'error', namespace, message, data);
   }
 
-  public static debug(namespace: string, message: string, data?: any) {
-    log.logMessage('debug', namespace, message, data);
+  public static debug(context: LogContext, namespace: string, message: string, data?: any) {
+    log.logMessage(context, 'debug', namespace, message, data);
   }
 }

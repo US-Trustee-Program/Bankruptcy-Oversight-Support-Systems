@@ -1,4 +1,5 @@
 import log from '../services/logger.service.js';
+import { LogContext } from '../types/basic.d';
 import { HttpResponse } from '../types/http.js';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
@@ -8,7 +9,8 @@ const commonHeaders = {
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(body: any = {}): HttpResponse {
+export function httpSuccess(context: LogContext, body: any = {}): HttpResponse {
+  log.info(context, NAMESPACE, 'HTTP Success');
   return {
     headers: commonHeaders,
     statusCode: 200,
@@ -16,8 +18,8 @@ export function httpSuccess(body: any = {}): HttpResponse {
   };
 }
 
-export function httpError(error: any, code: number): HttpResponse {
-  log.error(NAMESPACE, error.message, error);
+export function httpError(context: LogContext, error: any, code: number): HttpResponse {
+  log.error(context, NAMESPACE, error.message, error);
   return {
     headers: commonHeaders,
     statusCode: code,

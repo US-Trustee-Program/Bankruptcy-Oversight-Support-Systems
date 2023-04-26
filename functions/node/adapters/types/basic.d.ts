@@ -1,5 +1,9 @@
 import { IDbConfig } from './database.d';
 
+export type LogContext = {
+  log: Function;
+}
+
 export type ServerType = {
   hostname: string;
   port: number;
