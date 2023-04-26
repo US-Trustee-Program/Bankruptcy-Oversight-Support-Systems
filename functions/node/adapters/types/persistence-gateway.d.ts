@@ -1,5 +1,6 @@
 import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
+import { LogContext } from '../types/basic.d';
 
 export type PersistenceGateway = {
   createRecord(table: string, fields: RecordObj[]): Promise<DbResult>;
@@ -20,7 +21,7 @@ export type CasePersistenceGateway = {
 type UserNameType = { firstName: string, lastName: string };
 
 export type UserPersistenceGateway = {
-  login(name: UserNameType): Promise<DbResult>;
+  login(context: LogContext, name: UserNameType): Promise<DbResult>;
 };
 
 export type ChaptersPersistenceGateway = {
