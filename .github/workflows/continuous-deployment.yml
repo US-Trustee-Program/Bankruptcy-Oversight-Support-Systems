@@ -120,6 +120,10 @@ jobs:
         run: |
           tar -xf ustp-cams.tar
 
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy to Azure WebApp
         run: |
           cd build
@@ -135,6 +139,10 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ustp-cams-java-function
+          
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Azure Functions backend
         run: |
