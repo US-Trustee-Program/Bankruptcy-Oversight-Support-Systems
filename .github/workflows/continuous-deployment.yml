@@ -102,10 +102,10 @@ jobs:
             --file ./ops/bicep/ustp-cams.bicep \
             --parameters 'appName=${{ vars.APP_NAME }}${{ vars.DEV_SUFFIX }} deployVnet=false deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ vars.APP_NAME }}${{ vars.DEV_SUFFIX }}-vnet linkVnetIds=[] deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployBackendFunctions=true backendFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} databaseConnectionString=${{ secrets.AZ_SQL_CONN_STR }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
-            v1=$(cat ./outputs.json | jq -r .functionAppName.value | base64)
+            v1=$(cat ./outputs.json | jq -r .functionAppName.value)
             echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
 
-            v2=$(cat ./outputs.json | jq -r .webappName.value | base64)
+            v2=$(cat ./outputs.json | jq -r .webappName.value)
             echo "webappName=${v2}" >> $GITHUB_OUTPUT
   deploy-webapp:
     runs-on: ubuntu-latest
@@ -123,11 +123,9 @@ jobs:
       - name: Deploy to Azure WebApp
         run: |
           cd build
-
-          webappName=$(${{ needs.deploy.outputs.webappName }} | base64 -d)
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
-          az webapp up --html -n $webappName
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az webapp up --html -n ${{ needs.deploy.outputs.webappName }}
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -140,10 +138,9 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
-          functionAppName=$(${{ needs.deploy.outputs.functionAppName }} | base64 -d)
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n $functionAppName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az functionapp deployment source config-zip \
             -g ${{ secrets.AZ_APP_RG }} \
-            -n $functionAppName \
+            -n ${{ needs.deploy.outputs.functionAppName }} \
             --src ./ustp-cams-java-function.zip
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n $functionAppName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
