@@ -121,9 +121,11 @@ jobs:
       - name: Deploy to Azure WebApp
         run: |
           cd build
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
-          az webapp up --html -n ${{ needs.deploy.outputs.webappName }}
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+
+          webappName=$(${{ needs.deploy.outputs.webappName }} | base64 -d)
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+          az webapp up --html -n $webappName
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n $webappName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -136,9 +138,10 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
-          az resource update --ids ${{ needs.deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Enabled
+          functionAppName=$(${{ needs.deploy.outputs.functionAppName }} | base64 -d)
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n $functionAppName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
           az functionapp deployment source config-zip \
             -g ${{ secrets.AZ_APP_RG }} \
-            -n ${{ needs.deploy.outputs.functionAppName }} \
+            -n $functionAppName \
             --src ./ustp-cams-java-function.zip
-          az resource update --ids ${{ needs.deploy.outputs.functionAppId }} --set properties.publicNetworkAccess=Disabled
+          az resource update -g ${{ secrets.AZ_APP_RG }} -n $functionAppName --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
