@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Title:        azure-deploy.sh
 # Description:  Helper script to deploy Azure resources for USTP CAMS
 #
@@ -12,6 +13,10 @@
 requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
 
 function validation_func() {
+    app_rg=$1
+    deployment_file=$2
+    deployment_parameters=$3
+
     if [[ -z "${app_rg}" ]]; then
         echo "Error: Missing default resource group"
         exit 10
@@ -113,7 +118,7 @@ while [[ $# > 0 ]]; do
     esac
 done
 
-validation_func
+validation_func $app_rg $deployment_file "$deployment_parameters"
 
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [ ! $(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName) ]; then
