@@ -82,9 +82,7 @@ jobs:
     needs: [build-frontend, build-service]
     if: ((github.ref == 'refs/heads/main') || true) # TODO temporary to kick off deploy on a branch update
     outputs:
-      functionAppId: ${{ steps.azure-deploy.outputs.functionAppId }}
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
-      webappId: ${{ steps.azure-deploy.outputs.webappId }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
