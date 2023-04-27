@@ -139,7 +139,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ustp-cams-java-function
-          
+
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
