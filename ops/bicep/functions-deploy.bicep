@@ -53,7 +53,7 @@ param databaseConnectionString string = ''
 param sqlServerResourceGroupName string = ''
 
 @description('Database server name')
-param sqlServerName string
+param sqlServerName string = ''
 
 /*
   App service plan (hosting plan) for Azure functions instances
@@ -197,7 +197,8 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = if (setCors
   }
 }
 
-module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = {
+var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
+module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = if ( createSqlServerVnetRule ) {
   scope: resourceGroup(sqlServerResourceGroupName)
   name: '${appName}-sql-vnet-rule-module'
   params: {
@@ -209,3 +210,4 @@ module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = {
 
 output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
+output createdSqlServerVnetRule bool = createSqlServerVnetRule

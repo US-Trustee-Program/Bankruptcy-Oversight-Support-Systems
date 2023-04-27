@@ -2,6 +2,7 @@ param appName string
 param location string = resourceGroup().location
 
 param deployVnet bool = false
+param createVnet bool = false
 param vnetAddressPrefix array = [ '10.0.0.0/16' ]
 
 param deployNetwork bool = true
@@ -25,10 +26,10 @@ param backendPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
 
 @secure()
 param databaseConnectionString string = ''
-param sqlServerName string
-param sqlServerResourceGroupName string
+param sqlServerName string = ''
+param sqlServerResourceGroupName string = ''
 
-module targetVnet './vnet-deploy.bicep' = if (deployVnet) {
+module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
