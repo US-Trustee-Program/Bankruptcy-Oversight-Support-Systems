@@ -7,7 +7,7 @@ fi
 # test=$(cat outputs.json | jp -u "[keys(@), *.value]")
 # len=$(cat outputs.json | jp -u "length([keys(@), *.value] | [0])")
 
-# adding debugging 
+# adding debugging
 cat $1
 cat $1 | jq -r .functionAppId.value
 cat $1 | jq -r .functionAppName.value
