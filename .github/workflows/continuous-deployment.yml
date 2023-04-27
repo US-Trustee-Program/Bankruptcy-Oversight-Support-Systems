@@ -94,9 +94,9 @@ jobs:
         id: azure-deploy
         run: |
           ./ops/script/azure-deploy.sh \
-            --show-what-if
-            --resourceGroup ${{ secrets.AZ_APP_RG }}
-            --file ./ops/bicep/ustp-cams.bicep
+            --show-what-if \
+            --resourceGroup ${{ secrets.AZ_APP_RG }} \
+            --file ./ops/bicep/ustp-cams.bicep \
             --parameters 'appName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }} deployVnet=false deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ secrets.APP_NAME }}${{ secrets.DEV_SUFFIX }}-vnet linkVnetIds=[] deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployBackendFunctions=true backendFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} databaseConnectionString=${{ secrets.AZ_SQL_CONN_STR }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
           ./ops/script/json-to-actions-output.sh ./output.json
