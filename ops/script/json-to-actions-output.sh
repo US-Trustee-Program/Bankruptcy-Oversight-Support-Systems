@@ -12,7 +12,7 @@ value2=$(cat $1 | jq -r .functionAppName.value)
 value3=$(cat $1 | jq -r .webappId.value)
 value4=$(cat $1 | jq -r .webappName.value)
 
-echo "functionAppId=${value1}" >>"$GITHUB_OUTPUT"
-echo "functionAppName=${value2}" >>"$GITHUB_OUTPUT"
-echo "webappId=${value3}" >>"$GITHUB_OUTPUT"
-echo "webappName=${value4}" >>"$GITHUB_OUTPUT"
+echo "functionAppId=${value1}" >> $GITHUB_OUTPUT
+echo "functionAppName=${value2}" >> $GITHUB_OUTPUT
+echo "webappId=${value3}" >> $GITHUB_OUTPUT
+echo "webappName=${value4}" >> $GITHUB_OUTPUT
