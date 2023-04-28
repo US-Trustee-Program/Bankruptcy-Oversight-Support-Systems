@@ -26,10 +26,10 @@ async function proxyData(context: LogContext, table: string, mock: boolean = fal
   let database: PersistenceGateway;
   if (config.dbMock || mock) {
     log.info(context, NAMESPACE, 'using local in-memory database');
-    return await import(`./gateways/${table}.local.inmemory.gateway.js`);
+    return await import(`./gateways/${table}.local.inmemory.gateway`);
   } else {
     log.info(context, NAMESPACE, 'using MSSQL database');
-    return await import(`./gateways/${table}.azure.sql.gateway.js`);
+    return await import(`./gateways/${table}.azure.sql.gateway`);
   }
 }
 

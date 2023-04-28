@@ -16,7 +16,6 @@ export class CasesController {
   }
 
   private async initializeDb() {
-    console.log(typeof this.casesDb);
     if (typeof this.casesDb == 'undefined') {
       this.casesDb = (await proxyData(this.context, 'cases')) as CasePersistenceGateway;
       log.info(this.context, NAMESPACE, 'casesDB was set successfully');

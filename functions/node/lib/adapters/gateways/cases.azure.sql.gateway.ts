@@ -1,10 +1,10 @@
 import * as mssql from 'mssql';
-import { RecordObj } from '../types/basic.js';
-import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database.js';
-import { runQuery } from '../utils/database.js';
-import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql.gateway.js';
-import { LogContext } from '../types/basic.js';
-import log from '../services/logger.service.js';
+import { RecordObj } from '../types/basic';
+import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
+import { runQuery } from '../utils/database';
+import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql.gateway';
+import { LogContext } from '../types/basic';
+import log from '../services/logger.service';
 
 const table = 'cases';
 
