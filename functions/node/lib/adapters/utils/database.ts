@@ -1,5 +1,6 @@
 import * as mssql from 'mssql';
 import log from '../services/logger.service.js';
+import { LogContext } from '../types/basic.js';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database.js';
 import config from '../../configs/index.js';
 //import { DefaultAzureCredential } from '@azure/identity';
@@ -10,7 +11,7 @@ function validateTableName(tableName: string) {
   return tableName.match(/^[a-z]+[a-z0-9]*$/i);
 }
 
-export async function runQuery(tableName: string, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
+export async function runQuery(context: LogContext, tableName: string, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
@@ -35,13 +36,13 @@ export async function runQuery(tableName: string, query: string, input?: DbTable
       success: true,
     };
 
-    log.info(NAMESPACE, 'Closing connection.');
+    log.info(context, NAMESPACE, 'Closing connection.');
 
     connection.close();
 
     return queryResult;
   } catch (error) {
-    log.error(NAMESPACE, (error as Error).message, error);
+    log.error(context, NAMESPACE, (error as Error).message, error);
 
     const queryResult: QueryResults = {
       results: {},

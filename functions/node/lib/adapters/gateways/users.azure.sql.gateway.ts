@@ -2,10 +2,11 @@ import * as mssql from 'mssql';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database.js';
 import { runQuery } from '../utils/database.js';
 import log from '../services/logger.service.js';
+import { LogContext } from '../types/basic.js';
 
 const NAMESPACE = 'USERS-MSSQL-DB-GATEWAY';
 
-const login = async (userName: { firstName: string, lastName: string }): Promise<DbResult> => {
+const login = async (context: LogContext, userName: { firstName: string, lastName: string }): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `SELECT
@@ -32,11 +33,11 @@ const login = async (userName: { firstName: string, lastName: string }): Promise
     },
   ];
 
-  const queryResult: QueryResults = await runQuery('CMMPR', query, input);
+  const queryResult: QueryResults = await runQuery(context, 'CMMPR', query, input);
   let results: DbResult;
 
   if (queryResult.success) {
-    log.info(NAMESPACE, 'User login DB query successful');
+    log.info(context, NAMESPACE, 'User login DB query successful');
     const records = (queryResult.results as mssql.IResult<any>).recordset;
     const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
     results = {
@@ -46,7 +47,7 @@ const login = async (userName: { firstName: string, lastName: string }): Promise
       body: records,
     };
   } else {
-    log.warn(NAMESPACE, 'User login DB query unsuccessful');
+    log.warn(context, NAMESPACE, 'User login DB query unsuccessful');
     results = {
       success: false,
       message: queryResult.message,
