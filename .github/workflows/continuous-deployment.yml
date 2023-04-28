@@ -107,34 +107,31 @@ jobs:
 
           v2=$(cat ./outputs.json | jq -r .webappName.value)
           echo "webappName=${v2}" >> $GITHUB_OUTPUT
+
   deploy-webapp:
     runs-on: ubuntu-latest
     needs: [deploy]
     steps:
+      - uses: actions/checkout@main
+
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
           name: ustp-cams
-
-      - name: Unarchive the build
-        run: |
-          tar -xf ustp-cams.tar
 
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure WebApp
-        run: |
-          cd build
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
-          az webapp up --html -n ${{ needs.deploy.outputs.webappName }}
-          az resource update -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+        run: ./ops/script/az-app-deploy.sh --src ./ustp-cams.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --disable-public-access
 
   deploy-service:
     runs-on: ubuntu-latest
     needs: [deploy]
     steps:
+      - uses: actions/checkout@main
+
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
