@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { IDbConfig } from '../adapters/types/database.js';
+import { IDbConfig } from '../adapters/types/database';
 
 dotenv.config();
 

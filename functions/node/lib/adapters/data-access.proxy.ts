@@ -4,10 +4,10 @@
  *   - an Azure SQL connection otherwise
  */
 
-import config from '../configs/index.js';
-import { PersistenceGateway } from './types/persistence-gateway.js';
-import log from './services/logger.service.js';
-import { LogContext } from './types/basic.js';
+import config from '../configs/index';
+import { PersistenceGateway } from './types/persistence-gateway';
+import log from './services/logger.service';
+import { LogContext } from './types/basic';
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 

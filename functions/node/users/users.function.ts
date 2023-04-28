@@ -1,6 +1,6 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions"
 import { UsersController } from '../lib/adapters/controllers/users.controller';
-import { httpError, httpSuccess } from "../lib/adapters/utils/http.js";
+import { httpError, httpSuccess } from "../lib/adapters/utils/http";
 import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'USERS-FUNCTION';
@@ -17,7 +17,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             context.res = httpSuccess(context, user);
         } else {
             log.warn(context, NAMESPACE, 'User first and last name was not defined');
-            context.res = httpError(context, new Error('Required parameters absent: firstName and lastName.'), 400);
+            context.res = httpError(context, new Error('Required parameters absent: first_name and last_name.'), 400);
         }
     } catch (e) {
         log.error(context, NAMESPACE, 'caught error. ', e);
