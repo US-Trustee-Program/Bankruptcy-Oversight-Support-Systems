@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Title:        az-func-deploy.sh
-# Description:  Helper script to deploy function build artifact to existing Azure site
-# Usage:        ./az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --disable-public-access
+# Title:        az-app-deploy.sh
+# Description:  Helper script to deploy webapp build artifact to existing Azure site
+# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName --disable-public-access
 #
 # Exitcodes
 # ==========
@@ -48,13 +48,25 @@ if [ ! -f "$artifact_path" ]; then
     echo "Error: missing build artifact $artifact_path"
     exit 10
 fi
+tar -xf $artifact_path
+if (($? != 0)); then
+    echo "Error: extracting build artifact $artifact_path"
+    exit 11
+fi
+
+pushd build
+if (($? != 0)); then
+    echo "Error: unable to change working directory"
+    exit 12
+fi
 
 if [[ $disable_public_access ]]; then
-    # ensures that public access is temporary enabled
+    # ensures that public access is temporary enabled for successful deployment
     az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
 fi
 
-az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path
+az webapp up --html -n $app_name
+popd
 
 if [[ $disable_public_access ]]; then
     az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
