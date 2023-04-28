@@ -49,13 +49,15 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
+jp_query='{"name":name, "url":properties.hostNameSslStates[0].name, "publicNetworkAccess":properties.publicNetworkAccess}'
+
 if [[ $disable_public_access ]]; then
     # ensures that public access is temporary enabled
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
 fi
 
 az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path
 
 if [[ $disable_public_access ]]; then
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
 fi

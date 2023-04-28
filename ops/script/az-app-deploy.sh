@@ -60,14 +60,16 @@ if (($? != 0)); then
     exit 12
 fi
 
+jp_query='{"name":name, "url":properties.hostNameSslStates[0].name, "publicNetworkAccess":properties.publicNetworkAccess}'
+
 if [[ $disable_public_access ]]; then
     # ensures that public access is temporary enabled for successful deployment
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled
+    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
 fi
 
 az webapp up --html -n $app_name
 popd
 
 if [[ $disable_public_access ]]; then
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled
+    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
 fi
