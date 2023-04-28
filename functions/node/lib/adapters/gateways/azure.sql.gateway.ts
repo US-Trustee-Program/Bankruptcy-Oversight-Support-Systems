@@ -1,9 +1,9 @@
 import * as mssql from 'mssql';
-import log from '../services/logger.service.js';
-import { RecordObj, ObjectKeyVal } from '../types/basic.js';
-import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database.js';
-import { runQuery } from '../utils/database.js';
-import { LogContext } from '../types/basic.js';
+import log from '../services/logger.service';
+import { RecordObj, ObjectKeyVal } from '../types/basic';
+import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database';
+import { runQuery } from '../utils/database';
+import { LogContext } from '../types/basic';
 
 const NAMESPACE = 'AZURE-SQL-MODULE';
 

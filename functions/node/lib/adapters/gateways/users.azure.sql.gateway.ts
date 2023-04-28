@@ -1,8 +1,8 @@
 import * as mssql from 'mssql';
-import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database.js';
-import { runQuery } from '../utils/database.js';
-import log from '../services/logger.service.js';
-import { LogContext } from '../types/basic.js';
+import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
+import { runQuery } from '../utils/database';
+import log from '../services/logger.service';
+import { LogContext } from '../types/basic';
 
 const NAMESPACE = 'USERS-MSSQL-DB-GATEWAY';
 
