@@ -60,7 +60,9 @@ function validation_func() {
 }
 
 function az_vnet_exists_func() {
-    count=$(az network vnet list -g $1 --query "length([?name=='$2'])" 2>/dev/null)
+    rg=$1
+    vnetName=$2
+    count=$(az network vnet list -g $rg --query "length([?name=='$vnetName'])" 2>/dev/null)
     if [[ $count -eq 0 ]]; then
         exists=false
     else
