@@ -2,7 +2,7 @@ import log from '../services/logger.service';
 import useCase from '../../use-cases/index.js';
 import { UserPersistenceGateway } from "../types/persistence-gateway.js";
 import proxyData from "../data-access.proxy";
-import { LogContext } from '../types/basic.d';
+import { LogContext } from '../types/basic';
 
 const NAMESPACE = "USERS-CONTROLLER";
 

@@ -1,6 +1,6 @@
 import * as mssql from 'mssql';
 import log from '../services/logger.service.js';
-import { LogContext } from '../types/basic.d';
+import { LogContext } from '../types/basic.js';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database.js';
 import config from '../../configs/index.js';
 //import { DefaultAzureCredential } from '@azure/identity';

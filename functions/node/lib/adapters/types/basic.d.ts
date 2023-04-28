@@ -1,4 +1,4 @@
-import { IDbConfig } from './database.d';
+import { IDbConfig } from './database';
 
 export type LogContext = {
   log: Function;

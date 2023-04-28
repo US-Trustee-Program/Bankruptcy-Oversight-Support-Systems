@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { ServerType, AppConfig } from '../adapters/types/basic.d';
+import { ServerType, AppConfig } from '../adapters/types/basic';
 import dbConfig from './db.config.js';
 
 dotenv.config();

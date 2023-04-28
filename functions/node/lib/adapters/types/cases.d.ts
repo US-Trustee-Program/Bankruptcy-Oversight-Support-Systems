@@ -8,3 +8,10 @@ export type CaseListRecordSet = {
   caseList: ObjectKeyVal[];
   initialized: boolean;
 }
+
+export type CaseListDbResult = {
+  success: boolean;
+  message: string;
+  count: number;
+  body: CaseListRecordSet;
+};

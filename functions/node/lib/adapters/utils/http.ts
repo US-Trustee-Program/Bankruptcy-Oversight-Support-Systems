@@ -1,5 +1,5 @@
 import log from '../services/logger.service.js';
-import { LogContext } from '../types/basic.d';
+import { LogContext } from '../types/basic.js';
 import { HttpResponse } from '../types/http.js';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
