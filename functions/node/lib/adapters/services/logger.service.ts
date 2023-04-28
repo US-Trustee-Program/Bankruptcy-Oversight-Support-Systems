@@ -1,4 +1,4 @@
-import { LogContext } from '../types/basic.d';
+import { LogContext } from '../types/basic';
 
 export default class log {
   private static logMessage(context: LogContext, logType: string, namespace: string, message: string, data?: any) {

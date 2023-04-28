@@ -5,9 +5,9 @@
  */
 
 import config from '../configs/index.js';
-import { PersistenceGateway } from './types/persistence-gateway';
+import { PersistenceGateway } from './types/persistence-gateway.js';
 import log from './services/logger.service.js';
-import { LogContext } from './types/basic.d';
+import { LogContext } from './types/basic.js';
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
