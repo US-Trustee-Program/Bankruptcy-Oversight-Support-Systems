@@ -1,6 +1,6 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions"
-import { CasesController } from '../lib/adapters/controllers/cases.controller.js';
-import { httpError, httpSuccess } from "../lib/adapters/utils/http.js";
+import { CasesController } from '../lib/adapters/controllers/cases.controller';
+import { httpError, httpSuccess } from "../lib/adapters/utils/http";
 import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'CASES-FUNCTION';
