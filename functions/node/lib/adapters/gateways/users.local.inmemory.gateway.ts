@@ -1,11 +1,11 @@
 import log from '../services/logger.service';
 import { userMockData, getProperty } from '../../testing/mock-data/';
 import { Context } from '../types/basic';
-import { UserListRecordSet, UserListDbResult } from '../types/users';
+import { UserListRecordSet } from '../types/users';
 import { DbResult, QueryResults } from '../types/database';
 import { validateTableName, runQuery } from './local.inmemory.gateway';
 
-const NAMESPACE = 'USERS-MSSQL-DB-GATEWAY';
+const NAMESPACE = 'USERS-LOCAL-INMEMORY-DB-GATEWAY';
 
 const table = 'users';
 

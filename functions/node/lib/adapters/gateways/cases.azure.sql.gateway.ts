@@ -61,7 +61,6 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   const queryResult: QueryResults = await runQuery(context, table, query, input);
   let results: DbResult;
 
-  log.info(context, NAMESPACE, `query result`, queryResult);
   if (queryResult.success) {
     const body = { staff1Label: '', staff2Label: '', caseList: {} }
     body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
