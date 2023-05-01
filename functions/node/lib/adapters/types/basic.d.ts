@@ -1,6 +1,6 @@
 import { IDbConfig } from './database';
 
-export type LogContext = {
+export type Context = {
   log: Function;
 }
 

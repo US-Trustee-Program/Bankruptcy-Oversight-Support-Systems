@@ -2,14 +2,14 @@ import log from '../services/logger.service';
 import useCase from '../../use-cases/index';
 import { UserPersistenceGateway } from "../types/persistence-gateway";
 import proxyData from "../data-access.proxy";
-import { LogContext } from '../types/basic';
+import { Context } from '../types/basic';
 
 const NAMESPACE = "USERS-CONTROLLER";
 
 export class UsersController {
-  private context: LogContext;
+  private context: Context;
 
-  constructor(context: LogContext) {
+  constructor(context: Context) {
     this.context = context;
   }
 

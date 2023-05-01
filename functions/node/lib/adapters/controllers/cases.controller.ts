@@ -2,15 +2,15 @@ import log from '../services/logger.service';
 import useCase from '../../use-cases/index.js';
 import { CasePersistenceGateway } from "../types/persistence-gateway.js";
 import proxyData from "../data-access.proxy";
-import { LogContext, RecordObj } from '../types/basic';
+import { Context, RecordObj } from '../types/basic';
 
 const NAMESPACE = "CASES-CONTROLLER";
 
 export class CasesController {
-  private context: LogContext;
+  private context: Context;
   private casesDb: CasePersistenceGateway;
 
-  constructor(context: LogContext) {
+  constructor(context: Context) {
     this.context = context;
     this.initializeDb();
   }
@@ -22,7 +22,7 @@ export class CasesController {
     }
   }
 
-  public async getCaseList(context: LogContext, query: {chapter: string, professionalId: number}) {
+  public async getCaseList(context: Context, query: {chapter: string, professionalId: number}) {
     await this.initializeDb();
     log.info(this.context, NAMESPACE, 'Getting case list.');
 
@@ -37,14 +37,14 @@ export class CasesController {
     return await useCase.listCases(context, this.casesDb, { chapter, professionalId: profId });
   }
 
-  public async getCase(context: LogContext, query: {caseId: string}) {
+  public async getCase(context: Context, query: {caseId: string}) {
     await this.initializeDb();
     log.info(context, NAMESPACE, `Getting single case ${query.caseId}.`);
 
     return await useCase.getCase(context, this.casesDb, +query.caseId);
   }
 
-  public async createCase(context: LogContext, recordSet: object) {
+  public async createCase(context: Context, recordSet: object) {
     await this.initializeDb();
     log.info(context, NAMESPACE, 'Inserting Case');
 
@@ -60,7 +60,7 @@ export class CasesController {
     return await useCase.addCase(context, this.casesDb, record);
   }
 
-  public async updateCase(context: LogContext, caseId: number, recordSet: object) {
+  public async updateCase(context: Context, caseId: number, recordSet: object) {
     await this.initializeDb();
     log.info(context, NAMESPACE, 'Updating Case');
 
@@ -76,7 +76,7 @@ export class CasesController {
     return await useCase.updateCase(context, this.casesDb, caseId, record);
   }
 
-  public async deleteCase(context: LogContext, caseId: number) {
+  public async deleteCase(context: Context, caseId: number) {
     await this.initializeDb();
     log.info(context, NAMESPACE, `Deleting case ${caseId}.`);
 
