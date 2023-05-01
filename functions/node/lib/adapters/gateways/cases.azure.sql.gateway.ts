@@ -3,14 +3,14 @@ import { RecordObj } from '../types/basic';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
 import { runQuery } from '../utils/database';
 import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql.gateway';
-import { LogContext } from '../types/basic';
+import { Context } from '../types/basic';
 import log from '../services/logger.service';
 
 const table = 'cases';
 
 const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 
-const getCaseList = async (context: LogContext, caseOptions: {chapter: string, professionalId: number} = {chapter: '', professionalId: 0}): Promise<DbResult> => {
+const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: number} = {chapter: '', professionalId: 0}): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `select a.CURR_CASE_CHAPT as currentCaseChapter
@@ -84,19 +84,19 @@ const getCaseList = async (context: LogContext, caseOptions: {chapter: string, p
   return results;
 };
 
-const getCase = async (context: LogContext, id: number): Promise<DbResult> => {
+const getCase = async (context: Context, id: number): Promise<DbResult> => {
   return await getRecord(context, table, id);
 };
 
-const createCase = async (context: LogContext, fieldArr: RecordObj[]): Promise<DbResult> => {
+const createCase = async (context: Context, fieldArr: RecordObj[]): Promise<DbResult> => {
   return await createRecord(context, table, fieldArr);
 };
 
-const updateCase = async (context: LogContext, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
+const updateCase = async (context: Context, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
   return await updateRecord(context, table, id, fieldArr);
 };
 
-const deleteCase = async (context: LogContext, id: number): Promise<DbResult> => {
+const deleteCase = async (context: Context, id: number): Promise<DbResult> => {
   return await deleteRecord(context, table, id);
 };
 

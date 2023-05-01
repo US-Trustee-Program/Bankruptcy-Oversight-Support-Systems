@@ -7,7 +7,7 @@
 import config from '../configs/index';
 import { PersistenceGateway } from './types/persistence-gateway';
 import log from './services/logger.service';
-import { LogContext } from './types/basic';
+import { Context } from './types/basic';
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
@@ -22,7 +22,7 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
  *               in-memory data object regardless of the environment variable set.
  * @returns An object of type PersistenceGateway
  */
-async function proxyData(context: LogContext, table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
+async function proxyData(context: Context, table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
   let database: PersistenceGateway;
   if (config.dbMock || mock) {
     log.info(context, NAMESPACE, 'using local in-memory database');
