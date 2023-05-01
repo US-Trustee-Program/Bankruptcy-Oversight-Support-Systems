@@ -1,16 +1,16 @@
-@description('Sets an application name')
-param appName string
+@description('Provide a name used for labeling related resources')
+param stackName string
 
 param location string = resourceGroup().location
 
 @description('Application service plan name')
-param functionsAspName string = '${appName}-functions-asp'
+param planName string
 
 @description('Azure functions app name')
-param functionsAppName string = '${appName}-function-app'
+param functionName string
 
 @description('Existing Private DNS Zone used for application')
-param privateDnsZoneName string
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
 @description('Existing virtual network name')
 param virtualNetworkName string
@@ -19,28 +19,39 @@ param virtualNetworkName string
 param virtualNetworkResourceGroupName string
 
 @description('Backend Azure Functions subnet name')
-param backendFunctionsSubnetName string = '${virtualNetworkName}-function-app'
+param functionSubnetName string
 
 @description('Backend Azure Functions subnet ip ranges')
-param backendFunctionsSubnetAddressPrefix string = '10.0.4.0/28'
+param functionsSubnetAddressPrefix string
 
 @description('Backend private endpoint subnet name')
-param backendPrivateEndpointSubnetName string = '${virtualNetworkName}-function-pe'
+param privateEndpointSubnetName string
 
 @description('Backend private endpoint subnet ip ranges')
-param backendPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
+param privateEndpointSubnetAddressPrefix string
 
 @description('Azure functions runtime environment')
 @allowed([
   'java'
+  'node'
 ])
-param functionsRuntime string = 'java'
+param functionsRuntime string
+
+// Provides mapping for runtime stack
+// Use the following query to check supported versions
+//  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
+var linuxFxVersionMap = {
+  java: 'Java|17'
+  node: 'Node|18'
+}
 
 @description('Azure functions version')
 param functionsVersion string = '~4'
 
-@description('Storage account name. Default creates unique name from resource group id and application name')
-param functionsStorageName string = 'ustp${uniqueString(resourceGroup().id, appName)}func'
+@description('Storage account name. Default creates unique name from resource group id and stack name')
+@minLength(3)
+@maxLength(24)
+param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, stackName)}'
 
 @description('List of origins to allow')
 param corsAllowOrigins array = []
@@ -58,9 +69,9 @@ param sqlServerName string = ''
 /*
   App service plan (hosting plan) for Azure functions instances
 */
-resource ustpFunctionsServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
+resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: functionsAspName
+  name: planName
   sku: {
     name: 'P1v2'
     tier: 'PremiumV2'
@@ -86,13 +97,13 @@ resource ustpFunctionsServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
 /*
   Subnet creation in target virtual network
 */
-module backendSubnet './network-subnet-deploy.bicep' = {
-  name: '${appName}-backend-subnet-module'
+module subnet './network-subnet-deploy.bicep' = {
+  name: '${stackName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
     virtualNetworkName: virtualNetworkName
-    subnetName: backendFunctionsSubnetName
-    subnetAddressPrefix: backendFunctionsSubnetAddressPrefix
+    subnetName: functionSubnetName
+    subnetAddressPrefix: functionsSubnetAddressPrefix
     subnetServiceEndpoints: [
       {
         service: 'Microsoft.Sql'
@@ -115,16 +126,16 @@ module backendSubnet './network-subnet-deploy.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module backendPrivateEndpoint './network-subnet-pe-deploy.bicep' = {
-  name: '${appName}-backend-pe-module'
+module privateEndpoint './network-subnet-pe-deploy.bicep' = {
+  name: '${stackName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
-    prefixName: appName
+    prefixName: stackName
     location: location
     virtualNetworkName: virtualNetworkName
     privateDnsZoneName: privateDnsZoneName
-    privateEndpointSubnetName: backendPrivateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: backendPrivateEndpointSubnetAddressPrefix
+    privateEndpointSubnetName: privateEndpointSubnetName
+    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
     privateLinkServiceId: functionApp.id
   }
 }
@@ -132,9 +143,12 @@ module backendPrivateEndpoint './network-subnet-pe-deploy.bicep' = {
 /*
   Storage resource for Azure functions
 */
-resource ustpFunctionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: functionsStorageName
   location: location
+  tags: {
+    'Stack Name' : stackName
+  }
   sku: {
     name: 'Standard_LRS' // Other options :: Standard_LRS | Standard_GRS | Standard_RAGRS
   }
@@ -148,10 +162,22 @@ resource ustpFunctionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-
 /*
   Create functionapp
 */
-var defaultAppSettings = concat([
+resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
+  name: functionName
+  location: location
+  kind: 'functionapp,linux'
+  properties: {
+    serverFarmId: servicePlan.id
+    enabled: true
+    httpsOnly: true
+    virtualNetworkSubnetId: subnet.outputs.subnetId
+  }
+}
+
+var applicationSettings = concat([
     {
       name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${functionsStorageName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${ustpFunctionsStorageAccount.listKeys().keys[0].value}'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
     }
     {
       name: 'FUNCTIONS_EXTENSION_VERSION'
@@ -161,50 +187,35 @@ var defaultAppSettings = concat([
       name: 'FUNCTIONS_WORKER_RUNTIME'
       value: functionsRuntime
     }
-  ], empty(databaseConnectionString) ? [] : [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ])
-resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
-  name: functionsAppName
-  location: location
-  kind: 'functionapp,linux'
-  properties: {
-    enabled: true
-    serverFarmId: ustpFunctionsServicePlan.id
-    siteConfig: {
-      appSettings: defaultAppSettings
-      numberOfWorkers: 1
-      linuxFxVersion: 'JAVA|17'
-      alwaysOn: true
-      http20Enabled: true
-      functionAppScaleLimit: 0
-      minimumElasticInstanceCount: 0
-      publicNetworkAccess: 'Disabled'
-    }
-    clientAffinityEnabled: false
-    httpsOnly: true
-    redundancyMode: 'None'
-    virtualNetworkSubnetId: backendSubnet.outputs.subnetId
-  }
-}
-
-var setCors = length(corsAllowOrigins) > 0
-resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = if (setCors) {
+  ],
+  !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
+)
+resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
   properties: {
     cors: {
       allowedOrigins: corsAllowOrigins
     }
+    numberOfWorkers: 1
+    alwaysOn: true
+    http20Enabled: true
+    functionAppScaleLimit: 0
+    minimumElasticInstanceCount: 0
+    publicNetworkAccess: 'Disabled'
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: applicationSettings
   }
 }
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
-module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = if ( createSqlServerVnetRule ) {
+module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${appName}-sql-vnet-rule-module'
+  name: '${stackName}-sql-vnet-rule-module'
   params: {
-    prefixName: appName
+    prefixName: stackName
     sqlServerName: sqlServerName
-    subnetId: backendSubnet.outputs.subnetId
+    subnetId: subnet.outputs.subnetId
   }
 }
 
