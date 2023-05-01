@@ -27,6 +27,7 @@
     "watch": "tsc -w",
     "prestart": "npm run build",
     "start": "func start",
-    "test": "jest"
+    "test": "jest",
+    "pack": "mkdir -p /tmp/build && tar --exclude-from=.funcignore -a -c -f /tmp/build/$OUT . && mv /tmp/build/$OUT ."
   }
 }
