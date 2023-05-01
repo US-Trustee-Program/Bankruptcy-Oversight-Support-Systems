@@ -1,6 +1,6 @@
 import log from '../services/logger.service';
-import useCase from '../../use-cases/index.js';
-import { CasePersistenceGateway } from "../types/persistence-gateway.js";
+import useCase from '../../use-cases/index';
+import { CasePersistenceGateway } from "../types/persistence-gateway";
 import proxyData from "../data-access.proxy";
 import { Context, RecordObj } from '../types/basic';
 
