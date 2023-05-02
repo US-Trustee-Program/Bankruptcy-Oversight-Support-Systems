@@ -77,6 +77,37 @@ jobs:
           path: functions/java/build/azure-functions/ustp-cams-java-function.zip
           if-no-files-found: error
 
+  build-service-node:
+    defaults:
+      run:
+        working-directory: functions/node
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Execute Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Execute Tests
+        run: npm run test
+
+      - name: Package Application
+        run: OUT=ustp-cams-node-function npm run pack
+
+      - name: Upload Node Azure Functions Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ustp-cams-node-function
+          path: functions/node/ustp-cams-node-function
+          if-no-files-found: error
+
   deploy:
     runs-on: ubuntu-latest
     needs: [build-frontend, build-service]
@@ -100,7 +131,7 @@ jobs:
             --show-what-if \
             --resourceGroup ${{ secrets.AZ_APP_RG }} \
             --file ./ops/bicep/ustp-cams.bicep \
-            --parameters 'appName=${{ vars.APP_NAME }}${{ vars.DEV_SUFFIX }} deployVnet=false deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ vars.APP_NAME }}${{ vars.DEV_SUFFIX }}-vnet linkVnetIds=[] deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployBackendFunctions=true backendFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} databaseConnectionString=${{ secrets.AZ_SQL_CONN_STR }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
+            --parameters 'appName=${{ vars.APP_NAME }}${{ vars.DEV_SUFFIX }} deployVnet=false deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ vars.APP_NAME }}${{ vars.DEV_SUFFIX }}-vnet linkVnetIds=[] deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployFunctions=true apiFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} databaseConnectionString=${{ secrets.AZ_SQL_CONN_STR }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
@@ -126,6 +157,24 @@ jobs:
       - name: Deploy to Azure WebApp
         run: ./ops/script/az-app-deploy.sh --src ./ustp-cams.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --disable-public-access
 
+  # deploy-service:
+  #   runs-on: ubuntu-latest
+  #   needs: [deploy]
+  #   steps:
+  #     - uses: actions/checkout@main
+
+  #     - name: Download artifact from build job
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: ustp-cams-java-function
+
+  #     - uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+  #     - name: Deploy Azure Functions backend
+  #       run: ./ops/script/az-func-deploy.sh --src ./ustp-cams-java-function.zip -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --disable-public-access
+
   deploy-service:
     runs-on: ubuntu-latest
     needs: [deploy]
@@ -135,11 +184,11 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ustp-cams-java-function
+          name: ustp-cams-node-function
 
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Azure Functions backend
-        run: ./ops/script/az-func-deploy.sh --src ./ustp-cams-java-function.zip -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --disable-public-access
+        run: ./ops/script/az-func-deploy.sh --src ./ustp-cams-node-function.zip -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --disable-public-access
