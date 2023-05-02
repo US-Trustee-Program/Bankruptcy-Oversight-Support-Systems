@@ -30,7 +30,7 @@ repos:
           args: [ '--baseline', '.secrets.baseline' ]
           exclude: package.lock.json
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.7.0
+    rev: v2.8.0
     hooks:
       - id: pretty-format-java
         args: [ --autofix ]
