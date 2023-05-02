@@ -99,6 +99,7 @@ module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
+    corsAllowOrigins: [ustpWebapp.outputs.webappUrl]
   }
   dependsOn: [
     ustpWebapp
