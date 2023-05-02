@@ -8,7 +8,7 @@ const dbConfig: IDbConfig = {
   database: process.env.MSSQL_DATABASE,
   user: process.env.MSSQL_USER,
   password: '',
-  azureManagedIdentity: process.env.AZURE_MANAGED_IDENTITY,
+  azureManagedIdentity: process.env.AZURE_MANAGED_IDENTITY || '',
   authentication: {
     type: 'azure-active-directory-msi-app-service',
   },
@@ -23,7 +23,7 @@ const dbConfig: IDbConfig = {
   },
 };
 
-if (process.env.AZURE_MANAGED_IDENTITY.length < 1 && process.env.MSSQL_PASS.length > 0) {
+if ( dbConfig.azureManagedIdentity.length < 1 && process.env.MSSQL_PASS && process.env.MSSQL_PASS.length > 0) {
   dbConfig.password = process.env.MSSQL_PASS;
   dbConfig.authentication.type = 'default';
 } else if (process.env.DATABASE_MOCK) {
