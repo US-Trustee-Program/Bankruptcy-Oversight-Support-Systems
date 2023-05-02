@@ -41,8 +41,8 @@ param functionsRuntime string
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
 var linuxFxVersionMap = {
-  java: 'Java|17'
-  node: 'Node|18'
+  java: 'JAVA|17'
+  node: 'NODE|18'
 }
 
 @description('Azure functions version')

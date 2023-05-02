@@ -23,7 +23,7 @@ param apiFunctionsSubnetName string = '${appName}-vnet-function-node'
 param apiFunctionsSubnetAddressPrefix string = '10.0.10.0/28'
 param apiPrivateEndpointSubnetName string = '${appName}-function-node-pe'
 param apiPrivateEndpointSubnetAddressPrefix string = '10.0.11.0/28'
-param apiPlanName string = '${appName}-node-functions-asp'
+param apiPlanName string = '${appName}-node-function-asp'
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
@@ -70,7 +70,7 @@ module ustpWebapp './webapp-deploy.bicep' = if (deployWebapp) {
 }
 
 var funcParams = [
-  {
+  { // Define api node function resources
     planName: apiPlanName
     functionName: '${appName}-node-function-app'
     functionsRuntime: 'node'
@@ -78,11 +78,10 @@ var funcParams = [
     functionsSubnetAddressPrefix: apiFunctionsSubnetAddressPrefix
     privateEndpointSubnetName: apiPrivateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
-
   }
 ]
 module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
-  name: '${appName}-backend-functions-module-${i}'
+  name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
     location: location
@@ -94,7 +93,7 @@ module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams
     virtualNetworkResourceGroupName: networkResourceGroupName
     functionSubnetName: funcParams[i].functionSubnetName
     functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
-    privateEndpointSubnetName: funcParams[i].privateEndpointSubnetAddressPrefix
+    privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
     privateDnsZoneName: privateDnsZoneName
     databaseConnectionString: databaseConnectionString
