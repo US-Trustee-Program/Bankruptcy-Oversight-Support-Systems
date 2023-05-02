@@ -199,7 +199,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     }
     numberOfWorkers: 1
     alwaysOn: true
-    http20Enabled: true
+    http20Enabled: false
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Disabled'

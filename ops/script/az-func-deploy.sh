@@ -15,6 +15,7 @@ while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
         echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --disable-public-access"
+        exit 0
         shift
         ;;
 
