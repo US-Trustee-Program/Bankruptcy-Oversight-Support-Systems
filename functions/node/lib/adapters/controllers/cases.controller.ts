@@ -84,4 +84,3 @@ export class CasesController {
     return await useCase.deleteCase(context, this.casesDb, caseId);
   }
 }
-
