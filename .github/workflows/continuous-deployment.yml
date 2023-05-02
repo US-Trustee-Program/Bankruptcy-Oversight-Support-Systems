@@ -83,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ustp-cams-node-function
-          path: functions/node/ustp-cams-node-function
+          path: functions/node/ustp-cams-node-function.zip
           if-no-files-found: error
 
   deploy:
