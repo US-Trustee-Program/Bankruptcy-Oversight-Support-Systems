@@ -10,7 +10,7 @@ async function addCase(context: Context, database: CasePersistenceGateway, field
   return await database.createCase(context, fields);
 }
 
-async function listCases(context: Context, database: CasePersistenceGateway, fields: {chapter: string, professionalId: number}) {
+async function listCases(context: Context, database: CasePersistenceGateway, fields: {chapter: string, professionalId: string}) {
   const result = await database.getCaseList(context, fields);
   result.body.staff1Label = 'Trial Attorney';
   result.body.staff2Label = 'Auditor';

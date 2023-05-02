@@ -25,7 +25,7 @@ async function initializeCases(): Promise<CaseListRecordSet> {
   return caseListRecords;
 }
 
-const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: number} = {chapter: '', professionalId: 0}): Promise<DbResult> => {
+const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<DbResult> => {
   let caseListRecords: CaseListRecordSet;
   let input = [];
 
@@ -36,15 +36,15 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   if (caseOptions.chapter.length > 0) {
     input.push(
       {
-        name: 'chapt',
+        name: 'currentCaseChapter',
         value: caseOptions.chapter,
       },
     );
   }
-  if (caseOptions.professionalId > 0) {
+  if (caseOptions.professionalId.length > 0) {
     input.push(
       {
-        name: 'professionalId',
+        name: 'staff1ProfCode|staff2ProfCode',
         value: caseOptions.professionalId
       },
     );
