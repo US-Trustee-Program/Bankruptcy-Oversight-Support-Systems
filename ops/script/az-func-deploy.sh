@@ -18,6 +18,11 @@ while [[ $# > 0 ]]; do
         shift
         ;;
 
+    -d | --debug)
+        enable_debug=true
+        shift
+        ;;
+
     --disable-public-access)
         disable_public_access=true
         shift
@@ -56,7 +61,13 @@ if [[ $disable_public_access ]]; then
     az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
 fi
 
-az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path
+cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
+
+if [[ $enable_debug ]]; then
+    cmd="${cmd} --debug"
+fi
+
+eval "$cmd"
 
 if [[ $disable_public_access ]]; then
     az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
