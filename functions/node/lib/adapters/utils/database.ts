@@ -1,8 +1,8 @@
 import * as mssql from 'mssql';
-import log from '../services/logger.service.js';
-import { LogContext } from '../types/basic.js';
-import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database.js';
-import config from '../../configs/index.js';
+import log from '../services/logger.service';
+import { Context } from '../types/basic';
+import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
+import config from '../../configs/index';
 //import { DefaultAzureCredential } from '@azure/identity';
 
 const NAMESPACE = 'DATABASE-UTILITY';
@@ -11,7 +11,7 @@ function validateTableName(tableName: string) {
   return tableName.match(/^[a-z]+[a-z0-9]*$/i);
 }
 
-export async function runQuery(context: LogContext, tableName: string, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
+export async function runQuery(context: Context, tableName: string, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
   try {

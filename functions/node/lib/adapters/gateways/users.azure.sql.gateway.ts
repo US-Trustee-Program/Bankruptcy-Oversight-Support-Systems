@@ -1,12 +1,12 @@
 import * as mssql from 'mssql';
-import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database.js';
-import { runQuery } from '../utils/database.js';
-import log from '../services/logger.service.js';
-import { LogContext } from '../types/basic.js';
+import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
+import { runQuery } from '../utils/database';
+import log from '../services/logger.service';
+import { Context } from '../types/basic';
 
 const NAMESPACE = 'USERS-MSSQL-DB-GATEWAY';
 
-const login = async (context: LogContext, userName: { firstName: string, lastName: string }): Promise<DbResult> => {
+const login = async (context: Context, userName: { firstName: string, lastName: string }): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `SELECT

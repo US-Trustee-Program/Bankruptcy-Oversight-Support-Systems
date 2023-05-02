@@ -1,5 +1,5 @@
 import log from '../services/logger.service';
-import { LogContext } from '../types/basic';
+import { Context } from '../types/basic';
 import { HttpResponse } from '../types/http';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
@@ -9,7 +9,7 @@ const commonHeaders = {
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(context: LogContext, body: any = {}): HttpResponse {
+export function httpSuccess(context: Context, body: any = {}): HttpResponse {
   log.info(context, NAMESPACE, 'HTTP Success');
   return {
     headers: commonHeaders,
@@ -18,7 +18,7 @@ export function httpSuccess(context: LogContext, body: any = {}): HttpResponse {
   };
 }
 
-export function httpError(context: LogContext, error: any, code: number): HttpResponse {
+export function httpError(context: Context, error: any, code: number): HttpResponse {
   log.error(context, NAMESPACE, error.message, error);
   return {
     headers: commonHeaders,

@@ -1,13 +1,13 @@
 import * as mssql from 'mssql';
-import log from '../services/logger.service.js';
-import { RecordObj, ObjectKeyVal } from '../types/basic.js';
-import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database.js';
-import { runQuery } from '../utils/database.js';
-import { LogContext } from '../types/basic.js';
+import log from '../services/logger.service';
+import { RecordObj, ObjectKeyVal } from '../types/basic';
+import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database';
+import { runQuery } from '../utils/database';
+import { Context } from '../types/basic';
 
 const NAMESPACE = 'AZURE-SQL-MODULE';
 
-const getAll = async (context: LogContext, table: string): Promise<DbResult> => {
+const getAll = async (context: Context, table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
   const queryResult: QueryResults = await runQuery(context, table, query);
   let results: DbResult;
@@ -33,7 +33,7 @@ const getAll = async (context: LogContext, table: string): Promise<DbResult> => 
   return results;
 };
 
-const getRecord = async (context: LogContext, table: string, id: number): Promise<DbResult> => {
+const getRecord = async (context: Context, table: string, id: number): Promise<DbResult> => {
   let query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
   let results: DbResult;
   const input: DbTableFieldSpec[] = [
@@ -64,7 +64,7 @@ const getRecord = async (context: LogContext, table: string, id: number): Promis
   return results;
 };
 
-const createRecord = async (context: LogContext, table: string, fieldArr: RecordObj[]): Promise<DbResult> => {
+const createRecord = async (context: Context, table: string, fieldArr: RecordObj[]): Promise<DbResult> => {
   let fieldNameArr: string[] = [];
   let fieldValueArr: string[] = [];
 
@@ -96,7 +96,7 @@ const createRecord = async (context: LogContext, table: string, fieldArr: Record
   }
 };
 
-const updateRecord = async (context: LogContext, table: string, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
+const updateRecord = async (context: Context, table: string, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
   let nameValuePairs: string[] = [];
 
   fieldArr.forEach((fields: ObjectKeyVal) => {
@@ -133,7 +133,7 @@ const updateRecord = async (context: LogContext, table: string, id: number, fiel
   }
 };
 
-const deleteRecord = async (context: LogContext, table: string, id: number): Promise<DbResult> => {
+const deleteRecord = async (context: Context, table: string, id: number): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Deleting record ${id} from ${table}`);
 
   const query = `DELETE FROM ${table} WHERE ${table}_id = @id`;
@@ -164,7 +164,7 @@ const deleteRecord = async (context: LogContext, table: string, id: number): Pro
   }
 };
 
-function generatePresentationRecord(context: LogContext, table: string, id: string | number, fieldArr: RecordObj[]): object {
+function generatePresentationRecord(context: Context, table: string, id: string | number, fieldArr: RecordObj[]): object {
   let resultObj: ObjectKeyVal = {
     [`${table}_id`]: id,
   };
