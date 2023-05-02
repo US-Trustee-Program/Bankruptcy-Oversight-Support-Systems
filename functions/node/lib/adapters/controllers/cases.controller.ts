@@ -22,11 +22,11 @@ export class CasesController {
     }
   }
 
-  public async getCaseList(context: Context, query: {chapter: string, professionalId: number}) {
+  public async getCaseList(context: Context, query: {chapter: string, professionalId: string}) {
     await this.initializeDb();
     log.info(this.context, NAMESPACE, 'Getting case list.');
 
-    let profId = 0;
+    let profId = '';
     let chapter = '';
     if (query.professionalId) {
       profId = query.professionalId;
