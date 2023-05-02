@@ -20,7 +20,7 @@ test('Cases Endpoint should return all cases by default', async () => {
     "success": true,
     "message": "cases list",
     "count": caseListRecords.caseList.length,
-    "body": body, 
+    "body": body,
   }
 
   expect(context.res.body).toEqual(responseBody);
@@ -66,7 +66,7 @@ test('Users Http trigger should return 1 user record when supplied with "Test" "
     "success": true,
     "message": "user record",
     "count": 1,
-    "body": [ body ], 
+    "body": [ body ],
   }
 
   await httpTrigger(context, request);

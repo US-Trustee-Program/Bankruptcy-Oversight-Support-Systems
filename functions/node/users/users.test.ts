@@ -47,7 +47,7 @@ test('Users Http trigger should return 1 user record when supplied with "Test" "
     "success": true,
     "message": "user record",
     "count": 1,
-    "body": [ body ], 
+    "body": [ body ],
   }
 
   await httpTrigger(context, request);
