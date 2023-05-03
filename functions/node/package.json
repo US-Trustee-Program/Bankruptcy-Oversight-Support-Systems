@@ -28,7 +28,7 @@
     "watch": "tsc -w",
     "prestart": "npm run build",
     "start": "func start",
-    "pack": "mkdir -p /tmp/build && tar --exclude-from=.funcignore -a -c -f /tmp/build/$OUT.zip . && mv /tmp/build/$OUT.zip .",
+    "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
     "test": "DATABASE_MOCK='true' jest"
   }
 }
