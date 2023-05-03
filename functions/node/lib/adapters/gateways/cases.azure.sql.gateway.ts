@@ -10,7 +10,7 @@ const table = 'cases';
 
 const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 
-const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: number} = {chapter: '', professionalId: 0}): Promise<DbResult> => {
+const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `select a.CURR_CASE_CHAPT as currentCaseChapter
@@ -46,7 +46,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
       },
     );
   }
-  if (caseOptions.professionalId > 0) {
+  if (caseOptions.professionalId.length > 0) {
     query += ` AND (a.STAFF1_PROF_CODE = @professionalId OR a.STAFF2_PROF_CODE = @professionalId)`;
 
     input.push(

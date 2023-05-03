@@ -6,10 +6,15 @@ import log from '../lib/adapters/services/logger.service';
 const NAMESPACE = 'CASES-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    let chapter = (req.query.chapter || (req.body && req.body.chapter)) ?
-        (req.query.chapter || (req.body && req.body.chapter)) : '';
-    let professionalId = (req.query.professional_id || (req.body && req.body.professional_id)) ?
-        (req.query.professional_id || (req.body && req.body.professional_id)) : '';
+    let chapter = '';
+    let professionalId = '';
+
+    if (req.query.chapter) chapter = req.query.chapter;
+    else if (req.body && req.body.chapter) chapter = req.body.chapter;
+
+    if (req.query.professional_id) professionalId = req.query.professional_id;
+    else if (req.body && req.body.professional_id) professionalId = req.body.professional_id;
+
     const casesController = new CasesController(context);
 
     log.info(context, NAMESPACE, `chapter ${chapter}, professionalId ${professionalId}`);

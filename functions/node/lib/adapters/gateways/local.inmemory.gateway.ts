@@ -16,8 +16,19 @@ const runQuery = async (context: Context, tableName: string, mockData: ObjectKey
     const queryResult = mockData.filter((obj: {}) => {
       let result = true;
       input.forEach(key => {
-        if (!(obj.hasOwnProperty(key['name']) && obj[key['name']] == key['value'])) {
-          result = false;
+        const keyArr = key['name'].split('|');
+        if (keyArr.length > 1) {
+          let subResult = false;
+          keyArr.forEach(subKey => {
+            if ((obj.hasOwnProperty(subKey) && obj[subKey] == key['value'])) {
+              subResult = true;
+            }
+          })
+          result = result && subResult;
+        } else {
+          if (!(obj.hasOwnProperty(key['name']) && obj[key['name']] == key['value'])) {
+            result = false;
+          }
         }
       })
       return result;

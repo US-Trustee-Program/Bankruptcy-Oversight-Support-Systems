@@ -50,27 +50,110 @@ test('An invalid chapter parameter should return 0 cases successfully', async ()
   expect(context.res.body).toEqual(responseBody);
 });
 
-/*
-test('Users Http trigger should return 1 user record when supplied with "Test" "Person".', async () => {
+test('A chapter parameter of "11", should return 5 chapter 11 cases successfully', async () => {
   const request = {
     query: {
-      first_name: 'Test',
-      last_name: 'Person'
+      chapter: '11',
     }
   };
 
-  const userListRecords = await getProperty('users', 'list');
-  const body = userListRecords.userList[0];
+  await httpTrigger(context, request);
 
-  const responseBody = {
-    "success": true,
-    "message": "user record",
-    "count": 1,
-    "body": [ body ],
-  }
+  expect(context.res.body.count).toEqual(5);
+  expect(context.res.body.body.staff1Label).toEqual('Trial Attorney');
+  expect(context.res.body.body.staff2Label).toEqual('Auditor');
+
+  context.res.body.body.caseList.forEach(obj => {
+    expect(obj.currentCaseChapter).toEqual('11');
+  });
+});
+
+test('A professional_id parameter of A1 should return 4 cases successfully', async () => {
+  const request = {
+    query: {
+      professional_id: 'A1',
+    }
+  };
 
   await httpTrigger(context, request);
 
-  expect(context.res.body).toEqual(responseBody);
+  expect(context.res.body.count).toEqual(4);
+
+  context.res.body.body.caseList.forEach(obj => {
+    expect(obj.staff1ProfCode).toEqual('A1');
+  });
 });
-*/
+
+test('A professional_id parameter of A2 should return 6 cases successfully', async () => {
+  const request = {
+    query: {
+      professional_id: 'A2',
+    }
+  };
+
+  await httpTrigger(context, request);
+
+  expect(context.res.body.count).toEqual(6);
+
+  context.res.body.body.caseList.forEach(obj => {
+    expect(obj.staff1ProfCode).toEqual('A2');
+  });
+});
+
+test('A professional_id parameter of B1 should return 3 cases successfully', async () => {
+  const request = {
+    query: {
+      professional_id: 'B1',
+    }
+  };
+
+  await httpTrigger(context, request);
+
+  expect(context.res.body.count).toEqual(3);
+
+  context.res.body.body.caseList.forEach(obj => {
+    expect(obj.staff2ProfCode).toEqual('B1');
+  });
+});
+
+test('A professional_id parameter of B2 should return 7 cases successfully', async () => {
+  const request = {
+    query: {
+      professional_id: 'B2',
+    }
+  };
+
+  await httpTrigger(context, request);
+
+  expect(context.res.body.count).toEqual(7);
+
+  context.res.body.body.caseList.forEach(obj => {
+    expect(obj.staff2ProfCode).toEqual('B2');
+  });
+});
+
+test('A professional_id parameter of B2 and chapter of 11 should return 4 cases successfully', async () => {
+  const request = {
+    query: {
+      chapter: '11',
+      professional_id: 'B2',
+    }
+  };
+
+  await httpTrigger(context, request);
+
+  expect(context.res.body.count).toEqual(3);
+});
+
+test('A professional_id parameter of B2 and chapter of 7A should return 1 case successfully', async () => {
+  const request = {
+    query: {
+      chapter: '7A',
+      professional_id: 'B2',
+    }
+  };
+
+  await httpTrigger(context, request);
+
+  expect(context.res.body.count).toEqual(1);
+});

@@ -29,6 +29,7 @@
     "prestart": "npm run build",
     "start": "func start",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
-    "test": "DATABASE_MOCK='true' jest"
+    "test": "DATABASE_MOCK='true' jest",
+    "coverage": "DATABASE_MOCK='true' jest --coverage"
   }
 }
