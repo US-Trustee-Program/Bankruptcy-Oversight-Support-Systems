@@ -145,7 +145,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ustp-cams-node-func
-          path: artifact
 
       - uses: azure/login@v1
         with:
