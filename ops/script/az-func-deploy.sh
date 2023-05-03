@@ -70,9 +70,11 @@ fi
 
 jp_query='{"name":name, "url":properties.hostNameSslStates[0].name, "publicNetworkAccess":properties.publicNetworkAccess}'
 
-if [[ $disable_public_access ]]; then
-    # ensures that public access is temporary enabled
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
+# ensures that public access is enabled to allow runner access to do deployment
+az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
+
+if [[ -n ${app_settings} ]]; then
+    az functionapp config appsettings set -g $app_rg -n $app_name --settings "${app_settings}" --query "length([])"
 fi
 
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
@@ -82,8 +84,3 @@ if [[ $enable_debug ]]; then
 fi
 
 eval "$cmd"
-
-if [[ -n ${app_settings} ]]; then
-    az functionapp config appsettings set -g $app_rg -n $app_name \
-        --settings "${app_settings}" --query length([])
-fi
