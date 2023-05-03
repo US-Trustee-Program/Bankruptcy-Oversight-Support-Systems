@@ -27,6 +27,7 @@
     "watch": "tsc -w",
     "prestart": "npm run build",
     "start": "func start",
-    "test": "DATABASE_MOCK='true' jest"
+    "test": "DATABASE_MOCK='true' jest",
+    "coverage": "DATABASE_MOCK='true' jest --coverage"
   }
 }
