@@ -76,14 +76,16 @@ jobs:
       - name: Execute Tests
         run: npm run test
 
-      - name: Package Application
-        run: OUT=ustp-cams-node-function npm run pack
-
       - name: Upload Node Azure Functions Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ustp-cams-node-function
-          path: functions/node/ustp-cams-node-function.zip
+          path: |
+            functions/node/dist
+            functions/node/node_modules
+            functions/node/host.json
+            functions/node/package-lock.json
+            functions/node/package.json
           if-no-files-found: error
 
   deploy:
@@ -145,10 +147,13 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ustp-cams-node-function
+          path: artifact
 
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Azure Functions backend
-        run: ./ops/script/az-func-deploy.sh -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --disable-public-access --src ./ustp-cams-node-function.zip --settings "WEBSITE_RUN_FROM_PACKAGE=1 MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: |
+          cd artifact && OUT=ustp-cams-node-function npm run pack
+          ./ops/script/az-func-deploy.sh -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --disable-public-access --src ./ustp-cams-node-function.zip --settings "WEBSITE_RUN_FROM_PACKAGE=1 MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
