@@ -11,6 +11,8 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
+set -e
+
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
