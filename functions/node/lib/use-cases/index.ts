@@ -6,9 +6,12 @@ async function login(context: Context, database: UserPersistenceGateway, userNam
   return await database.login(context, userName);
 }
 
+/*
+// the following code is basically working, but untested and needs to be updated.
 async function addCase(context: Context, database: CasePersistenceGateway, fields: RecordObj[]) {
   return await database.createCase(context, fields);
 }
+*/
 
 async function listCases(context: Context, database: CasePersistenceGateway, fields: {chapter: string, professionalId: string}) {
   const result = await database.getCaseList(context, fields);
@@ -25,23 +28,28 @@ async function listCases(context: Context, database: CasePersistenceGateway, fie
   return result;
 }
 
+/*
+// the following code is basically working, but untested and needs to be updated.
 async function getCase(context: Context, database: CasePersistenceGateway, id: number) {
   return await database.getCase(context, id);
 }
 
+// the following code is basically working, but untested and needs to be updated.
 async function updateCase(context: Context, database: CasePersistenceGateway, id: number, fields: RecordObj[]) {
   return await database.updateCase(context, id, fields);
 }
 
+// the following code is basically working, but untested and needs to be updated.
 async function deleteCase(context: Context, database: CasePersistenceGateway, id: number) {
   return await database.deleteCase(context, id);
 }
+*/
 
 export default {
-  addCase,
+  //addCase,
   listCases,
-  getCase,
-  updateCase,
-  deleteCase,
+  //getCase,
+  //updateCase,
+  //deleteCase,
   login,
 };

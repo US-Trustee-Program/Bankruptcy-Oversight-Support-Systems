@@ -8,6 +8,7 @@
     "@types/mssql": "^8.1.2",
     "@types/node": "^16.18.24",
     "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "azure-function-context-mock": "^0.0.7",
     "eslint": "^8.39.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-n": "^15.7.0",
@@ -23,8 +24,8 @@
     "pine": "^1.1.1"
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
+    "build": "tsc --project tsconfig.build.json",
+    "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
     "start": "func start",
     "test": "DATABASE_MOCK='true' jest",
