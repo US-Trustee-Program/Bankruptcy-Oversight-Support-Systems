@@ -74,7 +74,10 @@ jp_query='{"name":name, "url":properties.hostNameSslStates[0].name, "publicNetwo
 az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
 
 if [[ -n ${app_settings} ]]; then
-    az functionapp config appsettings set -g $app_rg -n $app_name --settings "${app_settings}" --query "length([])"
+    echo "Set Application Settings for $app_name"
+    for item in ${app_settings}; do
+        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[].name"
+    done
 fi
 
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
