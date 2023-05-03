@@ -73,7 +73,7 @@ jobs:
           node --version
           npm --version
           tar --version
-          
+
           npm ci
           npm run build
 
