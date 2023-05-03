@@ -16,7 +16,7 @@ set -e
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --disable-public-access"
+        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --settings=\"key1=value1 key2=value2\" --disable-public-access"
         exit 0
         shift
         ;;
@@ -46,11 +46,22 @@ while [[ $# > 0 ]]; do
         shift 2
         ;;
 
+    --settings)
+        app_settings="${2}"
+        shift 2
+        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
     esac
 done
+
+function on_exit() {
+    if [[ $disable_public_access ]]; then
+        az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
+    fi
+}
+trap on_exit EXIT
 
 if [ ! -f "$artifact_path" ]; then
     echo "Error: missing build artifact $artifact_path"
@@ -72,6 +83,7 @@ fi
 
 eval "$cmd"
 
-if [[ $disable_public_access ]]; then
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
+if [[ -n "${app_settings}" ]]; then
+    az functionapp config appsettings set -g $app_rg -n $app_name \
+        --settings "${app_settings}"
 fi
