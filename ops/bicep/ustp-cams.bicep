@@ -70,7 +70,7 @@ module ustpWebapp './webapp-deploy.bicep' = if (deployWebapp) {
 }
 
 var funcParams = [
-  { // Define api node function resources
+  {// Define api node function resources
     planName: apiPlanName
     functionName: '${appName}-node-function-app'
     functionsRuntime: 'node'
@@ -99,7 +99,7 @@ module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
-    corsAllowOrigins: [ustpWebapp.outputs.webappUrl]
+    corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
   }
   dependsOn: [
     ustpWebapp

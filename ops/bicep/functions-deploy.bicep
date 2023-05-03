@@ -53,7 +53,7 @@ param functionsVersion string = '~4'
 @maxLength(24)
 param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, stackName)}'
 
-@description('List of origins to allow')
+@description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
 
 @description('Database connection string')
