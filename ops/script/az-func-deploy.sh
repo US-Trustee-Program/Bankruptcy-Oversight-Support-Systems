@@ -83,7 +83,7 @@ fi
 
 eval "$cmd"
 
-if [[ -n "${app_settings}" ]]; then
+if [[ -n ${app_settings} ]]; then
     az functionapp config appsettings set -g $app_rg -n $app_name \
-        --settings "${app_settings}"
+        --settings "${app_settings}" --query length([])
 fi
