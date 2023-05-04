@@ -13,7 +13,7 @@ const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
-  let query = `select a.CURR_CASE_CHAPT as currentCaseChapter
+  let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
       , CONCAT(a.CASE_YEAR, '-', REPLICATE('0', 5-DATALENGTH(LTRIM(a.CASE_NUMBER))), a.CASE_NUMBER) as caseNumber
       , a.DEBTOR1_NAME as debtor1Name
       , a.CURRENT_CHAPTER_FILE_DATE as currentChapterFileDate
@@ -31,6 +31,10 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
     inner join [dbo].[CMMPT] c1 on a.GROUP_DESIGNATOR = c1.GROUP_DESIGNATOR and b1.PROF_TYPE = c1.PROF_TYPE
     inner join [dbo].[CMMPT] c2 on a.GROUP_DESIGNATOR = c2.GROUP_DESIGNATOR and b2.PROF_TYPE = c2.PROF_TYPE
     left outer join [dbo].[CMHHR] h on a.CASE_DIV = h.CASE_DIV and a.CASE_YEAR = h.CASE_YEAR and a.CASE_NUMBER = h.CASE_NUMBER AND h.HEARING_CODE = 'IDI'
+    AND h.RECORD_SEQ_NBR =  (select max(record_seq_nbr) as nbr
+        from [dbo].[CMHHR]
+        where hearing_code = 'IDI' and case_number = a.case_number
+        group by case_div, case_year, case_number, HEARING_CODE)                                 
     WHERE a.DELETE_CODE != 'D' and a.CLOSED_BY_COURT_DATE = 0 and a.CLOSED_BY_UST_DATE = 0 and a.TRANSFERRED_OUT_DATE = 0 and a.DISMISSED_DATE = 0
     `;
 
