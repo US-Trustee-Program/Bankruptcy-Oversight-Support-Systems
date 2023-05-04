@@ -202,7 +202,25 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     http20Enabled: false
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: applicationSettings
   }

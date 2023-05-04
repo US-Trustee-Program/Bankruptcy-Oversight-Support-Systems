@@ -26,11 +26,6 @@ while [[ $# > 0 ]]; do
         shift
         ;;
 
-    --disable-public-access)
-        disable_public_access=true
-        shift
-        ;;
-
     -g | --resourceGroup)
         app_rg="${2}"
         shift 2
@@ -50,6 +45,7 @@ while [[ $# > 0 ]]; do
         app_settings="${2}"
         shift 2
         ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -57,9 +53,8 @@ while [[ $# > 0 ]]; do
 done
 
 function on_exit() {
-    if [[ $disable_public_access ]]; then
-        az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
-    fi
+    # always try to remove temporary access
+    az functionapp config access-restriction remove -g $app_rg -n $app_name --rule-name $ruleName --scm-site true
 }
 trap on_exit EXIT
 
@@ -68,22 +63,22 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-jp_query='{"name":name, "url":properties.hostNameSslStates[0].name, "publicNetworkAccess":properties.publicNetworkAccess}'
+# allow build agent access to execute deployment
+agentIp=$(curl -s https://api.ipify.org)
+ruleName="agent-${app_name:0:26}"
+az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true
 
-# ensures that public access is enabled to allow runner access to do deployment
-az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
-
+# configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for $app_name"
     for item in ${app_settings}; do
-        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[].name"
+        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[-1:].name"
     done
 fi
 
+# Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
-
 if [[ $enable_debug ]]; then
     cmd="${cmd} --debug"
 fi
-
 eval "$cmd"
