@@ -100,7 +100,7 @@ describe('Base App Tests', () => {
         expect(tableHeader[1].textContent).toBe('Debtor Name');
         expect(tableHeader[2].textContent).toBe('Current Chapter Date');
         expect(tableHeader[3].textContent).toBe('Hearing Code');
-        expect(tableHeader[4].textContent).toBe('Initial Hearing Date/Time');
+        expect(tableHeader[4].textContent).toBe('Hearing Date and Time');
         expect(tableHeader[5].textContent).toBe('Hearing Disposition');
         expect(tableHeader[6].textContent).toBe('Trial Attorney');
         expect(tableHeader[7].textContent).toBe('Auditor');
