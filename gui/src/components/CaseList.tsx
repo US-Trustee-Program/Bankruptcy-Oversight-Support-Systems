@@ -79,7 +79,7 @@ export const CaseList = () => {
               <th>Debtor Name</th>
               <th>Current Chapter Date</th>
               <th>Hearing Code</th>
-              <th>Initial Hearing Date/Time</th>
+              <th>Hearing Date and Time</th>
               <th>Hearing Disposition</th>
               <th>{caseList.body.staff1Label}</th>
               <th>{caseList.body.staff2Label}</th>
