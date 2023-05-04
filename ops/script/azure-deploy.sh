@@ -10,6 +10,8 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
+set -e
+
 requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
 
 function validation_func() {
