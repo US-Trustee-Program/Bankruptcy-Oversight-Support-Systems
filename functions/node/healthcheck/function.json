@@ -6,10 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": [
-        "get",
-        "post",
-        "put",
-        "delete"
+        "get"
       ]
     },
     {
@@ -18,5 +15,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/cases/cases.function.js"
+  "scriptFile": "../dist/healthcheck/healthcheck.function.js"
 }

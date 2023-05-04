@@ -1,46 +1,14 @@
 @description('Sets an application name')
 param appName string
 
-param location string = resourceGroup().location
-
 @description('Application\'s target virtual network name')
-param virtualNetworkName string = '${appName}-vnet'
+param virtualNetworkName string
 
-@description('API application gateway subnet name')
-param apiAgwSubnetName string = '${virtualNetworkName}-api-agw'
+@description('Private DNS Zone name for private link')
+param privateDNSZoneName string = 'privatelink.azurewebsites.net'
 
-@description('API application gateway subnet ip ranges')
-param apiAgwSubnetAddressPrefix string = '10.0.0.0/28'
-
-@description('API backend subnet name')
-param apiBackendSubnetName string = '${virtualNetworkName}-api-backend'
-
-@description('API backend instance subnet ip ranges')
-param apiBackendAddressPrefix string = '10.0.1.0/28'
-
-@description('Webapp subnet name')
-param webappSubnetName string = '${virtualNetworkName}-webapp'
-
-@description('Webapp subnet ip ranges')
-param webappAddressPrefix string = '10.0.2.0/28'
-
-@description('Webapp private endpoint subnet name')
-param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
-
-@description('Webapp private endpoint subnet ip ranges')
-param webappPrivateEndpointSubnetAddressPrefix string = '10.0.3.0/28'
-
-@description('Backend Azure Functions subnet name')
-param backendFunctionsSubnetName string = '${virtualNetworkName}-function-app'
-
-@description('Backend Azure Functions subnet ip ranges')
-param backendFunctionsSubnetAddressPrefix string = '10.0.4.0/28'
-
-@description('Backend private endpoint subnet name')
-param backendPrivateEndpointSubnetName string = '${virtualNetworkName}-function-pe'
-
-@description('Backend private endpoint subnet ip ranges')
-param backendPrivateEndpointSubnetAddressPrefix string = '10.0.5.0/28'
+@description('Optional array of resource ids of virtual network to link to private dns zone')
+param linkVnetIds array = []
 
 /*
   USTP BOSS Virtual Network
@@ -50,116 +18,41 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
 }
 
 /*
-  USTP BOSS Subnets
+  Private DNS Zone and linked virtual networks
 */
-resource apiAppGatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  name: apiAgwSubnetName
-  parent: ustpVirtualNetwork
-  properties: {
-    addressPrefix: apiAgwSubnetAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
+resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: privateDNSZoneName
+  location: 'global'
+  tags: {
+    appName: appName
   }
 }
 
-resource apiBackendSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  name: apiBackendSubnetName
-  parent: ustpVirtualNetwork
+resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: ustpPrivateDnsZone
+  location: 'global'
   properties: {
-    addressPrefix: apiBackendAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
-    serviceEndpoints: [
-      {
-        service: 'Microsoft.Sql'
-        locations: [
-          location
-        ]
-      }
-    ]
-    delegations: [
-      {
-        name: 'Microsoft.ContainerInstance.containerGroups'
-        properties: {
-          serviceName: 'Microsoft.ContainerInstance/containerGroups'
-        }
-      }
-    ]
+    registrationEnabled: false
+    virtualNetwork: {
+      id: ustpVirtualNetwork.id
+    }
   }
+  name: '${privateDNSZoneName}-vnet-link'
 }
 
-resource webappSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  parent: ustpVirtualNetwork
-  name: webappSubnetName
+// optional step to include additional link to existing PrivateDnsZone
+resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for vnetId in linkVnetIds: {
+  parent: ustpPrivateDnsZone
+  location: 'global'
   properties: {
-    addressPrefix: webappAddressPrefix
-    privateEndpointNetworkPolicies: 'Enabled'
-    delegations: [
-      {
-        name: 'Microsoft.Web/serverfarms'
-        properties: {
-          serviceName: 'Microsoft.Web/serverfarms'
-        }
-      }
-    ]
+    registrationEnabled: false
+    virtualNetwork: {
+      id: vnetId
+    }
   }
-}
+  name: 'ustp-${uniqueString(resourceGroup().id, vnetId)}-vnet-link'
+}]
 
-resource webappPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  parent: ustpVirtualNetwork
-  name: webappPrivateEndpointSubnetName
-  properties: {
-    addressPrefix: webappPrivateEndpointSubnetAddressPrefix
-    serviceEndpoints: []
-    delegations: []
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
-  }
-}
-
-resource backendPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  parent: ustpVirtualNetwork
-  name: backendPrivateEndpointSubnetName
-  properties: {
-    addressPrefix: backendPrivateEndpointSubnetAddressPrefix
-    serviceEndpoints: []
-    delegations: []
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
-  }
-}
-
-resource backendFunctionsSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  parent: ustpVirtualNetwork
-  name: backendFunctionsSubnetName
-  properties: {
-    addressPrefix: backendFunctionsSubnetAddressPrefix
-    serviceEndpoints: [
-      {
-        service: 'Microsoft.Sql'
-        locations: [
-          location
-        ]
-      }
-    ]
-    delegations: [
-      {
-        name: 'Microsoft.Web/serverfarms'
-        properties: {
-          serviceName: 'Microsoft.Web/serverfarms'
-        }
-      }
-    ]
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
-  }
-}
-
-/*
-  Bicep outputs
-*/
-output outVnetId string = ustpVirtualNetwork.id
-output outAgwSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiAgwSubnetName)
-output outBackendSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, apiBackendSubnetName)
-output outWebappSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappSubnetName)
-output outWebappPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, webappPrivateEndpointSubnetName)
-output outBackendFuncSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, backendFunctionsSubnetName)
-output outBackendFuncPrivateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', virtualNetworkName, backendPrivateEndpointSubnetName)
+output virtualNetworkId string = ustpVirtualNetwork.id
+output virtualNetworkName string = ustpVirtualNetwork.name
+output privateDnsZoneName string = ustpPrivateDnsZone.name

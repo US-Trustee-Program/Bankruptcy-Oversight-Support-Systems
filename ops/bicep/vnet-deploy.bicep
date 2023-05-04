@@ -7,9 +7,9 @@ param createVnet bool = false
 
 param vnetName string = '${appName}-vnet'
 
-param vnetAddressPrefix array = [ '10.0.0.0/16' ]
+param vnetAddressPrefix array
 
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = if (createVnet) {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = if (createVnet) {
   name: vnetName
   location: location
   properties: {
@@ -19,4 +19,6 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = if 
     enableDdosProtection: false
   }
 }
-output outVnetId string = ustpVirtualNetwork.id
+
+output vnetId string = virtualNetwork.id
+output vnetName string = virtualNetwork.name
