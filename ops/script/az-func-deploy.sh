@@ -2,7 +2,7 @@
 
 # Title:        az-func-deploy.sh
 # Description:  Helper script to deploy function build artifact to existing Azure site
-# Usage:        ./az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --disable-public-access
+# Usage:        ./az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName
 #
 # Exitcodes
 # ==========
@@ -16,7 +16,7 @@ set -e
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --settings=\"key1=value1 key2=value2\" --disable-public-access"
+        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --settings=\"key1=value1 key2=value2\""
         exit 0
         shift
         ;;
