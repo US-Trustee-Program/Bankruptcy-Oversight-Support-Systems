@@ -184,7 +184,7 @@ You will need to have a file named local.settings.json placed in the `functions/
 
 [pre-commit](https://pre-commit.com) allows us to make use of hooks that enforce style and prevent secrets from being committed to the repo. As such, it is expected that all code pushed to the repository have had these pre-commit hooks executed on all files created or updated. The configuration can be seen in `.pre-commit-config.yaml`.
 
-`pre-commit` must be installed locally on your development machine to enable the hooks to be run. Please follow the [install instructions](https://pre-commit.com/index.html#installation) and allow these hooks to run on all commits.
+`pre-commit` must be installed locally on your development machine to enable the hooks to be run. Please follow the [install instructions](https://pre-commit.com/index.html#installation), taking care to follow the step which configures a git hook script and allow these hooks to run on all commits. To double-check that you are ready to use pre-commit, ensure that you have a file named `pre-commit` in the `.git/hooks` directory.
 
 [`pre-commit.ci`](https://pre-commit.ci/) is provided free for open-source repositories ([see here](https://pre-commit.ci/#pricing)) and allows us to leverage `pre-commit` in our continuous integration (CI) process. Configuration is handled in `.pre-commit-config.yaml`.
 
