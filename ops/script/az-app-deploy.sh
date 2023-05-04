@@ -2,7 +2,7 @@
 
 # Title:        az-app-deploy.sh
 # Description:  Helper script to deploy webapp build artifact to existing Azure site
-# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName --disable-public-access
+# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
 #
 # Exitcodes
 # ==========
@@ -11,10 +11,12 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
+set -e
+
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --disable-public-access"
+        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName"
         shift
         ;;
 
