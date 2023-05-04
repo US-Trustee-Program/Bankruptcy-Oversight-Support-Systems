@@ -212,6 +212,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
         description: 'Deny all access'
       }
     ]
+    ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {
         ipAddress: 'Any'
@@ -221,6 +222,8 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
         description: 'Deny all access'
       }
     ]
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: applicationSettings
   }

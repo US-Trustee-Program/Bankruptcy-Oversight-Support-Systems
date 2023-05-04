@@ -124,7 +124,7 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
+resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: webapp
   name: 'web'
   properties: {
@@ -168,7 +168,6 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     vnetRouteAllEnabled: false
     vnetPrivatePortsCount: 0
     localMySqlEnabled: false
-    scmIpSecurityRestrictionsUseMain: false
     http20Enabled: true
     minTlsVersion: '1.2'
     scmMinTlsVersion: '1.2'
@@ -187,6 +186,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
         description: 'Deny all access'
       }
     ]
+    ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {
         ipAddress: 'Any'
@@ -196,6 +196,8 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
         description: 'Deny all access'
       }
     ]
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
   }
 }
 
