@@ -133,7 +133,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/script/az-app-deploy.sh --src ./ustp-cams.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }} --disable-public-access
+        run: ./ops/script/az-app-deploy.sh --src ./ustp-cams.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest

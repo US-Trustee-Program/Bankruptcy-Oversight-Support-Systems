@@ -168,24 +168,6 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     vnetRouteAllEnabled: false
     vnetPrivatePortsCount: 0
     localMySqlEnabled: false
-    ipSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Allow'
-        priority: 2147483647
-        name: 'Allow all'
-        description: 'Allow all access'
-      }
-    ]
-    scmIpSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Allow'
-        priority: 2147483647
-        name: 'Allow all'
-        description: 'Allow all access'
-      }
-    ]
     scmIpSecurityRestrictionsUseMain: false
     http20Enabled: true
     minTlsVersion: '1.2'
@@ -195,7 +177,25 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     functionsRuntimeScaleMonitoringEnabled: false
     minimumElasticInstanceCount: 0
     azureStorageAccounts: {}
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
   }
 }
 

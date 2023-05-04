@@ -18,11 +18,6 @@ while [[ $# > 0 ]]; do
         shift
         ;;
 
-    --disable-public-access)
-        disable_public_access=true
-        shift
-        ;;
-
     -g | --resourceGroup)
         app_rg="${2}"
         shift 2
@@ -54,22 +49,22 @@ if (($? != 0)); then
     exit 11
 fi
 
+function on_exit() {
+    # always try to remove temporary access
+    az webapp config access-restriction remove -g $app_rg -n $app_name --rule-name $ruleName --scm-site true 1>/dev/null
+}
+trap on_exit EXIT
+
+# allow build agent access to execute deployment
+agentIp=$(curl -s https://api.ipify.org)
+ruleName="agent-${app_name:0:26}"
+az webapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true 1>/dev/null
+
 pushd build
 if (($? != 0)); then
     echo "Error: unable to change working directory"
     exit 12
 fi
 
-jp_query='{"name":name, "url":properties.hostNameSslStates[0].name, "publicNetworkAccess":properties.publicNetworkAccess}'
-
-if [[ $disable_public_access ]]; then
-    # ensures that public access is temporary enabled for successful deployment
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Enabled --query "${jp_query}"
-fi
-
 az webapp up --html -n $app_name
 popd
-
-if [[ $disable_public_access ]]; then
-    az resource update -g $app_rg -n $app_name --resource-type "Microsoft.Web/sites" --set properties.publicNetworkAccess=Disabled --query "${jp_query}"
-fi
