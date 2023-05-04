@@ -54,7 +54,7 @@ done
 
 function on_exit() {
     # always try to remove temporary access
-    az functionapp config access-restriction remove -g $app_rg -n $app_name --rule-name $ruleName --scm-site true
+    az functionapp config access-restriction remove -g $app_rg -n $app_name --rule-name $ruleName --scm-site true 1> /dev/null
 }
 trap on_exit EXIT
 
@@ -66,13 +66,13 @@ fi
 # allow build agent access to execute deployment
 agentIp=$(curl -s https://api.ipify.org)
 ruleName="agent-${app_name:0:26}"
-az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true
+az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true 1> /dev/null
 
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for $app_name"
     for item in ${app_settings}; do
-        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[-1:].name"
+        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[-1:].name" --output tsv
     done
 fi
 
