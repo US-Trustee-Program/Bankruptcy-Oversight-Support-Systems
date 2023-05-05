@@ -8,7 +8,7 @@ jobs:
   Build-Info:
     runs-on: ubuntu-latest
     # remove 'full-iac-different-rg' when done testing
-    environment: ${{ ((endsWith( github.ref, 'refs/heads/main' ) || (endsWith( github.ref, 'full-iac-different-rg' ) ) && 'Main' || 'Develop' }}
+    environment: ${{ (endsWith(github.ref,'refs/heads/main') || endsWith(github.ref,'full-iac-different-rg')) && 'Main' || 'Develop' }}
     steps:
       - name: Print build info
         run: |
