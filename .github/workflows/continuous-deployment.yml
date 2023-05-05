@@ -155,7 +155,7 @@ jobs:
             --show-what-if \
             --resourceGroup ${{ secrets.AZ_APP_RG }} \
             --file ./ops/bicep/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployFunctions=true apiFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
+            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployFunctions=true apiFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
