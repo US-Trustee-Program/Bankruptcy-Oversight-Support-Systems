@@ -21,12 +21,12 @@ jobs:
         run: |
           echo "Git SHA: ${{ github.sha }}"
           echo "Environment: ${{ vars.ENVIRONMENT }}
-          
+
           # Stack name used downstream to label build artifacts and Azure resources
           stackName="${{ vars.APP_NAME }}${{ vars.ENVIRONMENT != 'Main' && vars.DEV_SUFFIX || '' }}"
           echo "Stack Name: $stackName"
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
-          
+
           # Expected build artifact naming
           webappName="${stackName}-webapp"
           echo "Webapp Artifact: $webappName"
@@ -34,12 +34,12 @@ jobs:
           apiName="${stackName}-api"
           echo "Api Artifact: $apiName"
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
-          
+
           # Default to false. Set to true to attempt to create a new virtual network
           execVnetDeploy=false
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-          
+
   formatting:
     runs-on: ubuntu-latest
     steps:
@@ -80,8 +80,8 @@ jobs:
           REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
           npm run build --if-present
-          
-      - name: Execute Test 
+
+      - name: Execute Test
         run: CI=true npm test
 
       - name: Package
@@ -165,7 +165,7 @@ jobs:
   deploy-webapp:
     runs-on: ubuntu-latest
     needs: [ Build-Info, deploy ]
-    environment: ${{ needs.Build-Info.outputs.environment }}    
+    environment: ${{ needs.Build-Info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
 
@@ -184,7 +184,7 @@ jobs:
   deploy-service:
     runs-on: ubuntu-latest
     needs: [ Build-Info, deploy ]
-    environment: ${{ needs.Build-Info.outputs.environment }}  
+    environment: ${{ needs.Build-Info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
 
