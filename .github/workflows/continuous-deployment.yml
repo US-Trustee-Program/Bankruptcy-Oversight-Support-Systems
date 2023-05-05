@@ -19,8 +19,9 @@ jobs:
       - name: Print build info
         id: build-info
         run: |
+          echo "Printing build info"
+          echo "Environment: ${{ vars.ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
-          echo "Environment: ${{ vars.ENVIRONMENT }}
 
           # Stack name used downstream to label build artifacts and Azure resources
           stackName="${{ vars.APP_NAME }}${{ vars.ENVIRONMENT != 'Main' && vars.DEV_SUFFIX || '' }}"
