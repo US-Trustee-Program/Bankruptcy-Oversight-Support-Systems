@@ -14,11 +14,11 @@ CAMS is a React application which acts as the main place for oversight work to t
 
 Note that any commands listed in this section should be run from the `gui` directory.
 
-### Requirements
+### <a id="frontend-requirements"></a>Requirements
 
 Node version 18.13.0 or above.
 
-### Running
+### <a id="frontend-running"></a>Running
 
 If you have never run the application before, major changes have been made since you last ran, or your `node_modules` folder has been deleted, you will first need to run the following command to install dependencies:
 
@@ -26,7 +26,7 @@ If you have never run the application before, major changes have been made since
 npm install
 ```
 
-To run the application directly, execute:
+To run the application directly, ensure you have met the [prerequisites](#frontend-prerequisites) and execute:
 
 ```shell
 npm start
@@ -34,7 +34,7 @@ npm start
 
 This will serve the client on port 3000.
 
-#### Prerequisites
+#### <a id="frontend-prerequisites"></a>Prerequisites
 
 You will need to have a file named `.env` placed in the `gui` directory. The contents of that file must be:
 
@@ -51,19 +51,15 @@ REACT_APP_SERVER_PROTOCOL=http[s]
 
 ## Backend
 
-Multiple options for the backend are being evaluated.
+The API for the CAMS application is implemented with Azure Functions written in Node.js.
 
-### Node Webservice
+Note that any commands listed in this section should be run from the `functions/node` directory.
 
-A webservice implemented in Node can be found in the `api/node` directory.
-
-Note that any commands listed in this section should be run from the `api/node` directory.
-
-#### Requirements
+### <a id="backend-requirements"></a>Requirements
 
 Node version 18.13.0 or above.
 
-#### Running
+### <a id="backend-running"></a>Running
 
 If you have never run the application before, major changes have been made since you last ran, or your `node_modules` folder has been deleted, you will first need to run the following command to install dependencies:
 
@@ -71,107 +67,38 @@ If you have never run the application before, major changes have been made since
 npm install
 ```
 
-To run the application directly, execute:
+To run the functions app directly, ensure you have met the [prerequisites](#backend-prerequisites) and execute:
 
 ```shell
-npm run start:dev
+npm start
 ```
 
-This will serve the web service on port 8080.
+This will serve the functions app on port 7071.
 
-To build and run a production build, execute:
-
-```shell
-npm run build
-serve -s build
-```
-
-#### Prerequisites
+#### <a id="backend-prerequisites"></a>Prerequisites
 
 You will need to have a file named `.env` placed in the `api/node` directory. The contents of that file must be:
 
 ```
-MSSQL_HOST=
-MSSQL_DATABASE=
-MSSQL_USER=
-MSSQL_PASS=
-MSSQL_ENCRYPT=
-MSSQL_TRUST_UNSIGNED_CERT=
+MSSQL_HOST={the TLD of the database}
+MSSQL_DATABASE={the name of the database}
+MSSQL_USER={the SQL Server Admin username}
+MSSQL_PASS={the SQL Server Admin user password}
+MSSQL_ENCRYPT="true"
+MSSQL_TRUST_UNSIGNED_CERT="true"
 AZURE_MANAGED_IDENTITY=
 ```
 
-### Java Webservice
-
-A webservice implemented in Java can be found in the `api/java` directory.
-
-#### Requirements
-
-Java version 17 or above.
-
-#### Running
-
-Note that any commands listed in this section should be run from the `api/java` directory.
-
-To build the webservice, execute:
-
-```shell
-./gradlew build
-```
-
-To build a `jar` file, execute:
-
-```shell
-./gradlew build jar
-```
-
-#### Prerequisites
-
-You will need to provide an environment variable named `password` which is the SQL Server Admin password, used to obtain SQL Authentication.
-
-### Java Function
-
-An Azure Function App implemented in Java.
-
-#### Requirements
-
-Java version 17 or above.
-
-#### Running
-
-Note that any commands listed in this section should be run from the `functions/java` directory.
-
-To build, execute:
-
-```shell
-./gradlew build
-```
-
-To run the Function locally, execute:
-
-```shell
-./gradlew azureFunctionsRun
-```
-
-To package the Function for deployment, execute:
-
-```shell
-./gradlew azureFunctionsPackageZip
-```
-
-#### Prerequisites
+> NOTE:
+> - Replace the curly braces and their contents with the appropriate string.
+> - If you do not have access to the admin password, ask an `owner` of the SQL Server resource in Azure for the value
 
 You will need to have the [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cmacos%2Ccsharp%2Cportal%2Cbash#install-the-azure-functions-core-tools) installed.
 
-You will need to have a file named local.settings.json placed in the `functions/java` directory. The contents of that file must be:
+You will need to have a file named local.settings.json placed in the `functions/node` directory. The contents of that file must be:
 
 ```
 {
-    "IsEncrypted": false,
-    "Values": {
-        "FUNCTIONS_WORKER_RUNTIME": "java",
-        "JAVA_HOME": "{the path to the home directory of the JDK you wish to use}",
-        "SQL_SERVER_CONN_STRING": "{the connection string}"
-    },
     "Host": {
         "CORS": "*"
     }
