@@ -1,13 +1,10 @@
-@description('Sets an application name')
-param appName string
-
 param location string = resourceGroup().location
 
-@description('Webapp application name')
-param webappName string = '${appName}-webapp'
+@description('Application service plan name')
+param planName string
 
-@description('Webapp Application service plan name')
-param webappAspName string = '${webappName}-asp'
+@description('Webapp application name')
+param webappName string
 
 @description('Private DNS Zone used for application')
 param privateDnsZoneName string
@@ -19,20 +16,20 @@ param virtualNetworkName string
 param virtualNetworkResourceGroupName string
 
 @description('Webapp subnet name')
-param webappSubnetName string = '${virtualNetworkName}-webapp'
+param webappSubnetName string
 
 @description('Webapp subnet ip ranges')
-param webappSubnetAddressPrefix string = '10.0.2.0/28'
+param webappSubnetAddressPrefix string
 
 @description('Webapp private endpoint subnet name')
-param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
+param webappPrivateEndpointSubnetName string
 
 @description('Webapp private endpoint subnet ip ranges')
-param webappPrivateEndpointSubnetAddressPrefix string = '10.0.3.0/28'
+param webappPrivateEndpointSubnetAddressPrefix string
 
-resource serverFarm 'Microsoft.Web/serverfarms@2022-03-01' = {
+resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: webappAspName
+  name: planName
   sku: {
     name: 'P1v2'
     tier: 'PremiumV2'
@@ -80,11 +77,11 @@ module webappSubnet './network-subnet-deploy.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module backendPrivateEndpoint './network-subnet-pe-deploy.bicep' = {
-  name: '${webappName}-pe-module'
+module privateEndpoint './network-subnet-pep-deploy.bicep' = {
+  name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
-    prefixName: webappName
+    stackName: webappName
     location: location
     virtualNetworkName: virtualNetworkName
     privateDnsZoneName: privateDnsZoneName
@@ -102,24 +99,9 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
   location: location
   kind: 'app'
   properties: {
-    enabled: true
     serverFarmId: serverFarm.id
-    hostNameSslStates: [
-      {
-        name: '${webappName}.azurewebsites.net'
-        sslState: 'Disabled'
-        hostType: 'Standard'
-      }
-      {
-        name: '${webappName}.scm.azurewebsites.net'
-        sslState: 'Disabled'
-        hostType: 'Repository'
-      }
-    ]
-    reserved: false
-    clientAffinityEnabled: false
+    enabled: true
     httpsOnly: true
-    redundancyMode: 'None'
     virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
 }
@@ -129,53 +111,9 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   name: 'web'
   properties: {
     numberOfWorkers: 1
-    defaultDocuments: [
-      'Default.htm'
-      'Default.html'
-      'Default.asp'
-      'index.htm'
-      'index.html'
-      'iisstart.htm'
-      'default.aspx'
-      'index.php'
-      'hostingstart.html'
-    ]
-    netFrameworkVersion: 'v4.0'
-    phpVersion: '5.6'
-    requestTracingEnabled: false
-    remoteDebuggingEnabled: false
-    httpLoggingEnabled: true
-    acrUseManagedIdentityCreds: false
-    logsDirectorySizeLimit: 100
-    detailedErrorLoggingEnabled: false
-    scmType: 'None'
-    use32BitWorkerProcess: true
-    webSocketsEnabled: false
     alwaysOn: true
-    managedPipelineMode: 'Integrated'
-    virtualApplications: [
-      {
-        virtualPath: '/'
-        physicalPath: 'site\\wwwroot'
-        preloadEnabled: true
-      }
-    ]
-    loadBalancing: 'LeastRequests'
-    experiments: {
-      rampUpRules: []
-    }
-    autoHealEnabled: false
-    vnetRouteAllEnabled: false
-    vnetPrivatePortsCount: 0
-    localMySqlEnabled: false
     http20Enabled: true
-    minTlsVersion: '1.2'
-    scmMinTlsVersion: '1.2'
-    ftpsState: 'AllAllowed'
-    preWarmedInstanceCount: 0
-    functionsRuntimeScaleMonitoringEnabled: false
     minimumElasticInstanceCount: 0
-    azureStorageAccounts: {}
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: [
       {
@@ -198,6 +136,20 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     ]
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
+    defaultDocuments: [
+      'index.html'
+    ]
+    httpLoggingEnabled: true
+    logsDirectorySizeLimit: 100
+    use32BitWorkerProcess: true
+    managedPipelineMode: 'Integrated'
+    virtualApplications: [
+      {
+        virtualPath: '/'
+        physicalPath: 'site\\wwwroot'
+        preloadEnabled: true
+      }
+    ]
   }
 }
 

@@ -1,6 +1,3 @@
-@description('Provide a name used for labeling related resources')
-param stackName string
-
 param location string = resourceGroup().location
 
 @description('Application service plan name')
@@ -51,7 +48,7 @@ param functionsVersion string = '~4'
 @description('Storage account name. Default creates unique name from resource group id and stack name')
 @minLength(3)
 @maxLength(24)
-param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, stackName)}'
+param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, functionName)}'
 
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
@@ -98,7 +95,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   Subnet creation in target virtual network
 */
 module subnet './network-subnet-deploy.bicep' = {
-  name: '${stackName}-subnet-module'
+  name: '${functionName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
     virtualNetworkName: virtualNetworkName
@@ -126,11 +123,11 @@ module subnet './network-subnet-deploy.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './network-subnet-pe-deploy.bicep' = {
-  name: '${stackName}-pep-module'
+module privateEndpoint './network-subnet-pep-deploy.bicep' = {
+  name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
-    prefixName: stackName
+    stackName: functionName
     location: location
     virtualNetworkName: virtualNetworkName
     privateDnsZoneName: privateDnsZoneName
@@ -147,10 +144,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: functionsStorageName
   location: location
   tags: {
-    'Stack Name' : stackName
+    'Stack Name': functionName
   }
   sku: {
-    name: 'Standard_LRS' // Other options :: Standard_LRS | Standard_GRS | Standard_RAGRS
+    name: 'Standard_LRS'
   }
   kind: 'Storage'
   properties: {
@@ -199,7 +196,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     }
     numberOfWorkers: 1
     alwaysOn: true
-    http20Enabled: false
+    http20Enabled: true
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
@@ -232,9 +229,9 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
 module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${stackName}-sql-vnet-rule-module'
+  name: '${functionName}-sql-vnet-rule-module'
   params: {
-    prefixName: stackName
+    stackName: functionName
     sqlServerName: sqlServerName
     subnetId: subnet.outputs.subnetId
   }

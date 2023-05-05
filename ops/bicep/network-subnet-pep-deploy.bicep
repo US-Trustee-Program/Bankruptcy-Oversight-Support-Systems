@@ -1,42 +1,37 @@
+@description('Provide a name used for labeling related resources')
+param stackName string
+
 param location string = resourceGroup().location
-param prefixName string
+
 param virtualNetworkName string
-param privateDnsZoneName string
 param privateEndpointSubnetName string
 param privateEndpointSubnetAddressPrefix string
+param privateDnsZoneName string
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
 
 /*
   Create subnet for private endpoint
 */
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
-  name: virtualNetworkName
-}
-resource privateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = {
-  parent: virtualNetwork
-  name: privateEndpointSubnetName
-  properties: {
-    addressPrefix: privateEndpointSubnetAddressPrefix
-    serviceEndpoints: []
-    delegations: []
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
+module privateEndpointSubnet './network-subnet-deploy.bicep' = {
+  name: '${privateEndpointSubnetName}-module'
+  params: {
+    subnetAddressPrefix: privateEndpointSubnetAddressPrefix
+    subnetName: privateEndpointSubnetName
+    virtualNetworkName: virtualNetworkName
   }
 }
 
 /*
   Create private endpoint
 */
-var privateEndpointName = '${prefixName}-pe'
-var privateEndpointConnectionName = '${prefixName}-pe-connection'
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
-  name: privateEndpointName
+  name: 'pep-${stackName}'
   location: location
   properties: {
     privateLinkServiceConnections: [
       {
-        name: privateEndpointConnectionName
+        name: 'pep-connection-${stackName}'
         properties: {
           privateLinkServiceId: privateLinkServiceId
           groupIds: [
@@ -51,7 +46,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
     ]
     manualPrivateLinkServiceConnections: []
     subnet: {
-      id: privateEndpointSubnet.id
+      id: privateEndpointSubnet.outputs.subnetId
     }
     ipConfigurations: []
     customDnsConfigs: []
@@ -78,3 +73,6 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
     ]
   }
 }
+
+output privateEndpointSubnetName string = privateEndpointSubnet.outputs.subnetName
+output privateEndpointSubnetId string = privateEndpointSubnet.outputs.subnetId

@@ -1,5 +1,9 @@
-@description('Sets an application name')
-param appName string
+/*
+  Description: Create Private Dns Zone associated to target vnet. Set linkVnetIds to include additional vnet links to dns.
+*/
+
+@description('Provide a name used for labeling related resources')
+param stackName string
 
 @description('Application\'s target virtual network name')
 param virtualNetworkName string
@@ -24,7 +28,7 @@ resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateDNSZoneName
   location: 'global'
   tags: {
-    appName: appName
+    appName: stackName
   }
 }
 
@@ -50,9 +54,8 @@ resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetwor
       id: vnetId
     }
   }
-  name: 'ustp-${uniqueString(resourceGroup().id, vnetId)}-vnet-link'
+  name: 'vnet-link-${uniqueString(resourceGroup().id, vnetId)}'
 }]
 
-output virtualNetworkId string = ustpVirtualNetwork.id
 output virtualNetworkName string = ustpVirtualNetwork.name
 output privateDnsZoneName string = ustpPrivateDnsZone.name

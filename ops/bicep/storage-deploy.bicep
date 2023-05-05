@@ -5,13 +5,38 @@ param location string = resourceGroup().location
 @maxLength(24)
 param storageAccountName string
 
+@description('Storage sku name of account type')
+@allowed([
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_GRS'
+  'Standard_GZRS'
+  'Standard_LRS'
+  'Standard_RAGRS'
+  'Standard_RAGZRS'
+  'Standard_ZRS'
+])
+param sku string = 'Standard_LRS'
+
+@allowed([
+  'BlobStorage'
+  'BlockBlobStorage'
+  'FileStorage'
+  'Storage'
+  'StorageV2'
+])
+param kind string = 'Storage'
+
+param tags object = {}
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: storageAccountName
   location: location
+  tags: tags
   sku: {
-    name: 'Standard_LRS' // Other options :: Standard_LRS | Standard_GRS | Standard_RAGRS
+    name: sku
   }
-  kind: 'Storage'
+  kind: kind
   properties: {
     supportsHttpsTrafficOnly: true
     defaultToOAuthAuthentication: true

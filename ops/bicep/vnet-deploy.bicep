@@ -1,15 +1,10 @@
-@description('Sets an application name')
-param appName string
-
 param location string = resourceGroup().location
 
-param createVnet bool = false
-
-param vnetName string = '${appName}-vnet'
+param vnetName string
 
 param vnetAddressPrefix array
 
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = if (createVnet) {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = {
   name: vnetName
   location: location
   properties: {
@@ -20,5 +15,4 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' = if (cre
   }
 }
 
-output vnetId string = virtualNetwork.id
 output vnetName string = virtualNetwork.name

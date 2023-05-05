@@ -2,28 +2,31 @@ param appName string
 param location string = resourceGroup().location
 
 param deployVnet bool = false
-param createVnet bool = false
-param vnetAddressPrefix array = [ '10.0.0.0/16' ]
+param createVnet bool = false // NOTE: Set flag to false when vnet already exists
+param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
 param deployNetwork bool = true
 param networkResourceGroupName string
-param virtualNetworkName string = '${appName}-vnet'
+param virtualNetworkName string = 'vnet-${appName}'
 param linkVnetIds array = []
 
 param deployWebapp bool = true
+param webappName string = '${appName}-webapp'
 param webappResourceGroupName string
-param webappSubnetName string = '${virtualNetworkName}-webapp'
-param webappSubnetAddressPrefix string = '10.0.2.0/28'
-param webappPrivateEndpointSubnetName string = '${virtualNetworkName}-webapp-pe'
-param webappPrivateEndpointSubnetAddressPrefix string = '10.0.3.0/28'
+param webappSubnetName string = 'snet-${webappName}'
+param webappSubnetAddressPrefix string = '10.10.10.0/28'
+param webappPrivateEndpointSubnetName string = 'snet-${webappName}-pep'
+param webappPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
+param webappPlanName string = 'plan-${webappName}'
 
 param deployFunctions bool = true
-param apiFunctionsResourceGroupName string = 'ustp-app-rg'
-param apiFunctionsSubnetName string = '${appName}-vnet-function-node'
-param apiFunctionsSubnetAddressPrefix string = '10.0.10.0/28'
-param apiPrivateEndpointSubnetName string = '${appName}-function-node-pe'
-param apiPrivateEndpointSubnetAddressPrefix string = '10.0.11.0/28'
-param apiPlanName string = '${appName}-node-function-asp'
+param apiName string = '${appName}-node-api'
+param apiFunctionsResourceGroupName string
+param apiFunctionsSubnetName string = 'snet-${apiName}'
+param apiFunctionsSubnetAddressPrefix string = '10.10.12.0/28'
+param apiPrivateEndpointSubnetName string = 'snet-${apiName}-pep'
+param apiPrivateEndpointSubnetAddressPrefix string = '10.10.13.0/28'
+param apiPlanName string = 'plan-${apiName}'
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
@@ -36,7 +39,6 @@ module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
-    appName: appName
     vnetName: virtualNetworkName
     vnetAddressPrefix: vnetAddressPrefix
     location: location
@@ -47,7 +49,7 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
   name: '${appName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
-    appName: appName
+    stackName: appName
     virtualNetworkName: virtualNetworkName
     linkVnetIds: linkVnetIds
   }
@@ -57,7 +59,8 @@ module ustpWebapp './webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
   params: {
-    appName: appName
+    planName: webappPlanName
+    webappName: webappName
     location: location
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
     virtualNetworkName: ustpNetwork.outputs.virtualNetworkName
@@ -72,7 +75,7 @@ module ustpWebapp './webapp-deploy.bicep' = if (deployWebapp) {
 var funcParams = [
   {// Define api node function resources
     planName: apiPlanName
-    functionName: '${appName}-node-function-app'
+    functionName: apiName
     functionsRuntime: 'node'
     functionSubnetName: apiFunctionsSubnetName
     functionsSubnetAddressPrefix: apiFunctionsSubnetAddressPrefix
@@ -85,7 +88,6 @@ module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
     location: location
-    stackName: appName
     planName: funcParams[i].planName
     functionName: funcParams[i].functionName
     functionsRuntime: funcParams[i].functionsRuntime
