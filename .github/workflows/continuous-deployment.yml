@@ -12,7 +12,7 @@ jobs:
       - name: Print build info
         run: |
           echo ${{ vars.APP_NAME }}
-  
+
   formatting:
     runs-on: ubuntu-latest
     steps:
