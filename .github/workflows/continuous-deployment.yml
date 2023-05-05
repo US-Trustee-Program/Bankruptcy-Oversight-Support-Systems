@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [Build-Info, build-frontend, build-service]
     environment: ${{ needs.Build-Info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || false) # TODO temporary to kick off deploy on a branch update
+    if: ((github.ref == 'refs/heads/main') || true) # TODO temporary to kick off deploy on a branch update
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
