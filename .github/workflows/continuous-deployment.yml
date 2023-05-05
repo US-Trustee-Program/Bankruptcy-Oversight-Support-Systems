@@ -13,7 +13,7 @@ jobs:
       environment: ${{ vars.ENVIRONMENT }}
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
-      apiName: ${{ steps.build-info.outputs.webappName }}
+      apiName: ${{ steps.build-info.outputs.apiName }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
     steps:
       - name: Print build info
