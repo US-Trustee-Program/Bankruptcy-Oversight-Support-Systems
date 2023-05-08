@@ -1,4 +1,5 @@
-import pine from 'pine';
+//import pine from 'pine';
+const pine = require('pine');
 
 const logger = pine();
 
