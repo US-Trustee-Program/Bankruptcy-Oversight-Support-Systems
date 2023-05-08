@@ -12,3 +12,4 @@ tsconfig.json
 README.md
 .env
 .eslint*
+*.test.*

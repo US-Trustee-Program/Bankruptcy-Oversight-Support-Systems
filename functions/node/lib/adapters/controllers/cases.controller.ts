@@ -37,6 +37,8 @@ export class CasesController {
     return await useCase.listCases(context, this.casesDb, { chapter, professionalId: profId });
   }
 
+  /*
+  // this method contains working code, though out of date, and untested.  commented out for now.
   public async getCase(context: Context, query: {caseId: string}) {
     await this.initializeDb();
     log.info(context, NAMESPACE, `Getting single case ${query.caseId}.`);
@@ -44,6 +46,7 @@ export class CasesController {
     return await useCase.getCase(context, this.casesDb, +query.caseId);
   }
 
+  // this method contains working code, though out of date, and untested.  commented out for now.
   public async createCase(context: Context, recordSet: object) {
     await this.initializeDb();
     log.info(context, NAMESPACE, 'Inserting Case');
@@ -60,6 +63,7 @@ export class CasesController {
     return await useCase.addCase(context, this.casesDb, record);
   }
 
+  // this method contains working code, though out of date, and untested.  commented out for now.
   public async updateCase(context: Context, caseId: number, recordSet: object) {
     await this.initializeDb();
     log.info(context, NAMESPACE, 'Updating Case');
@@ -76,10 +80,12 @@ export class CasesController {
     return await useCase.updateCase(context, this.casesDb, caseId, record);
   }
 
+  // this method contains working code, though out of date, and untested.  commented out for now.
   public async deleteCase(context: Context, caseId: number) {
     await this.initializeDb();
     log.info(context, NAMESPACE, `Deleting case ${caseId}.`);
 
     return await useCase.deleteCase(context, this.casesDb, caseId);
   }
+  */
 }

@@ -3,7 +3,7 @@ import { userMockData, getProperty } from '../../testing/mock-data/';
 import { Context } from '../types/basic';
 import { UserListRecordSet } from '../types/users';
 import { DbResult, QueryResults } from '../types/database';
-import { validateTableName, runQuery } from './local.inmemory.gateway';
+import { runQuery } from './local.inmemory.gateway';
 
 const NAMESPACE = 'USERS-LOCAL-INMEMORY-DB-GATEWAY';
 
@@ -27,10 +27,6 @@ const login = async (context: Context, userName: { firstName: string, lastName: 
   let userListRecords: UserListRecordSet;
 
   log.info(context, NAMESPACE, `Get all from ${table}`);
-
-  if (!validateTableName) {
-    throw new Error('Invalid database table name');
-  }
 
   userListRecords = await initializeUsers();
 

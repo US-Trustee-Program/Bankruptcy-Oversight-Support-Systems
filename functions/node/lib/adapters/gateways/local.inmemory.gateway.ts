@@ -5,48 +5,35 @@ import { getProperty, mockData } from '../../testing/mock-data/';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';
 
-function validateTableName(tableName: string) {
-  return tableName.match(/^[a-z]+[a-z0-9]*$/i);
-}
-
 const runQuery = async (context: Context, tableName: string, mockData: ObjectKeyVal[], input: {name: string, value: string}[]): Promise<QueryResults> => {
   log.info(context, NAMESPACE, `Mocking query for ${tableName}`, input);
 
-  try {
-    const queryResult = mockData.filter((obj: {}) => {
-      let result = true;
-      input.forEach(key => {
-        const keyArr = key['name'].split('|');
-        if (keyArr.length > 1) {
-          let subResult = false;
-          keyArr.forEach(subKey => {
-            if ((obj.hasOwnProperty(subKey) && obj[subKey] == key['value'])) {
-              subResult = true;
-            }
-          })
-          result = result && subResult;
-        } else {
-          if (!(obj.hasOwnProperty(key['name']) && obj[key['name']] == key['value'])) {
-            result = false;
+  const queryResult = mockData.filter((obj: {}) => {
+    let result = true;
+    input.forEach(key => {
+      const keyArr = key['name'].split('|');
+      if (keyArr.length > 1) {
+        let subResult = false;
+        keyArr.forEach(subKey => {
+          if ((obj.hasOwnProperty(subKey) && obj[subKey] == key['value'])) {
+            subResult = true;
           }
+        })
+        result = result && subResult;
+      } else {
+        if (!(obj.hasOwnProperty(key['name']) && obj[key['name']] == key['value'])) {
+          result = false;
         }
-      })
-      return result;
+      }
     })
+    return result;
+  })
 
-    // return success
-    return {
-      success: true,
-      message: `Successfully return results from query to ${tableName}`,
-      results: queryResult,
-    }
-  } catch (e) {
-    // return failure
-    return {
-      success: false,
-      message: `Failed to return results from query of ${tableName}`,
-      results: [],
-    }
+  // return success
+  return {
+    success: true,
+    message: `Successfully return results from query to ${tableName}`,
+    results: queryResult,
   }
 }
 
@@ -54,10 +41,6 @@ const getAll = async (context: Context, table: string): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
 
   log.info(context, NAMESPACE, `Get all from ${table}`);
-
-  if (!validateTableName) {
-    throw new Error('Invalid database table name');
-  }
 
   if (mockData.hasOwnProperty(table)) {
     list = mockData[table];
@@ -72,8 +55,6 @@ const getAll = async (context: Context, table: string): Promise<DbResult> => {
     count: list.length,
     body: list,
   };
-
-  log.info(context, NAMESPACE, `list from ${table} found`, results);
 
   return results;
 };
@@ -217,4 +198,4 @@ const deleteRecord = async (context: Context, table: string, id: number): Promis
   }
 };
 
-export { createRecord, getAll, getRecord, updateRecord, deleteRecord, validateTableName, runQuery };
+export { createRecord, getAll, getRecord, updateRecord, deleteRecord, runQuery };
