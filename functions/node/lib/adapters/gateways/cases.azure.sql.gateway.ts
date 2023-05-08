@@ -67,26 +67,33 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   const queryResult: QueryResults = await runQuery(context, table, query, input);
   let results: DbResult;
 
+  try {
+    if (queryResult.success) {
 
+      log.debug(context, NAMESPACE, "About to call the updateReviewDescription");
 
-  if (queryResult.success) {
-
-    log.debug(context, NAMESPACE, "About to call the updateReviewDescription");
-
-    await updateReviewDescription(queryResult.results["recordset"]);
-    const body = { staff1Label: '', staff2Label: '', caseList: {} }
-    body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
-    const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
-    results = {
-      success: true,
-      message: `${table} list`,
-      count: rowsAffected,
-      body,
-    };
-  } else {
+      await updateReviewDescription(queryResult.results["recordset"]);
+      const body = { staff1Label: '', staff2Label: '', caseList: {} }
+      body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
+      const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
+      results = {
+        success: true,
+        message: `${table} list`,
+        count: rowsAffected,
+        body,
+      };
+    } else {
+      results = {
+        success: false,
+        message: queryResult.message,
+        count: 0,
+        body: {},
+      };
+    }
+  } catch (e) {
     results = {
       success: false,
-      message: queryResult.message,
+      message: e.message,
       count: 0,
       body: {},
     };
@@ -95,7 +102,6 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 };
 
 async function updateReviewDescription(results: void | Object) {
-  console.log("Start printing the queryResults object..");
     let reviewDescriptionMapper = new ReviewCodeDescription();
     let caseResults = results as Array<caseType>;
 

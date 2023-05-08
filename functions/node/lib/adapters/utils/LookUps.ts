@@ -14,7 +14,7 @@ export class ReviewCodeDescription{
         this.mapper.set("RS", "RESCHEDULED");
     }
 
-    getDescription(reviewCode: string){
+    public getDescription(reviewCode: string){
         if (this.mapper.has(reviewCode)) {
             return this.mapper.get(reviewCode);
         } else return " ";
