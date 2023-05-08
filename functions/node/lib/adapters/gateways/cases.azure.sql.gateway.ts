@@ -36,7 +36,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
     AND h.RECORD_SEQ_NBR =  (select max(record_seq_nbr) as nbr
         from [dbo].[CMHHR]
         where hearing_code = 'IDI' and case_number = a.case_number
-        group by case_div, case_year, case_number, HEARING_CODE)                                 
+        group by case_div, case_year, case_number, HEARING_CODE)
     WHERE a.DELETE_CODE != 'D' and a.CLOSED_BY_COURT_DATE = 0 and a.CLOSED_BY_UST_DATE = 0 and a.TRANSFERRED_OUT_DATE = 0 and a.DISMISSED_DATE = 0
     `;
 

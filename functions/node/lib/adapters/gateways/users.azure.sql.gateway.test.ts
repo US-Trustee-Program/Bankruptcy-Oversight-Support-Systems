@@ -62,4 +62,3 @@ describe('Azure MSSQL database gateway tests specificaly for the Users table', (
     expect(results).toEqual(mockResults);
   });
 });
-
