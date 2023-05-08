@@ -44,7 +44,7 @@ export const CaseList = () => {
     setIsLoading(true);
     Api.list('/cases', {
       chapter,
-      professional_id: user.id,
+      professional_id: user.id === 0 ? '' : user.id,
     }).then((res) => {
       setCaseList(res as CaseListResponseData);
       setIsLoading(false);
