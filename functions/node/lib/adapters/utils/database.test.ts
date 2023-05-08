@@ -68,15 +68,7 @@ describe('Test connecting and running a query on mssql database', () => {
     expect(1).toBe(1);
 
     /*
-    const mockConnectionPool = new mssql.ConnectionPool({
-      user: 'myuser',
-      password: 'mypassword',
-      server: 'myserver.database.windows.net',
-      database: 'mydatabase',
-      options: {
-        encrypt: true,
-      },
-    });
+    const mockConnectionPool = new mssql.ConnectionPool({});
 
     jest.mock('mssql', () => ({
       ConnectionPool: mockConnectionPool,
