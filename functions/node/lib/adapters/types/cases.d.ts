@@ -14,3 +14,35 @@ export type CaseListDbResult = {
   count: number;
   body: CaseListRecordSet;
 };
+
+export type caseType = {
+  currentCaseChapter: string;
+  caseNumber: string;
+  debtor1Name: string;
+  currentChapterFileDate: number;
+  staff1ProfName: string;
+  staff1ProfTypeDescription: string;
+  staff2ProfName: string;
+  staff2ProfTypeDescription: string;
+  hearingDate: number;
+  hearingTime: number;
+  hearingCode: string;
+  hearingDisposition: string;
+  //hearingDescription: string;
+};
+
+export type caseTypeWithDescription = {
+  currentCaseChapter: string;
+  caseNumber: string;
+  debtor1Name: string;
+  currentChapterFileDate: number;
+  staff1ProfName: string;
+  staff1ProfTypeDescription: string;
+  staff2ProfName: string;
+  staff2ProfTypeDescription: string;
+  hearingDate: number;
+  hearingTime: number;
+  hearingCode: string;
+  hearingDisposition: string;
+  hearingDescription: string;
+};
