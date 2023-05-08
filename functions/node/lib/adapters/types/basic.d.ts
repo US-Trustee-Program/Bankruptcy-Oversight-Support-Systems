@@ -18,6 +18,7 @@ export type AppConfig = {
   dbMock: boolean;
   dbConfig: IDbConfig;
   server: ServerType;
+  get: Function;
 };
 
 export type ObjectKeyVal = {

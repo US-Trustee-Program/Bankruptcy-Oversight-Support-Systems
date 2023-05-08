@@ -18,6 +18,11 @@ const config: AppConfig = {
   dbMock,
   dbConfig,
   server: SERVER,
+  get: (prop: string) => {
+    if (config.hasOwnProperty(prop)) {
+      return config[prop];
+    }
+  }
 };
 
 export default config;

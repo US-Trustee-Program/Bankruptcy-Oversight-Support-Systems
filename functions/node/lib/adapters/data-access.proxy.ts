@@ -23,8 +23,7 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
  * @returns An object of type PersistenceGateway
  */
 async function proxyData(context: Context, table: string, mock: boolean = false): Promise<PersistenceGateway | object> {
-  let database: PersistenceGateway;
-  if (config.dbMock || mock) {
+  if (config.get('dbMock') || mock) {
     log.info(context, NAMESPACE, 'using local in-memory database');
     return await import(`./gateways/${table}.local.inmemory.gateway`);
   } else {

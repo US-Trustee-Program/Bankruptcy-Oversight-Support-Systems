@@ -26,7 +26,7 @@ const dbConfig: IDbConfig = {
 if (process.env.AZURE_MANAGED_IDENTITY.length < 1 && process.env.MSSQL_PASS.length > 0) {
   dbConfig.password = process.env.MSSQL_PASS;
   dbConfig.authentication.type = 'default';
-} else if (process.env.DATABASE_MOCK) {
+} else if (process.env.DATABASE_MOCK?.toLowerCase() === 'true') {
   dbConfig.authentication.type = 'mock';
 } else {
   throw Error('No Database authentication type specified');

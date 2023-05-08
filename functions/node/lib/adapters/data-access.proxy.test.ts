@@ -1,45 +1,70 @@
 const context = require('azure-function-context-mock');
 import proxyData from './data-access.proxy';
-import * as inMemGateway from './gateways/users.local.inmemory.gateway';
-import * as mssqlGateway from './gateways/users.azure.sql.gateway';
-import { PersistenceGateway } from './types/persistence-gateway';
 
-jest.mock('./gateways/users.local.inmemory.gateway', () => {
+jest.mock('./gateways/cases.local.inmemory.gateway', () => {
   return {
     getCaseList: jest.fn(() => { return 'in-memory-test' })
   }
 })
 
-jest.mock('./gateways/users.azure.sql.gateway', () => {
+jest.mock('./gateways/cases.azure.sql.gateway', () => {
   return {
     getCaseList: jest.fn(() => { return 'azure-sql-test' })
   }
 })
 
-jest.mock('')
+let dbMock = false;
 
-test('Data Access Proxy loads local inmemory database when config.dbMock is set to true', async () => {
-  expect(1).toBe(1);
-  /*
-  // config.dbMock should be set to true for all tests but we'll force it just for the purposes of this test.
-  jest.mock('../configs/index', () => {
-    return {
-      dbMock: true
+jest.mock('../configs/index', () => {
+  // Require the original module!
+  const originalConfig = jest.requireActual('../configs/index');
+
+  return {
+    __esModule: true, // for esModules
+    default: {
+      get: jest.fn((key: string) => {
+        console.log('running mock get...');
+        // override result conditionally on input arguments
+        if (key === 'dbMock') return dbMock;
+        // otherwise return using original behavior
+        return originalConfig.default.get(key);
+      })
     }
+  };
+});
+
+describe('Testing Data Access Proxy loader', () => {
+  test('Data Access Proxy loads local inmemory database when config.dbMock is set to true', async () => {
+    // config.dbMock should be set to true for all tests but we'll force it just for the purposes of this test.
+    dbMock = true;
+
+    type ProxyGateway = {
+      getCaseList: Function,
+      getCase: Function,
+      createCase: Function,
+      updateCase: Function,
+      deleteCase: Function,
+    }
+
+    let result: ProxyGateway = await proxyData(context, 'cases') as ProxyGateway
+
+    expect(result.getCaseList()).toBe('in-memory-test');
   })
 
-  type ProxyGateway = {
-    getCaseList: Function,
-    getCase: Function,
-    createCase: Function,
-    updateCase: Function,
-    deleteCase: Function,
-  }
+  test('Data Access Proxy loads azure mssql database when config.dbMock is set to false', async () => {
+    // config.dbMock should be set to true for all tests but we'll force it just for the purposes of this test.
+    dbMock = false;
 
-  console.log('========== BEGINNING PROXY TEST ==============')
-  let result: ProxyGateway = await proxyData(context, 'cases') as ProxyGateway
-  let foo = result.getCaseList();
+    type ProxyGateway = {
+      getCaseList: Function,
+      getCase: Function,
+      createCase: Function,
+      updateCase: Function,
+      deleteCase: Function,
+    }
 
-  //expect(result.getCaseList()).toBe('in-memory-test');
-  */
-})
+    let result: ProxyGateway = await proxyData(context, 'cases') as ProxyGateway
+
+    expect(result.getCaseList()).toBe('azure-sql-test');
+  })
+});

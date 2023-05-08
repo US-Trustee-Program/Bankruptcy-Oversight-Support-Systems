@@ -4,14 +4,10 @@ export default class log {
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
     logType = logType.toLowerCase();
 
-    if (!['info', 'warn', 'error', 'debug'].includes(logType)) {
-        throw new Error(`Log type ${logType} must be 'info', 'warn', 'error', or 'debug'`);
-    }
-
     if (data) {
         context.log(`[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`);
     } else {
-        context.log(`[${logType.toUpperCase}] [${namespace}] ${message}`);
+        context.log(`[${logType.toUpperCase()}] [${namespace}] ${message}`);
     }
   }
 
