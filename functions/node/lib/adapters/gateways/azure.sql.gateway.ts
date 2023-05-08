@@ -175,5 +175,7 @@ function generatePresentationRecord(context: Context, table: string, id: string 
 
   return resultObj;
 }
+/**/
 
 export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
+//export { getAll, getRecord };

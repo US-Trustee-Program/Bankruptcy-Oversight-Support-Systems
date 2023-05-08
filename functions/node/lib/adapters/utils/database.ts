@@ -7,7 +7,7 @@ import config from '../../configs/index';
 
 const NAMESPACE = 'DATABASE-UTILITY';
 
-function validateTableName(tableName: string) {
+export function validateTableName(tableName: string) {
   return tableName.match(/^[a-z]+[a-z0-9]*$/i);
 }
 

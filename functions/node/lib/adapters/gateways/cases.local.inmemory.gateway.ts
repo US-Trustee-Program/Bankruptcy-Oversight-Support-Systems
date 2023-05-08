@@ -4,7 +4,7 @@ import { Context } from '../types/basic';
 import { RecordObj } from '../types/basic';
 import { DbResult, QueryResults } from '../types/database';
 import { CaseListRecordSet } from '../types/cases';
-import { validateTableName, runQuery } from './local.inmemory.gateway';
+import { runQuery } from './local.inmemory.gateway';
 import { getRecord, createRecord, updateRecord, deleteRecord } from './local.inmemory.gateway';
 
 const NAMESPACE = 'CASES-LOCAL-INMEMORY-DB-GATEWAY';
@@ -77,6 +77,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   return results;
 };
 
+/*
 const getCase = async (context: Context, id: number): Promise<DbResult> => {
   return await getRecord(context, table, id);
 };
@@ -94,3 +95,6 @@ const deleteCase = async (context: Context, id: number): Promise<DbResult> => {
 };
 
 export { getCaseList, getCase, createCase, updateCase, deleteCase };
+*/
+
+export { getCaseList };
