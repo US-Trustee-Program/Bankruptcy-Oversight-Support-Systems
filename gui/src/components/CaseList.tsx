@@ -137,7 +137,7 @@ export const CaseList = () => {
                     <td>{chapterDateStr}</td>
                     <td>{theCase.hearingCode}</td>
                     <td>{hearingDateTimeStr}</td>
-                    <td>{theCase.hearingDescription}</td>
+                    <td>{theCase.hearingDisposition}</td>
                     <td>{theCase.staff1ProfName}</td>
                     <td>{theCase.staff2ProfName}</td>
                   </tr>
