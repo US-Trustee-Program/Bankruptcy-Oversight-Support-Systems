@@ -28,6 +28,7 @@
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
     "start": "func start",
+    "start:dev": "nodemon --esm src/server.ts",
     "test": "DATABASE_MOCK='true' jest",
     "coverage": "DATABASE_MOCK='true' jest --coverage"
   }

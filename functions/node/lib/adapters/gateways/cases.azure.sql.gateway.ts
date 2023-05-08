@@ -5,6 +5,8 @@ import { runQuery } from '../utils/database';
 import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
+import {ReviewCodeDescription} from "../utils/LookUps";
+import {caseType, caseTypeWithDescription} from "../types/cases";
 
 const table = 'cases';
 
@@ -65,7 +67,13 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   const queryResult: QueryResults = await runQuery(context, table, query, input);
   let results: DbResult;
 
+
+
   if (queryResult.success) {
+
+    log.debug(context, NAMESPACE, "About to call the updateReviewDescription");
+
+    await updateReviewDescription(queryResult.results["recordset"]);
     const body = { staff1Label: '', staff2Label: '', caseList: {} }
     body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
     const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
@@ -83,9 +91,19 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
       body: {},
     };
   }
-
   return results;
 };
+
+async function updateReviewDescription(results: void | Object) {
+  console.log("Start printing the queryResults object..");
+    let reviewDescriptionMapper = new ReviewCodeDescription();
+    let caseResults = results as Array<caseType>;
+
+    caseResults.forEach(function(caseTy){
+      var d = caseTy.hearingDisposition;
+      caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
+    });
+}
 
 const getCase = async (context: Context, id: number): Promise<DbResult> => {
   return await getRecord(context, table, id);
