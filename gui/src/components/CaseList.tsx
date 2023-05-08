@@ -44,7 +44,7 @@ export const CaseList = () => {
     setIsLoading(true);
     Api.list('/cases', {
       chapter,
-      professional_id: user.id,
+      professional_id: user.id === 0 ? '' : user.id,
     }).then((res) => {
       setCaseList(res as CaseListResponseData);
       setIsLoading(false);
@@ -137,7 +137,7 @@ export const CaseList = () => {
                     <td>{chapterDateStr}</td>
                     <td>{theCase.hearingCode}</td>
                     <td>{hearingDateTimeStr}</td>
-                    <td>{theCase.hearingDescription}</td>
+                    <td>{theCase.hearingDisposition}</td>
                     <td>{theCase.staff1ProfName}</td>
                     <td>{theCase.staff2ProfName}</td>
                   </tr>
