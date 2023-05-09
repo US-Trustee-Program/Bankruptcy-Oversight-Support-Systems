@@ -1,6 +1,5 @@
 import { RecordObj } from '../adapters/types/basic';
 import { CasePersistenceGateway, UserPersistenceGateway } from '../adapters/types/persistence-gateway';
-import { ObjectKeyVal } from '../../../../gui/src/models/api';
 
 async function login(database: UserPersistenceGateway, userName: {firstName: string, lastName: string}) {
   return await database.login(userName);
