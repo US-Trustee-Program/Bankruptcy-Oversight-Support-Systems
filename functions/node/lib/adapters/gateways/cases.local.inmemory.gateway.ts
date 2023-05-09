@@ -1,7 +1,6 @@
 import log from '../services/logger.service';
 import { caseListMockData, getProperty } from '../../testing/mock-data/';
 import { Context } from '../types/basic';
-import { RecordObj } from '../types/basic';
 import { DbResult, QueryResults } from '../types/database';
 import { CaseListRecordSet } from '../types/cases';
 import { runQuery } from './local.inmemory.gateway';

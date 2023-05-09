@@ -64,6 +64,7 @@ const getRecord = async (context: Context, table: string, id: number): Promise<D
   return results;
 };
 
+/*
 const createRecord = async (context: Context, table: string, fieldArr: RecordObj[]): Promise<DbResult> => {
   let fieldNameArr: string[] = [];
   let fieldValueArr: string[] = [];
@@ -175,7 +176,7 @@ function generatePresentationRecord(context: Context, table: string, id: string 
 
   return resultObj;
 }
+export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
 /**/
 
-export { createRecord, getAll, getRecord, updateRecord, deleteRecord };
-//export { getAll, getRecord };
+export { getAll, getRecord };
