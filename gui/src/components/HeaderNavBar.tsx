@@ -8,13 +8,13 @@ export const HeaderNavBar = () => {
       <header role="banner" className="boss-header usa-header usa-header--basic">
         <div className="usa-banner">
           <img
-            src="doj-logo.svg"
+            src="doj-logo.png"
             alt="U.S. Trustee Program banner"
             className="doj-logo usa-banner__header"
           ></img>
           <div className="site-title">
             U.S. Trustee Program
-            <span className="sub-title">Bankruptcy Oversight Support System</span>
+            <span className="sub-title">Case Management System (CAMS)</span>
           </div>
           <nav className="nav-bar" role="navigation" aria-label="main-navigation">
             <NavLink to="/cases">Cases</NavLink>
