@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appName": {
+      "value": ""
+    },
+    "location": {
+      "value": ""
+    },
+    "deployVnet": {
+      "value": false
+    },
+    "createVnet": {
+      "value": false
+    },
+    "vnetAddressPrefix": {
+      "value": []
+    },
+    "deployNetwork": {
+      "value": false
+    },
+    "networkResourceGroupName": {
+      "value": ""
+    },
+    "virtualNetworkName": {
+      "value": ""
+    },
+    "linkVnetIds": {
+      "value": []
+    },
+    "deployWebapp": {
+      "value": false
+    },
+    "webappName": {
+      "value": ""
+    },
+    "webappResourceGroupName": {
+      "value": ""
+    },
+    "webappSubnetName": {
+      "value": ""
+    },
+    "webappSubnetAddressPrefix": {
+      "value": ""
+    },
+    "webappPrivateEndpointSubnetName": {
+      "value": ""
+    },
+    "webappPrivateEndpointSubnetAddressPrefix": {
+      "value": ""
+    },
+    "webappPlanName": {
+      "value": ""
+    },
+    "deployFunctions": {
+      "value": false
+    },
+    "apiName": {
+      "value": ""
+    },
+    "apiFunctionsResourceGroupName": {
+      "value": ""
+    },
+    "apiFunctionsSubnetName": {
+      "value": ""
+    },
+    "apiFunctionsSubnetAddressPrefix": {
+      "value": ""
+    },
+    "apiPrivateEndpointSubnetName": {
+      "value": ""
+    },
+    "apiPrivateEndpointSubnetAddressPrefix": {
+      "value": ""
+    },
+    "apiPlanName": {
+      "value": ""
+    },
+    "privateDnsZoneName": {
+      "value": ""
+    },
+    "sqlServerName": {
+      "value": ""
+    },
+    "sqlServerResourceGroupName": {
+      "value": ""
+    }
+  }
+}

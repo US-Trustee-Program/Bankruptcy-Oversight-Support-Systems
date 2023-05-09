@@ -21,14 +21,12 @@ targetCompatibility = '17'
 compileJava.options.encoding = 'UTF-8'
 
 repositories {
-    mavenCentral()
+    jcenter()
 }
 
 azurefunctions {
     resourceGroup = 'bankruptcy-oversight-support-systems'
-    appName = 'ustp-boss-java-function'
-    pricingTier = 'Consumption'
-    region = 'eastus'
+    appName = 'ustp-cams-java-function'
     runtime {
         os = 'Linux'
         javaVersion = 'Java 17'
