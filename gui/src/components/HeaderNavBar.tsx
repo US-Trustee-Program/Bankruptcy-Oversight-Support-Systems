@@ -14,7 +14,7 @@ export const HeaderNavBar = () => {
           ></img>
           <div className="site-title">
             U.S. Trustee Program
-            <span className="sub-title">Case Management System (CAMS)</span>
+            <span className="sub-title">CAse Management System (CAMS)</span>
           </div>
           <nav className="nav-bar" role="navigation" aria-label="main-navigation">
             <NavLink to="/cases">Cases</NavLink>
