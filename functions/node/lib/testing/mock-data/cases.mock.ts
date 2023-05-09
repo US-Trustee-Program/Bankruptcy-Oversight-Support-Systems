@@ -42,7 +42,7 @@ const list = {
     },
     {
       caseDiv: 402,
-      staff1ProfCode: 'A2',
+      staff1ProfCode: 'A1',
       staff1ProfFirstName: "Donna               ",
       staff1ProfLastName: "Clayton                       ",
       staff1ProfType: "ST",
@@ -118,7 +118,7 @@ const list = {
     },
     {
       caseDiv: 406,
-      staff1ProfCode: 'A2',
+      staff1ProfCode: 'A1',
       staff1ProfFirstName: "Donna               ",
       staff1ProfLastName: "Clayton                       ",
       staff1ProfType: "ST",
@@ -137,7 +137,7 @@ const list = {
     },
     {
       caseDiv: 407,
-      staff1ProfCode: 'A1',
+      staff1ProfCode: 'A2',
       staff1ProfFirstName: "Brian               ",
       staff1ProfLastName: "Jones                       ",
       staff1ProfType: "ST",
@@ -156,7 +156,7 @@ const list = {
     },
     {
       caseDiv: 408,
-      staff1ProfCode: 'A2',
+      staff1ProfCode: 'A3',
       staff1ProfFirstName: "Joe               ",
       staff1ProfLastName: "Jones                       ",
       staff1ProfType: "ST",

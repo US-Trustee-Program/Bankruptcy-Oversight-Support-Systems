@@ -69,7 +69,7 @@ describe('Standard case list tests without class mocks', () => {
     });
   });
 
-  test('A professional_id parameter of A1 should return 4 cases successfully', async () => {
+  test('A professional_id parameter of A1 should return 5 cases successfully', async () => {
     const request = {
       query: {
         professional_id: 'A1',
@@ -78,14 +78,14 @@ describe('Standard case list tests without class mocks', () => {
 
     await httpTrigger(context, request);
 
-    expect(context.res.body.count).toEqual(4);
+    expect(context.res.body.count).toEqual(5);
 
     context.res.body.body.caseList.forEach(obj => {
       expect(obj.staff1ProfCode).toEqual('A1');
     });
   });
 
-  test('A professional_id parameter of A2 should return 6 cases successfully', async () => {
+  test('A professional_id parameter of A2 should return 4 cases successfully', async () => {
     const request = {
       query: {
         professional_id: 'A2',
@@ -94,7 +94,7 @@ describe('Standard case list tests without class mocks', () => {
 
     await httpTrigger(context, request);
 
-    expect(context.res.body.count).toEqual(6);
+    expect(context.res.body.count).toEqual(4);
 
     context.res.body.body.caseList.forEach(obj => {
       expect(obj.staff1ProfCode).toEqual('A2');
