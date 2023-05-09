@@ -4,6 +4,7 @@ import { getProperty } from '../../testing/mock-data/';
 import * as dataUtils from '../utils/database';
 import * as db from './azure.sql.gateway';
 import * as mssql from 'mssql';
+import { RecordObj } from '../types/basic';
 
 const table = 'generic_test_data';
 
@@ -113,4 +114,63 @@ describe('Azure MSSQL database gateway tests', () => {
 
     expect(results).toEqual(mockResults);
   });
+
+  /*
+  test('Creating a record yields expected results', async () => {
+    const fields: RecordObj[] = [
+      {
+        fieldName: 'generic_test_data_id',
+        fieldValue: 10,
+      },
+      {
+        fieldName: 'b',
+        fieldValue: 11,
+      },
+      {
+        fieldName: 'c',
+        fieldValue: 12,
+      },
+    ];
+
+    const mockRecord = {
+      generic_test_data_id: 10,
+      b: 11,
+      c: 12,
+    };
+
+    const list = await getProperty(table, 'list');
+
+    const mockDbResult = {
+      rowsAffected: [1],
+      recordset: list,
+      output: {},
+    }
+
+    const mockResults: DbResult = {
+      success: true,
+      message: `${table} list`,
+      count: list.length + 1,
+      body: list
+    };
+
+    runQueryMock.mockImplementation(() => Promise.resolve({
+      success: true,
+      results: mockDbResult,
+      message: 'Test Query',
+    }));
+
+    await db.createRecord(context, table, fields);
+    const results = await db.getAll(context, table);
+
+    expect(results).toEqual(mockResults);
+
+    const newRecord = list.filter(rec => (rec.generic_test_data_id === 10));
+    expect(newRecord).toEqual([{
+      generic_test_data_id: 10,
+      b: 11,
+      c: 12,
+    }]);
+  });
+  */
+
 });
