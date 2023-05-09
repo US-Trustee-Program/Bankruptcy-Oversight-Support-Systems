@@ -5,7 +5,6 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "route": "cases/{id:int?}",
       "methods": [
         "get"
       ]
@@ -16,5 +15,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/cases/cases.function.js"
+  "scriptFile": "../dist/healthcheck/healthcheck.function.js"
 }
