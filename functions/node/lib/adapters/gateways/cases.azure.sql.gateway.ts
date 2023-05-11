@@ -1,8 +1,6 @@
 import * as mssql from 'mssql';
-import { RecordObj } from '../types/basic';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
 import { runQuery } from '../utils/database';
-//import { getRecord, createRecord, updateRecord, deleteRecord } from './azure.sql.gateway';
 import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
@@ -115,21 +113,5 @@ async function updateReviewDescription(results: void | Object) {
 const getCase = async (context: Context, id: number): Promise<DbResult> => {
   return await getRecord(context, table, id);
 };
-
-/*
-const createCase = async (context: Context, fieldArr: RecordObj[]): Promise<DbResult> => {
-  return await createRecord(context, table, fieldArr);
-};
-
-const updateCase = async (context: Context, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
-  return await updateRecord(context, table, id, fieldArr);
-};
-
-const deleteCase = async (context: Context, id: number): Promise<DbResult> => {
-  return await deleteRecord(context, table, id);
-};
-
-export { getCaseList, getCase, createCase, updateCase, deleteCase };
-*/
 
 export { getCaseList, getCase };
