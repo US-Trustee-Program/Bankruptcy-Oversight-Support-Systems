@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/store';
 import Api, { CaseListResponseData } from '../models/api';
 import './CaseList.scss';
+import Pa11yApi from '../models/pa11y.api';
 
 type caseType = {
   caseNumber: string;
@@ -20,6 +21,7 @@ type caseType = {
 };
 
 export const CaseList = () => {
+  const api = process.env['REACT_APP_PA11Y'] ? Pa11yApi : Api;
   const user = useAppSelector((state) => state.user.user);
   const [caseList, setCaseList] = useState<CaseListResponseData>({
     message: '',
@@ -42,13 +44,15 @@ export const CaseList = () => {
 
   const fetchList = async () => {
     setIsLoading(true);
-    Api.list('/cases', {
-      chapter,
-      professional_id: user.id === 0 ? '' : user.id,
-    }).then((res) => {
-      setCaseList(res as CaseListResponseData);
-      setIsLoading(false);
-    });
+    api
+      .list('/cases', {
+        chapter,
+        professional_id: user.id === 0 ? '' : user.id,
+      })
+      .then((res) => {
+        setCaseList(res as CaseListResponseData);
+        setIsLoading(false);
+      });
   };
 
   useEffect(() => {
