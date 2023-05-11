@@ -1,3 +1,4 @@
 {
-  "urls": ["http://localhost:3000/", "http://localhost:3000/cases"]
+  "urls": ["http://localhost:3000/", "http://localhost:3000/cases"],
+  "standard": "WCAG2AA"
 }
