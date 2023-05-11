@@ -52,6 +52,7 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
     stackName: appName
     virtualNetworkName: virtualNetworkName
     linkVnetIds: linkVnetIds
+    privateDnsZoneName: privateDnsZoneName
   }
 }
 
@@ -97,7 +98,7 @@ module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams
     functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
     privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
-    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
