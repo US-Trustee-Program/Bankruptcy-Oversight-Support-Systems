@@ -1,4 +1,4 @@
-import Api, { ObjectKeyVal, ResponseData } from './api';
+import Api, { ResponseData } from './api';
 
 export default class Pa11yApi extends Api {
   public static async list(path: string): Promise<ResponseData> {
