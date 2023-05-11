@@ -1,7 +1,6 @@
 import log from '../services/logger.service';
 import { caseListMockData, getProperty } from '../../testing/mock-data/';
 import { Context } from '../types/basic';
-import { RecordObj } from '../types/basic';
 import { DbResult, QueryResults } from '../types/database';
 import { CaseListRecordSet } from '../types/cases';
 import { runQuery } from './local.inmemory.gateway';
@@ -33,7 +32,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 
   log.info(context, NAMESPACE, `${caseOptions.chapter} ${caseOptions.professionalId}`);
 
-  if (caseOptions.chapter.length > 0) {
+  if (caseOptions.chapter && caseOptions.chapter.length > 0) {
     input.push(
       {
         name: 'currentCaseChapter',
@@ -41,7 +40,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
       },
     );
   }
-  if (caseOptions.professionalId.length > 0) {
+  if (caseOptions.professionalId && caseOptions.professionalId.length > 0) {
     input.push(
       {
         name: 'staff1ProfCode|staff2ProfCode',
@@ -56,8 +55,10 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   if (queryResult.success) {
     log.info(context, NAMESPACE, 'Case List DB query successful');
     const body = { staff1Label: '', staff2Label: '', caseList: {} }
-    body.caseList = queryResult.results as Object;
-    const rowsAffected = (queryResult.results as Array<{}>).length;
+    // limit results to 20 records, as we are doing in the MSSQL database to temporarily prevent large result sets.
+    let dbResults = (Array.isArray(queryResult.results)) ? [...queryResult.results].splice(0, 20) : queryResult.results;
+    body.caseList = dbResults as Object;
+    const rowsAffected = (dbResults as Array<{}>).length;
     results = {
       success: true,
       message: `${table} list`,
@@ -76,25 +77,5 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 
   return results;
 };
-
-/*
-const getCase = async (context: Context, id: number): Promise<DbResult> => {
-  return await getRecord(context, table, id);
-};
-
-const createCase = async (context: Context, fieldArr: RecordObj[]): Promise<DbResult> => {
-  return await createRecord(context, table, fieldArr);
-};
-
-const updateCase = async (context: Context, id: number, fieldArr: RecordObj[]): Promise<DbResult> => {
-  return await updateRecord(context, table, id, fieldArr);
-};
-
-const deleteCase = async (context: Context, id: number): Promise<DbResult> => {
-  return await deleteRecord(context, table, id);
-};
-
-export { getCaseList, getCase, createCase, updateCase, deleteCase };
-*/
 
 export { getCaseList };

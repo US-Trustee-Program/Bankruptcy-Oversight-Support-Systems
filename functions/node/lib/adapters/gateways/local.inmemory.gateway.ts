@@ -1,5 +1,5 @@
 import log from '../services/logger.service';
-import { Context, ObjectKeyVal, ObjectKeyValArrayKeyVal, RecordObj } from '../types/basic.js';
+import { Context, ObjectKeyVal, RecordObj } from '../types/basic.js';
 import { DbResult, QueryResults } from '../types/database.js';
 import { getProperty, mockData } from '../../testing/mock-data/';
 

@@ -10,7 +10,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env = env
   })
 
-  test('Config is setup with default database authentication if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is not empty', async () => {
+  test('Should setup Config with default database authentication if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is not empty', async () => {
     process.env.AZURE_MANAGED_IDENTITY = '';
     process.env.MSSQL_PASS = 'abcdefg';
 
@@ -18,7 +18,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     expect(dbConfig.default.authentication.type).toEqual('default');
   });
 
-  test('Config is setup with database mock if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is 0 length and DATABASE_MOCK environment variable is set', async () => {
+  test('Should setup Config with database mock if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is 0 length and DATABASE_MOCK environment variable is set', async () => {
     process.env.AZURE_MANAGED_IDENTITY = '';
     process.env.MSSQL_PASS = '';
     process.env.DATABASE_MOCK = 'true';
@@ -27,7 +27,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     expect(dbConfig.default.authentication.type).toEqual('mock');
   });
 
-  test('Config throws Error if AZURE_MANAGED_IDENTITY is 0 length, MSSQL_PASS is 0 length and DATABASE_MOCK environment variable is false', async () => {
+  test('Should throw Error if setting up Config and AZURE_MANAGED_IDENTITY is 0 length, MSSQL_PASS is 0 length and DATABASE_MOCK environment variable is false', async () => {
     process.env.AZURE_MANAGED_IDENTITY = '';
     process.env.MSSQL_PASS = '';
     process.env.DATABASE_MOCK = 'false';

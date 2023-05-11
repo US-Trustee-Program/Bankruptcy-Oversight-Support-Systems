@@ -10,7 +10,7 @@ const table = 'users';
 const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
 
 describe('Azure MSSQL database gateway tests specificaly for the Users table', () => {
-  test('Test users login method', async () => {
+  test('Should return a user record when users First Name and Last Name are provided', async () => {
     const list = await getProperty(table, 'list');
 
     const mockDbResult = {
@@ -43,7 +43,7 @@ describe('Azure MSSQL database gateway tests specificaly for the Users table', (
     expect(results).toEqual(mockResults);
   });
 
-  test('Users login method returns an invalid result - failed query', async () => {
+  test('Should return an error message and an unsuccessful result (failed query) when an invalid first name and last name are provided', async () => {
     runQueryMock.mockImplementation(() => Promise.resolve({
       success: false,
       results: {},

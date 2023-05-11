@@ -27,7 +27,7 @@ describe('Mocking UsersController to get error handling', () => {
   /* will need to mock usersController.getUser() to throw an error so that we can cover
     the error case
   */
-  test('If usersController.getUser() throws an error, then the error should be properly handled', async () => {
+  test('error should be properly handled if usersController.getUser() throws an error', async () => {
     const request = {
       query: {
         first_name: 'Test',

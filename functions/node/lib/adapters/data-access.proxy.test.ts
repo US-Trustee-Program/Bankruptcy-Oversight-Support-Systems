@@ -34,7 +34,7 @@ jest.mock('../configs/index', () => {
 });
 
 describe('Testing Data Access Proxy loader', () => {
-  test('Data Access Proxy loads local inmemory database when config.dbMock is set to true', async () => {
+  test('Data Access Proxy should load local inmemory database when config.dbMock is set to true', async () => {
     // config.dbMock should be set to true for all tests but we'll force it just for the purposes of this test.
     dbMock = true;
 
@@ -51,7 +51,7 @@ describe('Testing Data Access Proxy loader', () => {
     expect(result.getCaseList()).toBe('in-memory-test');
   })
 
-  test('Data Access Proxy loads azure mssql database when config.dbMock is set to false', async () => {
+  test('Data Access Proxy should load azure mssql database when config.dbMock is set to false', async () => {
     // config.dbMock should be set to true for all tests but we'll force it just for the purposes of this test.
     dbMock = false;
 

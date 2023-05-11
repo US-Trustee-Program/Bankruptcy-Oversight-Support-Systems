@@ -10,6 +10,7 @@ module.exports = {
     "dist/",
     "coverage/",
     "lib/adapters/types/",
+    "lib/testing/mock-data/",
     "jest.config.js",
   ]
 };
