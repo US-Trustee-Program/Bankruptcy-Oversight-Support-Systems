@@ -1,7 +1,7 @@
 import Api, { ObjectKeyVal, ResponseData } from './api';
 
 export default class Pa11yApi extends Api {
-  public static async list(path: string, options: ObjectKeyVal): Promise<ResponseData> {
+  public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;
     switch (path) {
       case '/cases':
