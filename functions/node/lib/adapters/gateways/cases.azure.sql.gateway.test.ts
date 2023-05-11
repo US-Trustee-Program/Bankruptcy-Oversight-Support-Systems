@@ -20,12 +20,14 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
     list = null;
   })
 
-  test('Fetching all records from Cases table returns 10 results', async () => {
+  test('Should return a maximum of 20 results when fetching all records from Cases table', async () => {
     const mockDbResult = {
-      rowsAffected: [10],
-      recordset: list.caseList,
+      rowsAffected: [20],
+      recordset: [...list.caseList].splice(0, 20),
       output: {},
     }
+
+    let truncatedList = [...list.caseList].splice(0, 20);
 
     // create a jest spy to mock the query method of ConnectionPool
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
@@ -42,11 +44,11 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
     const mockResults: DbResult = {
       success: true,
       message: `${table} list`,
-      count: list.caseList.length,
+      count: truncatedList.length,
       body: {
         staff1Label: '',
         staff2Label: '',
-        caseList: list.caseList,
+        caseList: truncatedList,
       }
     };
 
@@ -55,7 +57,7 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching all chapter 11 records on Cases table returns 5 results', async () => {
+  test('Should return 5 results when fetching all chapter 11 records on Cases table', async () => {
     const filteredList = list.caseList.filter((rec) => (rec.currentCaseChapter === '11'));
 
     const mockDbResult = {
@@ -92,7 +94,7 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching all records with specific professional name on Cases table returns 5 results', async () => {
+  test('Should return 5 results when fetching all records with specific professional name on Cases table', async () => {
     const filteredList = list.caseList.filter((rec) => (
       rec.staff1ProfFirstName.includes('Donna') &&
       rec.staff1ProfLastName.includes('Clayton')
@@ -132,7 +134,7 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching all records on a given table with an invalid result from database returns 0 results and a message', async () => {
+  test('Should return 0 results and an error message when fetching all records on a given table with an invalid result from database', async () => {
     runQueryMock.mockImplementation(() => Promise.resolve({
       success: false,
       results: {},

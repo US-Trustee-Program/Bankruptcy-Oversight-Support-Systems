@@ -17,7 +17,7 @@ describe('Local in-memory database gateway tests', () => {
     list = null;
   })
 
-  test('Fetching all records on a given table returns the expected results', async () => {
+  test('Should return all records when fetching all records on a given table', async () => {
     const mockResults: DbResult = {
       success: true,
       message: `${table} list`,
@@ -30,7 +30,7 @@ describe('Local in-memory database gateway tests', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching specific record on a given table returns 1 result', async () => {
+  test('Should return 1 result when fetching specific record on a given table', async () => {
     list = list.filter(rec => (rec.generic_test_data_id === 7));
 
     const mockResults: DbResult = {
@@ -45,7 +45,7 @@ describe('Local in-memory database gateway tests', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Creating a record returns expected result and adds one record to the database', async () => {
+  test('Should add one record to the database and returns expected result when creating a record', async () => {
     const fields: RecordObj[] = [
       {
         fieldName: 'generic_test_data_id',
@@ -81,7 +81,7 @@ describe('Local in-memory database gateway tests', () => {
     }]);
   });
 
-  test('Updating a record returns expected result and alters one record in the database', async () => {
+  test('Should alter 1 record in the database when Updating a record', async () => {
     const fields: RecordObj[] = [
       {
         fieldName: 'generic_test_data_id',
@@ -116,7 +116,7 @@ describe('Local in-memory database gateway tests', () => {
     expect((fullList.body as []).length).toEqual(list.length);
   });
 
-  test('Deleteing a record returns expected result and removes one record from the database', async () => {
+  test('Should remove 1 record from the dataset when Deleteing a record', async () => {
     const newList = list.filter(rec => (rec.generic_test_data_id != 7));
 
     const mockResults: DbResult = {

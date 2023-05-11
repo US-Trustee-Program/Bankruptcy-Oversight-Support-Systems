@@ -19,15 +19,15 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     list = null;
   })
 
-  test('Fetching all records on a given table returns 10 results', async () => {
+  test('Should return a maximum of 20 results when fetching all records from Cases table', async () => {
     const mockResults: DbResult = {
       success: true,
       message: `${table} list`,
-      count: list.caseList.length,
+      count: 20,
       body: {
         staff1Label: '',
         staff2Label: '',
-        caseList: list.caseList,
+        caseList: [...list.caseList].splice(0, 20),
       }
     };
 
@@ -36,7 +36,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching all chapter 11 records on a given table returns 5 results', async () => {
+  test('Should return 5 results when fetching all chapter 11 records on Cases table', async () => {
     const filteredList = list.caseList.filter((rec) => (rec.currentCaseChapter === '11'));
 
     const mockResults: DbResult = {
@@ -55,7 +55,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching all records on a given table with an invalid result from database returns 0 results and a message', async () => {
+  test('Should return 0 results and an error message when fetching all records on Cases table with an invalid result from database', async () => {
     runQueryMock.mockImplementation(() => Promise.resolve({
       success: false,
       results: {},
@@ -74,20 +74,4 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     expect(results).toEqual(mockResults);
   });
 
-  /*
-  test('Fetching specific case record returns 1 expected result', async () => {
-    const caseList = list.caseList.filter(rec => (rec.caseDiv === '407'));
-
-    const mockResults: DbResult = {
-      success: true,
-      message: `${table} record`,
-      count: 1,
-      body: list
-    };
-
-    const results = await db.getCase(context, '407');
-
-    expect(results).toEqual(mockResults);
-  });
-  */
 });

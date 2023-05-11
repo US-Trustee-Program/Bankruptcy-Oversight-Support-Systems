@@ -8,27 +8,28 @@ describe('Standard case list tests without class mocks', () => {
       query: {}
     };
 
-    await httpTrigger(context, request);
-
     const caseListRecords = await getProperty('cases', 'list');
+    const caseList = [...caseListRecords.caseList].splice(0, 20);
     const body = {
       staff1Label: "Trial Attorney",
       staff2Label: "Auditor",
-      caseList: caseListRecords.caseList,
+      caseList: caseList,
     };
 
     const responseBody = {
       "success": true,
       "message": "cases list",
-      "count": caseListRecords.caseList.length,
+      "count": caseList.length,
       "body": body,
     }
+
+    await httpTrigger(context, request);
 
     expect(context.res.body).toEqual(responseBody);
     expect(context.res.body.body.caseList.length).toEqual(body.caseList.length);
   });
 
-  test('An invalid chapter parameter should return 0 cases successfully', async () => {
+  test('Should return 0 cases successfully when an invalid chapter parameter is provided', async () => {
     const request = {
       query: {
         chapter: '00',
@@ -51,7 +52,7 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body).toEqual(responseBody);
   });
 
-  test('A chapter parameter of "11", should return 5 chapter 11 cases successfully', async () => {
+  test('Should return 5 chapter 11 cases successfully when a chapter parameter of "11" is supplied', async () => {
     const request = {
       query: {
         chapter: '11',
@@ -69,7 +70,7 @@ describe('Standard case list tests without class mocks', () => {
     });
   });
 
-  test('A professional_id parameter of A1 should return 5 cases successfully', async () => {
+  test('should return 5 cases successfully when a professional_id parameter of A1 is supplied', async () => {
     const request = {
       query: {
         professional_id: 'A1',
@@ -85,7 +86,7 @@ describe('Standard case list tests without class mocks', () => {
     });
   });
 
-  test('A professional_id parameter of A2 should return 4 cases successfully', async () => {
+  test('should return 4 cases successfully when a professional_id parameter of A2 is supplied', async () => {
     const request = {
       query: {
         professional_id: 'A2',
@@ -101,7 +102,7 @@ describe('Standard case list tests without class mocks', () => {
     });
   });
 
-  test('A professional_id parameter of B1 should return 3 cases successfully', async () => {
+  test('should return 3 cases successfully when a professional_id parameter of B1 is supplied', async () => {
     const request = {
       query: {
         professional_id: 'B1',
@@ -117,7 +118,7 @@ describe('Standard case list tests without class mocks', () => {
     });
   });
 
-  test('A professional_id parameter of B2 should return 7 cases successfully', async () => {
+  test('should return 7 cases successfully when a professional_id parameter of B2 is supplied', async () => {
     const request = {
       query: {
         professional_id: 'B2',
@@ -133,7 +134,7 @@ describe('Standard case list tests without class mocks', () => {
     });
   });
 
-  test('A professional_id parameter of B2 and chapter of 11 should return 4 cases successfully', async () => {
+  test('should return 4 cases successfully when a professional_id parameter of B2 and chapter of 11 are supplied', async () => {
     const request = {
       query: {
         chapter: '11',
@@ -146,7 +147,7 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body.count).toEqual(3);
   });
 
-  test('A body containing professional_id of B2 and chapter of 11 should return 4 cases successfully', async () => {
+  test('should return 4 cases successfully when a body containing professional_id of B2 and chapter of 11 are supplied', async () => {
     const request = {
       query: {},
       body: {
@@ -160,7 +161,7 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body.count).toEqual(3);
   });
 
-  test('A professional_id parameter of B2 and chapter of 7A should return 1 case successfully', async () => {
+  test('should return 1 case successfully when a professional_id parameter of B2 and chapter of 7A are supplied', async () => {
     const request = {
       query: {
         chapter: '7A',
@@ -173,35 +174,3 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body.count).toEqual(1);
   });
 });
-
-/*
-describe('getCase() test', () => {
-  test('Requesting a single specific case should return 1 case record', async () => {
-    const request = {
-      query: {
-        caseId: '403',
-      }
-    }
-
-    const caseListRecords = await getProperty('cases', 'list');
-    const body = {
-      caseList: caseListRecords.caseList,
-    };
-
-    const responseBody = {
-      "success": true,
-      "message": "cases list",
-      "count": caseListRecords.caseList.length,
-      "body": body,
-    }
-
-    const result = {
-
-    }
-
-    await httpTrigger(context, request);
-
-    expect(context.res.body).toEqual(result);
-  })
-});
-*/

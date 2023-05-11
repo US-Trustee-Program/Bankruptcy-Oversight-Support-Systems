@@ -4,14 +4,13 @@ import { getProperty } from '../../testing/mock-data/';
 import * as dataUtils from '../utils/database';
 import * as db from './azure.sql.gateway';
 import * as mssql from 'mssql';
-import { RecordObj } from '../types/basic';
 
 const table = 'generic_test_data';
 
 const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
 
 describe('Azure MSSQL database gateway tests', () => {
-  test('Fetching all records on a given table returns the expected results', async () => {
+  test('Should return all records when fetching all records on a given table', async () => {
     const list = await getProperty(table, 'list');
 
     const mockDbResult = {
@@ -44,7 +43,7 @@ describe('Azure MSSQL database gateway tests', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching 1 record on a given table returns the expected results', async () => {
+  test('Should return 1 records details when fetching 1 record on a given table', async () => {
     const list = await getProperty(table, 'list');
 
     const mockDbResult = {
@@ -77,7 +76,7 @@ describe('Azure MSSQL database gateway tests', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching all records with an invalid query returns 0 results and a message', async () => {
+  test('Should return 0 results when fetching all records with an invalid query', async () => {
     runQueryMock.mockImplementation(() => Promise.resolve({
       success: false,
       results: {},
@@ -96,7 +95,7 @@ describe('Azure MSSQL database gateway tests', () => {
     expect(results).toEqual(mockResults);
   });
 
-  test('Fetching 1 record with an invalid query returns 0 results and a message', async () => {
+  test('Should return 0 results when fetching 1 record with an invalid query', async () => {
     runQueryMock.mockImplementation(() => Promise.resolve({
       success: false,
       results: {},
@@ -114,63 +113,5 @@ describe('Azure MSSQL database gateway tests', () => {
 
     expect(results).toEqual(mockResults);
   });
-
-  /*
-  test('Creating a record yields expected results', async () => {
-    const fields: RecordObj[] = [
-      {
-        fieldName: 'generic_test_data_id',
-        fieldValue: 10,
-      },
-      {
-        fieldName: 'b',
-        fieldValue: 11,
-      },
-      {
-        fieldName: 'c',
-        fieldValue: 12,
-      },
-    ];
-
-    const mockRecord = {
-      generic_test_data_id: 10,
-      b: 11,
-      c: 12,
-    };
-
-    const list = await getProperty(table, 'list');
-
-    const mockDbResult = {
-      rowsAffected: [1],
-      recordset: list,
-      output: {},
-    }
-
-    const mockResults: DbResult = {
-      success: true,
-      message: `${table} list`,
-      count: list.length + 1,
-      body: list
-    };
-
-    runQueryMock.mockImplementation(() => Promise.resolve({
-      success: true,
-      results: mockDbResult,
-      message: 'Test Query',
-    }));
-
-    await db.createRecord(context, table, fields);
-    const results = await db.getAll(context, table);
-
-    expect(results).toEqual(mockResults);
-
-    const newRecord = list.filter(rec => (rec.generic_test_data_id === 10));
-    expect(newRecord).toEqual([{
-      generic_test_data_id: 10,
-      b: 11,
-      c: 12,
-    }]);
-  });
-  */
 
 });

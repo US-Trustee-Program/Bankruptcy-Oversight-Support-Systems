@@ -26,7 +26,7 @@ describe('Mocking CasesController to get error handling', () => {
   /* will need to mock casesController.getCaseList() to throw an error so that we can cover
     the error case
   */
-  test('If casesController.getCaseList() throws an error, then the error should be properly handled', async () => {
+  test('error should be properly handled if casesController.getCaseList() throws an error', async () => {
     const request = {
       query: {}
     };
