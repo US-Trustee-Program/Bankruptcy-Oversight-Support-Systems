@@ -81,11 +81,6 @@ jobs:
           export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
           npm run build --if-present
 
-      - name: Execute Test
-        run: CI=true npm test
-      - name: pa11y Test
-        run: npm run pa11y:ci
-
       - name: Package
         run: |
           mkdir artifacts
@@ -97,6 +92,36 @@ jobs:
           name: ${{ needs.Build-Info.outputs.webappName }}-build
           path: gui/artifacts/
           if-no-files-found: error
+
+  pa11y-test:
+    defaults:
+      run:
+        working-directory: gui
+
+    runs-on: ubuntu-20.04
+    needs: [ Build-Info ]
+    environment: ${{ needs.Build-Info.outputs.environment }}
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Execute pa11y Test
+        run: npm run pa11y:ci
 
   build-service:
     defaults:
