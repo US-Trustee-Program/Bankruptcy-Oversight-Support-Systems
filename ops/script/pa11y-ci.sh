@@ -1,9 +1,6 @@
 #!/bin/bash
 
-pwd
-pushd gui/
-pwd
-ls
+# In GitHub Actions this runs from the /gui directory
 npm run start:pa11y &
 npx wait-on http://localhost:3000
 popd
