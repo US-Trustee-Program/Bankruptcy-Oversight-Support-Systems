@@ -84,6 +84,11 @@ jobs:
       - name: Execute Test
         run: CI=true npm test
 
+      - name: pa11y Test
+        run: |
+          npm run start:pally
+          npm run pally:ci
+
       - name: Package
         run: |
           mkdir artifacts
