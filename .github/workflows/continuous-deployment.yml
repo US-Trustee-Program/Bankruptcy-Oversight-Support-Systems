@@ -86,7 +86,7 @@ jobs:
 
       - name: pa11y Test
         run: |
-          npm run start:pa11y
+          npm run start:pa11y & npx wait-on http://localhost:3000
           npm run pa11y:ci
 
       - name: Package
