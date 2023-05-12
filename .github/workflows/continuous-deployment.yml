@@ -86,8 +86,8 @@ jobs:
 
       - name: pa11y Test
         run: |
-          npm run start:pally
-          npm run pally:ci
+          npm run start:pa11y
+          npm run pa11y:ci
 
       - name: Package
         run: |
