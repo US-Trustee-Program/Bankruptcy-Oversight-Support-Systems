@@ -84,11 +84,7 @@ jobs:
       - name: Execute Test
         run: CI=true npm test
       - name: pa11y Test
-        run: |
-          npm run start:pa11y &
-          npx wait-on http://localhost:3000
-          npm run pa11y:ci
-          pkill -f "npm run start:pa11y"
+        run: ops/script/pa11y-ci.sh
 
       - name: Package
         run: |
