@@ -83,14 +83,12 @@ jobs:
 
       - name: Execute Test
         run: CI=true npm test
-      - name: Start React app in the background
-        run: npm run start:pa11y &
-      - name: Wait for React app to start
-        run: npx wait-on http://localhost:3000
       - name: pa11y Test
-        run: npm run pa11y:ci
-      - name: Clean up background process
-        run: pkill -f "npm run start:pa11y"
+        run: |
+          npm run start:pa11y &
+          npx wait-on http://localhost:3000
+          npm run pa11y:ci
+          pkill -f "npm run start:pa11y"
 
       - name: Package
         run: |
