@@ -84,7 +84,7 @@ jobs:
       - name: Execute Test
         run: CI=true npm test
       - name: pa11y Test
-        run: ../ops/script/pa11y-ci.sh
+        run: npm run pa11y:ci
 
       - name: Package
         run: |
