@@ -86,7 +86,9 @@ jobs:
       - name: pa11y Test
         run: |
           npm run start:pa11y & \
-          npx wait-on http://localhost:3000 \
+          timeout 120s \
+            sh -c 'until nc -z localhost 3000; do sleep 1; done' \
+          && sleep 120 \
           npm run pa11y:ci \
           pkill -f "npm run start:pa11y"
 
