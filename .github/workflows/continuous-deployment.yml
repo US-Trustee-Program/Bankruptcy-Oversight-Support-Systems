@@ -102,7 +102,7 @@ jobs:
       - name: Veracode Upload And Scan Frontend
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'CAMS'
+          appname: 'CAMS-Frontend'
           createprofile: false
           filepath: 'gui/scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip'
           vid: '${{ secrets.VERACODE_API_ID }}'
