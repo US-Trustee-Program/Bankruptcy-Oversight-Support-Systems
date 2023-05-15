@@ -88,6 +88,8 @@ jobs:
         run: |
           mkdir artifacts
           tar -cvf artifacts/${{ needs.Build-Info.outputs.webappName }}.tar ./build
+          mkdir scan
+          zip -r scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip ./build
 
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
@@ -101,7 +103,7 @@ jobs:
         with:
           appname: 'CAMS'
           createprofile: false
-          filepath: 'artifacts/${{ needs.Build-Info.outputs.webappName }}.tar'
+          filepath: 'scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip'
           vid: '${{ secrets.VERACODE_API_ID }}'
           vkey: '${{ secrets.VERACODE_API_KEY }}'
 
