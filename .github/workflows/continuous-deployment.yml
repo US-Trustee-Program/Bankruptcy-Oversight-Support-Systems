@@ -95,6 +95,15 @@ jobs:
           name: ${{ needs.Build-Info.outputs.webappName }}-build
           path: gui/artifacts/
           if-no-files-found: error
+      
+      - name: Veracode Upload And Scan Frontend
+        uses: veracode/veracode-uploadandscan-action@0.2.6
+        with:
+          appname: 'CAMS-Frontend'
+          createprofile: false
+          filepath: 'artifacts/${{ needs.Build-Info.outputs.webappName }}.tar'
+          vid: '${{ secrets.VERACODE_API_ID }}'
+          vkey: '${{ secrets.VERACODE_API_KEY }}'
 
   build-service:
     defaults:
@@ -129,6 +138,15 @@ jobs:
           name: ${{ needs.Build-Info.outputs.apiName }}-build
           path: functions/node/${{ needs.Build-Info.outputs.apiName }}.zip
           if-no-files-found: error
+      
+      - name: Veracode Upload And Scan Backend
+        uses: veracode/veracode-uploadandscan-action@0.2.6
+        with:
+          appname: 'CAMS-Backend'
+          createprofile: false
+          filepath: 'functions/node/${{ needs.Build-Info.outputs.apiName }}.zip'
+          vid: '${{ secrets.VERACODE_API_ID }}'
+          vkey: '${{ secrets.VERACODE_API_KEY }}'
 
   deploy:
     runs-on: ubuntu-latest
