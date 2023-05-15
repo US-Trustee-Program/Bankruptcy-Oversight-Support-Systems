@@ -1,15 +1,13 @@
 {
   "bindings": [
     {
-      "authLevel": "function",
+      "authLevel": "anonymous",
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
+      "route": "cases/{id:int?}",
       "methods": [
-        "get",
-        "post",
-        "put",
-        "delete"
+        "get"
       ]
     },
     {
@@ -18,5 +16,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/cases/index.js"
+  "scriptFile": "../dist/cases/cases.function.js"
 }

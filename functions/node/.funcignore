@@ -8,3 +8,8 @@ __queuestorage__
 local.settings.json
 test
 tsconfig.json
+*.zip
+README.md
+.env
+.eslint*
+*.test.*
