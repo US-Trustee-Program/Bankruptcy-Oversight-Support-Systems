@@ -90,6 +90,7 @@ jobs:
           sleep 45
           curl -I http://localhost:3000
           sleep 5
+          npm install -g pa11y-ci
           pa11y-ci http://localhost:3000
 
       - name: Package
