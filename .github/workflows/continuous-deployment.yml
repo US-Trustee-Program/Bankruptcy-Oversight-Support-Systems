@@ -99,7 +99,7 @@ jobs:
       - name: Veracode Upload And Scan Frontend
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'CAMS-Frontend'
+          appname: 'CAMS'
           createprofile: false
           filepath: 'artifacts/${{ needs.Build-Info.outputs.webappName }}.tar'
           vid: '${{ secrets.VERACODE_API_ID }}'
@@ -142,7 +142,7 @@ jobs:
       - name: Veracode Upload And Scan Backend
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'CAMS-Backend'
+          appname: 'CAMS'
           createprofile: false
           filepath: 'functions/node/${{ needs.Build-Info.outputs.apiName }}.zip'
           vid: '${{ secrets.VERACODE_API_ID }}'
