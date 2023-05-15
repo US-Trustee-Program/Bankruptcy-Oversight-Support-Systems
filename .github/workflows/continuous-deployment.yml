@@ -104,7 +104,7 @@ jobs:
         with:
           appname: 'CAMS'
           createprofile: false
-          filepath: 'scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip'
+          filepath: 'gui/scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip'
           vid: '${{ secrets.VERACODE_API_ID }}'
           vkey: '${{ secrets.VERACODE_API_KEY }}'
 
