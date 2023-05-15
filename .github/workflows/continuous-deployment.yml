@@ -86,11 +86,12 @@ jobs:
       - name: pa11y Test
         run: |
           npm run start:pa11y &
+          DEV_SERVER_PID=$!
           sleep 45
           curl -I http://localhost:3000
           sleep 5
           npm run pa11y:ci
-          pkill -f "npm run start:pa11y"
+          trap "kill $DEV_SERVER_PID" EXIT
 
       - name: Package
         run: |
