@@ -91,7 +91,9 @@ jobs:
           curl -I http://localhost:3000
           sleep 5
           npm run pa11y:ci
-          trap "kill $DEV_SERVER_PID" EXIT
+          sleep 5
+          echo "check if webapp is still up"
+          curl -I http://localhost:3000
 
       - name: Package
         run: |
