@@ -86,9 +86,9 @@ jobs:
       - name: pa11y Test
         run: |
           npm run start:pa11y &
-          timeout 30s
+          sleep 45
           curl -I http://localhost:3000
-          && sleep 30
+          sleep 5
           npm run pa11y:ci
           pkill -f "npm run start:pa11y"
 
