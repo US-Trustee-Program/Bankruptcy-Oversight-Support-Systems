@@ -90,6 +90,7 @@ jobs:
           tar -cvf artifacts/${{ needs.Build-Info.outputs.webappName }}.tar ./build
           mkdir scan
           zip -r scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip ./build
+          ls scan
 
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
