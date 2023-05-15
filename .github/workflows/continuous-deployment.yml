@@ -90,10 +90,7 @@ jobs:
           sleep 45
           curl -I http://localhost:3000
           sleep 5
-          npm run pa11y:ci
-          sleep 5
-          echo "check if webapp is still up"
-          curl -I http://localhost:3000
+          pa11y-ci http://localhost:3000
 
       - name: Package
         run: |
