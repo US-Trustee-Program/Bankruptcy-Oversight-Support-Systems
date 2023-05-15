@@ -33,7 +33,7 @@
     "test": "DATABASE_MOCK='true' jest",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
     "coverage": "DATABASE_MOCK='true' jest --coverage",
-    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H:%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' adapters cases configs use-cases users | dot -T svg > ../../architecture/dependency-cruiser/functions/dependency-graph_${current_time}.svg",
-    "dependency-cruiser-ci": "npx depcruise --output-type err-long adapters cases configs use-cases users"
+    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H:%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' cases healthcheck lib users | dot -T svg > ../../architecture/dependency-cruiser/functions/dependency-graph_${current_time}.svg",
+    "dependency-cruiser-ci": "npx depcruise --output-type err-long cases healthcheck lib users"
   }
 }
