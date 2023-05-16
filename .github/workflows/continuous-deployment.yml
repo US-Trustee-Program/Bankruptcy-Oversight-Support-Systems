@@ -124,6 +124,7 @@ jobs:
 
       - name: Run pa11y Test
         run: |
+          npm ci
           npm install pa11y-ci -g
           export REACT_APP_PA11Y=true
           npm run build
