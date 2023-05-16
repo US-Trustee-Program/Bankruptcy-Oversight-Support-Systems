@@ -83,17 +83,14 @@ jobs:
 
       - name: Execute Test
         run: CI=true npm test
-      - name: Get Timeout Help
-        run: timeout --help
       - name: pa11y Test
         run: |
           export REACT_APP_PA11Y=true
           npm run build
           npm install serve -g
           serve -s build &
-          timeout 240s
-            sh -c 'until nc -z localhost 3000; do sleep 1; done'
-          && sleep 240
+          timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'
+          && sleep 120
           && npm run pa11y:ci 2>&1 | tee pa11y_output.txt
 
       - name: Read pa11y_output file.
