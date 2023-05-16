@@ -88,7 +88,7 @@ while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
         echo ""
-        echo "USAGE: azure-deploy.sh -sw -g ustp-app-rg -f ../bicep/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
+        echo "USAGE: azure-deploy.sh -sw -g ustp-app-rg -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
         echo ""
         shift
         ;;

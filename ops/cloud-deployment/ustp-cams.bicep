@@ -56,7 +56,7 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
   }
 }
 
-module ustpWebapp './webapp-deploy.bicep' = if (deployWebapp) {
+module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
   params: {
@@ -84,7 +84,7 @@ var funcParams = [
     privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
   }
 ]
-module ustpFunctions './functions-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
+module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
