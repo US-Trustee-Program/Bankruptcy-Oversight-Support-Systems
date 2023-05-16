@@ -120,8 +120,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: gui/package-lock.json
 
-      - name: Install Chromium
-        run: apt-get update && apt-get install chromium
+      - uses: browser-actions/setup-chrome@v1
 
       - name: Run pa11y Test
         run: |
