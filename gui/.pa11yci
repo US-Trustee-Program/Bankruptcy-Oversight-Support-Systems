@@ -1,5 +1,10 @@
 {
   "defaults": {
+    "chromeLaunchConfig": {
+      "args": [
+        "--no-sandbox"
+      ]
+    },
     "timeout": 10000
   },
   "urls": ["https://google.com", "http://localhost:3000/", "http://localhost:3000/cases"],
