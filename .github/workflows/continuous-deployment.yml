@@ -111,7 +111,11 @@ jobs:
         node-version: [18.x]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Install chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Get source code
+        uses: actions/checkout@v3
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -120,25 +124,23 @@ jobs:
           cache: 'npm'
           cache-dependency-path: gui/package-lock.json
 
-      - uses: browser-actions/setup-chrome@v1
+      - name: Install Node dependencies
+        run: npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
         run: |
-          npm ci
-          npm install pa11y-ci -g
-          export REACT_APP_PA11Y=true
-          npm run build
-          npm install serve -g
-          serve -s build &
+          npm run start
           timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'
           # Check the exit status of the timeout command
           if [ $? -eq 0 ]; then
-            curl -I http://localhost:3000
+            echo "Starting pa11y accessibility test"
             pa11y-ci 2>&1 | tee pa11y_output.txt
           else
             echo "Timeout occurred. Pa11y test cannot be executed."
             exit 1
           fi
+
+          cat pa11y_output.txt
 
       - name: Read pa11y_output file.
         id: pa11y_output
@@ -147,7 +149,7 @@ jobs:
           path: ./pa11y_output.txt
 
       - name: verify that pa11y successfully scanned the site
-        if: contains(steps.pa11y_output.outputs.content, 'ailed to run')
+        if: contains(steps.pa11y_output.outputs.content, 'Failed to run')
         run: |
           echo "::error::Pa11y failed to run."
           exit 1
