@@ -150,10 +150,10 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
-          ./ops/script/azure-deploy.sh \
+          ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resourceGroup ${{ secrets.AZ_APP_RG }} \
-            --file ./ops/bicep/ustp-cams.bicep \
+            --file ./ops/cloud-deployment/ustp-cams.bicep \
             --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployFunctions=true apiFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
@@ -179,7 +179,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/script/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -198,4 +198,4 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Azure Functions backend
-        run: ./ops/script/az-func-deploy.sh -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
