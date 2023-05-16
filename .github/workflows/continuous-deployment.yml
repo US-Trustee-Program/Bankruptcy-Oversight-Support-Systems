@@ -98,7 +98,7 @@ jobs:
           name: ${{ needs.Build-Info.outputs.webappName }}-build
           path: gui/artifacts/
           if-no-files-found: error
-      
+
       - name: Veracode Upload And Scan Frontend
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
@@ -141,7 +141,7 @@ jobs:
           name: ${{ needs.Build-Info.outputs.apiName }}-build
           path: functions/node/${{ needs.Build-Info.outputs.apiName }}.zip
           if-no-files-found: error
-      
+
       - name: Veracode Upload And Scan Backend
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
