@@ -90,8 +90,13 @@ jobs:
           npm install serve -g
           serve -s build &
           timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'
-          sleep 120 \
-            && npm run pa11y:ci 2>&1 | tee pa11y_output.txt
+          # Check the exit status of the timeout command
+          if [ $? -eq 0 ]; then
+            npm run pa11y:ci 2>&1 | tee pa11y_output.txt
+          else
+            echo "Timeout occurred. Pa11y test cannot be executed."
+            exit 1
+          fi
 
       - name: Read pa11y_output file.
         id: pa11y_output
