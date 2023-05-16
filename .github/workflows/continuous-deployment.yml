@@ -83,6 +83,8 @@ jobs:
 
       - name: Execute Test
         run: CI=true npm test
+      - name: Get Timeout Help
+        run: timeout --help
       - name: pa11y Test
         run: |
           export REACT_APP_PA11Y=true
