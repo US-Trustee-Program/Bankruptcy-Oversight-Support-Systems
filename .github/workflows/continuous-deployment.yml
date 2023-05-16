@@ -92,6 +92,7 @@ jobs:
           timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'
           # Check the exit status of the timeout command
           if [ $? -eq 0 ]; then
+            curl -I http://localhost:3000
             npm run pa11y:ci 2>&1 | tee pa11y_output.txt
           else
             echo "Timeout occurred. Pa11y test cannot be executed."
