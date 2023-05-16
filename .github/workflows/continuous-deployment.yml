@@ -85,13 +85,23 @@ jobs:
         run: CI=true npm test
       - name: pa11y Test
         run: |
-          npm run start:pa11y &
-          DEV_SERVER_PID=$!
-          sleep 45
-          curl -I http://localhost:3000
-          sleep 5
-          npm install -g pa11y-ci
-          pa11y-ci http://localhost:3000
+          npm run start:pa11y & \
+          timeout 120s \
+            sh -c 'until nc -z localhost 3000; do sleep 1; done' \
+          && sleep 120 \
+          && npm run pa11y:ci 2>&1 | tee pa11y_output.txt
+
+      - name: Read pa11y_output file.
+        id: pa11y_output
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: ./pa11y_output.txt
+
+      - name: verify that pa11y successfully scanned the site
+        if: contains(steps.pa11y_output.outputs.content, 'ailed to run')
+        run: |
+          echo "::error::Pa11y failed to run."
+          exit 1
 
       - name: Package
         run: |
