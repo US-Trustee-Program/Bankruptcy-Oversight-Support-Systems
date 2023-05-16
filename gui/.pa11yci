@@ -2,6 +2,6 @@
   "defaults": {
     "timeout": 10000
   },
-  "urls": ["http://localhost:3000/", "http://localhost:3000/cases"],
+  "urls": ["https://google.com", "http://localhost:3000/", "http://localhost:3000/cases"],
   "standard": "WCAG2AA"
 }
