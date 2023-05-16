@@ -89,9 +89,9 @@ jobs:
           npm run build
           npm install serve -g
           serve -s build &
-          timeout 120s
+          timeout 240s
             sh -c 'until nc -z localhost 3000; do sleep 1; done'
-          && sleep 120
+          && sleep 240
           && npm run pa11y:ci 2>&1 | tee pa11y_output.txt
 
       - name: Read pa11y_output file.
