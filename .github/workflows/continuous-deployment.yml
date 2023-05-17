@@ -65,6 +65,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Package Repo Before Build for Scanning
+        run: |
+          mkdir scan
+          zip -r scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip ../
+
+      - name: Veracode Upload And Scan Entire Repo
+        uses: veracode/veracode-uploadandscan-action@0.2.6
+        with:
+          appname: 'CAMS-Frontend'
+          createprofile: false
+          filepath: 'gui/scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip'
+          vid: '${{ secrets.VERACODE_API_ID }}'
+          vkey: '${{ secrets.VERACODE_API_KEY }}'
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -88,9 +102,6 @@ jobs:
         run: |
           mkdir artifacts
           tar -cvf artifacts/${{ needs.Build-Info.outputs.webappName }}.tar ./build
-          mkdir scan
-          zip -r scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip ../
-          ls scan
 
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
@@ -98,15 +109,6 @@ jobs:
           name: ${{ needs.Build-Info.outputs.webappName }}-build
           path: gui/artifacts/
           if-no-files-found: error
-
-      - name: Veracode Upload And Scan Frontend
-        uses: veracode/veracode-uploadandscan-action@0.2.6
-        with:
-          appname: 'CAMS-Frontend'
-          createprofile: false
-          filepath: 'gui/scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip'
-          vid: '${{ secrets.VERACODE_API_ID }}'
-          vkey: '${{ secrets.VERACODE_API_KEY }}'
 
   build-service:
     defaults:
