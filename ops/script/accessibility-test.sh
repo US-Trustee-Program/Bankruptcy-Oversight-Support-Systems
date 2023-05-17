@@ -2,7 +2,7 @@
 
 set -e
 
-source pa11y.env
+export REACT_APP_PA11Y=true
 npm run build
 npm install serve -g
 serve -s build &
