@@ -1,6 +1,6 @@
 import Api, { ResponseData } from './api';
 
-export default class Pa11yApi extends Api {
+export default class MockApi extends Api {
   public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;
     switch (path) {
@@ -11,7 +11,7 @@ export default class Pa11yApi extends Api {
           body: {
             staff1Label: 'Trial Attorney',
             staff2Label: 'Auditor',
-            caseList: Pa11yApi.caseList,
+            caseList: MockApi.caseList,
           },
         };
         break;
