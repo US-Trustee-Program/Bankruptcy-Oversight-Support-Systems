@@ -89,7 +89,7 @@ jobs:
           mkdir artifacts
           tar -cvf artifacts/${{ needs.Build-Info.outputs.webappName }}.tar ./build
           mkdir scan
-          zip -r scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip ./build
+          zip -r scan/${{ needs.Build-Info.outputs.webappName }}-scan.zip ../
           ls scan
 
       - name: Upload Frontend Artifact
