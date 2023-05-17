@@ -7,6 +7,6 @@
     },
     "timeout": 10000
   },
-  "urls": ["http://google.com", "http://localhost:3000/", "http://localhost:3000/cases"],
+  "urls": ["http://localhost:3000/", "http://localhost:3000/cases"],
   "standard": "WCAG2AA"
 }
