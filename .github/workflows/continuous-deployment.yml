@@ -136,8 +136,14 @@ jobs:
           serve -s build &
           timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'
           echo "Starting pa11y accessibility test"
-          pa11y-ci -j | jq .
-          
+          ERRORS=$(pa11y-ci -j | jq .errors)
+          if [ $ERRORS -eq 0 ]; then
+            echo "pa11y found no errors."
+          else
+            echo "pa11y found ${{ ERRORS }} errors."
+            exit 1
+          fi
+
   build-service:
     defaults:
       run:
