@@ -96,7 +96,7 @@ jobs:
           path: gui/artifacts/
           if-no-files-found: error
 
-  pa11y-test:
+  accessibility-test:
     defaults:
       run:
         working-directory: gui
