@@ -140,7 +140,7 @@ jobs:
           if [ $ERRORS -eq 0 ]; then
             echo "pa11y found no errors."
           else
-            echo "pa11y found ${{ ERRORS }} errors."
+            echo "pa11y found ${ERRORS} errors."
             exit 1
           fi
 
