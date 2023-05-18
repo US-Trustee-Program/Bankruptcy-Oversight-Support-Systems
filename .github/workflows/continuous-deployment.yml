@@ -64,7 +64,9 @@ jobs:
           zip -r cams.zip ./
           java -jar /opt/veracode/pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
-          --file cams.zip
+          --file cams.zip \
+          --app_id CAMS
+          --json_display true
 
   build-frontend:
     defaults:
