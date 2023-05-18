@@ -53,7 +53,7 @@ jobs:
     container:
       image: veracode/pipeline-scan
       options: --user root
-    needs: [ Build-info ]
+    needs: [ Build-Info ]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
     steps:
@@ -65,8 +65,8 @@ jobs:
           java -jar /opt/veracode/pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
           --file cams.zip \
-          --app_id CAMS
-          --json_display true
+          --json_display true \
+          --verbose true
 
   build-frontend:
     defaults:
