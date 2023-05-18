@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: veracode/pipeline-scan
+      options: --user root
     needs: [ Build-info ]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
