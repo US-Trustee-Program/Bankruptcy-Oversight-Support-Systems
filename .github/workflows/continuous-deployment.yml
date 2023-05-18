@@ -48,7 +48,7 @@ jobs:
         with:
           args: "--skip-sorting-imports --replace"
 
-  security-scans:
+  security-sast-scan:
     runs-on: ubuntu-latest
     container:
       image: veracode/pipeline-scan
