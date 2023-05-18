@@ -61,8 +61,8 @@
   "scripts": {
     "start": "sh .env && react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --watchAll=false --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}'",
-    "test:watch": "react-scripts test --roots tests/ --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage",
+    "test": "react-scripts test --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage --watchAll=false",
+    "test:watch": "npm run test -- --watchAll=true",
     "coverage": "npm run test -- --coverage",
     "eject": "react-scripts eject",
     "lint": "eslint .",

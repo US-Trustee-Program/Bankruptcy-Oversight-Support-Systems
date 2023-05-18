@@ -1,11 +1,11 @@
 import { render, screen, waitFor, renderHook } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { addUser } from '../../src/store/features/UserSlice';
-import { useAppDispatch } from '../../src/store/store';
+import { addUser } from '../store/features/UserSlice';
+import { useAppDispatch } from '../store/store';
 import { BrowserRouter } from 'react-router-dom';
-import { store } from '../../src/store/store';
+import { store } from '../store/store';
 import { Provider } from 'react-redux';
-import { CaseList } from '../../src/components/CaseList';
+import { CaseList } from './CaseList';
 
 const mockCaseList = {
   success: true,
