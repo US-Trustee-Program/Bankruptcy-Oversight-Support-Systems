@@ -172,7 +172,7 @@ jobs:
         working-directory: functions/node
 
     runs-on: ubuntu-latest
-    needs: [ Build-Info, security-sca-scan-frontend ]
+    needs: [ Build-Info, security-sca-scan-backend ]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
     strategy:
