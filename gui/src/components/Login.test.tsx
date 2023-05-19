@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import Login from '../../src/components/Login';
+import Login from './Login';
 import { Provider } from 'react-redux';
-import { store } from '../../src/store/store';
-import { UserSlice } from '../../src/store/features/UserSlice';
+import { store } from '../store/store';
+import { UserSlice } from '../store/features/UserSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import { BrowserRouter } from 'react-router-dom';
 import * as router from 'react-router';
