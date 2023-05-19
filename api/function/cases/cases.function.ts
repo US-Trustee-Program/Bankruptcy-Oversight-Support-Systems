@@ -19,7 +19,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
     log.info(context, NAMESPACE, `chapter ${chapter}, professionalId ${professionalId}`);
     try {
-        const caseList = await casesController.getCaseList(context, {chapter, professionalId});
+        const caseList = await casesController.getCaseList(context, {caseChapter: chapter, professionalId});
         context.res = httpSuccess(context, caseList);
     } catch (e) {
         log.error(context, NAMESPACE, 'caught error. ', e);
