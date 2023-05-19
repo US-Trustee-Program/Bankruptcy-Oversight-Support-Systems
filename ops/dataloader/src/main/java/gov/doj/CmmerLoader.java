@@ -7,13 +7,13 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.Arrays;
 
-public class CMMERLoader extends AbstractDataLoader implements IDataLoader {
+public class CmmerLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
   private final String tableName = "dbo.CMMER";
 
-  public CMMERLoader() {
+  public CmmerLoader() {
     setLoaderName("CMMER");
     connectionManager = ConnectionManager.getInstance();
   }

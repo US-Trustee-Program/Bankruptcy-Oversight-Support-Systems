@@ -12,14 +12,14 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
 
-public class CMMALLoader extends AbstractDataLoader implements IDataLoader {
+public class CmmalLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
   private final Map<String, Integer> federalIdMap = new HashMap<>();
   private int federalId = 20231001;
   private String federalIdFileName = "federalIdHashMap.json";
 
-  public CMMALLoader() {
+  public CmmalLoader() {
     setLoaderName("CMMAL");
     connectionManager = ConnectionManager.getInstance();
   }

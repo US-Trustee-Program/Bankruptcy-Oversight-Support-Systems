@@ -10,13 +10,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 
-public class CMMPTLoader extends AbstractDataLoader implements IDataLoader {
+public class CmmptLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
   private final String tableName = "dbo.CMMPT";
 
-  public CMMPTLoader() {
+  public CmmptLoader() {
     setLoaderName("CMMPT");
     connectionManager = ConnectionManager.getInstance();
   }
