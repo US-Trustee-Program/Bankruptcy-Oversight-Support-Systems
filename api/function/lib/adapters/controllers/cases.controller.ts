@@ -7,7 +7,7 @@ import { Context, RecordObj } from '../types/basic';
 const NAMESPACE = "CASES-CONTROLLER";
 
 export class CasesController {
-  private context: Context;
+  private readonly context: Context;
   private casesDb: CasePersistenceGateway;
 
   constructor(context: Context) {
@@ -22,70 +22,18 @@ export class CasesController {
     }
   }
 
-  public async getCaseList(context: Context, query: {chapter: string, professionalId: string}) {
+  public async getCaseList(context: Context, requestQueryFilters: {caseChapter: string, professionalId: string}) {
     await this.initializeDb();
     log.info(this.context, NAMESPACE, 'Getting case list.');
 
-    let profId = '';
-    let chapter = '';
-    if (query.professionalId) {
-      profId = query.professionalId;
+    let professionalId = '';
+    let caseChapter = '';
+    if (requestQueryFilters.professionalId) {
+      professionalId = requestQueryFilters.professionalId;
     }
-    if (query.chapter) {
-      chapter = query.chapter;
+    if (requestQueryFilters.caseChapter) {
+      caseChapter = requestQueryFilters.caseChapter;
     }
-    return await useCase.listCases(context, this.casesDb, { chapter, professionalId: profId });
+    return await useCase.listCases(context, this.casesDb, { chapter: caseChapter, professionalId: professionalId });
   }
-
-  /*
-  // this method contains working code, though out of date, and untested.  commented out for now.
-  public async getCase(context: Context, query: {caseId: string}) {
-    await this.initializeDb();
-    log.info(context, NAMESPACE, `Getting single case ${query.caseId}.`);
-
-    return await useCase.getCase(context, this.casesDb, +query.caseId);
-  }
-
-  // this method contains working code, though out of date, and untested.  commented out for now.
-  public async createCase(context: Context, recordSet: object) {
-    await this.initializeDb();
-    log.info(context, NAMESPACE, 'Inserting Case');
-
-    let record: RecordObj[] = [];
-
-    for (let rec in recordSet) {
-      record.push({
-        fieldName: rec,
-        fieldValue: recordSet[rec],
-      } as RecordObj);
-    }
-
-    return await useCase.addCase(context, this.casesDb, record);
-  }
-
-  // this method contains working code, though out of date, and untested.  commented out for now.
-  public async updateCase(context: Context, caseId: number, recordSet: object) {
-    await this.initializeDb();
-    log.info(context, NAMESPACE, 'Updating Case');
-
-    const record: RecordObj[] = [];
-
-    for (let rec in recordSet) {
-      record.push({
-        fieldName: rec,
-        fieldValue: recordSet[rec],
-      } as RecordObj);
-    }
-
-    return await useCase.updateCase(context, this.casesDb, caseId, record);
-  }
-
-  // this method contains working code, though out of date, and untested.  commented out for now.
-  public async deleteCase(context: Context, caseId: number) {
-    await this.initializeDb();
-    log.info(context, NAMESPACE, `Deleting case ${caseId}.`);
-
-    return await useCase.deleteCase(context, this.casesDb, caseId);
-  }
-  */
 }
