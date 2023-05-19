@@ -55,7 +55,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        
+
       - name: Run Veracode SCA for frontend
         env:
           SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
@@ -63,7 +63,7 @@ jobs:
         uses: veracode/veracode-sca@v2.1.6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          create-issues: false   
+          create-issues: false
           path: gui/
 
   security-sca-scan-backend:
@@ -73,7 +73,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Run Veracode SCA for backend
         env:
           SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
@@ -81,7 +81,7 @@ jobs:
         uses: veracode/veracode-sca@v2.1.6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          create-issues: false   
+          create-issues: false
           path: functions/node/
 
   build-frontend:
