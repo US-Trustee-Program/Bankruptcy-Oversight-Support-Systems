@@ -5,23 +5,23 @@ import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'USERS-FUNCTION';
 
-const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    const firstName = (req.query.first_name || (req.body && req.body.first_name));
-    const lastName = (req.query.last_name || (req.body && req.body.last_name));
-    const usersController = new UsersController(context);
+const httpTrigger: AzureFunction = async function (functionContext: Context, userRequest: HttpRequest): Promise<void> {
+    const firstName = (userRequest.query.first_name || (userRequest.body && userRequest.body.first_name));
+    const lastName = (userRequest.query.last_name || (userRequest.body && userRequest.body.last_name));
+    const usersController = new UsersController(functionContext);
 
     try {
         if (firstName && lastName) {
-            log.info(context, NAMESPACE, 'User name was defined.  Calling getUser()');
+            log.info(functionContext, NAMESPACE, 'User name was defined.  Calling getUser()');
             const user = await usersController.getUser({ firstName, lastName });
-            context.res = httpSuccess(context, user);
+            functionContext.res = httpSuccess(functionContext, user);
         } else {
-            log.warn(context, NAMESPACE, 'User first and last name was not defined');
-            context.res = httpError(context, new Error('Required parameters absent: first_name and last_name.'), 400);
+            log.warn(functionContext, NAMESPACE, 'User first and last name was not defined');
+            functionContext.res = httpError(functionContext, new Error('Required parameters absent: first_name and last_name.'), 400);
         }
-    } catch (e) {
-        log.error(context, NAMESPACE, 'caught error. ', e);
-        context.res = httpError(context, e, 404);
+    } catch (exception) {
+        log.error(functionContext, NAMESPACE, 'caught error. ', exception);
+        functionContext.res = httpError(functionContext, exception, 404);
     }
 };
 

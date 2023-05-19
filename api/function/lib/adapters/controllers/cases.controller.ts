@@ -7,24 +7,24 @@ import { Context, RecordObj } from '../types/basic';
 const NAMESPACE = "CASES-CONTROLLER";
 
 export class CasesController {
-  private readonly context: Context;
+  private readonly functionContext: Context;
   private casesDb: CasePersistenceGateway;
 
   constructor(context: Context) {
-    this.context = context;
+    this.functionContext = context;
     this.initializeDb();
   }
 
   private async initializeDb() {
     if (typeof this.casesDb == 'undefined') {
-      this.casesDb = (await proxyData(this.context, 'cases')) as CasePersistenceGateway;
-      log.info(this.context, NAMESPACE, 'casesDB was set successfully');
+      this.casesDb = (await proxyData(this.functionContext, 'cases')) as CasePersistenceGateway;
+      log.info(this.functionContext, NAMESPACE, 'casesDB was set successfully');
     }
   }
 
   public async getCaseList(context: Context, requestQueryFilters: {caseChapter: string, professionalId: string}) {
     await this.initializeDb();
-    log.info(this.context, NAMESPACE, 'Getting case list.');
+    log.info(this.functionContext, NAMESPACE, 'Getting case list.');
 
     let professionalId = '';
     let caseChapter = '';
