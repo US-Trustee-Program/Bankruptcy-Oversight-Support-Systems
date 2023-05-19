@@ -7,17 +7,17 @@ import { Context } from '../types/basic';
 const NAMESPACE = "USERS-CONTROLLER";
 
 export class UsersController {
-  private context: Context;
+  private functionContext: Context;
 
   constructor(context: Context) {
-    this.context = context;
+    this.functionContext = context;
   }
 
   public async getUser(userName: {firstName: string, lastName: string}) {
-    log.info(this.context, NAMESPACE, 'getUser - fetching a user id, given a first and last name.');
+    log.info(this.functionContext, NAMESPACE, 'getUser - fetching a user id, given a first and last name.');
 
-    const usersDb: UserPersistenceGateway = (await proxyData(this.context, 'users')) as UserPersistenceGateway;
+    const usersDb: UserPersistenceGateway = (await proxyData(this.functionContext, 'users')) as UserPersistenceGateway;
 
-    return await useCase.login(this.context, usersDb, userName );
+    return await useCase.login(this.functionContext, usersDb, userName );
   }
 }
