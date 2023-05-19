@@ -3,13 +3,13 @@ package gov.doj;
 import java.io.*;
 import java.sql.*;
 
-public class CMMCDLoader extends AbstractDataLoader implements IDataLoader {
+public class CmmcdLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
   private final String tableName = "dbo.CMMCD";
 
-  public CMMCDLoader() {
+  public CmmcdLoader() {
     setLoaderName("CMMCD");
     connectionManager = ConnectionManager.getInstance();
   }
