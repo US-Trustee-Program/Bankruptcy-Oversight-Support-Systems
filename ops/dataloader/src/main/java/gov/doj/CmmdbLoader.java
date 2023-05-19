@@ -10,14 +10,14 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CMMDBLoader extends AbstractDataLoader implements IDataLoader {
+public class CmmdbLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
   private final Map<String, Integer> federalIdMap = new HashMap<>();
   private int federalId = 20230001;
 
-  public CMMDBLoader() {
+  public CmmdbLoader() {
     connectionManager = ConnectionManager.getInstance();
   }
 

@@ -9,11 +9,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class CMHORLoader extends AbstractDataLoader implements IDataLoader {
+public class CmhorLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
-  public CMHORLoader() {
+  public CmhorLoader() {
     setLoaderName("CMHOR");
     connectionManager = ConnectionManager.getInstance();
   }

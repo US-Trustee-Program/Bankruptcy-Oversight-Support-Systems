@@ -8,11 +8,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class CMHPLLoader extends AbstractDataLoader implements IDataLoader {
+public class CmhplLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
-  public CMHPLLoader() {
+  public CmhplLoader() {
     connectionManager = ConnectionManager.getInstance();
   }
 
