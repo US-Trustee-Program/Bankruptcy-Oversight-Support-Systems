@@ -1,13 +1,13 @@
 import * as mssql from 'mssql';
 import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database';
-import { runQuery } from '../utils/database';
+import { executeQuery } from '../utils/database';
 import { Context } from '../types/basic';
 
 const NAMESPACE = 'AZURE-SQL-MODULE';
 
 const getAll = async (context: Context, table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
-  const queryResult: QueryResults = await runQuery(context, table, query);
+  const queryResult: QueryResults = await executeQuery(context, table, query);
   let results: DbResult;
 
   if (queryResult.success) {
@@ -41,7 +41,7 @@ const getRecord = async (context: Context, table: string, id: number): Promise<D
       value: id,
     },
   ];
-  const queryResult = await runQuery(context, table, query, input);
+  const queryResult = await executeQuery(context, table, query, input);
 
   if (Boolean(queryResult) && queryResult.success && typeof (queryResult as any).results.rowsAffected != 'undefined' && (queryResult as any).results.rowsAffected[0] === 1) {
     results = {

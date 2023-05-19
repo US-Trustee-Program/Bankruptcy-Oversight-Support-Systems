@@ -7,7 +7,7 @@ import * as mssql from 'mssql';
 
 const table = 'users';
 
-const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
+const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
 describe('Azure MSSQL database gateway tests specificaly for the Users table', () => {
   test('Should return a user record when users First Name and Last Name are provided', async () => {

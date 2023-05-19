@@ -7,7 +7,7 @@ import * as mssql from 'mssql';
 
 const table = 'generic_test_data';
 
-const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
+const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
 describe('Azure MSSQL database gateway tests', () => {
   test('Should return all records when fetching all records on a given table', async () => {
