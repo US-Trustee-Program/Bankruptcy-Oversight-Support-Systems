@@ -1,6 +1,6 @@
 import * as mssql from 'mssql';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
-import { runQuery } from '../utils/database';
+import { executeQuery } from '../utils/database';
 import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
@@ -63,7 +63,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
     );
   }
 
-  const queryResult: QueryResults = await runQuery(context, table, query, input);
+  const queryResult: QueryResults = await executeQuery(context, table, query, input);
   let results: DbResult;
 
   try {

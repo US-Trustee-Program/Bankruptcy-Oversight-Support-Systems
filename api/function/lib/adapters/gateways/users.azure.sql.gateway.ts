@@ -1,6 +1,6 @@
 import * as mssql from 'mssql';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
-import { runQuery } from '../utils/database';
+import { executeQuery } from '../utils/database';
 import log from '../services/logger.service';
 import { Context } from '../types/basic';
 
@@ -33,7 +33,7 @@ const login = async (context: Context, userName: { firstName: string, lastName: 
     },
   ];
 
-  const queryResult: QueryResults = await runQuery(context, 'CMMPR', query, input);
+  const queryResult: QueryResults = await executeQuery(context, 'CMMPR', query, input);
   let results: DbResult;
 
   if (queryResult.success) {
