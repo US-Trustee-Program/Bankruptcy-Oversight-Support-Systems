@@ -7,13 +7,13 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
-public class CMHHRLoader extends AbstractDataLoader implements IDataLoader {
+public class CmhhrLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
   private final String tableName = "dbo.CMHHR";
 
-  public CMHHRLoader() {
+  public CmhhrLoader() {
     setLoaderName("CMHHR");
     connectionManager = ConnectionManager.getInstance();
   }

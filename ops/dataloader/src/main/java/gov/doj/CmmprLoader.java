@@ -9,11 +9,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class CMMPRLoader extends AbstractDataLoader implements IDataLoader {
+public class CmmprLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
-  public CMMPRLoader() {
+  public CmmprLoader() {
     connectionManager = ConnectionManager.getInstance();
   }
 

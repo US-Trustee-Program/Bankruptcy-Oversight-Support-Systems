@@ -6,13 +6,13 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.sql.*;
 
-public class CMHMRLoader extends AbstractDataLoader implements IDataLoader {
+public class CmhmrLoader extends AbstractDataLoader implements IDataLoader {
 
   protected ConnectionManager connectionManager;
 
   private final String tableName = "dbo.CMHMR";
 
-  public CMHMRLoader() {
+  public CmhmrLoader() {
     setLoaderName("CMHMR");
     connectionManager = ConnectionManager.getInstance();
   }
