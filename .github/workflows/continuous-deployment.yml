@@ -128,7 +128,7 @@ jobs:
         run: npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
-        run: ../ops/script/accessibility-test.sh
+        run: ../ops/helper-scripts/accessibility-test.sh
 
   build-service:
     defaults:
