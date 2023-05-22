@@ -62,9 +62,10 @@ jobs:
       - name: Package up repository and then scan
         run: |
           zip -r cams.zip ./
+          ls -lh | grep cams
           java -jar /opt/veracode/pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
-          --file cams.zip \
+          --file cams.zip
 
   build-frontend:
     defaults:
