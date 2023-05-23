@@ -2,7 +2,22 @@ name: Continuous Deployment
 
 concurrency: ${{ github.ref }}
 
-on: [push]
+on:
+  push:
+    branches:
+    - 'main'
+    - 'CAMS-*'
+
+  workflow_dispatch:
+    inputs:
+      deployVnet:
+        description: 'Enable Vnet creation'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
 
 jobs:
   Build-Info:
@@ -36,7 +51,7 @@ jobs:
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
 
           # Default to false. Set to true to attempt to create a new virtual network
-          execVnetDeploy=false
+          execVnetDeploy=${{ inputs.deployVnet }}
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
 
