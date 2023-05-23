@@ -1,5 +1,5 @@
 import log from '../services/logger.service';
-import { userMockData, getProperty } from '../../testing/mock-data/';
+import { userMockData, getProperty } from '../../testing/mock-data';
 import { Context } from '../types/basic';
 import { UserListRecordSet } from '../types/users';
 import { DbResult, QueryResults } from '../types/database';

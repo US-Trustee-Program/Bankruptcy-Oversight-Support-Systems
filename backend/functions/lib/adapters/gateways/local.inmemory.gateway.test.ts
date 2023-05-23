@@ -1,8 +1,8 @@
 const context = require('azure-function-context-mock');
-import { DbResult } from '../types/database.js';
-import { getProperty } from '../../testing/mock-data/';
+import { DbResult } from '../types/database';
+import { getProperty } from '../../testing/mock-data/index';
 import * as db from './local.inmemory.gateway';
-import { RecordObj } from '../types/basic.js';
+import { RecordObj } from '../types/basic';
 
 const table = 'generic_test_data';
 
