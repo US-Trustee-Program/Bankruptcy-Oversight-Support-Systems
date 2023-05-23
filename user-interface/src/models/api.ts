@@ -63,28 +63,6 @@ export default class Api {
     }
   }
 
-  public static async create(path: string, body: object): Promise<ResponseData> {
-    try {
-      const response = await fetch(Api._host + path, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return data;
-      } else {
-        return Promise.reject(new Error(`500 Error - Invalid Request ${data?.toString()}`));
-      }
-    } catch (e: unknown) {
-      return Promise.reject(new Error(`500 Error - Invalid Request ${(e as Error).message}`));
-    }
-  }
-
   public static async list(path: string, options: ObjectKeyVal): Promise<ResponseData> {
     try {
       const pathStr = Api.createPath(path, options);
@@ -109,89 +87,6 @@ export default class Api {
       return Promise.reject(
         new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
       );
-    }
-  }
-
-  public static async read(path: string, id: string): Promise<ResponseData> {
-    try {
-      const response = await fetch(`${Api._host}${path}/${id}`, {
-        method: 'GET',
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return data;
-      } else {
-        return Promise.reject(new Error(`404 Error - Not Found ${data?.toString()}`));
-      }
-    } catch (e: unknown) {
-      return Promise.reject(new Error(`404 Error - Not Found ${(e as Error).message}`));
-    }
-  }
-
-  public static async update(path: string, id: string, body: object): Promise<ResponseData> {
-    try {
-      const response = await fetch(`${Api._host}${path}/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return data;
-      } else {
-        return Promise.reject(new Error(`500 Error - Failed Update ${data?.toString()}`));
-      }
-    } catch (e: unknown) {
-      return Promise.reject(new Error(`500 Error - Invalid Request ${(e as Error).message}`));
-    }
-  }
-
-  public static async replace(path: string, id: string, body: object): Promise<ResponseData> {
-    try {
-      const response = await fetch(`${Api._host}${path}/${id}`, {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return data;
-      } else {
-        return Promise.reject(new Error(`500 Error - Failed Replace ${data?.toString()}`));
-      }
-    } catch (e: unknown) {
-      return Promise.reject(new Error(`500 Error - Invalid Request ${(e as Error).message}`));
-    }
-  }
-
-  public static async del(path: string, id: string) {
-    try {
-      const response = await fetch(`${Api._host}${path}/${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return data;
-      } else {
-        return Promise.reject(new Error(`500 Error - Failed to Delete ${data?.toString()}`));
-      }
-    } catch (e: unknown) {
-      return Promise.reject(new Error(`500 Error - Invalid Request ${(e as Error).message}`));
     }
   }
 }
