@@ -51,10 +51,10 @@ jobs:
   build-frontend:
     defaults:
       run:
-        working-directory: web
+        working-directory: user-interface
 
     runs-on: ubuntu-latest
-    needs: [ Build-Info ]
+    needs: [Build-Info]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
     strategy:
@@ -69,8 +69,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
 
       - name: Execute Build
         run: |
@@ -93,17 +93,17 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.Build-Info.outputs.webappName }}-build
-          path: web/artifacts/
+          path: user-interface/artifacts/
           if-no-files-found: error
 
   accessibility-test:
     defaults:
       run:
-        working-directory: web
+        working-directory: user-interface
 
     runs-on: ubuntu-latest
 
-    needs: [ Build-Info ]
+    needs: [Build-Info]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
     strategy:
@@ -121,8 +121,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
 
       - name: Install Node dependencies
         run: npm ci && npm install -g pa11y-ci
@@ -133,11 +133,11 @@ jobs:
   build-service:
     defaults:
       run:
-        working-directory: api/function
+        working-directory: backend/functions
 
     runs-on: ubuntu-latest
 
-    needs: [ Build-Info ]
+    needs: [Build-Info]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
     strategy:
@@ -161,7 +161,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.Build-Info.outputs.apiName }}-build
-          path: api/function/${{ needs.Build-Info.outputs.apiName }}.zip
+          path: backend/functions/${{ needs.Build-Info.outputs.apiName }}.zip
           if-no-files-found: error
 
   deploy:
@@ -198,7 +198,7 @@ jobs:
 
   deploy-webapp:
     runs-on: ubuntu-latest
-    needs: [ Build-Info, deploy ]
+    needs: [Build-Info, deploy]
     environment: ${{ needs.Build-Info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
@@ -217,7 +217,7 @@ jobs:
 
   deploy-service:
     runs-on: ubuntu-latest
-    needs: [ Build-Info, deploy ]
+    needs: [Build-Info, deploy]
     environment: ${{ needs.Build-Info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
