@@ -3,6 +3,30 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param planName string
 
+@description('Plan type to determine plan Sku')
+@allowed([
+  'production'
+  'development'
+])
+param planType string = 'development'
+
+var planTypeToSkuMap = {
+  production: {
+    name: 'P1v2'
+    tier: 'PremiumV2'
+    size: 'P1v2'
+    family: 'Pv2'
+    capacity: 1
+  }
+  development: {
+    name: 'B2'
+    tier: 'Basic'
+    size: 'B2'
+    family: 'B'
+    capacity: 1
+  }
+}
+
 @description('Azure functions app name')
 param functionName string
 
@@ -69,13 +93,7 @@ param sqlServerName string = ''
 resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
-  sku: {
-    name: 'P1v2'
-    tier: 'PremiumV2'
-    size: 'P1v2'
-    family: 'Pv2'
-    capacity: 1
-  }
+  sku: planTypeToSkuMap[planType]
   kind: 'linux'
   properties: {
     perSiteScaling: false
