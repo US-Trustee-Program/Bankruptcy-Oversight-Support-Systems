@@ -58,6 +58,13 @@
     "nth-check": "2.0.1",
     "webpack": "^5.78.0"
   },
+  "jest": {
+    "coveragePathIgnorePatterns": [
+      "/index.tsx",
+      "/reportWebVitals.ts",
+      "/configuration/apiConfiguration.ts"
+    ]
+  },
   "scripts": {
     "start": "test -e ./.env && sh .env; react-scripts start",
     "start:pa11y": "export REACT_APP_PA11Y=true && react-scripts start",
