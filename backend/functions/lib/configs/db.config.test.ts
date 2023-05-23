@@ -14,7 +14,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env.AZURE_MANAGED_IDENTITY = '';
     process.env.MSSQL_PASS = 'abcdefg';
 
-    const dbConfig = await import('../configs/db.config');
+    const dbConfig = await import('./db.config');
     expect(dbConfig.default.authentication.type).toEqual('default');
   });
 
@@ -23,7 +23,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env.MSSQL_PASS = '';
     process.env.DATABASE_MOCK = 'true';
 
-    const dbConfig = await import('../configs/db.config');
+    const dbConfig = await import('./db.config');
     expect(dbConfig.default.authentication.type).toEqual('mock');
   });
 
@@ -33,7 +33,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env.DATABASE_MOCK = 'false';
 
     try {
-      await import('../configs/db.config');
+      await import('./db.config');
     } catch (e) {
       expect(e.message).toBe('No Database authentication type specified');
     }

@@ -1,5 +1,5 @@
 const context = require('azure-function-context-mock');
-import log from '../services/logger.service';
+import log from './logger.service';
 
 const mockLog = jest.spyOn(context, 'log');
 

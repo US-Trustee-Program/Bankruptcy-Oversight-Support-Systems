@@ -1,6 +1,6 @@
 const context = require('azure-function-context-mock');
-import { DbResult } from '../types/database.js';
-import { getProperty } from '../../testing/mock-data/';
+import { DbResult } from '../types/database';
+import { getProperty } from '../../testing/mock-data/index';
 import * as dataUtils from '../utils/database';
 import * as db from './cases.azure.sql.gateway';
 import * as mssql from 'mssql';

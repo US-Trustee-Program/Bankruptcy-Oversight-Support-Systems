@@ -17,8 +17,12 @@ export const HeaderNavBar = () => {
             <span className="sub-title">CAse Management System (CAMS)</span>
           </div>
           <nav className="nav-bar" role="navigation" aria-label="main-navigation">
-            <NavLink to="/cases">Cases</NavLink>
-            <NavLink to="/">Login</NavLink>
+            <NavLink to="/cases" data-testid="main-nav-cases-link">
+              Cases
+            </NavLink>
+            <NavLink to="/" data-testid="main-nav-login-link">
+              Login
+            </NavLink>
           </nav>
         </div>
       </header>
