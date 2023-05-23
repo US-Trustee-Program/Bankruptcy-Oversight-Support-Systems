@@ -4,6 +4,25 @@ import '@testing-library/jest-dom';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
 
+const mockCaseList = {
+  success: true,
+  message: '',
+  count: 0,
+  body: {
+    staff1Label: 'Trial Attorney',
+    staff2Label: 'Auditor',
+    caseList: [],
+  },
+};
+
+const mockFetchList = () => {
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(mockCaseList),
+  } as unknown as Response);
+};
+
 describe('App Router Tests', () => {
   it('should load screen with login form when route is /', async () => {
     const { container } = render(<App />, { wrapper: BrowserRouter });
@@ -14,6 +33,7 @@ describe('App Router Tests', () => {
   });
 
   it('should route /cases to CaseList', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
     render(<App />, { wrapper: BrowserRouter });
 
     await act(async () => {
@@ -21,7 +41,7 @@ describe('App Router Tests', () => {
       await userEvent.click(screen.getByTestId('main-nav-cases-link'));
     });
 
-    expect(screen.getByText('Case List')).toBeInTheDocument();
+    expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });
 
   it('should render Not Found 404 page when an invalid URL is supplied', () => {
