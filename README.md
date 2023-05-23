@@ -12,7 +12,7 @@ The United States Trustee Program is the component of the Department of Justice 
 
 CAMS is a React application which acts as the main place for oversight work to take place.
 
-Note that any commands listed in this section should be run from the `gui` directory.
+Note that any commands listed in this section should be run from the `user-interface` directory.
 
 ### <a id="frontend-requirements"></a>Requirements
 
@@ -36,7 +36,7 @@ This will serve the client on port 3000.
 
 #### <a id="frontend-prerequisites"></a>Prerequisites
 
-You will need to have a file named `.env` placed in the `gui` directory. The contents of that file must be:
+You will need to have a file named `.env` placed in the `user-interface` directory. The contents of that file must be:
 
 ```
 REACT_APP_BASE_PATH={the base path of the backend, if any}
@@ -46,6 +46,7 @@ REACT_APP_SERVER_PROTOCOL=http[s]
 ```
 
 > NOTE:
+>
 > - Replace the curly braces and their contents with the appropriate string.
 > - `[s]` denotes the `s` should be added to `http` where appropriate or left off where not, no `[` or `]` should be included.
 
@@ -53,7 +54,7 @@ REACT_APP_SERVER_PROTOCOL=http[s]
 
 The API for the CAMS application is implemented with Azure Functions written in Node.js.
 
-Note that any commands listed in this section should be run from the `functions/node` directory.
+Note that any commands listed in this section should be run from the `backend/functions` directory.
 
 ### <a id="backend-requirements"></a>Requirements
 
@@ -77,7 +78,7 @@ This will serve the functions app on port 7071.
 
 #### <a id="backend-prerequisites"></a>Prerequisites
 
-You will need to have a file named `.env` placed in the `api/node` directory. The contents of that file must be:
+You will need to have a file named `.env` placed in the `backend/functions` directory. The contents of that file must be:
 
 ```
 MSSQL_HOST={the TLD of the database}
@@ -90,6 +91,7 @@ AZURE_MANAGED_IDENTITY=
 ```
 
 > NOTE:
+>
 > - Replace the curly braces and their contents with the appropriate string.
 > - If you do not have access to the admin password, ask an `owner` of the SQL Server resource in Azure for the value
 
@@ -119,4 +121,14 @@ You will need to have a file named local.settings.json placed in the `functions/
 
 When you install `pre-commit`, your package manager may install an older version such as `1.1.0`. There is a [known issue](https://github.com/Yelp/detect-secrets/issues/452) with that specific version and newer versions of Python. If in the execution of your pre-commit hooks you encounter an error like the following, you may need to update your version of `pre-commit`.
 
-> [scan]  ERROR   No plugins to scan with!
+> [scan] ERROR No plugins to scan with!
+
+## Accessibility
+
+We run `pa11y` to validate accessibility compliance with Web Content Accessibility Guidelines 2.1 AA standards. This is automated as part of our CI/CD pipeline, but running locally when UI changes are being made is advisable. To do this you can follow these steps:
+
+1. Ensure the url for the pages you are working on are listed in `/user-interface/.pa11yci`
+1. Ensure any mock data necessary for the pages you are working on are handled in the mock API
+1. Execute `npm run start:pa11y`
+1. In a separate shell, execute `npm run pa11y:ci`
+   1. Ensure that the output does not reflect any errors
