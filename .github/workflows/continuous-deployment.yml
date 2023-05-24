@@ -64,7 +64,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           create-issues: false
-          path: gui/
+          path: user-interface/
 
   security-sca-scan-backend:
     runs-on: ubuntu-latest
@@ -82,7 +82,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           create-issues: false
-          path: functions/node/
+          path: backend/functions/
 
   build-frontend:
     defaults:
