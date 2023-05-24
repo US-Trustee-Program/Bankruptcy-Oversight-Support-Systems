@@ -8,15 +8,8 @@ export default class log {
   }
 
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
-    let logString: string;
-    logType = logType.toLowerCase();
-
-    if (data) {
-        logString = log.sanitize(`[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`);
-    } else {
-        logString = log.sanitize(`[${logType.toUpperCase()}] [${namespace}] ${message}`);
-    }
-    context.log(logString);
+    let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`;
+    context.log(log.sanitize(logString.trim()));
   }
 
   public static info(context: Context, namespace: string, message: string, data?: any) {
