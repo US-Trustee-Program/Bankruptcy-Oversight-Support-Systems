@@ -87,7 +87,7 @@ jobs:
   build-frontend:
     defaults:
       run:
-        working-directory: gui
+        working-directory: user-interface
 
     runs-on: ubuntu-latest
     needs: [ Build-Info, security-sca-scan-frontend ]
@@ -105,8 +105,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: gui/package-lock.json
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
 
       - name: Execute Build
         run: |
@@ -129,17 +129,17 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.Build-Info.outputs.webappName }}-build
-          path: gui/artifacts/
+          path: user-interface/artifacts/
           if-no-files-found: error
 
   accessibility-test:
     defaults:
       run:
-        working-directory: gui
+        working-directory: user-interface
 
     runs-on: ubuntu-latest
 
-    needs: [ Build-Info ]
+    needs: [Build-Info]
     environment: ${{ needs.Build-Info.outputs.environment }}
 
     strategy:
@@ -157,19 +157,19 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: gui/package-lock.json
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
 
       - name: Install Node dependencies
         run: npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
-        run: ../ops/script/accessibility-test.sh
+        run: ../ops/helper-scripts/accessibility-test.sh
 
   build-service:
     defaults:
       run:
-        working-directory: functions/node
+        working-directory: backend/functions
 
     runs-on: ubuntu-latest
     needs: [ Build-Info, security-sca-scan-backend ]
@@ -196,7 +196,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.Build-Info.outputs.apiName }}-build
-          path: functions/node/${{ needs.Build-Info.outputs.apiName }}.zip
+          path: backend/functions/${{ needs.Build-Info.outputs.apiName }}.zip
           if-no-files-found: error
 
   deploy:
@@ -219,10 +219,10 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
-          ./ops/script/azure-deploy.sh \
+          ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resourceGroup ${{ secrets.AZ_APP_RG }} \
-            --file ./ops/bicep/ustp-cams.bicep \
+            --file ./ops/cloud-deployment/ustp-cams.bicep \
             --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ secrets.AZ_NETWORK_RG }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ secrets.AZ_APP_RG }} deployFunctions=true apiFunctionsResourceGroupName=${{ secrets.AZ_APP_RG }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
@@ -233,7 +233,7 @@ jobs:
 
   deploy-webapp:
     runs-on: ubuntu-latest
-    needs: [ Build-Info, deploy ]
+    needs: [Build-Info, deploy]
     environment: ${{ needs.Build-Info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
@@ -248,11 +248,11 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/script/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
-    needs: [ Build-Info, deploy ]
+    needs: [Build-Info, deploy]
     environment: ${{ needs.Build-Info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
@@ -267,4 +267,4 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Azure Functions backend
-        run: ./ops/script/az-func-deploy.sh -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ secrets.AZ_APP_RG }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
