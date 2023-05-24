@@ -1,13 +1,20 @@
 import { Context } from '../types/basic';
 
 export default class log {
-  public static sanitize(input: string): string {
-    return input.replace(/[\r\n]+/g, ' ').trim();
+  private static sanitize(input: string): string {
+    let output = input.replace(/[\r\n]/g, '&x0D;&x0A;');
+    output = input.replace(/[\n]/g, '&x0A;');
+    return output;
   }
 
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
-    let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`;
-    context.log(log.sanitize(logString.trim()));
+    logType = logType.toLowerCase();
+
+    if (data) {
+        context.log(`[${log.sanitize(logType.toUpperCase())}] [${log.sanitize(namespace)}] ${log.sanitize(message)} ${undefined != data ? log.sanitize(JSON.stringify(data)) : ''}`);
+    } else {
+        context.log(`[${log.sanitize(logType.toUpperCase())}] [${log.sanitize(namespace)}] ${log.sanitize(message)}`);
+    }
   }
 
   public static info(context: Context, namespace: string, message: string, data?: any) {
