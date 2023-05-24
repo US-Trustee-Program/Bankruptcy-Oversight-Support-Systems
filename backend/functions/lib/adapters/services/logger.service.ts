@@ -13,7 +13,7 @@ export default class log {
     if (data) {
         context.log(`[${log.sanitize(logType.toUpperCase())}] [${log.sanitize(namespace)}] ${log.sanitize(message)} ${undefined != data ? log.sanitize(JSON.stringify(data)) : ''}`);
     } else {
-        context.log(`[${log.sanitize(logType.toUpperCase())}] [${log.sanitize(namespace)}] ${log.sanitize(message)}`);
+        context.log(log.sanitize(`[${logType.toUpperCase()}] [${namespace}] ${message}`));
     }
   }
 
