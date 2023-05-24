@@ -7,11 +7,11 @@
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.3",
     "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.4.3",
     "@trussworks/react-uswds": "^4.2.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.11",
+    "@types/jest": "^29.5.1",
+    "@types/node": "^20.2.3",
     "@types/react": "^18.0.27",
     "@types/react-dom": "^18.0.10",
     "dotenv": "^16.0.3",
@@ -19,10 +19,9 @@
     "react-dom": "^18.2.0",
     "react-redux": "^8.0.5",
     "react-router-dom": "^6.8.2",
-    "react-scripts": "^5.0.1",
     "redux": "^4.2.1",
-    "typescript": "^4.9.4",
-    "web-vitals": "^2.1.4"
+    "typescript": "^4.9.5",
+    "web-vitals": "^3.3.1"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.48.2",
@@ -33,7 +32,8 @@
     "eslint-plugin-react": "^7.32.1",
     "fetch-mock": "^9.11.0",
     "pa11y-ci": "^3.0.1",
-    "prettier": "2.8.3",
+    "prettier": "^2.8.8",
+    "react-scripts": "^5.0.1",
     "sass": "^1.58.3"
   },
   "eslintConfig": {
@@ -69,6 +69,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix",
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
-    "pa11y:ci": "pa11y-ci"
+    "pa11y:ci": "pa11y-ci",
+    "preinstall": "npx npm-force-resolutions"
   }
 }
