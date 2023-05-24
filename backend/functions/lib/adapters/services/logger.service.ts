@@ -2,15 +2,12 @@ import { Context } from '../types/basic';
 
 export default class log {
   private static sanitize(input: string): string {
-    // let output = input.replace(/[\r\n]/g, '&x0D;&x0A;');
-    // output = input.replace(/[\n]/g, '&x0A;');
-    // return output;
     return input.replace(/[\n]/g, '\\n').replace(/[\r]/g, '\\r');
   }
 
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
     let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`;
-    context.log(logString.trim().replace(/[\n]/g, '\\n').replace(/[\r]/g, '\\r'));
+    context.log(log.sanitize(logString.trim()));
   }
 
   public static info(context: Context, namespace: string, message: string, data?: any) {
