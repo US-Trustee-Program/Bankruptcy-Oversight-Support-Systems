@@ -70,6 +70,9 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   }
 }
 
+@description('Flag to enable Vercode access')
+param allowVeracodeScan bool = false
+
 /*
   Subnet creation in target virtual network
 */
@@ -124,6 +127,20 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
+var ipSecurityRestrictionsRules = concat([ {
+      ipAddress: 'Any'
+      action: 'Deny'
+      priority: 2147483647
+      name: 'Deny all'
+      description: 'Deny all access'
+    } ],
+  allowVeracodeScan ? [ {
+      ipAddress: '3.32.105.199'
+      action: 'Allow'
+      priority: 1000
+      name: 'Veracode Agent'
+      description: 'Allow Veracode DAST Scans'
+    } ] : [])
 resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: webapp
   name: 'web'
@@ -133,15 +150,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     http20Enabled: true
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {

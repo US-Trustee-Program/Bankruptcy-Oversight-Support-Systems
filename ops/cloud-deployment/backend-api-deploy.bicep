@@ -87,6 +87,9 @@ param sqlServerResourceGroupName string = ''
 @description('Database server name')
 param sqlServerName string = ''
 
+@description('Flag to enable Vercode access')
+param allowVeracodeScan bool = false
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -205,6 +208,20 @@ var applicationSettings = concat([
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
 )
+var ipSecurityRestrictionsRules = concat([ {
+      ipAddress: 'Any'
+      action: 'Deny'
+      priority: 2147483647
+      name: 'Deny all'
+      description: 'Deny all access'
+    } ],
+  allowVeracodeScan ? [ {
+      ipAddress: '3.32.105.199'
+      action: 'Allow'
+      priority: 1000
+      name: 'Veracode Agent'
+      description: 'Allow Veracode DAST Scans'
+    } ] : [])
 resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
@@ -218,15 +235,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {
