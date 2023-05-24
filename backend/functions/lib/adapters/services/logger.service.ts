@@ -10,7 +10,7 @@ export default class log {
 
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
     let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`;
-    context.log(log.sanitize(logString.trim()));
+    context.log(logString.trim().replace(/[\n]/g, '\\n').replace(/[\r]/g, '\\r'));
   }
 
   public static info(context: Context, namespace: string, message: string, data?: any) {
