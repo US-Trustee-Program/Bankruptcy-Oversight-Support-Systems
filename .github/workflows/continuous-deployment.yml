@@ -30,8 +30,8 @@ jobs:
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiName: ${{ steps.build-info.outputs.apiName }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
-      azResourceGrpApp: ${{ steps.build-info.outputs.azResourceGrpApp }}
-      azResourceGrpNetwork: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
+      azResourceGrpAppEncrypted: ${{ steps.build-info.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ steps.build-info.outputs.azResourceGrpNetworkEncrypted }}
     steps:
       - name: Print build info
         id: build-info
@@ -63,10 +63,12 @@ jobs:
           short_hash=${hash:0:6}
           echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
 
-          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+          azResourceGrpAppEncrypted=$(gpg --symmetric --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ secrets.AZ_APP_RG }}-${short_hash}") | base64 -w0)
+          echo "azResourceGrpAppEncrypted=${azResourceGrpAppEncrypted}" >> $GITHUB_OUTPUT
+          azResourceGrpNetworkEncrypted=$(gpg --symmetric --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ secrets.AZ_NETWORK_RG }}-${short_hash}") | base64 -w0)
+          echo "azResourceGrpNetworkEncrypted=${azResourceGrpNetworkEncrypted}" >> $GITHUB_OUTPUT
 
-          echo "Target resource group names azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash} azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}"
+          echo "Target resource group names azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash} ${azResourceGrpAppEncrypted} azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash} ${azResourceGrpNetworkEncrypted}"
 
   formatting:
     runs-on: ubuntu-latest
@@ -246,7 +248,13 @@ jobs:
 
       - name: Deploy Azure resources
         id: azure-deploy
+        env:
+          azResourceGrpAppEncrypted: $(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
+          azResourceGrpNetworkEncrypted: $(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpNetworkEncrypted }}" | base64 --decode))
         run: |
+          echo ${azResourceGrpAppEncrypted}
+          echo ${azResourceGrpNetworkEncrypted}
+
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resourceGroup ${{ secrets.AZ_APP_RG }} \
