@@ -30,6 +30,8 @@ jobs:
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiName: ${{ steps.build-info.outputs.apiName }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
+      azResourceGrpApp: ${{ steps.build-info.outputs.azResourceGrpApp }}
+      azResourceGrpNetwork: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
     steps:
       - name: Print build info
         id: build-info
@@ -60,6 +62,11 @@ jobs:
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
           short_hash=${hash:0:6}
           echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
+
+          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+
+          echo "Target resource group names azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash} azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}"
 
   formatting:
     runs-on: ubuntu-latest
