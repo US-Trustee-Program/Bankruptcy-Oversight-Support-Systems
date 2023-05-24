@@ -1,0 +1,36 @@
+{
+  "name": "node",
+  "version": "1.0.0",
+  "description": "",
+  "devDependencies": {
+    "@types/jest": "^29.5.1",
+    "@types/mssql": "^8.1.2",
+    "@types/node": "^16.18.24",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "azure-function-context-mock": "^0.0.7",
+    "eslint": "^8.39.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^15.7.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "prettier": "^2.8.8",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "@azure/functions": "^3.0.0",
+    "dotenv": "^16.0.3",
+    "jest": "^29.5.0",
+    "mssql": "^9.1.1",
+    "pine": "^1.1.1"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "watch": "tsc --project tsconfig.build.json -w",
+    "prestart": "npm run build",
+    "start": "func start --typescript",
+    "start:dev": "nodemon --esm src/server.ts",
+    "test": "DATABASE_MOCK='true' jest",
+    "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
+    "coverage": "DATABASE_MOCK='true' jest --coverage"
+  }
+}
