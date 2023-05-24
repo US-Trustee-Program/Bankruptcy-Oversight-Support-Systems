@@ -8,6 +8,7 @@ on:
     - 'main'
     - 'CAMS-*'
 
+  # TODO: need to verify once this get merged into default branch
   workflow_dispatch:
     inputs:
       deployVnet:
@@ -51,9 +52,14 @@ jobs:
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
 
           # Default to false. Set to true to attempt to create a new virtual network
-          execVnetDeploy=${{ inputs.deployVnet }}
+          execVnetDeploy=${{ inputs.deployVnet || 'true' }}
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
+
+          # TODO experiment with using openssl to create deterministic hash from branch name
+          hash=$(echo -n ${{ github.ref_name }} | openssl sha256)
+          short_hash=${hash:0:6}
+          echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
 
   formatting:
     runs-on: ubuntu-latest
