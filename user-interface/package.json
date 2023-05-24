@@ -58,6 +58,9 @@
     "nth-check": "2.0.1",
     "webpack": "^5.78.0"
   },
+  "resolutions": {
+    "css-what": "5.0.1"
+  },
   "scripts": {
     "start": "test -e ./.env && sh .env; react-scripts start",
     "start:pa11y": "export REACT_APP_PA11Y=true && react-scripts start",
@@ -69,6 +72,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix",
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
-    "pa11y:ci": "pa11y-ci"
+    "pa11y:ci": "pa11y-ci",
+    "preinstall": "npx npm-force-resolutions"
   }
 }
