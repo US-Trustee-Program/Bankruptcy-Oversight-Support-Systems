@@ -2,9 +2,10 @@ import { Context } from '../types/basic';
 
 export default class log {
   private static sanitize(input: string): string {
-    let output = input.replace(/[\r\n]/g, '&x0D;&x0A;');
-    output = input.replace(/[\n]/g, '&x0A;');
-    return output;
+    // let output = input.replace(/[\r\n]/g, '&x0D;&x0A;');
+    // output = input.replace(/[\n]/g, '&x0A;');
+    // return output;
+    return input.replace(/[\n]/g, '\\n').replace(/[\r]/g, '\\r');
   }
 
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
