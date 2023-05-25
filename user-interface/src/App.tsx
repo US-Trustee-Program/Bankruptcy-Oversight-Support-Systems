@@ -14,8 +14,8 @@ function App() {
         <HeaderNavBar />
         <div className="body">
           <Routes>
-            <Route path="/cases" element={<CaseList />}></Route>
             <Route path="/" element={<Home />}></Route>
+            <Route path="/cases" element={<CaseList />}></Route>
             <Route path="*" element={<NotFound />}></Route>
           </Routes>
         </div>
