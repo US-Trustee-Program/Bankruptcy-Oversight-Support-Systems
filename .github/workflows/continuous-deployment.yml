@@ -89,15 +89,25 @@ jobs:
     needs: [Build-Info]
     environment: ${{ needs.Build-Info.outputs.environment }}
     env:
+      stackName: ${{ needs.Build-Info.outputs.stackName }}
       webappName: ${{ needs.Build-Info.outputs.webappName }}
       apiName: ${{ needs.Build-Info.outputs.apiName }}
     steps:
-      - name: Health check
+      - uses: actions/checkout@v3
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+      - name: Enable GHA runner access
+        run: ops/helper-scripts/dev-add-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} 100 true
+      - name: Health check api
         run: |
-          sleep 15
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites.net/api/healthcheck)
           sleep 5
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites.net/api/healthcheck)
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites.net)
+          sleep 5
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites.net/api/healthcheck)
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             exit 0
@@ -105,9 +115,12 @@ jobs:
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
             exit 1
           fi
+      # - name: Disable GHA runner access
+      #   run: ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ?
       - name: Veracode Prescan
         run: |
           echo "Still work in progress..."
+
 
   formatting:
     runs-on: ubuntu-latest
