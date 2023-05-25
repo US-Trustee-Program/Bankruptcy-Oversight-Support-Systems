@@ -34,6 +34,9 @@ jobs:
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Print build info
         id: build-info
         run: |
@@ -50,7 +53,7 @@ jobs:
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
 
           # Stack name used downstream to label build artifacts and Azure resources
-          stackName="${{ vars.APP_NAME }}${{ vars.ENVIRONMENT != 'Main' && vars.DEV_SUFFIX || '' }}${{ vars.ENVIRONMENT != 'Main' && steps.build-info.outputs.branchHashCode || '' }}"
+          stackName=$(ops/helper-scripts/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
 
@@ -66,8 +69,6 @@ jobs:
           execVnetDeploy=${{ inputs.deployVnet || 'true' }}
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-
-
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
