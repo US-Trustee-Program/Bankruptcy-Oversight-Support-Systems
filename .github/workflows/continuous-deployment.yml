@@ -30,8 +30,8 @@ jobs:
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiName: ${{ steps.build-info.outputs.apiName }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
-      azResourceGrpAppEncrypted: ${{ steps.build-info.outputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted: ${{ steps.build-info.outputs.azResourceGrpNetworkEncrypted }}
+      azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
+      azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
     steps:
       - name: Print build info
         id: build-info
@@ -58,17 +58,26 @@ jobs:
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
 
-          # TODO experiment with using openssl to create deterministic hash from branch name
+          # Generate resource group name(s)
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
           short_hash=${hash:0:6}
           echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
-
-          azResourceGrpAppEncrypted=$(gpg --symmetric --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ secrets.AZ_APP_RG }}-${short_hash}") | base64 -w0)
-          echo "azResourceGrpAppEncrypted=${azResourceGrpAppEncrypted}" >> $GITHUB_OUTPUT
-          azResourceGrpNetworkEncrypted=$(gpg --symmetric --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ secrets.AZ_NETWORK_RG }}-${short_hash}") | base64 -w0)
-          echo "azResourceGrpNetworkEncrypted=${azResourceGrpNetworkEncrypted}" >> $GITHUB_OUTPUT
-
-          echo "Target resource group names azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash} ${azResourceGrpAppEncrypted} azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash} ${azResourceGrpNetworkEncrypted}"
+          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+          
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with: 
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.build-info.outputs.azResourceGrpApp }}
+          
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetwork
+        with: 
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
 
   formatting:
     runs-on: ubuntu-latest
@@ -247,11 +256,25 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetwork
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.Build-Info.outputs.azResourceGrpNetworkEncrypted }}
+
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
-          azResourceGrpApp=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
-          azResourceGrpNetwork=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpNetworkEncrypted }}" | base64 --decode))
+          azResourceGrpApp=${{ steps.rgApp.outputs.out }}
+          azResourceGrpNetwork=${{ steps.rgNetwork.outputs.out }}
           azResourceGrpDatasource=${{ secrets.AZURE_RG }}
 
           ./ops/helper-scripts/azure-deploy.sh \
@@ -281,11 +304,16 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
+          
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          
       - name: Deploy to Azure WebApp
-        run: |
-          azResourceGrpApp=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
-          ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${azResourceGrpApp} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ steps.Build-Info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -302,8 +330,13 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
+          
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          
       - name: Deploy Azure Functions backend
-        run: |
-          azResourceGrpApp=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
-          ./ops/helper-scripts/az-func-deploy.sh -g ${azResourceGrpApp} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
