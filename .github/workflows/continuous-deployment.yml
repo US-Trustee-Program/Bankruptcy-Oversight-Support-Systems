@@ -314,7 +314,7 @@ jobs:
           in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ steps.Build-Info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
