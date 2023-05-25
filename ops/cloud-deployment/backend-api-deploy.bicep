@@ -216,7 +216,7 @@ var ipSecurityRestrictionsRules = concat([ {
       description: 'Deny all access'
     } ],
   allowVeracodeScan ? [ {
-      ipAddress: '3.32.105.199'
+      ipAddress: '3.32.105.199/32'
       action: 'Allow'
       priority: 1000
       name: 'Veracode Agent'
