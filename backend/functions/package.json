@@ -28,7 +28,7 @@
     "build": "tsc --project tsconfig.build.json",
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
-    "start": "func start",
+    "start": "func start --typescript",
     "start:dev": "nodemon --esm src/server.ts",
     "test": "DATABASE_MOCK='true' jest",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
