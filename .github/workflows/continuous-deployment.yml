@@ -94,6 +94,9 @@ jobs:
       apiName: ${{ needs.Build-Info.outputs.apiName }}
     steps:
       - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
