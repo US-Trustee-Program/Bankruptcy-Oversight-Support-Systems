@@ -249,15 +249,16 @@ jobs:
 
       - name: Deploy Azure resources
         id: azure-deploy
-        env:
-          azResourceGrpApp: $(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
-          azResourceGrpNetwork: $(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpNetworkEncrypted }}" | base64 --decode))
         run: |
+          azResourceGrpApp=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
+          azResourceGrpNetwork=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpNetworkEncrypted }}" | base64 --decode))
+          azResourceGrpDatasource=${{ secrets.AZURE_RG }}
+
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resourceGroup ${azResourceGrpApp} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${azResourceGrpNetwork} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${azResourceGrpApp} deployFunctions=true apiFunctionsResourceGroupName=${azResourceGrpApp} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
+            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${azResourceGrpNetwork} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${azResourceGrpApp} deployFunctions=true apiFunctionsResourceGroupName=${azResourceGrpApp} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${azResourceGrpDatasource}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
@@ -282,9 +283,9 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure WebApp
-        env:
-          azResourceGrpApp: $(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
-        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${azResourceGrpApp} -n ${{ needs.deploy.outputs.webappName }}
+        run: |
+          azResourceGrpApp=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
+          ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${azResourceGrpApp} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -303,6 +304,6 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Azure Functions backend
-        env:
-          azResourceGrpApp: $(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
-        run: ./ops/helper-scripts/az-func-deploy.sh -g ${azResourceGrpApp} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: |
+          azResourceGrpApp=$(gpg --decrypt --quiet --batch --passphrase ${{ secrets.PGP_SIGNING_PASSPHRASE }} --output - <(echo "${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}" | base64 --decode))
+          ./ops/helper-scripts/az-func-deploy.sh -g ${azResourceGrpApp} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
