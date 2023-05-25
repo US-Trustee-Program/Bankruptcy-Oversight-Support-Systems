@@ -272,12 +272,10 @@ jobs:
 
       - name: Deploy Azure resources
         id: azure-deploy
-        run: |
-          echo "01 ${{ steps.rgNetwork.outputs.out }} 02 ${{ steps.rgApp.outputs.out }}"
-        
+        run: |        
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
-            --resourceGroup ${azResourceGrpApp} \
+            --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
             --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
