@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 export REACT_APP_PA11Y=true
 npm run build

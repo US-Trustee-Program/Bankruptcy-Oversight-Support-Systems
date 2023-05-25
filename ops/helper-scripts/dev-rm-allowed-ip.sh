@@ -6,7 +6,7 @@
 #   - Azure CLI
 # Usage: dev-rm-allowed-ip.sh <resource_group_name:str> <stack_name:str> <rule_name:str>
 
-set -e
+set -euo pipefail
 
 app_rg=$1
 stack_name=$2

@@ -11,7 +11,7 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
-set -e
+set -euo pipefail
 
 while [[ $# > 0 ]]; do
     case $1 in

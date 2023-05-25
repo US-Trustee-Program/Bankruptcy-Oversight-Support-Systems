@@ -10,7 +10,7 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
-set -euxo pipefail
+set -euo pipefail
 
 requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
 
