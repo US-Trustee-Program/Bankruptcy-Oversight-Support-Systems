@@ -95,10 +95,15 @@ jobs:
       - name: Package up repository and then scan
         run: |
           zip -r cams.zip ./
-          ls -lh | grep cams
           java -jar /opt/veracode/pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
           --file cams.zip
+      
+      - name: Store SAST scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: sast-scan-results
+          path: results.json
 
   security-sca-scan-frontend:
     runs-on: ubuntu-latest
