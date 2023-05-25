@@ -61,7 +61,7 @@ jobs:
           webappName="${stackName}-webapp"
           echo "Webapp Artifact: $webappName"
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
-          apiName="${stackName}-api"
+          apiName="${stackName}-node-api"
           echo "Api Artifact: $apiName"
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
 
@@ -155,7 +155,7 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
-          export REACT_APP_SERVER_HOSTNAME=${{ vars.REACT_APP_SERVER_HOSTNAME }}
+          export REACT_APP_SERVER_HOSTNAME="${{ needs.Build-Info.outputs.apiName }}.azurewebsites.net"
           export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
           export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
