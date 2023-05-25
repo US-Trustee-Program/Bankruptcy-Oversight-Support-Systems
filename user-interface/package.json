@@ -26,6 +26,7 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.48.2",
     "@typescript-eslint/parser": "^5.48.2",
+    "dependency-cruiser": "^12.11.3",
     "eslint": "^8.32.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -77,6 +78,8 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
     "pa11y:ci": "pa11y-ci",
-    "preinstall": "npx npm-force-resolutions"
+    "preinstall": "npx npm-force-resolutions",
+    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H:%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' public src tests | dot -T svg > ../architecture/dependency-cruiser/gui/dependency-graph_${current_time}.svg",
+    "dependency-cruiser-ci": "npx depcruise --output-type err-long public src tests"
   }
 }
