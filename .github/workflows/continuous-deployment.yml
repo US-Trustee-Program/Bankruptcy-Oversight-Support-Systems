@@ -84,6 +84,31 @@ jobs:
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
 
+  smoke-test-application-exp:
+    runs-on: ubuntu-latest
+    needs: [Build-Info]
+    environment: ${{ needs.Build-Info.outputs.environment }}
+    env:
+      webappName: ${{ needs.Build-Info.outputs.webappName }}
+      apiName: ${{ needs.Build-Info.outputs.apiName }}
+    steps:
+      - name: Health check
+        run: |
+          sleep 15
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites.net/api/healthcheck)
+          sleep 5
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites.net/api/healthcheck)
+
+          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+            exit 0
+          else
+            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+            exit 1
+          fi
+      - name: Veracode Prescan
+        run: |
+          echo "Still work in progress..."
+
   formatting:
     runs-on: ubuntu-latest
     steps:
@@ -248,7 +273,7 @@ jobs:
     needs: [Build-Info, build-frontend, build-service]
     environment: ${{ needs.Build-Info.outputs.environment }}
     # TODO : remove true when done testing this on branch
-    if: ((github.ref == 'refs/heads/main') || true )
+    if: ((github.ref == 'refs/heads/main') )
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
@@ -341,3 +366,27 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+
+  smoke-test-application:
+    runs-on: ubuntu-latest
+    needs: [Build-Info, deploy-webapp, deploy-service]
+    environment: ${{ needs.Build-Info.outputs.environment }}
+    env:
+      webappName: ${{ needs.Build-Info.outputs.webappName }}
+    steps:
+      - name: Health check
+        run: |
+          sleep 15
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ needs.Build-Info.outputs.webappName }}.azurewebsites.net/api/healthcheck)
+          sleep 5
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ needs.Build-Info.outputs.apiName }}.azurewebsites.net/api/healthcheck)
+
+          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+            exit 0
+          else
+            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+            exit 1
+          fi
+      - name: Veracode Prescan
+        run: |
+          echo "Still work in progress..."
