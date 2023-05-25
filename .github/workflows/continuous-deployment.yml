@@ -64,17 +64,17 @@ jobs:
           echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
-          
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
-        with: 
+        with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpApp }}
-          
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgNetwork
-        with: 
+        with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
@@ -262,7 +262,7 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
-          
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgNetwork
         with:
@@ -273,15 +273,11 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
-          azResourceGrpApp=${{ steps.rgApp.outputs.out }}
-          azResourceGrpNetwork=${{ steps.rgNetwork.outputs.out }}
-          azResourceGrpDatasource=${{ secrets.AZURE_RG }}
-
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resourceGroup ${azResourceGrpApp} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${azResourceGrpNetwork} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${azResourceGrpApp} deployFunctions=true apiFunctionsResourceGroupName=${azResourceGrpApp} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${azResourceGrpDatasource}'
+            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
@@ -304,14 +300,14 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
-          
+
       - name: Deploy to Azure WebApp
         run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ steps.Build-Info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
 
@@ -330,13 +326,13 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
-          
+
       - name: Deploy Azure Functions backend
         run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
