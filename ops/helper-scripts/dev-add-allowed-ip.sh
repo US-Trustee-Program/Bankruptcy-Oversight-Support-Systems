@@ -11,7 +11,7 @@ set -euo pipefail
 app_rg=$1
 stack_name=$2
 priority=$3
-if (($# == 3)); then
+if (($# == 4)); then
     ci=$4
 else
     ci=
@@ -24,7 +24,7 @@ fi
 
 agentIp=$(curl -s https://api.ipify.org)
 
-if [[ -n $ci ]]; then
+if [[ $ci ]]; then
     ruleName="gha-agent-${stack_name:0:16}"
 else
     ruleName="dev-agent-${agentIp:0:16}"
