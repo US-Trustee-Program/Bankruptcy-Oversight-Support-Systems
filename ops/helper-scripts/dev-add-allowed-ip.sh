@@ -25,10 +25,11 @@ fi
 agentIp=$(curl -s https://api.ipify.org)
 
 if [[ $ci ]]; then
-    ruleName="gha-agent-${stack_name:0:16}"
+    ruleName="gha-agent-${stack_name}"
 else
-    ruleName="dev-agent-${agentIp:0:16}"
+    ruleName="dev-agent-${agentIp}"
 fi
+ruleName=${ruleName:0:32} # trim up to 32 character limit
 echo "Attempting to add Ip allow rule (${ruleName})"
 az functionapp config access-restriction add -g $app_rg -n "${stack_name}-node-api" --rule-name $ruleName --action Allow --ip-address $agentIp --priority "${priority}1" 1>/dev/null
 

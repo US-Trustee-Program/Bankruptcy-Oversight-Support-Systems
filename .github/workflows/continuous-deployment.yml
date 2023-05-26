@@ -118,8 +118,10 @@ jobs:
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
             exit 1
           fi
-      # - name: Disable GHA runner access
-      #   run: ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ?
+      - name: Disable GHA runner access
+        run: |
+          name="gha-agent-${{ env.stackName }}"
+          ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
       - name: Veracode Prescan
         run: |
           echo "Still work in progress..."
