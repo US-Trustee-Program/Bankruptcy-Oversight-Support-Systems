@@ -21,7 +21,7 @@ on:
         - 'true'
 
 jobs:
-  Build-Info:
+  build-info:
     runs-on: ubuntu-latest
     environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Develop' }}
     outputs:
@@ -134,8 +134,8 @@ jobs:
         working-directory: user-interface
 
     runs-on: ubuntu-latest
-    needs: [ Build-Info, security-sca-scan-frontend ]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [ build-info, security-sca-scan-frontend ]
+    environment: ${{ needs.build-info.outputs.environment }}
 
     strategy:
       matrix:
@@ -155,7 +155,7 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
-          export REACT_APP_SERVER_HOSTNAME="${{ needs.Build-Info.outputs.apiName }}.azurewebsites.net"
+          export REACT_APP_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites.net"
           export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
           export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
@@ -167,12 +167,12 @@ jobs:
       - name: Package
         run: |
           mkdir artifacts
-          tar -cvf artifacts/${{ needs.Build-Info.outputs.webappName }}.tar ./build
+          tar -cvf artifacts/${{ needs.build-info.outputs.webappName }}.tar ./build
 
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ needs.Build-Info.outputs.webappName }}-build
+          name: ${{ needs.build-info.outputs.webappName }}-build
           path: user-interface/artifacts/
           if-no-files-found: error
 
@@ -183,8 +183,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    needs: [Build-Info]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [build-info]
+    environment: ${{ needs.build-info.outputs.environment }}
 
     strategy:
       matrix:
@@ -216,8 +216,8 @@ jobs:
         working-directory: backend/functions
 
     runs-on: ubuntu-latest
-    needs: [ Build-Info, security-sca-scan-backend ]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [ build-info, security-sca-scan-backend ]
+    environment: ${{ needs.build-info.outputs.environment }}
 
     strategy:
       matrix:
@@ -234,19 +234,19 @@ jobs:
         run: npm run test
 
       - name: Package Application
-        run: OUT=${{ needs.Build-Info.outputs.apiName }} npm run pack
+        run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
 
       - name: Upload Node Azure Functions Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ needs.Build-Info.outputs.apiName }}-build
-          path: backend/functions/${{ needs.Build-Info.outputs.apiName }}.zip
+          name: ${{ needs.build-info.outputs.apiName }}-build
+          path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [Build-Info, build-frontend, build-service]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [build-info, build-frontend, build-service]
+    environment: ${{ needs.build-info.outputs.environment }}
     # TODO : remove true when done testing this on branch
     if: ((github.ref == 'refs/heads/main') )
     outputs:
@@ -266,14 +266,14 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgNetwork
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.Build-Info.outputs.azResourceGrpNetworkEncrypted }}
+          in: ${{ needs.build-info.outputs.azResourceGrpNetworkEncrypted }}
 
       - name: Deploy Azure resources
         id: azure-deploy
@@ -282,7 +282,7 @@ jobs:
             --show-what-if \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.Build-Info.outputs.stackName }} deployVnet=${{ needs.Build-Info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
@@ -292,15 +292,15 @@ jobs:
 
   deploy-webapp:
     runs-on: ubuntu-latest
-    needs: [Build-Info, deploy]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [build-info, deploy]
+    environment: ${{ needs.build-info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.Build-Info.outputs.webappName }}-build
+          name: ${{ needs.build-info.outputs.webappName }}-build
 
       - uses: azure/login@v1
         with:
@@ -311,22 +311,22 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.Build-Info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
-    needs: [Build-Info, deploy]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [build-info, deploy]
+    environment: ${{ needs.build-info.outputs.environment }}
     steps:
       - uses: actions/checkout@main
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.Build-Info.outputs.apiName }}-build
+          name: ${{ needs.build-info.outputs.apiName }}-build
 
       - uses: azure/login@v1
         with:
@@ -337,19 +337,19 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Functions backend
-        run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.Build-Info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.build-info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
 
   smoke-test-application:
     runs-on: ubuntu-latest
-    needs: [Build-Info, deploy-webapp, deploy-service]
-    environment: ${{ needs.Build-Info.outputs.environment }}
+    needs: [build-info, deploy-webapp, deploy-service]
+    environment: ${{ needs.build-info.outputs.environment }}
     env:
-      stackName: ${{ needs.Build-Info.outputs.stackName }}
-      webappName: ${{ needs.Build-Info.outputs.webappName }}
-      apiName: ${{ needs.Build-Info.outputs.apiName }}
+      stackName: ${{ needs.build-info.outputs.stackName }}
+      webappName: ${{ needs.build-info.outputs.webappName }}
+      apiName: ${{ needs.build-info.outputs.apiName }}
     steps:
       - uses: actions/checkout@v3
       - uses: azure/login@v1
@@ -360,7 +360,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.Build-Info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: ops/helper-scripts/dev-add-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} 100 true
       - name: Health check api
