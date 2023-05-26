@@ -1,8 +1,8 @@
 import { Context } from '../types/basic';
 
 export default class log {
-  private static sanitize(input: string): string {
-    return input.replace(/[\n]/g, '\\n').replace(/[\r]/g, '\\r');
+  public static sanitize(input: string): string {
+    return input.replace(/[\r\n]+/g, ' ').trim();
   }
 
   private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
