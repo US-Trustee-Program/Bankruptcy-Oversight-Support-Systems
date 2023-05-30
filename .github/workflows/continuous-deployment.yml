@@ -92,6 +92,11 @@ jobs:
       - name: Package up repository
         run: | 
           zip -r cams.zip ./
+          
+          wget https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/suites/13186325069/artifacts/717755385
+          ls -l
+          unzip sast-scan-results.zip
+          mv results.json results-latest.json
 
       - name: pipeline-scan action step
         id: pipeline-scan
@@ -101,6 +106,7 @@ jobs:
           vkey: ${{ secrets.VERACODE_API_KEY }}
           file: "cams.zip"
           fail_on_severity: "Medium"
+          baseline_file: results-latest.json
 
   security-sca-scan-frontend:
     runs-on: ubuntu-latest
