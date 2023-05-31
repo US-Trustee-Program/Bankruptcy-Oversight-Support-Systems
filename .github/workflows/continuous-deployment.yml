@@ -102,7 +102,7 @@ jobs:
       - name: pipeline-scan
         id: pipeline-scan
         run: | 
-          docker pull veracode/pipeline-scan
+          docker pull veracode/pipeline-scan:cmd
           
           alias 'veracode-pipeline-scan'='docker run --platform linux/amd64 -it --rm -v $PWD:/home/luser -v ~/.veracode/credentials:/home/luser/.veracode/credentials veracode/pipeline-scan:cmd'
           
