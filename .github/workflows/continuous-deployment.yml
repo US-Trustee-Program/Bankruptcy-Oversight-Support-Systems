@@ -108,7 +108,7 @@ jobs:
 
           java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
-          -jf results.json -fjf filtered_results.json \
+          -bf results-latest.json -jf results.json -fjf filtered_results.json \
           --file cams.zip
 
       - name: Upload to storage account
