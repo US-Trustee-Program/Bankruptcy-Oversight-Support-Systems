@@ -112,7 +112,7 @@ jobs:
           -jf results.json -fjf filtered_results.json \
           --file cams.zip \
           --fail_on_severity "Medium" \
-          --verbose
+          --verbose true
 
       - name: Upload to storage account
         run: |
