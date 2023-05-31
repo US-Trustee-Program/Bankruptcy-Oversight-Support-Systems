@@ -1,22 +1,23 @@
 import { CasePersistenceGateway, UserPersistenceGateway } from '../adapters/types/persistence-gateway';
 import { Context } from '../adapters/types/basic';
+import { CaseListDbResult } from '../adapters/types/cases';
+import Chapter11CaseList from './chapter-11-case-list';
+import Chapter15CaseList from './chapter-15-case-list';
 
 async function login(context: Context, database: UserPersistenceGateway, userName: {firstName: string, lastName: string}) {
   return await database.login(context, userName);
 }
 
 async function listCases(context: Context, database: CasePersistenceGateway, fields: {chapter: string, professionalId: string}) {
-  const result = await database.getCaseList(context, fields);
-  result.body.staff1Label = 'Trial Attorney';
-  result.body.staff2Label = 'Auditor';
+  let result: CaseListDbResult;
+  if (fields.chapter == '11') {
+    const chapter11CaseList = new Chapter11CaseList;
+    result = await chapter11CaseList.getChapter11CaseList(context, database, fields);
+  } else if (fields.chapter == '15') {
+    const chapter15CaseList = new Chapter15CaseList;
+    result = await chapter15CaseList.getChapter15CaseList(context);
+  }
 
-  // TODO: When we start returning multiple chapters, we need to define the staff labels at the case level
-  // result.body.forEach((brCase: ObjectKeyVal) => {
-  //   if (brCase['currentCaseChapter'] == '11') {
-  //     brCase['staff1Label'] = 'Trial Attorney';
-  //     brCase['staff2Label'] = 'Auditor';
-  //   }
-  // })
   return result;
 }
 
