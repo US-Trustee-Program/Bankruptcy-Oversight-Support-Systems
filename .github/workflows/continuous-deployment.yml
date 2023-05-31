@@ -92,10 +92,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Package up repository and then scan
         run: |
           zip -r cams.zip ./
