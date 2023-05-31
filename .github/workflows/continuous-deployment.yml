@@ -104,7 +104,10 @@ jobs:
         run: | 
           docker pull veracode/pipeline-scan:cmd
           
-          alias 'veracode-pipeline-scan'='docker run --platform linux/amd64 -it --rm -v $PWD:/home/luser -v ~/.veracode/credentials:/home/luser/.veracode/credentials veracode/pipeline-scan:cmd'
+          echo "__check images__"
+          docker images
+          
+          alias 'veracode-pipeline-scan'='docker run -it --rm -v $PWD:/home/luser veracode/pipeline-scan:cmd'
           
           alias | grep -i veracode
           
