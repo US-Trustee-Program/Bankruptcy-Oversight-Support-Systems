@@ -101,11 +101,13 @@ jobs:
       
       - name: pipeline-scan
         id: pipeline-scan
-        run: | 
-          docker pull veracode/pipeline-scan:cmd
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip -o pipeline-scan-LATEST.zip
           
-          docker run -it --rm -v $PWD:/home/luser veracode/pipeline-scan:cmd \ 
+          java -jar pipeline-scan.jar \ 
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
+          -jf results.json -fjf filtered_results.json \
           --file cams.zip \
           --fail_on_severity "Very High, High, Medium"
     
