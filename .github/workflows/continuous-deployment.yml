@@ -88,33 +88,36 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Package source code for scan
         run: zip -r cams.zip . -i "*.ts" -i "*.js"
-      
+
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Download baseline file
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
-      
+
       - name: pipeline-scan
         id: pipeline-scan
         run: |
           curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
           unzip -o pipeline-scan-LATEST.zip
-          
-          java -jar pipeline-scan.jar \ 
+
+          java -jar pipeline-scan.jar --help
+
+          java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
           -jf results.json -fjf filtered_results.json \
           --file cams.zip \
-          --fail_on_severity "Very High, High, Medium"
-    
+          --fail_on_severity "Medium" \
+          --verbose
+
       - name: Upload to storage account
-        run: | 
+        run: |
           az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
-          az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json 
+          az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
 
   security-sca-scan-frontend:
     runs-on: ubuntu-latest
