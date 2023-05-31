@@ -89,30 +89,27 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Get docker container
-        run: docker pull veracode/pipeline-scan
-
+      - name: Package source code for scan
+        run: zip -r cams.zip . -i "*.ts" -i "*.js"
+      
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Download baseline
+      - name: Download baseline file
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
-
-      - name: Package up repository
-        run: zip -r cams.zip ./
-          
-      - name: pipeline-scan action step
+      
+      - name: pipeline-scan
         id: pipeline-scan
-        uses: veracode/Veracode-pipeline-scan-action@v1.0.3
-        with:
-          vid: ${{ secrets.VERACODE_API_ID }}
-          vkey: ${{ secrets.VERACODE_API_KEY }}
-          file: "cams.zip"
-          fail_on_severity: "High,Medium"
-          baseline_file: results-latest.json
-          fail_build: true
+        run: | 
+          docker pull veracode/pipeline-scan
           
+          alias 'veracode-pipeline-scan'='docker run --platform linux/amd64 -it --rm -v $PWD:/home/luser -v ~/.veracode/credentials:/home/luser/.veracode/credentials veracode/pipeline-scan:cmd'
+          
+          veracode-pipeline-scan vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
+          --file cams.zip \
+          --fail_on_severity "Very High, High, Medium"
+    
       - name: Upload to storage account
         run: | 
           az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
