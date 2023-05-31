@@ -88,6 +88,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Get docker container
+        run: docker pull veracode/pipeline-scan
 
       - uses: azure/login@v1
         with:
