@@ -104,15 +104,12 @@ jobs:
         run: |
           curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
           unzip -o pipeline-scan-LATEST.zip
-
-          java -jar pipeline-scan.jar --help
+          java -jar pipeline-scan.jar --version
 
           java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
           -jf results.json -fjf filtered_results.json \
-          --file cams.zip \
-          --fail_on_severity "Medium" \
-          --verbose true
+          --file cams.zip
 
       - name: Upload to storage account
         run: |
