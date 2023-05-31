@@ -15,11 +15,11 @@ export type CaseListDbResult = {
   body: CaseListRecordSet;
 };
 
-export type caseType = {
-  currentCaseChapter: string;
+export type Chapter11CaseType = {
   caseNumber: string;
-  debtor1Name: string;
+  currentCaseChapter: string;
   currentChapterFileDate: number;
+  debtor1Name: string;
   staff1ProfName: string;
   staff1ProfTypeDescription: string;
   staff2ProfName: string;
@@ -31,7 +31,7 @@ export type caseType = {
   //hearingDescription: string;
 };
 
-export type caseTypeWithDescription = {
+export type Chapter11CaseTypeWithDescription = {
   currentCaseChapter: string;
   caseNumber: string;
   debtor1Name: string;

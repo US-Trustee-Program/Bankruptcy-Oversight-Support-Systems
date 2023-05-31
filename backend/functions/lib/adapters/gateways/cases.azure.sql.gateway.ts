@@ -4,8 +4,8 @@ import { executeQuery } from '../utils/database';
 import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
-import {ReviewCodeDescription} from "../utils/LookUps";
-import {caseType, caseTypeWithDescription} from "../types/cases";
+import { ReviewCodeDescription } from "../utils/LookUps";
+import { Chapter11CaseType } from "../types/cases";
 
 const table = 'cases';
 
@@ -102,7 +102,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 
 async function updateReviewDescription(results: void | Object) {
     let reviewDescriptionMapper = new ReviewCodeDescription();
-    let caseResults = results as Array<caseType>;
+    let caseResults = results as Array<Chapter11CaseType>;
 
     caseResults.forEach(function(caseTy){
       var d = caseTy.hearingDisposition;
