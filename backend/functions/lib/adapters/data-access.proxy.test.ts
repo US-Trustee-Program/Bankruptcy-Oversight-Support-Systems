@@ -23,7 +23,6 @@ jest.mock('../configs/index', () => {
     __esModule: true, // for esModules
     default: {
       get: jest.fn((key: string) => {
-        console.log('running mock get...');
         // override result conditionally on input arguments
         if (key === 'dbMock') return dbMock;
         // otherwise return using original behavior
