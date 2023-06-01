@@ -12,7 +12,14 @@ namespace UseCases {
       // get chapter 15 records from pacer
       // build CaseListDbResult object
       // return results
-      return result;
+      return {
+        success: true,
+        message: '',
+        count: 0,
+        body: {
+          caseList: [],
+        }
+      }
     }
 
   }
