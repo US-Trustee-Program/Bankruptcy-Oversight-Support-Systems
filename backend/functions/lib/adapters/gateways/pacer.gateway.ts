@@ -1,6 +1,8 @@
-import {Request} from "mssql";
-
 export function getChapter15Cases() {
+    const date = new Date();
+    date.setMonth(date.getMonth() + -6);
+    const dateFileFrom = date.toISOString().split('T')[0];
+
     // make http api call
     const body = `{
             "jurisdictionType": "bk",
@@ -9,8 +11,10 @@ export function getChapter15Cases() {
             ],
             "federalBankruptcyChapter": [
                 "15"
-            ]
-        }`
+            ],
+            "dateFiledFrom": ${dateFileFrom}
+        }`;
+
     let requestInit: RequestInit = {
         method: 'POST',
         headers: {
@@ -21,5 +25,6 @@ export function getChapter15Cases() {
         body: body,
         cache: 'default'
     };
+
     fetch('https://qa-pcl.uscourts.gov/pcl-public-api/rest/cases/find?page=0', requestInit);
 }
