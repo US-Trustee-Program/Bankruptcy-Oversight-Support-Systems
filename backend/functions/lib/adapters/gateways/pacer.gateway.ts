@@ -3,9 +3,9 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-export async function getChapter15Cases(): Promise<Chapter15Case[]> {
+export async function getChapter15Cases(startingMonth: number = -6): Promise<Chapter15Case[]> {
     const date = new Date();
-    date.setMonth(date.getMonth() + -6);
+    date.setMonth(date.getMonth() + startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
 
     const body = `{
