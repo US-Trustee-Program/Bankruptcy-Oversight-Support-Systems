@@ -15,7 +15,7 @@ export type CaseListDbResult = {
   body: CaseListRecordSet;
 };
 
-export type caseType = {
+export type BankruptcyCase = {
   currentCaseChapter: string;
   caseNumber: string;
   debtor1Name: string;

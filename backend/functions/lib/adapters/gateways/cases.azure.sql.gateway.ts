@@ -5,13 +5,13 @@ import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
 import {ReviewCodeDescription} from "../utils/LookUps";
-import {caseType, caseTypeWithDescription} from "../types/cases";
+import {BankruptcyCase, caseTypeWithDescription} from "../types/cases";
 
 const table = 'cases';
 
 const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 
-const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<DbResult> => {
+const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<BankruptcyCase[]> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
@@ -102,7 +102,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 
 async function updateReviewDescription(results: void | Object) {
     let reviewDescriptionMapper = new ReviewCodeDescription();
-    let caseResults = results as Array<caseType>;
+    let caseResults = results as Array<BankruptcyCase>;
 
     caseResults.forEach(function(caseTy){
       var d = caseTy.hearingDisposition;
