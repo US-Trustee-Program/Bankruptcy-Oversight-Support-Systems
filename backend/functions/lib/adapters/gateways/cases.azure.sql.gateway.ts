@@ -65,39 +65,21 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 
   const queryResult: QueryResults = await executeQuery(context, table, query, input);
   let results: DbResult;
+  let caseList: [];
 
   try {
     if (queryResult.success) {
-
       log.debug(context, NAMESPACE, "About to call the updateReviewDescription");
 
-      await updateReviewDescription(queryResult.results["recordset"]);
-      const body = { staff1Label: '', staff2Label: '', caseList: {} }
-      body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
-      const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
-      results = {
-        success: true,
-        message: `${table} list`,
-        count: rowsAffected,
-        body,
-      };
+      caseList = (queryResult.results as mssql.IResult<any>).recordset;
+      await updateReviewDescription(caseList);
     } else {
-      results = {
-        success: false,
-        message: queryResult.message,
-        count: 0,
-        body: {},
-      };
+      throw Error(queryResult.message);
     }
   } catch (e) {
-    results = {
-      success: false,
-      message: e.message,
-      count: 0,
-      body: {},
-    };
+    throw Error(e.message);
   }
-  return results;
+  return caseList;
 };
 
 async function updateReviewDescription(results: void | Object) {
