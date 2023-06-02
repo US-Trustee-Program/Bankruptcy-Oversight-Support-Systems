@@ -46,3 +46,9 @@ export type Chapter11CaseTypeWithDescription = {
   hearingDisposition: string;
   hearingDescription: string;
 };
+
+export type Chapter15Case = {
+  caseNumber: string;
+  caseTitle: string;
+  dateFiled: string;
+}
