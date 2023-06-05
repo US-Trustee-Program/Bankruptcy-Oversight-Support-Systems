@@ -9,7 +9,7 @@ class PacerApiGateway implements PacerGatewayInterface {
         const date = new Date();
         date.setMonth(date.getMonth() + startingMonth);
         const dateFileFrom = date.toISOString().split('T')[0];
-        const regionTwoPacerCourtIds = ["nyebk", "nynbk", "nysbk", "nywbk", "vtbk", "ctbk"];
+        const regionTwoPacerCourtIds = '["nyebk", "nynbk", "nysbk", "nywbk", "vtbk", "ctbk"]';
 
         const body = `{
             "jurisdictionType": "bk",
