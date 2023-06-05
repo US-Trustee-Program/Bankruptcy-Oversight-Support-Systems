@@ -1,4 +1,4 @@
-import { PacerGatewayInterface } from './pacer.gateway.interface';
+import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { Chapter15Case } from '../types/cases';
 
 class LocalPacerGateway implements PacerGatewayInterface {

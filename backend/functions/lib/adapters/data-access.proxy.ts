@@ -8,7 +8,7 @@ import config from '../configs/index';
 import { PersistenceGateway } from './types/persistence-gateway';
 import log from './services/logger.service';
 import { Context } from './types/basic';
-import {PacerGatewayInterface} from "./gateways/pacer.gateway.interface";
+import {PacerGatewayInterface} from "../use-cases/pacer.gateway.interface";
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
@@ -44,3 +44,4 @@ async function proxyPacer(context: Context): Promise<PacerGatewayInterface> {
 }
 
 export default proxyData;
+export { proxyPacer };
