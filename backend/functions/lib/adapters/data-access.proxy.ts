@@ -36,10 +36,10 @@ async function proxyData(context: Context, table: string, mock: boolean = false)
 async function proxyPacer(context: Context): Promise<PacerGatewayInterface> {
   if (config.get('pacerMock')) {
     log.info(context, NAMESPACE, 'using local PACER data');
-    return await import(`./gateways/local.pacer.gateway.ts`);
+    return await import(`./gateways/local.pacer.gateway`);
   } else {
     log.info(context, NAMESPACE, 'using PACER API');
-    return await import(`./gateways/pacer.gateway.ts`);
+    return await import(`./gateways/pacer.gateway`);
   }
 }
 
