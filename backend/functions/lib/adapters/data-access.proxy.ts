@@ -8,6 +8,7 @@ import config from '../configs/index';
 import { PersistenceGateway } from './types/persistence-gateway';
 import log from './services/logger.service';
 import { Context } from './types/basic';
+import {PacerGatewayInterface} from "./gateways/pacer.gateway.interface";
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
@@ -29,6 +30,16 @@ async function proxyData(context: Context, table: string, mock: boolean = false)
   } else {
     log.info(context, NAMESPACE, 'using MSSQL database');
     return await import(`./gateways/${table}.azure.sql.gateway`);
+  }
+}
+
+async function proxyPacer(context: Context): Promise<PacerGatewayInterface> {
+  if (config.get('pacerMock')) {
+    log.info(context, NAMESPACE, 'using local PACER data');
+    return await import(`./gateways/local.pacer.gateway.ts`);
+  } else {
+    log.info(context, NAMESPACE, 'using PACER API');
+    return await import(`./gateways/pacer.gateway.ts`);
   }
 }
 
