@@ -26,7 +26,7 @@ if response.ok:
 
       data = statusResp.json()
       status = data['_embedded']['scans'][0]['latest_occurrence_status']['status_type']
-      print("{} {}".format(count, status))
+      print("{} {}".format(counter, status))
       if status == 'FINISHED_VERIFYING_RESULTS':
           print("Veracode Prescan Status Good")
           sys.exit(0)
