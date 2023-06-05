@@ -28,23 +28,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Setup Veracode credentials
         run: |
           echo "TODO"
-      
+
       - name: Fetch signing library
-      
+
       - name: Execute prescan
-      
+
       - name: Schedule Veracode DAST Scan
-      
-          
-          
-          
-          
-          
-          
-          
-          
-          
