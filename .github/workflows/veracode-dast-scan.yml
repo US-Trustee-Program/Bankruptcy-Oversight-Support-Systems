@@ -1,0 +1,50 @@
+# This is a basic workflow that is manually triggered
+
+name: Manual workflow
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  push:
+    branches:
+    - 'CAMS-21-*'
+#   workflow_dispatch:
+#     # Inputs the workflow accepts.
+#     inputs:
+#       name:
+#         # Friendly description to be shown in the UI instead of 'name'
+#         description: 'Person to greet'
+#         # Default value if no value is explicitly provided
+#         default: 'World'
+#         # Input has to be provided for the workflow to run
+#         required: true
+#         # The data type of the input
+#         type: string
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  dast-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Setup Veracode credentials
+        run: |
+          echo "TODO"
+      
+      - name: Fetch signing library
+      
+      - name: Execute prescan
+      
+      - name: Schedule Veracode DAST Scan
+      
+          
+          
+          
+          
+          
+          
+          
+          
+          
