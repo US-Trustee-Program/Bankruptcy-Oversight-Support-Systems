@@ -1,7 +1,7 @@
 import { CaseListDbResult } from '../adapters/types/cases';
 import { Context } from '../adapters/types/basic';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
-import proxyPacer from '../adapters/data-access.proxy'
+import proxyPacer from '../adapters/pacer.proxy'
 import { pacerToChapter15Data } from '../interfaces/chapter-15-data-interface';
 
 namespace UseCases {
