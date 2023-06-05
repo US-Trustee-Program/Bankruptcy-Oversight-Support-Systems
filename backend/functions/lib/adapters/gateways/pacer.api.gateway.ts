@@ -30,9 +30,17 @@ class PacerApiGateway implements PacerGatewayInterface {
             body: body,
             cache: 'default'
         };
+
         const response = await fetch('https://qa-pcl.uscourts.gov/pcl-public-api/rest/cases/find?page=0', requestInit);
-        const cases = await response.json();
-        return cases.content;
+        if(response.status != 200)
+        {
+            return Promise.reject(response);
+        }else{
+            const cases = await response.json();
+            return cases.content;
+        }
+
+
     }
 }
 

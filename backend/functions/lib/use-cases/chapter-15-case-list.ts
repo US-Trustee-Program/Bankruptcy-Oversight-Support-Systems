@@ -14,20 +14,34 @@ namespace UseCases {
 
       // connect to API via PACER gateway
       // get chapter 15 records from pacer
-      const cases = pacerToChapter15Data(await pacerGateway.getChapter15Cases());
+      try {
+        const response = await pacerGateway.getChapter15Cases();
+        const cases = pacerToChapter15Data(response);
 
-      // build CaseListDbResult object
-      // return results
-      return {
-        success: true,
-        message: '',
-        count: 0,
-        body: {
-          caseList: cases,
+        // build CaseListDbResult object
+        // return results
+        return {
+          success: true,
+          message: '',
+          count: 0,
+          body: {
+            caseList: cases,
+          }
+        }
+
+      }catch (e) {
+        console.log((e as Error).message);
+        return{
+          success: false,
+          message: (e as Error).message,
+          count: 0,
+          body: {
+            caseList: []
+          }
         }
       }
-    }
 
+    }
   }
 
 }
