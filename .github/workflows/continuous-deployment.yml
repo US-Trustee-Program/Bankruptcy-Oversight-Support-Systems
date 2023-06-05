@@ -283,7 +283,7 @@ jobs:
     needs: [build-info, build-frontend, build-service]
     environment: ${{ needs.build-info.outputs.environment }}
     # TODO : remove true when done testing this on branch
-    if: ((github.ref == 'refs/heads/main') || true ) # TODO enable branch deployment for testing
+    if: ((github.ref == 'refs/heads/main') || false ) # TODO enable branch deployment for testing
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}

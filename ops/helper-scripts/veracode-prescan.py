@@ -7,13 +7,9 @@ api_base = "https://api.veracode.us/was/configservice/v1"
 headers = {"User-Agent": "USTP Script", "Content-Type":"application/json"}
 
 try:
-    # payload = json.loads('{"name":"USTP-CAMS-WEB-02","scans":[{"scan_config_request":{"target_url":{"url":"https://ustp-cams-webapp.azurewebsites.net/test"}},"action_type":"ADD"}]}')
+    payload = json.loads('{"name":"CAMS Flexion"}')
 
-    # print(payload)
-
-    # print(json.dumps(payload))
-
-    response = requests.get(api_base + "/analyses/d07344c1be597e7bf974aa9d0c9f83f0", auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
+    response = requests.put(api_base + "/analyses/b022cc5c5616b85d0653acb6f5a5d5e0?method=PATCH&run_verification=true", auth=RequestsAuthPluginVeracodeHMAC(), headers=headers, json=payload)
 
 except requests.RequestException as e:
     print(e)
