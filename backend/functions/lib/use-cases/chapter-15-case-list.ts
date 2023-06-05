@@ -1,20 +1,20 @@
 import { CaseListDbResult } from '../adapters/types/cases';
 import { Context } from '../adapters/types/basic';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
-import proxyPacer from '../adapters/pacer.proxy'
 import { pacerToChapter15Data } from '../interfaces/chapter-15-data-interface';
+import { getPacerGateway } from '../../factory';
 
 namespace UseCases {
 
   export class Chapter15CaseList {
 
     async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
-      const pacerGateway = await proxyPacer(context);
+      const pacerGateway: PacerGatewayInterface = getPacerGateway();
       let result: CaseListDbResult;
 
       // connect to API via PACER gateway
       // get chapter 15 records from pacer
-      const cases = await pacerToChapter15Data(await getChapter15Cases());
+      const cases = pacerToChapter15Data(await pacerGateway.getChapter15Cases());
 
       // build CaseListDbResult object
       // return results
