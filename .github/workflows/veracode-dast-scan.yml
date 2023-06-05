@@ -31,12 +31,14 @@ jobs:
 
       - name: Setup Veracode credentials
         run: |
+         pwd
          mkdir ~/.veracode
          cat > credentials << EOF
           [default]
           veracode_api_key_id = ${{ secrets.VERACODE_API_ID }}
           veracode_api_key_secret = ${{ secrets.VERACODE_API_KEY }}
          EOF
+         mv credentials ~/.veracode
       - name: Fetch signing library
         run: pip install veracode-api-signing
       - name: Execute prescan
