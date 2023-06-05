@@ -42,6 +42,6 @@ jobs:
       - name: Fetch signing library
         run: pip install veracode-api-signing
       - name: Execute prescan
-        run: |
-          cd ./ops/helper-scripts
-          python veracode-prescan.py
+        run: python ./ops/helper-scripts/veracode-prescan.py
+      - name: Schedule DAST Scan
+        run: python ./ops/helper-scripts/veracode-dast-scan.py
