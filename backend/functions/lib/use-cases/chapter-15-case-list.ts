@@ -23,7 +23,7 @@ namespace UseCases {
         message: '',
         count: 0,
         body: {
-          caseList: [],
+          caseList: cases,
         }
       }
     }
