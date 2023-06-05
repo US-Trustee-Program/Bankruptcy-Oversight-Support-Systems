@@ -31,10 +31,15 @@ jobs:
 
       - name: Setup Veracode credentials
         run: |
-          echo "TODO"
-
+         mkdir ~/.veracode
+         cat > credentials << EOF
+          [default]
+          veracode_api_key_id = ${{ secrets.VERACODE_API_ID }}
+          veracode_api_key_secret = ${{ secrets.VERACODE_API_KEY }}
+         EOF
       - name: Fetch signing library
-
+        run: pip install veracode-api-signing
       - name: Execute prescan
-
-      - name: Schedule Veracode DAST Scan
+        run: |
+          cd ./ops/helper-scripts
+          python veracode-prescan.py
