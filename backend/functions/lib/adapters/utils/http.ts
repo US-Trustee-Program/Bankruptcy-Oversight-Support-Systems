@@ -28,3 +28,18 @@ export function httpError(context: Context, error: any, code: number): HttpRespo
     },
   };
 }
+
+export async function httpPost(data: {url: string, body: {}, headers: {}}): Promise<Response> {
+  let requestInit: RequestInit = {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...data.headers,
+      },
+      body: `${data.body}`,
+      cache: 'default'
+  };
+
+  return await fetch(data.url, requestInit);
+}
