@@ -3,16 +3,17 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+type
+
 export async function getChapter15Cases(startingMonth: number = -6): Promise<Chapter15Case[]> {
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
+    const regionTwoPacerCourtIds = ["nyebk", "nynbk", "nysbk", "nywbk", "vtbk", "ctbk"];
 
     const body = `{
             "jurisdictionType": "bk",
-            "courtId": [
-                "cm8bk", "nyebk", "nynbk", "nysbk", "nywbk", "vtbk", "ctbk"
-            ],
+            "courtId": ${regionTwoPacerCourtIds},
             "federalBankruptcyChapter": [
                 "15"
             ],
