@@ -1,8 +1,8 @@
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { Chapter15Case } from '../types/cases';
 
-class LocalPacerGateway implements PacerGatewayInterface {
-  async getChapter15Cases(startingMonth: number): Promise<Chapter15Case[]> {
+class PacerLocalGateway implements PacerGatewayInterface {
+  getChapter15Cases = async (startingMonth: number): Promise<Chapter15Case[]> => {
     let chapter15Case: Chapter15Case = {
       caseNumber: "22-44449",
       caseTitle: "Flo Esterly and Neas Van Sampson",
@@ -15,4 +15,4 @@ class LocalPacerGateway implements PacerGatewayInterface {
   }
 }
 
-export { LocalPacerGateway }
+export { PacerLocalGateway }
