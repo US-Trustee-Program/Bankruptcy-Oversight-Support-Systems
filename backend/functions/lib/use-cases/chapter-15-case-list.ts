@@ -29,11 +29,11 @@ namespace UseCases {
           }
         }
 
-      }catch (e) {
-        console.log((e as Error).message);
+      } catch (e) {
+        const message = (e as Error).message;
         return{
           success: false,
-          message: (e as Error).message,
+          message: (message && message.length) ? message : 'Unknown Error received from PACER server',
           count: 0,
           body: {
             caseList: []
