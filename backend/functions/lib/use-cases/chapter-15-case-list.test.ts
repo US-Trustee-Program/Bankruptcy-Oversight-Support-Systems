@@ -14,7 +14,7 @@ const mockChapterList: CaseListDbResult = {
 describe('Chapter 15 case tests', () => {
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
     const chapter15CaseList = new Chapter15CaseList;
-    const results = await chapter15CaseList.getChapter15CaseList(context); 
+    const results = await chapter15CaseList.getChapter15CaseList(context);
 
     expect(results).toEqual(mockChapterList);
   });
