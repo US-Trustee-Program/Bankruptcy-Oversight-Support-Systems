@@ -1,15 +1,19 @@
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
-import { Chapter15Case } from '../types/cases';
+import { PacerCaseData } from '../types/cases';
+import * as fs from 'fs';
 
 class PacerLocalGateway implements PacerGatewayInterface {
-  getChapter15Cases = async (startingMonth: number): Promise<Chapter15Case[]> => {
-    let chapter15Case: Chapter15Case = {
-      caseNumber: "22-44449",
-      caseTitle: "Flo Esterly and Neas Van Sampson",
-      dateFiled: "2005-05-04",
-    };
+  getChapter15Cases = async (startingMonth: number): Promise<PacerCaseData[]> => {
+    const filename = './lib/testing/mock-data/pacer-data.mock.json';
 
-    const chapter15CaseArray: Chapter15Case[] = [chapter15Case];
+    let chapter15CaseArray: PacerCaseData[] = [];
+    try {
+      const data = fs.readFileSync(filename, 'utf-8');
+      const jsonData = JSON.parse(data);
+      chapter15CaseArray = jsonData.content;
+    } catch (err) {
+      console.log(`Error reading JSON file: ${err}`);
+    }
 
     return chapter15CaseArray;
   }
