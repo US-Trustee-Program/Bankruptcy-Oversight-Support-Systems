@@ -422,6 +422,3 @@ jobs:
         run: |
           name="gha-agent-${{ env.stackName }}"
           ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
-      - name: Veracode Prescan
-        run: |
-          echo "Still work in progress..."
