@@ -1,34 +1,26 @@
-# This is a basic workflow that is manually triggered
+name: Veracode Dynamic Analysis Scan
 
-name: Manual workflow
+concurrency: ${{ github.ref }}
 
-# Controls when the action will run. Workflow runs when manually triggered using the UI
-# or API.
 on:
   push:
+    # TODO : Meant to be setup as a manual trigger to kick off workflow. Remove when done validation
     branches:
     - 'CAMS-21-*'
-#   workflow_dispatch:
-#     # Inputs the workflow accepts.
-#     inputs:
-#       name:
-#         # Friendly description to be shown in the UI instead of 'name'
-#         description: 'Person to greet'
-#         # Default value if no value is explicitly provided
-#         default: 'World'
-#         # Input has to be provided for the workflow to run
-#         required: true
-#         # The data type of the input
-#         type: string
+  workflow_dispatch:
+    inputs:
+      dast-profile-name:
+        description: 'Name of dynamic analysis profile'
+        default: 'CAMS Flexion'
+        required: true
+        type: string
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   dast-scan:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
       - name: Setup Veracode credentials
         run: |
          pwd
@@ -39,9 +31,9 @@ jobs:
           veracode_api_key_secret = ${{ secrets.VERACODE_API_KEY }}
          EOF
          mv credentials ~/.veracode
-      - name: Fetch signing library
+      - name: Install dependencies
         run: pip install veracode-api-signing
-      - name: Execute prescan
-        run: python ./ops/helper-scripts/veracode-prescan.py
+      - name: Execute DAST Prescan
+        run: python ./ops/helper-scripts/veracode-prescan.py ${{ inputs.dast-profile-name }}
       - name: Schedule DAST Scan
-        run: python ./ops/helper-scripts/veracode-dast-scan.py
+        run: python ./ops/helper-scripts/veracode-dast-scan.py ${{ inputs.dast-profile-name }}
