@@ -10,6 +10,14 @@ export type CaseListResponseData = {
   };
 };
 
+export type Chapter15CaseListResponseData = {
+  message: string;
+  count: number;
+  body: {
+    caseList: Array<object>;
+  };
+};
+
 export type ResponseData = {
   message: string;
   count: number;

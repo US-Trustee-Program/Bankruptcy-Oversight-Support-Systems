@@ -7,7 +7,7 @@ export default class MockApi extends Api {
       case '/cases':
         response = {
           message: 'cases list',
-          count: 13,
+          count: MockApi.caseList.length,
           body: {
             staff1Label: 'Trial Attorney',
             staff2Label: 'Auditor',
