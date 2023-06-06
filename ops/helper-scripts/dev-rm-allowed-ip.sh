@@ -6,7 +6,7 @@
 #   - Azure CLI
 # Usage: dev-rm-allowed-ip.sh <resource_group_name:str> <stack_name:str> <rule_name:str>
 
-set -euo pipefail
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 app_rg=$1
 stack_name=$2

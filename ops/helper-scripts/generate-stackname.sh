@@ -3,7 +3,7 @@
 # Description: Helper script to generate stack name for naming Azure resources
 # Usage: generate-stackname.sh <environment:str> <application_name:str> <suffix:str> <branchName:str>
 
-set -euo pipefail
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 if [[ $1 == "Main" ]]; then
     echo $2
