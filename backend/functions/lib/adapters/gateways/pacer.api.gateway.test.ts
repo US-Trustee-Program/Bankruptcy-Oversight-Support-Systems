@@ -18,5 +18,3 @@ describe('PACER API gateway tests', () => {
         await expect(gateway.getChapter15Cases()).rejects.toEqual({ content: responseValue });
     });
 });
-
-
