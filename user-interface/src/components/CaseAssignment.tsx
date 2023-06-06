@@ -12,9 +12,8 @@ type chapter15Type = {
 
 export const CaseAssignment = () => {
   const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
-  const user = useAppSelector((state) => state.user.user);
-  const [screenTitle, setScreenTitle] = useState('Chapter 15 Bankruptcy Cases');
-  const [subTitle, setSubTitle] = useState('Region 2 (Connecticut, New York, Vermont)');
+  const screenTitle = 'Chapter 15 Bankruptcy Cases';
+  const [subTitle, setSubTitle] = useState('');
   const [caseList, setCaseList] = useState<Chapter15CaseListResponseData>({
     message: '',
     count: 0,
@@ -26,6 +25,7 @@ export const CaseAssignment = () => {
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
+  setSubTitle('Region 2 (Connecticut, New York, Vermont)');
 
   const fetchList = async () => {
     setIsLoading(true);
