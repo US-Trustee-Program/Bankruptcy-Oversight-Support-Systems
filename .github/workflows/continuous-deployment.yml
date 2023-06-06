@@ -375,7 +375,17 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Functions backend
-        run: ./ops/helper-scripts/az-func-deploy.sh -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.functionAppName }} --src ./${{ needs.build-info.outputs.apiName }}.zip --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+        run: |
+          ./ops/helper-scripts/az-func-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.deploy.outputs.functionAppName }} \
+          --src ./${{ needs.build-info.outputs.apiName }}.zip \
+          --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} \
+          MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} \
+          MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} \
+          MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} \
+          MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
+          MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
 
   smoke-test-application:
     runs-on: ubuntu-latest
