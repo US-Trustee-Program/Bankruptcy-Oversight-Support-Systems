@@ -64,8 +64,8 @@ export const CaseAssignment = () => {
           <thead>
             <tr className="case-headings">
               <th>Case Number</th>
-              <th>Case Title</th>
-              <th>Date Filed</th>
+              <th>Case Title (Debtor)</th>
+              <th>Filing Date</th>
             </tr>
           </thead>
           <tbody>
