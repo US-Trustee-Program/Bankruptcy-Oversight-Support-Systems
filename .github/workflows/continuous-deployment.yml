@@ -1,6 +1,6 @@
 name: Continuous Deployment
 
-concurrency: ${{ github.ref }}
+concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on:
   push:

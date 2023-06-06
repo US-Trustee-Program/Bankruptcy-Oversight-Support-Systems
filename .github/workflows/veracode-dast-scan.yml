@@ -1,6 +1,6 @@
 name: Veracode Dynamic Analysis Scan
 
-concurrency: ${{ github.ref }}
+concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
     inputs:
       dast-profile-name:
         description: 'Name of dynamic analysis profile'
-        default: 'CAMS Flexion'
+        default: 'USTP-CAMS-WEB'
         required: true
         type: string
 
