@@ -1,12 +1,12 @@
-import { Chapter15Case } from '../types/cases';
+import { PacerCaseData } from '../types/cases';
 import * as dotenv from 'dotenv';
-import {PacerGatewayInterface} from "../../use-cases/pacer.gateway.interface";
+import { PacerGatewayInterface } from "../../use-cases/pacer.gateway.interface";
 import { httpPost } from '../utils/http'
 
 dotenv.config();
 
 class PacerApiGateway implements PacerGatewayInterface {
-    getChapter15Cases = async (startingMonth: number = -6): Promise<Chapter15Case[]> => {
+    getChapter15Cases = async (startingMonth: number = -6): Promise<PacerCaseData[]> => {
         const date = new Date();
         date.setMonth(date.getMonth() + startingMonth);
         const dateFileFrom = date.toISOString().split('T')[0];
