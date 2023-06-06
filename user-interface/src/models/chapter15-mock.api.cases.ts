@@ -31,37 +31,37 @@ export default class Chapter15MockApi extends Api {
     },
     {
       caseNumber: '23-44462',
-      caseTitle: 'Figs orange Bolivian',
+      caseTitle: 'Bridget Maldonado',
       dateFiled: '2023-04-14',
     },
     {
       caseNumber: '23-44461',
-      caseTitle: 'rainbow pepper lemon lime',
+      caseTitle: 'Talia Torres and Tylor Stevenson',
       dateFiled: '2023-04-04',
     },
     {
       caseNumber: '23-44460',
-      caseTitle: 'brussel sprouts',
+      caseTitle: 'Asia Hodges',
       dateFiled: '2023-03-01',
     },
     {
       caseNumber: '23-44459',
-      caseTitle: 'bananas blueberry chia seed',
+      caseTitle: 'Marilyn Lawson',
       dateFiled: '2023-02-14',
     },
     {
       caseNumber: '23-44458',
-      caseTitle: 'Almond milk fiery fruit',
+      caseTitle: 'April Pierce and Leah Pierce',
       dateFiled: '2023-02-04',
     },
     {
       caseNumber: '23-44457',
-      caseTitle: 'red curry tofu noodles',
+      caseTitle: 'Corinne Gordon',
       dateFiled: '2023-01-14',
     },
     {
       caseNumber: '23-44456',
-      caseTitle: 'asian pear maple orange',
+      caseTitle: 'Marilyn Lang and Rudy Bryant',
       dateFiled: '2023-01-04',
     },
   ];
