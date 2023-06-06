@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAppSelector } from '../store/store';
 import Api, { Chapter15CaseListResponseData } from '../models/api';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
