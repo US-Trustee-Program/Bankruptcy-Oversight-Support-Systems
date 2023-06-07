@@ -4,9 +4,6 @@ concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on:
   push:
-    branches:
-    - 'main'
-    - 'CAMS-*'
 
   workflow_dispatch:
     inputs:
