@@ -19,7 +19,7 @@ describe('PACER API gateway tests', () => {
     });
 
     test('should return content for 200 response', async () => {
-        const responseValue: Chapter15Case[] = [
+        const expectedResponseValue: Chapter15Case[] = [
             {
                 caseNumber: '23-1234',
                 caseTitle: '',
@@ -28,12 +28,12 @@ describe('PACER API gateway tests', () => {
         ];
         jest.spyOn(http, 'httpPost').mockImplementation(() => {
             return {
-                json:() => ({ content: responseValue }),
+                json:() => ({ content: expectedResponseValue }),
                 status: 200,
             };
         });
 
         const gateway = new PacerApiGateway();
-        await expect(gateway.getChapter15Cases()).toEqual(responseValue);
+        await expect(gateway.getChapter15Cases()).toEqual(expectedResponseValue);
     });
 });
