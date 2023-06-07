@@ -11,8 +11,8 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
-set -e
-
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+enable_debug=false
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
