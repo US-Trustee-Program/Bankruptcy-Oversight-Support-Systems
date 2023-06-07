@@ -1,7 +1,6 @@
 import { CaseListDbResult } from '../adapters/types/cases';
 import { Context } from '../adapters/types/basic';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
-import { pacerToChapter15Data } from '../interfaces/chapter-15-data-interface';
 import { getPacerGateway } from '../../factory';
 
 namespace UseCases {
@@ -15,8 +14,7 @@ namespace UseCases {
       // connect to API via PACER gateway
       // get chapter 15 records from pacer
       try {
-        const response = await pacerGateway.getChapter15Cases();
-        const cases = pacerToChapter15Data(response);
+        const cases = await pacerGateway.getChapter15Cases();
 
         // build CaseListDbResult object
         // return results
