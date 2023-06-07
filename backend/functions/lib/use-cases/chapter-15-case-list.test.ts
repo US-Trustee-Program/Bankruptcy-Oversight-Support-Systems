@@ -20,7 +20,6 @@ const mockChapterList: CaseListDbResult = {
 describe('Chapter 15 case tests', () => {
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
     const chapter15CaseList = new Chapter15CaseList;
-    const results = await chapter15CaseList.getChapter15CaseList(context);
     const expectedResponseValue: Chapter15Case[] = [
       {
         caseNumber: '04-44449',
@@ -37,8 +36,8 @@ describe('Chapter 15 case tests', () => {
     const pacerApiGateway = new PacerApiGateway();
     const mockGateway = jest.spyOn(pacerApiGateway, 'getChapter15Cases');
     mockGateway.mockImplementation(async () => {
-        return expectedResponseValue
-      });
+      return expectedResponseValue
+    });
 
     // jest.mock('../adapters/gateways/pacer.api.gateway');
     // const fakeGetChapter15Cases = jest.fn(async () => {
@@ -49,6 +48,8 @@ describe('Chapter 15 case tests', () => {
     //     method: fakeGetChapter15Cases
     //   }
     // });
+
+    const results = await chapter15CaseList.getChapter15CaseList(context);
 
     expect(results).toEqual(mockChapterList);
   });
