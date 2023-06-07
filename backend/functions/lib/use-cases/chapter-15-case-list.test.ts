@@ -1,11 +1,10 @@
-import * as http from "http";
-
 const context = require('azure-function-context-mock');
 import { CaseListDbResult, Chapter15Case } from "../adapters/types/cases";
 import Chapter15CaseList from './chapter-15-case-list';
 import { PacerApiGateway } from "../adapters/gateways/pacer.api.gateway";
 import { PacerGatewayInterface } from "./pacer.gateway.interface";
 import { getPacerGateway } from "../../factory";
+import {jest} from '@jest/globals';
 
 
 
@@ -34,16 +33,23 @@ describe('Chapter 15 case tests', () => {
         dateFiled: '2006-03-27',
       }
     ];
-    const pacerGateway: PacerGatewayInterface = getPacerGateway();
-    jest.mock('../adapters/gateways/pacer.api.gateway');
-    const fakeGetChapter15Cases = jest.fn(async () => {
-      return expectedResponseValue
-    });
-    jest.mocked(PacerApiGateway).mockImplementation(  () => {
-      return{
-        method: fakeGetChapter15Cases
-      }
-    })
+
+    const pacerApiGateway = new PacerApiGateway();
+    const mockGateway = jest.spyOn(pacerApiGateway, 'getChapter15Cases');
+    mockGateway.mockImplementation(async () => {
+        return expectedResponseValue
+      });
+
+    // jest.mock('../adapters/gateways/pacer.api.gateway');
+    // const fakeGetChapter15Cases = jest.fn(async () => {
+    //   return expectedResponseValue
+    // });
+    // jest.mocked(PacerApiGateway).mockImplementation( async () => {
+    //   return{
+    //     method: fakeGetChapter15Cases
+    //   }
+    // });
+
     expect(results).toEqual(mockChapterList);
   });
 });
