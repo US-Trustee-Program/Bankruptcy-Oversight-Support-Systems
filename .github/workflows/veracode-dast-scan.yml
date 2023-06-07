@@ -3,12 +3,8 @@ name: Veracode Dynamic Analysis Scan
 concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on:
-  push:
-    # TODO : Meant to be setup as a manual trigger to kick off workflow. Remove when done validation
-    branches:
-    - 'CAMS-21-*'
   schedule:
-  - cron: '0 03 * * 1,3,5'
+  - cron: '0 3 * * 2,4,6'
   workflow_dispatch:
     inputs:
       dast-profile-name:
