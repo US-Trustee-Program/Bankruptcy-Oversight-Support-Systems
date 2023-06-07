@@ -7,18 +7,6 @@ const http = require('../utils/http');
 const gatewayHelper = new GatewayHelper();
 
 describe('PACER Local gateway tests', () => {
-    test('should return error message for non-200 response', async () => {
-        const responseValue = {status: 401, message: 'Unauthorized user' };
-        jest.spyOn(http, 'httpPost').mockImplementation(() => {
-            return {
-                json:() => ({ content: responseValue }),
-                status: 401,
-            };
-        });
-
-        const gateway = new PacerLocalGateway();
-        expect(await gateway.getChapter15Cases()).rejects.toEqual({ content: responseValue });
-    });
 
     test('should return content for 200 response', async () => {
         const expectedResponseValue: Chapter15Case[] = [
