@@ -1,7 +1,7 @@
 ///<reference path="../../../node_modules/@types/node/globals.global.d.ts"/>
 //import {getGlobalObject} from "./misc";
 import { PacerApiGateway } from "./pacer.api.gateway";
-import { Chapter15Case } from '../types/cases';
+import * as db from "./local.inmemory.gateway";
 const http = require('../utils/http');
 
 describe('PACER API gateway tests', () => {
@@ -19,13 +19,7 @@ describe('PACER API gateway tests', () => {
     });
 
     test('should return content for 200 response', async () => {
-        const responseValue: Chapter15Case[] = [
-            {
-                caseNumber: '23-1234',
-                caseTitle: '',
-                dateFiled: '',
-            },
-        ];
+        const responseValue = { message: 'Test returned a 200' };
         jest.spyOn(http, 'httpPost').mockImplementation(() => {
             return {
                 json:() => ({ content: responseValue }),
