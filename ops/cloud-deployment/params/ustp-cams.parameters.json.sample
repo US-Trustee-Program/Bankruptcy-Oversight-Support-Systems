@@ -85,6 +85,9 @@
     },
     "sqlServerResourceGroupName": {
       "value": ""
+    },
+    "allowVeracodeScan": {
+      "value": false
     }
   }
 }
