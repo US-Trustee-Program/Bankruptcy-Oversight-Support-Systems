@@ -63,7 +63,7 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
     );
   }
 
-  const queryResult: QueryResults = await executeQuery(context, table, query, input);
+  const queryResult: QueryResults = await executeQuery(context, query, input);
   let results: DbResult;
 
   try {

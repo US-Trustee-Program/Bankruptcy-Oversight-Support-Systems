@@ -2,6 +2,7 @@ import { CaseListDbResult } from '../adapters/types/cases';
 import { Context } from '../adapters/types/basic';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
 import { getPacerGateway } from '../../factory';
+import { PacerApiGateway } from '../adapters/gateways/pacer.api.gateway';
 
 namespace UseCases {
 
@@ -13,8 +14,6 @@ namespace UseCases {
     }
 
     async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
-      let result: CaseListDbResult;
-
       // connect to API via PACER gateway
       // get chapter 15 records from pacer
       try {

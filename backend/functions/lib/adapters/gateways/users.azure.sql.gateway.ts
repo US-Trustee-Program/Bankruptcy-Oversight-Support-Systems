@@ -33,7 +33,7 @@ const login = async (context: Context, userName: { firstName: string, lastName: 
     },
   ];
 
-  const queryResult: QueryResults = await executeQuery(context, 'CMMPR', query, input);
+  const queryResult: QueryResults = await executeQuery(context, query, input);
   let results: DbResult;
 
   if (queryResult.success) {
