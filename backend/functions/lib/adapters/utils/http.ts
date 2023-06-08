@@ -29,7 +29,7 @@ export function httpError(context: Context, error: any, code: number): HttpRespo
   };
 }
 
-export async function httpPost(data: {url: string, body: {}, headers: {}}): Promise<Response> {
+export async function httpPost(data: {url: string, body: {}, headers?: {}, credentials?: string}): Promise<Response> {
   let requestInit: RequestInit = {
       method: 'POST',
       headers: {

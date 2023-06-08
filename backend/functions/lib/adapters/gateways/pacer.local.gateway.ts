@@ -1,5 +1,5 @@
 import { PacerGatewayInterface } from "../../use-cases/pacer.gateway.interface";
-import { Chapter15Case, PacerCaseData } from "../types/cases";
+import { Chapter15Case } from "../types/cases";
 import { pacerToChapter15Data } from "../../interfaces/chapter-15-data-interface";
 import { GatewayHelper } from "./gateway-helper";
 

@@ -1,4 +1,4 @@
-import { PacerCaseData } from "../types/cases";
+import { PacerCaseData } from "../types/pacer";
 import * as fs from "fs";
 
 export class GatewayHelper {
