@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 export REACT_APP_PA11Y=true
 npm run build
