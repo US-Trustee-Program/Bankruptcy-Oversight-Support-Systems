@@ -48,7 +48,6 @@ class PacerApiGateway implements PacerGatewayInterface {
         "loginId": "username",
         "password": "password"
       },
-      headers: {'User-Agent': 'USTP-CAMS'},
       credentials: 'include',
     });
 
