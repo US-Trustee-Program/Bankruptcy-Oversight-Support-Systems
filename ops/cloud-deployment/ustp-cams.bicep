@@ -35,6 +35,9 @@ param databaseConnectionString string = ''
 param sqlServerName string = ''
 param sqlServerResourceGroupName string = ''
 
+@description('Flag to enable Vercode access to execute DAST scanning')
+param allowVeracodeScan bool = false
+
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -70,6 +73,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
     webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
+    allowVeracodeScan: allowVeracodeScan
   }
 }
 
@@ -103,6 +107,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
+    allowVeracodeScan: allowVeracodeScan
   }
   dependsOn: [
     ustpWebapp
