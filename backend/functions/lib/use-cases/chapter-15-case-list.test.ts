@@ -42,6 +42,6 @@ describe('Chapter 15 case tests', () => {
 
     const results = await chapter15CaseList.getChapter15CaseList(context);
 
-    expect(JSON.stringify(results)).toBe(JSON.stringify(mockChapterList));
+    expect(results).toStrictEqual(mockChapterList);
   });
 });
