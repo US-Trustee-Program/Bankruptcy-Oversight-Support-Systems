@@ -6,15 +6,19 @@ import { getPacerGateway } from '../../factory';
 namespace UseCases {
 
   export class Chapter15CaseList {
+    pacerGateway: PacerGatewayInterface;
+
+    constructor() {
+      this.pacerGateway = getPacerGateway();
+    }
 
     async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
-      const pacerGateway: PacerGatewayInterface = getPacerGateway();
       let result: CaseListDbResult;
 
       // connect to API via PACER gateway
       // get chapter 15 records from pacer
       try {
-        const cases = await pacerGateway.getChapter15Cases();
+        const cases = await this.pacerGateway.getChapter15Cases();
 
         // build CaseListDbResult object
         // return results
