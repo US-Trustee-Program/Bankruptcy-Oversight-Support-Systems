@@ -3,6 +3,30 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param planName string
 
+@description('Plan type to determine plan Sku')
+@allowed([
+  'production'
+  'development'
+])
+param planType string = 'development'
+
+var planTypeToSkuMap = {
+  production: {
+    name: 'P1v2'
+    tier: 'PremiumV2'
+    size: 'P1v2'
+    family: 'Pv2'
+    capacity: 1
+  }
+  development: {
+    name: 'B2'
+    tier: 'Basic'
+    size: 'B2'
+    family: 'B'
+    capacity: 1
+  }
+}
+
 @description('Azure functions app name')
 param functionName string
 
@@ -63,19 +87,16 @@ param sqlServerResourceGroupName string = ''
 @description('Database server name')
 param sqlServerName string = ''
 
+@description('Flag to enable Vercode access')
+param allowVeracodeScan bool = false
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
 resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
-  sku: {
-    name: 'P1v2'
-    tier: 'PremiumV2'
-    size: 'P1v2'
-    family: 'Pv2'
-    capacity: 1
-  }
+  sku: planTypeToSkuMap[planType]
   kind: 'linux'
   properties: {
     perSiteScaling: false
@@ -187,6 +208,20 @@ var applicationSettings = concat([
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
 )
+var ipSecurityRestrictionsRules = concat([ {
+      ipAddress: 'Any'
+      action: 'Deny'
+      priority: 2147483647
+      name: 'Deny all'
+      description: 'Deny all access'
+    } ],
+  allowVeracodeScan ? [ {
+      ipAddress: '3.32.105.199/32'
+      action: 'Allow'
+      priority: 1000
+      name: 'Veracode Agent'
+      description: 'Allow Veracode DAST Scans'
+    } ] : [])
 resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
@@ -200,15 +235,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {
