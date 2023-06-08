@@ -1,9 +1,8 @@
 import { Chapter15Case } from '../types/cases';
-import { PacerLoginResponse } from '../types/pacer';
 import * as dotenv from 'dotenv';
 import { PacerGatewayInterface } from "../../use-cases/pacer.gateway.interface";
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
-import { httpPost } from '../utils/http'
+import {axiosPost, httpPost} from '../utils/http'
 
 dotenv.config();
 
@@ -24,7 +23,6 @@ class PacerApiGateway implements PacerGatewayInterface {
         }`;
 
     let token = await this.getPacerToken();
-    console.log(token);
     const response = await httpPost({
       url: 'https://qa-pcl.uscourts.gov/pcl-public-api/rest/cases/find?page=0',
       headers: {'X-NEXT-GEN-CSO': token},
@@ -41,18 +39,23 @@ class PacerApiGateway implements PacerGatewayInterface {
 
   }
 
-  getPacerToken = async (): Promise<PacerLoginResponse> => {
-    const response = await httpPost({
+  getPacerToken = async (): Promise<string> => {
+    const response = await axiosPost({
       url: 'https://qa-login.uscourts.gov/services/cso-auth',
       body: {
         "loginId": "username",
         "password": "password"
       },
-      credentials: 'include',
     });
 
-    console.log(response);
-    return response.json();
+    validateResponse(response);
+
+    return response.data.nextGenCSO;
+  }
+}
+function validateResponse(response: any) {
+  if (response.status != 200 || !!response.data.errorDescription || !response.data.nextGenCSO) {
+    throw new Error('Failed to obtain PACER login token.');
   }
 }
 

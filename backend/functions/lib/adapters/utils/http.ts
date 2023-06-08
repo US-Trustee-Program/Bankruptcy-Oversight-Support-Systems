@@ -1,6 +1,7 @@
 import log from '../services/logger.service';
 import { Context } from '../types/basic';
 import { HttpResponse } from '../types/http';
+import axios from "axios";
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
 
@@ -42,4 +43,16 @@ export async function httpPost(data: {url: string, body: {}, headers?: {}, crede
   };
 
   return await fetch(data.url, requestInit);
+}
+
+// TODO: rename to httpPost after getting rid of the other implementation
+export async function axiosPost(data: {url: string, body: {}, headers?: {}}): Promise<any> {
+
+  return await axios.post(data.url, data.body, {headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...data.headers,
+    }}).then((response) => {
+      return response;
+  });
 }
