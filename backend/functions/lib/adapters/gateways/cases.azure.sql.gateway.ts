@@ -5,7 +5,7 @@ import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
 import { ReviewCodeDescription } from "../utils/LookUps";
-import { BankruptcyCase, caseTypeWithDescription } from "../types/cases";
+import { BankruptcyCase } from "../types/cases";
 
 const table = 'cases';
 
@@ -77,6 +77,7 @@ const getCaseList = async (context: Context, caseOptions: { chapter: string, pro
       throw Error(queryResult.message);
     }
   } catch (e) {
+    console.log(e.message)
     throw Error(e.message);
   }
 };

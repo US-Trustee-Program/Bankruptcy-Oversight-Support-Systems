@@ -1,5 +1,4 @@
 const context = require('azure-function-context-mock');
-import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data/index';
 import * as dataUtils from '../utils/database';
 import * as db from './cases.azure.sql.gateway';
@@ -41,20 +40,9 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
       message: 'Test Query',
     }));
 
-    const mockResults: DbResult = {
-      success: true,
-      message: `${table} list`,
-      count: truncatedList.length,
-      body: {
-        staff1Label: '',
-        staff2Label: '',
-        caseList: truncatedList,
-      }
-    };
-
     const results = await db.getCaseList(context, { chapter: '', professionalId: '' });
 
-    expect(results).toEqual(mockResults);
+    expect(results).toEqual(truncatedList);
   });
 
   test('Should return 5 results when fetching all chapter 11 records on Cases table', async () => {
@@ -78,20 +66,9 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
       message: 'Test Query',
     }));
 
-    const mockResults: DbResult = {
-      success: true,
-      message: `${table} list`,
-      count: 5,
-      body: {
-        staff1Label: '',
-        staff2Label: '',
-        caseList: filteredList,
-      }
-    };
+    const results = await db.getCaseList(context, { chapter: '11', professionalId: '' });
 
-    const results = await db.getCaseList(context, {chapter: '11', professionalId: ''});
-
-    expect(results).toEqual(mockResults);
+    expect(results).toEqual(filteredList);
   });
 
   test('Should return 5 results when fetching all records with specific professional name on Cases table', async () => {
@@ -118,20 +95,9 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
       message: 'Test Query',
     }));
 
-    const mockResults: DbResult = {
-      success: true,
-      message: `${table} list`,
-      count: 5,
-      body: {
-        staff1Label: '',
-        staff2Label: '',
-        caseList: filteredList,
-      }
-    };
+    const results = await db.getCaseList(context, { chapter: '', professionalId: 'A1' });
 
-    const results = await db.getCaseList(context, {chapter: '', professionalId: 'A1'});
-
-    expect(results).toEqual(mockResults);
+    expect(results).toEqual(filteredList);
   });
 
   test('Should return 0 results and an error message when fetching all records on a given table with an invalid result from database', async () => {
@@ -141,16 +107,11 @@ describe('Azure MSSQL database gateway tests specificaly for the Cases table', (
       message: 'Test Query was invalid',
     }));
 
-    const mockResults: DbResult = {
-      success: false,
-      message: `Test Query was invalid`,
-      count: 0,
-      body: {},
-    };
-
-    const results = await db.getCaseList(context, {chapter: '', professionalId: ''});
-
-    expect(results).toEqual(mockResults);
+    try {
+      await db.getCaseList(context, { chapter: '', professionalId: '' });
+    } catch (e) {
+      expect(e.message).toEqual('Test Query was invalid')
+    }
   });
 
 });
