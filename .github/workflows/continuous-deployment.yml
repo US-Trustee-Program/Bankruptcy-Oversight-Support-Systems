@@ -25,6 +25,7 @@ jobs:
         id: build-info
         run: |
           echo "Printing build info"
+          echo "Azure Plan Type: ${{ vars.AZ_PLAN_TYPE }}"
           echo "Environment: ${{ vars.ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
 
@@ -297,7 +298,7 @@ jobs:
             --show-what-if \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
