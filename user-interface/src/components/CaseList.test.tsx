@@ -6,72 +6,36 @@ import { BrowserRouter } from 'react-router-dom';
 import { store } from '../store/store';
 import { Provider } from 'react-redux';
 import { CaseList } from './CaseList';
-
-const mockCaseList = {
-  success: true,
-  message: 'cases list',
-  count: 99,
-  body: {
-    staff1Label: 'Trial Attorney',
-    staff2Label: 'Auditor',
-    caseList: [
-      {
-        caseNumber: '22-481',
-        currentChapterFileDate: 20230523,
-        currentCaseChapter: '11',
-        debtor1Name: 'John Doe',
-        hearingCode: 'IDI',
-        hearingDate: 20230501,
-        hearingDisposition: 'Disposition info goes here.',
-        hearingTime: 930,
-        staff1ProfName: 'Debbie Jones',
-        staff1ProfDescription: '',
-        staff2ProfName: 'Frank Moore',
-        staff2ProfDescription: '',
-      },
-      {
-        caseNumber: '22-495',
-        currentChapterFileDate: 20230607,
-        currentCaseChapter: '11',
-        debtor1Name: 'Jane Doe',
-        hearingCode: 'IDI',
-        hearingDate: 20230601,
-        hearingDisposition: 'Disposition info goes here.',
-        hearingTime: 1145,
-        staff1ProfName: 'Jessie Thomas',
-        staff1ProfDescription: '',
-        staff2ProfName: 'Arnold Banks',
-        staff2ProfDescription: '',
-      },
-      {
-        caseNumber: '22-501',
-        currentChapterFileDate: 20230607,
-        currentCaseChapter: '11',
-        debtor1Name: 'Roger Moore',
-        hearingCode: 'IDI',
-        hearingDate: 20230601,
-        hearingDisposition: 'Disposition info goes here.',
-        hearingTime: 1501,
-        staff1ProfName: 'Jessie Thomas',
-        staff1ProfDescription: '',
-        staff2ProfName: 'John Jones',
-        staff2ProfDescription: '',
-      },
-    ],
-  },
-};
-
-const mockFetchList = () => {
-  return Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve(mockCaseList),
-  } as Response);
-};
+import Chapter11MockApi from '../models/chapter11-mock.api.cases';
+import { ResponseData } from '../models/api';
 
 describe('CaseList Component Tests', () => {
+  test('/cases renders "Loading..." while its fetching content from API', async () => {
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseList />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    const loadingMsg = await screen.findAllByText('Loading...');
+    expect(loadingMsg[0]).toBeInTheDocument();
+  });
+
   test('/cases renders Full Case List (All staff)', async () => {
-    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+    jest
+      .spyOn(Chapter11MockApi, 'list')
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .mockImplementation((_path: string): Promise<ResponseData> => {
+        return Promise.resolve({
+          message: '',
+          count: Chapter11MockApi.caseList.length,
+          body: {
+            caseList: Chapter11MockApi.caseList,
+          },
+        });
+      });
 
     render(
       <BrowserRouter>
@@ -83,16 +47,11 @@ describe('CaseList Component Tests', () => {
 
     const loadingMsg = await screen.findAllByText('Loading...');
 
-    let h1 = screen.getByText(/^Case List$/i);
-    expect(h1).toBeInTheDocument();
-    expect(loadingMsg[0]).toBeInTheDocument();
-
     await waitFor(
       async () => {
-        expect(fetchMock).toHaveBeenCalled();
         expect(loadingMsg[0]).not.toBeInTheDocument();
 
-        h1 = screen.getByTestId('case-list-heading');
+        const h1 = screen.getByTestId('case-list-heading');
         expect(h1.textContent).toBe('Case List for any staff chapter 11');
 
         const tableHeader = screen.getAllByRole('columnheader');
@@ -102,24 +61,39 @@ describe('CaseList Component Tests', () => {
         expect(tableHeader[3].textContent).toBe('Hearing Code');
         expect(tableHeader[4].textContent).toBe('Hearing Date and Time');
         expect(tableHeader[5].textContent).toBe('Hearing Disposition');
-        expect(tableHeader[6].textContent).toBe('Trial Attorney');
-        expect(tableHeader[7].textContent).toBe('Auditor');
 
-        const tableRows = screen.getAllByRole('row');
-        expect(tableRows).toHaveLength(mockCaseList.body.caseList.length + 1);
+        const tableBody = screen.getAllByTestId('case-list-table-body');
+        const tableRows = tableBody[0].querySelectorAll('tr');
+        expect(tableRows).toHaveLength(Chapter11MockApi.caseList.length);
       },
       { timeout: 100 },
     );
   });
 
   test('/cases renders Case List for given staff member', async () => {
-    const firstName = 'Jessie';
-    const lastName = 'Thomas';
-    const userData = { id: 123, firstName, lastName };
-    // eslint-disable-next-line prettier/prettier
+    const firstName = 'Ashley';
+    const lastName = 'Rodriquez';
+    const userData = { id: 1, firstName, lastName };
     const userWrapper = ({ children }: { children: ReactNode }) => (
       <Provider store={store}>{children}</Provider>
     );
+
+    const caseList = Chapter11MockApi.caseList.filter((caseRecord) => {
+      return [caseRecord.staff1ProfId, caseRecord.staff1ProfId].includes(`${userData.id}`);
+    });
+
+    jest
+      .spyOn(Chapter11MockApi, 'list')
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .mockImplementation((_path: string): Promise<ResponseData> => {
+        return Promise.resolve({
+          message: '',
+          count: caseList.length,
+          body: {
+            caseList: caseList,
+          },
+        });
+      });
 
     renderHook(
       () => {
@@ -130,7 +104,6 @@ describe('CaseList Component Tests', () => {
         wrapper: userWrapper,
       },
     );
-    jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
 
     render(
       <BrowserRouter>
@@ -144,6 +117,10 @@ describe('CaseList Component Tests', () => {
       async () => {
         const h1 = screen.getByTestId('case-list-heading');
         expect(h1.textContent).toBe(`Case List for ${firstName} ${lastName} chapter 11`);
+
+        const tableBody = screen.getAllByTestId('case-list-table-body');
+        const tableRows = tableBody[0].querySelectorAll('tr');
+        expect(tableRows).toHaveLength(caseList.length);
       },
       { timeout: 100 },
     );
