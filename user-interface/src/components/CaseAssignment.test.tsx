@@ -51,7 +51,7 @@ describe('CaseAssignment Component Tests', () => {
       expect(tableHeader[1].textContent).toBe('Case Title (Debtor)');
       expect(tableHeader[2].textContent).toBe('Filing Date');
       const tableBody = screen.getAllByTestId('case-assignment-table-body');
-      const data = tableBody[0].querySelectorAll('td');
+      const data = tableBody[0].querySelectorAll('tr');
       expect(data).toHaveLength(0);
     });
   });
