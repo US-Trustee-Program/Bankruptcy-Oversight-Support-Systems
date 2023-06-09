@@ -70,7 +70,7 @@
     "start": "test -e ./.env && sh .env; react-scripts start",
     "start:pa11y": "export REACT_APP_PA11Y=true && react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage --watchAll=false",
+    "test": "export REACT_APP_PA11Y=true && react-scripts test --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage --watchAll=false",
     "test:watch": "npm run test -- --watchAll=true",
     "coverage": "npm run test -- --coverage",
     "eject": "react-scripts eject",
