@@ -4,14 +4,14 @@ import { executeQuery } from '../utils/database';
 import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
-import {ReviewCodeDescription} from "../utils/LookUps";
-import {BankruptcyCase, caseTypeWithDescription} from "../types/cases";
+import { ReviewCodeDescription } from "../utils/LookUps";
+import { BankruptcyCase, caseTypeWithDescription } from "../types/cases";
 
 const table = 'cases';
 
 const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 
-const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<BankruptcyCase[]> => {
+const getCaseList = async (context: Context, caseOptions: { chapter: string, professionalId: string } = { chapter: '', professionalId: '' }): Promise<BankruptcyCase[]> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
@@ -64,32 +64,30 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   }
 
   const queryResult: QueryResults = await executeQuery(context, table, query, input);
-  let results: DbResult;
-  let caseList: [];
 
   try {
     if (queryResult.success) {
       log.debug(context, NAMESPACE, "About to call the updateReviewDescription");
 
-      caseList = (queryResult.results as mssql.IResult<any>).recordset;
-      await updateReviewDescription(caseList);
+      let rs = (queryResult.results as mssql.IResult<any>).recordset;
+
+      await updateReviewDescription(rs);
+      return rs;
     } else {
       throw Error(queryResult.message);
     }
   } catch (e) {
     throw Error(e.message);
   }
-  return caseList;
 };
 
 async function updateReviewDescription(results: void | Object) {
-    let reviewDescriptionMapper = new ReviewCodeDescription();
-    let caseResults = results as Array<BankruptcyCase>;
+  let reviewDescriptionMapper = new ReviewCodeDescription();
+  let caseResults = results as Array<BankruptcyCase>;
 
-    caseResults.forEach(function(caseTy){
-      var d = caseTy.hearingDisposition;
-      caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
-    });
+  caseResults.forEach(function (caseTy) {
+    caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
+  });
 }
 
 const getCase = async (context: Context, id: number): Promise<DbResult> => {
