@@ -5,20 +5,20 @@ param planName string
 
 @description('Plan type to determine plan Sku')
 @allowed([
-  'production'
-  'development'
+  'P1v2'
+  'B2'
 ])
-param planType string = 'development'
+param planType string = 'P1v2'
 
 var planTypeToSkuMap = {
-  production: {
+  P1v2: {
     name: 'P1v2'
     tier: 'PremiumV2'
     size: 'P1v2'
     family: 'Pv2'
     capacity: 1
   }
-  development: {
+  B2: {
     name: 'B2'
     tier: 'Basic'
     size: 'B2'
