@@ -13,7 +13,7 @@ export type PersistenceGateway = {
 
 export type CasePersistenceGateway = {
   createCase(context: Context, fields: RecordObj[]): Promise<DbResult>;
-  getCaseList(context: Context, fields: ObjectKeyVal): Promise<CaseListDbResult>;
+  getCaseList(context: Context, fields: ObjectKeyVal): Promise<[]>;
   getCase(context: Context, id: number): Promise<DbResult>;
   updateCase(context: Context, id: number, fields: RecordObj[]): Promise<DbResult>;
   deleteCase(context: Context, id: number): Promise<DbResult>;

@@ -5,10 +5,12 @@ async function login(context: Context, database: UserPersistenceGateway, userNam
   return await database.login(context, userName);
 }
 
-async function listCases(context: Context, database: CasePersistenceGateway, fields: {chapter: string, professionalId: string}) {
+async function listCases(context: Context, database: CasePersistenceGateway, fields: {chapter: string, professionalId: string}): Promise<[]> {
   const result = await database.getCaseList(context, fields);
-  result.body.staff1Label = 'Trial Attorney';
-  result.body.staff2Label = 'Auditor';
+
+  // do we want to do this on the front end now?
+  //result.body.staff1Label = 'Trial Attorney';
+  //result.body.staff2Label = 'Auditor';
 
   // TODO: When we start returning multiple chapters, we need to define the staff labels at the case level
   // result.body.forEach((brCase: ObjectKeyVal) => {

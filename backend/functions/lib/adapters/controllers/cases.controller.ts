@@ -34,6 +34,21 @@ export class CasesController {
     if (requestQueryFilters.caseChapter) {
       caseChapter = requestQueryFilters.caseChapter;
     }
-    return await useCase.listCases(context, this.casesDb, { chapter: caseChapter, professionalId: professionalId });
+    try {
+      const caseList =  await useCase.listCases(context, this.casesDb, { chapter: caseChapter, professionalId: professionalId });
+      return {
+        success: true,
+        message: '',
+        count: caseList.length,
+        body: caseList,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        message: (e as Error).message,
+        count: 0,
+        body: {},
+      }
+    }
   }
 }
