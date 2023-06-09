@@ -10,7 +10,6 @@ jobs:
     environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Develop' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
-      branchHashCode: ${{ steps.build-info.outputs.branchHashCode }}
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiName: ${{ steps.build-info.outputs.apiName }}
@@ -21,6 +20,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Check environment
+        id: check-env
+        if: ${{ vars.ENVIRONMENT }} != 'Main' # Generate deterministic hash to append to resource group names
+        run: |
+          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
+          shortHash="-dev-${hash:0:6}"
+          echo "branchHashCode=${shortHash}" >> $GITHUB_OUTPUT
+
       - name: Print build info
         id: build-info
         run: |
@@ -30,12 +37,10 @@ jobs:
           echo "Git SHA: ${{ github.sha }}"
 
           # Generate resource group name(s)
-          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
-          short_hash=${hash:0:6}
-          echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
-          echo "branchHashCode=${short_hash}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+          branchHashCode=${{ steps.check-env.outputs.branchHashCode || '' }}
+          echo "Resource group appended with the following: ${branchHashCode}"
+          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${branchHashCode}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${branchHashCode}" >> $GITHUB_OUTPUT
 
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/helper-scripts/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
