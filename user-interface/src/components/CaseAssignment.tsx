@@ -12,7 +12,7 @@ type chapter15Type = {
 export const CaseAssignment = () => {
   const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
-  const [subTitle, setSubTitle] = useState('');
+  const subTitle = 'Region 2 (Connecticut, New York, Vermont)';
   const [caseList, setCaseList] = useState<Chapter15CaseListResponseData>({
     message: '',
     count: 0,
@@ -24,7 +24,6 @@ export const CaseAssignment = () => {
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
-  setSubTitle('Region 2 (Connecticut, New York, Vermont)');
 
   const fetchList = async () => {
     setIsLoading(true);
@@ -67,7 +66,7 @@ export const CaseAssignment = () => {
               <th>Filing Date</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="case-assignment-table-body">
             {caseList.count > 0 &&
               (caseList.body.caseList as Array<chapter15Type>).map(
                 (theCase: chapter15Type, idx: number) => {

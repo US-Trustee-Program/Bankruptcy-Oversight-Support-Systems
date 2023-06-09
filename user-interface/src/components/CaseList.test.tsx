@@ -69,7 +69,7 @@ const mockFetchList = () => {
   } as Response);
 };
 
-describe('Base App Tests', () => {
+describe('CaseList Component Tests', () => {
   test('/cases renders Full Case List (All staff)', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
 
