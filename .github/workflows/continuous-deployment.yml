@@ -60,7 +60,7 @@ jobs:
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
 
-      - uses: cloudposse/github-action-secret-outputs@MAIN
+      - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
