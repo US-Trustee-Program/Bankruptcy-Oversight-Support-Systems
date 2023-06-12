@@ -336,7 +336,9 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
+        run: |
+          echo "${{ steps.rgApp.outputs.out }}"
+          ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -363,6 +365,7 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
+          echo "${{ steps.rgApp.outputs.out }}"
           ./ops/helper-scripts/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.deploy.outputs.functionAppName }} \
