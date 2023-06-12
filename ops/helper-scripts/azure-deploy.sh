@@ -129,6 +129,6 @@ if [ ! $(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName) ]; t
     deployment_parameters="${deployment_parameters} createVnet=true"
 fi
 
-echo "Creating virtual network: $createVnet"
+echo "Deployment parameters: deployment_parameters"
 
 az_deploy_func $app_rg $deployment_file "${deployment_parameters}"
