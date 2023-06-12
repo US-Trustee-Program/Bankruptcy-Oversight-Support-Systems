@@ -26,7 +26,7 @@ jobs:
         run: |
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
           shortHash="-dev-${hash:0:6}"
-          echo "branchHashCode=${shortHash}" >> $GITHUB_OUTPUT
+          echo "resourceGroupSuffix=${shortHash}" >> $GITHUB_OUTPUT
 
       - name: Print build info
         id: build-info
@@ -37,10 +37,10 @@ jobs:
           echo "Git SHA: ${{ github.sha }}"
 
           # Generate resource group name(s)
-          branchHashCode=${{ steps.check-env.outputs.branchHashCode || '' }}
-          echo "Resource group appended with the following: ${branchHashCode}"
-          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${branchHashCode}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${branchHashCode}" >> $GITHUB_OUTPUT
+          resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
+          echo "Resource group appended with the following: ${resourceGroupSuffix}"
+          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
 
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/helper-scripts/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
@@ -60,7 +60,7 @@ jobs:
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
 
-      - uses: cloudposse/github-action-secret-outputs@main
+      - uses: cloudposse/github-action-secret-outputs@MAIN
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
