@@ -63,7 +63,8 @@
     "coveragePathIgnorePatterns": [
       "/index.tsx",
       "/reportWebVitals.ts",
-      "/configuration/apiConfiguration.ts"
+      "/configuration/apiConfiguration.ts",
+      "http.humble.ts"
     ]
   },
   "scripts": {
