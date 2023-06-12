@@ -7,7 +7,7 @@ on: [push]
 jobs:
   build-info:
     runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || endsWith(github.ref,'refs/heads/CAMS-64-test-fix') && 'Main' || 'Develop' }}
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Develop' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
       stackName: ${{ steps.build-info.outputs.stackName }}
