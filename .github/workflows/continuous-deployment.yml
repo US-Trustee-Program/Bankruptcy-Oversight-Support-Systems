@@ -269,7 +269,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, build-frontend, build-service]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch )
+    if: ((github.ref == 'refs/heads/main') || (github.ref == 'refs/head/CAMS-64-test-fix') || inputs.deployBranch )
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
