@@ -24,7 +24,6 @@ jobs:
         id: check-env
         if: ${{ vars.ENVIRONMENT != 'Main' }} # Generate deterministic hash to append to resource group names
         run: |
-          echo "${{ vars.ENVIRONMENT }}"
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
           shortHash="-${hash:0:6}"
           echo "resourceGroupSuffix=${shortHash}" >> $GITHUB_OUTPUT
@@ -300,8 +299,6 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
-          echo "${{ steps.rgApp.outputs.out }}"
-          echo "${{ steps.rgNetwork.outputs.out }}"
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
@@ -338,9 +335,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: |
-          echo "${{ steps.rgApp.outputs.out }}"
-          ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -367,7 +362,6 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
-          echo "${{ steps.rgApp.outputs.out }}"
           ./ops/helper-scripts/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.deploy.outputs.functionAppName }} \
