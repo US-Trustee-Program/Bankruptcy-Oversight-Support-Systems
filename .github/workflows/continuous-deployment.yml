@@ -26,7 +26,7 @@ jobs:
         run: |
           echo "${{ vars.ENVIRONMENT }}"
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
-          shortHash="-dev-${hash:0:6}"
+          shortHash="-${hash:0:6}"
           echo "resourceGroupSuffix=${shortHash}" >> $GITHUB_OUTPUT
 
       - name: Print build info
