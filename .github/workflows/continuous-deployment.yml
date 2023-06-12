@@ -24,6 +24,7 @@ jobs:
         id: check-env
         if: ${{ vars.ENVIRONMENT }} != 'Main' # Generate deterministic hash to append to resource group names
         run: |
+          echo "${{ vars.ENVIRONMENT }}"
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
           shortHash="-dev-${hash:0:6}"
           echo "resourceGroupSuffix=${shortHash}" >> $GITHUB_OUTPUT
