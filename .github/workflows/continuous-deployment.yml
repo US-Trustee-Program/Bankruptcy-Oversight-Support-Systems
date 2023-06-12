@@ -300,6 +300,8 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
+          echo "${{ steps.rgApp.outputs.out }}"
+          echo "${{ steps.rgNetwork.outputs.out }}"
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
