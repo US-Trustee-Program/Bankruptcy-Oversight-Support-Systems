@@ -3,7 +3,6 @@ import log from '../services/logger.service';
 import { Context } from '../types/basic';
 import { DbTableFieldSpec, QueryResults } from '../types/database';
 import config from '../../configs/index';
-//import { DefaultAzureCredential } from '@azure/identity';
 
 const NAMESPACE = 'DATABASE-UTILITY';
 
@@ -11,10 +10,6 @@ export async function executeQuery(context: Context, query: string, input?: DbTa
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
-    // should actually not need the following.  The config should take care of it.
-    // see https://learn.microsoft.com/en-us/azure/azure-sql/database/connect-query-nodejs?view=azuresql&tabs=macos
-    //const credential = new DefaultAzureCredential({ managedIdentityClientId: config.dbConfig.azureManagedIdentity }); // user-assigned identity
-
     const sqlConnectionPool = new mssql.ConnectionPool(config.dbConfig as unknown as mssql.config);
     const sqlConnection = await sqlConnectionPool.connect();
     const sqlRequest = await sqlConnection.request();
