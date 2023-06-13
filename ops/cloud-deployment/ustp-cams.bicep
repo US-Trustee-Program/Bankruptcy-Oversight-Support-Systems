@@ -18,7 +18,7 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
 param webappPrivateEndpointSubnetName string = 'snet-${webappName}-pep'
 param webappPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
 param webappPlanName string = 'plan-${webappName}'
-@description('Plan type to determine plan Sku')
+@description('Plan type to determine webapp service plan Sku')
 @allowed([
   'P1v2'
   'B2'
@@ -34,7 +34,7 @@ param apiFunctionsSubnetAddressPrefix string = '10.10.12.0/28'
 param apiPrivateEndpointSubnetName string = 'snet-${apiName}-pep'
 param apiPrivateEndpointSubnetAddressPrefix string = '10.10.13.0/28'
 param apiPlanName string = 'plan-${apiName}'
-@description('Plan type to determine plan Sku')
+@description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
   'B2'
