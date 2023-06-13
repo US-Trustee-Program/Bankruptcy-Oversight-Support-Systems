@@ -116,9 +116,11 @@ describe('Base App Tests', () => {
     const firstName = 'Jessie';
     const lastName = 'Thomas';
     const userData = { id: 123, firstName, lastName };
+    // eslint-disable-next-line prettier/prettier
     const userWrapper = ({ children }: { children: ReactNode }) => (
       <Provider store={store}>{children}</Provider>
     );
+
     renderHook(
       () => {
         const dispatch = useAppDispatch();
