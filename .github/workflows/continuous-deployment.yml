@@ -10,7 +10,6 @@ jobs:
     environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Develop' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
-      branchHashCode: ${{ steps.build-info.outputs.branchHashCode }}
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiName: ${{ steps.build-info.outputs.apiName }}
@@ -21,6 +20,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Check environment
+        id: check-env
+        if: ${{ vars.ENVIRONMENT != 'Main' }} # Generate deterministic hash to append to resource group names
+        run: |
+          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
+          shortHash="-${hash:0:6}"
+          echo "resourceGroupSuffix=${shortHash}" >> $GITHUB_OUTPUT
+
       - name: Print build info
         id: build-info
         run: |
@@ -30,12 +37,10 @@ jobs:
           echo "Git SHA: ${{ github.sha }}"
 
           # Generate resource group name(s)
-          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
-          short_hash=${hash:0:6}
-          echo "Hash generated from ${{ github.ref_name }} : ${hash}  ${short_hash}"
-          echo "branchHashCode=${short_hash}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}-${short_hash}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}-${short_hash}" >> $GITHUB_OUTPUT
+          resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
+          echo "Resource group appended with the following: ${resourceGroupSuffix}"
+          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
 
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/helper-scripts/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
@@ -76,6 +81,37 @@ jobs:
       - uses: axel-op/googlejavaformat-action@v3
         with:
           args: "--skip-sorting-imports --replace"
+
+  accessibility-test:
+    defaults:
+      run:
+        working-directory: user-interface
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [ 18.x ]
+
+    steps:
+      - name: Install chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Get source code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
+
+      - name: Install Node dependencies
+        run: npm ci && npm install -g pa11y-ci
+
+      - name: Run pa11y Test
+        run: ../ops/helper-scripts/accessibility-test.sh
 
   security-sast-scan:
     runs-on: ubuntu-latest
@@ -197,36 +233,6 @@ jobs:
           path: user-interface/artifacts/
           if-no-files-found: error
 
-  accessibility-test:
-    defaults:
-      run:
-        working-directory: user-interface
-
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-
-    steps:
-      - name: Install chrome
-        uses: browser-actions/setup-chrome@v1
-
-      - name: Get source code
-        uses: actions/checkout@v3
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
-          cache-dependency-path: user-interface/package-lock.json
-
-      - name: Install Node dependencies
-        run: npm ci && npm install -g pa11y-ci
-
-      - name: Run pa11y Test
-        run: ../ops/helper-scripts/accessibility-test.sh
   build-service:
     defaults:
       run:
@@ -262,7 +268,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-info, build-frontend, build-service]
+    needs: [build-info, build-frontend, build-service, accessibility-test]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || inputs.deployBranch )
     outputs:
@@ -296,7 +302,7 @@ jobs:
         run: |
           ./ops/helper-scripts/azure-deploy.sh \
             --show-what-if \
-            --resourceGroup ${{ steps.rgApp.outputs.out }} \
+            --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
             --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }}'
 
