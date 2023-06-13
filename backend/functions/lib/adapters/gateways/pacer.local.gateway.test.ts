@@ -1,7 +1,7 @@
 ///<reference path="../../../node_modules/@types/node/globals.global.d.ts"/>
-import { PacerLocalGateway } from "./pacer.local.gateway";
-import { Chapter15Case } from "../types/cases";
-import { GatewayHelper } from "./gateway-helper";
+import { PacerLocalGateway } from './pacer.local.gateway';
+import { Chapter15Case } from '../types/cases';
+import { GatewayHelper } from './gateway-helper';
 const http = require('../utils/http');
 
 const gatewayHelper = new GatewayHelper();
