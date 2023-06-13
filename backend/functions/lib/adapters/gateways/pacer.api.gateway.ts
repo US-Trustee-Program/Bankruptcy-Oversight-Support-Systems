@@ -1,8 +1,8 @@
-import {Chapter15Case} from '../types/cases';
+import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
-import {PacerGatewayInterface} from "../../use-cases/pacer.gateway.interface";
-import {pacerToChapter15Data} from '../../interfaces/chapter-15-data-interface';
-import {httpPost} from '../utils/http'
+import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
+import { httpPost } from '../utils/http'
 
 dotenv.config();
 
@@ -38,8 +38,6 @@ class PacerApiGateway implements PacerGatewayInterface {
             const responseJson = await response.json();
             return pacerToChapter15Data(responseJson.content);
         }
-
-
     }
 }
 

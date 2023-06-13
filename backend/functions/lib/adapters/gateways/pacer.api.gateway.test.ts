@@ -1,8 +1,8 @@
 ///<reference path="../../../node_modules/@types/node/globals.global.d.ts"/>
 //import {getGlobalObject} from "./misc";
-import {PacerApiGateway} from "./pacer.api.gateway";
-import {Chapter15Case} from '../types/cases';
-import {GatewayHelper} from "./gateway-helper";
+import { PacerApiGateway } from './pacer.api.gateway';
+import { Chapter15Case } from '../types/cases';
+import { GatewayHelper } from './gateway-helper';
 
 const http = require('../utils/http');
 
