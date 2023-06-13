@@ -1,7 +1,7 @@
 const context = require('azure-function-context-mock');
-import {CaseListDbResult, Chapter15Case} from "../adapters/types/cases";
+import { CaseListDbResult, Chapter15Case } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15-case-list';
-import {jest} from '@jest/globals';
+import { jest } from '@jest/globals';
 
 describe('Chapter 15 case tests', () => {
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {

@@ -27,7 +27,7 @@ class PacerApiGateway implements PacerGatewayInterface {
 
         const response = await httpPost({
           url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-          headers: {'X-NEXT-GEN-CSO': process.env.PACER_TOKEN},
+          headers: { 'X-NEXT-GEN-CSO': process.env.PACER_TOKEN },
           body
         });
 
