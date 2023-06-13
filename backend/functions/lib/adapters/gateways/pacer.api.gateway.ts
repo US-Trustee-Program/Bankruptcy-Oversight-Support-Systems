@@ -1,8 +1,8 @@
-import { Chapter15Case, PacerCaseData } from '../types/cases';
+import {Chapter15Case} from '../types/cases';
 import * as dotenv from 'dotenv';
-import { PacerGatewayInterface } from "../../use-cases/pacer.gateway.interface";
-import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
-import { httpPost } from '../utils/http'
+import {PacerGatewayInterface} from "../../use-cases/pacer.gateway.interface";
+import {pacerToChapter15Data} from '../../interfaces/chapter-15-data-interface';
+import {httpPost} from '../utils/http'
 
 dotenv.config();
 
@@ -22,8 +22,11 @@ class PacerApiGateway implements PacerGatewayInterface {
             "dateFiledFrom": "${dateFileFrom}"
         }`;
 
+        const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
+        const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
+
         const response = await httpPost({
-          url: 'https://qa-pcl.uscourts.gov/pcl-public-api/rest/cases/find?page=0',
+          url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
           headers: {'X-NEXT-GEN-CSO': process.env.PACER_TOKEN},
           body
         });
@@ -33,8 +36,7 @@ class PacerApiGateway implements PacerGatewayInterface {
             return Promise.reject(await response.json());
         } else {
             const responseJson = await response.json();
-            const cases = pacerToChapter15Data(responseJson.content);
-            return cases;
+            return pacerToChapter15Data(responseJson.content);
         }
 
 
