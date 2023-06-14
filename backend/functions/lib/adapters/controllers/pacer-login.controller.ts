@@ -4,7 +4,7 @@
 
 import { Context } from '../types/basic';
 
-class PacerLoginController{
+export class PacerLoginController {
 
   private readonly functionContext: Context;
 
@@ -12,7 +12,7 @@ class PacerLoginController{
     this.functionContext = context;
   }
 
-  private async getToken() : Promise<string>{
+  public async getToken() : Promise<string>{
     return await useCase.getPacerToken(this.functionContext);
   }
 
