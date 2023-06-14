@@ -1,7 +1,7 @@
 import log from '../services/logger.service';
 import { Context } from '../types/basic';
 import { HttpResponse } from '../types/http';
-import axios from "axios";
+import axios, { AxiosResponse } from 'axios';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
 
@@ -30,29 +30,39 @@ export function httpError(context: Context, error: any, code: number): HttpRespo
   };
 }
 
-export async function httpPost(data: {url: string, body: {}, headers?: {}, credentials?: string}): Promise<Response> {
-  let requestInit: RequestInit = {
-      method: 'POST',
+export async function httpPost(data: {
+  url: string;
+  body: {};
+  headers?: {};
+  credentials?: string;
+}): Promise<AxiosResponse> {
+  return await axios
+    .post(data.url, data.body, {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         ...data.headers,
       },
-      body: `${data.body}`,
-      cache: 'default'
-  };
-
-  return await fetch(data.url, requestInit);
+    })
+    .then((response) => {
+      return response;
+    });
 }
 
-// TODO: rename to httpPost after getting rid of the other implementation
-export async function axiosPost(data: {url: string, body: {}, headers?: {}}): Promise<any> {
-
-  return await axios.post(data.url, data.body, {headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...data.headers,
-    }}).then((response) => {
+export async function httpGet(data: {
+  url: string;
+  headers?: {};
+  credentials?: string;
+}): Promise<AxiosResponse> {
+  return await axios
+    .get(data.url, {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...data.headers,
+      },
+    })
+    .then((response) => {
       return response;
-  });
+    });
 }

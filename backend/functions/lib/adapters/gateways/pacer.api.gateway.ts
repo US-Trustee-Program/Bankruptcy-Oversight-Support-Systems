@@ -1,8 +1,8 @@
-import {Chapter15Case} from '../types/cases';
+import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
-import {PacerGatewayInterface} from '../../use-cases/pacer.gateway.interface';
-import {pacerToChapter15Data} from '../../interfaces/chapter-15-data-interface';
-import {axiosPost, httpPost} from '../utils/http'
+import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
+import { httpGet, httpPost } from '../utils/http';
 
 dotenv.config();
 
@@ -29,21 +29,18 @@ class PacerApiGateway implements PacerGatewayInterface {
     const response = await httpPost({
       url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
       headers: { 'X-NEXT-GEN-CSO': token },
-      body
+      body,
     });
 
     if (response.status != 200) {
-      return Promise.reject(await response.json());
+      return Promise.reject(await response.data());
     } else {
-      const responseJson = await response.json();
-      return pacerToChapter15Data(responseJson.content);
+      const responseData = await response.data();
+      return pacerToChapter15Data(responseData.content);
     }
-
-
-  }
+  };
 
   getPacerToken = async (): Promise<string> => {
-
     const azureServer = process.env.WEBSITE_HOSTNAME;
     const azureServerPort = process.env.SERVER_PORT;
     const azureFunctionProtocol = process.env.AZURE_FUNCTION_PROTOCOL;
@@ -51,16 +48,12 @@ class PacerApiGateway implements PacerGatewayInterface {
 
     const azureFunctionURL = `${azureFunctionProtocol}://${azureServer}:${azureServerPort}/${azurePacerPath}`;
 
-    const azureResponse = await axiosPost({
-      url: azureFunctionURL,
-      body: {
-      },
-    });
+    const azureResponse = await httpGet({ url: azureFunctionURL });
 
     validateResponse(azureResponse);
 
     return azureResponse.data.nextGenCSO;
-  }
+  };
 }
 
 function validateResponse(response: any) {
@@ -69,4 +62,4 @@ function validateResponse(response: any) {
   }
 }
 
-export {PacerApiGateway}
+export { PacerApiGateway };
