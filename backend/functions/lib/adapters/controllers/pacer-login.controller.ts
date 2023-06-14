@@ -1,7 +1,3 @@
-/*
- 1. Call the PacerLoginUseCase to get a valid Auth token for pacer.
- */
-
 import { Context } from '../types/basic';
 import useCase from '../../use-cases/index';
 

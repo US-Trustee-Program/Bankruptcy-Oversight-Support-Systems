@@ -1,8 +1,8 @@
-import { Chapter15Case } from '../types/cases';
+import {Chapter15Case} from '../types/cases';
 import * as dotenv from 'dotenv';
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
-import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
-import { axiosPost, httpPost } from '../utils/http'
+import {PacerGatewayInterface} from '../../use-cases/pacer.gateway.interface';
+import {pacerToChapter15Data} from '../../interfaces/chapter-15-data-interface';
+import {axiosPost, httpPost} from '../utils/http'
 
 dotenv.config();
 
@@ -24,10 +24,10 @@ class PacerApiGateway implements PacerGatewayInterface {
 
     let token = await this.getPacerToken();
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
-      const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
+    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
 
-        const response = await httpPost({
-          url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
+    const response = await httpPost({
+      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
       headers: { 'X-NEXT-GEN-CSO': token },
       body
     });
@@ -56,10 +56,11 @@ class PacerApiGateway implements PacerGatewayInterface {
     return response.data.nextGenCSO;
   }
 }
+
 function validateResponse(response: any) {
   if (response.status != 200 || !!response.data.errorDescription || !response.data.nextGenCSO) {
     throw new Error('Failed to obtain PACER login token.');
   }
 }
 
-export { PacerApiGateway }
+export {PacerApiGateway}

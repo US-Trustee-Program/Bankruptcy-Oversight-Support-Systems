@@ -1,5 +1,7 @@
 import { Context } from '../adapters/types/basic';
+import * as dotenv from 'dotenv';
 
+dotenv.config();
 
 namespace UseCases {
   export class PacerLogin {
@@ -8,7 +10,7 @@ namespace UseCases {
     async getPacerToken(context: Context): Promise<string> {
       // Get existing token OR login if no existing token
       // - should we also check if the existing token is still valid?
-      return '';
+      return process.env.PACER_TOKEN;
     }
   }
 }

@@ -14,3 +14,5 @@ const httpTrigger: AzureFunction = async function (functionContext: Context): Pr
     functionContext.res = httpError(functionContext, exception, 400);
   }
 }
+
+export default httpTrigger;
