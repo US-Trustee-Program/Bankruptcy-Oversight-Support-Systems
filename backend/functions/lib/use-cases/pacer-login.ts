@@ -12,12 +12,13 @@ namespace UseCases {
       // Get existing token OR login if no existing token
       try {
         const response = await axiosPost({
-          url: 'https://qa-login.uscourts.gov/services/cso-auth',
+          url: process.env.PACER_TOKEN_URL, //'https://qa-login.uscourts.gov/services/cso-auth',
           body: {
-            loginId: 'username',
-            password: '',
+            loginId: process.env.PACER_TOKEN_LOGIN_ID,
+            password: process.env.PACER_TOKEN_PASSWORD,
           },
         });
+
         if (response.status == 200) {
           if (response.data.loginResult == 0) {
             return response.data.nextGenCSO;

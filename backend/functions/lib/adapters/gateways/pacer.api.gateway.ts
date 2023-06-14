@@ -43,17 +43,23 @@ class PacerApiGateway implements PacerGatewayInterface {
   }
 
   getPacerToken = async (): Promise<string> => {
-    const response = await axiosPost({
-      url: 'https://qa-login.uscourts.gov/services/cso-auth',
+
+    const azureServer = process.env.WEBSITE_HOSTNAME;
+    const azureServerPort = process.env.SERVER_PORT;
+    const azureFunctionProtocol = process.env.AZURE_FUNCTION_PROTOCOL;
+    const azurePacerPath = process.env.AZURE_FUNCTION_PACER_PATH;
+
+    const azureFunctionURL = `${azureFunctionProtocol}://${azureServer}:${azureServerPort}/${azurePacerPath}`;
+
+    const azureResponse = await axiosPost({
+      url: azureFunctionURL,
       body: {
-        'loginId': 'username',
-        'password': ''
       },
     });
 
-    validateResponse(response);
+    validateResponse(azureResponse);
 
-    return response.data.nextGenCSO;
+    return azureResponse.data.nextGenCSO;
   }
 }
 
