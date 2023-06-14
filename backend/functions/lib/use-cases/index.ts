@@ -25,7 +25,12 @@ async function listCases(context: Context, database: CasePersistenceGateway, fie
   return result;
 }
 
+async function getPacerToken() : Promise<string> {
+  return await '';
+}
+
 export default {
   listCases,
   login,
+  getPacerToken
 };

@@ -3,6 +3,7 @@
  */
 
 import { Context } from '../types/basic';
+import useCase from '../../use-cases/index';
 
 export class PacerLoginController {
 
@@ -13,6 +14,7 @@ export class PacerLoginController {
   }
 
   public async getToken() : Promise<string>{
+
     return await useCase.getPacerToken(this.functionContext);
   }
 
