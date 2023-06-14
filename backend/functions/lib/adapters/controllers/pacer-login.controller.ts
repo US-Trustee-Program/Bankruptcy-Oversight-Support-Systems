@@ -14,7 +14,6 @@ export class PacerLoginController {
   }
 
   public async getToken() : Promise<string>{
-
     return await useCase.getPacerToken(this.functionContext);
   }
 

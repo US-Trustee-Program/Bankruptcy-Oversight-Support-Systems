@@ -4,6 +4,8 @@ import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter11CaseList from './chapter-11-case-list';
 import Chapter15CaseList from './chapter-15-case-list';
 import InvalidChapter from './invalid-chapter';
+import PacerLogin from "./pacer-login";
+
 
 async function login(context: Context, database: UserPersistenceGateway, userName: {firstName: string, lastName: string}) {
   return await database.login(context, userName);
@@ -25,8 +27,10 @@ async function listCases(context: Context, database: CasePersistenceGateway, fie
   return result;
 }
 
-async function getPacerToken() : Promise<string> {
-  return await '';
+async function getPacerToken(functionContext: Context) : Promise<string> {
+
+  const pacerLogin = new PacerLogin();
+  return await pacerLogin.getPacerToken(functionContext);
 }
 
 export default {
