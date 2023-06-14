@@ -2,7 +2,7 @@ import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
-import {axiosPost, httpPost} from '../utils/http'
+import { axiosPost, httpPost } from '../utils/http'
 
 dotenv.config();
 
@@ -28,7 +28,7 @@ class PacerApiGateway implements PacerGatewayInterface {
 
         const response = await httpPost({
           url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-      headers: {'X-NEXT-GEN-CSO': token},
+      headers: { 'X-NEXT-GEN-CSO': token },
       body
     });
 
@@ -46,8 +46,8 @@ class PacerApiGateway implements PacerGatewayInterface {
     const response = await axiosPost({
       url: 'https://qa-login.uscourts.gov/services/cso-auth',
       body: {
-        "loginId": "username",
-        "password": "password"
+        'loginId': 'username',
+        'password': ''
       },
     });
 
