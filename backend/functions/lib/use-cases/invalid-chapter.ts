@@ -4,7 +4,7 @@ namespace UseCases {
 
   export class InvalidChapter {
 
-    returnEmptyList(): CaseListDbResult {
+    returnInvalidChapterResponse(): CaseListDbResult {
       const result = {
         success: false,
         message: 'Invalid Chapter value provided',

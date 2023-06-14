@@ -1,6 +1,6 @@
 import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
-import { PacerGatewayInterface } from "../../use-cases/pacer.gateway.interface";
+import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import {axiosPost, httpPost} from '../utils/http'
 
@@ -23,8 +23,11 @@ class PacerApiGateway implements PacerGatewayInterface {
         }`;
 
     let token = await this.getPacerToken();
-    const response = await httpPost({
-      url: 'https://qa-pcl.uscourts.gov/pcl-public-api/rest/cases/find?page=0',
+    const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
+      const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
+
+        const response = await httpPost({
+          url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
       headers: {'X-NEXT-GEN-CSO': token},
       body
     });

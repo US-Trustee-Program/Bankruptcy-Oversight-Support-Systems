@@ -19,7 +19,7 @@ async function listCases(context: Context, database: CasePersistenceGateway, fie
     result = await chapter15CaseList.getChapter15CaseList(context);
   } else {
     const invalidChapter = new InvalidChapter;
-    result = invalidChapter.returnEmptyList();
+    result = invalidChapter.returnInvalidChapterResponse();
   }
 
   return result;
