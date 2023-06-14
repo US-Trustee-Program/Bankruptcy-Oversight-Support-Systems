@@ -1,4 +1,4 @@
-import api from './mock.api.cases';
+import api from './chapter11-mock.api.cases';
 import { ResponseData } from './api';
 
 type CaseListResponse = {

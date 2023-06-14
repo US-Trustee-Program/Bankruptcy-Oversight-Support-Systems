@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/store';
 import Api, { CaseListResponseData } from '../models/api';
 import './CaseList.scss';
-import MockApi from '../models/mock.api.cases';
+import MockApi from '../models/chapter11-mock.api.cases';
 
 type caseType = {
   caseNumber: string;

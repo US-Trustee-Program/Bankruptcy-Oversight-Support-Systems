@@ -17,6 +17,7 @@ export type RecordObj = {
 export type AppConfig = {
   dbMock: boolean;
   dbConfig: IDbConfig;
+  pacerMock: boolean;
   server: ServerType;
   get: Function;
 };

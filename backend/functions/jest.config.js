@@ -3,14 +3,14 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   collectCoverageFrom: [
-    "**/*.{js,ts}"
+    '**/*.{js,ts}'
   ],
   coveragePathIgnorePatterns: [
-    "<rootDir>/node_modules/",
-    "dist/",
-    "coverage/",
-    "lib/adapters/types/",
-    "lib/testing/mock-data/",
-    "jest.config.js",
+    '<rootDir>/node_modules/',
+    'dist/',
+    'coverage/',
+    'lib/adapters/types/',
+    'lib/testing/mock-data/',
+    'jest.config.js',
   ]
 };
