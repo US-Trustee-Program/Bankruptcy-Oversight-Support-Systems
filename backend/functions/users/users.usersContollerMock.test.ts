@@ -8,7 +8,6 @@ jest.mock('../lib/adapters/controllers/users.controller', () => {
     UsersController: jest.fn().mockImplementation(() => {
       return {
         getUser: () => {
-          console.log('mock getUser() is being called.');
           throw new Error('Test error');
         },
       }

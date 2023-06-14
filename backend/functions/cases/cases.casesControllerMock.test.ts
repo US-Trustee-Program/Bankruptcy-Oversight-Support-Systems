@@ -7,7 +7,6 @@ jest.mock('../lib/adapters/controllers/cases.controller', () => {
     CasesController: jest.fn().mockImplementation(() => {
       return {
         getCaseList: () => {
-          console.log('mock getCaseList() is being called.');
           throw new Error('Test error');
         },
       }

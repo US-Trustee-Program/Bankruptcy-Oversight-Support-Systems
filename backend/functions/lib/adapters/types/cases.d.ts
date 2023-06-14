@@ -1,11 +1,11 @@
 import { ObjectKeyVal } from "./basic";
 
 // TODO: make this implement the IRecordSet<any> interface
-export type CaseListRecordSet = {
-  staff1Label: string;
-  staff2Label: string;
+export interface CaseListRecordSet {
+  staff1Label?: string;
+  staff2Label?: string;
   caseList: ObjectKeyVal[];
-  initialized: boolean;
+  initialized?: boolean;
 }
 
 export type CaseListDbResult = {
@@ -13,13 +13,13 @@ export type CaseListDbResult = {
   message: string;
   count: number;
   body: CaseListRecordSet;
-};
+}
 
-export type caseType = {
-  currentCaseChapter: string;
+export type Chapter11CaseType = {
   caseNumber: string;
-  debtor1Name: string;
+  currentCaseChapter: string;
   currentChapterFileDate: number;
+  debtor1Name: string;
   staff1ProfName: string;
   staff1ProfTypeDescription: string;
   staff2ProfName: string;
@@ -31,7 +31,7 @@ export type caseType = {
   //hearingDescription: string;
 };
 
-export type caseTypeWithDescription = {
+export type Chapter11CaseTypeWithDescription = {
   currentCaseChapter: string;
   caseNumber: string;
   debtor1Name: string;
@@ -46,3 +46,26 @@ export type caseTypeWithDescription = {
   hearingDisposition: string;
   hearingDescription: string;
 };
+
+export type Chapter15Case = {
+  caseNumber: string;
+  caseTitle: string;
+  dateFiled: string;
+}
+
+export type PacerCaseData = {
+  courtId?: string;
+  caseId?: number;
+  caseYear: number;
+  caseNumber: number;
+  caseOffice?: string;
+  caseType?: string;
+  caseTitle: string;
+  dateFiled: string;
+  dateReopened?: string;
+  dateDischarged?: string;
+  bankruptcyChapter?: string;
+  jointBankruptcyFlag?: string;
+  jurisdictionType?: string;
+  caseNumberFull?: string;
+}
