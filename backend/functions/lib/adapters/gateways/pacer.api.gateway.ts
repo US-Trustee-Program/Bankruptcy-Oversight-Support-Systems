@@ -31,7 +31,6 @@ class PacerApiGateway implements PacerGatewayInterface {
       const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
       const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
 
-      console.log('calling the case locator url with token', token);
       const response = await httpPost({
         url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
         headers: { 'X-NEXT-GEN-CSO': token },
@@ -39,15 +38,13 @@ class PacerApiGateway implements PacerGatewayInterface {
       });
 
       if (response.status != 200) {
-        return Promise.reject(await response.data());
+        throw new Error('Unexpected response from Pacer API');
       } else {
-        console.log(response);
         const responseData = await response.data();
-        console.log(responseData);
         return pacerToChapter15Data(responseData.content);
       }
     } catch (e) {
-      return Promise.reject(e.message);
+      throw e;
     }
   };
 }
