@@ -24,45 +24,29 @@ class PacerApiGateway implements PacerGatewayInterface {
         }`;
 
     const pacerLogin = new PacerLogin();
-    let token = await pacerLogin.getPacerToken();
+    let token;
+    try {
+      token = await pacerLogin.getPacerToken();
 
-    const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
-    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
+      const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
+      const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
 
-    const response = await httpPost({
-      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-      headers: { 'X-NEXT-GEN-CSO': token },
-      body,
-    });
+      const response = await httpPost({
+        url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
+        headers: { 'X-NEXT-GEN-CSO': token },
+        body,
+      });
 
-    if (response.status != 200) {
-      return Promise.reject(await response.data());
-    } else {
-      const responseData = await response.data();
-      return pacerToChapter15Data(responseData.content);
+      if (response.status != 200) {
+        return Promise.reject(await response.data());
+      } else {
+        const responseData = await response.data();
+        return pacerToChapter15Data(responseData.content);
+      }
+    } catch (e) {
+      return Promise.reject(e.message);
     }
   };
-
-  getPacerToken = async (): Promise<string> => {
-    const azureServer = process.env.WEBSITE_HOSTNAME;
-    const azureServerPort = process.env.SERVER_PORT;
-    const azureFunctionProtocol = process.env.AZURE_FUNCTION_PROTOCOL;
-    const azurePacerPath = process.env.AZURE_FUNCTION_PACER_PATH;
-
-    const azureFunctionURL = `${azureFunctionProtocol}://${azureServer}:${azureServerPort}/${azurePacerPath}`;
-
-    const azureResponse = await httpGet({ url: azureFunctionURL });
-
-    validateResponse(azureResponse);
-
-    return azureResponse.data.nextGenCSO;
-  };
-}
-
-function validateResponse(response: any) {
-  if (response.status != 200 || !!response.data.errorDescription || !response.data.nextGenCSO) {
-    throw new Error('Failed to obtain PACER login token.');
-  }
 }
 
 export { PacerApiGateway };
