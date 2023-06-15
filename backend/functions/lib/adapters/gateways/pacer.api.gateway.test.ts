@@ -21,7 +21,7 @@ describe('PACER API gateway tests', () => {
     }
   })
 
-  test('should return error message for non-200 response', async () => {
+  test('should return error message for non-200 response for case-locator', async () => {
     const responseValue = { status: 401, message: 'Unauthorized user' };
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
@@ -34,7 +34,7 @@ describe('PACER API gateway tests', () => {
     await expect(gateway.getChapter15Cases()).rejects.toEqual({ content: responseValue });
   });
 
-  test('should return content for 200 response', async () => {
+  test('should return content for 200 response for case-locator', async () => {
     const mockedApiResponse = gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedResponseValue: Chapter15Case[] = [
       {
@@ -60,17 +60,20 @@ describe('PACER API gateway tests', () => {
     expect(await gateway.getChapter15Cases()).toEqual(expectedResponseValue);
   });
 
-  test('should call httpPost with the correct url and token header', async () => {
+  test('should call httpPost with the correct url and token header for case-locator', async () => {
     const postSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
         json: () => ({}),
         status: 200,
       };
     });
-
     expect(postSpy).toHaveBeenCalledWith(expect.objectContaining({
       url: 'https://fake-subdomain.uscourts.gov/pcl-public-api/rest/cases',
       headers: { 'X-NEXT-GEN-CSO': 'fake-token' },
     }));
+  });
+  
+  test('should reject when pacer login fails', async () => {
+
   });
 });
