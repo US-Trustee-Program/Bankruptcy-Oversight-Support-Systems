@@ -4,7 +4,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export default class PacerLogin {
-
   async getPacerToken(): Promise<string> {
     // - should we also check if the existing token is still valid?
     // Get existing token OR login if no existing token
@@ -29,7 +28,7 @@ export default class PacerLogin {
         throw Error('Failed to Connect to PACER API');
       }
     } catch (e) {
-      throw(e);
+      throw e;
     }
   }
 }
