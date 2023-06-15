@@ -14,6 +14,13 @@ describe('PACER API gateway tests', () => {
     }
   })
 
+  beforeAll(() => {
+    process.env = {
+      PACER_TOKEN: 'fake-token',
+      PACER_CASE_LOCATOR_URL: 'https://fake-subdomain.uscourts.gov'
+    }
+  })
+
   test('should return error message for non-200 response', async () => {
     const responseValue = { status: 401, message: 'Unauthorized user' };
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
