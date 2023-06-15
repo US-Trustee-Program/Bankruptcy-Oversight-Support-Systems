@@ -1,6 +1,7 @@
 import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
+import PacerLogin from './pacer-login';
 
 const http = require('../utils/http');
 
@@ -72,8 +73,14 @@ describe('PACER API gateway tests', () => {
       headers: { 'X-NEXT-GEN-CSO': 'fake-token' },
     }));
   });
-  
-  test('should reject when pacer login fails', async () => {
 
+  test('should reject when pacer login fails', async () => {
+    const pacerLogin = new PacerLogin();
+    const responseValue = { status: 200, data: { errorDescription: 'Login Failed', loginResult: 1 } };
+    const postSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
+      return responseValue;
+    });
+
+    expect(pacerLogin.getPacerToken()).rejects.toEqual('Login failed');
   });
 });
