@@ -1,4 +1,4 @@
-import { httpGet, httpPost } from '../components/utils/http.humble';
+import { httpGet, httpPost } from '../components/utils/http.adapter';
 import config from '../configuration/apiConfiguration';
 
 export type CaseListResponseData = {
