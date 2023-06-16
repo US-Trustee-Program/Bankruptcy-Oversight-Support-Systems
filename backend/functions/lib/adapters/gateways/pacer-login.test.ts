@@ -1,4 +1,4 @@
-import PacerLogin from './pacer-login';
+import { PacerLogin } from './pacer-login';
 const http = require('../utils/http');
 
 describe('PACER API gateway tests', () => {

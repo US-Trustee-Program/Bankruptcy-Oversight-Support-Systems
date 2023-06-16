@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpGet, httpPost } from '../utils/http';
-import PacerLogin from './pacer-login';
+import { PacerLogin } from './pacer-login';
 
 dotenv.config();
 
@@ -29,7 +29,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       token = await pacerLogin.getPacerToken();
 
       const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
-      const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases';
+      const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find?page=0';
 
       const response = await httpPost({
         url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
@@ -40,8 +40,8 @@ class PacerApiGateway implements PacerGatewayInterface {
       if (response.status != 200) {
         throw new Error('Unexpected response from Pacer API');
       } else {
-        const responseData = await response.data();
-        return pacerToChapter15Data(responseData.content);
+        console.log(response);
+        return pacerToChapter15Data(response.data);
       }
     } catch (e) {
       throw e;

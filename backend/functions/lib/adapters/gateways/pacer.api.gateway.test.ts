@@ -1,7 +1,18 @@
 import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
+import { PacerLogin } from './pacer-login';
 const http = require('../utils/http');
+
+jest.mock('./pacer-login', () => {
+  return {
+    PacerLogin: jest.fn().mockImplementation(() => {
+      return {
+        getPacerToken: jest.fn().mockReturnValue('abcdefghijklmnopqrstuvwxyz0123456789'),
+      };
+    }),
+  };
+});
 
 describe('PACER API gateway tests', () => {
   const gatewayHelper = new GatewayHelper();
@@ -20,20 +31,19 @@ describe('PACER API gateway tests', () => {
     };
   });
 
-  xtest('should return error message for non-200 response for case-locator', async () => {
-    const responseValue = { status: 401, message: 'Unauthorized user' };
+  test('should return error message for non-200 response for case-locator', async () => {
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
-        json: () => ({ content: responseValue }),
+        data: 'Unauthorized user',
         status: 401,
       };
     });
 
     const gateway = new PacerApiGateway();
-    await expect(gateway.getChapter15Cases()).rejects.toEqual({ content: responseValue });
+    await expect(gateway.getChapter15Cases()).rejects.toThrow('Unexpected response from Pacer API');
   });
 
-  xtest('should return content for 200 response for case-locator', async () => {
+  test('should return content for 200 response for case-locator', async () => {
     const mockedApiResponse = gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedResponseValue: Chapter15Case[] = [
       {
@@ -49,7 +59,7 @@ describe('PACER API gateway tests', () => {
     ];
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
-        json: () => ({ content: mockedApiResponse }),
+        data: mockedApiResponse,
         status: 200,
       };
     });
@@ -59,10 +69,13 @@ describe('PACER API gateway tests', () => {
     expect(await gateway.getChapter15Cases()).toEqual(expectedResponseValue);
   });
 
-  xtest('should call httpPost with the correct url and token header for case-locator', async () => {
+  /*
+   * I don't understand this test.  What are we trying to do here??
+   *
+  test('should call httpPost with the correct url and token header for case-locator', async () => {
     const postSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
-        json: () => ({}),
+        data: {},
         status: 200,
       };
     });
@@ -73,4 +86,5 @@ describe('PACER API gateway tests', () => {
       }),
     );
   });
+  */
 });
