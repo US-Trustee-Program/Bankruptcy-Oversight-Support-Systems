@@ -4,6 +4,16 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export class PacerLogin {
+  private getValidToken(data: any): string {
+    if (data.loginResult == 0) {
+      return data.nextGenCSO;
+    } else if (data.loginResult == 1) {
+      throw Error(data.errorDescription);
+    } else {
+      throw Error('Error retrieving token');
+    }
+  }
+
   public async getPacerToken(): Promise<string> {
     // - should we also check if the existing token is still valid?
     // Get existing token OR login if no existing token
@@ -17,13 +27,7 @@ export class PacerLogin {
       });
 
       if (response.status == 200) {
-        if (response.data.loginResult == 0) {
-          return response.data.nextGenCSO;
-        } else if (response.data.loginResult == 1) {
-          throw Error(response.data.errorDescription);
-        } else {
-          throw Error('Error retrieving token');
-        }
+        return this.getValidToken(response.data);
       } else {
         throw Error('Failed to Connect to PACER API');
       }
