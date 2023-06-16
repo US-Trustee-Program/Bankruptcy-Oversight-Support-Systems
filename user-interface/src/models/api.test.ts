@@ -1,5 +1,5 @@
 import Api, { ObjectKeyVal } from './api';
-import * as httpHumble from '../components/utils/http.humble';
+import * as httpHumble from '../components/utils/http.adapter';
 
 describe('Specific tests for the API model', () => {
   test('createPath should return a properly constructed URL when passed a basic path and an array of query parameters', () => {
