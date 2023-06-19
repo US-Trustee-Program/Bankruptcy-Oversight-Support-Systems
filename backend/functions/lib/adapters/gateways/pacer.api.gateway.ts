@@ -40,8 +40,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       if (response.status != 200) {
         throw new Error('Unexpected response from Pacer API');
       } else {
-        console.log(response);
-        return pacerToChapter15Data(response.data);
+        return pacerToChapter15Data(response.data.content);
       }
     } catch (e) {
       throw e;
