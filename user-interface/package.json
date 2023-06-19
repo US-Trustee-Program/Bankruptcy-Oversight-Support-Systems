@@ -64,7 +64,7 @@
       "/index.tsx",
       "/reportWebVitals.ts",
       "/configuration/apiConfiguration.ts",
-      "http.humble.ts"
+      "http.adapter.ts"
     ]
   },
   "scripts": {

@@ -1,5 +1,5 @@
 import Api, { ObjectKeyVal } from './api';
-import * as httpHumble from '../components/utils/http.adapter';
+import * as httpAdapter from '../components/utils/http.adapter';
 
 describe('Specific tests for the API model', () => {
   test('createPath should return a properly constructed URL when passed a basic path and an array of query parameters', () => {
@@ -16,7 +16,7 @@ describe('Specific tests for the API model', () => {
 
   test('call to Post which throws any server error should reject with a 500', async () => {
     const mockHttpPost = jest.fn().mockResolvedValue(new Error('bad request'));
-    jest.spyOn(httpHumble, 'httpPost').mockImplementation(mockHttpPost);
+    jest.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
     await expect(Api.post('/some/path', {})).rejects.toThrow(
       '500 Error - Server Error response.json is not a function',
@@ -31,7 +31,7 @@ describe('Specific tests for the API model', () => {
       json: () => 'mock post',
       ok: false,
     }));
-    jest.spyOn(httpHumble, 'httpPost').mockImplementation(mockHttpPost);
+    jest.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
     expect(Api.post('/some/path', {})).rejects.toThrow('400 Error - Invalid Request mock post');
   });
@@ -41,7 +41,7 @@ describe('Specific tests for the API model', () => {
       json: () => 'mock post',
       ok: true,
     }));
-    jest.spyOn(httpHumble, 'httpPost').mockImplementation(mockHttpPost);
+    jest.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
     expect(Api.post('/some/path', {})).resolves.toBe('mock post');
   });
@@ -50,7 +50,7 @@ describe('Specific tests for the API model', () => {
     const mockHttpGet = jest.fn().mockImplementation(() => {
       throw Error('bad request');
     });
-    jest.spyOn(httpHumble, 'httpGet').mockImplementation(mockHttpGet);
+    jest.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
     expect(Api.list('/some/path', {})).rejects.toThrow('500 Error - Server Error bad request');
   });
@@ -60,7 +60,7 @@ describe('Specific tests for the API model', () => {
       json: () => 'mock get',
       ok: false,
     }));
-    jest.spyOn(httpHumble, 'httpGet').mockImplementation(mockHttpGet);
+    jest.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
     expect(Api.list('/some/path', {})).rejects.toThrow(
       '404 Error - Not Found mock get - Response was not OK',
@@ -72,7 +72,7 @@ describe('Specific tests for the API model', () => {
       json: () => 'mock get',
       ok: true,
     }));
-    jest.spyOn(httpHumble, 'httpGet').mockImplementation(mockHttpGet);
+    jest.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
     expect(Api.list('/some/path', {})).resolves.toBe('mock get');
   });
