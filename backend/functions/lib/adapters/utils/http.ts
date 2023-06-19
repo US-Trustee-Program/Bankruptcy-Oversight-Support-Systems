@@ -46,7 +46,8 @@ export async function httpPost(data: {
     })
     .then((response) => {
       return response;
-    }).catch((reason) => {
+    })
+    .catch((reason) => {
       throw reason;
     });
 }
@@ -66,7 +67,8 @@ export async function httpGet(data: {
     })
     .then((response) => {
       return response;
-    }).catch((reason) => {
+    })
+    .catch((reason) => {
       throw reason;
     });
 }

@@ -13,7 +13,7 @@ class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
   constructor() {
     const credentials = new DefaultAzureCredential();
     this.secretClient = new SecretClient(process.env.AZURE_KEY_VAULT_URL, credentials);
-    this.pacerTokenName = 'pacer-token-test';
+    this.pacerTokenName = process.env.KEYVAULT_PACER_TOKEN_NAME;
   }
 
   async savePacerTokenToSecrets(token: string) {
@@ -36,7 +36,7 @@ class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
       if (message.match(`${this.pacerTokenName} was not found in this key vault`)) {
         throw new NoPacerToken();
       } else {
-        throw(e);
+        throw e;
       }
     }
     return Promise.resolve(tokenResponse.value);

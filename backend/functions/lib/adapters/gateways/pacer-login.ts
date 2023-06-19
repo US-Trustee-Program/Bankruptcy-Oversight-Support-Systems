@@ -23,26 +23,20 @@ export class PacerLogin {
   }
 
   public async getPacerToken(): Promise<string> {
-    // - should we also check if the existing token is still valid?
-    // Get existing token OR login if no existing token
-    let token;
+    let token: string;
     try {
       token = await this.azurePacerTokenSecretGateway.getPacerTokenFromSecrets();
     } catch (e) {
       if (e instanceof NoPacerToken) {
-        token = this.getAndStorePacerToken();
+        token = await this.getAndStorePacerToken();
       } else {
         throw e;
       }
     }
-    // validate token
-    // - if valid, return it
-    // - if no token or invalid, get a new one
-    //   - store the new one
     return token;
   }
 
-  async getAndStorePacerToken(): Promise<string> {
+  public async getAndStorePacerToken(): Promise<string> {
     let token: string;
     try {
       const response = await httpPost({
@@ -55,8 +49,7 @@ export class PacerLogin {
 
       if (response.status == 200) {
         token = this.getValidToken(response.data);
-        // store in secret vault
-        await this.azurePacerTokenSecretGateway.savePacerTokenToSecrets(token);
+        this.azurePacerTokenSecretGateway.savePacerTokenToSecrets(token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }
