@@ -89,7 +89,7 @@ export const CaseList = () => {
               <th>{caseList.body.staff2Label}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="case-list-table-body">
             {caseList.count > 0 &&
               (caseList.body.caseList as Array<caseType>).map((theCase: caseType, idx: number) => {
                 const chapterStr = theCase.currentChapterFileDate.toString();
