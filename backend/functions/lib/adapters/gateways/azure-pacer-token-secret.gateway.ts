@@ -17,7 +17,7 @@ class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
   }
 
   async savePacerTokenToSecrets(token: string) {
-    const tokenResponse = this.secretClient.setSecret(this.pacerTokenName, token);
+    const tokenResponse = await this.secretClient.setSecret(this.pacerTokenName, token);
     console.log(tokenResponse);
   }
 

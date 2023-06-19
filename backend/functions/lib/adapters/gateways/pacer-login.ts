@@ -56,7 +56,7 @@ export class PacerLogin {
       if (response.status == 200) {
         token = this.getValidToken(response.data);
         // store in secret vault
-        this.azurePacerTokenSecretGateway.savePacerTokenToSecrets(token);
+        await this.azurePacerTokenSecretGateway.savePacerTokenToSecrets(token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }
