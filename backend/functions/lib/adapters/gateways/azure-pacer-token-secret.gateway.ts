@@ -1,5 +1,5 @@
 import { PacerTokenSecretInterface } from './pacer-token-secret.interface';
-import { SecretClient } from '@azure/keyvault-secrets';
+import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
 import * as dotenv from 'dotenv';
 import { DefaultAzureCredential, TokenCredential } from '@azure/identity';
 import { NoPacerToken } from './pacer-exceptions';
@@ -7,23 +7,32 @@ import { NoPacerToken } from './pacer-exceptions';
 dotenv.config();
 
 class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
+  secretClient: SecretClient;
+  pacerTokenName: string;
+
+  constructor() {
+    const credentials = new DefaultAzureCredential();
+    this.secretClient = new SecretClient(process.env.AZURE_KEY_VAULT_URL, credentials);
+    this.pacerTokenName = 'pacer-token';
+  }
+
+  async savePacerTokenToSecrets(token: string) {
+    const tokenResponse = this.secretClient.setSecret(this.pacerTokenName, token);
+    console.log(tokenResponse);
+  }
+
   async getPacerTokenFromSecrets(): Promise<string> {
-    const credentials: TokenCredential = new DefaultAzureCredential();
-    const secretClient = new SecretClient(process.env.AZURE_KEY_VAULT_URL, credentials);
-    let token;
+    let tokenResponse: KeyVaultSecret;
     try {
-      token = await secretClient.getSecret('pacer-token');
+      tokenResponse = await this.secretClient.getSecret(this.pacerTokenName);
     } catch (e) {
       const message = e.message;
       if (message.match('pacer-token was not found in this key vault')) {
         throw new NoPacerToken();
       }
-      console.log(e);
     }
-    console.log(token);
-    return Promise.resolve(token.value);
+    return Promise.resolve(tokenResponse.value);
   }
-
 }
 
 export { AzurePacerTokenSecretGateway };
