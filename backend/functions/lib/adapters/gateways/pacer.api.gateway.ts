@@ -9,6 +9,25 @@ dotenv.config();
 
 class PacerApiGateway implements PacerGatewayInterface {
   getChapter15Cases = async (startingMonth: number = -6): Promise<Chapter15Case[]> => {
+    const pacerLogin = new PacerLogin();
+    let token;
+    try {
+      token = await pacerLogin.getPacerToken();
+      return this.searchCaseLocator(token, startingMonth);
+    } catch (e) {
+      const expiredToken = e.response?.data?.status === 401 || false;
+      if (expiredToken) {
+        // get new token
+        token = pacerLogin.refreshToken();
+        // make request again
+        return this.searchCaseLocator(token, startingMonth);
+      } else {
+        throw e;
+      }
+    }
+  };
+
+  searchCaseLocator = async (token: string, startingMonth: number): Promise<Chapter15Case[]> => {
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
@@ -22,30 +41,21 @@ class PacerApiGateway implements PacerGatewayInterface {
             ],
             "dateFiledFrom": "${dateFileFrom}"
         }`;
+    const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
+    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find?page=0';
 
-    const pacerLogin = new PacerLogin();
-    let token;
-    try {
-      token = await pacerLogin.getPacerToken();
+    const response = await httpPost({
+      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
+      headers: { 'X-NEXT-GEN-CSO': token },
+      body,
+    });
 
-      const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
-      const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find?page=0';
-
-      const response = await httpPost({
-        url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-        headers: { 'X-NEXT-GEN-CSO': token },
-        body,
-      });
-
-      if (response.status != 200) {
-        throw new Error('Unexpected response from Pacer API');
-      } else {
-        return pacerToChapter15Data(response.data.content);
-      }
-    } catch (e) {
-      throw e;
+    if (response.status != 200) {
+      throw new Error('Unexpected response from Pacer API');
     }
-  };
+
+    return pacerToChapter15Data(response.data.content);
+  }
 }
 
 export { PacerApiGateway };
