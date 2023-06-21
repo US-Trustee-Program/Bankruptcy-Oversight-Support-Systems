@@ -8,51 +8,63 @@ import { PacerLogin } from './pacer-login';
 dotenv.config();
 
 class PacerApiGateway implements PacerGatewayInterface {
-  getChapter15Cases = async (startingMonth: number = -6): Promise<Chapter15Case[]> => {
-    const pacerLogin = new PacerLogin();
-    let token: string;
-    try {
-      token = await pacerLogin.getPacerToken();
-      return await this.searchCaseLocator(token, startingMonth);
-    } catch (e) {
-      const expiredToken = e.response?.data?.status === 401 || false;
-      if (expiredToken) {
-        token = await pacerLogin.getAndStorePacerToken();
-        return this.searchCaseLocator(token, startingMonth);
-      } else {
-        throw e;
-      }
+  private pacerLogin: PacerLogin;
+  private token: string;
+  private startingMonth: number = -6;
+
+  constructor() {
+    this.pacerLogin = new PacerLogin();
+  }
+
+  private handleErrorAndReLogin = async (e: any) => {
+    const expiredToken = e.data?.status === 401 || false;
+    if (expiredToken) {
+      this.token = await this.pacerLogin.getAndStorePacerToken();
+      return this.searchCaseLocator();
+    } else {
+      throw e;
     }
   };
 
-  searchCaseLocator = async (token: string, startingMonth: number): Promise<Chapter15Case[]> => {
+  private searchCaseLocator = async (): Promise<Chapter15Case[]> => {
     const date = new Date();
-    date.setMonth(date.getMonth() + startingMonth);
+    date.setMonth(date.getMonth() + this.startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
-    const regionTwoPacerCourtIds = '["nyebk", "nynbk", "nysbk", "nywbk", "vtbk", "ctbk"]';
+    const regionTwoPacerCourtIds = ['nyebk', 'nynbk', 'nysbk', 'nywbk', 'vtbk', 'ctbk'];
 
-    const body = `{
-            "jurisdictionType": "bk",
-            "courtId": ${regionTwoPacerCourtIds},
-            "federalBankruptcyChapter": [
-                "15"
-            ],
-            "dateFiledFrom": "${dateFileFrom}"
-        }`;
+    const body = {
+      jurisdictionType: 'bk',
+      courtId: regionTwoPacerCourtIds,
+      federalBankruptcyChapter: ['15'],
+      dateFiledFrom: dateFileFrom,
+    };
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
     const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find?page=0';
 
-    const response = await httpPost({
-      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-      headers: { 'X-NEXT-GEN-CSO': token },
-      body,
-    });
+    try {
+      const response = await httpPost({
+        url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
+        headers: { 'X-NEXT-GEN-CSO': this.token },
+        body,
+      });
 
-    if (response.status != 200) {
-      throw new Error('Unexpected response from Pacer API');
+      return pacerToChapter15Data(response.data.content);
+    } catch (e) {
+      this.handleErrorAndReLogin(e);
+    }
+  };
+
+  public getChapter15Cases = async (startingMonth?: number): Promise<Chapter15Case[]> => {
+    if (startingMonth != undefined) {
+      this.startingMonth = startingMonth;
     }
 
-    return pacerToChapter15Data(response.data.content);
+    try {
+      this.token = await this.pacerLogin.getPacerToken();
+      return await this.searchCaseLocator();
+    } catch (e) {
+      this.handleErrorAndReLogin(e);
+    }
   };
 }
 
