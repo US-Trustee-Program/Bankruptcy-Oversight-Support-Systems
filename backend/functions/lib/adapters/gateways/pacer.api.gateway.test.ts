@@ -1,7 +1,6 @@
 import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
-import { PacerLogin } from './pacer-login';
 const http = require('../utils/http');
 
 jest.mock('./pacer-login', () => {
@@ -16,13 +15,6 @@ jest.mock('./pacer-login', () => {
 
 describe('PACER API gateway tests', () => {
   const gatewayHelper = new GatewayHelper();
-
-  beforeAll(() => {
-    process.env = {
-      PACER_TOKEN: 'fake-token',
-      PACER_CASE_LOCATOR_URL: 'https://fake-subdomain.uscourts.gov',
-    };
-  });
 
   beforeAll(() => {
     process.env = {

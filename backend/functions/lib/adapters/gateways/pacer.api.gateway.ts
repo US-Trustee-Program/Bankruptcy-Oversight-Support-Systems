@@ -4,12 +4,13 @@ import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
+import { getPacerTokenSecretGateway } from '../../../factory';
 
 dotenv.config();
 
 class PacerApiGateway implements PacerGatewayInterface {
   getChapter15Cases = async (startingMonth: number = -6): Promise<Chapter15Case[]> => {
-    const pacerLogin = new PacerLogin();
+    const pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
     let token: string;
     try {
       token = await pacerLogin.getPacerToken();
@@ -52,7 +53,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       throw new Error('Unexpected response from Pacer API');
     }
 
-    return pacerToChapter15Data(response.data.content);
+    return pacerToChapter15Data(response.data);
   };
 }
 
