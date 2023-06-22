@@ -1,15 +1,15 @@
 import { httpPost } from '../utils/http';
 import * as dotenv from 'dotenv';
-import { AzurePacerTokenSecretGateway } from './azure-pacer-token-secret.gateway';
 import { NoPacerToken } from './pacer-exceptions';
+import { PacerTokenSecretInterface } from './pacer-token-secret.interface';
 
 dotenv.config();
 
 export class PacerLogin {
-  azurePacerTokenSecretGateway: AzurePacerTokenSecretGateway;
+  pacerTokenSecretInterface: PacerTokenSecretInterface;
 
-  constructor() {
-    this.azurePacerTokenSecretGateway = new AzurePacerTokenSecretGateway();
+  constructor(pacerTokenSecretInterface: PacerTokenSecretInterface) {
+    this.pacerTokenSecretInterface = pacerTokenSecretInterface;
   }
 
   private getValidToken(data: any): string {
@@ -25,7 +25,7 @@ export class PacerLogin {
   public async getPacerToken(): Promise<string> {
     let token: string;
     try {
-      token = await this.azurePacerTokenSecretGateway.getPacerTokenFromSecrets();
+      token = await this.pacerTokenSecretInterface.getPacerTokenFromSecrets();
     } catch (e) {
       if (e instanceof NoPacerToken) {
         token = await this.getAndStorePacerToken();
@@ -49,7 +49,7 @@ export class PacerLogin {
 
       if (response.status == 200) {
         token = this.getValidToken(response.data);
-        this.azurePacerTokenSecretGateway.savePacerTokenToSecrets(token);
+        this.pacerTokenSecretInterface.savePacerTokenToSecrets(token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }
