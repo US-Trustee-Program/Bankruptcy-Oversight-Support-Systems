@@ -2,9 +2,9 @@ targetScope = 'subscription'
 param databaseResourceGroupName string
 param networkResourceGroupName string
 param webappResourceGroupName string
-param createAppRG bool
-param createNetworkRG bool
-param createDatabaseRG bool
+param createAppRG bool = false
+param createNetworkRG bool = false
+param createDatabaseRG bool = false
 param location string = 'eastus'
 param azSubscription string
 
