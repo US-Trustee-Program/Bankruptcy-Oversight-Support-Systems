@@ -15,9 +15,14 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName")
 
 function validation_func() {
-    deployment_file=$1
-    deployment_parameters=$2
+    location=$1
+    deployment_file=$2
+    deployment_parameters=$3
 
+    if [[ -z "${location}" ]]; then
+        echo "Error: Missing location parameter"
+        exit 10
+    fi
     if [[ -z "${deployment_file}" ]]; then
         echo "Error: Missing deployment file"
         exit 11
@@ -74,7 +79,11 @@ while [[ $# > 0 ]]; do
         deployment_file="${2}"
         shift 2
         ;;
-
+    -l | --location)
+        location="${2}"
+        shift 2
+        echo "location: $location"
+        ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --parameters)
         deployment_parameters="${2}"
@@ -91,7 +100,21 @@ function az_rg_exists_func() {
     echo $(az group exists -n $1)
 }
 
-validation_func $deployment_file "$deployment_parameters"
+function az_deploy_func() {
+    templateFile=$1
+    deploymentParameter=$2
+    echo "Deploying Azure Resource Groups via bicep template $2"
+    if [[ $show_what_if ]]; then
+        az deployment sub create -w -l $location --template-file $templateFile --parameter $deploymentParameter
+    fi
+    if [[ $? -eq 0 ]]; then
+        az deployment sub create --template-file $templateFile --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
+    fi
+
+}
+validation_func $location $deployment_file "$deployment_parameters"
+
+deployment_parameters="${deployment_parameters} location=$location"
 
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [ "$(az_rg_exists_func $databaseResourceGroupName)" != true ]; then
@@ -101,5 +124,7 @@ if [ "$(az_rg_exists_func $networkResourceGroupName)" != true ]; then
     deployment_parameters="${deployment_parameters} createNetworkRG=true"
 fi
 if [ "$(az_rg_exists_func $webappResourceGroupName)" != true ]; then
-    deployment_parameters="${deployment_parameters} createWebappRG=true"
+    deployment_parameters="${deployment_parameters} createAppRG=true"
 fi
+
+az_deploy_func $deployment_file "${deployment_parameters}"

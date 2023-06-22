@@ -2,10 +2,13 @@ targetScope = 'subscription'
 param databaseResourceGroupName string 
 param networkResourceGroupName string 
 param webappResourceGroupName string 
+param createAppRG bool
+param createNetworkRG bool
+param createDatabaseRG bool
 param location string = 'eastus'
 param azSubscription string
 
-module appResourceGroup './webapp-rg-deploy.bicep' = {
+module appResourceGroup './webapp-rg-deploy.bicep' = if(createAppRG){
   scope: subscription(azSubscription)
   name: webappResourceGroupName
   params: {
@@ -13,7 +16,7 @@ module appResourceGroup './webapp-rg-deploy.bicep' = {
     webappResourceGroupName: webappResourceGroupName
   }
 }
-module networkResourceGroup './network-rg-deploy.bicep' = {
+module networkResourceGroup './network-rg-deploy.bicep' = if(createNetworkRG){
   scope: subscription(azSubscription)
   name: networkResourceGroupName
   params: {
@@ -21,7 +24,7 @@ module networkResourceGroup './network-rg-deploy.bicep' = {
     networkResourceGroupName: networkResourceGroupName
   }
 }
-module databaseResourceGroup './database-rg-deploy.bicep' = {
+module databaseResourceGroup './database-rg-deploy.bicep' = if(createDatabaseRG){
   scope: subscription(azSubscription)
   name: databaseResourceGroupName
   params: {
