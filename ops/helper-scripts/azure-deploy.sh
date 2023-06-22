@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        azure-deploy.sh
 # Description:  Helper script to deploy Azure resources for USTP CAMS
@@ -15,9 +15,9 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
 
 function validation_func() {
-    app_rg=$1
-    deployment_file=$2
-    deployment_parameters=$3
+    local app_rg=$1
+    local deployment_file=$2
+    local deployment_parameters=$3
 
     if [[ -z "${app_rg}" ]]; then
         echo "Error: Missing default resource group"
@@ -62,9 +62,9 @@ function validation_func() {
 }
 
 function az_vnet_exists_func() {
-    rg=$1
-    vnetName=$2
-    count=$(az network vnet list -g $rg --query "length([?name=='$vnetName'])" 2>/dev/null)
+    local rg=$1
+    local vnetName=$2
+    local count=$(az network vnet list -g $rg --query "length([?name=='$vnetName'])" 2>/dev/null)
     if [[ $count -eq 0 ]]; then
         exists=false
     else
@@ -74,14 +74,16 @@ function az_vnet_exists_func() {
 }
 
 function az_deploy_func() {
-    echo "Deploying Azure resources via bicep template $2"
+    local rg=$1
+    local templateFile=$2
+    local deploymentParameter=$3
+    echo "Deploying Azure resources via bicep template $templateFile"
     if [[ $show_what_if ]]; then
-        az deployment group create -w -g $1 --template-file $2 --parameter $3
+        az deployment group create -w -g $rg --template-file $templateFile --parameter $deploymentParameter
     fi
     if [[ $? -eq 0 ]]; then
-        az deployment group create -g $1 --template-file $2 --parameter $3 -o json --query properties.outputs | tee outputs.json
+        az deployment group create -g $rg --template-file $templateFile --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
     fi
-
 }
 
 show_what_if=false
