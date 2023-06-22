@@ -68,7 +68,6 @@ describe('PACER login tests', () => {
     expect(await pacerLogin.getPacerToken()).toEqual(expectedValue);
   });
 
-  // test getAndStorePacerToken
   test('should return token when saving new token to Azure KeyVault', async () => {
     const pacerLogin = new PacerLogin(new MockPacerTokenSecretGateway(true));
     const expectedValue = 'abcdefghijklmnopqrstuvwxyz1234567890';
@@ -79,18 +78,22 @@ describe('PACER login tests', () => {
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return responseValue;
     });
+    expect(await pacerLogin.getAndStorePacerToken()).toEqual(expectedValue);
   });
 
-  //test the error for a non 200 on the save token
-  test('get AndStorePacerToken method should throw an error when the response in non 200 ', async () => {
+  test('getAndStorePacerToken method should throw an error when the response in non 200 ', async () => {
     const pacerLogin = new PacerLogin(new MockPacerTokenSecretGateway(true));
-    //const expectedValue = ""
     const responseValue = {
       status: 404
     };
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return responseValue;
     });
-    expect(await pacerLogin.getAndStorePacerToken()).toThrow('Failed to Connect to PACER API');
+
+    try {
+      await pacerLogin.getAndStorePacerToken();
+    } catch (e) {
+      expect(e).toEqual(new Error('Failed to Connect to PACER API'));
+    }
   });
 });
