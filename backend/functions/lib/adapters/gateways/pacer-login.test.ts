@@ -39,7 +39,9 @@ describe('PACER login tests', () => {
       return responseValue;
     });
 
-    await expect(pacerLogin.getPacerToken()).rejects.toEqual(Error('Failed to Connect to PACER API'));
+    await expect(pacerLogin.getPacerToken()).rejects.toEqual(
+      Error('Failed to Connect to PACER API'),
+    );
   });
 
   test('should throw error when httpPost throws an error', async () => {
@@ -77,6 +79,5 @@ describe('PACER login tests', () => {
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return responseValue;
     });
-    jest.spyOn(pacerT)
   });
 });
