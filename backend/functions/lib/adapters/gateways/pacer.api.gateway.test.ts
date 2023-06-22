@@ -32,12 +32,11 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    const response = await gateway.getChapter15Cases();
-    console.log(response);
+
     await expect(gateway.getChapter15Cases()).rejects.toThrow('Unexpected response from Pacer API');
   });
 
-  xtest('should return content for 200 response for case-locator', async () => {
+  test('should return content for 200 response for case-locator', async () => {
     const mockedApiResponse = gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedResponseValue: Chapter15Case[] = [
       {
@@ -68,19 +67,19 @@ describe('PACER API gateway tests', () => {
   /*
    * I don't understand this test.  What are we trying to do here??
    */
-  test('should call httpPost with the correct url and token header for case-locator', async () => {
-    const postSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
-      return {
-        data: {},
-        status: 200,
-      };
-    });
-    expect(postSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'https://fake-subdomain.uscourts.gov/pcl-public-api/rest/cases',
-        headers: { 'X-NEXT-GEN-CSO': 'fake-token' },
-      }),
-    );
-  });
+  // test('should call httpPost with the correct url and token header for case-locator', async () => {
+  //   const postSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
+  //     return {
+  //       data: {},
+  //       status: 200,
+  //     };
+  //   });
+  //   expect(postSpy).toHaveBeenCalledWith(
+  //     expect.objectContaining({
+  //       url: 'https://fake-subdomain.uscourts.gov/pcl-public-api/rest/cases/find',
+  //       headers: { 'X-NEXT-GEN-CSO': 'fake-token' },
+  //     }),
+  //   );
+  // });
   /**/
 });

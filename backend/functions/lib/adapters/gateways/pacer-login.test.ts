@@ -65,4 +65,18 @@ describe('PACER login tests', () => {
 
     expect(await pacerLogin.getPacerToken()).toEqual(expectedValue);
   });
+
+  // test getAndStorePacerToken
+  test('should return token when saving new token to Azure KeyVault', async () => {
+    const pacerLogin = new PacerLogin(new MockPacerTokenSecretGateway(true));
+    const expectedValue = 'abcdefghijklmnopqrstuvwxyz1234567890';
+    const responseValue = {
+      status: 200,
+      data: { nextGenCSO: expectedValue, loginResult: 0 },
+    };
+    jest.spyOn(http, 'httpPost').mockImplementation(() => {
+      return responseValue;
+    });
+    jest.spyOn(pacerT)
+  });
 });

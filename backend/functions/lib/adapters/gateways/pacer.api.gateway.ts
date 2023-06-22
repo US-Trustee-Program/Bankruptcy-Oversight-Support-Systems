@@ -36,7 +36,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       dateFiledFrom: dateFileFrom,
     };
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
-    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find?page=0';
+    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';
 
     const response = await httpPost({
       url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
@@ -62,7 +62,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       return result;
     } catch (e) {
       if (e instanceof CaseLocatorException && e.status === 401) {
-        this.handleExpiredToken();
+        await this.handleExpiredToken();
       } else {
         throw e;
       }
