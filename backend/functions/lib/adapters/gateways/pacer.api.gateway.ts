@@ -4,6 +4,7 @@ import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
+import { getPacerTokenSecretGateway } from '../../../factory';
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ class PacerApiGateway implements PacerGatewayInterface {
   private startingMonth: number = -6;
 
   constructor() {
-    this.pacerLogin = new PacerLogin();
+    this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
   }
 
   private handleErrorAndReLogin = async (e: any) => {

@@ -1,7 +1,6 @@
 import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
-import { PacerLogin } from './pacer-login';
 const http = require('../utils/http');
 
 jest.mock('./pacer-login', () => {
@@ -23,7 +22,7 @@ describe('PACER API gateway tests', () => {
     };
   });
 
-  xtest('should return error message for non-200 response for case-locator', async () => {
+  test('should return error message for non-200 response for case-locator', async () => {
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
         data: 'Unauthorized user',
