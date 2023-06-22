@@ -1,6 +1,4 @@
-export namespace Entities {
-
-  export class User {
+  class User {
 
     private readonly _professionalId: number;
     private readonly _firstName: string;
@@ -24,4 +22,5 @@ export namespace Entities {
       return this._lastName;
     }
   }
-}
+
+  export {User};

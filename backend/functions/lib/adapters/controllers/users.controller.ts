@@ -3,6 +3,8 @@ import useCase from '../../use-cases/index';
 import { UserPersistenceGateway } from "../types/persistence-gateway";
 import proxyData from "../data-access.proxy";
 import { Context } from '../types/basic';
+import {User} from '../../../Domain/Entities/User';
+import { DbResult } from "../types/database";
 
 const NAMESPACE = "USERS-CONTROLLER";
 
@@ -20,4 +22,17 @@ export class UsersController {
 
     return await useCase.login(this.functionContext, usersDb, userName );
   }
+
+  public getUserLogin = async (user: User): Promise<DbResult> => {
+    log.info(this.functionContext, NAMESPACE, 'getUser - fetching a user id, given a User.');
+
+    const usersDb: UserPersistenceGateway = (await proxyData(this.functionContext, 'users')) as UserPersistenceGateway;
+
+    const userName = {
+      firstName : user.firstName,
+      lastName : user.lastName
+    };
+    return await useCase.login(this.functionContext, usersDb, userName );
+
+  };
 }

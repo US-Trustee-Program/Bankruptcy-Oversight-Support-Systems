@@ -1,4 +1,4 @@
-import { Domain } from "../Domain/Interfaces/IUserRepository";
+import { Domain } from "../functions/Domain/Interfaces/IUserRepository";
 import * as mssql from 'mssql';
 import { DbTableFieldSpec } from "../functions/lib/adapters/types/database";
 
