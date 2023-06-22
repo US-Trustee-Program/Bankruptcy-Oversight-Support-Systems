@@ -5,6 +5,7 @@ import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
 import { getPacerTokenSecretGateway } from '../../../factory';
+import { CaseLocatorException } from './pacer-exceptions';
 
 dotenv.config();
 
@@ -17,14 +18,9 @@ class PacerApiGateway implements PacerGatewayInterface {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
   }
 
-  private handleErrorAndReLogin = async (e: any) => {
-    const expiredToken = e.data?.status === 401 || false;
-    if (expiredToken) {
-      this.token = await this.pacerLogin.getAndStorePacerToken();
-      return this.searchCaseLocator();
-    } else {
-      throw e;
-    }
+  private handleExpiredToken = async () => {
+    this.token = await this.pacerLogin.getAndStorePacerToken();
+    return this.searchCaseLocator();
   };
 
   private searchCaseLocator = async (): Promise<Chapter15Case[]> => {
@@ -42,17 +38,17 @@ class PacerApiGateway implements PacerGatewayInterface {
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
     const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find?page=0';
 
-    try {
-      const response = await httpPost({
-        url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-        headers: { 'X-NEXT-GEN-CSO': this.token },
-        body,
-      });
+    const response = await httpPost({
+      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
+      headers: { 'X-NEXT-GEN-CSO': this.token },
+      body,
+    });
 
-      return pacerToChapter15Data(response.data.content);
-    } catch (e) {
-      this.handleErrorAndReLogin(e);
+    if (response.status != 200) {
+      throw new CaseLocatorException(response.status, 'Unexpected response from Pacer API');
     }
+
+    return pacerToChapter15Data(response.data.content);
   };
 
   public getChapter15Cases = async (startingMonth?: number): Promise<Chapter15Case[]> => {
@@ -62,9 +58,14 @@ class PacerApiGateway implements PacerGatewayInterface {
 
     try {
       this.token = await this.pacerLogin.getPacerToken();
-      return await this.searchCaseLocator();
+      const result = await this.searchCaseLocator();
+      return result;
     } catch (e) {
-      this.handleErrorAndReLogin(e);
+      if (e instanceof CaseLocatorException && e.status === 401) {
+        this.handleExpiredToken();
+      } else {
+        throw e;
+      }
     }
   };
 }
