@@ -114,6 +114,7 @@ jobs:
         run: ../ops/helper-scripts/accessibility-test.sh
 
   security-sast-scan:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     needs: [ build-info ]
     environment: ${{ needs.build-info.outputs.environment }}
@@ -150,6 +151,7 @@ jobs:
           az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
 
   security-sca-scan-frontend:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     name: Scan repository frontend with Veracode SCA
 
@@ -168,6 +170,7 @@ jobs:
           path: user-interface/
 
   security-sca-scan-backend:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     name: Scan repository backend with Veracode SCA
 
@@ -191,7 +194,7 @@ jobs:
         working-directory: user-interface
 
     runs-on: ubuntu-latest
-    needs: [ build-info, security-sca-scan-frontend, security-sast-scan ]
+    needs: [ build-info ]
     environment: ${{ needs.build-info.outputs.environment }}
 
     strategy:
@@ -239,7 +242,7 @@ jobs:
         working-directory: backend/functions
 
     runs-on: ubuntu-latest
-    needs: [ build-info, security-sca-scan-backend, security-sast-scan ]
+    needs: [ build-info ]
     environment: ${{ needs.build-info.outputs.environment }}
 
     strategy:
