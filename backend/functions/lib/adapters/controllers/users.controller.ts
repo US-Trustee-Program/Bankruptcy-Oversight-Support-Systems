@@ -5,6 +5,8 @@ import proxyData from "../data-access.proxy";
 import { Context } from '../types/basic';
 import {User} from '../../../Domain/Entities/User';
 import { DbResult } from "../types/database";
+import { Presenters } from "../../../Presenters/Models/UserLoginRequest";
+import UserLoginRequest = Presenters.Models.UserLoginRequest;
 
 const NAMESPACE = "USERS-CONTROLLER";
 
@@ -23,7 +25,7 @@ export class UsersController {
     return await useCase.login(this.functionContext, usersDb, userName );
   }
 
-  public getUserLogin = async (user: User): Promise<DbResult> => {
+  public getUserLogin = async (user: UserLoginRequest): Promise<DbResult> => {
     log.info(this.functionContext, NAMESPACE, 'getUser - fetching a user id, given a User.');
 
     const usersDb: UserPersistenceGateway = (await proxyData(this.functionContext, 'users')) as UserPersistenceGateway;
