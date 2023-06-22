@@ -80,4 +80,17 @@ describe('PACER login tests', () => {
       return responseValue;
     });
   });
+
+  //test the error for a non 200 on the save token
+  test('get AndStorePacerToken method should throw an error when the response in non 200 ', async () => {
+    const pacerLogin = new PacerLogin(new MockPacerTokenSecretGateway(true));
+    //const expectedValue = ""
+    const responseValue = {
+      status: 404
+    };
+    jest.spyOn(http, 'httpPost').mockImplementation(() => {
+      return responseValue;
+    });
+    expect(await pacerLogin.getAndStorePacerToken()).toThrow('Failed to Connect to PACER API');
+  });
 });
