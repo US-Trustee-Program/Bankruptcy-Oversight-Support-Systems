@@ -11,16 +11,16 @@ repos:
         -   id: check-yaml
         -   id: check-added-large-files
   -   repo: https://github.com/pre-commit/mirrors-eslint
-      rev: 'v8.41.0'  # Use the sha / tag you want to point at
+      rev: 'v8.43.0'  # Use the sha / tag you want to point at
       hooks:
         - id: eslint
           files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
           types: [ file ]
           additional_dependencies:
-          -   eslint@8.32.0
-          -   eslint-config-prettier@8.6.0
+          -   eslint@8.42.0
+          -   eslint-config-prettier@8.8.0
           -   eslint-plugin-prettier@4.2.1
-          -   eslint-plugin-react@7.32.1
+          -   eslint-plugin-react@7.32.2
           -   typescript
           -   '@typescript-eslint/eslint-plugin'
           -   '@typescript-eslint/parser'

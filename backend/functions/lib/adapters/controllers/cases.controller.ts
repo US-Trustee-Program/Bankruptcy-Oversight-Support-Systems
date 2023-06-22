@@ -22,7 +22,7 @@ export class CasesController {
     }
   }
 
-  public async getCaseList(context: Context, requestQueryFilters: {caseChapter: string, professionalId: string}) {
+  public async getCaseList(requestQueryFilters: {caseChapter: string, professionalId: string}) {
     await this.initializeDb();
     log.info(this.functionContext, NAMESPACE, 'Getting case list.');
 
@@ -34,6 +34,6 @@ export class CasesController {
     if (requestQueryFilters.caseChapter) {
       caseChapter = requestQueryFilters.caseChapter;
     }
-    return await useCase.listCases(context, this.casesDb, { chapter: caseChapter, professionalId: professionalId });
+    return await useCase.listCases(this.functionContext, this.casesDb, { chapter: caseChapter, professionalId: professionalId });
   }
 }

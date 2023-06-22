@@ -13,10 +13,12 @@ const SERVER: ServerType = {
 };
 
 let dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
+let pacerMock= process.env.PACER_MOCK?.toLowerCase() === 'true';
 
 const config: AppConfig = {
   dbMock,
   dbConfig,
+  pacerMock,
   server: SERVER,
   get: (prop: string) => {
     if (config.hasOwnProperty(prop)) {

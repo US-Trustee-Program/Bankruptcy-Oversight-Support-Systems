@@ -10,7 +10,7 @@
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
 
-set -e
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
 
@@ -99,7 +99,7 @@ while [[ $# > 0 ]]; do
         ;;
 
     # default resource group name
-    -g | --resourceGroup)
+    -g | --resource-group)
         app_rg="${2}"
         shift 2
         ;;
@@ -125,7 +125,7 @@ done
 validation_func $app_rg $deployment_file "$deployment_parameters"
 
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
-if [ ! $(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName) ]; then
+if [ "$(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName)" != true ]; then
     deployment_parameters="${deployment_parameters} createVnet=true"
 fi
 

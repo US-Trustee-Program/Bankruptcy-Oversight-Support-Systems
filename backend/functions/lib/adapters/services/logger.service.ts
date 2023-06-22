@@ -1,14 +1,13 @@
 import { Context } from '../types/basic';
 
 export default class log {
-  private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
-    logType = logType.toLowerCase();
+  public static sanitize(input: string): string {
+    return input.replace(/[\r\n]+/g, ' ').trim();
+  }
 
-    if (data) {
-        context.log(`[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`);
-    } else {
-        context.log(`[${logType.toUpperCase()}] [${namespace}] ${message}`);
-    }
+  private static logMessage(context: Context, logType: string, namespace: string, message: string, data?: any) {
+    let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`;
+    context.log(log.sanitize(logString.trim()));
   }
 
   public static info(context: Context, namespace: string, message: string, data?: any) {

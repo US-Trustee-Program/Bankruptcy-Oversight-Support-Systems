@@ -18,6 +18,13 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
 param webappPrivateEndpointSubnetName string = 'snet-${webappName}-pep'
 param webappPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
 param webappPlanName string = 'plan-${webappName}'
+@description('Plan type to determine webapp service plan Sku')
+@allowed([
+  'P1v2'
+  'B2'
+])
+param webappPlanType string
+
 
 param deployFunctions bool = true
 param apiName string = '${appName}-node-api'
@@ -27,6 +34,13 @@ param apiFunctionsSubnetAddressPrefix string = '10.10.12.0/28'
 param apiPrivateEndpointSubnetName string = 'snet-${apiName}-pep'
 param apiPrivateEndpointSubnetAddressPrefix string = '10.10.13.0/28'
 param apiPlanName string = 'plan-${apiName}'
+@description('Plan type to determine functionapp service plan Sku')
+@allowed([
+  'P1v2'
+  'B2'
+])
+param apiPlanType string
+
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
@@ -34,6 +48,9 @@ param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 param databaseConnectionString string = ''
 param sqlServerName string = ''
 param sqlServerResourceGroupName string = ''
+
+@description('Flag to enable Vercode access to execute DAST scanning')
+param allowVeracodeScan bool = false
 
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
@@ -61,6 +78,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   scope: resourceGroup(webappResourceGroupName)
   params: {
     planName: webappPlanName
+    planType: webappPlanType
     webappName: webappName
     location: location
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
@@ -70,12 +88,14 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
     webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
+    allowVeracodeScan: allowVeracodeScan
   }
 }
 
 var funcParams = [
   {// Define api node function resources
     planName: apiPlanName
+    planType: apiPlanType
     functionName: apiName
     functionsRuntime: 'node'
     functionSubnetName: apiFunctionsSubnetName
@@ -103,6 +123,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
+    allowVeracodeScan: allowVeracodeScan
   }
   dependsOn: [
     ustpWebapp

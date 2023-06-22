@@ -3,6 +3,30 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param planName string
 
+@description('Plan type to determine plan Sku')
+@allowed([
+  'P1v2'
+  'B2'
+])
+param planType string = 'P1v2'
+
+var planTypeToSkuMap = {
+  P1v2: {
+    name: 'P1v2'
+    tier: 'PremiumV2'
+    size: 'P1v2'
+    family: 'Pv2'
+    capacity: 1
+  }
+  B2: {
+    name: 'B2'
+    tier: 'Basic'
+    size: 'B2'
+    family: 'B'
+    capacity: 1
+  }
+}
+
 @description('Webapp application name')
 param webappName string
 
@@ -30,13 +54,7 @@ param webappPrivateEndpointSubnetAddressPrefix string
 resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
-  sku: {
-    name: 'P1v2'
-    tier: 'PremiumV2'
-    size: 'P1v2'
-    family: 'Pv2'
-    capacity: 1
-  }
+  sku: planTypeToSkuMap[planType]
   kind: 'app'
   properties: {
     perSiteScaling: false
@@ -51,6 +69,9 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
     zoneRedundant: false
   }
 }
+
+@description('Flag to enable Vercode access')
+param allowVeracodeScan bool = false
 
 /*
   Subnet creation in target virtual network
@@ -106,6 +127,20 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
+var ipSecurityRestrictionsRules = concat([ {
+      ipAddress: 'Any'
+      action: 'Deny'
+      priority: 2147483647
+      name: 'Deny all'
+      description: 'Deny all access'
+    } ],
+  allowVeracodeScan ? [ {
+      ipAddress: '3.32.105.199/32'
+      action: 'Allow'
+      priority: 1000
+      name: 'Veracode Agent'
+      description: 'Allow Veracode DAST Scans'
+    } ] : [])
 resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: webapp
   name: 'web'
@@ -115,15 +150,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     http20Enabled: true
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {

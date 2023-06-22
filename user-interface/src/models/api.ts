@@ -1,3 +1,4 @@
+import { httpGet, httpPost } from '../components/utils/http.adapter';
 import config from '../configuration/apiConfiguration';
 
 export type CaseListResponseData = {
@@ -6,6 +7,14 @@ export type CaseListResponseData = {
   body: {
     staff1Label: string;
     staff2Label: string;
+    caseList: Array<object>;
+  };
+};
+
+export type Chapter15CaseListResponseData = {
+  message: string;
+  count: number;
+  body: {
     caseList: Array<object>;
   };
 };
@@ -43,35 +52,27 @@ export default class Api {
 
   public static async post(path: string, body: object): Promise<ResponseData> {
     try {
-      const response = await fetch(Api._host + path, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify(body),
-      });
+      console.log('about to call http post');
+      const response = await httpPost({ url: Api._host + path, body });
+      console.log('response from post: ', response);
 
       const data = await response.json();
 
       if (response.ok) {
         return data;
       } else {
-        return Promise.reject(new Error(`500 Error - Invalid Request ${data?.toString()}`));
+        return Promise.reject(new Error(`400 Error - Invalid Request ${data?.toString()}`));
       }
     } catch (e: unknown) {
-      return Promise.reject(new Error(`500 Error - Invalid Request ${(e as Error).message}`));
+      console.log('ERROR THROWN SUCCESSFULLY', e);
+      return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
     }
   }
 
   public static async list(path: string, options: ObjectKeyVal): Promise<ResponseData> {
     try {
       const pathStr = Api.createPath(path, options);
-      const response = await fetch(Api._host + pathStr, {
-        method: 'GET',
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-      });
+      const response = await httpGet({ url: Api._host + pathStr });
 
       const data = await response.json();
 
@@ -83,9 +84,7 @@ export default class Api {
         );
       }
     } catch (e) {
-      return Promise.reject(
-        new Error(`404 Error - Not found ${(e as Error).message} - caught error`),
-      );
+      return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
     }
   }
 }
