@@ -6,6 +6,7 @@ import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
 import { getPacerTokenSecretGateway } from '../../../factory';
 import { CaseLocatorException } from './pacer-exceptions';
+import { HttpResponse } from '../types/http';
 
 dotenv.config();
 
@@ -18,12 +19,12 @@ class PacerApiGateway implements PacerGatewayInterface {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
   }
 
-  private handleExpiredToken = async () => {
+  private async handleExpiredToken() {
     this.token = await this.pacerLogin.getAndStorePacerToken();
     return this.searchCaseLocator();
-  };
+  }
 
-  private searchCaseLocator = async (): Promise<Chapter15Case[]> => {
+  private async searchCaseLocator(): Promise<Chapter15Case[]> {
     const date = new Date();
     date.setMonth(date.getMonth() + this.startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
@@ -35,23 +36,27 @@ class PacerApiGateway implements PacerGatewayInterface {
       federalBankruptcyChapter: ['15'],
       dateFiledFrom: dateFileFrom,
     };
-    const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
-    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';
-
-    const response = await httpPost({
-      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
-      headers: { 'X-NEXT-GEN-CSO': this.token },
-      body,
-    });
+    const response = await this.getCasesListFromPacerApi(body);
 
     if (response.status != 200) {
       throw new CaseLocatorException(response.status, 'Unexpected response from Pacer API');
     }
 
     return pacerToChapter15Data(response.data.content);
-  };
+  }
 
-  public getChapter15Cases = async (startingMonth?: number): Promise<Chapter15Case[]> => {
+  public async getCasesListFromPacerApi(body: {}): Promise<HttpResponse> {
+    const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
+    const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';
+
+    return await httpPost({
+      url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
+      headers: { 'X-NEXT-GEN-CSO': this.token },
+      body,
+    });
+  }
+
+  public async getChapter15Cases(startingMonth?: number): Promise<Chapter15Case[]> {
     if (startingMonth != undefined) {
       this.startingMonth = startingMonth;
     }
@@ -67,7 +72,7 @@ class PacerApiGateway implements PacerGatewayInterface {
         throw e;
       }
     }
-  };
+  }
 }
 
 export { PacerApiGateway };
