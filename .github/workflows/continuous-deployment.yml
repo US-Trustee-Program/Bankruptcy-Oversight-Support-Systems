@@ -273,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, build-frontend, build-service, accessibility-test]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch )
+    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch || (github.ref == 'refs/heads/CAMS-60-rg-deployment') )
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
@@ -299,6 +299,13 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpNetworkEncrypted }}
+
+      - name: Create Azure resource groups
+        id: azure-resource-group
+        run: |
+          ./ops/helper-scripts/azure-deploy-rg.sh -sw \
+            -f ./ops/cloud-deployment/subscription/ustp-cams-rg.bicep \
+            -p 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }}' -l ${{ secrets.AZ_LOCATION }}
 
       - name: Deploy Azure resources
         id: azure-deploy

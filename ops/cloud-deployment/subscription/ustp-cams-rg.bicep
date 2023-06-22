@@ -1,7 +1,7 @@
 targetScope = 'subscription'
-param databaseResourceGroupName string 
-param networkResourceGroupName string 
-param webappResourceGroupName string 
+param databaseResourceGroupName string
+param networkResourceGroupName string
+param webappResourceGroupName string
 param createAppRG bool
 param createNetworkRG bool
 param createDatabaseRG bool

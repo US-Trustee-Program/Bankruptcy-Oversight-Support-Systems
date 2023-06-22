@@ -60,6 +60,7 @@ function validation_func() {
     done
 }
 
+show_what_if=false
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
@@ -108,7 +109,7 @@ function az_deploy_func() {
         az deployment sub create -w -l $location --template-file $templateFile --parameter $deploymentParameter
     fi
     if [[ $? -eq 0 ]]; then
-        az deployment sub create --template-file $templateFile --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
+        az deployment sub create -l $location --template-file $templateFile --parameter $deploymentParameter
     fi
 
 }

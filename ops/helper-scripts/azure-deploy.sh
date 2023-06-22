@@ -84,6 +84,7 @@ function az_deploy_func() {
 
 }
 
+show_what_if=false
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
