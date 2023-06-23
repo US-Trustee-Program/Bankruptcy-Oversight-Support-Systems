@@ -7,7 +7,7 @@ on: [push]
 jobs:
   build-info:
     runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Develop' }}
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Main-Gov' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
       stackName: ${{ steps.build-info.outputs.stackName }}
@@ -215,7 +215,7 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
-          export REACT_APP_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites.net"
+          export REACT_APP_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"
           export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
           export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
@@ -314,7 +314,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
@@ -408,9 +408,9 @@ jobs:
       - name: Health check api
         run: |
           sleep 5
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites.net)
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
           sleep 5
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites.net/api/healthcheck)
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             exit 0
