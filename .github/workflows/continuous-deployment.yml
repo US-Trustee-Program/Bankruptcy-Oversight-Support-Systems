@@ -128,6 +128,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVRIONMENT }}
 
       - name: Download baseline file
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
@@ -285,6 +286,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVRIONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -337,6 +339,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVRIONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -363,6 +366,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVRIONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -397,6 +401,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVRIONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
