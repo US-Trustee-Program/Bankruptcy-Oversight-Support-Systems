@@ -1,11 +1,24 @@
+import { PacerGatewayInterface } from "./pacer.gateway.interface";
+
 const context = require('azure-function-context-mock');
 import { CaseListDbResult, Chapter15Case } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15-case-list';
 import { jest } from '@jest/globals';
+import { MockPacerApiGateway } from "../adapters/gateways/mock-pacer.api.gateway";
 
+jest.mock('../adapters/gateways/pacer-login', () => {
+  return {
+    PacerLogin: jest.fn().mockImplementation(() => {
+      return {
+        getPacerToken: jest.fn().mockReturnValue('abcdefghijklmnopqrstuvwxyz0123456789'),
+        getAndStorePacerToken: jest.fn().mockReturnValue('abcdefghijklmnopqrstuvwxyz0123456789'),
+      };
+    }),
+  };
+});
 describe('Chapter 15 case tests', () => {
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
-    const chapter15CaseList = new Chapter15CaseList;
+    const chapter15CaseList = new Chapter15CaseList();
     const caseList: Chapter15Case[] = [
       {
         caseNumber: '04-44449',
@@ -35,4 +48,20 @@ describe('Chapter 15 case tests', () => {
 
     expect(results).toStrictEqual(mockChapterList);
   });
+
+  test('Calling getChapter15CaseList without a starting month filter should return valid chapter 15 data for the last 6 months of default', async() => {
+    let today = new Date();
+    const expectedStartDate = new Date(today.getFullYear(),today.getMonth()-6, today.getDate()).toISOString().split('T')[0];
+
+    const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
+    const actual = await chapter15CaseList.getChapter15CaseList(context);
+    function checkDate(aCase) {
+      const verify = aCase.dateFiled >= expectedStartDate;
+      return verify;
+    }
+
+    expect(actual.body.caseList.every(checkDate)).toBe(true);
+
+  })
 });
