@@ -11,14 +11,23 @@ import { HttpResponse } from '../types/http';
 dotenv.config();
 
 class PacerApiGateway implements PacerGatewayInterface {
+
   private pacerLogin: PacerLogin;
   private token: string;
-  private startingMonth: number = -6;
+  private _startingMonth: number;
 
   constructor() {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
+    this.startingMonth = -6;
   }
 
+  get startingMonth(): number {
+    return this._startingMonth;
+  }
+
+  set startingMonth(value: number) {
+    this._startingMonth = value;
+  }
   private async handleExpiredToken() {
     this.token = await this.pacerLogin.getAndStorePacerToken();
     return this.searchCaseLocator();
