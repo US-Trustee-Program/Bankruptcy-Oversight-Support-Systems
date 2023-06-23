@@ -29,29 +29,6 @@ export function httpError(context: Context, error: any, code: number): ApiRespon
   };
 }
 
-/**-/
-export async function httpPost(data: {
-  url: string;
-  body: {};
-  headers?: {};
-  credentials?: string;
-}): Promise<AxiosResponse> {
-  try {
-    const response: AxiosResponse = await axios.post(data.url, data.body, {
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...data.headers,
-      },
-    });
-
-    return response;
-  } catch (reason) {
-    throw reason;
-  }
-}
-/**/
-
 // fetch post
 export async function httpPost(data: {
   url: string;
@@ -86,29 +63,6 @@ export async function httpPost(data: {
   } catch (reason) {
     throw reason;
   }
-}
-/**/
-
-/*
-export async function httpGet(data: {
-  url: string;
-  headers?: {};
-  credentials?: string;
-}): Promise<AxiosResponse> {
-  return await axios
-    .get(data.url, {
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...data.headers,
-      },
-    })
-    .then((response) => {
-      return response;
-    })
-    .catch((reason) => {
-      throw reason;
-    });
 }
 /**/
 
