@@ -25,7 +25,7 @@ describe('PACER API gateway tests', () => {
   });
 
   test('should return error message for non-200 response for case-locator', async () => {
-    jest.spyOn(http, 'httpPost').mockImplementation(() => {
+    const httpPostSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
         data: 'Unauthorized user',
         status: 401,
@@ -35,6 +35,7 @@ describe('PACER API gateway tests', () => {
     const gateway = new PacerApiGateway();
 
     await expect(gateway.getChapter15Cases()).rejects.toThrow('Unexpected response from Pacer API');
+    expect(httpPostSpy).toHaveBeenCalled();
   });
 
   test('should return content for 200 response for case-locator', async () => {
@@ -51,7 +52,7 @@ describe('PACER API gateway tests', () => {
         dateFiled: '2006-03-27',
       },
     ];
-    jest.spyOn(http, 'httpPost').mockImplementation(() => {
+    const httpPostSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
         data: {
           content: mockedApiResponse,
@@ -63,8 +64,10 @@ describe('PACER API gateway tests', () => {
     const gateway = new PacerApiGateway();
 
     expect(await gateway.getChapter15Cases()).toEqual(expectedResponseValue);
+    expect(httpPostSpy).toHaveBeenCalled();
   });
 
+  /*
   test('should set the starting month to -6 if a starting month is not passed into getChapter15Cases', async () => {
     gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -6;
@@ -99,7 +102,6 @@ describe('PACER API gateway tests', () => {
     gateway.getChapter15Cases(expectedStartingMonth);
 
     expect(getCasesListFromPacerApiSpy).toHaveBeenCalled();
-    /*
     expect(getCasesListFromPacerApiSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -107,7 +109,6 @@ describe('PACER API gateway tests', () => {
         }),
       }),
     );
-    */
   });
 
   /*

@@ -61,6 +61,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       this.startingMonth = startingMonth;
     }
 
+    console.log('=== called getChapter15Cases');
     try {
       this.token = await this.pacerLogin.getPacerToken();
       const result = await this.searchCaseLocator();
