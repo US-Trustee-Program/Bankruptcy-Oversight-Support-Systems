@@ -79,7 +79,7 @@ jobs:
         id: CheckAZLogin
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
-          environment: '${{ vars.AZURE_ENVIRONMENT }}'
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
   formatting:
     runs-on: ubuntu-latest
@@ -134,8 +134,8 @@ jobs:
 
       - uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: '${{ vars.AZURE_ENVIRONMENT }}'
+          creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Download baseline file
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
@@ -292,8 +292,8 @@ jobs:
 
       - uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: '${{ vars.AZURE_ENVIRONMENT }}'
+          creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -345,8 +345,8 @@ jobs:
 
       - uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: '${{ vars.AZURE_ENVIRONMENT }}'
+          creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -372,8 +372,8 @@ jobs:
 
       - uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: '${{ vars.AZURE_ENVIRONMENT }}'
+          creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -407,8 +407,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: '${{ vars.AZURE_ENVIRONMENT }}'
+          creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
