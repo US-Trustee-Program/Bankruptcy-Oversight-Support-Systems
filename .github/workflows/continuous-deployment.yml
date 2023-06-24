@@ -78,7 +78,7 @@ jobs:
       - uses: azure/login@v1
         id: CheckAZLogin
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
           environment: '${{ vars.AZURE_ENVIRONMENT }}'
 
   formatting:
