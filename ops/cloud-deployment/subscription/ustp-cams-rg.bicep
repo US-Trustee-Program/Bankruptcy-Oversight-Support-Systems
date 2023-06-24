@@ -25,7 +25,7 @@ var resourceGroupNames = [ {
 ]
 module resourceGroup './resource-group-deploy.bicep' = [for item in resourceGroupNames: if (item.create) {
   scope: subscription(azSubscription)
-  name: 'rg-module-${item}'
+  name: 'rg-module-${item.name}'
   params: {
     location: location
     resourceGroupName: item.name
