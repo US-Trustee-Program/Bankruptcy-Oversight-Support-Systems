@@ -79,7 +79,6 @@ jobs:
         id: CheckAZLogin
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVRIONMENT }}
 
   formatting:
     runs-on: ubuntu-latest
