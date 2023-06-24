@@ -34,6 +34,7 @@ jobs:
           echo "Printing build info"
           echo "Azure Plan Type: ${{ vars.AZ_PLAN_TYPE }}"
           echo "Environment: ${{ vars.ENVIRONMENT }}"
+          echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
 
           # Generate resource group name(s)
@@ -73,6 +74,12 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
+          
+      - uses: azure/login@v1
+        id: CheckAZLogin
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVRIONMENT }}
 
   formatting:
     runs-on: ubuntu-latest
