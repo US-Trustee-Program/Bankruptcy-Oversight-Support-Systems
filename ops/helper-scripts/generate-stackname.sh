@@ -5,7 +5,7 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-if [[ $1 == "Main" ]]; then
+if [[ $1 == 'Main' ]] || [[ $1 == 'Main-Gov' ]]; then
     echo $2
     exit 0
 else
