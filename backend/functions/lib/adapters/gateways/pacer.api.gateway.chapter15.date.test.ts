@@ -38,5 +38,6 @@ describe('Test the date filter on chapter 15 cases', () => {
     }
 
     expect(actual.every(checkDate)).toBe(true);
+    expect(actual.length == 5);
   });
 });
