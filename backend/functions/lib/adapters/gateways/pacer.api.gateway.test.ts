@@ -122,22 +122,4 @@ describe('PACER API gateway tests', () => {
     );
   });
 
-  /*
-   * I don't understand this test.  What are we trying to do here??
-   */
-  // test('should call httpPost with the correct url and token header for case-locator', async () => {
-  //   const postSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
-  //     return {
-  //       data: {},
-  //       status: 200,
-  //     };
-  //   });
-  //   expect(postSpy).toHaveBeenCalledWith(
-  //     expect.objectContaining({
-  //       url: 'https://fake-subdomain.uscourts.gov/pcl-public-api/rest/cases/find',
-  //       headers: { 'X-NEXT-GEN-CSO': 'fake-token' },
-  //     }),
-  //   );
-  // });
-  /**/
 });
