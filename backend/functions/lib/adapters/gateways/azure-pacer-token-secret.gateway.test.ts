@@ -7,6 +7,7 @@ import {
   SecretProperties,
   SetSecretOptions,
 } from '@azure/keyvault-secrets';
+import { NoPacerToken } from "./pacer-exceptions";
 
 const testToken = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -111,4 +112,34 @@ describe('Azure Pacer Token KeyVault Tests', () => {
       expect(e).toEqual(Error('New KeyVault token not saved'));
     }
   });
+
+  test('should throw error when getSecret throws an error ', async () => {
+    const credential = new DefaultAzureCredential();
+    const getSecretMock = () => { throw Error("error string");}
+
+    const mockSecretClient = new MockSecretClient('foo', credential, { getSecret: getSecretMock });
+    const azurePacerTokenSecretGateway = new AzurePacerTokenSecretGateway(mockSecretClient);
+
+    try {
+      await azurePacerTokenSecretGateway.getPacerTokenFromSecrets();
+    } catch (e) {
+      expect(e).toEqual(Error('error string'));
+    }
+
+  } );
+
+  test('should throw no pacer token error when getSecret cannot find a matching token ', async () => {
+    const credential = new DefaultAzureCredential();
+    const pacerTokenName = process.env.KEYVAULT_PACER_TOKEN_NAME;
+    const getSecretMock = () => { throw Error(`${pacerTokenName} was not found in this key vault`);}
+
+    const mockSecretClient = new MockSecretClient('foo', credential, { getSecret: getSecretMock });
+    const azurePacerTokenSecretGateway = new AzurePacerTokenSecretGateway(mockSecretClient);
+
+    try {
+      await azurePacerTokenSecretGateway.getPacerTokenFromSecrets();
+    } catch (e) {
+      expect(e).toBeInstanceOf(NoPacerToken);
+    }
+  })
 });
