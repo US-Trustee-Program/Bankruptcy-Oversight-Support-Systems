@@ -13,8 +13,12 @@ const testToken = 'abcdefghijklmnopqrstuvwxyz0123456789';
 class MockSecretClient extends SecretClient {
   private token: string;
 
-  constructor(_a: string, _b: DefaultAzureCredential, functions?: { setSecret: any, getSecret: any}) {
-    super(_a, _b);
+  constructor(
+    _tokenName: string,
+    _azureCredential: DefaultAzureCredential,
+    functions?: { setSecret?: any; getSecret?: any },
+  ) {
+    super(_tokenName, _azureCredential);
     if (functions?.setSecret) {
       this.setSecret = functions.setSecret;
     }
@@ -22,7 +26,6 @@ class MockSecretClient extends SecretClient {
       this.getSecret = functions.getSecret;
     }
   }
-
 
   setSecret(
     secretName: string,
@@ -71,7 +74,6 @@ describe('Azure Pacer Token KeyVault Tests', () => {
     const getSecretSpy = jest.spyOn(mockSecretClient, 'getSecret');
     await azurePacerTokenSecretGateway.savePacerTokenToSecrets(testToken);
     const returnedToken = await azurePacerTokenSecretGateway.getPacerTokenFromSecrets();
-    console.log('=== TOKEN IS ', returnedToken);
 
     expect(setSecretSpy).toHaveBeenCalled();
     expect(getSecretSpy).toHaveBeenCalled();
@@ -81,10 +83,32 @@ describe('Azure Pacer Token KeyVault Tests', () => {
   test('should throw error when setSecret return token name that does not match', async () => {
     const credential = new DefaultAzureCredential();
     // define mock setSecret
-    const mockSecretClient = new MockSecretClient('foo', credential);
+    const setSecretMock = (
+      secretName: string,
+      value: string,
+      options?: SetSecretOptions,
+    ): Promise<KeyVaultSecret> => {
+      const properties: SecretProperties = {
+        vaultUrl: '',
+        name: '',
+      };
+
+      const keyVaultSecret: KeyVaultSecret = {
+        properties,
+        value,
+        name: 'some random value',
+      };
+
+      return Promise.resolve(keyVaultSecret);
+    };
+
+    const mockSecretClient = new MockSecretClient('foo', credential, { setSecret: setSecretMock });
     const azurePacerTokenSecretGateway = new AzurePacerTokenSecretGateway(mockSecretClient);
 
-    const setSecretSpy = jest.spyOn(mockSecretClient, 'setSecret');
-
+    try {
+      await azurePacerTokenSecretGateway.savePacerTokenToSecrets(testToken);
+    } catch (e) {
+      expect(e).toEqual(Error('New KeyVault token not saved'));
+    }
   });
 });
