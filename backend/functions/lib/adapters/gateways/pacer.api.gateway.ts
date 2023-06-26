@@ -27,6 +27,7 @@ class PacerApiGateway implements PacerGatewayInterface {
   set startingMonth(value: number) {
     this._startingMonth = value;
   }
+
   private async handleExpiredToken() {
     this.token = await this.pacerLogin.getAndStorePacerToken();
     return this.searchCaseLocator();
