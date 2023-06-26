@@ -10,13 +10,17 @@ class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
   secretClient: SecretClient;
   pacerTokenName: string;
 
-  constructor() {
-    const credentials = new DefaultAzureCredential();
-    this.secretClient = new SecretClient(process.env.AZURE_KEY_VAULT_URL, credentials);
-    this.pacerTokenName = process.env.PACER_TOKEN_SECRET_NAME;
+  constructor(secretClient?: SecretClient) {
+    if (secretClient == undefined) {
+      const credentials = new DefaultAzureCredential();
+      this.secretClient = new SecretClient(process.env.AZURE_KEY_VAULT_URL, credentials);
+    } else {
+      this.secretClient = secretClient;
+    }
+    this.pacerTokenName = process.env.KEYVAULT_PACER_TOKEN_NAME;
   }
 
-  async savePacerTokenToSecrets(token: string) {
+  public async savePacerTokenToSecrets(token: string) {
     try {
       const tokenResponse = await this.secretClient.setSecret(this.pacerTokenName, token);
       if (tokenResponse.name != this.pacerTokenName) {
@@ -27,7 +31,7 @@ class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
     }
   }
 
-  async getPacerTokenFromSecrets(): Promise<string> {
+  public async getPacerTokenFromSecrets(): Promise<string> {
     let tokenResponse: KeyVaultSecret;
     try {
       tokenResponse = await this.secretClient.getSecret(this.pacerTokenName);
