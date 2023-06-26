@@ -12,10 +12,14 @@ const testToken = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 class MockSecretClient extends SecretClient {
   private token: string;
+  private setSecretFunc: Object;
+  private getSecretFunc: Object;
 
-  constructor(_a: string, _b: DefaultAzureCredential) {
+  constructor(_a: string, _b: DefaultAzureCredential, functions: { setSecret: Object, getSecret: Object}) {
     super(_a, _b);
+
   }
+
 
   setSecret(
     secretName: string,
@@ -70,4 +74,6 @@ describe('Azure Pacer Token KeyVault Tests', () => {
     expect(getSecretSpy).toHaveBeenCalled();
     expect(returnedToken).toBe(testToken);
   });
+
+  test('' )
 });
