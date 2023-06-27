@@ -1,6 +1,6 @@
-import { AzureFunction, Context, HttpRequest } from "@azure/functions"
+import { AzureFunction, Context, HttpRequest } from '@azure/functions'
 import { UsersController } from '../lib/adapters/controllers/users.controller';
-import { httpError, httpSuccess } from "../lib/adapters/utils/http";
+import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'USERS-FUNCTION';

@@ -8,8 +8,15 @@ namespace UseCases {
   export class Chapter15CaseList {
     pacerGateway: PacerGatewayInterface;
 
-    constructor() {
-      this.pacerGateway = getPacerGateway();
+    constructor(pacerGateway?:PacerGatewayInterface) {
+      if(pacerGateway != undefined)
+      {
+        this.pacerGateway = pacerGateway;
+      }
+      else{
+        this.pacerGateway = getPacerGateway();
+      }
+
     }
 
     async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
