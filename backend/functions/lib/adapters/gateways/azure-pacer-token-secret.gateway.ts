@@ -17,7 +17,7 @@ class AzurePacerTokenSecretGateway implements PacerTokenSecretInterface {
     } else {
       this.secretClient = secretClient;
     }
-    this.pacerTokenName = process.env.KEYVAULT_PACER_TOKEN_NAME;
+    this.pacerTokenName = process.env.PACER_TOKEN_SECRET_NAME;
   }
 
   public async savePacerTokenToSecrets(token: string) {
