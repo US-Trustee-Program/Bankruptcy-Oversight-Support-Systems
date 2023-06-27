@@ -52,9 +52,7 @@ export default class Api {
 
   public static async post(path: string, body: object): Promise<ResponseData> {
     try {
-      console.log('about to call http post');
       const response = await httpPost({ url: Api._host + path, body });
-      console.log('response from post: ', response);
 
       const data = await response.json();
 
@@ -64,7 +62,6 @@ export default class Api {
         return Promise.reject(new Error(`400 Error - Invalid Request ${data?.toString()}`));
       }
     } catch (e: unknown) {
-      console.log('ERROR THROWN SUCCESSFULLY', e);
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
     }
   }

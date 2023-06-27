@@ -1,6 +1,6 @@
 import log from '../services/logger.service';
 import { Context } from '../types/basic';
-import { HttpResponse } from '../types/http';
+import { ApiResponse, HttpResponse } from '../types/http';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
 
@@ -9,7 +9,7 @@ const commonHeaders = {
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(context: Context, body: any = {}): HttpResponse {
+export function httpSuccess(context: Context, body: any = {}): ApiResponse {
   log.info(context, NAMESPACE, 'HTTP Success');
   return {
     headers: commonHeaders,
@@ -18,7 +18,7 @@ export function httpSuccess(context: Context, body: any = {}): HttpResponse {
   };
 }
 
-export function httpError(context: Context, error: any, code: number): HttpResponse {
+export function httpError(context: Context, error: any, code: number): ApiResponse {
   log.error(context, NAMESPACE, error.message, error);
   return {
     headers: commonHeaders,
@@ -29,17 +29,72 @@ export function httpError(context: Context, error: any, code: number): HttpRespo
   };
 }
 
-export async function httpPost(data: {url: string, body: {}, headers: {}}): Promise<Response> {
-  let requestInit: RequestInit = {
+// fetch post
+export async function httpPost(data: {
+  url: string;
+  body: {};
+  headers?: {};
+  credentials?: string;
+}): Promise<HttpResponse> {
+  try {
+    const bodyContent = JSON.stringify(data.body);
+    const response = await fetch(data.url, {
       method: 'POST',
+      headers: {
+        ...data.headers,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: bodyContent,
+    });
+    const responseJson = await response.json();
+
+    const httpResponse: HttpResponse = {
+      data: responseJson,
+      status: response.status,
+      ...response,
+    };
+
+    if (response.ok) {
+      return Promise.resolve(httpResponse);
+    } else {
+      return Promise.reject(httpResponse);
+    }
+  } catch (reason) {
+    throw reason;
+  }
+}
+/**/
+
+export async function httpGet(data: {
+  url: string;
+  headers?: {};
+  credentials?: string;
+}): Promise<HttpResponse> {
+  try {
+    const response = await fetch(data.url, {
+      method: 'GET',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         ...data.headers,
       },
-      body: `${data.body}`,
-      cache: 'default'
-  };
+    });
+    const responseJson = await response.json();
 
-  return await fetch(data.url, requestInit);
+    const httpResponse: HttpResponse = {
+      data: responseJson,
+      status: response.status,
+      ...response,
+    };
+
+    if (response.ok) {
+      return Promise.resolve(httpResponse);
+    } else {
+      return Promise.reject(httpResponse);
+    }
+  } catch (reason) {
+    throw reason;
+  }
 }
+/**/
