@@ -31,7 +31,7 @@ var planTypeToSkuMap = {
 param functionName string
 
 @description('Existing Private DNS Zone used for application')
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneName string
 
 @description('Existing virtual network name')
 param virtualNetworkName string
