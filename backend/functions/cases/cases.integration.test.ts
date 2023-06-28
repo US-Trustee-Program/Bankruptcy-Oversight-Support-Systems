@@ -5,7 +5,6 @@ import log from'../lib/adapters/services/logger.service';
 
 describe('IntegrationTestforChapter15cases',()=>{
 
-//Arrange
   let context: Context;
   let request: HttpRequest;
 
@@ -14,16 +13,12 @@ describe('IntegrationTestforChapter15cases',()=>{
     request={ query:{} }as unknown as HttpRequest;
   });
 
-
   test('getCaseListshouldfetchchapter15caseswhencalledwithcaseChapter15',async()=>{
 
     const _caseChapter='15';
     const _professionalId='8182';
 
-    request.query={ caseChaper:_caseChapter,professionalId:_professionalId };
-
-//Act
-    const casesController= new CasesController(context);
+    request.query={ chapter:_caseChapter,professional_id:_professionalId };
 
     try{
 
@@ -32,7 +27,10 @@ describe('IntegrationTestforChapter15cases',()=>{
 
       log.error(context,'CasesIntegrationTest',exception);
     }
-//Assert
-    expect(context.res.body).toBeTruthy();
+
+    log.info(context, 'CasesIntegrationTest', context.res.toString());
+
+    expect(context.res.body.success).toBeTruthy();
+
   });
 });
