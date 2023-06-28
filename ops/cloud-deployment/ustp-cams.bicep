@@ -5,6 +5,7 @@ param deployVnet bool = false
 param createVnet bool = false // NOTE: Set flag to false when vnet already exists
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
+param deployKeyvault bool = false
 param deployNetwork bool = true
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
@@ -70,6 +71,22 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
     virtualNetworkName: virtualNetworkName
     linkVnetIds: linkVnetIds
     privateDnsZoneName: privateDnsZoneName
+  }
+}
+module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
+  name: '${appName}-network-module'
+  scope: resourceGroup(sqlServerResourceGroupName)
+  params: {
+    keyVaultName: appName
+    location: virtualNetworkName
+    enabledForDeployment: true
+    enabledForDiskEncryption: true
+    enabledForTemplateDeployment: true
+    tenantId: ''
+    objectId: ''
+    roleName: 'Key Vault Reader'
+    secretName: ''
+    secretValue: ''
   }
 }
 
