@@ -50,14 +50,7 @@ var roleIdMapping = {
   'Key Vault Secrets User': '4633458b-17de-408a-b874-0445c86b69e6'
 }
 
-@description('Specifies the name of the secret that you want to create.')
-param secretName string
-
-@description('Specifies the value of the secret that you want to create.')
-@secure()
-param secretValue string
-
-resource kv 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
+resource kv 'Microsoft.KeyVault/vaults@2023-02-01' = {
   name: keyVaultName
   location: location
   properties: {
@@ -78,16 +71,8 @@ resource kv 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
   }
 }
 
-resource secret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
-  parent: kv
-  name: secretName
-  properties: {
-    value: secretValue
-  }
-}
-
-resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(roleIdMapping[roleName],objectId,kv.id)
+resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(roleIdMapping[roleName], objectId, kv.id)
   scope: kv
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleIdMapping[roleName])
@@ -96,4 +81,5 @@ resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-pr
   }
 }
 
-output secretUri string = secret.properties.secretUriWithVersion
+output vaultName string = kv.name
+output vaultUri string = kv.properties.vaultUri
