@@ -74,7 +74,7 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
   }
 }
 module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
-  name: '${appName}-network-module'
+  name: 'pacer-token'
   scope: resourceGroup(sqlServerResourceGroupName)
   params: {
     keyVaultName: appName
@@ -84,7 +84,16 @@ module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
     enabledForTemplateDeployment: true
     tenantId: ''
     objectId: ''
-    roleName: 'Key Vault Reader'
+    roleName: 'Key Vault Secrets Officer'
+    secretName: ''
+    secretValue: ''
+  }
+}
+module ustpKeyvaultSecret './keyvault-secret-deploy.bicep' = if (deployKeyvault){
+  name: ''
+  scope: resourceGroup(sqlServerResourceGroupName)
+  params: {
+    keyVaultName: ustpKeyvault.name
     secretName: ''
     secretValue: ''
   }
