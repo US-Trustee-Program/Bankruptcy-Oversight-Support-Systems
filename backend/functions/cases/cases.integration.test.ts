@@ -9,6 +9,7 @@ describe('IntegrationTestforChapter15cases',()=>{
   let request: HttpRequest;
 
   beforeEach(()=>{
+    jest.setTimeout(60000);
     context={ log:()=>{} }as unknown as Context;
     request={ query:{} }as unknown as HttpRequest;
   });

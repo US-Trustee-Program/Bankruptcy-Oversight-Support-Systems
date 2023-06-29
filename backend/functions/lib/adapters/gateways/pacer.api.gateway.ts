@@ -62,6 +62,8 @@ class PacerApiGateway implements PacerGatewayInterface {
       url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
       headers: { 'X-NEXT-GEN-CSO': this.token },
       body,
+    }).catch(exception => {
+      throw new CaseLocatorException(exception.status, exception.message);
     });
   }
 
