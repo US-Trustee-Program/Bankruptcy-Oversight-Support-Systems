@@ -1,9 +1,11 @@
 import config from './lib/configs';
 import { PacerLocalGateway } from './lib/adapters/gateways/pacer.local.gateway';
 import { PacerApiGateway } from './lib/adapters/gateways/pacer.api.gateway';
-import { PacerGatewayInterface } from "./lib/use-cases/pacer.gateway.interface";
+import { PacerGatewayInterface } from './lib/use-cases/pacer.gateway.interface';
+import { AzurePacerTokenSecretGateway } from './lib/adapters/gateways/azure-pacer-token-secret.gateway';
+import { PacerTokenSecretInterface } from './lib/adapters/gateways/pacer-token-secret.interface';
 
-const getPacerGateway = ():PacerGatewayInterface => {
+const getPacerGateway = (): PacerGatewayInterface => {
     if (config.get('pacerMock')) {
         return new PacerLocalGateway();
     } else {
@@ -11,4 +13,8 @@ const getPacerGateway = ():PacerGatewayInterface => {
     }
 }
 
-export { getPacerGateway };
+const getPacerTokenSecretGateway = (): PacerTokenSecretInterface => {
+    return new AzurePacerTokenSecretGateway();
+}
+
+export { getPacerGateway, getPacerTokenSecretGateway };

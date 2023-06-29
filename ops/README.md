@@ -4,7 +4,7 @@ Contents here contains supporting operational scripts and tools outside the scop
 
 ## /cloud-deployment
 
-Bicep files to provision resources in the Azure cloud environment with support for both commerial and US gov regions. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _ustp-cams.bicep_, to provision complete Azure resources.
+Bicep files to provision resources in the Azure cloud environment with support for both commercial and US gov regions. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _ustp-cams.bicep_, to provision complete Azure resources.
 
 Note the following assumptions:
 - Account used to execute bicep code has the necessary permission to provision all resources.

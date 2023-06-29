@@ -7,7 +7,7 @@ on: [push]
 jobs:
   build-info:
     runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main' || 'Develop' }}
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
       stackName: ${{ steps.build-info.outputs.stackName }}
@@ -22,7 +22,7 @@ jobs:
 
       - name: Check environment
         id: check-env
-        if: ${{ vars.ENVIRONMENT != 'Main' }} # Generate deterministic hash to append to resource group names
+        if: ${{ vars.ENVIRONMENT != 'Main-Gov' }} # Generate deterministic hash to append to resource group names
         run: |
           hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
           shortHash="-${hash:0:6}"
@@ -34,6 +34,7 @@ jobs:
           echo "Printing build info"
           echo "Azure Plan Type: ${{ vars.AZ_PLAN_TYPE }}"
           echo "Environment: ${{ vars.ENVIRONMENT }}"
+          echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
 
           # Generate resource group name(s)
@@ -128,6 +129,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Download baseline file
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
@@ -215,7 +217,7 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
-          export REACT_APP_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites.net"
+          export REACT_APP_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"
           export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
           export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
@@ -285,6 +287,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -300,6 +303,14 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpNetworkEncrypted }}
 
+      - name: Create Azure resource groups
+        id: azure-resource-group
+        run: |
+          ./ops/helper-scripts/azure-deploy-rg.sh \
+            --show-what-if \
+            --file ./ops/cloud-deployment/subscription/ustp-cams-rg.bicep \
+            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }}' -l ${{ secrets.AZ_LOCATION }}
+
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
@@ -307,7 +318,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
@@ -330,6 +341,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -356,6 +368,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -375,7 +388,13 @@ jobs:
           MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} \
           MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} \
           MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
-          MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }}"
+          MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
+          PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
+          PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
+          PACER_TOKEN_LOGIN_ID=${{ secrets.PACER_QA_LOGIN_ID }} \
+          PACER_TOKEN_PASSWORD=${{ secrets.PACER_QA_PASSWORD }} \
+          AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
+          PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }}"
 
   smoke-test-application:
     runs-on: ubuntu-latest
@@ -390,6 +409,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
@@ -401,9 +421,9 @@ jobs:
       - name: Health check api
         run: |
           sleep 5
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites.net)
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
           sleep 5
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites.net/api/healthcheck)
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             exit 0

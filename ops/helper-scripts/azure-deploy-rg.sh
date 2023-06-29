@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Title:        azure-deploy.sh
-# Description:  Helper script to deploy Azure resources for USTP CAMS
+# Title:        azure-deploy-rg.sh
+# Description:  Helper script to create Azure resource group(s) for USTP CAMS deployment if it does not exist.
 #
 # Exitcodes
 # ==========
@@ -12,18 +12,17 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
+requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName")
 
 function validation_func() {
-    local app_rg=$1
+    local location=$1
     local deployment_file=$2
     local deployment_parameters=$3
 
-    if [[ -z "${app_rg}" ]]; then
-        echo "Error: Missing default resource group"
+    if [[ -z "${location}" ]]; then
+        echo "Error: Missing location parameter"
         exit 10
     fi
-
     if [[ -z "${deployment_file}" ]]; then
         echo "Error: Missing deployment file"
         exit 11
@@ -42,9 +41,9 @@ function validation_func() {
     # Parse deployment_parameters and set required params as variables
     for p in $deployment_parameters; do
         case "$p" in
-        appName=*) appName=${p/*=/} ;;
+        databaseResourceGroupName=*) databaseResourceGroupName=${p/*=/} ;;
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
-        virtualNetworkName=*) virtualNetworkName=${p/*=/} ;;
+        webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
         *)
             # skipped unmatched keys
             ;;
@@ -61,29 +60,22 @@ function validation_func() {
     done
 }
 
-function az_vnet_exists_func() {
-    local rg=$1
-    local vnetName=$2
-    local count=$(az network vnet list -g $rg --query "length([?name=='$vnetName'])" 2>/dev/null)
-    if [[ $count -eq 0 ]]; then
-        exists=false
-    else
-        exists=true
-    fi
-    echo $exists
+function az_rg_exists_func() {
+    echo $(az group exists -n $1)
 }
 
 function az_deploy_func() {
-    local rg=$1
+    local location=$1
     local templateFile=$2
     local deploymentParameter=$3
-    echo "Deploying Azure resources via bicep template $templateFile"
+    echo "Deploying Azure Resource Groups via bicep template $2"
     if [[ $show_what_if ]]; then
-        az deployment group create -w -g $rg --template-file $templateFile --parameter $deploymentParameter
+        az deployment sub create -w -l $location --template-file $templateFile --parameter $deploymentParameter
     fi
     if [[ $? -eq 0 ]]; then
-        az deployment group create -g $rg --template-file $templateFile --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
+        az deployment sub create -l $location --template-file $templateFile --parameter $deploymentParameter
     fi
+
 }
 
 show_what_if=false
@@ -91,7 +83,7 @@ while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
         echo ""
-        echo "USAGE: azure-deploy.sh -sw -g ustp-app-rg -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
+        echo "USAGE: azure-deploy-rg.sh -sw -l eastus -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
         echo ""
         shift
         ;;
@@ -101,15 +93,14 @@ while [[ $# > 0 ]]; do
         shift
         ;;
 
-    # default resource group name
-    -g | --resource-group)
-        app_rg="${2}"
-        shift 2
-        ;;
-
     # path to main bicep
     -f | --file)
         deployment_file="${2}"
+        shift 2
+        ;;
+
+    -l | --location)
+        location="${2}"
         shift 2
         ;;
 
@@ -125,11 +116,19 @@ while [[ $# > 0 ]]; do
     esac
 done
 
-validation_func $app_rg $deployment_file "$deployment_parameters"
+validation_func $location $deployment_file "$deployment_parameters"
 
-# Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
-if [ "$(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName)" != true ]; then
-    deployment_parameters="${deployment_parameters} createVnet=true"
+# include location to deployment parameters
+deployment_parameters="${deployment_parameters} location=$location"
+
+if [ "$(az_rg_exists_func $databaseResourceGroupName)" != true ]; then
+    deployment_parameters="${deployment_parameters} createDatabaseRG=true"
+fi
+if [ "$(az_rg_exists_func $networkResourceGroupName)" != true ]; then
+    deployment_parameters="${deployment_parameters} createNetworkRG=true"
+fi
+if [ "$(az_rg_exists_func $webappResourceGroupName)" != true ]; then
+    deployment_parameters="${deployment_parameters} createAppRG=true"
 fi
 
-az_deploy_func $app_rg $deployment_file "${deployment_parameters}"
+az_deploy_func $location $deployment_file "${deployment_parameters}"
