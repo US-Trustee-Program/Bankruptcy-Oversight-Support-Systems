@@ -18,7 +18,10 @@ export const HeaderNavBar = () => {
           </div>
           <nav className="nav-bar" role="navigation" aria-label="main-navigation">
             <NavLink to="/cases" data-testid="main-nav-cases-link">
-              Cases
+              List Cases
+            </NavLink>
+            <NavLink to="/case-assignment" data-testid="main-nav-case-assignment-link">
+              Case Assignment
             </NavLink>
             <NavLink to="/" data-testid="main-nav-login-link">
               Login
