@@ -417,7 +417,7 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
-        run: ops/helper-scripts/dev-add-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} 100 true
+        run: ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{ env.stackName }} -p 100 --is-cicd
       - name: Health check api
         run: |
           sleep 5
