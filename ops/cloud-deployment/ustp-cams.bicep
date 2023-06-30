@@ -26,7 +26,6 @@ param webappPlanName string = 'plan-${webappName}'
 ])
 param webappPlanType string
 
-
 param deployFunctions bool = true
 param apiName string = '${appName}-node-api'
 param apiFunctionsResourceGroupName string
@@ -41,7 +40,6 @@ param apiPlanName string = 'plan-${apiName}'
   'B2'
 ])
 param apiPlanType string
-
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
@@ -73,29 +71,28 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
     privateDnsZoneName: privateDnsZoneName
   }
 }
-module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
-  name: 'pacer-token'
-  scope: resourceGroup(sqlServerResourceGroupName)
+
+@description('Create service principal to access Key Vault to retrieve Pacer Api credential')
+module ustpKeyVaultPacerIdentity './managed-identity.bicep' = {
+  name: '${appName}-id-pacer-module'
+  scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
-    keyVaultName: appName
+    location: location
+    managedIdentityName: 'id-pacer-${appName}'
+  }
+}
+@description('Create Key Vault for Pacer Api credential')
+module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
+  name: '${appName}-kv-pacer-module'
+  scope: resourceGroup(apiFunctionsResourceGroupName)
+  params: {
+    keyVaultName: 'kv-pacer-${appName}'
     location: virtualNetworkName
+    objectId: ustpKeyVaultPacerIdentity.outputs.principleId
+    roleName: 'Key Vault Secrets Officer'
     enabledForDeployment: true
     enabledForDiskEncryption: true
     enabledForTemplateDeployment: true
-    tenantId: ''
-    objectId: ''
-    roleName: 'Key Vault Secrets Officer'
-    secretName: ''
-    secretValue: ''
-  }
-}
-module ustpKeyvaultSecret './keyvault-secret-deploy.bicep' = if (deployKeyvault){
-  name: ''
-  scope: resourceGroup(sqlServerResourceGroupName)
-  params: {
-    keyVaultName: ustpKeyvault.name
-    secretName: ''
-    secretValue: ''
   }
 }
 
@@ -150,6 +147,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
+    pacerManagedIdentityId: ustpKeyVaultPacerIdentity.outputs.id
   }
   dependsOn: [
     ustpWebapp
