@@ -21,7 +21,7 @@ export const HeaderNavBar = () => {
               Cases
             </NavLink>
             <NavLink to="/case-assignment" data-testid="main-nav-case-assignment-link">
-              Case Assignment
+              Assignment
             </NavLink>
             <NavLink to="/" data-testid="main-nav-login-link">
               Login
