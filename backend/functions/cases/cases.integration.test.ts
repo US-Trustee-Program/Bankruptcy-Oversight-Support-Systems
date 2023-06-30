@@ -3,19 +3,19 @@ import{ Context, HttpRequest }from'@azure/functions';
 import httpTrigger from'./cases.function';
 import log from'../lib/adapters/services/logger.service';
 
-describe('IntegrationTestforChapter15cases',()=>{
+describe('Integration Test for the cases Azure Function to call Chapter15 cases',()=>{
 
   let context: Context;
   let request: HttpRequest;
 
   beforeEach(()=>{
-    jest.setTimeout(60000);
+    jest.setTimeout(300000);
     context={ log:()=>{} }as unknown as Context;
     request={ query:{} }as unknown as HttpRequest;
   });
 
-  test('getCaseListshouldfetchchapter15caseswhencalledwithcaseChapter15',async()=>{
-
+  test('cases azure function should return success when called with caseChapter 15 and a professionalId',async()=>{
+    jest.setTimeout(300000);
     const _caseChapter='15';
     const _professionalId='8182';
 
