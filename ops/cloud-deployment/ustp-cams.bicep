@@ -51,6 +51,9 @@ param sqlServerResourceGroupName string = ''
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
 
+@description('Managed identity name with access to the key vault for Pacer Api credentials')
+param pacerKeyVaultIdentityName string
+
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -71,30 +74,6 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
     privateDnsZoneName: privateDnsZoneName
   }
 }
-
-// @description('Create service principal to access Key Vault to retrieve Pacer Api credential')
-// module ustpKeyVaultPacerIdentity './managed-identity.bicep' = {
-//   name: '${appName}-id-pacer-module'
-//   scope: resourceGroup(apiFunctionsResourceGroupName)
-//   params: {
-//     location: location
-//     managedIdentityName: 'id-pacer-${appName}'
-//   }
-// }
-// @description('Create Key Vault for Pacer Api credential')
-// module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
-//   name: '${appName}-kv-pacer-module'
-//   scope: resourceGroup(apiFunctionsResourceGroupName)
-//   params: {
-//     keyVaultName: 'kv-pacer-${appName}'
-//     location: virtualNetworkName
-//     objectId: ustpKeyVaultPacerIdentity.outputs.principleId
-//     roleName: 'Key Vault Secrets Officer'
-//     enabledForDeployment: true
-//     enabledForDiskEncryption: true
-//     enabledForTemplateDeployment: true
-//   }
-// }
 
 resource pacerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: 'id-kv-pacer-contributer'
@@ -152,7 +131,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
-    pacerManagedIdentityId: pacerIdentity.id
+    pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
   }
   dependsOn: [
     ustpWebapp
