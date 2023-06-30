@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { CaseAssignment } from './CaseAssignment';
@@ -33,7 +33,9 @@ describe('CaseAssignment Component Tests', () => {
         return Promise.resolve({
           message: 'not found',
           count: 0,
-          body: {},
+          body: {
+            caseList: [],
+          },
         });
       });
 
@@ -45,7 +47,7 @@ describe('CaseAssignment Component Tests', () => {
       </BrowserRouter>,
     );
 
-    await waitFor(async () => {
+    await waitFor(() => {
       const tableHeader = screen.getAllByRole('columnheader');
       expect(tableHeader[0].textContent).toBe('Case Number');
       expect(tableHeader[1].textContent).toBe('Case Title (Debtor)');

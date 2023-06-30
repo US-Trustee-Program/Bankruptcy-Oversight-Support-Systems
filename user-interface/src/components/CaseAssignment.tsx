@@ -13,13 +13,7 @@ export const CaseAssignment = () => {
   const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
   const subTitle = 'Region 2 (Connecticut, New York, Vermont)';
-  const [caseList, setCaseList] = useState<Chapter15CaseListResponseData>({
-    message: '',
-    count: 0,
-    body: {
-      caseList: [{}],
-    },
-  });
+  const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
@@ -32,7 +26,8 @@ export const CaseAssignment = () => {
         chapter,
       })
       .then((res) => {
-        setCaseList(res as Chapter15CaseListResponseData);
+        const chapter15Response = res as Chapter15CaseListResponseData;
+        setCaseList(chapter15Response.body.caseList);
         setIsLoading(false);
       });
   };
@@ -43,7 +38,7 @@ export const CaseAssignment = () => {
     if (!isLoading) {
       fetchList();
     }
-  }, [caseList.count > 0, chapter]);
+  }, [caseList.length > 0, chapter]);
 
   if (isLoading) {
     return (
@@ -67,18 +62,16 @@ export const CaseAssignment = () => {
             </tr>
           </thead>
           <tbody data-testid="case-assignment-table-body">
-            {caseList.count > 0 &&
-              (caseList.body.caseList as Array<chapter15Type>).map(
-                (theCase: chapter15Type, idx: number) => {
-                  return (
-                    <tr key={idx}>
-                      <td>{theCase.caseNumber}</td>
-                      <td>{theCase.caseTitle}</td>
-                      <td>{theCase.dateFiled}</td>
-                    </tr>
-                  );
-                },
-              )}
+            {caseList.length > 0 &&
+              (caseList as Array<chapter15Type>).map((theCase: chapter15Type, idx: number) => {
+                return (
+                  <tr key={idx}>
+                    <td>{theCase.caseNumber}</td>
+                    <td>{theCase.caseTitle}</td>
+                    <td>{theCase.dateFiled}</td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
