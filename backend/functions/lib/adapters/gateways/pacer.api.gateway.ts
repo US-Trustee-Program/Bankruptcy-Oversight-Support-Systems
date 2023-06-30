@@ -15,9 +15,9 @@ class PacerApiGateway implements PacerGatewayInterface {
   private token: string;
   private _startingMonth: number;
 
-  constructor() {
+  constructor(startingMonth?: number) {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
-    this.startingMonth = -70;
+    this.startingMonth = startingMonth || -70;
   }
 
   get startingMonth(): number {
