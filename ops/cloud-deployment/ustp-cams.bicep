@@ -54,6 +54,9 @@ param allowVeracodeScan bool = false
 @description('Managed identity name with access to the key vault for Pacer Api credentials')
 param pacerKeyVaultIdentityName string
 
+@description('Resource group name managed identity with access to the key vault for Pacer Api credentials')
+param packerKeyVaultIdentityResourceGroupName string
+
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -127,6 +130,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
+    packerKeyVaultIdentityResourceGroupName: packerKeyVaultIdentityResourceGroupName
   }
   dependsOn: [
     ustpWebapp

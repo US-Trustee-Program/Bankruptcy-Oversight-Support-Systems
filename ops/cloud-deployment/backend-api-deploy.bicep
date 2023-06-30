@@ -93,6 +93,9 @@ param allowVeracodeScan bool = false
 @description('Managed identity name with access to the key vault for Pacer Api credentials')
 param pacerKeyVaultIdentityName string
 
+@description('Resource group name managed identity with access to the key vault for Pacer Api credentials')
+param packerKeyVaultIdentityResourceGroupName string
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -182,6 +185,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
 
 resource pacerKVManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: pacerKeyVaultIdentityName
+  scope: resourceGroup(packerKeyVaultIdentityResourceGroupName)
 }
 var pacerKeyVaultManagedIdentity = pacerKVManagedIdentity.id
 var pacerKeyVaultManagedIdentityClientId = pacerKVManagedIdentity.properties.clientId
