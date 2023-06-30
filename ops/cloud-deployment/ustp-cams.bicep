@@ -75,11 +75,6 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
   }
 }
 
-resource pacerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: 'id-kv-pacer-contributer'
-}
-
-
 module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
