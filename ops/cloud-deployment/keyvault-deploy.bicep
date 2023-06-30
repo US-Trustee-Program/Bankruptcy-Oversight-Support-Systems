@@ -1,7 +1,6 @@
 @description('Specifies the name of the key vault.')
-param pacerKeyVaultName string
+param keyVaultName string
 
-param configurationKeyVaultName string
 @description('Specifies the Azure location where the key vault should be created.')
 param location string = resourceGroup().location
 
@@ -51,8 +50,8 @@ var roleIdMapping = {
   'Key Vault Secrets User': '4633458b-17de-408a-b874-0445c86b69e6'
 }
 
-resource pacerKeyvault 'Microsoft.KeyVault/vaults@2023-02-01' = {
-  name: pacerKeyVaultName
+resource kv 'Microsoft.KeyVault/vaults@2023-02-01' = {
+  name: keyVaultName
   location: location
   properties: {
     enabledForDeployment: enabledForDeployment
@@ -71,29 +70,10 @@ resource pacerKeyvault 'Microsoft.KeyVault/vaults@2023-02-01' = {
     }
   }
 }
-resource configurationKeyvault 'Microsoft.KeyVault/vaults@2023-02-01' = {
-  name: configurationKeyVaultName
-  location: location
-  properties: {
-    enabledForDeployment: enabledForDeployment
-    enabledForDiskEncryption: enabledForDiskEncryption
-    enabledForTemplateDeployment: enabledForTemplateDeployment
-    enableRbacAuthorization: true
-    tenantId: tenantId
 
-    sku: {
-      name: skuName
-      family: 'A'
-    }
-    networkAcls: {
-      defaultAction: 'Allow'
-      bypass: 'AzureServices'
-    }
-  }
-}
 resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(roleIdMapping[roleName], objectId, pacerKeyvault.id)
-  scope: pacerKeyvault
+  name: guid(roleIdMapping[roleName], objectId, kv.id)
+  scope: kv
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleIdMapping[roleName])
     principalId: objectId
@@ -101,5 +81,5 @@ resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   }
 }
 
-output vaultName string = pacerKeyvault.name
-output vaultUri string = pacerKeyvault.properties.vaultUri
+output vaultName string = kv.name
+output vaultUri string = kv.properties.vaultUri

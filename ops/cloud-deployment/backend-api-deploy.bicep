@@ -90,6 +90,9 @@ param sqlServerName string = ''
 @description('Flag to enable Vercode access')
 param allowVeracodeScan bool = false
 
+@description('Resource id of Managed Identity having access to Pacer Key Vault')
+param pacerManagedIdentityId string
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -184,6 +187,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
   location: location
   kind: 'functionapp,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      pacerManagedIdentityId:{}
+    }
+  }
   properties: {
     serverFarmId: servicePlan.id
     enabled: true
