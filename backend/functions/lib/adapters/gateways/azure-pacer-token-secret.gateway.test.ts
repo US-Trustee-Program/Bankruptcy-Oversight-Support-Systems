@@ -130,7 +130,7 @@ describe('Azure Pacer Token KeyVault Tests', () => {
 
   test('should throw no pacer token error when getSecret cannot find a matching token ', async () => {
     const credential = new DefaultAzureCredential();
-    const pacerTokenName = process.env.KEYVAULT_PACER_TOKEN_NAME;
+    const pacerTokenName = process.env.PACER_TOKEN_SECRET_NAME;
     const getSecretMock = () => { throw Error(`${pacerTokenName} was not found in this key vault`);}
 
     const mockSecretClient = new MockSecretClient('foo', credential, { getSecret: getSecretMock });
