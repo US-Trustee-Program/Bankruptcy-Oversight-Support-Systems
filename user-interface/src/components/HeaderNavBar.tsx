@@ -20,6 +20,9 @@ export const HeaderNavBar = () => {
             <NavLink to="/cases" data-testid="main-nav-cases-link">
               Cases
             </NavLink>
+            <NavLink to="/case-assignment" data-testid="main-nav-case-assignment-link">
+              Assignment
+            </NavLink>
             <NavLink to="/" data-testid="main-nav-login-link">
               Login
             </NavLink>
