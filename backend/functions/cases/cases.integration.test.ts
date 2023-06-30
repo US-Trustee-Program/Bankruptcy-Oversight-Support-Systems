@@ -1,4 +1,3 @@
-import { CasesController } from'../lib/adapters/controllers/cases.controller';
 import{ Context, HttpRequest }from'@azure/functions';
 import httpTrigger from'./cases.function';
 import log from'../lib/adapters/services/logger.service';
