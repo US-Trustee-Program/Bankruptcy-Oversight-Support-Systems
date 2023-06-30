@@ -5,7 +5,7 @@ param deployVnet bool = false
 param createVnet bool = false // NOTE: Set flag to false when vnet already exists
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
-param deployKeyvault bool = false
+// param deployKeyvault bool = false
 param deployNetwork bool = true
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
@@ -72,29 +72,34 @@ module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
   }
 }
 
-@description('Create service principal to access Key Vault to retrieve Pacer Api credential')
-module ustpKeyVaultPacerIdentity './managed-identity.bicep' = {
-  name: '${appName}-id-pacer-module'
-  scope: resourceGroup(apiFunctionsResourceGroupName)
-  params: {
-    location: location
-    managedIdentityName: 'id-pacer-${appName}'
-  }
+// @description('Create service principal to access Key Vault to retrieve Pacer Api credential')
+// module ustpKeyVaultPacerIdentity './managed-identity.bicep' = {
+//   name: '${appName}-id-pacer-module'
+//   scope: resourceGroup(apiFunctionsResourceGroupName)
+//   params: {
+//     location: location
+//     managedIdentityName: 'id-pacer-${appName}'
+//   }
+// }
+// @description('Create Key Vault for Pacer Api credential')
+// module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
+//   name: '${appName}-kv-pacer-module'
+//   scope: resourceGroup(apiFunctionsResourceGroupName)
+//   params: {
+//     keyVaultName: 'kv-pacer-${appName}'
+//     location: virtualNetworkName
+//     objectId: ustpKeyVaultPacerIdentity.outputs.principleId
+//     roleName: 'Key Vault Secrets Officer'
+//     enabledForDeployment: true
+//     enabledForDiskEncryption: true
+//     enabledForTemplateDeployment: true
+//   }
+// }
+
+resource pacerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: 'id-kv-pacer-contributer'
 }
-@description('Create Key Vault for Pacer Api credential')
-module ustpKeyvault './keyvault-deploy.bicep' = if (deployKeyvault) {
-  name: '${appName}-kv-pacer-module'
-  scope: resourceGroup(apiFunctionsResourceGroupName)
-  params: {
-    keyVaultName: 'kv-pacer-${appName}'
-    location: virtualNetworkName
-    objectId: ustpKeyVaultPacerIdentity.outputs.principleId
-    roleName: 'Key Vault Secrets Officer'
-    enabledForDeployment: true
-    enabledForDiskEncryption: true
-    enabledForTemplateDeployment: true
-  }
-}
+
 
 module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
@@ -147,7 +152,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
-    pacerManagedIdentityId: ustpKeyVaultPacerIdentity.outputs.id
+    pacerManagedIdentityId: pacerIdentity.id
   }
   dependsOn: [
     ustpWebapp
