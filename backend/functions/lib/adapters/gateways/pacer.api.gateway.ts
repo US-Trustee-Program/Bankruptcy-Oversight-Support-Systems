@@ -17,7 +17,7 @@ class PacerApiGateway implements PacerGatewayInterface {
 
   constructor() {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
-    this.startingMonth = -6;
+    this.startingMonth = -70;
   }
 
   get startingMonth(): number {
@@ -37,7 +37,7 @@ class PacerApiGateway implements PacerGatewayInterface {
     const date = new Date();
     date.setMonth(date.getMonth() + this.startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
-    const regionTwoPacerCourtIds = ['nyebk', 'nynbk', 'nysbk', 'nywbk', 'vtbk', 'ctbk'];
+    const regionTwoPacerCourtIds = ['cm8bk', 'nyebk', 'nynbk', 'nysbk', 'nywbk', 'vtbk', 'ctbk'];
 
     const body = {
       jurisdictionType: 'bk',
