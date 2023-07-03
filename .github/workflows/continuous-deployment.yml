@@ -416,10 +416,18 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Enable GHA runner access
+        run: ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{ env.stackName }} -p 100 --is-cicd
+
       - name: Execute Integration Tests
         run: |
           CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
           npm run test:integration
+
+      - name: Disable GHA runner access
+        run: |
+          name="gha-agent-${{ env.stackName }}"
+          ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   smoke-test-application:
     runs-on: ubuntu-latest
