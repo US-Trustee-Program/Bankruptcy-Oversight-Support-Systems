@@ -414,6 +414,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - name: Install
         run: npm ci
 
@@ -423,6 +424,11 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Enable GHA runner access
         run: ../../ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{ env.stackName }} -p 100 --is-cicd
