@@ -275,7 +275,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, build-frontend, build-service, accessibility-test]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch )
+    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch)
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
@@ -318,7 +318,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} allowVeracodeScan=true webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} pacerKeyVaultIdentityName=${{ secrets.PACER_KEYVAULT_IDENTITY }} pacerKeyVaultIdentityResourceGroupName=${{ secrets.AZURE_RG }}'
 
           v1=$(cat ./outputs.json | jq -r .functionAppName.value)
           echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
