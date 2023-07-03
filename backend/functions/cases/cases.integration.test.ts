@@ -1,3 +1,7 @@
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
 describe('Integration Test for the cases Azure Function to call Chapter15 cases',()=>{
   let functionUrl;
   beforeAll(() => {
