@@ -404,6 +404,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]
     environment: ${{ needs.build-info.outputs.environment }}
+    env:
+      apiName: ${{ needs.build-info.outputs.apiName }}
 
     strategy:
       matrix:
@@ -412,11 +414,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install
-        run: |
-          npm ci
+        run: npm ci
 
       - name: Execute Integration Tests
-        run: npm run test:integration
+        run: |
+          CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+          npm run test:integration
 
   smoke-test-application:
     runs-on: ubuntu-latest
