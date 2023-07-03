@@ -396,6 +396,28 @@ jobs:
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }}"
 
+  integration-test:
+    defaults:
+      run:
+        working-directory: backend/functions
+
+    runs-on: ubuntu-latest
+    needs: [build-info, deploy-webapp, deploy-service]
+    environment: ${{ needs.build-info.outputs.environment }}
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install
+        run: |
+          npm ci
+
+      - name: Execute Integration Tests
+        run: npm run test:integration
+
   smoke-test-application:
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]
