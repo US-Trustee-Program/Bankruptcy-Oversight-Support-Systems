@@ -183,7 +183,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
-resource pacerKvManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+resource pacerKVManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: pacerKeyVaultIdentityName
   scope: resourceGroup(pacerKeyVaultIdentityResourceGroupName)
 }
