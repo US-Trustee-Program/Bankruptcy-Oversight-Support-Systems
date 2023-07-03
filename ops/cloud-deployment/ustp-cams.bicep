@@ -5,7 +5,6 @@ param deployVnet bool = false
 param createVnet bool = false // NOTE: Set flag to false when vnet already exists
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
-// param deployKeyvault bool = false
 param deployNetwork bool = true
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
@@ -51,11 +50,11 @@ param sqlServerResourceGroupName string = ''
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
 
-@description('Managed identity name with access to the key vault for Pacer Api credentials')
+@description('Managed identity name with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityName string
 
-@description('Resource group name managed identity with access to the key vault for Pacer Api credentials')
-param packerKeyVaultIdentityResourceGroupName string
+@description('Resource group name managed identity with access to the key vault for PACER API credentials')
+param pacerKeyVaultIdentityResourceGroupName string
 
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
@@ -130,7 +129,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
-    packerKeyVaultIdentityResourceGroupName: packerKeyVaultIdentityResourceGroupName
+    pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
   }
   dependsOn: [
     ustpWebapp
