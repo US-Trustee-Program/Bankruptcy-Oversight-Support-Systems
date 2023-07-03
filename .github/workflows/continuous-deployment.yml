@@ -405,6 +405,7 @@ jobs:
     needs: [build-info, deploy-webapp, deploy-service]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
+      stackName: ${{ needs.build-info.outputs.stackName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
 
     strategy:
