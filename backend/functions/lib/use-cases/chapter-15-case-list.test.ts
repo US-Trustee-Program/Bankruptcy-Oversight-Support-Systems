@@ -17,6 +17,12 @@ jest.mock('../adapters/gateways/pacer-login', () => {
 });
 
 describe('Chapter 15 case tests', () => {
+  beforeEach(() => {
+    process.env = {
+      STARTING_MONTH: '-6',
+    };
+  });
+
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
     const chapter15CaseList = new Chapter15CaseList();
     const caseList: Chapter15Case[] = [

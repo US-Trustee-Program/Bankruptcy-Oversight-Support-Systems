@@ -12,5 +12,6 @@ module.exports = {
     'lib/adapters/types/',
     'lib/testing/mock-data/',
     'jest.config.js',
-  ]
+  ],
+  testMatch: [ '**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)' ]
 };
