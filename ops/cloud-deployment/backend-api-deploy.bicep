@@ -90,6 +90,12 @@ param sqlServerName string = ''
 @description('Flag to enable Vercode access')
 param allowVeracodeScan bool = false
 
+@description('Managed identity name with access to the key vault for PACER API credentials')
+param pacerKeyVaultIdentityName string
+
+@description('Resource group name managed identity with access to the key vault for PACER API credentials')
+param pacerKeyVaultIdentityResourceGroupName string
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -177,6 +183,13 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
+resource pacerKVManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: pacerKeyVaultIdentityName
+  scope: resourceGroup(pacerKeyVaultIdentityResourceGroupName)
+}
+var pacerKeyVaultManagedIdentity = pacerKVManagedIdentity.id
+var pacerKeyVaultManagedIdentityClientId = pacerKVManagedIdentity.properties.clientId
+
 /*
   Create functionapp
 */
@@ -184,6 +197,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
   location: location
   kind: 'functionapp,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${pacerKeyVaultManagedIdentity}':{}
+    }
+  }
   properties: {
     serverFarmId: servicePlan.id
     enabled: true
@@ -204,6 +223,10 @@ var applicationSettings = concat([
     {
       name: 'FUNCTIONS_WORKER_RUNTIME'
       value: functionsRuntime
+    }
+    {
+      name: 'AZURE_CLIENT_ID'
+      value: pacerKeyVaultManagedIdentityClientId
     }
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []

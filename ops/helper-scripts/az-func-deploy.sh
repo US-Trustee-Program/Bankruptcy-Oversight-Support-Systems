@@ -78,7 +78,7 @@ fi
 
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
-if [[ $enable_debug ]]; then
+if [[ $enable_debug == 'true' ]]; then
     cmd="${cmd} --debug"
 fi
 eval "$cmd"

@@ -25,7 +25,6 @@ param webappPlanName string = 'plan-${webappName}'
 ])
 param webappPlanType string
 
-
 param deployFunctions bool = true
 param apiName string = '${appName}-node-api'
 param apiFunctionsResourceGroupName string
@@ -41,7 +40,6 @@ param apiPlanName string = 'plan-${apiName}'
 ])
 param apiPlanType string
 
-
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
 @secure()
@@ -51,6 +49,12 @@ param sqlServerResourceGroupName string = ''
 
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
+
+@description('Managed identity name with access to the key vault for PACER API credentials')
+param pacerKeyVaultIdentityName string
+
+@description('Resource group name managed identity with access to the key vault for PACER API credentials')
+param pacerKeyVaultIdentityResourceGroupName string
 
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
@@ -124,6 +128,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
+    pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
+    pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
   }
   dependsOn: [
     ustpWebapp
