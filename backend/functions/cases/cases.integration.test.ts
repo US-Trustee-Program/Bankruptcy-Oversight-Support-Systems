@@ -1,36 +1,29 @@
-import{ Context, HttpRequest }from'@azure/functions';
-import httpTrigger from'./cases.function';
-import log from'../lib/adapters/services/logger.service';
-
 describe('Integration Test for the cases Azure Function to call Chapter15 cases',()=>{
+  let functionUrl;
+  beforeAll(() => {
+    functionUrl = process.env.CASES_FUNCTION_URL;
+  });
 
-  let context: Context;
-  let request: HttpRequest;
-
-  beforeEach(()=>{
+  beforeEach(()=> {
     jest.setTimeout(300000);
-    context={ log:()=>{} }as unknown as Context;
-    request={ query:{} }as unknown as HttpRequest;
   });
 
   test('cases azure function should return success when called with caseChapter 15 and a professionalId',async()=>{
     jest.setTimeout(300000);
-    const _caseChapter='15';
-    const _professionalId='8182';
+    const _caseChapter= '15';
+    const _professionalId= '8182';
 
-    request.query={ chapter:_caseChapter,professional_id:_professionalId };
+    let caseList;
+    try {
+      const response = await fetch(`${functionUrl}/cases?chapter=${_caseChapter}&professional_id=${_professionalId}`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      caseList = await response.json();
+    } catch(exception) {}
 
-    try{
-
-      const caseList = await httpTrigger(context,request);
-    }catch(exception){
-
-      log.error(context,'CasesIntegrationTest',exception);
-    }
-
-    log.info(context, 'CasesIntegrationTest', context.res.toString());
-
-    expect(context.res.body.success).toBeTruthy();
-
+    expect(caseList).toEqual(expect.objectContaining({ success: true, message: '' }));
   });
 });
