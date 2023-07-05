@@ -402,7 +402,7 @@ jobs:
         working-directory: backend/functions
 
     runs-on: ubuntu-latest
-    needs: [build-info]
+    needs: [build-info, deploy-webapp, deploy-service]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       stackName: ${{ needs.build-info.outputs.stackName }}
