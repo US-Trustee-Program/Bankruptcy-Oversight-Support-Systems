@@ -4,19 +4,15 @@ import { PacerGatewayInterface } from './pacer.gateway.interface';
 import { getPacerGateway } from '../../factory';
 
 namespace UseCases {
-
   export class Chapter15CaseList {
     pacerGateway: PacerGatewayInterface;
 
-    constructor(pacerGateway?:PacerGatewayInterface) {
-      if(pacerGateway != undefined)
-      {
+    constructor(pacerGateway?: PacerGatewayInterface) {
+      if (pacerGateway != undefined) {
         this.pacerGateway = pacerGateway;
-      }
-      else{
+      } else {
         this.pacerGateway = getPacerGateway();
       }
-
     }
 
     async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
@@ -26,27 +22,24 @@ namespace UseCases {
         return {
           success: true,
           message: '',
-          count: 0,
+          count: cases.length,
           body: {
             caseList: cases,
-          }
-        }
-
+          },
+        };
       } catch (e) {
         const message = (e as Error).message;
-        return{
+        return {
           success: false,
-          message: (message && message.length) ? message : 'Unknown Error received from PACER server',
+          message: message && message.length ? message : 'Unknown Error received from PACER server',
           count: 0,
           body: {
-            caseList: []
-          }
-        }
+            caseList: [],
+          },
+        };
       }
-
     }
   }
-
 }
 
 export default UseCases.Chapter15CaseList;

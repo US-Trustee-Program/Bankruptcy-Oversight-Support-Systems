@@ -45,7 +45,9 @@ class PacerApiGateway implements PacerGatewayInterface {
       federalBankruptcyChapter: ['15'],
       dateFiledFrom: dateFileFrom,
     };
-    const response = await this.getCasesListFromPacerApi(body);
+    const response = await this.getCasesListFromPacerApi(body).catch((exception) => {
+      throw new CaseLocatorException(exception.status, exception.message);
+    });
 
     if (response.status != 200) {
       throw new CaseLocatorException(response.status, 'Unexpected response from Pacer API');
