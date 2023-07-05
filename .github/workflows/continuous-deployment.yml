@@ -435,7 +435,7 @@ jobs:
 
       - name: Execute Integration Tests
         run: |
-          CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
           npm run test:integration
 
       - name: Disable GHA runner access
