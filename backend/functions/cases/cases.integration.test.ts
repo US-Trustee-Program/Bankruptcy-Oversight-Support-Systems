@@ -6,6 +6,7 @@ describe('Integration Test for the cases Azure Function to call Chapter15 cases'
   let functionUrl;
   beforeAll(() => {
     functionUrl = process.env.CASES_FUNCTION_URL;
+    console.log(functionUrl);
   });
 
   beforeEach(()=> {
@@ -26,7 +27,9 @@ describe('Integration Test for the cases Azure Function to call Chapter15 cases'
         },
       });
       caseList = await response.json();
-    } catch(exception) {}
+    } catch(exception) {
+      console.log('We did not get the cases. ', exception);
+    }
 
     expect(caseList).toEqual(expect.objectContaining({ success: true, message: '' }));
   });
