@@ -6,7 +6,6 @@ describe('Integration Test for the cases Azure Function to call Chapter15 cases'
   let functionUrl;
   beforeAll(() => {
     functionUrl = process.env.CASES_FUNCTION_URL;
-    console.log(functionUrl);
   });
 
   beforeEach(()=> {
@@ -19,18 +18,14 @@ describe('Integration Test for the cases Azure Function to call Chapter15 cases'
     const _professionalId= '8182';
 
     let caseList;
-    try {
-      const response = await fetch(`${functionUrl}/cases?chapter=${_caseChapter}&professional_id=${_professionalId}`, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-      });
+    await fetch(`${functionUrl}/cases?chapter=${_caseChapter}&professional_id=${_professionalId}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    }).then(async (response) => {
       caseList = await response.json();
-    } catch(exception) {
-      console.log('We did not get the cases. ', exception);
-    }
-
-    expect(caseList).toEqual(expect.objectContaining({ success: true, message: '' }));
+      expect(caseList).toEqual(expect.objectContaining({ success: true, message: '' }));
+    });
   });
 });
