@@ -1,15 +1,15 @@
 import { httpPost } from '../utils/http';
 import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
-import { PacerTokenSecretInterface } from './pacer-token-secret.interface';
+import { PacerSecretsInterface } from './pacer-secrets.interface';
 
 dotenv.config();
 
 export class PacerLogin {
-  pacerTokenSecretInterface: PacerTokenSecretInterface;
+  pacerSecretGateway: PacerSecretsInterface;
 
-  constructor(pacerTokenSecretInterface: PacerTokenSecretInterface) {
-    this.pacerTokenSecretInterface = pacerTokenSecretInterface;
+  constructor(pacerSecretGateway: PacerSecretsInterface) {
+    this.pacerSecretGateway = pacerSecretGateway;
   }
 
   private getValidToken(data: any): string {
@@ -25,7 +25,7 @@ export class PacerLogin {
   public async getPacerToken(): Promise<string> {
     let token: string;
     try {
-      token = await this.pacerTokenSecretInterface.getPacerTokenFromSecrets();
+      token = await this.pacerSecretGateway.getPacerTokenFromSecrets();
     } catch (e) {
       if (e instanceof NoPacerToken) {
         token = await this.getAndStorePacerToken();
@@ -38,18 +38,20 @@ export class PacerLogin {
 
   public async getAndStorePacerToken(): Promise<string> {
     let token: string;
+    const pacerUserId = await this.pacerSecretGateway.getPacerUserIdFromSecrets();
+    const pacerPassword = await this.pacerSecretGateway.getPacerPasswordFromSecrets();
     try {
       const response = await httpPost({
         url: process.env.PACER_TOKEN_URL,
         body: {
-          loginId: process.env.PACER_TOKEN_LOGIN_ID,
-          password: process.env.PACER_TOKEN_PASSWORD,
+          loginId: pacerUserId,
+          password: pacerPassword,
         },
       });
 
       if (response.status == 200) {
         token = this.getValidToken(response.data);
-        this.pacerTokenSecretInterface.savePacerTokenToSecrets(token);
+        this.pacerSecretGateway.savePacerTokenToSecrets(token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }

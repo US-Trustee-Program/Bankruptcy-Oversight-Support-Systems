@@ -391,8 +391,6 @@ jobs:
           MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
           PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
           PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
-          PACER_TOKEN_LOGIN_ID=${{ secrets.PACER_QA_LOGIN_ID }} \
-          PACER_TOKEN_PASSWORD=${{ secrets.PACER_QA_PASSWORD }} \
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }}"
 
