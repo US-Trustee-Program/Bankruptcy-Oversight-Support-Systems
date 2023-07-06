@@ -1,7 +1,7 @@
 import { CaseListDbResult } from '../adapters/types/cases';
-import { Context } from '../adapters/types/basic';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
 import { getPacerGateway } from '../../factory';
+import { Context } from '../adapters/types/basic';
 
 namespace UseCases {
 
@@ -25,7 +25,7 @@ namespace UseCases {
         if (startingMonth > 0) {
           startingMonth = 0 - startingMonth;
         }
-        const cases = await this.pacerGateway.getChapter15Cases(startingMonth || undefined);
+        const cases = await this.pacerGateway.getChapter15Cases(context, startingMonth || undefined);
 
         return {
           success: true,

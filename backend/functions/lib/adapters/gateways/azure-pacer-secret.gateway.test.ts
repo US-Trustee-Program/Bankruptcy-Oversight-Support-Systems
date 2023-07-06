@@ -1,6 +1,7 @@
 import { AzurePacerSecretsGateway } from './azure-pacer-secrets.gateway';
 import { NoPacerToken } from './pacer-exceptions';
 import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
+const context = require('../../testing/defaultContext');
 
 class MockSecretsGateway extends AzureKeyVaultGateway {
 
@@ -41,7 +42,7 @@ describe('Azure PACER secrets gateway test', () => {
     ));
 
     try {
-      await gateway.savePacerTokenToSecrets('fake-new-token');
+      await gateway.savePacerTokenToSecrets('fake-new-token', context);
       expect(true).toBeFalsy();
     } catch (e) {
       expect(e.message).toEqual('some error');
@@ -51,7 +52,7 @@ describe('Azure PACER secrets gateway test', () => {
   test('should return PACER token', async () => {
     const gateway = new AzurePacerSecretsGateway(new MockSecretsGateway());
 
-    const token = await gateway.getPacerTokenFromSecrets();
+    const token = await gateway.getPacerTokenFromSecrets(context);
     expect(token).toEqual('fake-token');
   });
 
@@ -65,7 +66,7 @@ describe('Azure PACER secrets gateway test', () => {
     ));
 
     try {
-      await gateway.getPacerTokenFromSecrets();
+      await gateway.getPacerTokenFromSecrets(context);
       expect(true).toBeFalsy();
     } catch (e) {
       expect(e).toBeInstanceOf(NoPacerToken);
@@ -82,7 +83,7 @@ describe('Azure PACER secrets gateway test', () => {
     ));
 
     try {
-      await gateway.getPacerTokenFromSecrets();
+      await gateway.getPacerTokenFromSecrets(context);
       expect(true).toBeFalsy();
     } catch (e) {
       expect(e).not.toBeInstanceOf(NoPacerToken);

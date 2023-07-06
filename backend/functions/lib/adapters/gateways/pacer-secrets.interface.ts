@@ -1,6 +1,8 @@
+import { Context } from '../types/basic';
+
 export interface PacerSecretsInterface {
-  getPacerTokenFromSecrets(): Promise<string>;
-  savePacerTokenToSecrets(token: string): Promise<void>;
-  getPacerUserIdFromSecrets(): Promise<string>;
-  getPacerPasswordFromSecrets(): Promise<string>;
+  getPacerTokenFromSecrets(context: Context): Promise<string>;
+  savePacerTokenToSecrets(token: string, context: Context): Promise<void>;
+  getPacerUserIdFromSecrets(context: Context): Promise<string>;
+  getPacerPasswordFromSecrets(context: Context): Promise<string>;
 }

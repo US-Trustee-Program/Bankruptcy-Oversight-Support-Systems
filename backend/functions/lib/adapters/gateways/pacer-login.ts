@@ -2,6 +2,7 @@ import { httpPost } from '../utils/http';
 import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
 import { PacerSecretsInterface } from './pacer-secrets.interface';
+import { Context } from '../types/basic';
 
 dotenv.config();
 
@@ -22,13 +23,13 @@ export class PacerLogin {
     }
   }
 
-  public async getPacerToken(): Promise<string> {
+  public async getPacerToken(context: Context): Promise<string> {
     let token: string;
     try {
-      token = await this.pacerSecretGateway.getPacerTokenFromSecrets();
+      token = await this.pacerSecretGateway.getPacerTokenFromSecrets(context);
     } catch (e) {
       if (e instanceof NoPacerToken) {
-        token = await this.getAndStorePacerToken();
+        token = await this.getAndStorePacerToken(context);
       } else {
         throw e;
       }
@@ -36,10 +37,10 @@ export class PacerLogin {
     return token;
   }
 
-  public async getAndStorePacerToken(): Promise<string> {
+  public async getAndStorePacerToken(context: Context): Promise<string> {
     let token: string;
-    const pacerUserId = await this.pacerSecretGateway.getPacerUserIdFromSecrets();
-    const pacerPassword = await this.pacerSecretGateway.getPacerPasswordFromSecrets();
+    const pacerUserId = await this.pacerSecretGateway.getPacerUserIdFromSecrets(context);
+    const pacerPassword = await this.pacerSecretGateway.getPacerPasswordFromSecrets(context);
     try {
       const response = await httpPost({
         url: process.env.PACER_TOKEN_URL,
@@ -51,7 +52,7 @@ export class PacerLogin {
 
       if (response.status == 200) {
         token = this.getValidToken(response.data);
-        this.pacerSecretGateway.savePacerTokenToSecrets(token);
+        await this.pacerSecretGateway.savePacerTokenToSecrets(token, context);
       } else {
         throw Error('Failed to Connect to PACER API');
       }

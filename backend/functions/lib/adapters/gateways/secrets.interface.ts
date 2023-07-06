@@ -1,4 +1,6 @@
+import { Context } from '../types/basic';
+
 export interface SecretsInterface {
-  getSecret(name: string): Promise<string>;
-  setSecret(name: string, value: string): Promise<string>;
+  getSecret(name: string, context: Context): Promise<string>;
+  setSecret(name: string, value: string, context: Context): Promise<string>;
 }
