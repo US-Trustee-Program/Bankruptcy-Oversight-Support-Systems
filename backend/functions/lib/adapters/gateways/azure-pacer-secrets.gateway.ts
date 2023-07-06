@@ -1,9 +1,8 @@
 import { PacerSecretsInterface } from './pacer-secrets.interface';
-import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
 import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
-import {SecretsInterface} from "./secrets.interface";
-import {AzureKeyVaultGateway} from "./azure-key-vault.gateway";
+import { SecretsInterface } from './secrets.interface';
+import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
 
 dotenv.config();
 
@@ -12,6 +11,7 @@ class AzurePacerSecretsGateway implements PacerSecretsInterface {
   secretsGateway: SecretsInterface;
 
   constructor(secretsGateway?: SecretsInterface) {
+    this.pacerTokenName = process.env.PACER_TOKEN_SECRET_NAME;
     if (secretsGateway != undefined) {
       this.secretsGateway = secretsGateway;
     } else {
