@@ -40,7 +40,7 @@ describe('Chapter 15 case tests', () => {
     const mockChapterList: CaseListDbResult = {
       success: true,
       message: '',
-      count: 0,
+      count: 2,
       body: {
         caseList,
       },
@@ -71,7 +71,6 @@ describe('Chapter 15 case tests', () => {
 
     expect(actual.body.caseList.every(checkDate)).toBe(true);
     expect(actual.body.caseList.length == 3);
-
   });
 
   test('should throw error and return specific error message received from PACER server when error is thrown in pacerGateway.getChapter15Cases', async () => {
