@@ -392,7 +392,8 @@ jobs:
           PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
           PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
-          PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }}"
+          PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \
+          STARTING_MONTH=${{ vars.STARTING_MONTH }}"
 
   integration-test:
     defaults:
