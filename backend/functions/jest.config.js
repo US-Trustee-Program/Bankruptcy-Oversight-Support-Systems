@@ -7,11 +7,13 @@ module.exports = {
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
+    '.dependency-cruiser.js',
+    '.*test.[jt]s',
     'dist/',
     'coverage/',
     'lib/adapters/types/',
     'lib/testing/mock-data/',
-    'jest.config.js',
+    'jest.*config.js',
   ],
   testMatch: [ '**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)' ]
 };

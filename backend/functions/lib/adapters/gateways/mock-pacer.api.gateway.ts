@@ -1,5 +1,6 @@
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { Chapter15Case } from '../types/cases';
+import {Context} from "@azure/functions";
 
 export class MockPacerApiGateway implements PacerGatewayInterface {
   startingMonth: number;
@@ -10,7 +11,7 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
     this.startingMonth = -6;
   }
 
-  async getChapter15Cases(startingMonth?: number): Promise<Chapter15Case[]> {
+  async getChapter15Cases(context: Context, startingMonth?: number): Promise<Chapter15Case[]> {
     if (startingMonth != undefined) {
       this.startingMonth = startingMonth;
     }

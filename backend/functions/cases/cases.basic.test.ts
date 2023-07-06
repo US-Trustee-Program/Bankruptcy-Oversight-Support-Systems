@@ -1,5 +1,4 @@
 import httpTrigger from './cases.function';
-import { getProperty } from '../lib/testing/mock-data';
 const context = require('../lib/testing/defaultContext');
 
 describe('Standard case list tests without class mocks', () => {
@@ -11,10 +10,10 @@ describe('Standard case list tests without class mocks', () => {
     };
 
     const responseBody = {
-      "success": false,
-      "message": "Invalid Chapter value provided",
-      "count": 0,
-      "body": {
+      'success': false,
+      'message': 'Invalid Chapter value provided',
+      'count': 0,
+      'body': {
         caseList: []
       }
     };

@@ -7,7 +7,10 @@ import { PacerLogin } from './pacer-login';
 import { getPacerTokenSecretGateway } from '../../../factory';
 import { CaseLocatorException } from './pacer-exceptions';
 import { HttpResponse } from '../types/http';
+import { Context } from '../types/basic';
+import log from '../services/logger.service';
 
+const NAMESPACE = 'PACER-API-GATEWAY';
 dotenv.config();
 
 class PacerApiGateway implements PacerGatewayInterface {
@@ -28,12 +31,12 @@ class PacerApiGateway implements PacerGatewayInterface {
     this._startingMonth = value;
   }
 
-  private async handleExpiredToken() {
-    this.token = await this.pacerLogin.getAndStorePacerToken();
-    return this.searchCaseLocator();
+  private async handleExpiredToken(context: Context) {
+    this.token = await this.pacerLogin.getAndStorePacerToken(context);
+    return this.searchCaseLocator(context);
   }
 
-  private async searchCaseLocator(): Promise<Chapter15Case[]> {
+  private async searchCaseLocator(context: Context): Promise<Chapter15Case[]> {
     const date = new Date();
     date.setMonth(date.getMonth() + this.startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
@@ -45,21 +48,24 @@ class PacerApiGateway implements PacerGatewayInterface {
       federalBankruptcyChapter: ['15'],
       dateFiledFrom: dateFileFrom,
     };
-    const response = await this.getCasesListFromPacerApi(body).catch(exception => {
+    const response = await this.getCasesListFromPacerApi(body, context).catch(exception => {
+      log.error(context, NAMESPACE, `PACER Case Locator API exception with ${exception.status} status: ${exception.message}`);
       throw new CaseLocatorException(exception.status, exception.message);
     });
 
     if (response.status != 200) {
+      log.error(context, NAMESPACE, `PACER Case Locator API returned ${response.status} response.`);
       throw new CaseLocatorException(response.status, 'Unexpected response from Pacer API');
     }
 
     return pacerToChapter15Data(response.data.content);
   }
 
-  public async getCasesListFromPacerApi(body: {}): Promise<HttpResponse> {
+  public async getCasesListFromPacerApi(body: {}, context: Context): Promise<HttpResponse> {
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
     const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';
 
+    log.info(context, NAMESPACE, `Retrieving cases from PACER with the following request body: ${JSON.stringify(body)}`);
     return await httpPost({
       url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
       headers: { 'X-NEXT-GEN-CSO': this.token },
@@ -67,18 +73,17 @@ class PacerApiGateway implements PacerGatewayInterface {
     });
   }
 
-  public async getChapter15Cases(startingMonth?: number): Promise<Chapter15Case[]> {
+  public async getChapter15Cases(context: Context, startingMonth?: number): Promise<Chapter15Case[]> {
     if (startingMonth != undefined) {
       this.startingMonth = startingMonth;
     }
 
     try {
-      this.token = await this.pacerLogin.getPacerToken();
-      const result = await this.searchCaseLocator();
-      return result;
+      this.token = await this.pacerLogin.getPacerToken(context);
+      return await this.searchCaseLocator(context);
     } catch (e) {
       if (e instanceof CaseLocatorException && e.status === 401) {
-        await this.handleExpiredToken();
+        await this.handleExpiredToken(context);
       } else {
         throw e;
       }
