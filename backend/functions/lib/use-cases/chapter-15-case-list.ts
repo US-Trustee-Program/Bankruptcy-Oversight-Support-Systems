@@ -22,7 +22,7 @@ namespace UseCases {
         return {
           success: true,
           message: '',
-          count: cases.length,
+          count: cases?.length,
           body: {
             caseList: cases,
           },
