@@ -275,7 +275,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, build-frontend, build-service, accessibility-test]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch || true) 
+    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch || true)
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
