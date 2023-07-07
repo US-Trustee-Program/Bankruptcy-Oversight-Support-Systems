@@ -1,23 +1,19 @@
 import { CaseListDbResult } from '../adapters/types/cases';
 
 namespace UseCases {
-
-  export class InvalidChapter {
-
+  export class InvalidChapterCaseList {
     returnInvalidChapterResponse(): CaseListDbResult {
       const result = {
         success: false,
         message: 'Invalid Chapter value provided',
         count: 0,
         body: {
-          caseList: []
-        }
-      }
+          caseList: [],
+        },
+      };
       return result;
     }
-
   }
-
 }
 
-export default UseCases.InvalidChapter;
+export default UseCases.InvalidChapterCaseList;

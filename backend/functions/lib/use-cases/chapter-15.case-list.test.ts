@@ -1,7 +1,8 @@
-import { PacerGatewayInterface } from './pacer.gateway.interface';
+import { PacerGatewayInterface } from '../adapters/types/pacer.gateway';
 
 import { CaseListDbResult, Chapter15Case } from '../adapters/types/cases';
-import Chapter15CaseList from './chapter-15-case-list';
+import Chapter15CaseList from './chapter-15.case-list';
+import { jest } from '@jest/globals';
 import { MockPacerApiGateway } from '../adapters/gateways/mock-pacer.api.gateway';
 const context = require('azure-function-context-mock');
 

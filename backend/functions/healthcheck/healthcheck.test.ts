@@ -1,12 +1,12 @@
 import httpTrigger from './healthcheck.function';
-const context = require('../lib/testing/defaultContext');
+const context = require('../lib/testing/default-context');
 
 test('Users Http trigger should by default complain about missing first and last name parameters', async () => {
-    const request = {
-        query: {}
-    };
+  const request = {
+    query: {},
+  };
 
-    await httpTrigger(context, request);
+  await httpTrigger(context, request);
 
-    expect(context.res.body).toEqual({ status: 'ALIVE' });
+  expect(context.res.body).toEqual({ status: 'ALIVE' });
 });

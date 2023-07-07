@@ -6,12 +6,12 @@ import { PacerSecretsGateway } from './lib/adapters/gateways/pacer-secrets.gatew
 import { PacerSecretsInterface } from './lib/adapters/gateways/pacer-secrets.interface';
 
 const getPacerGateway = (): PacerGatewayInterface => {
-    if (config.get('pacerMock')) {
-        return new PacerLocalGateway();
-    } else {
-        return new PacerApiGateway();
-    }
-}
+  if (config.get('pacerMock')) {
+    return new PacerLocalGateway();
+  } else {
+    return new PacerApiGateway();
+  }
+};
 
 const getPacerTokenSecretGateway = (): PacerSecretsInterface => {
     return new PacerSecretsGateway();

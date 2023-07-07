@@ -1,6 +1,6 @@
 import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { PacerGatewayInterface } from '../types/pacer.gateway';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';

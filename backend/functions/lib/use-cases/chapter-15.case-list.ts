@@ -1,5 +1,6 @@
 import { CaseListDbResult } from '../adapters/types/cases';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
+import { Context } from '../adapters/types/basic';
 import { getPacerGateway } from '../../factory';
 import { Context } from '../adapters/types/basic';
 
