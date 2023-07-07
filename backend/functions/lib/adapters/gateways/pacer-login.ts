@@ -52,7 +52,7 @@ export class PacerLogin {
 
       if (response.status == 200) {
         token = this.getValidToken(response.data);
-        await this.pacerSecretGateway.savePacerTokenToSecrets(token, context);
+        await this.pacerSecretGateway.savePacerTokenToSecrets(context, token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }

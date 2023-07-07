@@ -48,7 +48,7 @@ class PacerApiGateway implements PacerGatewayInterface {
       federalBankruptcyChapter: ['15'],
       dateFiledFrom: dateFileFrom,
     };
-    const response = await this.getCasesListFromPacerApi(body, context).catch((exception) => {
+    const response = await this.getCasesListFromPacerApi(context, body).catch((exception) => {
       log.error(context, NAMESPACE, `PACER Case Locator API exception with ${exception.status} status: ${exception.message}`);
       throw new CaseLocatorException(exception.status, exception.message);
     });
@@ -61,7 +61,7 @@ class PacerApiGateway implements PacerGatewayInterface {
     return pacerToChapter15Data(response.data.content);
   }
 
-  public async getCasesListFromPacerApi(body: {}, context: Context): Promise<HttpResponse> {
+  public async getCasesListFromPacerApi(context: Context, body: {}): Promise<HttpResponse> {
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
     const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';
 

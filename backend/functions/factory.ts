@@ -2,7 +2,7 @@ import config from './lib/configs';
 import { PacerLocalGateway } from './lib/adapters/gateways/pacer.local.gateway';
 import { PacerApiGateway } from './lib/adapters/gateways/pacer.api.gateway';
 import { PacerGatewayInterface } from './lib/use-cases/pacer.gateway.interface';
-import { AzurePacerSecretsGateway } from './lib/adapters/gateways/azure-pacer-secrets.gateway';
+import { PacerSecretsGateway } from './lib/adapters/gateways/pacer-secrets.gateway';
 import { PacerSecretsInterface } from './lib/adapters/gateways/pacer-secrets.interface';
 
 const getPacerGateway = (): PacerGatewayInterface => {
@@ -14,7 +14,7 @@ const getPacerGateway = (): PacerGatewayInterface => {
 }
 
 const getPacerTokenSecretGateway = (): PacerSecretsInterface => {
-    return new AzurePacerSecretsGateway();
+    return new PacerSecretsGateway();
 }
 
 export { getPacerGateway, getPacerTokenSecretGateway };

@@ -20,7 +20,7 @@ export class AzureKeyVaultGateway implements SecretsInterface {
     }
   }
 
-  public async getSecret(name: string, context: Context): Promise<string> {
+  public async getSecret(context: Context, name: string): Promise<string> {
     log.info(context, NAMESPACE, `Retrieving '${name}' secret from Key Vault: ${this.keyVaultUrl}.`);
     let keyVaultResponse: KeyVaultSecret;
     try {
@@ -38,11 +38,11 @@ export class AzureKeyVaultGateway implements SecretsInterface {
     return Promise.resolve(keyVaultResponse.value);
   }
 
-  public async setSecret(name: string, value: string, context: Context): Promise<string> {
+  public async setSecret(context: Context, name: string, value: string): Promise<string> {
     log.info(context, NAMESPACE, `Saving '${name}' secret to Key Vault: ${this.keyVaultUrl}.`);
     return await this.secretClient.setSecret(name, value).then(response => {
       if (response.name != name) {
-        throw new Error(`New KeyVault token '${name}' was not saved.`);
+        throw new Error(`New secret '${name}' was not saved.`);
       }
       return response.name;
     });

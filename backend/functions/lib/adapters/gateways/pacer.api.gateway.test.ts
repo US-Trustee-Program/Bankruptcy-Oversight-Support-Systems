@@ -137,10 +137,10 @@ describe('PACER API gateway tests', () => {
     await gateway.getChapter15Cases(context, expectedStartingMonth);
 
     expect(getCasesListFromPacerApiSpy).toHaveBeenCalledWith(
+      context,
       expect.objectContaining({
         dateFiledFrom: expectedDate,
       }),
-      context,
     );
   });
 

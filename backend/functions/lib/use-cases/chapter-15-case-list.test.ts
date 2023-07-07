@@ -118,7 +118,7 @@ describe('Chapter 15 case tests', () => {
     expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
   });
 
-  test('should call getChapter15Cases with -70 if STARTING_MONTH is "-70"', async () => {
+  test('should call getChapter15Cases with the same starting number if STARTING_MONTH is negative', async () => {
     const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
     const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
@@ -131,7 +131,7 @@ describe('Chapter 15 case tests', () => {
     expect(pacerGatewaySpy).toHaveBeenCalledWith(context, -70);
   });
 
-  test('should call getChapter15Cases with -70 if STARTING_MONTH is "70"', async () => {
+  test('should negate STARTING_MONTH if getChapter15Cases is called with a positive number', async () => {
     const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
     const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
