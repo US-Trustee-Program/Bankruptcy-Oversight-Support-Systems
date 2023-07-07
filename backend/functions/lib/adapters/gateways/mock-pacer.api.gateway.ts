@@ -1,6 +1,6 @@
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { Chapter15Case } from '../types/cases';
-import {Context} from "@azure/functions";
+import { Context } from '@azure/functions';
 
 export class MockPacerApiGateway implements PacerGatewayInterface {
   startingMonth: number;

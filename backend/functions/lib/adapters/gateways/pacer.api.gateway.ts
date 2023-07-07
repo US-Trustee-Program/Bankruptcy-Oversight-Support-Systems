@@ -16,29 +16,19 @@ dotenv.config();
 class PacerApiGateway implements PacerGatewayInterface {
   private pacerLogin: PacerLogin;
   private token: string;
-  private _startingMonth: number;
 
   constructor() {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
-    this.startingMonth = -6;
   }
 
-  get startingMonth(): number {
-    return this._startingMonth;
-  }
-
-  set startingMonth(value: number) {
-    this._startingMonth = value;
-  }
-
-  private async handleExpiredToken(context: Context) {
+  private async handleExpiredToken(context: Context, startingMonth: number) {
     this.token = await this.pacerLogin.getAndStorePacerToken(context);
-    return this.searchCaseLocator(context);
+    return this.searchCaseLocator(context, startingMonth);
   }
 
-  private async searchCaseLocator(context: Context): Promise<Chapter15Case[]> {
+  private async searchCaseLocator(context: Context, startingMonth: number): Promise<Chapter15Case[]> {
     const date = new Date();
-    date.setMonth(date.getMonth() + this.startingMonth);
+    date.setMonth(date.getMonth() + startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
     const regionTwoPacerCourtIds = ['cm8bk', 'nyebk', 'nynbk', 'nysbk', 'nywbk', 'vtbk', 'ctbk'];
 
@@ -74,16 +64,14 @@ class PacerApiGateway implements PacerGatewayInterface {
   }
 
   public async getChapter15Cases(context: Context, startingMonth?: number): Promise<Chapter15Case[]> {
-    if (startingMonth != undefined) {
-      this.startingMonth = startingMonth;
-    }
+    startingMonth = startingMonth || -6;
 
     try {
       this.token = await this.pacerLogin.getPacerToken(context);
-      return await this.searchCaseLocator(context);
+      return await this.searchCaseLocator(context, startingMonth);
     } catch (e) {
       if (e instanceof CaseLocatorException && e.status === 401) {
-        await this.handleExpiredToken(context);
+        await this.handleExpiredToken(context, startingMonth);
       } else {
         throw e;
       }
