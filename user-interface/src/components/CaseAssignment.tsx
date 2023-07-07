@@ -3,7 +3,7 @@ import Api, { Chapter15CaseListResponseData } from '../models/api';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 
-type chapter15Type = {
+type Chapter15Type = {
   caseNumber: string;
   caseTitle: string;
   dateFiled: string;
@@ -27,7 +27,16 @@ export const CaseAssignment = () => {
       })
       .then((res) => {
         const chapter15Response = res as Chapter15CaseListResponseData;
-        setCaseList(chapter15Response.body.caseList);
+        const sortedList = chapter15Response.body.caseList.sort((a, b): number => {
+          const recordA: Chapter15Type = a as Chapter15Type;
+          const recordB: Chapter15Type = b as Chapter15Type;
+          return recordA.dateFiled < recordB.dateFiled
+            ? 1
+            : recordA.dateFiled > recordB.dateFiled
+            ? -1
+            : 0;
+        });
+        setCaseList(sortedList);
         setIsLoading(false);
       });
   };
@@ -63,7 +72,7 @@ export const CaseAssignment = () => {
           </thead>
           <tbody data-testid="case-assignment-table-body">
             {caseList.length > 0 &&
-              (caseList as Array<chapter15Type>).map((theCase: chapter15Type, idx: number) => {
+              (caseList as Array<Chapter15Type>).map((theCase: Chapter15Type, idx: number) => {
                 return (
                   <tr key={idx}>
                     <td>{theCase.caseNumber}</td>
