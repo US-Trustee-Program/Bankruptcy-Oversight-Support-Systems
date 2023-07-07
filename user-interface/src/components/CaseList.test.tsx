@@ -7,7 +7,7 @@ import { store } from '../store/store';
 import { Provider } from 'react-redux';
 import { CaseList } from './CaseList';
 import Chapter11MockApi from '../models/chapter11-mock.api.cases';
-import { ResponseData } from '../models/api';
+import { ResponseData } from '../type-declarations/api';
 
 describe('CaseList Component Tests', () => {
   test('/cases renders "Loading..." while its fetching content from API', async () => {

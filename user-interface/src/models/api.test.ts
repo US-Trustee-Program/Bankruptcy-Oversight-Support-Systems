@@ -1,4 +1,5 @@
-import Api, { ObjectKeyVal } from './api';
+import { ObjectKeyVal } from '../type-declarations/basic';
+import Api from './api';
 import * as httpAdapter from '../components/utils/http.adapter';
 
 describe('Specific tests for the API model', () => {

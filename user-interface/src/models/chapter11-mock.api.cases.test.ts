@@ -1,5 +1,5 @@
 import api from './chapter11-mock.api.cases';
-import { ResponseData } from './api';
+import { ResponseData } from '../type-declarations/api';
 
 type CaseListResponse = {
   message: string;
