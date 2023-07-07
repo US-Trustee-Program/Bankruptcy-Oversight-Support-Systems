@@ -2,6 +2,7 @@ import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
 import { Context } from './basic';
 import { CaseListDbResult } from './cases';
+import { AttorneyListDbResult } from './attorneys';
 
 export type PersistenceGateway = {
   createRecord(context: Context, table: string, fields: RecordObj[]): Promise<DbResult>;
@@ -19,7 +20,11 @@ export type CasePersistenceGateway = {
   deleteCase(context: Context, id: number): Promise<DbResult>;
 };
 
-type UserNameType = { firstName: string, lastName: string };
+export interface AttorneyPersistenceGateway {
+  getAttorneyList(context: Context, fields: ObjectKeyVal): Promise<AttorneyListDbResult>;
+}
+
+type UserNameType = { firstName: string; lastName: string };
 
 export type UserPersistenceGateway = {
   login(context: Context, name: UserNameType): Promise<DbResult>;

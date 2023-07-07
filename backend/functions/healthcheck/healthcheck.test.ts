@@ -1,7 +1,7 @@
 import httpTrigger from './healthcheck.function';
 const context = require('../lib/testing/default-context');
 
-test('Users Http trigger should by default complain about missing first and last name parameters', async () => {
+test('Healthcheck endpoint should return an ALIVE status', async () => {
   const request = {
     query: {},
   };
