@@ -4,14 +4,17 @@ import { executeQuery } from '../utils/database';
 import { getRecord } from './azure.sql.gateway';
 import { Context } from '../types/basic';
 import log from '../services/logger.service';
-import { ReviewCodeDescription } from "../utils/LookUps";
-import { Chapter11CaseType } from "../types/cases";
+import { ReviewCodeDescription } from '../utils/review-code-description';
+import { Chapter11CaseType } from '../types/cases';
 
 const table = 'cases';
 
 const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 
-const getCaseList = async (context: Context, caseOptions: {chapter: string, professionalId: string} = {chapter: '', professionalId: ''}): Promise<DbResult> => {
+const getCaseList = async (
+  context: Context,
+  caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
+): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
   let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
@@ -43,24 +46,20 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
   if (caseOptions.chapter.length > 0) {
     query += ` AND a.CURR_CASE_CHAPT = @chapt`;
 
-    input.push(
-      {
-        name: 'chapt',
-        type: mssql.Char,
-        value: caseOptions.chapter,
-      },
-    );
+    input.push({
+      name: 'chapt',
+      type: mssql.Char,
+      value: caseOptions.chapter,
+    });
   }
   if (caseOptions.professionalId.length > 0) {
     query += ` AND (a.STAFF1_PROF_CODE = @professionalId OR a.STAFF2_PROF_CODE = @professionalId)`;
 
-    input.push(
-      {
-        name: 'professionalId',
-        type: mssql.Int,
-        value: caseOptions.professionalId
-      },
-    );
+    input.push({
+      name: 'professionalId',
+      type: mssql.Int,
+      value: caseOptions.professionalId,
+    });
   }
 
   const queryResult: QueryResults = await executeQuery(context, query, input);
@@ -68,11 +67,10 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 
   try {
     if (queryResult.success) {
+      log.debug(context, NAMESPACE, 'About to call the updateReviewDescription');
 
-      log.debug(context, NAMESPACE, "About to call the updateReviewDescription");
-
-      await updateReviewDescription(queryResult.results["recordset"]);
-      const body = { staff1Label: '', staff2Label: '', caseList: {} }
+      await updateReviewDescription(queryResult.results['recordset']);
+      const body = { staff1Label: '', staff2Label: '', caseList: {} };
       body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
       const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
       results = {
@@ -101,13 +99,13 @@ const getCaseList = async (context: Context, caseOptions: {chapter: string, prof
 };
 
 async function updateReviewDescription(results: void | Object) {
-    let reviewDescriptionMapper = new ReviewCodeDescription();
-    let caseResults = results as Array<Chapter11CaseType>;
+  let reviewDescriptionMapper = new ReviewCodeDescription();
+  let caseResults = results as Array<Chapter11CaseType>;
 
-    caseResults.forEach(function(caseTy){
-      var d = caseTy.hearingDisposition;
-      caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
-    });
+  caseResults.forEach(function (caseTy) {
+    var d = caseTy.hearingDisposition;
+    caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
+  });
 }
 
 const getCase = async (context: Context, id: number): Promise<DbResult> => {

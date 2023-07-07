@@ -1,6 +1,5 @@
 import httpTrigger from './cases.function';
-import { CasesController } from '../lib/adapters/controllers/cases.controller';
-const context = require('../lib/testing/defaultContext');
+const context = require('../lib/testing/default-context');
 
 jest.mock('../lib/adapters/controllers/cases.controller', () => {
   return {
@@ -9,9 +8,9 @@ jest.mock('../lib/adapters/controllers/cases.controller', () => {
         getCaseList: () => {
           throw new Error('Test error');
         },
-      }
-    })
-  }
+      };
+    }),
+  };
 });
 
 describe('Mocking CasesController to get error handling', () => {
@@ -27,7 +26,7 @@ describe('Mocking CasesController to get error handling', () => {
   */
   test('error should be properly handled if casesController.getCaseList() throws an error', async () => {
     const request = {
-      query: {}
+      query: {},
     };
 
     await httpTrigger(context, request);

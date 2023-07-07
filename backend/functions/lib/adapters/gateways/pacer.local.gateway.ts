@@ -1,10 +1,9 @@
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { PacerGatewayInterface } from '../types/pacer.gateway';
 import { Chapter15Case } from '../types/cases';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { GatewayHelper } from './gateway-helper';
 
 class PacerLocalGateway implements PacerGatewayInterface {
-
   startingMonth: number;
   getChapter15Cases = async (context, startingMonth: number = -6): Promise<Chapter15Case[]> => {
 
@@ -20,7 +19,6 @@ class PacerLocalGateway implements PacerGatewayInterface {
 
     return cases;
   };
-
 }
 
 export { PacerLocalGateway };

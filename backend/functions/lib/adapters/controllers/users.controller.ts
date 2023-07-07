@@ -1,6 +1,6 @@
 import log from '../services/logger.service';
 import useCase from '../../use-cases/index';
-import { UserPersistenceGateway } from '../types/persistence-gateway';
+import { UserPersistenceGateway } from '../types/persistence.gateway';
 import proxyData from '../data-access.proxy';
 import { Context } from '../types/basic';
 

@@ -1,4 +1,4 @@
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { PacerGatewayInterface } from '../types/pacer.gateway';
 import { Chapter15Case } from '../types/cases';
 import { Context } from '@azure/functions';
 
@@ -43,21 +43,21 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate())
           .toISOString()
-          .split('T')[0]
+          .split('T')[0],
       },
       {
         caseNumber: '1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: new Date(today.getFullYear(), today.getMonth() - 7, today.getDate())
           .toISOString()
-          .split('T')[0]
+          .split('T')[0],
       },
       {
         caseNumber: '1166',
         caseTitle: 'Heather Anne Real',
         dateFiled: new Date(today.getFullYear() - 10, today.getMonth(), today.getDate())
           .toISOString()
-          .split('T')[0]
+          .split('T')[0],
       },
     );
     this.chapter15CaseList.push(oldCases[0], oldCases[1], oldCases[2]);
@@ -71,21 +71,21 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
         caseTitle: 'Heather Anne Real',
         dateFiled: new Date(today.getFullYear(), today.getMonth() - 1, today.getDate())
           .toISOString()
-          .split('T')[0]
+          .split('T')[0],
       },
       {
         caseNumber: '1175',
         caseTitle: 'James P. Tennor',
         dateFiled: new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())
           .toISOString()
-          .split('T')[0]
+          .split('T')[0],
       },
       {
         caseNumber: '1176',
         caseTitle: 'Tommy Testformiddlena tennor',
         dateFiled: new Date(today.getFullYear(), today.getMonth() - 2, today.getDate())
           .toISOString()
-          .split('T')[0]
+          .split('T')[0],
       },
     );
     this.chapter15CaseList.push(newCases[0], newCases[1], newCases[2]);
