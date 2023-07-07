@@ -1,4 +1,4 @@
-import { ObjectKeyVal } from "./basic";
+import { ObjectKeyVal } from './basic';
 
 // TODO: make this implement the IRecordSet<any> interface
 export interface CaseListRecordSet {
@@ -13,7 +13,7 @@ export type CaseListDbResult = {
   message: string;
   count: number;
   body: CaseListRecordSet;
-}
+};
 
 export type Chapter11CaseType = {
   caseNumber: string;
@@ -51,4 +51,4 @@ export type Chapter15Case = {
   caseNumber: string;
   caseTitle: string;
   dateFiled: string;
-}
+};
