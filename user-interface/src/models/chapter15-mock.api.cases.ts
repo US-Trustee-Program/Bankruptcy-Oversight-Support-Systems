@@ -1,4 +1,5 @@
-import Api, { ResponseData } from './api';
+import { ResponseData } from '../type-declarations/api';
+import Api from './api';
 
 export default class Chapter15MockApi extends Api {
   public static async list(path: string): Promise<ResponseData> {
