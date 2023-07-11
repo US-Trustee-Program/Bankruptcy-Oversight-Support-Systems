@@ -1,6 +1,7 @@
 import { PacerLogin } from './pacer-login';
 import { MockPacerTokenSecretGateway } from './mock-pacer-token-secret.gateway';
 const http = require('../utils/http');
+const context = require('azure-function-context-mock');
 
 describe('PACER login tests', () => {
   test('should throw error when pacer login fails', async () => {
@@ -13,7 +14,7 @@ describe('PACER login tests', () => {
       return responseValue;
     });
 
-    await expect(pacerLogin.getPacerToken()).rejects.toEqual(Error('Login Failed'));
+    await expect(pacerLogin.getPacerToken(context)).rejects.toEqual(Error('Login Failed'));
   });
 
   test('should throw error when pacer returns a result > 1', async () => {
@@ -26,7 +27,7 @@ describe('PACER login tests', () => {
       return responseValue;
     });
 
-    await expect(pacerLogin.getPacerToken()).rejects.toEqual(Error('Error retrieving token'));
+    await expect(pacerLogin.getPacerToken(context)).rejects.toEqual(Error('Error retrieving token'));
   });
 
   test('should throw error when pacer returns a status that is not 200', async () => {
@@ -39,7 +40,7 @@ describe('PACER login tests', () => {
       return responseValue;
     });
 
-    await expect(pacerLogin.getPacerToken()).rejects.toEqual(
+    await expect(pacerLogin.getPacerToken(context)).rejects.toEqual(
       Error('Failed to Connect to PACER API'),
     );
   });
@@ -51,7 +52,7 @@ describe('PACER login tests', () => {
       throw Error(message);
     });
 
-    await expect(pacerLogin.getPacerToken()).rejects.toEqual(Error(message));
+    await expect(pacerLogin.getPacerToken(context)).rejects.toEqual(Error(message));
   });
 
   test('should return token when valid response is received from Pacer', async () => {
@@ -65,7 +66,7 @@ describe('PACER login tests', () => {
       return responseValue;
     });
 
-    expect(await pacerLogin.getPacerToken()).toEqual(expectedValue);
+    expect(await pacerLogin.getPacerToken(context)).toEqual(expectedValue);
   });
 
   test('should return token when saving new token to Azure KeyVault', async () => {
@@ -78,7 +79,7 @@ describe('PACER login tests', () => {
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return responseValue;
     });
-    expect(await pacerLogin.getAndStorePacerToken()).toEqual(expectedValue);
+    expect(await pacerLogin.getAndStorePacerToken(context)).toEqual(expectedValue);
   });
 
   test('getAndStorePacerToken method should throw an error when the response in non 200 ', async () => {
@@ -91,7 +92,7 @@ describe('PACER login tests', () => {
     });
 
     try {
-      await pacerLogin.getAndStorePacerToken();
+      await pacerLogin.getAndStorePacerToken(context);
     } catch (e) {
       expect(e).toEqual(new Error('Failed to Connect to PACER API'));
     }
