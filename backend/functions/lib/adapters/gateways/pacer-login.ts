@@ -1,15 +1,16 @@
 import { httpPost } from '../utils/http';
 import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
-import { PacerTokenSecretInterface } from './pacer-token-secret.interface';
+import { PacerSecretsInterface } from './pacer-secrets.interface';
+import { Context } from '../types/basic';
 
 dotenv.config();
 
 export class PacerLogin {
-  pacerTokenSecretInterface: PacerTokenSecretInterface;
+  pacerSecretGateway: PacerSecretsInterface;
 
-  constructor(pacerTokenSecretInterface: PacerTokenSecretInterface) {
-    this.pacerTokenSecretInterface = pacerTokenSecretInterface;
+  constructor(pacerSecretGateway: PacerSecretsInterface) {
+    this.pacerSecretGateway = pacerSecretGateway;
   }
 
   private getValidToken(data: any): string {
@@ -22,13 +23,13 @@ export class PacerLogin {
     }
   }
 
-  public async getPacerToken(): Promise<string> {
+  public async getPacerToken(context: Context): Promise<string> {
     let token: string;
     try {
-      token = await this.pacerTokenSecretInterface.getPacerTokenFromSecrets();
+      token = await this.pacerSecretGateway.getPacerTokenFromSecrets(context);
     } catch (e) {
       if (e instanceof NoPacerToken) {
-        token = await this.getAndStorePacerToken();
+        token = await this.getAndStorePacerToken(context);
       } else {
         throw e;
       }
@@ -36,20 +37,22 @@ export class PacerLogin {
     return token;
   }
 
-  public async getAndStorePacerToken(): Promise<string> {
+  public async getAndStorePacerToken(context: Context): Promise<string> {
     let token: string;
+    const pacerUserId = await this.pacerSecretGateway.getPacerUserIdFromSecrets(context);
+    const pacerPassword = await this.pacerSecretGateway.getPacerPasswordFromSecrets(context);
     try {
       const response = await httpPost({
         url: process.env.PACER_TOKEN_URL,
         body: {
-          loginId: process.env.PACER_TOKEN_LOGIN_ID,
-          password: process.env.PACER_TOKEN_PASSWORD,
+          loginId: pacerUserId,
+          password: pacerPassword,
         },
       });
 
       if (response.status == 200) {
         token = this.getValidToken(response.data);
-        this.pacerTokenSecretInterface.savePacerTokenToSecrets(token);
+        await this.pacerSecretGateway.savePacerTokenToSecrets(context, token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }

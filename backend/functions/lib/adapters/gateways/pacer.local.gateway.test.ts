@@ -3,7 +3,7 @@ import { PacerLocalGateway } from './pacer.local.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 const http = require('../utils/http');
-
+const context = require('azure-function-context-mock');
 const gatewayHelper = new GatewayHelper();
 
 describe('PACER Local gateway tests', () => {
@@ -24,6 +24,6 @@ describe('PACER Local gateway tests', () => {
 
         const gateway = new PacerLocalGateway();
 
-        expect(await gateway.getChapter15Cases()).toEqual(expect.arrayContaining(expectedResponseValue));
+        expect(await gateway.getChapter15Cases(context)).toEqual(expect.arrayContaining(expectedResponseValue));
     });
 });

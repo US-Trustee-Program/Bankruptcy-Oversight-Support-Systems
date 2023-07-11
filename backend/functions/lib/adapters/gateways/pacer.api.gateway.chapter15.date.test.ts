@@ -1,5 +1,6 @@
 import { MockPacerApiGateway } from './mock-pacer.api.gateway';
 import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+const context = require('azure-function-context-mock');
 
 describe('Test the date filter on chapter 15 cases', () => {
   test('should return cases in the last 6 months when no starting month filter set', async () => {
@@ -9,7 +10,7 @@ describe('Test the date filter on chapter 15 cases', () => {
       .split('T')[0];
 
     const mockPacerApiGateway: PacerGatewayInterface = new MockPacerApiGateway();
-    const actual = await mockPacerApiGateway.getChapter15Cases();
+    const actual = await mockPacerApiGateway.getChapter15Cases(context);
 
     function checkDate(aCase) {
       const verify = aCase.dateFiled >= expectedStartDate;
@@ -30,7 +31,7 @@ describe('Test the date filter on chapter 15 cases', () => {
       .toISOString()
       .split('T')[0];
     const mockPacerApiGateway: PacerGatewayInterface = new MockPacerApiGateway();
-    const actual = await mockPacerApiGateway.getChapter15Cases(testStartingMonthFilter);
+    const actual = await mockPacerApiGateway.getChapter15Cases(context, testStartingMonthFilter);
 
     function checkDate(aCase) {
       const verify = aCase.dateFiled >= expectedStartDate;

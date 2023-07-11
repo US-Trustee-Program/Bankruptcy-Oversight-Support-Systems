@@ -1,10 +1,9 @@
 import { PacerGatewayInterface } from './pacer.gateway.interface';
 
-const context = require('azure-function-context-mock');
 import { CaseListDbResult, Chapter15Case } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15-case-list';
-import { jest } from '@jest/globals';
 import { MockPacerApiGateway } from '../adapters/gateways/mock-pacer.api.gateway';
+const context = require('azure-function-context-mock');
 
 jest.mock('../adapters/gateways/pacer-login', () => {
   return {
@@ -18,6 +17,12 @@ jest.mock('../adapters/gateways/pacer-login', () => {
 });
 
 describe('Chapter 15 case tests', () => {
+  beforeEach(() => {
+    process.env = {
+      STARTING_MONTH: '-6',
+    };
+  });
+
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
     const chapter15CaseList = new Chapter15CaseList();
     const caseList: Chapter15Case[] = [
@@ -70,7 +75,7 @@ describe('Chapter 15 case tests', () => {
 
   test('should throw error and return specific error message received from PACER server when error is thrown in pacerGateway.getChapter15Cases', async () => {
     class MockPacerApiGatewayWithError extends MockPacerApiGateway {
-      async getChapter15Cases(startingMonth?: number): Promise<Chapter15Case[]> {
+      async getChapter15Cases(context, startingMonth?: number): Promise<Chapter15Case[]> {
         throw Error('some random error');
       }
     }
@@ -86,7 +91,7 @@ describe('Chapter 15 case tests', () => {
 
   test('should throw error with default message and return Unknown Error received from PACER server when unknown error is thrown in pacerGateway.getChapter15Cases', async () => {
     class MockPacerApiGatewayWithError extends MockPacerApiGateway {
-      async getChapter15Cases(startingMonth?: number): Promise<Chapter15Case[]> {
+      async getChapter15Cases(context, startingMonth?: number): Promise<Chapter15Case[]> {
         throw Error('');
       }
     }
@@ -98,5 +103,70 @@ describe('Chapter 15 case tests', () => {
       message: 'Unknown Error received from PACER server',
       success: false,
     });
+  });
+
+  test('should call getChapter15Cases with undefined if STARTING_MONTH exists as a string that is not a number', async () => {
+    const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
+    const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
+
+    process.env = {
+      STARTING_MONTH: 'not a number',
+    };
+    await chapter15CaseList.getChapter15CaseList(context);
+
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
+  });
+
+  test('should call getChapter15Cases with the same starting number if STARTING_MONTH is negative', async () => {
+    const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
+    const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
+
+    process.env = {
+      STARTING_MONTH: '-70',
+    };
+    await chapter15CaseList.getChapter15CaseList(context);
+
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, -70);
+  });
+
+  test('should negate STARTING_MONTH if getChapter15Cases is called with a positive number', async () => {
+    const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
+    const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
+
+    process.env = {
+      STARTING_MONTH: '70',
+    };
+    await chapter15CaseList.getChapter15CaseList(context);
+
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, -70);
+  });
+
+  test('should call getChapter15Cases with undefined if STARTING_MONTH is undefined', async () => {
+    const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
+    const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
+
+    process.env = {
+      STARTING_MONTH: undefined,
+    };
+    await chapter15CaseList.getChapter15CaseList(context);
+
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
+  });
+
+  test('should call getChapter15Cases with undefined if STARTING_MONTH is null', async () => {
+    const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
+    const pacerGatewaySpy = jest.spyOn(mockPacerGateway, 'getChapter15Cases');
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
+
+    process.env = {
+      STARTING_MONTH: null,
+    };
+    await chapter15CaseList.getChapter15CaseList(context);
+
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
   });
 });

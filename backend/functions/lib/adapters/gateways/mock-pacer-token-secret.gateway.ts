@@ -1,7 +1,8 @@
-import { PacerTokenSecretInterface } from './pacer-token-secret.interface';
+import { PacerSecretsInterface } from './pacer-secrets.interface';
 import { NoPacerToken } from './pacer-exceptions';
+import { Context } from '../types/basic';
 
-export class MockPacerTokenSecretGateway implements PacerTokenSecretInterface {
+export class MockPacerTokenSecretGateway implements PacerSecretsInterface {
   hasToken: boolean;
   private _token: string = 'abcdefghijklmnopqrstuvwxyz1234567890';
 
@@ -9,15 +10,23 @@ export class MockPacerTokenSecretGateway implements PacerTokenSecretInterface {
     this.hasToken = hasToken;
   }
 
-  getPacerTokenFromSecrets(): Promise<string> {
+  getPacerTokenFromSecrets(context: Context): Promise<string> {
     if (this.hasToken) {
       return Promise.resolve(this._token);
     }
     throw new NoPacerToken();
   }
 
-  savePacerTokenToSecrets(token: string): Promise<void> {
+  savePacerTokenToSecrets(context: Context, token: string): Promise<void> {
     this._token = token;
     return Promise.resolve(undefined);
+  }
+
+  getPacerPasswordFromSecrets(context: Context): Promise<string> {
+    return Promise.resolve('fake-password');
+  }
+
+  getPacerUserIdFromSecrets(context: Context): Promise<string> {
+    return Promise.resolve('fake-user-id');
   }
 }

@@ -1,6 +1,6 @@
-import { AzureFunction, Context, HttpRequest } from "@azure/functions"
+import { AzureFunction, Context, HttpRequest } from '@azure/functions'
 import { CasesController } from '../lib/adapters/controllers/cases.controller';
-import { httpError, httpSuccess } from "../lib/adapters/utils/http";
+import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'CASES-FUNCTION';
@@ -19,7 +19,8 @@ const httpTrigger: AzureFunction = async function (functionContext: Context, cas
 
     log.info(functionContext, NAMESPACE, `chapter ${caseChapter}, professionalId ${professionalId}`);
     try {
-        const caseList = await casesController.getCaseList({caseChapter: caseChapter, professionalId});
+        const caseList = await casesController.getCaseList({ caseChapter: caseChapter, professionalId });
+        log.info(functionContext, NAMESPACE, caseList.body.caseList.toString());
         functionContext.res = httpSuccess(functionContext, caseList);
     } catch (exception) {
         log.error(functionContext, NAMESPACE, 'caught error. ', exception);
