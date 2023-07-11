@@ -19,14 +19,10 @@ async function login(
   return await database.login(context, userName);
 }
 
-async function listAttorneys(
-  context: Context,
-  database: AttorneyPersistenceGateway,
-  fields: { officeId: string },
-) {
+async function listAttorneys(context: Context, fields: { officeId: string }) {
   let result: AttorneyListDbResult;
   const attorneysList = new AttorneysList();
-  result = await attorneysList.getAttorneyList(context, database, fields);
+  result = await attorneysList.getAttorneyList(context, fields);
 }
 
 async function listCases(

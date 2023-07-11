@@ -4,7 +4,7 @@ import { PacerGatewayInterface } from '../types/pacer.gateway';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
-import { getPacerTokenSecretGateway } from '../../../factory';
+import { getPacerTokenSecretGateway } from '../../factory';
 import { CaseLocatorException } from './pacer-exceptions';
 import { HttpResponse } from '../types/http';
 import { Context } from '../types/basic';

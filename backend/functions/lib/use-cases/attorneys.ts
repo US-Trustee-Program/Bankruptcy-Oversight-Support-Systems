@@ -1,16 +1,25 @@
-import { AttorneyPersistenceGateway } from '../adapters/types/persistence.gateway';
+import { AttorneyGatewayInterface } from './attorney.gateway.interface';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
 import { Context } from '../adapters/types/basic';
+import { getAttorneyGateway } from '../factory';
 
 namespace UseCases {
   export class AttorneysList {
+    gateway: AttorneyGatewayInterface;
+
+    constructor(gateway?: AttorneyGatewayInterface) {
+      if (!gateway) {
+        this.gateway = getAttorneyGateway();
+      } else {
+        this.gateway = gateway;
+      }
+    }
+
     async getAttorneyList(
       context: Context,
-      database: AttorneyPersistenceGateway,
       fields: { officeId: string },
     ): Promise<AttorneyListDbResult> {
-      let result: AttorneyListDbResult;
-      return await database.getAttorneyList(context, fields);
+      return await this.gateway.getAttorneys(context, fields);
     }
   }
 }

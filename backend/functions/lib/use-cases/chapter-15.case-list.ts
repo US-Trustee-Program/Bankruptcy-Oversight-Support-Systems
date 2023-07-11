@@ -1,18 +1,17 @@
 import { CaseListDbResult } from '../adapters/types/cases';
-import { PacerGatewayInterface } from './pacer.gateway.interface';
 import { Context } from '../adapters/types/basic';
 import { getPacerGateway } from '../../factory';
-import { Context } from '../adapters/types/basic';
+import { PacerGatewayInterface } from './pacer.gateway.interface';
 
 namespace UseCases {
   export class Chapter15CaseList {
     pacerGateway: PacerGatewayInterface;
 
     constructor(pacerGateway?: PacerGatewayInterface) {
-      if (pacerGateway != undefined) {
-        this.pacerGateway = pacerGateway;
-      } else {
+      if (!pacerGateway) {
         this.pacerGateway = getPacerGateway();
+      } else {
+        this.pacerGateway = pacerGateway;
       }
     }
 
