@@ -1,16 +1,21 @@
 import * as mssql from 'mssql';
 import log from '../services/logger.service';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, QueryResults } from '../types/database';
-import config from '../../configs/index';
 
 const NAMESPACE = 'DATABASE-UTILITY';
 
-export async function executeQuery(context: Context, query: string, input?: DbTableFieldSpec[]): Promise<QueryResults> {
+export async function executeQuery(
+  context: ApplicationContext,
+  query: string,
+  input?: DbTableFieldSpec[],
+): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
-    const sqlConnectionPool = new mssql.ConnectionPool(config.dbConfig as unknown as mssql.config);
+    const sqlConnectionPool = new mssql.ConnectionPool(
+      context.config.dbConfig as unknown as mssql.config,
+    );
     const sqlConnection = await sqlConnectionPool.connect();
     const sqlRequest = await sqlConnection.request();
 

@@ -1,6 +1,6 @@
 import log from '../services/logger.service';
 import { attorneyListMockData, getProperty } from '../../testing/mock-data';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import { QueryResults } from '../types/database';
 import { AttorneyListRecordSet, AttorneyListDbResult } from '../types/attorneys';
 import { runQuery } from './local.inmemory.gateway';
@@ -26,7 +26,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
   }
 
   public async getAttorneys(
-    context: Context,
+    context: ApplicationContext,
     attorneyOptions: { officeId: string } = { officeId: '' },
   ): Promise<AttorneyListDbResult> {
     let attorneyListRecords: AttorneyListRecordSet;

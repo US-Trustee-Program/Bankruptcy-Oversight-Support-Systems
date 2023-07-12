@@ -1,33 +1,38 @@
 import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
-import { Context } from './basic';
+import { ApplicationContext } from './basic';
 import { CaseListDbResult } from './cases';
 import { AttorneyListDbResult } from './attorneys';
 
 export type PersistenceGateway = {
-  createRecord(context: Context, table: string, fields: RecordObj[]): Promise<DbResult>;
-  getAll(context: Context, table: string): Promise<DbResult>;
-  getRecord(context: Context, table: string, id: number): Promise<DbResult>;
-  updateRecord(context: Context, table: string, id: number, fields: RecordObj[]): Promise<DbResult>;
-  deleteRecord(context: Context, table: string, id: number): Promise<DbResult>;
+  createRecord(context: ApplicationContext, table: string, fields: RecordObj[]): Promise<DbResult>;
+  getAll(context: ApplicationContext, table: string): Promise<DbResult>;
+  getRecord(context: ApplicationContext, table: string, id: number): Promise<DbResult>;
+  updateRecord(
+    context: ApplicationContext,
+    table: string,
+    id: number,
+    fields: RecordObj[],
+  ): Promise<DbResult>;
+  deleteRecord(context: ApplicationContext, table: string, id: number): Promise<DbResult>;
 };
 
 export type CasePersistenceGateway = {
-  createCase(context: Context, fields: RecordObj[]): Promise<DbResult>;
-  getCaseList(context: Context, fields: ObjectKeyVal): Promise<CaseListDbResult>;
-  getCase(context: Context, id: number): Promise<DbResult>;
-  updateCase(context: Context, id: number, fields: RecordObj[]): Promise<DbResult>;
-  deleteCase(context: Context, id: number): Promise<DbResult>;
+  createCase(context: ApplicationContext, fields: RecordObj[]): Promise<DbResult>;
+  getCaseList(context: ApplicationContext, fields: ObjectKeyVal): Promise<CaseListDbResult>;
+  getCase(context: ApplicationContext, id: number): Promise<DbResult>;
+  updateCase(context: ApplicationContext, id: number, fields: RecordObj[]): Promise<DbResult>;
+  deleteCase(context: ApplicationContext, id: number): Promise<DbResult>;
 };
 
 export interface AttorneyPersistenceGateway {
-  getAttorneyList(context: Context, fields: ObjectKeyVal): Promise<AttorneyListDbResult>;
+  getAttorneyList(context: ApplicationContext, fields: ObjectKeyVal): Promise<AttorneyListDbResult>;
 }
 
 type UserNameType = { firstName: string; lastName: string };
 
 export type UserPersistenceGateway = {
-  login(context: Context, name: UserNameType): Promise<DbResult>;
+  login(context: ApplicationContext, name: UserNameType): Promise<DbResult>;
 };
 
 export type ChaptersPersistenceGateway = {

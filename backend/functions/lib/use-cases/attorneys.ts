@@ -1,6 +1,6 @@
 import { AttorneyGatewayInterface } from './attorney.gateway.interface';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
-import { Context } from '../adapters/types/basic';
+import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
 
 namespace UseCases {
@@ -16,7 +16,7 @@ namespace UseCases {
     }
 
     async getAttorneyList(
-      context: Context,
+      context: ApplicationContext,
       fields: { officeId: string },
     ): Promise<AttorneyListDbResult> {
       return await this.gateway.getAttorneys(context, fields);

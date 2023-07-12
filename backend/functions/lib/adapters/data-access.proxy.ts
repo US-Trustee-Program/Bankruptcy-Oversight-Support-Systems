@@ -4,10 +4,9 @@
  *   - an Azure SQL connection otherwise
  */
 
-import config from '../configs/index';
 import { PersistenceGateway } from './types/persistence.gateway';
 import log from './services/logger.service';
-import { Context } from './types/basic';
+import { ApplicationContext } from './types/basic';
 
 const NAMESPACE = 'DATA-ACCESS-PROXY';
 
@@ -23,11 +22,11 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
  * @returns An object of type PersistenceGateway
  */
 async function proxyData(
-  context: Context,
+  context: ApplicationContext,
   table: string,
   mock: boolean = false,
 ): Promise<PersistenceGateway | object> {
-  if (config.get('dbMock') || mock) {
+  if (context.config.get('dbMock') || mock) {
     log.info(context, NAMESPACE, 'using local in-memory database');
     return await import(`./gateways/${table}.local.inmemory.gateway`);
   } else {

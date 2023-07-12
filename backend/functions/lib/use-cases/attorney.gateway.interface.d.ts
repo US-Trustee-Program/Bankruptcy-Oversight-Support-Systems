@@ -1,9 +1,9 @@
-import { Context } from '../adapters/types/basic';
+import { ApplicationContext } from '../adapters/types/basic';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
 
 export interface AttorneyGatewayInterface {
   getAttorneys(
-    context: Context,
+    context: ApplicationContext,
     attorneyOptions: { officeId: string },
   ): Promise<AttorneyListDbResult>;
 }

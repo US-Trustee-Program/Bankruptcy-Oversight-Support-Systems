@@ -3,7 +3,7 @@ import {
   CasePersistenceGateway,
   UserPersistenceGateway,
 } from '../adapters/types/persistence.gateway';
-import { Context } from '../adapters/types/basic';
+import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter11CaseList from './chapter-11.case-list';
 import Chapter15CaseList from './chapter-15.case-list';
@@ -12,21 +12,21 @@ import InvalidChapterCaseList from './invalid-chapter.case-list';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
 
 async function login(
-  context: Context,
+  context: ApplicationContext,
   database: UserPersistenceGateway,
   userName: { firstName: string; lastName: string },
 ) {
   return await database.login(context, userName);
 }
 
-async function listAttorneys(context: Context, fields: { officeId: string }) {
+async function listAttorneys(context: ApplicationContext, fields: { officeId: string }) {
   let result: AttorneyListDbResult;
   const attorneysList = new AttorneysList();
   result = await attorneysList.getAttorneyList(context, fields);
 }
 
 async function listCases(
-  context: Context,
+  context: ApplicationContext,
   database: CasePersistenceGateway,
   fields: { chapter: string; professionalId: string },
 ) {
