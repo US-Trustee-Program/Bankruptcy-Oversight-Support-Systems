@@ -1,5 +1,5 @@
 import { ApplicationContext, RecordObj } from '../types/basic';
-import ApplicationContextCreator from '../utils/application-context-creator';
+import { applicationContextCreator } from '../utils/application-context-creator';
 import { CasePersistenceGateway } from '../types/persistence.gateway';
 import { Context } from '@azure/functions';
 import log from '../services/logger.service';
@@ -13,7 +13,7 @@ export class CasesController {
   private casesDb: CasePersistenceGateway;
 
   constructor(context: Context) {
-    this.applicationContext = ApplicationContextCreator.setup(context);
+    this.applicationContext = applicationContextCreator(context);
     this.initializeDb();
   }
 

@@ -1,4 +1,4 @@
-import config from './configs';
+import { ApplicationConfiguration } from './configs/application-configuration';
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
 import { PacerApiGateway } from './adapters/gateways/pacer.api.gateway';
@@ -8,6 +8,8 @@ import { PacerSecretsGateway } from './lib/adapters/gateways/pacer-secrets.gatew
 import { PacerTokenSecretInterface } from './adapters/gateways/pacer-token-secret.interface';
 
 export const getPacerGateway = (): PacerGatewayInterface => {
+  const config: ApplicationConfiguration = new ApplicationConfiguration();
+
   if (config.get('pacerMock')) {
     return new PacerLocalGateway();
   } else {
@@ -16,6 +18,8 @@ export const getPacerGateway = (): PacerGatewayInterface => {
 };
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
+  const config: ApplicationConfiguration = new ApplicationConfiguration();
+
   if (config.get('dbMock')) {
     return new AttorneyLocalGateway();
   } else {

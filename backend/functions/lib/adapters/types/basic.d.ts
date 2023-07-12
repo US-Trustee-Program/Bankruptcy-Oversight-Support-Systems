@@ -1,16 +1,16 @@
+import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { Context } from '@azure/functions';
 import { IDbConfig } from './database';
 
-export type AppConfig = {
+export interface AppConfig {
   dbMock: boolean;
   dbConfig: IDbConfig;
   pacerMock: boolean;
   server: ServerType;
-  get: Function;
-};
+}
 
 export interface ApplicationContext extends Context {
-  config: AppConfig;
+  config: ApplicationConfiguration;
 }
 
 export type ObjectKeyVal = {
