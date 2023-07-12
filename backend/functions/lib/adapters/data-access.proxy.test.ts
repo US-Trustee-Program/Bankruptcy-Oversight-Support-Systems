@@ -1,8 +1,11 @@
-import ApplicationContextCreator from './utils/application-context-creator';
 const context = require('azure-function-context-mock');
+import { applicationContextCreator } from './utils/application-context-creator';
+import { ApplicationConfiguration } from '../configs/application-configuration';
 import proxyData from './data-access.proxy';
 
-const applicationContext = ApplicationContextCreator.setup(context);
+const applicationContext = applicationContextCreator(context);
+let originalConfig = new ApplicationConfiguration();
+let dbMock = false;
 
 jest.mock('./gateways/cases.local.inmemory.gateway', () => {
   return {
@@ -20,22 +23,17 @@ jest.mock('./gateways/cases.azure.sql.gateway', () => {
   };
 });
 
-let dbMock = false;
-
-jest.mock('../configs/index', () => {
+jest.mock('../configs/application-configuration', () => {
   // Require the original module!
-  const originalConfig = jest.requireActual('../configs/index');
+  //const originalConfig = jest.requireActual('../configs/application-configuration');
 
   return {
-    __esModule: true, // for esModules
-    default: {
-      get: jest.fn((key: string) => {
-        // override result conditionally on input arguments
-        if (key === 'dbMock') return dbMock;
-        // otherwise return using original behavior
-        return originalConfig.default.get(key);
-      }),
-    },
+    get: jest.fn((key: string) => {
+      // override result conditionally on input arguments
+      if (key === 'dbMock') return dbMock;
+      // otherwise return using original behavior
+      return originalConfig.get(key);
+    }),
   };
 });
 

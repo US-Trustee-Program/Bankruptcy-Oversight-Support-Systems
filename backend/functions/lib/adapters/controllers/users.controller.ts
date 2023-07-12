@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../types/basic';
-import ApplicationContextCreator from '../utils/application-context-creator';
+import { applicationContextCreator } from '../utils/application-context-creator';
 import { Context } from '@azure/functions';
 import log from '../services/logger.service';
 import proxyData from '../data-access.proxy';
@@ -12,7 +12,7 @@ export class UsersController {
   private readonly applicationContext: ApplicationContext;
 
   constructor(context: Context) {
-    this.applicationContext = ApplicationContextCreator.setup(context);
+    this.applicationContext = applicationContextCreator(context);
   }
 
   public async getUser(userName: { firstName: string; lastName: string }) {
