@@ -1,11 +1,11 @@
 import { CasePersistenceGateway } from '../adapters/types/persistence.gateway';
 import { CaseListDbResult } from '../adapters/types/cases';
-import { Context } from '../adapters/types/basic';
+import { ApplicationContext } from '../adapters/types/basic';
 
 namespace UseCases {
   export class Chapter11CaseList {
     async getChapter11CaseList(
-      context: Context,
+      context: ApplicationContext,
       database: CasePersistenceGateway,
       fields: { chapter: string; professionalId: string },
     ): Promise<CaseListDbResult> {

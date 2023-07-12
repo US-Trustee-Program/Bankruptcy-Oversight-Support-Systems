@@ -1,18 +1,5 @@
+import { Context } from '@azure/functions';
 import { IDbConfig } from './database';
-
-export type Context = {
-  log: Function;
-}
-
-export type ServerType = {
-  hostname: string;
-  port: number;
-};
-
-export type RecordObj = {
-  fieldName: string;
-  fieldValue: string | number;
-};
 
 export type AppConfig = {
   dbMock: boolean;
@@ -22,9 +9,23 @@ export type AppConfig = {
   get: Function;
 };
 
+export interface ApplicationContext extends Context {
+  config: AppConfig;
+}
+
 export type ObjectKeyVal = {
   [key: string]: string | number;
 };
 export type ObjectKeyValArrayKeyVal = {
   [key: string]: ObjectKeyVal[];
+};
+
+export type RecordObj = {
+  fieldName: string;
+  fieldValue: string | number;
+};
+
+export type ServerType = {
+  hostname: string;
+  port: number;
 };

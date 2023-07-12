@@ -2,7 +2,7 @@ import * as mssql from 'mssql';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
 import { executeQuery } from '../utils/database';
 import { getRecord } from './azure.sql.gateway';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
 import { ReviewCodeDescription } from '../utils/review-code-description';
 import { Chapter11CaseType } from '../types/cases';
@@ -12,7 +12,7 @@ const table = 'cases';
 const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
 
 const getCaseList = async (
-  context: Context,
+  context: ApplicationContext,
   caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
 ): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
@@ -108,7 +108,7 @@ async function updateReviewDescription(results: void | Object) {
   });
 }
 
-const getCase = async (context: Context, id: number): Promise<DbResult> => {
+const getCase = async (context: ApplicationContext, id: number): Promise<DbResult> => {
   return await getRecord(context, table, id);
 };
 

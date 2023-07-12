@@ -1,5 +1,5 @@
+import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
-import { Context } from '../adapters/types/basic';
 import { getPacerGateway } from '../../factory';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
 
@@ -15,7 +15,7 @@ namespace UseCases {
       }
     }
 
-    async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
+    async getChapter15CaseList(context: ApplicationContext): Promise<CaseListDbResult> {
       try {
         let startingMonth = parseInt(process.env.STARTING_MONTH);
         if (startingMonth > 0) {

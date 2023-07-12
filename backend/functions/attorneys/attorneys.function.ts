@@ -15,7 +15,6 @@ const httpTrigger: AzureFunction = async function (
     const caseList = await attorneysController.getAttorneyList({ officeId: '' });
     functionContext.res = httpSuccess(functionContext, caseList);
   } catch (exception) {
-    log.error(functionContext, NAMESPACE, 'caught error. ', exception);
     functionContext.res = httpError(functionContext, exception, 404);
   }
 };

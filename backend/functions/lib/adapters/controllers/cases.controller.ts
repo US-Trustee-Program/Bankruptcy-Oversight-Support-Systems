@@ -1,30 +1,32 @@
-import log from '../services/logger.service';
-import useCase from '../../use-cases/index';
+import { ApplicationContext, RecordObj } from '../types/basic';
+import ApplicationContextCreator from '../utils/application-context-creator';
 import { CasePersistenceGateway } from '../types/persistence.gateway';
+import { Context } from '@azure/functions';
+import log from '../services/logger.service';
 import proxyData from '../data-access.proxy';
-import { Context, RecordObj } from '../types/basic';
+import useCase from '../../use-cases/index';
 
 const NAMESPACE = 'CASES-CONTROLLER';
 
 export class CasesController {
-  private readonly functionContext: Context;
+  private readonly applicationContext: ApplicationContext;
   private casesDb: CasePersistenceGateway;
 
   constructor(context: Context) {
-    this.functionContext = context;
+    this.applicationContext = ApplicationContextCreator.setup(context);
     this.initializeDb();
   }
 
   private async initializeDb() {
     if (typeof this.casesDb == 'undefined') {
-      this.casesDb = (await proxyData(this.functionContext, 'cases')) as CasePersistenceGateway;
-      log.info(this.functionContext, NAMESPACE, 'casesDB was set successfully');
+      this.casesDb = (await proxyData(this.applicationContext, 'cases')) as CasePersistenceGateway;
+      log.info(this.applicationContext, NAMESPACE, 'casesDB was set successfully');
     }
   }
 
   public async getCaseList(requestQueryFilters: { caseChapter: string; professionalId: string }) {
     await this.initializeDb();
-    log.info(this.functionContext, NAMESPACE, 'Getting case list.');
+    log.info(this.applicationContext, NAMESPACE, 'Getting case list.');
 
     let professionalId = '';
     let caseChapter = '';
@@ -34,7 +36,7 @@ export class CasesController {
     if (requestQueryFilters.caseChapter) {
       caseChapter = requestQueryFilters.caseChapter;
     }
-    return await useCase.listCases(this.functionContext, this.casesDb, {
+    return await useCase.listCases(this.applicationContext, this.casesDb, {
       chapter: caseChapter,
       professionalId: professionalId,
     });

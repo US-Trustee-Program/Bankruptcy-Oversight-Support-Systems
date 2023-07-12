@@ -1,5 +1,6 @@
 import log from '../services/logger.service';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
+import { Context } from '@azure/functions';
 import { ApiResponse, HttpResponse } from '../types/http';
 
 const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
@@ -10,7 +11,7 @@ const commonHeaders = {
 };
 
 export function httpSuccess(context: Context, body: any = {}): ApiResponse {
-  log.info(context, NAMESPACE, 'HTTP Success');
+  log.info(context as ApplicationContext, NAMESPACE, 'HTTP Success');
   return {
     headers: commonHeaders,
     statusCode: 200,
@@ -19,7 +20,7 @@ export function httpSuccess(context: Context, body: any = {}): ApiResponse {
 }
 
 export function httpError(context: Context, error: any, code: number): ApiResponse {
-  log.error(context, NAMESPACE, error.message, error);
+  log.error(context as ApplicationContext, NAMESPACE, error.message, error);
   return {
     headers: commonHeaders,
     statusCode: code,
