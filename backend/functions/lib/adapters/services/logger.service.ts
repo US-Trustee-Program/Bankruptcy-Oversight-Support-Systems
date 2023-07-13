@@ -57,4 +57,31 @@ export default class log {
   ) {
     log.logMessage(context, 'debug', namespace, message, data);
   }
+
+  private readonly functionContext: Context;
+
+  constructor(functionContext: Context) {
+    this.functionContext = functionContext;
+  }
+
+  private logMessage(logType: string, namespace: string, message: string, data?: any) {
+    let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${undefined != data ? JSON.stringify(data) : ''}`;
+    this.functionContext.log(log.sanitize(logString.trim()));
+  }
+
+  public info(namespace: string, message: string, data?: any) {
+    this.logMessage('info', namespace, message, data);
+  }
+
+  public warn(namespace: string, message: string, data?: any) {
+    this.logMessage('warn', namespace, message, data);
+  }
+
+  public error(namespace: string, message: string, data?: any) {
+    this.logMessage('error', namespace, message, data);
+  }
+
+  public debug(namespace: string, message: string, data?: any) {
+    this.logMessage('debug', namespace, message, data);
+  }
 }
