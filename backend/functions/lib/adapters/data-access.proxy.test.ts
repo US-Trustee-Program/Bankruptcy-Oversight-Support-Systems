@@ -25,15 +25,21 @@ jest.mock('./gateways/cases.azure.sql.gateway', () => {
 
 jest.mock('../configs/application-configuration', () => {
   // Require the original module!
-  //const originalConfig = jest.requireActual('../configs/application-configuration');
+  const originalModule = jest.requireActual('../configs/application-configuration');
+  const originalConfigClass = originalModule.ApplicationConfiguration;
 
-  return {
-    get: jest.fn((key: string) => {
+  class MockAppConfig extends originalConfigClass {
+    get(key: string) {
       // override result conditionally on input arguments
       if (key === 'dbMock') return dbMock;
       // otherwise return using original behavior
-      return originalConfig.get(key);
-    }),
+      return super.get(key);
+    }
+  }
+
+  return {
+    ...originalModule,
+    ApplicationConfiguration: MockAppConfig,
   };
 });
 
