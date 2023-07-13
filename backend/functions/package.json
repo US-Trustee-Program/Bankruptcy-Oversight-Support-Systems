@@ -5,7 +5,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.1",
     "@types/mssql": "^8.1.2",
-    "@types/node": "^16.18.24",
+    "@types/node": "^20.4.2",
     "@typescript-eslint/eslint-plugin": "^5.59.1",
     "azure-function-context-mock": "^0.0.7",
     "dependency-cruiser": "^12.11.3",
