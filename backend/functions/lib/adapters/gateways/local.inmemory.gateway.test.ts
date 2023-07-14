@@ -31,9 +31,7 @@ describe('Local in-memory database gateway tests', () => {
   });
 
   test('Should return 1 result when fetching specific record on a given table', async () => {
-    console.log(list);
     list = list.filter((rec) => rec['generic-test-data_id'] === 7);
-    console.log(list);
 
     const mockResults: DbResult = {
       success: true,
@@ -41,10 +39,8 @@ describe('Local in-memory database gateway tests', () => {
       count: 1,
       body: list,
     };
-    console.log(mockResults);
 
     const results = await db.getRecord(context, table, 7);
-    console.log(results);
 
     expect(results).toEqual(mockResults);
   });

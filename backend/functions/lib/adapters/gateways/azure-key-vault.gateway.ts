@@ -1,7 +1,7 @@
 import { SecretsInterface } from './secrets.interface';
 import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
 import { DefaultAzureCredential } from '@azure/identity';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
 
 const NAMESPACE = 'AZURE-KEY-VAULT-GATEWAY';
@@ -14,14 +14,18 @@ export class AzureKeyVaultGateway implements SecretsInterface {
     if (secretClient == undefined) {
       const credentials = new DefaultAzureCredential();
       this.keyVaultUrl = process.env.AZURE_KEY_VAULT_URL;
-      this.secretClient = new SecretClient(this.keyVaultUrl, credentials)
+      this.secretClient = new SecretClient(this.keyVaultUrl, credentials);
     } else {
       this.secretClient = secretClient;
     }
   }
 
-  public async getSecret(context: Context, name: string): Promise<string> {
-    log.info(context, NAMESPACE, `Retrieving '${name}' secret from Key Vault: ${this.keyVaultUrl}.`);
+  public async getSecret(context: ApplicationContext, name: string): Promise<string> {
+    log.info(
+      context,
+      NAMESPACE,
+      `Retrieving '${name}' secret from Key Vault: ${this.keyVaultUrl}.`,
+    );
     let keyVaultResponse: KeyVaultSecret;
     try {
       keyVaultResponse = await this.secretClient.getSecret(name);
@@ -38,9 +42,13 @@ export class AzureKeyVaultGateway implements SecretsInterface {
     return Promise.resolve(keyVaultResponse.value);
   }
 
-  public async setSecret(context: Context, name: string, value: string): Promise<string> {
+  public async setSecret(
+    context: ApplicationContext,
+    name: string,
+    value: string,
+  ): Promise<string> {
     log.info(context, NAMESPACE, `Saving '${name}' secret to Key Vault: ${this.keyVaultUrl}.`);
-    return await this.secretClient.setSecret(name, value).then(response => {
+    return await this.secretClient.setSecret(name, value).then((response) => {
       if (response.name != name) {
         throw new Error(`New secret '${name}' was not saved.`);
       }

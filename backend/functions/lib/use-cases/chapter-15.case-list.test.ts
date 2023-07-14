@@ -1,9 +1,7 @@
-import { PacerGatewayInterface } from '../adapters/types/pacer.gateway';
-
 import { CaseListDbResult, Chapter15Case } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case-list';
-import { jest } from '@jest/globals';
 import { MockPacerApiGateway } from '../adapters/gateways/mock-pacer.api.gateway';
+import { PacerGatewayInterface } from '../use-cases/pacer.gateway.interface';
 const context = require('azure-function-context-mock');
 
 jest.mock('../adapters/gateways/pacer-login', () => {
@@ -21,6 +19,7 @@ describe('Chapter 15 case tests', () => {
   beforeEach(() => {
     process.env = {
       STARTING_MONTH: '-6',
+      DATABASE_MOCK: 'true',
     };
   });
 

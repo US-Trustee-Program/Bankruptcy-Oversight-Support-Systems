@@ -1,4 +1,4 @@
-import { PacerGatewayInterface } from '../types/pacer.gateway';
+import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { Chapter15Case } from '../types/cases';
 import { Context } from '@azure/functions';
 
