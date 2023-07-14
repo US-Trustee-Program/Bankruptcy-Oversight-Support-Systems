@@ -17,9 +17,10 @@ namespace UseCases {
 
     async getAttorneyList(
       context: ApplicationContext,
-      fields: { officeId: string },
+      fields: { officeId?: string },
     ): Promise<AttorneyListDbResult> {
-      return await this.gateway.getAttorneys(context, fields);
+      const attorneysList = await this.gateway.getAttorneys(context, fields);
+      return attorneysList;
     }
   }
 }

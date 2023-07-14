@@ -34,22 +34,26 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
 
     attorneyListRecords = await this.initializeAttorneys();
 
-    log.info(context, NAMESPACE, `${attorneyOptions.officeId}`);
-
-    if (attorneyOptions.officeId && attorneyOptions.officeId.length > 0) {
+    if (attorneyOptions.officeId.length > 0) {
+      log.info(context, NAMESPACE, `${attorneyOptions.officeId}`);
       input.push({
         name: 'officeId',
         value: attorneyOptions.officeId,
       });
     }
 
-    const queryResult: QueryResults = await runQuery(context, '', attorneyListRecords.list, input);
+    const queryResult: QueryResults = await runQuery(
+      context,
+      'attorneys',
+      attorneyListRecords.attorneyList,
+      input,
+    );
     let results: AttorneyListDbResult;
 
     if (queryResult.success) {
       log.info(context, NAMESPACE, 'Attorney List DB query successful');
-      const body: AttorneyListRecordSet = { list: [] };
-      body.list = queryResult.results as [];
+      const body: AttorneyListRecordSet = { attorneyList: [] };
+      body.attorneyList = queryResult.results as [];
       const rowsAffected = (queryResult.results as Array<{}>).length;
       results = {
         success: true,
@@ -63,7 +67,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
         success: false,
         message: queryResult.message,
         count: 0,
-        body: { list: [] },
+        body: { attorneyList: [] },
       };
     }
 

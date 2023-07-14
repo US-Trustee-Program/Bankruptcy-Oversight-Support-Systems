@@ -1,5 +1,5 @@
 const list = {
-  attorneysList: [
+  attorneyList: [
     {
       id: '10',
       firstName: 'Donna               ',

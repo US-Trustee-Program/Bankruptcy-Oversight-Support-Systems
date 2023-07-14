@@ -1,11 +1,9 @@
 const context = require('azure-function-context-mock');
 import { applicationContextCreator } from './utils/application-context-creator';
-import { ApplicationConfiguration } from '../configs/application-configuration';
 import proxyData from './data-access.proxy';
 
 const applicationContext = applicationContextCreator(context);
-let originalConfig = new ApplicationConfiguration();
-let dbMock = false;
+let dbMock = true;
 
 jest.mock('./gateways/cases.local.inmemory.gateway', () => {
   return {
