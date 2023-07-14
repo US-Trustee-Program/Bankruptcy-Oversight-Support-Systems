@@ -1,11 +1,10 @@
 import { PacerSecretsGateway } from './pacer-secrets.gateway';
 import { NoPacerToken } from './pacer-exceptions';
 import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
-import {Context} from "../types/basic";
-const context = require('../../testing/defaultContext');
+import { ApplicationContext } from '../types/basic';
+const context = require('../../testing/default-context');
 
 class MockSecretsGateway extends AzureKeyVaultGateway {
-
   constructor(functions?: { setSecret?: any; getSecret?: any }) {
     super();
     if (functions?.setSecret) {
@@ -20,13 +19,12 @@ class MockSecretsGateway extends AzureKeyVaultGateway {
     return Promise.resolve('fake-new-token');
   }
 
-  async getSecret(context: Context, name: string): Promise<string> {
+  async getSecret(context: ApplicationContext, name: string): Promise<string> {
     return Promise.resolve('fake-token');
   }
 }
 
 describe('Azure PACER secrets gateway test', () => {
-
   beforeAll(() => {
     process.env = {
       PACER_TOKEN_SECRET_NAME: 'fake-secret',
@@ -34,13 +32,13 @@ describe('Azure PACER secrets gateway test', () => {
   });
 
   test('should throw error', async () => {
-    const gateway = new PacerSecretsGateway(new MockSecretsGateway(
-      {
+    const gateway = new PacerSecretsGateway(
+      new MockSecretsGateway({
         setSecret: async () => {
           throw new Error('some error');
-        }
-      }
-    ));
+        },
+      }),
+    );
 
     try {
       await gateway.savePacerTokenToSecrets(context, 'fake-new-token');
@@ -59,13 +57,13 @@ describe('Azure PACER secrets gateway test', () => {
   });
 
   test('should throw NoPacerToken error', async () => {
-    const gateway = new PacerSecretsGateway(new MockSecretsGateway(
-      {
+    const gateway = new PacerSecretsGateway(
+      new MockSecretsGateway({
         getSecret: async () => {
           throw new Error(`The secret fake-secret was not found.`);
-        }
-      }
-    ));
+        },
+      }),
+    );
 
     try {
       await gateway.getPacerTokenFromSecrets(context);
@@ -77,13 +75,13 @@ describe('Azure PACER secrets gateway test', () => {
   });
 
   test('should throw error', async () => {
-    const gateway = new PacerSecretsGateway(new MockSecretsGateway(
-      {
+    const gateway = new PacerSecretsGateway(
+      new MockSecretsGateway({
         getSecret: async () => {
           throw new Error(`Some unknown error.`);
-        }
-      }
-    ));
+        },
+      }),
+    );
 
     try {
       await gateway.getPacerTokenFromSecrets(context);

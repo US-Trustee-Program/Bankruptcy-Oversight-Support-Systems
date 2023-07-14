@@ -1,14 +1,14 @@
-import { ObjectKeyVal } from "./basic";
+import { ObjectKeyVal } from './basic';
 
 // TODO: make this implement the IRecordSet<any> interface
-export type UserListRecordSet = {
+export interface UserListRecordSet {
   userList: ObjectKeyVal[];
   initialized: boolean;
 }
 
-export type UserListDbResult = {
+export interface UserListDbResult {
   success: boolean;
   message: string;
   count: number;
   body: UserListRecordSet;
-};
+}

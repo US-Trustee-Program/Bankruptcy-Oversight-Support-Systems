@@ -1,6 +1,6 @@
-import { ApplicationContext } from '../adapters/types/basic';
+import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
-import { getPacerGateway } from '../../factory';
+import { getPacerGateway } from '../factory';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
 
 namespace UseCases {
@@ -21,14 +21,17 @@ namespace UseCases {
         if (startingMonth > 0) {
           startingMonth = 0 - startingMonth;
         }
-        const cases = await this.pacerGateway.getChapter15Cases(context, startingMonth || undefined);
+        const cases = await this.pacerGateway.getChapter15Cases(
+          context,
+          startingMonth || undefined,
+        );
 
         return {
           success: true,
           message: '',
           count: cases?.length,
           body: {
-            caseList: cases,
+            caseList: cases as ObjectKeyVal[],
           },
         };
       } catch (e) {

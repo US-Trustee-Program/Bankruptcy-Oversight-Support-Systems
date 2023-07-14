@@ -13,19 +13,19 @@ export interface ApplicationContext extends Context {
   config: ApplicationConfiguration;
 }
 
-export type ObjectKeyVal = {
+export interface ObjectKeyVal {
   [key: string]: string | number;
-};
-export type ObjectKeyValArrayKeyVal = {
+}
+export interface ObjectKeyValArrayKeyVal {
   [key: string]: ObjectKeyVal[];
-};
+}
 
-export type RecordObj = {
+export interface RecordObj {
   fieldName: string;
   fieldValue: string | number;
-};
+}
 
-export type ServerType = {
+export interface ServerType {
   hostname: string;
   port: number;
-};
+}

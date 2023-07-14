@@ -2,7 +2,7 @@ import { httpPost } from '../utils/http';
 import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
 import { PacerSecretsInterface } from './pacer-secrets.interface';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 
 dotenv.config();
 
@@ -23,7 +23,7 @@ export class PacerLogin {
     }
   }
 
-  public async getPacerToken(context: Context): Promise<string> {
+  public async getPacerToken(context: ApplicationContext): Promise<string> {
     let token: string;
     try {
       token = await this.pacerSecretGateway.getPacerTokenFromSecrets(context);
@@ -37,7 +37,7 @@ export class PacerLogin {
     return token;
   }
 
-  public async getAndStorePacerToken(context: Context): Promise<string> {
+  public async getAndStorePacerToken(context: ApplicationContext): Promise<string> {
     let token: string;
     const pacerUserId = await this.pacerSecretGateway.getPacerUserIdFromSecrets(context);
     const pacerPassword = await this.pacerSecretGateway.getPacerPasswordFromSecrets(context);

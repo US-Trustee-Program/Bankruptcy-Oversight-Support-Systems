@@ -2,10 +2,10 @@ import { ApplicationConfiguration } from './configs/application-configuration';
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
 import { PacerApiGateway } from './adapters/gateways/pacer.api.gateway';
-import { PacerGatewayInterface } from './adapters/types/pacer.gateway';
+import { PacerGatewayInterface } from './use-cases/pacer.gateway.interface';
 import { PacerLocalGateway } from './adapters/gateways/pacer.local.gateway';
-import { PacerSecretsGateway } from './lib/adapters/gateways/pacer-secrets.gateway';
-import { PacerTokenSecretInterface } from './adapters/gateways/pacer-token-secret.interface';
+import { PacerSecretsGateway } from '../lib/adapters/gateways/pacer-secrets.gateway';
+import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interface';
 
 export const getPacerGateway = (): PacerGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -28,5 +28,5 @@ export const getAttorneyGateway = (): AttorneyGatewayInterface => {
 };
 
 export const getPacerTokenSecretGateway = (): PacerSecretsInterface => {
-    return new PacerSecretsGateway();
-}
+  return new PacerSecretsGateway();
+};

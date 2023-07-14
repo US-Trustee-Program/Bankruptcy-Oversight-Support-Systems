@@ -1,11 +1,11 @@
-export type ApiResponse = {
+export interface ApiResponse {
   headers: {
     'Content-Type': String;
     'Last-Modified': String;
   };
   statusCode: number;
   body: Object;
-};
+}
 
 export interface HttpResponse extends Response {
   data: {

@@ -3,8 +3,8 @@ import { ApplicationContext } from '../types/basic';
 import { ApplicationConfiguration } from '../../configs/application-configuration';
 
 export function applicationContextCreator(functionContext: Context) {
-  const appContext = functionContext as ApplicationContext;
-  const applicationConfiguration = new ApplicationConfiguration();
-  appContext.config = applicationConfiguration;
-  return appContext;
+  return {
+    ...functionContext,
+    config: new ApplicationConfiguration(),
+  } as ApplicationContext;
 }
