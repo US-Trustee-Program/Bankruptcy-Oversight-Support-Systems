@@ -9,8 +9,7 @@ namespace UseCases {
       database: CasePersistenceGateway,
       fields: { chapter: string; professionalId: string },
     ): Promise<CaseListDbResult> {
-      let result: CaseListDbResult;
-      result = await database.getCaseList(context, fields);
+      const result: CaseListDbResult = await database.getCaseList(context, fields);
       result.body.staff1Label = 'Trial Attorney';
       result.body.staff2Label = 'Auditor';
       return result;

@@ -22,17 +22,19 @@ describe('Basic logger service tests', () => {
   });
   test('Info log with an object passed to it, should set context.log to the expected string', async () => {
     const testObj = {
-      property: 'value'
-    }
+      property: 'value',
+    };
 
     log.info(context, 'FOO-NAMESPACE', 'test message', testObj);
-    expect(mockLog).toHaveBeenCalledWith(`[INFO] [FOO-NAMESPACE] test message ${JSON.stringify(testObj)}`);
+    expect(mockLog).toHaveBeenCalledWith(
+      `[INFO] [FOO-NAMESPACE] test message ${JSON.stringify(testObj)}`,
+    );
   });
 
   test('Test sanitize function to Fix CWE 117 Improper Output Neutralization for Logs', async () => {
     const input = '\r\nNo\r\nCRLF\r\n';
-    let output = log.sanitize(input)
-    expect(output).not.toContain('\n')
-    expect(output).not.toContain('\r')
+    const output = log.sanitize(input);
+    expect(output).not.toContain('\n');
+    expect(output).not.toContain('\r');
   });
 });

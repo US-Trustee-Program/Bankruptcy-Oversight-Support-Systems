@@ -15,7 +15,14 @@ class MockSecretClient extends SecretClient {
   constructor(
     _tokenName: string,
     _azureCredential: DefaultAzureCredential,
-    functions?: { setSecret?: any; getSecret?: any },
+    functions?: {
+      setSecret?: (
+        secretName?: string,
+        value?: string,
+        options?: SetSecretOptions,
+      ) => Promise<KeyVaultSecret>;
+      getSecret?: () => Promise<KeyVaultSecret>;
+    },
   ) {
     super(_tokenName, _azureCredential);
     if (functions?.setSecret) {
@@ -29,6 +36,7 @@ class MockSecretClient extends SecretClient {
   setSecret(
     secretName: string,
     value: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: SetSecretOptions,
   ): Promise<KeyVaultSecret> {
     this.token = value;
@@ -47,6 +55,7 @@ class MockSecretClient extends SecretClient {
     return Promise.resolve(keyVaultSecret);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getSecret(secretName: string, options?: GetSecretOptions): Promise<KeyVaultSecret> {
     const properties: SecretProperties = {
       vaultUrl: '',
@@ -84,6 +93,7 @@ describe('Azure Key Vault Gateway tests', () => {
     const setSecretMock = (
       secretName: string,
       value: string,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       options?: SetSecretOptions,
     ): Promise<KeyVaultSecret> => {
       const properties: SecretProperties = {

@@ -15,7 +15,7 @@ const getCaseList = async (
   context: ApplicationContext,
   caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
 ): Promise<DbResult> => {
-  let input: DbTableFieldSpec[] = [];
+  const input: DbTableFieldSpec[] = [];
 
   let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
       , CONCAT(a.CASE_YEAR, '-', REPLICATE('0', 5-DATALENGTH(LTRIM(a.CASE_NUMBER))), a.CASE_NUMBER) as caseNumber
@@ -99,11 +99,11 @@ const getCaseList = async (
 };
 
 async function updateReviewDescription(results: void | Object) {
-  let reviewDescriptionMapper = new ReviewCodeDescription();
-  let caseResults = results as Array<Chapter11CaseType>;
+  const reviewDescriptionMapper = new ReviewCodeDescription();
+  const caseResults = results as Array<Chapter11CaseType>;
 
   caseResults.forEach(function (caseTy) {
-    var d = caseTy.hearingDisposition;
+    const d = caseTy.hearingDisposition;
     caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
   });
 }

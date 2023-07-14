@@ -27,13 +27,11 @@ const login = async (
   context: ApplicationContext,
   userName: { firstName: string; lastName: string },
 ): Promise<DbResult> => {
-  let userListRecords: UserListRecordSet;
+  const userListRecords: UserListRecordSet = await initializeUsers();
 
   log.info(context, NAMESPACE, `Get all from ${table}`);
 
-  userListRecords = await initializeUsers();
-
-  let input = [
+  const input = [
     {
       name: 'firstName',
       value: userName.firstName,
@@ -50,12 +48,12 @@ const login = async (
   if (queryResult.success) {
     log.info(context, NAMESPACE, 'User login DB query successful');
     const body = queryResult.results;
-    const rowsAffected = (queryResult.results as Array<{}>).length;
+    const rowsAffected = (queryResult.results as Array<object>).length;
     results = {
       success: true,
       message: `user record`,
       count: rowsAffected,
-      body: body as Object,
+      body: body as object,
     };
   } else {
     log.warn(context, NAMESPACE, 'User login DB query unsuccessful');

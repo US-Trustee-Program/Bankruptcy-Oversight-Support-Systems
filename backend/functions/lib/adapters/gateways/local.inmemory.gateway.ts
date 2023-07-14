@@ -13,7 +13,7 @@ const runQuery = async (
 ): Promise<QueryResults> => {
   log.info(context, NAMESPACE, `Mocking query for ${tableName}`, input);
 
-  const queryResult = mockData.filter((obj: {}) => {
+  const queryResult = mockData.filter((obj: object) => {
     let result = true;
     input.forEach((key) => {
       const keyArr = key['name'].split('|');
@@ -105,7 +105,7 @@ const createRecord = async (
 ): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Create record for ${table}`, fields);
 
-  let newRecord: ObjectKeyVal = {};
+  const newRecord: ObjectKeyVal = {};
 
   // if mock data is not preloaded, populate data from mock
   if (!mockData.hasOwnProperty(table)) {
@@ -152,12 +152,12 @@ const updateRecord = async (
 ): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Update record for ${table}`, fields);
 
-  let newRecord: ObjectKeyVal = {};
+  const newRecord: ObjectKeyVal = {};
 
   if (mockData.hasOwnProperty(table)) {
     for (let i = 0; i < mockData[table].length; i++) {
       log.info(context, NAMESPACE, `Searching for ${id}`);
-      let oldRecord = mockData[table][i];
+      const oldRecord = mockData[table][i];
       if (oldRecord[`${table}_id`] == id) {
         log.info(context, NAMESPACE, 'record found', oldRecord);
         newRecord[`${table}_id`] = id;

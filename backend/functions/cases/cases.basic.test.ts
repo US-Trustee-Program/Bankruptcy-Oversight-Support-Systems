@@ -1,5 +1,5 @@
 import httpTrigger from './cases.function';
-import { getProperty } from '../lib/testing/mock-data';
+
 const context = require('../lib/testing/default-context');
 
 describe('Standard case list tests without class mocks', () => {

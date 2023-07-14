@@ -2,9 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  collectCoverageFrom: [
-    '**/*.{js,ts}'
-  ],
+  collectCoverageFrom: ['**/*.{js,ts}'],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '.dependency-cruiser.js',
@@ -15,5 +13,5 @@ module.exports = {
     'lib/testing/mock-data/',
     'jest.*config.js',
   ],
-  testMatch: [ '**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)' ],
+  testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)'],
 };

@@ -36,7 +36,7 @@ const getRecord = async (
   table: string,
   id: number,
 ): Promise<DbResult> => {
-  let query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
+  const query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
   let results: DbResult;
   const input: DbTableFieldSpec[] = [
     {

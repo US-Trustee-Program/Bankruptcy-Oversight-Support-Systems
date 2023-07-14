@@ -31,6 +31,7 @@
     ],
     "object-curly-spacing": ["warn", "always"],
     "object-curly-newline": ["off"],
-    "block-spacing": ["warn", "always"]
+    "block-spacing": ["warn", "always"],
+    "@typescript-eslint/no-var-requires": ["off"]
   }
 }

@@ -1,4 +1,4 @@
-import { ApplicationContext, RecordObj } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { CasePersistenceGateway } from '../types/persistence.gateway';
 import { Context } from '@azure/functions';

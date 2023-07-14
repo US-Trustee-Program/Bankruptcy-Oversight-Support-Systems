@@ -5,6 +5,7 @@ import { GatewayHelper } from './gateway-helper';
 
 class PacerLocalGateway implements PacerGatewayInterface {
   startingMonth: number;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getChapter15Cases = async (context, startingMonth: number = -6): Promise<Chapter15Case[]> => {
     let cases: Chapter15Case[];
 
