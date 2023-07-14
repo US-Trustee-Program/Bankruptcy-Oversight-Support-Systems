@@ -3,6 +3,7 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import { Context } from '@azure/functions';
 import useCase from '../../use-cases/index';
 import log from '../services/logger.service';
+import { AttorneyListDbResult } from '../types/attorneys';
 
 const NAMESPACE = 'ATTORNEYS-CONTROLLER';
 
@@ -13,16 +14,12 @@ export class AttorneysController {
     this.applicationContext = applicationContextCreator(context);
   }
 
-  public async getAttorneyList(requestQueryFilters: { officeId?: string }) {
+  public async getAttorneyList(requestQueryFilters: {
+    officeId?: string;
+  }): Promise<AttorneyListDbResult> {
     log.info(this.applicationContext, NAMESPACE, 'Getting Attorneys list.');
 
-    let officeId = '';
-    if (requestQueryFilters.officeId) {
-      officeId = requestQueryFilters.officeId;
-    }
-
-    return await useCase.listAttorneys(this.applicationContext, {
-      officeId: officeId,
-    });
+    const attorneysList = await useCase.listAttorneys(this.applicationContext, requestQueryFilters);
+    return attorneysList;
   }
 }
