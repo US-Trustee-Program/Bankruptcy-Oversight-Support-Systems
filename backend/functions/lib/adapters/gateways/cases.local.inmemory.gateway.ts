@@ -4,7 +4,6 @@ import { ApplicationContext } from '../types/basic';
 import { DbResult, QueryResults } from '../types/database';
 import { CaseListRecordSet } from '../types/cases';
 import { runQuery } from './local.inmemory.gateway';
-import { getRecord, createRecord, updateRecord, deleteRecord } from './local.inmemory.gateway';
 
 const NAMESPACE = 'CASES-LOCAL-INMEMORY-DB-GATEWAY';
 
@@ -28,10 +27,8 @@ const getCaseList = async (
   context: ApplicationContext,
   caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
 ): Promise<DbResult> => {
-  let caseListRecords: CaseListRecordSet;
-  let input = [];
-
-  caseListRecords = await initializeCases();
+  const caseListRecords: CaseListRecordSet = await initializeCases();
+  const input = [];
 
   log.info(context, NAMESPACE, `${caseOptions.chapter} ${caseOptions.professionalId}`);
 
@@ -55,11 +52,11 @@ const getCaseList = async (
     log.info(context, NAMESPACE, 'Case List DB query successful');
     const body = { staff1Label: '', staff2Label: '', caseList: {} };
     // limit results to 20 records, as we are doing in the MSSQL database to temporarily prevent large result sets.
-    let dbResults = Array.isArray(queryResult.results)
+    const dbResults = Array.isArray(queryResult.results)
       ? [...queryResult.results].splice(0, 20)
       : queryResult.results;
-    body.caseList = dbResults as Object;
-    const rowsAffected = (dbResults as Array<{}>).length;
+    body.caseList = dbResults as object;
+    const rowsAffected = (dbResults as Array<object>).length;
     results = {
       success: true,
       message: `${table} list`,

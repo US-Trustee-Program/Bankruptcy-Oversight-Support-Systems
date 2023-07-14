@@ -35,7 +35,9 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    await expect(gateway.getChapter15Cases(context)).rejects.toThrow('Unexpected response from Pacer API');
+    await expect(gateway.getChapter15Cases(context)).rejects.toThrow(
+      'Unexpected response from Pacer API',
+    );
     expect(httpPostSpy).toHaveBeenCalled();
   });
 

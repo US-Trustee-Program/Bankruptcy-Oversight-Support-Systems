@@ -5,7 +5,10 @@ import { ApplicationContext } from '../types/basic';
 const context = require('../../testing/default-context');
 
 class MockSecretsGateway extends AzureKeyVaultGateway {
-  constructor(functions?: { setSecret?: any; getSecret?: any }) {
+  constructor(functions?: {
+    setSecret?: () => Promise<string>;
+    getSecret?: () => Promise<string>;
+  }) {
     super();
     if (functions?.setSecret) {
       this.setSecret = functions.setSecret;
@@ -19,6 +22,7 @@ class MockSecretsGateway extends AzureKeyVaultGateway {
     return Promise.resolve('fake-new-token');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getSecret(context: ApplicationContext, name: string): Promise<string> {
     return Promise.resolve('fake-token');
   }

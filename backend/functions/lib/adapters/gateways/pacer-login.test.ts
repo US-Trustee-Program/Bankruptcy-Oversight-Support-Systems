@@ -27,7 +27,9 @@ describe('PACER login tests', () => {
       return responseValue;
     });
 
-    await expect(pacerLogin.getPacerToken(context)).rejects.toEqual(Error('Error retrieving token'));
+    await expect(pacerLogin.getPacerToken(context)).rejects.toEqual(
+      Error('Error retrieving token'),
+    );
   });
 
   test('should throw error when pacer returns a status that is not 200', async () => {
@@ -85,7 +87,7 @@ describe('PACER login tests', () => {
   test('getAndStorePacerToken method should throw an error when the response in non 200 ', async () => {
     const pacerLogin = new PacerLogin(new MockPacerTokenSecretGateway(true));
     const responseValue = {
-      status: 404
+      status: 404,
     };
     jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return responseValue;

@@ -10,6 +10,7 @@ export class MockPacerTokenSecretGateway implements PacerSecretsInterface {
     this.hasToken = hasToken;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getPacerTokenFromSecrets(context: ApplicationContext): Promise<string> {
     if (this.hasToken) {
       return Promise.resolve(this._token);

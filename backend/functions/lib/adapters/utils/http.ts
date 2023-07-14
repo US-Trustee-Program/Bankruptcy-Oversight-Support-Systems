@@ -10,7 +10,7 @@ const commonHeaders = {
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(context: Context, body: any = {}): ApiResponse {
+export function httpSuccess(context: Context, body: object = {}): ApiResponse {
   log.info(context as ApplicationContext, NAMESPACE, 'HTTP Success');
   return {
     headers: commonHeaders,

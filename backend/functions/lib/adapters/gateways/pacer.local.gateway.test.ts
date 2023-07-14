@@ -1,9 +1,6 @@
 import { PacerLocalGateway } from './pacer.local.gateway';
 import { Chapter15Case } from '../types/cases';
-import { GatewayHelper } from './gateway-helper';
-const http = require('../utils/http');
 const context = require('azure-function-context-mock');
-const gatewayHelper = new GatewayHelper();
 
 describe('PACER Local gateway tests', () => {
   test('should return content for 200 response', async () => {

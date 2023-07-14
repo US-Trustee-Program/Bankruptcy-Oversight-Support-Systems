@@ -3,8 +3,11 @@ import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
 import { PacerSecretsInterface } from './pacer-secrets.interface';
 import { ApplicationContext } from '../types/basic';
+import log from '../services/logger.service';
 
 dotenv.config();
+
+const NAMESPACE = 'PACER_LOGIN';
 
 export class PacerLogin {
   pacerSecretGateway: PacerSecretsInterface;
@@ -57,6 +60,7 @@ export class PacerLogin {
         throw Error('Failed to Connect to PACER API');
       }
     } catch (e) {
+      log.error(context, NAMESPACE, e.message, e);
       throw e;
     }
 
