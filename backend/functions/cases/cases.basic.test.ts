@@ -1,6 +1,6 @@
 import httpTrigger from './cases.function';
 
-const context = require('../lib/testing/default-context');
+const context = require('azure-function-context-mock');
 
 describe('Standard case list tests without class mocks', () => {
   test('Should return 0 cases successfully when an invalid chapter parameter is provided', async () => {
