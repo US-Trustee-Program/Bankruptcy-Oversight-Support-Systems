@@ -3,25 +3,23 @@ import { AttorneyListDbResult } from '../adapters/types/attorneys';
 import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
 
-namespace UseCases {
-  export class AttorneysList {
-    gateway: AttorneyGatewayInterface;
+export class AttorneysList {
+  gateway: AttorneyGatewayInterface;
 
-    constructor(gateway?: AttorneyGatewayInterface) {
-      if (!gateway) {
-        this.gateway = getAttorneyGateway();
-      } else {
-        this.gateway = gateway;
-      }
+  constructor(gateway?: AttorneyGatewayInterface) {
+    if (!gateway) {
+      this.gateway = getAttorneyGateway();
+    } else {
+      this.gateway = gateway;
     }
+  }
 
-    async getAttorneyList(
-      context: ApplicationContext,
-      fields: { officeId: string },
-    ): Promise<AttorneyListDbResult> {
-      return await this.gateway.getAttorneys(context, fields);
-    }
+  async getAttorneyList(
+    context: ApplicationContext,
+    fields: { officeId: string },
+  ): Promise<AttorneyListDbResult> {
+    return await this.gateway.getAttorneys(context, fields);
   }
 }
 
-export default UseCases.AttorneysList;
+export default AttorneysList;
