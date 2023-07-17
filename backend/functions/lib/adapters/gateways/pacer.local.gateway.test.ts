@@ -1,7 +1,9 @@
 import { PacerLocalGateway } from './pacer.local.gateway';
 import { Chapter15Case } from '../types/cases';
+import { applicationContextCreator } from '../utils/application-context-creator';
 const context = require('azure-function-context-mock');
 
+const appContext = applicationContextCreator(context);
 describe('PACER Local gateway tests', () => {
   test('should return content for 200 response', async () => {
     const expectedResponseValue: Chapter15Case[] = [
@@ -19,7 +21,7 @@ describe('PACER Local gateway tests', () => {
 
     const gateway = new PacerLocalGateway();
 
-    expect(await gateway.getChapter15Cases(context)).toEqual(
+    expect(await gateway.getChapter15Cases(appContext)).toEqual(
       expect.arrayContaining(expectedResponseValue),
     );
   });

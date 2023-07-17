@@ -1,10 +1,12 @@
-const context = require('azure-function-context-mock');
 import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
 import * as dataUtils from './local.inmemory.gateway';
 import * as db from './cases.local.inmemory.gateway';
+import { applicationContextCreator } from '../utils/application-context-creator';
+const context = require('azure-function-context-mock');
 
 const table = 'cases';
+const appContext = applicationContextCreator(context);
 
 const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
 
@@ -31,7 +33,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
       },
     };
 
-    const results = await db.getCaseList(context, { chapter: '', professionalId: '' });
+    const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
   });
@@ -50,7 +52,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
       },
     };
 
-    const results = await db.getCaseList(context, { chapter: '11', professionalId: '' });
+    const results = await db.getCaseList(appContext, { chapter: '11', professionalId: '' });
 
     expect(results).toEqual(mockResults);
   });
@@ -71,7 +73,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
       body: {},
     };
 
-    const results = await db.getCaseList(context, { chapter: '', professionalId: '' });
+    const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
   });

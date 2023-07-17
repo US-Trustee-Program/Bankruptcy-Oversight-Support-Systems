@@ -2,7 +2,10 @@ import { PacerSecretsGateway } from './pacer-secrets.gateway';
 import { NoPacerToken } from './pacer-exceptions';
 import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
 import { ApplicationContext } from '../types/basic';
-const context = require('../../testing/default-context');
+import { applicationContextCreator } from '../utils/application-context-creator';
+const context = require('azure-function-context-mock');
+
+const appContext = applicationContextCreator(context);
 
 class MockSecretsGateway extends AzureKeyVaultGateway {
   constructor(functions?: {
@@ -45,7 +48,7 @@ describe('Azure PACER secrets gateway test', () => {
     );
 
     try {
-      await gateway.savePacerTokenToSecrets(context, 'fake-new-token');
+      await gateway.savePacerTokenToSecrets(appContext, 'fake-new-token');
       // The following expect should not be reached, but exists to trigger a failure if it is reached
       expect(true).toBeFalsy();
     } catch (e) {
@@ -56,7 +59,7 @@ describe('Azure PACER secrets gateway test', () => {
   test('should return PACER token', async () => {
     const gateway = new PacerSecretsGateway(new MockSecretsGateway());
 
-    const token = await gateway.getPacerTokenFromSecrets(context);
+    const token = await gateway.getPacerTokenFromSecrets(appContext);
     expect(token).toEqual('fake-token');
   });
 
@@ -70,7 +73,7 @@ describe('Azure PACER secrets gateway test', () => {
     );
 
     try {
-      await gateway.getPacerTokenFromSecrets(context);
+      await gateway.getPacerTokenFromSecrets(appContext);
       // The following expect should not be reached, but exists to trigger a failure if it is reached
       expect(true).toBeFalsy();
     } catch (e) {
@@ -88,7 +91,7 @@ describe('Azure PACER secrets gateway test', () => {
     );
 
     try {
-      await gateway.getPacerTokenFromSecrets(context);
+      await gateway.getPacerTokenFromSecrets(appContext);
       // The following expect should not be reached, but exists to trigger a failure if it is reached
       expect(true).toBeFalsy();
     } catch (e) {

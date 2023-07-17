@@ -1,15 +1,17 @@
-const context = require('azure-function-context-mock');
 import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
 import * as dataUtils from '../utils/database';
 import * as db from './users.azure.sql.gateway';
 import * as mssql from 'mssql';
+import { applicationContextCreator } from '../utils/application-context-creator';
+const context = require('azure-function-context-mock');
 
 const table = 'users';
+const appContext = applicationContextCreator(context);
 
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
-describe('Azure MSSQL database gateway tests specificaly for the Users table', () => {
+describe('Azure MSSQL database gateway tests specifically for the Users table', () => {
   test('Should return a user record when users First Name and Last Name are provided', async () => {
     const list = await getProperty(table, 'list');
 
@@ -40,7 +42,7 @@ describe('Azure MSSQL database gateway tests specificaly for the Users table', (
       body: list.userList[0],
     };
 
-    const results = await db.login(context, { firstName: 'Test', lastName: 'Person' });
+    const results = await db.login(appContext, { firstName: 'Test', lastName: 'Person' });
 
     expect(results).toEqual(mockResults);
   });
@@ -61,7 +63,7 @@ describe('Azure MSSQL database gateway tests specificaly for the Users table', (
       body: {},
     };
 
-    const results = await db.login(context, { firstName: 'foo', lastName: 'bar' });
+    const results = await db.login(appContext, { firstName: 'foo', lastName: 'bar' });
 
     expect(results).toEqual(mockResults);
   });
