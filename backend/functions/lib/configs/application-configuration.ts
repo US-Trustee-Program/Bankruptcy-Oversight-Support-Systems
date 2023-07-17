@@ -63,7 +63,7 @@ export class ApplicationConfiguration implements AppConfig {
   }
 
   public get(prop: string) {
-    if (this.hasOwnProperty(prop)) {
+    if (Object.prototype.hasOwnProperty.call(this, prop)) {
       return this[prop];
     }
   }
