@@ -1,4 +1,4 @@
-export type PacerCaseData = {
+export interface PacerCaseData {
   courtId?: string;
   caseId?: number;
   caseYear: number;
@@ -15,7 +15,7 @@ export type PacerCaseData = {
   caseNumberFull?: string;
 }
 
-export type PacerLoginResponse = {
+export interface PacerLoginResponse {
   nextGenCSO: string;
   loginResult: string;
 }

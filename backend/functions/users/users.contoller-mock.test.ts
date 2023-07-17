@@ -1,7 +1,6 @@
 import httpTrigger from './users.function';
 import { UsersController } from '../lib/adapters/controllers/users.controller';
-import { getProperty } from '../lib/testing/mock-data';
-const context = require('../lib/testing/defaultContext');
+const context = require('../lib/testing/default-context');
 
 jest.mock('../lib/adapters/controllers/users.controller', () => {
   return {
@@ -10,9 +9,9 @@ jest.mock('../lib/adapters/controllers/users.controller', () => {
         getUser: () => {
           throw new Error('Test error');
         },
-      }
-    })
-  }
+      };
+    }),
+  };
 });
 
 describe('Mocking UsersController to get error handling', () => {
@@ -30,8 +29,8 @@ describe('Mocking UsersController to get error handling', () => {
     const request = {
       query: {
         first_name: 'Test',
-        last_name: 'Person'
-      }
+        last_name: 'Person',
+      },
     };
 
     await httpTrigger(context, request);

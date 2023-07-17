@@ -1,4 +1,5 @@
-import Api, { ResponseData } from './api';
+import { ResponseData } from '../type-declarations/api';
+import Api from './api';
 
 interface ApiOptions {
   professional_id?: string | number;

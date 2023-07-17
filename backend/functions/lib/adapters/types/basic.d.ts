@@ -1,30 +1,31 @@
+import { ApplicationConfiguration } from '../../configs/application-configuration';
+import { Context } from '@azure/functions';
 import { IDbConfig } from './database';
 
-export type Context = {
-  log: Function;
-}
-
-export type ServerType = {
-  hostname: string;
-  port: number;
-};
-
-export type RecordObj = {
-  fieldName: string;
-  fieldValue: string | number;
-};
-
-export type AppConfig = {
+export interface AppConfig {
   dbMock: boolean;
   dbConfig: IDbConfig;
   pacerMock: boolean;
   server: ServerType;
-  get: Function;
-};
+}
 
-export type ObjectKeyVal = {
+export interface ApplicationContext extends Context {
+  config: ApplicationConfiguration;
+}
+
+export interface ObjectKeyVal {
   [key: string]: string | number;
-};
-export type ObjectKeyValArrayKeyVal = {
+}
+export interface ObjectKeyValArrayKeyVal {
   [key: string]: ObjectKeyVal[];
-};
+}
+
+export interface RecordObj {
+  fieldName: string;
+  fieldValue: string | number;
+}
+
+export interface ServerType {
+  hostname: string;
+  port: number;
+}

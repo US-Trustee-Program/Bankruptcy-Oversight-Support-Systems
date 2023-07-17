@@ -1,10 +1,10 @@
-import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { CaseAssignment } from './CaseAssignment';
 import { store } from '../store/store';
 import Chapter15MockApi from '../models/chapter15-mock.api.cases';
-import { ResponseData } from '../models/api';
+import { ResponseData } from '../type-declarations/api';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)

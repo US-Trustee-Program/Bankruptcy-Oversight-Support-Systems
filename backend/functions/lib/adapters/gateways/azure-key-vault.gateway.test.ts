@@ -3,11 +3,11 @@ import {
   KeyVaultSecret,
   SecretClient,
   SecretProperties,
-  SetSecretOptions
+  SetSecretOptions,
 } from '@azure/keyvault-secrets';
 import { DefaultAzureCredential } from '@azure/identity';
 import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
-const context = require('../../testing/defaultContext');
+const context = require('../../testing/default-context');
 
 class MockSecretClient extends SecretClient {
   private token: string;
@@ -69,7 +69,11 @@ describe('Azure Key Vault Gateway tests', () => {
     const azureKeyVaultGateway = new AzureKeyVaultGateway(mockSecretClient);
 
     const setSecretSpy = jest.spyOn(mockSecretClient, 'setSecret');
-    const savedSecretName = await azureKeyVaultGateway.setSecret(context, 'fake-secret', 'fake-value');
+    const savedSecretName = await azureKeyVaultGateway.setSecret(
+      context,
+      'fake-secret',
+      'fake-value',
+    );
 
     expect(setSecretSpy).toHaveBeenCalled();
     expect(savedSecretName).toBe('fake-secret');
@@ -108,12 +112,14 @@ describe('Azure Key Vault Gateway tests', () => {
 
   test('should throw error when setSecret gets an error', async () => {
     const credential = new DefaultAzureCredential();
-    const setSecretMock = () => { throw Error('error string'); }
+    const setSecretMock = () => {
+      throw Error('error string');
+    };
     const mockSecretClient = new MockSecretClient('foo', credential, { setSecret: setSecretMock });
 
     const azureKeyVaultGateway = new AzureKeyVaultGateway(mockSecretClient);
 
-    await azureKeyVaultGateway.setSecret(context, 'fake-secret', 'fake-value').catch(reason => {
+    await azureKeyVaultGateway.setSecret(context, 'fake-secret', 'fake-value').catch((reason) => {
       expect(reason).toEqual(Error('error string'));
     });
   });

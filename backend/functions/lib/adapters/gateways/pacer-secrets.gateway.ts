@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
 import { SecretsInterface } from './secrets.interface';
 import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 
 dotenv.config();
 
@@ -20,11 +20,11 @@ class PacerSecretsGateway implements PacerSecretsInterface {
     }
   }
 
-  public async savePacerTokenToSecrets(context: Context, token: string) {
+  public async savePacerTokenToSecrets(context: ApplicationContext, token: string) {
     await this.secretsGateway.setSecret(context, this.pacerTokenName, token);
   }
 
-  public async getPacerTokenFromSecrets(context: Context): Promise<string> {
+  public async getPacerTokenFromSecrets(context: ApplicationContext): Promise<string> {
     let tokenResponse: string;
     try {
       tokenResponse = await this.secretsGateway.getSecret(context, this.pacerTokenName);
@@ -39,11 +39,11 @@ class PacerSecretsGateway implements PacerSecretsInterface {
     return Promise.resolve(tokenResponse);
   }
 
-  public async getPacerUserIdFromSecrets(context: Context): Promise<string> {
+  public async getPacerUserIdFromSecrets(context: ApplicationContext): Promise<string> {
     return await this.secretsGateway.getSecret(context, process.env.PACER_USER_ID_SECRET_NAME);
   }
 
-  public async getPacerPasswordFromSecrets(context: Context): Promise<string> {
+  public async getPacerPasswordFromSecrets(context: ApplicationContext): Promise<string> {
     return await this.secretsGateway.getSecret(context, process.env.PACER_PASSWORD_SECRET_NAME);
   }
 }

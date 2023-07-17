@@ -1,6 +1,6 @@
 import log from '../services/logger.service';
 import { userMockData, getProperty } from '../../testing/mock-data';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import { UserListRecordSet } from '../types/users';
 import { DbResult, QueryResults } from '../types/database';
 import { runQuery } from './local.inmemory.gateway';
@@ -23,7 +23,10 @@ async function initializeUsers(): Promise<UserListRecordSet> {
   return userListRecords;
 }
 
-const login = async (context: Context, userName: { firstName: string, lastName: string }): Promise<DbResult> => {
+const login = async (
+  context: ApplicationContext,
+  userName: { firstName: string; lastName: string },
+): Promise<DbResult> => {
   let userListRecords: UserListRecordSet;
 
   log.info(context, NAMESPACE, `Get all from ${table}`);

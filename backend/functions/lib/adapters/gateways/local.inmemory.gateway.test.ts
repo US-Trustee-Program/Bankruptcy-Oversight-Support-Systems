@@ -4,18 +4,18 @@ import { getProperty } from '../../testing/mock-data/index';
 import * as db from './local.inmemory.gateway';
 import { RecordObj } from '../types/basic';
 
-const table = 'generic_test_data';
+const table = 'generic-test-data';
 
 describe('Local in-memory database gateway tests', () => {
   let list: any;
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
-  })
+  });
 
   afterEach(() => {
     list = null;
-  })
+  });
 
   test('Should return all records when fetching all records on a given table', async () => {
     const mockResults: DbResult = {
@@ -31,13 +31,13 @@ describe('Local in-memory database gateway tests', () => {
   });
 
   test('Should return 1 result when fetching specific record on a given table', async () => {
-    list = list.filter(rec => (rec.generic_test_data_id === 7));
+    list = list.filter((rec) => rec['generic-test-data_id'] === 7);
 
     const mockResults: DbResult = {
       success: true,
       message: `${table} record`,
       count: 1,
-      body: list
+      body: list,
     };
 
     const results = await db.getRecord(context, table, 7);
@@ -48,7 +48,7 @@ describe('Local in-memory database gateway tests', () => {
   test('Should add one record to the database and returns expected result when creating a record', async () => {
     const fields: RecordObj[] = [
       {
-        fieldName: 'generic_test_data_id',
+        fieldName: 'generic-test-data_id',
         fieldValue: 10,
       },
       {
@@ -65,7 +65,7 @@ describe('Local in-memory database gateway tests', () => {
       success: true,
       message: `${table} list`,
       count: list.length + 1,
-      body: list
+      body: list,
     };
 
     await db.createRecord(context, table, fields);
@@ -73,18 +73,20 @@ describe('Local in-memory database gateway tests', () => {
 
     expect(results).toEqual(mockResults);
 
-    const newRecord = list.filter(rec => (rec.generic_test_data_id === 10));
-    expect(newRecord).toEqual([{
-      generic_test_data_id: 10,
-      b: 11,
-      c: 12,
-    }]);
+    const newRecord = list.filter((rec) => rec['generic-test-data_id'] === 10);
+    expect(newRecord).toEqual([
+      {
+        'generic-test-data_id': 10,
+        b: 11,
+        c: 12,
+      },
+    ]);
   });
 
   test('Should alter 1 record in the database when Updating a record', async () => {
     const fields: RecordObj[] = [
       {
-        fieldName: 'generic_test_data_id',
+        fieldName: 'generic-test-data_id',
         fieldValue: 7,
       },
       {
@@ -102,10 +104,10 @@ describe('Local in-memory database gateway tests', () => {
       message: '',
       count: 1,
       body: {
-        generic_test_data_id: 7,
+        'generic-test-data_id': 7,
         b: 1,
         c: 2,
-      }
+      },
     };
 
     const updateResults = await db.updateRecord(context, table, 7, fields);
@@ -117,13 +119,13 @@ describe('Local in-memory database gateway tests', () => {
   });
 
   test('Should remove 1 record from the dataset when Deleteing a record', async () => {
-    const newList = list.filter(rec => (rec.generic_test_data_id != 7));
+    const newList = list.filter((rec) => rec['generic-test-data_id'] != 7);
 
     const mockResults: DbResult = {
       success: true,
       message: `${table} list`,
       count: list.length - 1,
-      body: newList
+      body: newList,
     };
 
     await db.deleteRecord(context, table, 7);

@@ -1,30 +1,32 @@
+import { ApplicationContext } from '../types/basic';
+import { applicationContextCreator } from '../utils/application-context-creator';
+import { Context } from '@azure/functions';
 import log from '../services/logger.service';
-import useCase from '../../use-cases/index';
-import { UserPersistenceGateway } from '../types/persistence-gateway';
 import proxyData from '../data-access.proxy';
-import { Context } from '../types/basic';
+import useCase from '../../use-cases/index';
+import { UserPersistenceGateway } from '../types/persistence.gateway';
 
 const NAMESPACE = 'USERS-CONTROLLER';
 
 export class UsersController {
-  private readonly functionContext: Context;
+  private readonly applicationContext: ApplicationContext;
 
   constructor(context: Context) {
-    this.functionContext = context;
+    this.applicationContext = applicationContextCreator(context);
   }
 
   public async getUser(userName: { firstName: string; lastName: string }) {
     log.info(
-      this.functionContext,
+      this.applicationContext,
       NAMESPACE,
       'getUser - fetching a user id, given a first and last name.',
     );
 
     const usersDb: UserPersistenceGateway = (await proxyData(
-      this.functionContext,
+      this.applicationContext,
       'users',
     )) as UserPersistenceGateway;
 
-    return await useCase.login(this.functionContext, usersDb, userName);
+    return await useCase.login(this.applicationContext, usersDb, userName);
   }
 }

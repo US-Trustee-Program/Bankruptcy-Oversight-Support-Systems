@@ -1,43 +1,48 @@
 import log from '../services/logger.service';
-import { Context, ObjectKeyVal, RecordObj } from '../types/basic.js';
+import { ApplicationContext, ObjectKeyVal, RecordObj } from '../types/basic.js';
 import { DbResult, QueryResults } from '../types/database.js';
 import { getProperty, mockData } from '../../testing/mock-data';
 
 const NAMESPACE = 'LOCAL-INMEMORY-DATA-MODULE';
 
-const runQuery = async (context: Context, tableName: string, mockData: ObjectKeyVal[], input: {name: string, value: string}[]): Promise<QueryResults> => {
+const runQuery = async (
+  context: ApplicationContext,
+  tableName: string,
+  mockData: ObjectKeyVal[],
+  input: { name: string; value: string }[],
+): Promise<QueryResults> => {
   log.info(context, NAMESPACE, `Mocking query for ${tableName}`, input);
 
   const queryResult = mockData.filter((obj: {}) => {
     let result = true;
-    input.forEach(key => {
+    input.forEach((key) => {
       const keyArr = key['name'].split('|');
       if (keyArr.length > 1) {
         let subResult = false;
-        keyArr.forEach(subKey => {
-          if ((obj.hasOwnProperty(subKey) && obj[subKey] == key['value'])) {
+        keyArr.forEach((subKey) => {
+          if (obj.hasOwnProperty(subKey) && obj[subKey] == key['value']) {
             subResult = true;
           }
-        })
+        });
         result = result && subResult;
       } else {
         if (!(obj.hasOwnProperty(key['name']) && obj[key['name']] == key['value'])) {
           result = false;
         }
       }
-    })
+    });
     return result;
-  })
+  });
 
   // return success
   return {
     success: true,
     message: `Successfully return results from query to ${tableName}`,
     results: queryResult,
-  }
-}
+  };
+};
 
-const getAll = async (context: Context, table: string): Promise<DbResult> => {
+const getAll = async (context: ApplicationContext, table: string): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
 
   log.info(context, NAMESPACE, `Get all from ${table}`);
@@ -59,7 +64,11 @@ const getAll = async (context: Context, table: string): Promise<DbResult> => {
   return results;
 };
 
-const getRecord = async (context: Context, table: string, id: number): Promise<DbResult> => {
+const getRecord = async (
+  context: ApplicationContext,
+  table: string,
+  id: number,
+): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
   let record: ObjectKeyVal = {};
 
@@ -89,7 +98,11 @@ const getRecord = async (context: Context, table: string, id: number): Promise<D
   return results;
 };
 
-const createRecord = async (context: Context, table: string, fields: RecordObj[]): Promise<DbResult> => {
+const createRecord = async (
+  context: ApplicationContext,
+  table: string,
+  fields: RecordObj[],
+): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Create record for ${table}`, fields);
 
   let newRecord: ObjectKeyVal = {};
@@ -131,7 +144,12 @@ const createRecord = async (context: Context, table: string, fields: RecordObj[]
   }
 };
 
-const updateRecord = async (context: Context, table: string, id: number, fields: RecordObj[]): Promise<DbResult> => {
+const updateRecord = async (
+  context: ApplicationContext,
+  table: string,
+  id: number,
+  fields: RecordObj[],
+): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Update record for ${table}`, fields);
 
   let newRecord: ObjectKeyVal = {};
@@ -167,7 +185,11 @@ const updateRecord = async (context: Context, table: string, id: number, fields:
   }
 };
 
-const deleteRecord = async (context: Context, table: string, id: number): Promise<DbResult> => {
+const deleteRecord = async (
+  context: ApplicationContext,
+  table: string,
+  id: number,
+): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Delete record ${id} for ${table}`);
 
   if (mockData.hasOwnProperty(table)) {
