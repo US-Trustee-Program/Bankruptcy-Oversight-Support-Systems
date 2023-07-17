@@ -1,6 +1,6 @@
 import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { CasesInterface } from '../../use-cases/cases.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
@@ -13,7 +13,7 @@ import log from '../services/logger.service';
 const NAMESPACE = 'PACER-API-GATEWAY';
 dotenv.config();
 
-class PacerApiGateway implements PacerGatewayInterface {
+class PacerApiGateway implements CasesInterface {
   private pacerLogin: PacerLogin;
   private token: string;
 

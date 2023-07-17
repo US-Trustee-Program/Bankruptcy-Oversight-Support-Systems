@@ -1,9 +1,9 @@
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15Case } from '../types/cases';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { GatewayHelper } from './gateway-helper';
 
-class PacerLocalGateway implements PacerGatewayInterface {
+class PacerLocalGateway implements CasesInterface {
   startingMonth: number;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getChapter15Cases = async (context, startingMonth: number = -6): Promise<Chapter15Case[]> => {

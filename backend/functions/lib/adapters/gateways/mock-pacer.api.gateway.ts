@@ -1,8 +1,8 @@
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15Case } from '../types/cases';
 import { Context } from '@azure/functions';
 
-export class MockPacerApiGateway implements PacerGatewayInterface {
+export class MockPacerApiGateway implements CasesInterface {
   startingMonth: number;
   private chapter15CaseList: Chapter15Case[] = [];
 
