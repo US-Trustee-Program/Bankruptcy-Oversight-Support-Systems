@@ -4,6 +4,7 @@ import * as dataUtils from './local.inmemory.gateway';
 import * as db from './cases.local.inmemory.gateway';
 import { applicationContextCreator } from '../utils/application-context-creator';
 const context = require('azure-function-context-mock');
+import { ObjectKeyValArrayKeyVal } from '../types/basic';
 
 const table = 'cases';
 const appContext = applicationContextCreator(context);
@@ -11,7 +12,7 @@ const appContext = applicationContextCreator(context);
 const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
 
 describe('Local in-memory database gateway tests specific for cases', () => {
-  let list: any;
+  let list: ObjectKeyValArrayKeyVal;
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
