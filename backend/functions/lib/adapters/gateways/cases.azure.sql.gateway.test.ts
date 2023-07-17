@@ -5,6 +5,7 @@ import * as db from './cases.azure.sql.gateway';
 import * as mssql from 'mssql';
 import { applicationContextCreator } from '../utils/application-context-creator';
 const context = require('azure-function-context-mock');
+import { ObjectKeyValArrayKeyVal } from '../types/basic';
 
 const table = 'cases';
 const appContext = applicationContextCreator(context);
@@ -12,7 +13,7 @@ const appContext = applicationContextCreator(context);
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
 describe('Azure MSSQL database gateway tests specifically for the Cases table', () => {
-  let list: any;
+  let list: ObjectKeyValArrayKeyVal;
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
@@ -35,7 +36,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -74,7 +75,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -103,7 +104,8 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
   test('Should return 5 results when fetching all records with specific professional name on Cases table', async () => {
     const filteredList = list.caseList.filter(
       (rec) =>
-        rec.staff1ProfFirstName.includes('Donna') && rec.staff1ProfLastName.includes('Clayton'),
+        (rec.staff1ProfFirstName as string).includes('Donna') &&
+        (rec.staff1ProfLastName as string).includes('Clayton'),
     );
 
     const mockDbResult = {
@@ -116,7 +118,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({

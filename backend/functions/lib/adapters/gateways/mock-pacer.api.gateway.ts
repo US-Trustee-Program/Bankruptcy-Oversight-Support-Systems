@@ -29,9 +29,6 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
     return date;
   }
 
-  private filterMonths(cases: Chapter15Case[], filterDateGreaterThan) {
-    //
-  }
   private setUpChapter15TestCaseList() {
     //Add Cases older than 6 months
     const oldCases: Chapter15Case[] = [];

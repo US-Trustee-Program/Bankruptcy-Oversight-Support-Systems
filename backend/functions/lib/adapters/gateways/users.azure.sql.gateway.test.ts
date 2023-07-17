@@ -25,7 +25,7 @@ describe('Azure MSSQL database gateway tests specifically for the Users table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({

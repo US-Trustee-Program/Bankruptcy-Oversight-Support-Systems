@@ -71,7 +71,9 @@ const getCaseList = async (
 
       await updateReviewDescription(queryResult.results['recordset']);
       const body = { staff1Label: '', staff2Label: '', caseList: {} };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
       results = {
         success: true,
@@ -98,13 +100,14 @@ const getCaseList = async (
   return results;
 };
 
-async function updateReviewDescription(results: void | Object) {
+async function updateReviewDescription(results: void | object) {
   const reviewDescriptionMapper = new ReviewCodeDescription();
   const caseResults = results as Array<Chapter11CaseType>;
 
-  caseResults.forEach(function (caseTy) {
-    const d = caseTy.hearingDisposition;
-    caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
+  caseResults.forEach(function (caseRecord) {
+    caseRecord.hearingDisposition = reviewDescriptionMapper.getDescription(
+      caseRecord.hearingDisposition,
+    );
   });
 }
 

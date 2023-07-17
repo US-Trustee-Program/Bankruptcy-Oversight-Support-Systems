@@ -9,7 +9,7 @@ const table = 'generic-test-data';
 const appContext = applicationContextCreator(context);
 
 describe('Local in-memory database gateway tests', () => {
-  let list: any;
+  let list: object[];
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
