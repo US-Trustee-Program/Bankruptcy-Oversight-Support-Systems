@@ -23,11 +23,11 @@ export class MockPacerTokenSecretGateway implements PacerSecretsInterface {
     return Promise.resolve(undefined);
   }
 
-  getPacerPasswordFromSecrets(context: ApplicationContext): Promise<string> {
+  getPacerPasswordFromSecrets(): Promise<string> {
     return Promise.resolve('fake-password');
   }
 
-  getPacerUserIdFromSecrets(context: ApplicationContext): Promise<string> {
+  getPacerUserIdFromSecrets(): Promise<string> {
     return Promise.resolve('fake-user-id');
   }
 }
