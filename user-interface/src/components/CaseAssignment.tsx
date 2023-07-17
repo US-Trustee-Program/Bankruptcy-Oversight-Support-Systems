@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
-import Api, { Chapter15CaseListResponseData } from '../models/api';
+import Api from '../models/api';
+import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
-
-type Chapter15Type = {
-  caseNumber: string;
-  caseTitle: string;
-  dateFiled: string;
-};
 
 export const CaseAssignment = () => {
   const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;

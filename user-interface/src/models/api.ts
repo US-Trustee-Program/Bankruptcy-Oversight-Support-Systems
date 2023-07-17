@@ -1,38 +1,7 @@
 import { httpGet, httpPost } from '../components/utils/http.adapter';
 import config from '../configuration/apiConfiguration';
-
-export type CaseListResponseData = {
-  message: string;
-  count: number;
-  body: {
-    staff1Label: string;
-    staff2Label: string;
-    caseList: Array<object>;
-  };
-};
-
-export type Chapter15CaseListResponseData = {
-  message: string;
-  count: number;
-  body: {
-    caseList: Array<object>;
-  };
-};
-
-export type ResponseData = {
-  message: string;
-  count: number;
-  body: object | Array<object>;
-};
-
-export type ResponseError = {
-  message: string;
-  error: object;
-};
-
-export type ObjectKeyVal = {
-  [key: string]: string | number;
-};
+import { ResponseData } from '../type-declarations/api';
+import { ObjectKeyVal } from '../type-declarations/basic';
 
 export default class Api {
   private static _host = `${config.protocol}://${config.server}:${config.port}${

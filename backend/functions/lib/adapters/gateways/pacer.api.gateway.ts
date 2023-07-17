@@ -4,10 +4,10 @@ import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
-import { getPacerTokenSecretGateway } from '../../../factory';
+import { getPacerTokenSecretGateway } from '../../factory';
 import { CaseLocatorException } from './pacer-exceptions';
 import { HttpResponse } from '../types/http';
-import { Context } from '../types/basic';
+import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
 
 const NAMESPACE = 'PACER-API-GATEWAY';
@@ -21,12 +21,15 @@ class PacerApiGateway implements PacerGatewayInterface {
     this.pacerLogin = new PacerLogin(getPacerTokenSecretGateway());
   }
 
-  private async handleExpiredToken(context: Context, startingMonth: number) {
+  private async handleExpiredToken(context: ApplicationContext, startingMonth: number) {
     this.token = await this.pacerLogin.getAndStorePacerToken(context);
     return this.searchCaseLocator(context, startingMonth);
   }
 
-  private async searchCaseLocator(context: Context, startingMonth: number): Promise<Chapter15Case[]> {
+  private async searchCaseLocator(
+    context: ApplicationContext,
+    startingMonth: number,
+  ): Promise<Chapter15Case[]> {
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
     const dateFileFrom = date.toISOString().split('T')[0];
@@ -39,7 +42,11 @@ class PacerApiGateway implements PacerGatewayInterface {
       dateFiledFrom: dateFileFrom,
     };
     const response = await this.getCasesListFromPacerApi(context, body).catch((exception) => {
-      log.error(context, NAMESPACE, `PACER Case Locator API exception with ${exception.status} status: ${exception.message}`);
+      log.error(
+        context,
+        NAMESPACE,
+        `PACER Case Locator API exception with ${exception.status} status: ${exception.message}`,
+      );
       throw new CaseLocatorException(exception.status, exception.message);
     });
 
@@ -51,11 +58,18 @@ class PacerApiGateway implements PacerGatewayInterface {
     return pacerToChapter15Data(response.data.content);
   }
 
-  public async getCasesListFromPacerApi(context: Context, body: {}): Promise<HttpResponse> {
+  public async getCasesListFromPacerApi(
+    context: ApplicationContext,
+    body: {},
+  ): Promise<HttpResponse> {
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
     const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';
 
-    log.info(context, NAMESPACE, `Retrieving cases from PACER with the following request body: ${JSON.stringify(body)}`);
+    log.info(
+      context,
+      NAMESPACE,
+      `Retrieving cases from PACER with the following request body: ${JSON.stringify(body)}`,
+    );
     return await httpPost({
       url: `${pacerCaseLocatorUrlBase}${pacerCaseLocatorUrlPath}`,
       headers: { 'X-NEXT-GEN-CSO': this.token },
@@ -63,7 +77,10 @@ class PacerApiGateway implements PacerGatewayInterface {
     });
   }
 
-  public async getChapter15Cases(context: Context, startingMonth?: number): Promise<Chapter15Case[]> {
+  public async getChapter15Cases(
+    context: ApplicationContext,
+    startingMonth?: number,
+  ): Promise<Chapter15Case[]> {
     startingMonth = startingMonth || -6;
 
     try {

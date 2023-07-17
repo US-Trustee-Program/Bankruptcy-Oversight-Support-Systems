@@ -5,7 +5,7 @@ import * as dataUtils from '../utils/database';
 import * as db from './azure.sql.gateway';
 import * as mssql from 'mssql';
 
-const table = 'generic_test_data';
+const table = 'generic-test-data';
 
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
@@ -17,7 +17,7 @@ describe('Azure MSSQL database gateway tests', () => {
       rowsAffected: [10],
       recordset: list,
       output: {},
-    }
+    };
 
     // create a jest spy to mock the query method of ConnectionPool
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
@@ -25,11 +25,13 @@ describe('Azure MSSQL database gateway tests', () => {
     // set the mock result for the query method
     querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
 
-    runQueryMock.mockImplementation(() => Promise.resolve({
-      success: true,
-      results: mockDbResult,
-      message: 'Test Query',
-    }));
+    runQueryMock.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        results: mockDbResult,
+        message: 'Test Query',
+      }),
+    );
 
     const mockResults: DbResult = {
       success: true,
@@ -50,7 +52,7 @@ describe('Azure MSSQL database gateway tests', () => {
       rowsAffected: [1],
       recordset: list[5],
       output: {},
-    }
+    };
 
     // create a jest spy to mock the query method of ConnectionPool
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
@@ -58,11 +60,13 @@ describe('Azure MSSQL database gateway tests', () => {
     // set the mock result for the query method
     querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
 
-    runQueryMock.mockImplementation(() => Promise.resolve({
-      success: true,
-      results: mockDbResult,
-      message: 'Test Query',
-    }));
+    runQueryMock.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        results: mockDbResult,
+        message: 'Test Query',
+      }),
+    );
 
     const mockResults: DbResult = {
       success: true,
@@ -77,11 +81,13 @@ describe('Azure MSSQL database gateway tests', () => {
   });
 
   test('Should return 0 results when fetching all records with an invalid query', async () => {
-    runQueryMock.mockImplementation(() => Promise.resolve({
-      success: false,
-      results: {},
-      message: 'Test Query was invalid',
-    }));
+    runQueryMock.mockImplementation(() =>
+      Promise.resolve({
+        success: false,
+        results: {},
+        message: 'Test Query was invalid',
+      }),
+    );
 
     const mockResults: DbResult = {
       success: false,
@@ -96,11 +102,13 @@ describe('Azure MSSQL database gateway tests', () => {
   });
 
   test('Should return 0 results when fetching 1 record with an invalid query', async () => {
-    runQueryMock.mockImplementation(() => Promise.resolve({
-      success: false,
-      results: {},
-      message: 'Test Query was invalid',
-    }));
+    runQueryMock.mockImplementation(() =>
+      Promise.resolve({
+        success: false,
+        results: {},
+        message: 'Test Query was invalid',
+      }),
+    );
 
     const mockResults: DbResult = {
       success: false,
@@ -113,5 +121,4 @@ describe('Azure MSSQL database gateway tests', () => {
 
     expect(results).toEqual(mockResults);
   });
-
 });

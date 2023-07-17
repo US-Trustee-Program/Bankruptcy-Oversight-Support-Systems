@@ -1,30 +1,20 @@
+import { ApplicationContext, RecordObj } from '../types/basic';
+import { applicationContextCreator } from '../utils/application-context-creator';
+import { Context } from '@azure/functions';
 import log from '../services/logger.service';
 import useCase from '../../use-cases/index';
-import { CasePersistenceGateway } from '../types/persistence-gateway';
-import proxyData from '../data-access.proxy';
-import { Context, RecordObj } from '../types/basic';
 
 const NAMESPACE = 'CASES-CONTROLLER';
 
 export class CasesController {
-  private readonly functionContext: Context;
-  private casesDb: CasePersistenceGateway;
+  private readonly applicationContext: ApplicationContext;
 
   constructor(context: Context) {
-    this.functionContext = context;
-    this.initializeDb();
-  }
-
-  private async initializeDb() {
-    if (typeof this.casesDb == 'undefined') {
-      this.casesDb = (await proxyData(this.functionContext, 'cases')) as CasePersistenceGateway;
-      log.info(this.functionContext, NAMESPACE, 'casesDB was set successfully');
-    }
+    this.applicationContext = applicationContextCreator(context);
   }
 
   public async getCaseList(requestQueryFilters: { caseChapter: string; professionalId: string }) {
-    await this.initializeDb();
-    log.info(this.functionContext, NAMESPACE, 'Getting case list.');
+    log.info(this.applicationContext, NAMESPACE, 'Getting case list.');
 
     let professionalId = '';
     let caseChapter = '';
@@ -34,7 +24,7 @@ export class CasesController {
     if (requestQueryFilters.caseChapter) {
       caseChapter = requestQueryFilters.caseChapter;
     }
-    return await useCase.listCases(this.functionContext, this.casesDb, {
+    return await useCase.listCases(this.applicationContext, {
       chapter: caseChapter,
       professionalId: professionalId,
     });

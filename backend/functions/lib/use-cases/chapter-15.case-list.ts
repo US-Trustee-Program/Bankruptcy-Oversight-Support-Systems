@@ -1,34 +1,37 @@
+import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
+import { getPacerGateway } from '../factory';
 import { PacerGatewayInterface } from './pacer.gateway.interface';
-import { getPacerGateway } from '../../factory';
-import { Context } from '../adapters/types/basic';
 
 namespace UseCases {
   export class Chapter15CaseList {
     pacerGateway: PacerGatewayInterface;
 
     constructor(pacerGateway?: PacerGatewayInterface) {
-      if (pacerGateway != undefined) {
-        this.pacerGateway = pacerGateway;
-      } else {
+      if (!pacerGateway) {
         this.pacerGateway = getPacerGateway();
+      } else {
+        this.pacerGateway = pacerGateway;
       }
     }
 
-    async getChapter15CaseList(context: Context): Promise<CaseListDbResult> {
+    async getChapter15CaseList(context: ApplicationContext): Promise<CaseListDbResult> {
       try {
         let startingMonth = parseInt(process.env.STARTING_MONTH);
         if (startingMonth > 0) {
           startingMonth = 0 - startingMonth;
         }
-        const cases = await this.pacerGateway.getChapter15Cases(context, startingMonth || undefined);
+        const cases = await this.pacerGateway.getChapter15Cases(
+          context,
+          startingMonth || undefined,
+        );
 
         return {
           success: true,
           message: '',
           count: cases?.length,
           body: {
-            caseList: cases,
+            caseList: cases as ObjectKeyVal[],
           },
         };
       } catch (e) {
