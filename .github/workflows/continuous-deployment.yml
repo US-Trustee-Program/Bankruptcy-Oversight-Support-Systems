@@ -395,8 +395,8 @@ jobs:
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \
           PACER_USER_ID_SECRET_NAME=${{ secrets.PACER_USER_ID_SECRET_NAME }} \
           PACER_PASSWORD_SECRET_NAME=${{ secrets.PACER_PASSWORD_SECRET_NAME }} \
-          STARTING_MONTH=${{ vars.STARTING_MONTH }}"
-          --identities "${{ secrets.AZ_COSMO_MANAGED_IDENTITY }}"
+          STARTING_MONTH=${{ vars.STARTING_MONTH }}" \
+          --identities "${{ secrets.AZ_COSMO_MANAGED_IDENTITY }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   integration-test:
