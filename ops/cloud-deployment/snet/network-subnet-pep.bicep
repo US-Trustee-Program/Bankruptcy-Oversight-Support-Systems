@@ -13,7 +13,7 @@ param privateLinkServiceId string
 /*
   Create subnet for private endpoint
 */
-module privateEndpointSubnet './network-subnet-deploy.bicep' = {
+module privateEndpointSubnet './network-subnet.bicep' = {
   name: '${privateEndpointSubnetName}-module'
   params: {
     subnetAddressPrefix: privateEndpointSubnetAddressPrefix
@@ -25,7 +25,7 @@ module privateEndpointSubnet './network-subnet-deploy.bicep' = {
 /*
   Create private endpoint
 */
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
   name: 'pep-${stackName}'
   location: location
   properties: {
@@ -59,7 +59,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2022-09-01' = {
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
   name: privateDnsZoneName
 }
-resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = {
+resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
   parent: privateEndpoint
   name: 'default'
   properties: {

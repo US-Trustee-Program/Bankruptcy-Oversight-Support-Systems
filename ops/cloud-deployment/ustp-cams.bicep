@@ -56,7 +56,7 @@ param pacerKeyVaultIdentityName string
 @description('Resource group name managed identity with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityResourceGroupName string
 
-module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
+module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
