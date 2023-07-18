@@ -13,6 +13,7 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
 /**
  * Method: proxyData
  *
+ * @param context The ApplicationContext which is a wrapper for the Azure Functions Context
  * @param table A particular primary DB table that we will be working with
  * @param mock This parameter defaults to false, which should be the normal operation.
  *               As false, it will use an environment variable to determine if it should provide
@@ -24,7 +25,7 @@ const NAMESPACE = 'DATA-ACCESS-PROXY';
 async function proxyData(
   context: ApplicationContext,
   table: string,
-  mock: boolean = false,
+  mock?: boolean,
 ): Promise<PersistenceGateway | object> {
   if (context.config.get('dbMock') || mock) {
     log.info(context, NAMESPACE, 'using local in-memory database');

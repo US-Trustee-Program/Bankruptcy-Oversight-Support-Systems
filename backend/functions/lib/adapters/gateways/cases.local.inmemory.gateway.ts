@@ -1,79 +1,85 @@
-import log from '../services/logger.service';
-import { caseListMockData, getProperty } from '../../testing/mock-data';
 import { ApplicationContext } from '../types/basic';
-import { DbResult, QueryResults } from '../types/database';
-import { CaseListRecordSet } from '../types/cases';
+import { caseListMockData, getProperty } from '../../testing/mock-data';
+import { CaseListDbResult, CaseListRecordSet } from '../types/cases';
+import { Chapter11GatewayInterface } from '../../use-cases/chapter-11.gateway.interface';
+import { QueryResults } from '../types/database';
+import log from '../services/logger.service';
 import { runQuery } from './local.inmemory.gateway';
 
 const NAMESPACE = 'CASES-LOCAL-INMEMORY-DB-GATEWAY';
 
 const table = 'cases';
 
-async function initializeCases(): Promise<CaseListRecordSet> {
-  let caseListRecords: CaseListRecordSet;
+class Chapter11LocalGateway implements Chapter11GatewayInterface {
+  private async initializeCases(): Promise<CaseListRecordSet> {
+    let caseListRecords: CaseListRecordSet;
 
-  if (caseListMockData.cases.initialized) {
-    return caseListMockData[table];
-  } else {
-    caseListRecords = await getProperty(table, 'list');
-    caseListRecords.initialized = true;
-    caseListMockData[table] = caseListRecords;
+    if (caseListMockData.cases.initialized) {
+      return caseListMockData[table];
+    } else {
+      caseListRecords = await getProperty(table, 'list');
+      caseListRecords.initialized = true;
+      caseListMockData[table] = caseListRecords;
+    }
+
+    return caseListRecords;
   }
 
-  return caseListRecords;
+  public async getCaseList(
+    context: ApplicationContext,
+    caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
+  ): Promise<CaseListDbResult> {
+    const caseListRecords: CaseListRecordSet = await this.initializeCases();
+    const input = [];
+
+    log.info(context, NAMESPACE, `${caseOptions.chapter} ${caseOptions.professionalId}`);
+
+    if (caseOptions.chapter.length > 0) {
+      input.push({
+        name: 'currentCaseChapter',
+        value: caseOptions.chapter,
+      });
+    }
+
+    if (caseOptions.professionalId.length > 0) {
+      input.push({
+        name: 'staff1ProfCode|staff2ProfCode',
+        value: caseOptions.professionalId,
+      });
+    }
+
+    const queryResult: QueryResults = await runQuery(
+      context,
+      'cases',
+      caseListRecords.caseList,
+      input,
+    );
+    let results: CaseListDbResult;
+
+    if (queryResult.success) {
+      log.info(context, NAMESPACE, 'Case List DB query successful');
+      const body = { staff1Label: '', staff2Label: '', caseList: [] };
+      // limit results to 20 records, as we are doing in the MSSQL database to temporarily prevent large result sets.
+      body.caseList = (queryResult.results as Array<object>).slice(0, 20);
+      const rowsAffected = body.caseList.length;
+      results = {
+        success: true,
+        message: `${table} list`,
+        count: rowsAffected,
+        body,
+      };
+    } else {
+      log.warn(context, NAMESPACE, 'Case List DB query unsuccessful');
+      results = {
+        success: false,
+        message: queryResult.message,
+        count: 0,
+        body: { caseList: [] },
+      };
+    }
+
+    return results;
+  }
 }
 
-const getCaseList = async (
-  context: ApplicationContext,
-  caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
-): Promise<DbResult> => {
-  const caseListRecords: CaseListRecordSet = await initializeCases();
-  const input = [];
-
-  log.info(context, NAMESPACE, `${caseOptions.chapter} ${caseOptions.professionalId}`);
-
-  if (caseOptions.chapter && caseOptions.chapter.length > 0) {
-    input.push({
-      name: 'currentCaseChapter',
-      value: caseOptions.chapter,
-    });
-  }
-  if (caseOptions.professionalId && caseOptions.professionalId.length > 0) {
-    input.push({
-      name: 'staff1ProfCode|staff2ProfCode',
-      value: caseOptions.professionalId,
-    });
-  }
-
-  const queryResult: QueryResults = await runQuery(context, '', caseListRecords.caseList, input);
-  let results: DbResult;
-
-  if (queryResult.success) {
-    log.info(context, NAMESPACE, 'Case List DB query successful');
-    const body = { staff1Label: '', staff2Label: '', caseList: {} };
-    // limit results to 20 records, as we are doing in the MSSQL database to temporarily prevent large result sets.
-    const dbResults = Array.isArray(queryResult.results)
-      ? [...queryResult.results].splice(0, 20)
-      : queryResult.results;
-    body.caseList = dbResults as object;
-    const rowsAffected = (dbResults as Array<object>).length;
-    results = {
-      success: true,
-      message: `${table} list`,
-      count: rowsAffected,
-      body,
-    };
-  } else {
-    log.warn(context, NAMESPACE, 'Case List DB query unsuccessful');
-    results = {
-      success: false,
-      message: queryResult.message,
-      count: 0,
-      body: {},
-    };
-  }
-
-  return results;
-};
-
-export { getCaseList };
+export { Chapter11LocalGateway };

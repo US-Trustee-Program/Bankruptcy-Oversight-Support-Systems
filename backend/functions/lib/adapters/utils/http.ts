@@ -19,7 +19,7 @@ export function httpSuccess(context: Context, body: object = {}): ApiResponse {
   };
 }
 
-export function httpError(context: Context, error: any, code: number): ApiResponse {
+export function httpError(context: Context, error: Error, code: number): ApiResponse {
   log.error(context as ApplicationContext, NAMESPACE, error.message, error);
   return {
     headers: commonHeaders,
@@ -33,69 +33,61 @@ export function httpError(context: Context, error: any, code: number): ApiRespon
 // fetch post
 export async function httpPost(data: {
   url: string;
-  body: {};
-  headers?: {};
+  body: object;
+  headers?: object;
   credentials?: string;
 }): Promise<HttpResponse> {
-  try {
-    const bodyContent = JSON.stringify(data.body);
-    const response = await fetch(data.url, {
-      method: 'POST',
-      headers: {
-        ...data.headers,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: bodyContent,
-    });
-    const responseJson = await response.json();
+  const bodyContent = JSON.stringify(data.body);
+  const response = await fetch(data.url, {
+    method: 'POST',
+    headers: {
+      ...data.headers,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: bodyContent,
+  });
+  const responseJson = await response.json();
 
-    const httpResponse: HttpResponse = {
-      data: responseJson,
-      status: response.status,
-      ...response,
-    };
+  const httpResponse: HttpResponse = {
+    data: responseJson,
+    status: response.status,
+    ...response,
+  };
 
-    if (response.ok) {
-      return Promise.resolve(httpResponse);
-    } else {
-      return Promise.reject(httpResponse);
-    }
-  } catch (reason) {
-    throw reason;
+  if (response.ok) {
+    return Promise.resolve(httpResponse);
+  } else {
+    return Promise.reject(httpResponse);
   }
 }
 /**/
 
 export async function httpGet(data: {
   url: string;
-  headers?: {};
+  headers?: object;
   credentials?: string;
 }): Promise<HttpResponse> {
-  try {
-    const response = await fetch(data.url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...data.headers,
-      },
-    });
-    const responseJson = await response.json();
+  const response = await fetch(data.url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...data.headers,
+    },
+  });
+  const responseJson = await response.json();
 
-    const httpResponse: HttpResponse = {
-      data: responseJson,
-      status: response.status,
-      ...response,
-    };
+  const httpResponse: HttpResponse = {
+    data: responseJson,
+    status: response.status,
+    ...response,
+  };
 
-    if (response.ok) {
-      return Promise.resolve(httpResponse);
-    } else {
-      return Promise.reject(httpResponse);
-    }
-  } catch (reason) {
-    throw reason;
+  if (response.ok) {
+    return Promise.resolve(httpResponse);
+  } else {
+    return Promise.reject(httpResponse);
   }
 }
 /**/

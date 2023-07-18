@@ -4,7 +4,7 @@ import { applicationContextCreator } from './utils/application-context-creator';
 import proxyData from './data-access.proxy';
 
 const applicationContext = applicationContextCreator(context);
-let dbMock = false;
+let dbMock = true;
 
 jest.mock('./gateways/cases.local.inmemory.gateway', () => {
   return {
