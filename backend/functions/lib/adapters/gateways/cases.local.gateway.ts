@@ -14,16 +14,14 @@ export class CasesLocalGateway implements CasesInterface {
       gatewayHelper?: GatewayHelper;
     },
   ): Promise<Chapter15Case[]> => {
-    if (!options.gatewayHelper) {
-      options.gatewayHelper = new GatewayHelper();
-    }
+    const _gatewayHelper = options.gatewayHelper || new GatewayHelper();
     let cases: Chapter15Case[];
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
     const dateFiledFrom = date.toISOString().split('T')[0];
 
     try {
-      cases = options.gatewayHelper.chapter15MockExtract();
+      cases = _gatewayHelper.chapter15MockExtract();
       cases = cases.filter((bCase) => bCase.dateFiled >= dateFiledFrom);
     } catch (err) {
       log.error(context, NAMESPACE, 'Failed to read mock cases.', err);
