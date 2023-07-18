@@ -1,11 +1,11 @@
+import { Chapter11ApiGateway } from './cases.azure.sql.gateway';
 import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
 import * as dataUtils from '../utils/database';
-import * as db from './cases.azure.sql.gateway';
 import * as mssql from 'mssql';
 import { applicationContextCreator } from '../utils/application-context-creator';
-const context = require('azure-function-context-mock');
 import { ObjectKeyValArrayKeyVal } from '../types/basic';
+const context = require('azure-function-context-mock');
 
 const table = 'cases';
 const appContext = applicationContextCreator(context);
@@ -57,6 +57,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
@@ -96,6 +97,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '11', professionalId: '' });
 
     expect(results).toEqual(mockResults);
@@ -139,6 +141,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: 'A1' });
 
     expect(results).toEqual(mockResults);
@@ -157,9 +160,12 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       success: false,
       message: `Test Query was invalid`,
       count: 0,
-      body: {},
+      body: {
+        caseList: [],
+      },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
