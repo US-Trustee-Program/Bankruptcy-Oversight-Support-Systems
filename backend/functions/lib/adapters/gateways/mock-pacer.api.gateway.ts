@@ -1,6 +1,7 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15Case } from '../types/cases';
 import { Context } from '@azure/functions';
+import { GatewayHelper } from './gateway-helper';
 
 export class MockPacerApiGateway implements CasesInterface {
   startingMonth: number;
@@ -11,9 +12,12 @@ export class MockPacerApiGateway implements CasesInterface {
     this.startingMonth = -6;
   }
 
-  async getChapter15Cases(context: Context, startingMonth?: number): Promise<Chapter15Case[]> {
-    if (startingMonth != undefined) {
-      this.startingMonth = startingMonth;
+  async getChapter15Cases(
+    context: Context,
+    options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+  ): Promise<Chapter15Case[]> {
+    if (options.startingMonth != undefined) {
+      this.startingMonth = options.startingMonth;
     }
     const startDate = this.subtractMonths(new Date());
 

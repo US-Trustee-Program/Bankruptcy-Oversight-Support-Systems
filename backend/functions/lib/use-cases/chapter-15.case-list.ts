@@ -20,7 +20,9 @@ export class Chapter15CaseList {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const cases = await this.pacerGateway.getChapter15Cases(context, startingMonth || undefined);
+      const cases = await this.pacerGateway.getChapter15Cases(context, {
+        startingMonth: startingMonth || undefined,
+      });
 
       return {
         success: true,

@@ -37,7 +37,7 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    await expect(gateway.getChapter15Cases(appContext)).rejects.toThrow(
+    await expect(gateway.getChapter15Cases(appContext, {})).rejects.toThrow(
       'Unexpected response from Pacer API',
     );
     expect(httpPostSpy).toHaveBeenCalled();
@@ -68,7 +68,7 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    expect(await gateway.getChapter15Cases(appContext)).toEqual(expectedResponseValue);
+    expect(await gateway.getChapter15Cases(appContext, {})).toEqual(expectedResponseValue);
     expect(httpPostSpy).toHaveBeenCalled();
   });
 
@@ -89,7 +89,7 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    await gateway.getChapter15Cases(appContext);
+    await gateway.getChapter15Cases(appContext, {});
 
     expect(httpPostSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -117,7 +117,7 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    await gateway.getChapter15Cases(appContext, undefined);
+    await gateway.getChapter15Cases(appContext, { startingMonth: undefined });
 
     expect(httpPostSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -138,7 +138,7 @@ describe('PACER API gateway tests', () => {
 
     const getCasesListFromPacerApiSpy = jest.spyOn(gateway, 'getCasesListFromPacerApi');
 
-    await gateway.getChapter15Cases(appContext, expectedStartingMonth);
+    await gateway.getChapter15Cases(appContext, { startingMonth: expectedStartingMonth });
 
     expect(getCasesListFromPacerApiSpy).toHaveBeenCalledWith(
       appContext,
