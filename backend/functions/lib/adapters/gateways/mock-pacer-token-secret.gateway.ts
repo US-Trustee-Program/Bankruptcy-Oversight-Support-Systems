@@ -4,7 +4,7 @@ import { ApplicationContext } from '../types/basic';
 
 export class MockPacerTokenSecretGateway implements PacerSecretsInterface {
   hasToken: boolean;
-  private _token: string = 'abcdefghijklmnopqrstuvwxyz1234567890';
+  private _token = 'abcdefghijklmnopqrstuvwxyz1234567890';
 
   constructor(hasToken: boolean) {
     this.hasToken = hasToken;
