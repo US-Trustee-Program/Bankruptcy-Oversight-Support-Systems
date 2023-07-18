@@ -16,7 +16,7 @@ export class AttorneysList {
 
   async getAttorneyList(
     context: ApplicationContext,
-    fields: { officeId: string },
+    fields: { officeId?: string },
   ): Promise<AttorneyListDbResult> {
     return await this.gateway.getAttorneys(context, fields);
   }

@@ -10,7 +10,7 @@ async function getProperty(table: string, item: string) {
 const mockData: ObjectKeyValArrayKeyVal = {};
 
 const attorneyListRecord: AttorneyListRecordSet = {
-  list: [{}],
+  attorneyList: [{}],
   initialized: false,
 };
 
