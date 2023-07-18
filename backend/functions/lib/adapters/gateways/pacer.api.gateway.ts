@@ -80,7 +80,7 @@ class PacerApiGateway implements CasesInterface {
 
   public async getChapter15Cases(
     context: ApplicationContext,
-    options?: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+    options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
   ): Promise<Chapter15Case[]> {
     const _startingMonth = options.startingMonth || -6;
 
