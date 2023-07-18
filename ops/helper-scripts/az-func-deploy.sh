@@ -82,7 +82,7 @@ az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
     for item in ${app_settings}; do
-        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[-1:].name" --output tsv
+        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[?name=='${item%=*}'].name | [0]" --output tsv
     done
 fi
 
