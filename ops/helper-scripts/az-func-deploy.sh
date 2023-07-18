@@ -50,10 +50,12 @@ while [[ $# > 0 ]]; do
         identities="${2}"
         shift 2
         ;;
-    --idenities-rg)
+
+    --identitiesResourceGroup) # TODO : Should be refactor so that all identities do not have to belong to a single resource
         id_rg="${2}"
         shift 2
         ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
