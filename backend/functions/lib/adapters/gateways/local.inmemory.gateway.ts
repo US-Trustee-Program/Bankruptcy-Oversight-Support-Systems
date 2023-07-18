@@ -20,13 +20,18 @@ const runQuery = async (
       if (keyArr.length > 1) {
         let subResult = false;
         keyArr.forEach((subKey) => {
-          if (obj.hasOwnProperty(subKey) && obj[subKey] == key['value']) {
+          if (Object.prototype.hasOwnProperty.call(obj, subKey) && obj[subKey] == key['value']) {
             subResult = true;
           }
         });
         result = result && subResult;
       } else {
-        if (!(obj.hasOwnProperty(key['name']) && obj[key['name']] == key['value'])) {
+        if (
+          !(
+            Object.prototype.hasOwnProperty.call(obj, key['name']) &&
+            obj[key['name']] == key['value']
+          )
+        ) {
           result = false;
         }
       }
@@ -47,7 +52,7 @@ const getAll = async (context: ApplicationContext, table: string): Promise<DbRes
 
   log.info(context, NAMESPACE, `Get all from ${table}`);
 
-  if (mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     list = mockData[table];
   } else {
     list = await getProperty(table, 'list');
@@ -74,14 +79,14 @@ const getRecord = async (
 
   log.info(context, NAMESPACE, `Fetch record ${id} from ${table}`);
 
-  if (mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     list = mockData[table];
   } else {
     list = await getProperty(table, 'list');
     mockData[table] = list;
   }
 
-  if (mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     const data = list.filter((rec) => rec[`${table.toLowerCase()}_id`] == `${id}`).pop();
     if (data) record = data;
   }
@@ -108,7 +113,7 @@ const createRecord = async (
   const newRecord: ObjectKeyVal = {};
 
   // if mock data is not preloaded, populate data from mock
-  if (!mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     mockData[table] = await getProperty(table, 'list');
   }
 
@@ -126,7 +131,7 @@ const createRecord = async (
     newRecord[field.fieldName] = field.fieldValue as string;
   });
 
-  if (mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     mockData[table].push(newRecord);
     return {
       success: true,
@@ -154,7 +159,7 @@ const updateRecord = async (
 
   const newRecord: ObjectKeyVal = {};
 
-  if (mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     for (let i = 0; i < mockData[table].length; i++) {
       log.info(context, NAMESPACE, `Searching for ${id}`);
       const oldRecord = mockData[table][i];
@@ -192,7 +197,7 @@ const deleteRecord = async (
 ): Promise<DbResult> => {
   log.info(context, NAMESPACE, `Delete record ${id} for ${table}`);
 
-  if (mockData.hasOwnProperty(table)) {
+  if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     const data = mockData[table].filter((rec) => rec[`${table}_id`] != id);
     if (data) {
       mockData[table] = data;

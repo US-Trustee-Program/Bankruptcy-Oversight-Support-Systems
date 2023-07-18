@@ -1,8 +1,9 @@
-import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
+import { CaseListDbResult } from '../types/cases';
 import * as dataUtils from './local.inmemory.gateway';
-import * as db from './cases.local.inmemory.gateway';
 import { applicationContextCreator } from '../utils/application-context-creator';
+import { ObjectKeyValArrayKeyVal } from '../types/basic';
+import { Chapter11LocalGateway } from './cases.local.inmemory.gateway';
 const context = require('azure-function-context-mock');
 
 const table = 'cases';
@@ -10,8 +11,28 @@ const appContext = applicationContextCreator(context);
 
 const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
 
+jest.mock('../../configs/application-configuration', () => {
+  // Require the original module!
+  const originalModule = jest.requireActual('../../configs/application-configuration');
+  const originalConfigClass = originalModule.ApplicationConfiguration;
+
+  class MockAppConfig extends originalConfigClass {
+    get(key: string) {
+      // override result conditionally on input arguments
+      if (key === 'dbMock') return true;
+      // otherwise return using original behavior
+      return super.get(key);
+    }
+  }
+
+  return {
+    ...originalModule,
+    ApplicationConfiguration: MockAppConfig,
+  };
+});
+
 describe('Local in-memory database gateway tests specific for cases', () => {
-  let list: any;
+  let list: ObjectKeyValArrayKeyVal;
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
@@ -22,7 +43,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
   });
 
   test('Should return a maximum of 20 results when fetching all records from Cases table', async () => {
-    const mockResults: DbResult = {
+    const mockResults: CaseListDbResult = {
       success: true,
       message: `${table} list`,
       count: 20,
@@ -33,6 +54,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
       },
     };
 
+    const db = new Chapter11LocalGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
@@ -41,7 +63,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
   test('Should return 5 results when fetching all chapter 11 records on Cases table', async () => {
     const filteredList = list.caseList.filter((rec) => rec.currentCaseChapter === '11');
 
-    const mockResults: DbResult = {
+    const mockResults: CaseListDbResult = {
       success: true,
       message: `${table} list`,
       count: 5,
@@ -52,6 +74,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
       },
     };
 
+    const db = new Chapter11LocalGateway();
     const results = await db.getCaseList(appContext, { chapter: '11', professionalId: '' });
 
     expect(results).toEqual(mockResults);
@@ -66,13 +89,16 @@ describe('Local in-memory database gateway tests specific for cases', () => {
       }),
     );
 
-    const mockResults: DbResult = {
+    const mockResults: CaseListDbResult = {
       success: false,
       message: `Test Query was invalid`,
       count: 0,
-      body: {},
+      body: {
+        caseList: [],
+      },
     };
 
+    const db = new Chapter11LocalGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);

@@ -1,8 +1,8 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import log from '../lib/adapters/services/logger.service';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'ATTORNEYS-FUNCTION';
 
@@ -12,10 +12,15 @@ const httpTrigger: AzureFunction = async function (
   attorneysRequest: HttpRequest,
 ): Promise<void> {
   const attorneysController = new AttorneysController(functionContext);
+  let officeId = '';
+
+  if (attorneysRequest.query.office_id) officeId = attorneysRequest.query.office_id;
+  else if (attorneysRequest.body && attorneysRequest.body.office_id)
+    officeId = attorneysRequest.body.office_id;
 
   try {
-    const caseList = await attorneysController.getAttorneyList({ officeId: '' });
-    functionContext.res = httpSuccess(functionContext, caseList);
+    const attorneysList = await attorneysController.getAttorneyList({ officeId });
+    functionContext.res = httpSuccess(functionContext, attorneysList);
   } catch (exception) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
     functionContext.res = httpError(functionContext, exception, 404);

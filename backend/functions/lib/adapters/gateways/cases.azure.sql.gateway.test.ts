@@ -1,9 +1,10 @@
+import { Chapter11ApiGateway } from './cases.azure.sql.gateway';
 import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
 import * as dataUtils from '../utils/database';
-import * as db from './cases.azure.sql.gateway';
 import * as mssql from 'mssql';
 import { applicationContextCreator } from '../utils/application-context-creator';
+import { ObjectKeyValArrayKeyVal } from '../types/basic';
 const context = require('azure-function-context-mock');
 
 const table = 'cases';
@@ -12,7 +13,7 @@ const appContext = applicationContextCreator(context);
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
 describe('Azure MSSQL database gateway tests specifically for the Cases table', () => {
-  let list: any;
+  let list: ObjectKeyValArrayKeyVal;
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
@@ -35,7 +36,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -56,6 +57,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
@@ -74,7 +76,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -95,6 +97,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '11', professionalId: '' });
 
     expect(results).toEqual(mockResults);
@@ -103,7 +106,8 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
   test('Should return 5 results when fetching all records with specific professional name on Cases table', async () => {
     const filteredList = list.caseList.filter(
       (rec) =>
-        rec.staff1ProfFirstName.includes('Donna') && rec.staff1ProfLastName.includes('Clayton'),
+        (rec.staff1ProfFirstName as string).includes('Donna') &&
+        (rec.staff1ProfLastName as string).includes('Clayton'),
     );
 
     const mockDbResult = {
@@ -116,7 +120,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -137,6 +141,7 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: 'A1' });
 
     expect(results).toEqual(mockResults);
@@ -155,9 +160,12 @@ describe('Azure MSSQL database gateway tests specifically for the Cases table', 
       success: false,
       message: `Test Query was invalid`,
       count: 0,
-      body: {},
+      body: {
+        caseList: [],
+      },
     };
 
+    const db = new Chapter11ApiGateway();
     const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
