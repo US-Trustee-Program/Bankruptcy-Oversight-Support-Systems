@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as mssql from 'mssql';
 import { DbResult, QueryResults, DbTableFieldSpec } from '../types/database';
 import { executeQuery } from '../utils/database';
 import { ApplicationContext } from '../types/basic';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NAMESPACE = 'AZURE-SQL-MODULE';
 
 const getAll = async (context: ApplicationContext, table: string): Promise<DbResult> => {
@@ -36,7 +38,7 @@ const getRecord = async (
   table: string,
   id: number,
 ): Promise<DbResult> => {
-  let query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
+  const query = `SELECT * FROM ${table} WHERE ${table}_id = @id`;
   let results: DbResult;
   const input: DbTableFieldSpec[] = [
     {
@@ -50,8 +52,8 @@ const getRecord = async (
   if (
     Boolean(queryResult) &&
     queryResult.success &&
-    typeof (queryResult as any).results.rowsAffected != 'undefined' &&
-    (queryResult as any).results.rowsAffected[0] === 1
+    typeof (queryResult.results as mssql.IResult<any>).rowsAffected != 'undefined' &&
+    (queryResult.results as mssql.IResult<any>).rowsAffected[0] === 1
   ) {
     results = {
       message: '',

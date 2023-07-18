@@ -1,5 +1,5 @@
 import httpTrigger from './cases.function';
-const context = require('../lib/testing/default-context');
+const context = require('azure-function-context-mock');
 
 jest.mock('../lib/adapters/controllers/cases.controller', () => {
   return {

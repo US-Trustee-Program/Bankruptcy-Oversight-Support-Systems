@@ -1,8 +1,11 @@
 import { CaseListDbResult, Chapter15Case } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case-list';
 import { MockPacerApiGateway } from '../adapters/gateways/mock-pacer.api.gateway';
-import { PacerGatewayInterface } from '../use-cases/pacer.gateway.interface';
+import { PacerGatewayInterface } from './pacer.gateway.interface';
+import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 const context = require('azure-function-context-mock');
+
+const appContext = applicationContextCreator(context);
 
 jest.mock('../adapters/gateways/pacer-login', () => {
   return {
@@ -50,20 +53,20 @@ describe('Chapter 15 case tests', () => {
       return caseList;
     });
 
-    const results = await chapter15CaseList.getChapter15CaseList(context);
+    const results = await chapter15CaseList.getChapter15CaseList(appContext);
 
     expect(results).toStrictEqual(mockChapterList);
   });
 
   test('Calling getChapter15CaseList without a starting month filter should return valid chapter 15 data for the last 6 months of default', async () => {
-    let today = new Date();
+    const today = new Date();
     const expectedStartDate = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate())
       .toISOString()
       .split('T')[0];
 
     const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGateway();
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
-    const actual = await chapter15CaseList.getChapter15CaseList(context);
+    const actual = await chapter15CaseList.getChapter15CaseList(appContext);
     function checkDate(aCase) {
       const verify = aCase.dateFiled >= expectedStartDate;
       return verify;
@@ -75,13 +78,14 @@ describe('Chapter 15 case tests', () => {
 
   test('should throw error and return specific error message received from PACER server when error is thrown in pacerGateway.getChapter15Cases', async () => {
     class MockPacerApiGatewayWithError extends MockPacerApiGateway {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async getChapter15Cases(context, startingMonth?: number): Promise<Chapter15Case[]> {
         throw Error('some random error');
       }
     }
     const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGatewayWithError();
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
-    expect(await chapter15CaseList.getChapter15CaseList(context)).toEqual({
+    expect(await chapter15CaseList.getChapter15CaseList(appContext)).toEqual({
       body: { caseList: [] },
       count: 0,
       message: 'some random error',
@@ -91,13 +95,14 @@ describe('Chapter 15 case tests', () => {
 
   test('should throw error with default message and return Unknown Error received from PACER server when unknown error is thrown in pacerGateway.getChapter15Cases', async () => {
     class MockPacerApiGatewayWithError extends MockPacerApiGateway {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async getChapter15Cases(context, startingMonth?: number): Promise<Chapter15Case[]> {
         throw Error('');
       }
     }
     const mockPacerGateway: PacerGatewayInterface = new MockPacerApiGatewayWithError();
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);
-    expect(await chapter15CaseList.getChapter15CaseList(context)).toEqual({
+    expect(await chapter15CaseList.getChapter15CaseList(appContext)).toEqual({
       body: { caseList: [] },
       count: 0,
       message: 'Unknown Error received from PACER server',
@@ -113,9 +118,9 @@ describe('Chapter 15 case tests', () => {
     process.env = {
       STARTING_MONTH: 'not a number',
     };
-    await chapter15CaseList.getChapter15CaseList(context);
+    await chapter15CaseList.getChapter15CaseList(appContext);
 
-    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(appContext, undefined);
   });
 
   test('should call getChapter15Cases with the same starting number if STARTING_MONTH is negative', async () => {
@@ -126,9 +131,9 @@ describe('Chapter 15 case tests', () => {
     process.env = {
       STARTING_MONTH: '-70',
     };
-    await chapter15CaseList.getChapter15CaseList(context);
+    await chapter15CaseList.getChapter15CaseList(appContext);
 
-    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, -70);
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(appContext, -70);
   });
 
   test('should negate STARTING_MONTH if getChapter15Cases is called with a positive number', async () => {
@@ -139,9 +144,9 @@ describe('Chapter 15 case tests', () => {
     process.env = {
       STARTING_MONTH: '70',
     };
-    await chapter15CaseList.getChapter15CaseList(context);
+    await chapter15CaseList.getChapter15CaseList(appContext);
 
-    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, -70);
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(appContext, -70);
   });
 
   test('should call getChapter15Cases with undefined if STARTING_MONTH is undefined', async () => {
@@ -152,9 +157,9 @@ describe('Chapter 15 case tests', () => {
     process.env = {
       STARTING_MONTH: undefined,
     };
-    await chapter15CaseList.getChapter15CaseList(context);
+    await chapter15CaseList.getChapter15CaseList(appContext);
 
-    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(appContext, undefined);
   });
 
   test('should call getChapter15Cases with undefined if STARTING_MONTH is null', async () => {
@@ -165,8 +170,8 @@ describe('Chapter 15 case tests', () => {
     process.env = {
       STARTING_MONTH: null,
     };
-    await chapter15CaseList.getChapter15CaseList(context);
+    await chapter15CaseList.getChapter15CaseList(appContext);
 
-    expect(pacerGatewaySpy).toHaveBeenCalledWith(context, undefined);
+    expect(pacerGatewaySpy).toHaveBeenCalledWith(appContext, undefined);
   });
 });

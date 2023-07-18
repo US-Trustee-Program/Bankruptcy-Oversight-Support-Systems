@@ -1,5 +1,5 @@
 import httpTrigger from './attorneys.function';
-const context = require('../lib/testing/default-context');
+const context = require('azure-function-context-mock');
 
 test('Attorneys Http trigger should by default return a list of attorneys', async () => {
   const request = {

@@ -4,19 +4,19 @@ export interface DbResult {
   success: boolean;
   message: string;
   count: number;
-  body: Object;
+  body: object;
 }
 
 export interface QueryResults {
   success: boolean;
-  results: void | Object;
+  results: void | object;
   message: string;
 }
 
 export interface DbTableFieldSpec {
   name: string;
   type: mssql.ISqlTypeFactoryWithNoParams;
-  value: any;
+  value: unknown;
 }
 
 export interface IDbConfig {

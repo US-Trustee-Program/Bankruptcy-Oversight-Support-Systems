@@ -3,8 +3,17 @@ import * as dotenv from 'dotenv';
 import { NoPacerToken } from './pacer-exceptions';
 import { PacerSecretsInterface } from './pacer-secrets.interface';
 import { ApplicationContext } from '../types/basic';
+import log from '../services/logger.service';
 
 dotenv.config();
+
+const NAMESPACE = 'PACER_LOGIN';
+
+type PacerTokenResponse = {
+  loginResult: number;
+  nextGenCSO?: string;
+  errorDescription?: string;
+};
 
 export class PacerLogin {
   pacerSecretGateway: PacerSecretsInterface;
@@ -13,7 +22,7 @@ export class PacerLogin {
     this.pacerSecretGateway = pacerSecretGateway;
   }
 
-  private getValidToken(data: any): string {
+  private getValidToken(data: PacerTokenResponse): string {
     if (data.loginResult == 0) {
       return data.nextGenCSO;
     } else if (data.loginResult == 1) {
@@ -51,12 +60,13 @@ export class PacerLogin {
       });
 
       if (response.status == 200) {
-        token = this.getValidToken(response.data);
+        token = this.getValidToken(response.data as PacerTokenResponse);
         await this.pacerSecretGateway.savePacerTokenToSecrets(context, token);
       } else {
         throw Error('Failed to Connect to PACER API');
       }
     } catch (e) {
+      log.error(context, NAMESPACE, e.message, e);
       throw e;
     }
 
