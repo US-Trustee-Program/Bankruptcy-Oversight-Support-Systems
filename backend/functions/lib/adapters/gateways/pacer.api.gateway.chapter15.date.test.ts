@@ -4,7 +4,7 @@ const context = require('azure-function-context-mock');
 
 describe('Test the date filter on chapter 15 cases', () => {
   test('should return cases in the last 6 months when no starting month filter set', async () => {
-    let today = new Date();
+    const today = new Date();
     const expectedStartDate = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate())
       .toISOString()
       .split('T')[0];
@@ -22,8 +22,8 @@ describe('Test the date filter on chapter 15 cases', () => {
 
   test('should return cases as per the given starting month filter set', async () => {
     const testStartingMonthFilter = -60;
-    let today = new Date();
-    let expectedStartDate = new Date(
+    const today = new Date();
+    const expectedStartDate = new Date(
       today.getFullYear(),
       today.getMonth() + testStartingMonthFilter,
       today.getDate(),

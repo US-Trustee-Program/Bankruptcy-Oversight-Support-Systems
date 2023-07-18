@@ -1,9 +1,11 @@
 import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
+import { applicationContextCreator } from '../utils/application-context-creator';
 const http = require('../utils/http');
 const context = require('azure-function-context-mock');
 
+const appContext = applicationContextCreator(context);
 jest.mock('./pacer-login', () => {
   return {
     PacerLogin: jest.fn().mockImplementation(() => {
@@ -35,7 +37,9 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    await expect(gateway.getChapter15Cases(context)).rejects.toThrow('Unexpected response from Pacer API');
+    await expect(gateway.getChapter15Cases(appContext)).rejects.toThrow(
+      'Unexpected response from Pacer API',
+    );
     expect(httpPostSpy).toHaveBeenCalled();
   });
 
@@ -64,7 +68,7 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    expect(await gateway.getChapter15Cases(context)).toEqual(expectedResponseValue);
+    expect(await gateway.getChapter15Cases(appContext)).toEqual(expectedResponseValue);
     expect(httpPostSpy).toHaveBeenCalled();
   });
 
@@ -85,7 +89,7 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    await gateway.getChapter15Cases(context);
+    await gateway.getChapter15Cases(appContext);
 
     expect(httpPostSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -113,7 +117,7 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    await gateway.getChapter15Cases(context, undefined);
+    await gateway.getChapter15Cases(appContext, undefined);
 
     expect(httpPostSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -134,10 +138,10 @@ describe('PACER API gateway tests', () => {
 
     const getCasesListFromPacerApiSpy = jest.spyOn(gateway, 'getCasesListFromPacerApi');
 
-    await gateway.getChapter15Cases(context, expectedStartingMonth);
+    await gateway.getChapter15Cases(appContext, expectedStartingMonth);
 
     expect(getCasesListFromPacerApiSpy).toHaveBeenCalledWith(
-      context,
+      appContext,
       expect.objectContaining({
         dateFiledFrom: expectedDate,
       }),

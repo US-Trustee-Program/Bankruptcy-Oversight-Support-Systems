@@ -29,13 +29,10 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
     return date;
   }
 
-  private filterMonths(cases: Chapter15Case[], filterDateGreaterThan) {
-    //
-  }
   private setUpChapter15TestCaseList() {
     //Add Cases older than 6 months
-    let oldCases: Chapter15Case[] = [];
-    let today = new Date();
+    const oldCases: Chapter15Case[] = [];
+    const today = new Date();
 
     oldCases.push(
       {
@@ -63,7 +60,7 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
     this.chapter15CaseList.push(oldCases[0], oldCases[1], oldCases[2]);
 
     // Add Cases newer than 6 months
-    let newCases: Chapter15Case[] = [];
+    const newCases: Chapter15Case[] = [];
 
     newCases.push(
       {

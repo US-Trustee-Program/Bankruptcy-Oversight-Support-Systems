@@ -1,5 +1,5 @@
 import httpTrigger from './healthcheck.function';
-const context = require('../lib/testing/default-context');
+const context = require('azure-function-context-mock');
 
 test('Healthcheck endpoint should return an ALIVE status', async () => {
   const request = {

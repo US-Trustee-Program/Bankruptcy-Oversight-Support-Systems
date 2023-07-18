@@ -17,7 +17,7 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
     context: ApplicationContext,
     caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
   ): Promise<CaseListDbResult> {
-    let input: DbTableFieldSpec[] = [];
+    const input: DbTableFieldSpec[] = [];
 
     let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
         , CONCAT(a.CASE_YEAR, '-', REPLICATE('0', 5-DATALENGTH(LTRIM(a.CASE_NUMBER))), a.CASE_NUMBER) as caseNumber
@@ -73,7 +73,9 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
 
         await this.updateReviewDescription(queryResult.results['recordset']);
         const body: CaseListRecordSet = { staff1Label: '', staff2Label: '', caseList: [] };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
         results = {
           success: true,
@@ -104,13 +106,14 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
     return results;
   }
 
-  private async updateReviewDescription(results: void | Object) {
-    let reviewDescriptionMapper = new ReviewCodeDescription();
-    let caseResults = results as Array<Chapter11CaseType>;
+  private async updateReviewDescription(results: void | object) {
+    const reviewDescriptionMapper = new ReviewCodeDescription();
+    const caseResults = results as Array<Chapter11CaseType>;
 
-    caseResults.forEach(function (caseTy) {
-      var d = caseTy.hearingDisposition;
-      caseTy.hearingDisposition = reviewDescriptionMapper.getDescription(caseTy.hearingDisposition);
+    caseResults.forEach(function (caseRecord) {
+      caseRecord.hearingDisposition = reviewDescriptionMapper.getDescription(
+        caseRecord.hearingDisposition,
+      );
     });
   }
 

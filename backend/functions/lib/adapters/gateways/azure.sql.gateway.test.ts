@@ -1,11 +1,13 @@
-const context = require('azure-function-context-mock');
+import { applicationContextCreator } from '../utils/application-context-creator';
 import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
 import * as dataUtils from '../utils/database';
 import * as db from './azure.sql.gateway';
 import * as mssql from 'mssql';
+const context = require('azure-function-context-mock');
 
 const table = 'generic-test-data';
+const appContext = applicationContextCreator(context);
 
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
@@ -23,7 +25,7 @@ describe('Azure MSSQL database gateway tests', () => {
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -40,7 +42,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: list,
     };
 
-    const results = await db.getAll(context, table);
+    const results = await db.getAll(appContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -58,7 +60,7 @@ describe('Azure MSSQL database gateway tests', () => {
     const querySpy = jest.spyOn(mssql.ConnectionPool.prototype, 'query');
 
     // set the mock result for the query method
-    querySpy.mockReturnValue(Promise.resolve(mockDbResult) as any);
+    querySpy.mockImplementation(() => Promise.resolve(mockDbResult as mssql.IResult<unknown>));
 
     runQueryMock.mockImplementation(() =>
       Promise.resolve({
@@ -75,7 +77,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: list[5],
     };
 
-    const results = await db.getRecord(context, table, 6);
+    const results = await db.getRecord(appContext, table, 6);
 
     expect(results).toEqual(mockResults);
   });
@@ -96,7 +98,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: {},
     };
 
-    const results = await db.getAll(context, table);
+    const results = await db.getAll(appContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -117,7 +119,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: {},
     };
 
-    const results = await db.getRecord(context, table, 6);
+    const results = await db.getRecord(appContext, table, 6);
 
     expect(results).toEqual(mockResults);
   });

@@ -60,7 +60,7 @@ class PacerApiGateway implements PacerGatewayInterface {
 
   public async getCasesListFromPacerApi(
     context: ApplicationContext,
-    body: {},
+    body: object,
   ): Promise<HttpResponse> {
     const pacerCaseLocatorUrlBase = process.env.PACER_CASE_LOCATOR_URL;
     const pacerCaseLocatorUrlPath = '/pcl-public-api/rest/cases/find';

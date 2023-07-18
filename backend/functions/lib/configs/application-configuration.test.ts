@@ -15,7 +15,7 @@ describe('Testing that database configuration is loaded correctly based on envir
   test('Should setup Config with default database authentication if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is not empty', async () => {
     process.env.AZURE_MANAGED_IDENTITY = '';
     process.env.MSSQL_PASS = 'abcdefg';
-    let config = new ApplicationConfiguration();
+    const config = new ApplicationConfiguration();
 
     expect(config.dbConfig.authentication.type).toEqual('default');
   });
@@ -24,7 +24,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env.AZURE_MANAGED_IDENTITY = '';
     process.env.MSSQL_PASS = '';
     process.env.DATABASE_MOCK = 'true';
-    let config = new ApplicationConfiguration();
+    const config = new ApplicationConfiguration();
 
     expect(config.dbConfig.authentication.type).toEqual('mock');
   });
