@@ -76,7 +76,7 @@ param allowVeracodeScan bool = false
 /*
   Subnet creation in target virtual network
 */
-module webappSubnet './network-subnet-deploy.bicep' = {
+module webappSubnet './snet/network-subnet.bicep' = {
   name: '${webappName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -98,7 +98,7 @@ module webappSubnet './network-subnet-deploy.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './network-subnet-pep-deploy.bicep' = {
+module privateEndpoint './snet/network-subnet-pep.bicep' = {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
