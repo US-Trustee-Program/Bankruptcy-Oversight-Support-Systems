@@ -9,17 +9,22 @@ const NAMESPACE = 'CASES-LOCAL-GATEWAY';
 export class CasesLocalGateway implements CasesInterface {
   getChapter15Cases = async (
     context: ApplicationContext,
-    startingMonth: number = -6,
+    options: {
+      startingMonth?: number;
+      gatewayHelper?: GatewayHelper;
+    },
   ): Promise<Chapter15Case[]> => {
+    if (!options.gatewayHelper) {
+      options.gatewayHelper = new GatewayHelper();
+    }
     let cases: Chapter15Case[];
     const date = new Date();
-    date.setMonth(date.getMonth() + startingMonth);
+    date.setMonth(date.getMonth() + (options.startingMonth || -6));
     const dateFiledFrom = date.toISOString().split('T')[0];
 
     try {
-      const gatewayHelper = new GatewayHelper();
-      cases = gatewayHelper.chapter15MockExtract();
-      cases = cases.filter((bCase) => bCase.dateFiled > dateFiledFrom);
+      cases = options.gatewayHelper.chapter15MockExtract();
+      cases = cases.filter((bCase) => bCase.dateFiled >= dateFiledFrom);
     } catch (err) {
       log.error(context, NAMESPACE, 'Failed to read mock cases.', err);
       const message = (err as Error).message;
