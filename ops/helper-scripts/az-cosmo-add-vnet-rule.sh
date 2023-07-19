@@ -46,4 +46,4 @@ while [[ $# > 0 ]]; do
 done
 
 subnetId=$(az network vnet subnet show -g ${network_rg} --vnet-name ${vnet_name} -n ${subnet_name} -o tsv --query "id")
-az cosmosdb network-rule add --resource-group ${database_rg} --name ${account_name} --subnet ${subnetId} -o tsv --query "length(virtualNetworkRules)"
+az cosmosdb network-rule add --resource-group ${database_rg} --name ${account_name} --subnet ${subnetId} --ignore-missing-endpoint true -o tsv --query "length(virtualNetworkRules)"
