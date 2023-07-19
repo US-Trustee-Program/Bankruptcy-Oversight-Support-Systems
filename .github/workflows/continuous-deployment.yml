@@ -326,17 +326,6 @@ jobs:
           v2=$(cat ./outputs.json | jq -r .webappName.value)
           echo "webappName=${v2}" >> $GITHUB_OUTPUT
 
-          vnet=$(cat ./outputs.json | jq -r .vnetName.value)
-          subnets=$(cat ./outputs.json | jq -r .cosmoDbAllowedSubnets.value)
-          for snet in ${subnets[@]}; do
-            ./ops/helper-script/az-cosmo-add-vnet-rule.sh \
-              --networkResourceGroup ${{ steps.rgNetwork.outputs.out }} \
-              --vnetName ${vnet} \
-              --subnetName ${snet} \
-              --databaseResourceGroup ${{ secrets.AZURE_RG } \
-              --accountName ${{ secrets.AZ_COSMO_ACCOUNT_NAME }}
-          done
-
   deploy-webapp:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
