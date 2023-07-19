@@ -1,12 +1,12 @@
 import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import { getPacerGateway } from '../factory';
-import { PacerGatewayInterface } from './pacer.gateway.interface';
+import { CasesInterface } from './cases.interface';
 
 export class Chapter15CaseList {
-  pacerGateway: PacerGatewayInterface;
+  pacerGateway: CasesInterface;
 
-  constructor(pacerGateway?: PacerGatewayInterface) {
+  constructor(pacerGateway?: CasesInterface) {
     if (!pacerGateway) {
       this.pacerGateway = getPacerGateway();
     } else {
@@ -20,7 +20,9 @@ export class Chapter15CaseList {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const cases = await this.pacerGateway.getChapter15Cases(context, startingMonth || undefined);
+      const cases = await this.pacerGateway.getChapter15Cases(context, {
+        startingMonth: startingMonth || undefined,
+      });
 
       return {
         success: true,

@@ -21,7 +21,7 @@ describe('PACER Local gateway tests', () => {
 
     const gateway = new PacerLocalGateway();
 
-    expect(await gateway.getChapter15Cases(appContext)).toEqual(
+    expect(await gateway.getChapter15Cases(appContext, {})).toEqual(
       expect.arrayContaining(expectedResponseValue),
     );
   });
