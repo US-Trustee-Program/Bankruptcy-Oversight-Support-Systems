@@ -1,6 +1,6 @@
 import { Chapter15Case } from '../types/cases';
 import * as dotenv from 'dotenv';
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { CasesInterface } from '../../use-cases/cases.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { httpPost } from '../utils/http';
 import { PacerLogin } from './pacer-login';
@@ -9,11 +9,12 @@ import { CaseLocatorException } from './pacer-exceptions';
 import { HttpResponse } from '../types/http';
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
+import { GatewayHelper } from './gateway-helper';
 
 const NAMESPACE = 'PACER-API-GATEWAY';
 dotenv.config();
 
-class PacerApiGateway implements PacerGatewayInterface {
+class PacerApiGateway implements CasesInterface {
   private pacerLogin: PacerLogin;
   private token: string;
 
@@ -79,16 +80,16 @@ class PacerApiGateway implements PacerGatewayInterface {
 
   public async getChapter15Cases(
     context: ApplicationContext,
-    startingMonth?: number,
+    options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
   ): Promise<Chapter15Case[]> {
-    startingMonth = startingMonth || -6;
+    const _startingMonth = options.startingMonth || -6;
 
     try {
       this.token = await this.pacerLogin.getPacerToken(context);
-      return await this.searchCaseLocator(context, startingMonth);
+      return await this.searchCaseLocator(context, _startingMonth);
     } catch (e) {
       if (e instanceof CaseLocatorException && e.status === 401) {
-        await this.handleExpiredToken(context, startingMonth);
+        await this.handleExpiredToken(context, _startingMonth);
       } else {
         throw e;
       }
