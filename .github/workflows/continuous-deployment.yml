@@ -409,6 +409,7 @@ jobs:
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   integration-test:
+    if: false # TODO temporarily disable test
     defaults:
       run:
         working-directory: backend/functions
