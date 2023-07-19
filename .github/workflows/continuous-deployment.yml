@@ -405,8 +405,8 @@ jobs:
           PACER_USER_ID_SECRET_NAME=${{ secrets.PACER_USER_ID_SECRET_NAME }} \
           PACER_PASSWORD_SECRET_NAME=${{ secrets.PACER_PASSWORD_SECRET_NAME }} \
           STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=${{ AZ_COSMO_ENDPOINT }} \
-          COSMOS_DATABASE_NAME=${{ AZ_COSMO_DATABASE_NAME }}" \
+          COSMOS_ENDPOINT=${{ secrets.AZ_COSMO_ENDPOINT }} \
+          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMO_DATABASE_NAME }}" \
           --identities "${{ secrets.AZ_COSMO_MANAGED_IDENTITY }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
