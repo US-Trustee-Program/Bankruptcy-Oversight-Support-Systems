@@ -99,7 +99,7 @@ if [[ -n ${identities} ]]; then
     # configure User identities by Managed Idenity name and Resource group
     for identity in ${identities}; do
         # get Azure resource id of managed identity by name and resource group
-        let azResourceId=$(az identity show -g $id_rg -n $identity --query id -o tsv)
+        azResourceId="$(az identity show -g $id_rg -n $identity --query id -o tsv)"
 
         echo "Assigning identity ${identity} to ${app_name}"
         # assign service with specified idenity
