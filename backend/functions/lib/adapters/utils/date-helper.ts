@@ -32,3 +32,7 @@ export function calculateDifferenceInMonths(left: Date, right: Date): number {
   const monthsDiff = incompleteYear ? years * 12 + realMonths - 12 : years * 12 + realMonths;
   return incompleteMonth ? monthsDiff - 1 : monthsDiff;
 }
+
+export function getCamsDateStringFromDate(date: Date) {
+  return date.toISOString().split('T')[0];
+}
