@@ -140,6 +140,6 @@ output webappName string = ustpWebapp.outputs.webappName
 output functionAppName string = deployFunctions ? ustpFunctions[0].outputs.functionAppName : ''
 output vnetName string = virtualNetworkName
 
-// List of allowed Subnet names that should have access to CosmoDb
+// Allowed subnet name that should have access to CosmoDb
 // Leverage az-cosmo-add-vnet-rule.sh to add vnet rule
-output cosmoDbAllowedSubnets array = [apiFunctionsSubnetName]
+output cosmoDbAllowedSubnet string = apiFunctionsSubnetName
