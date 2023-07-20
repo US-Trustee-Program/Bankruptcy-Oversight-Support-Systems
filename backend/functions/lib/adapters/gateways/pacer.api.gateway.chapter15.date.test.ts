@@ -1,16 +1,17 @@
 import { MockPacerApiGateway } from './mock-pacer.api.gateway';
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { CasesInterface } from '../../use-cases/cases.interface';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 const context = require('azure-function-context-mock');
 
 describe('Test the date filter on chapter 15 cases', () => {
   test('should return cases in the last 6 months when no starting month filter set', async () => {
-    let today = new Date();
-    const expectedStartDate = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate())
-      .toISOString()
-      .split('T')[0];
+    const today = new Date();
+    const expectedStartDate = getCamsDateStringFromDate(
+      new Date(today.getFullYear(), today.getMonth() - 6, today.getDate()),
+    );
 
-    const mockPacerApiGateway: PacerGatewayInterface = new MockPacerApiGateway();
-    const actual = await mockPacerApiGateway.getChapter15Cases(context);
+    const mockPacerApiGateway: CasesInterface = new MockPacerApiGateway();
+    const actual = await mockPacerApiGateway.getChapter15Cases(context, {});
 
     function checkDate(aCase) {
       const verify = aCase.dateFiled >= expectedStartDate;
@@ -22,19 +23,15 @@ describe('Test the date filter on chapter 15 cases', () => {
 
   test('should return cases as per the given starting month filter set', async () => {
     const testStartingMonthFilter = -60;
-    let today = new Date();
-    let expectedStartDate = new Date(
-      today.getFullYear(),
-      today.getMonth() + testStartingMonthFilter,
-      today.getDate(),
-    )
-      .toISOString()
-      .split('T')[0];
-    const mockPacerApiGateway: PacerGatewayInterface = new MockPacerApiGateway();
-    const actual = await mockPacerApiGateway.getChapter15Cases(context, testStartingMonthFilter);
+    const expectedStartDate = new Date();
+    expectedStartDate.setMonth(expectedStartDate.getMonth() + testStartingMonthFilter);
+    const mockPacerApiGateway: CasesInterface = new MockPacerApiGateway();
+    const actual = await mockPacerApiGateway.getChapter15Cases(context, {
+      startingMonth: testStartingMonthFilter,
+    });
 
     function checkDate(aCase) {
-      const verify = aCase.dateFiled >= expectedStartDate;
+      const verify = aCase.dateFiled >= getCamsDateStringFromDate(expectedStartDate);
       return verify;
     }
 

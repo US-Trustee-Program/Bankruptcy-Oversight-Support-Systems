@@ -29,10 +29,8 @@ class Chapter11LocalGateway implements Chapter11GatewayInterface {
     context: ApplicationContext,
     caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
   ): Promise<CaseListDbResult> {
-    let caseListRecords: CaseListRecordSet;
-    let input = [];
-
-    caseListRecords = await this.initializeCases();
+    const caseListRecords: CaseListRecordSet = await this.initializeCases();
+    const input = [];
 
     log.info(context, NAMESPACE, `${caseOptions.chapter} ${caseOptions.professionalId}`);
 
@@ -60,13 +58,10 @@ class Chapter11LocalGateway implements Chapter11GatewayInterface {
 
     if (queryResult.success) {
       log.info(context, NAMESPACE, 'Case List DB query successful');
-      const body: CaseListRecordSet = { staff1Label: '', staff2Label: '', caseList: [] };
+      const body = { staff1Label: '', staff2Label: '', caseList: [] };
       // limit results to 20 records, as we are doing in the MSSQL database to temporarily prevent large result sets.
-      let dbResults = Array.isArray(queryResult.results)
-        ? [...queryResult.results].splice(0, 20)
-        : queryResult.results;
-      body.caseList = dbResults as Array<{}>;
-      const rowsAffected = (dbResults as Array<{}>).length;
+      body.caseList = (queryResult.results as Array<object>).slice(0, 20);
+      const rowsAffected = body.caseList.length;
       results = {
         success: true,
         message: `${table} list`,

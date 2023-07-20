@@ -1,6 +1,9 @@
 import httpTrigger from './users.function';
 import { getProperty } from '../lib/testing/mock-data';
-const context = require('../lib/testing/default-context');
+import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+const context = require('azure-function-context-mock');
+
+const appContext = applicationContextCreator(context);
 
 describe('Standard User Login Http Trigger tests without class mocks', () => {
   test('should by default complain about missing first and last name parameters', async () => {
@@ -8,9 +11,9 @@ describe('Standard User Login Http Trigger tests without class mocks', () => {
       query: {},
     };
 
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
-    expect(context.res.body).toEqual({
+    expect(appContext.res.body).toEqual({
       error: 'Required parameters absent: first_name and last_name.',
     });
   });
@@ -30,9 +33,9 @@ describe('Standard User Login Http Trigger tests without class mocks', () => {
       body: [],
     };
 
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
-    expect(context.res.body).toEqual(responseBody);
+    expect(appContext.res.body).toEqual(responseBody);
   });
 
   test('should return 1 user record when supplied with parameters "Test" "Person".', async () => {
@@ -53,9 +56,9 @@ describe('Standard User Login Http Trigger tests without class mocks', () => {
       body: [body],
     };
 
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
-    expect(context.res.body).toEqual(responseBody);
+    expect(appContext.res.body).toEqual(responseBody);
   });
 
   test('should return 1 user record when supplied with body "Test" "Person".', async () => {
@@ -77,8 +80,8 @@ describe('Standard User Login Http Trigger tests without class mocks', () => {
       body: [body],
     };
 
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
-    expect(context.res.body).toEqual(responseBody);
+    expect(appContext.res.body).toEqual(responseBody);
   });
 });

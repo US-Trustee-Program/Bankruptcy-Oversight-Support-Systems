@@ -1,10 +1,10 @@
 export interface ApiResponse {
   headers: {
-    'Content-Type': String;
-    'Last-Modified': String;
+    'Content-Type': string;
+    'Last-Modified': string;
   };
   statusCode: number;
-  body: Object;
+  body: object;
 }
 
 export interface HttpResponse extends Response {

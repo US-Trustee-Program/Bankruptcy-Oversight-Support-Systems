@@ -26,7 +26,7 @@ export class ApplicationConfiguration implements AppConfig {
   }
 
   private getDbConfig(): IDbConfig {
-    let dbConfig: IDbConfig = {
+    const dbConfig: IDbConfig = {
       server: process.env.MSSQL_HOST,
       database: process.env.MSSQL_DATABASE,
       user: process.env.MSSQL_USER,
@@ -63,7 +63,7 @@ export class ApplicationConfiguration implements AppConfig {
   }
 
   public get(prop: string) {
-    if (this.hasOwnProperty(prop)) {
+    if (Object.prototype.hasOwnProperty.call(this, prop)) {
       return this[prop];
     }
   }

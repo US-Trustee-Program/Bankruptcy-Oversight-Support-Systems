@@ -1,8 +1,4 @@
-import {
-  AttorneyPersistenceGateway,
-  CasePersistenceGateway,
-  UserPersistenceGateway,
-} from '../adapters/types/persistence.gateway';
+import { UserPersistenceGateway } from '../adapters/types/persistence.gateway';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter11CaseList from './chapter-11.case-list';
@@ -23,7 +19,6 @@ async function listAttorneys(
   context: ApplicationContext,
   fields: { officeId?: string },
 ): Promise<AttorneyListDbResult> {
-  let result: AttorneyListDbResult;
   const attorneysList = new AttorneysList();
   return await attorneysList.getAttorneyList(context, fields);
 }

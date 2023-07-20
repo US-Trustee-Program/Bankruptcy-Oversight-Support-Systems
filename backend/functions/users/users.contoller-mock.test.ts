@@ -1,6 +1,9 @@
 import httpTrigger from './users.function';
 import { UsersController } from '../lib/adapters/controllers/users.controller';
-const context = require('../lib/testing/default-context');
+import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+const context = require('azure-function-context-mock');
+
+const appContext = applicationContextCreator(context);
 
 jest.mock('../lib/adapters/controllers/users.controller', () => {
   return {
@@ -33,9 +36,9 @@ describe('Mocking UsersController to get error handling', () => {
       },
     };
 
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
-    expect(context.res.statusCode).toEqual(404);
-    expect(context.res.body.error).toEqual('Test error');
+    expect(appContext.res.statusCode).toEqual(404);
+    expect(appContext.res.body.error).toEqual('Test error');
   });
 });

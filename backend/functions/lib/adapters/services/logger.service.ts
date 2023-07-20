@@ -10,9 +10,9 @@ export default class log {
     logType: string,
     namespace: string,
     message: string,
-    data?: any,
+    data?: unknown,
   ) {
-    let logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${
+    const logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${
       undefined != data ? JSON.stringify(data) : ''
     }`;
     if (Object.prototype.hasOwnProperty.call(context, 'log') && typeof context.log === 'function') {
@@ -25,19 +25,39 @@ export default class log {
     }
   }
 
-  public static info(context: ApplicationContext, namespace: string, message: string, data?: any) {
+  public static info(
+    context: ApplicationContext,
+    namespace: string,
+    message: string,
+    data?: unknown,
+  ) {
     log.logMessage(context, 'info', namespace, message, data);
   }
 
-  public static warn(context: ApplicationContext, namespace: string, message: string, data?: any) {
+  public static warn(
+    context: ApplicationContext,
+    namespace: string,
+    message: string,
+    data?: unknown,
+  ) {
     log.logMessage(context, 'warn', namespace, message, data);
   }
 
-  public static error(context: ApplicationContext, namespace: string, message: string, data?: any) {
+  public static error(
+    context: ApplicationContext,
+    namespace: string,
+    message: string,
+    data?: unknown,
+  ) {
     log.logMessage(context, 'error', namespace, message, data);
   }
 
-  public static debug(context: ApplicationContext, namespace: string, message: string, data?: any) {
+  public static debug(
+    context: ApplicationContext,
+    namespace: string,
+    message: string,
+    data?: unknown,
+  ) {
     log.logMessage(context, 'debug', namespace, message, data);
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 const context = require('azure-function-context-mock');
 import { applicationContextCreator } from './utils/application-context-creator';
 import proxyData from './data-access.proxy';
@@ -54,7 +55,7 @@ describe('Testing Data Access Proxy loader', () => {
       deleteCase: Function;
     };
 
-    let result: ProxyGateway = (await proxyData(applicationContext, 'cases')) as ProxyGateway;
+    const result: ProxyGateway = (await proxyData(applicationContext, 'cases')) as ProxyGateway;
 
     expect(result.getCaseList()).toBe('in-memory-test');
   });
@@ -71,7 +72,7 @@ describe('Testing Data Access Proxy loader', () => {
       deleteCase: Function;
     };
 
-    let result: ProxyGateway = (await proxyData(applicationContext, 'cases')) as ProxyGateway;
+    const result: ProxyGateway = (await proxyData(applicationContext, 'cases')) as ProxyGateway;
 
     expect(result.getCaseList()).toBe('azure-sql-test');
   });

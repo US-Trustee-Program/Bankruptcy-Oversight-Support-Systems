@@ -15,10 +15,9 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     context: ApplicationContext,
     attorneyOptions: { officeId: string } = { officeId: '' },
   ): Promise<AttorneyListDbResult> {
-    let attorneyListRecords: AttorneyListRecordSet;
-    let input = [];
+    const input = [];
 
-    attorneyListRecords = await getProperty(table, 'list');
+    const attorneyListRecords = await getProperty(table, 'list');
     if (
       !Object.prototype.hasOwnProperty.call(attorneyListRecords, 'attorneyList') ||
       !Array.isArray(attorneyListRecords.attorneyList)
@@ -46,7 +45,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
       log.info(context, NAMESPACE, 'Attorney List DB query successful');
       const body: AttorneyListRecordSet = { attorneyList: [] };
       body.attorneyList = queryResult.results as [];
-      const rowsAffected = (queryResult.results as Array<{}>).length;
+      const rowsAffected = (queryResult.results as Array<object>).length;
       results = {
         success: true,
         message: `${table} list`,

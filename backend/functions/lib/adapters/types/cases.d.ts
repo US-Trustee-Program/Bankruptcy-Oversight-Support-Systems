@@ -15,7 +15,7 @@ export interface CaseListDbResult {
   body: CaseListRecordSet;
 }
 
-export interface Chapter11CaseType {
+export interface Chapter11CaseType extends ObjectKeyVal {
   caseNumber: string;
   currentCaseChapter: string;
   currentChapterFileDate: number;

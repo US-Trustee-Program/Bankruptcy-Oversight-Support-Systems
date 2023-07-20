@@ -12,7 +12,7 @@ const login = async (
 ): Promise<DbResult> => {
   let input: DbTableFieldSpec[] = [];
 
-  let query = `SELECT
+  const query = `SELECT
       PROF_FIRST_NAME AS firstName,
       PROF_MI AS middleInitial,
       PROF_LAST_NAME AS lastName,
@@ -41,8 +41,8 @@ const login = async (
 
   if (queryResult.success) {
     log.info(context, NAMESPACE, 'User login DB query successful');
-    const records = (queryResult.results as mssql.IResult<any>).recordset;
-    const rowsAffected = (queryResult.results as mssql.IResult<any>).rowsAffected[0];
+    const records = (queryResult.results as mssql.IResult<unknown>).recordset;
+    const rowsAffected = (queryResult.results as mssql.IResult<unknown>).rowsAffected[0];
     results = {
       success: true,
       message: `user record`,
