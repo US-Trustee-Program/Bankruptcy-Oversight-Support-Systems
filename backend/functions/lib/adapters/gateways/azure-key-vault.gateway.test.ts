@@ -7,7 +7,10 @@ import {
 } from '@azure/keyvault-secrets';
 import { DefaultAzureCredential } from '@azure/identity';
 import { AzureKeyVaultGateway } from './azure-key-vault.gateway';
-const context = require('../../testing/default-context');
+import { applicationContextCreator } from '../utils/application-context-creator';
+const context = require('azure-function-context-mock');
+
+const appContext = applicationContextCreator(context);
 
 class MockSecretClient extends SecretClient {
   private token: string;
@@ -15,7 +18,14 @@ class MockSecretClient extends SecretClient {
   constructor(
     _tokenName: string,
     _azureCredential: DefaultAzureCredential,
-    functions?: { setSecret?: any; getSecret?: any },
+    functions?: {
+      setSecret?: (
+        secretName?: string,
+        value?: string,
+        options?: SetSecretOptions,
+      ) => Promise<KeyVaultSecret>;
+      getSecret?: () => Promise<KeyVaultSecret>;
+    },
   ) {
     super(_tokenName, _azureCredential);
     if (functions?.setSecret) {
@@ -29,6 +39,7 @@ class MockSecretClient extends SecretClient {
   setSecret(
     secretName: string,
     value: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: SetSecretOptions,
   ): Promise<KeyVaultSecret> {
     this.token = value;
@@ -47,6 +58,7 @@ class MockSecretClient extends SecretClient {
     return Promise.resolve(keyVaultSecret);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getSecret(secretName: string, options?: GetSecretOptions): Promise<KeyVaultSecret> {
     const properties: SecretProperties = {
       vaultUrl: '',
@@ -70,7 +82,7 @@ describe('Azure Key Vault Gateway tests', () => {
 
     const setSecretSpy = jest.spyOn(mockSecretClient, 'setSecret');
     const savedSecretName = await azureKeyVaultGateway.setSecret(
-      context,
+      appContext,
       'fake-secret',
       'fake-value',
     );
@@ -84,6 +96,7 @@ describe('Azure Key Vault Gateway tests', () => {
     const setSecretMock = (
       secretName: string,
       value: string,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       options?: SetSecretOptions,
     ): Promise<KeyVaultSecret> => {
       const properties: SecretProperties = {
@@ -104,7 +117,7 @@ describe('Azure Key Vault Gateway tests', () => {
     const azureKeyVaultGateway = new AzureKeyVaultGateway(mockSecretClient);
 
     try {
-      await azureKeyVaultGateway.setSecret(context, 'fake-secret', 'fake-value');
+      await azureKeyVaultGateway.setSecret(appContext, 'fake-secret', 'fake-value');
     } catch (e) {
       expect(e).toEqual(Error(`New secret 'fake-secret' was not saved.`));
     }
@@ -119,8 +132,10 @@ describe('Azure Key Vault Gateway tests', () => {
 
     const azureKeyVaultGateway = new AzureKeyVaultGateway(mockSecretClient);
 
-    await azureKeyVaultGateway.setSecret(context, 'fake-secret', 'fake-value').catch((reason) => {
-      expect(reason).toEqual(Error('error string'));
-    });
+    await azureKeyVaultGateway
+      .setSecret(appContext, 'fake-secret', 'fake-value')
+      .catch((reason) => {
+        expect(reason).toEqual(Error('error string'));
+      });
   });
 });

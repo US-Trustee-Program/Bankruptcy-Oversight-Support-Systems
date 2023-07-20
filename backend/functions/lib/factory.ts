@@ -5,9 +5,9 @@ import { Chapter11ApiGateway } from './adapters/gateways/cases.azure.sql.gateway
 import { Chapter11GatewayInterface } from './use-cases/chapter-11.gateway.interface';
 import { Chapter11LocalGateway } from './adapters/gateways/cases.local.inmemory.gateway';
 import { PacerApiGateway } from './adapters/gateways/pacer.api.gateway';
-import { PacerGatewayInterface } from './use-cases/pacer.gateway.interface';
+import { CasesInterface } from './use-cases/cases.interface';
 import { PacerLocalGateway } from './adapters/gateways/pacer.local.gateway';
-import { PacerSecretsGateway } from '../lib/adapters/gateways/pacer-secrets.gateway';
+import { PacerSecretsGateway } from './adapters/gateways/pacer-secrets.gateway';
 import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interface';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
@@ -30,7 +30,7 @@ export const getChapter11Gateway = (): Chapter11GatewayInterface => {
   }
 };
 
-export const getPacerGateway = (): PacerGatewayInterface => {
+export const getPacerGateway = (): CasesInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
 
   if (config.get('pacerMock')) {

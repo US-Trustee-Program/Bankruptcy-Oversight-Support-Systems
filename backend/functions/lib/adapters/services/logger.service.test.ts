@@ -3,7 +3,8 @@ import { Context } from '@azure/functions';
 import log from './logger.service';
 import { applicationContextCreator } from '../utils/application-context-creator';
 
-const mockLog = jest.spyOn(context, 'log');
+const appContext = applicationContextCreator(context);
+const mockLog = jest.spyOn(appContext, 'log');
 
 describe('Basic logger service tests', () => {
   test('logMessage() should throw an error if context doesnt contain a log method.', () => {
@@ -16,22 +17,22 @@ describe('Basic logger service tests', () => {
   });
 
   test('Info log should set context.log to the expected string', async () => {
-    log.info(context, 'FOO-NAMESPACE', 'test message');
+    log.info(appContext, 'FOO-NAMESPACE', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[INFO] [FOO-NAMESPACE] test message');
   });
 
   test('Warning log should set context.log to the expected string', async () => {
-    log.warn(context, 'FOO-NAMESPACE', 'test message');
+    log.warn(appContext, 'FOO-NAMESPACE', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[WARN] [FOO-NAMESPACE] test message');
   });
 
   test('Error log should set context.log to the expected string', async () => {
-    log.error(context, 'FOO-NAMESPACE', 'test message');
+    log.error(appContext, 'FOO-NAMESPACE', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[ERROR] [FOO-NAMESPACE] test message');
   });
 
   test('Debug log should set context.log to the expected string', async () => {
-    log.debug(context, 'FOO-NAMESPACE', 'test message');
+    log.debug(appContext, 'FOO-NAMESPACE', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[DEBUG] [FOO-NAMESPACE] test message');
   });
 
@@ -40,7 +41,7 @@ describe('Basic logger service tests', () => {
       property: 'value',
     };
 
-    log.info(context, 'FOO-NAMESPACE', 'test message', testObj);
+    log.info(appContext, 'FOO-NAMESPACE', 'test message', testObj);
     expect(mockLog).toHaveBeenCalledWith(
       `[INFO] [FOO-NAMESPACE] test message ${JSON.stringify(testObj)}`,
     );
@@ -48,7 +49,7 @@ describe('Basic logger service tests', () => {
 
   test('Test sanitize function to Fix CWE 117 Improper Output Neutralization for Logs', async () => {
     const input = '\r\nNo\r\nCRLF\r\n';
-    let output = log.sanitize(input);
+    const output = log.sanitize(input);
     expect(output).not.toContain('\n');
     expect(output).not.toContain('\r');
   });

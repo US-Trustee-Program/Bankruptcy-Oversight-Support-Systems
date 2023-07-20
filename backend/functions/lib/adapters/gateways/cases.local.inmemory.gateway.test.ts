@@ -1,10 +1,13 @@
-const context = require('azure-function-context-mock');
+import { getProperty } from '../../testing/mock-data';
 import { CaseListDbResult } from '../types/cases';
-import { getProperty } from '../../testing/mock-data/index';
 import * as dataUtils from './local.inmemory.gateway';
+import { applicationContextCreator } from '../utils/application-context-creator';
+import { ObjectKeyValArrayKeyVal } from '../types/basic';
 import { Chapter11LocalGateway } from './cases.local.inmemory.gateway';
+const context = require('azure-function-context-mock');
 
 const table = 'cases';
+const appContext = applicationContextCreator(context);
 
 const runQueryMock = jest.spyOn(dataUtils, 'runQuery');
 
@@ -29,7 +32,7 @@ jest.mock('../../configs/application-configuration', () => {
 });
 
 describe('Local in-memory database gateway tests specific for cases', () => {
-  let list: any;
+  let list: ObjectKeyValArrayKeyVal;
 
   beforeEach(async () => {
     list = await getProperty(table, 'list');
@@ -52,7 +55,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     };
 
     const db = new Chapter11LocalGateway();
-    const results = await db.getCaseList(context, { chapter: '', professionalId: '' });
+    const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
   });
@@ -72,7 +75,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     };
 
     const db = new Chapter11LocalGateway();
-    const results = await db.getCaseList(context, { chapter: '11', professionalId: '' });
+    const results = await db.getCaseList(appContext, { chapter: '11', professionalId: '' });
 
     expect(results).toEqual(mockResults);
   });
@@ -96,7 +99,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
     };
 
     const db = new Chapter11LocalGateway();
-    const results = await db.getCaseList(context, { chapter: '', professionalId: '' });
+    const results = await db.getCaseList(appContext, { chapter: '', professionalId: '' });
 
     expect(results).toEqual(mockResults);
   });

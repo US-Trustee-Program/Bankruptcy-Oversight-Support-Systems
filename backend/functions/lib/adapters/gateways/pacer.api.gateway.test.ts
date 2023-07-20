@@ -1,9 +1,12 @@
 import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
+import { applicationContextCreator } from '../utils/application-context-creator';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 const http = require('../utils/http');
 const context = require('azure-function-context-mock');
 
+const appContext = applicationContextCreator(context);
 jest.mock('./pacer-login', () => {
   return {
     PacerLogin: jest.fn().mockImplementation(() => {
@@ -35,7 +38,9 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    await expect(gateway.getChapter15Cases(context)).rejects.toThrow('Unexpected response from Pacer API');
+    await expect(gateway.getChapter15Cases(appContext, {})).rejects.toThrow(
+      'Unexpected response from Pacer API',
+    );
     expect(httpPostSpy).toHaveBeenCalled();
   });
 
@@ -64,16 +69,15 @@ describe('PACER API gateway tests', () => {
 
     const gateway = new PacerApiGateway();
 
-    expect(await gateway.getChapter15Cases(context)).toEqual(expectedResponseValue);
+    expect(await gateway.getChapter15Cases(appContext, {})).toEqual(expectedResponseValue);
     expect(httpPostSpy).toHaveBeenCalled();
   });
 
   test('should set the starting month to -6 if a starting month is not passed into getChapter15Cases', async () => {
-    gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -6;
     const date = new Date();
     date.setMonth(date.getMonth() + expectedStartingMonth);
-    const expectedDate = date.toISOString().split('T')[0];
+    const expectedDate = getCamsDateStringFromDate(date);
 
     const httpPostSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
@@ -85,7 +89,7 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    await gateway.getChapter15Cases(context);
+    await gateway.getChapter15Cases(appContext, {});
 
     expect(httpPostSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -97,11 +101,10 @@ describe('PACER API gateway tests', () => {
   });
 
   test('should set the starting month to -6 if undefined is passed into getChapter15Cases', async () => {
-    gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -6;
     const date = new Date();
     date.setMonth(date.getMonth() + expectedStartingMonth);
-    const expectedDate = date.toISOString().split('T')[0];
+    const expectedDate = getCamsDateStringFromDate(date);
 
     const httpPostSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
@@ -113,7 +116,7 @@ describe('PACER API gateway tests', () => {
     });
 
     const gateway = new PacerApiGateway();
-    await gateway.getChapter15Cases(context, undefined);
+    await gateway.getChapter15Cases(appContext, { startingMonth: undefined });
 
     expect(httpPostSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -125,19 +128,18 @@ describe('PACER API gateway tests', () => {
   });
 
   test('should set the starting month to value passed into getChapter15Cases', async () => {
-    gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -25;
     const date = new Date();
     date.setMonth(date.getMonth() + expectedStartingMonth);
-    const expectedDate = date.toISOString().split('T')[0];
+    const expectedDate = getCamsDateStringFromDate(date);
     const gateway = new PacerApiGateway();
 
     const getCasesListFromPacerApiSpy = jest.spyOn(gateway, 'getCasesListFromPacerApi');
 
-    await gateway.getChapter15Cases(context, expectedStartingMonth);
+    await gateway.getChapter15Cases(appContext, { startingMonth: expectedStartingMonth });
 
     expect(getCasesListFromPacerApiSpy).toHaveBeenCalledWith(
-      context,
+      appContext,
       expect.objectContaining({
         dateFiledFrom: expectedDate,
       }),

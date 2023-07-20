@@ -1,8 +1,10 @@
-import { PacerGatewayInterface } from '../../use-cases/pacer.gateway.interface';
+import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15Case } from '../types/cases';
 import { Context } from '@azure/functions';
+import { GatewayHelper } from './gateway-helper';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 
-export class MockPacerApiGateway implements PacerGatewayInterface {
+export class MockPacerApiGateway implements CasesInterface {
   startingMonth: number;
   private chapter15CaseList: Chapter15Case[] = [];
 
@@ -11,9 +13,12 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
     this.startingMonth = -6;
   }
 
-  async getChapter15Cases(context: Context, startingMonth?: number): Promise<Chapter15Case[]> {
-    if (startingMonth != undefined) {
-      this.startingMonth = startingMonth;
+  async getChapter15Cases(
+    context: Context,
+    options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+  ): Promise<Chapter15Case[]> {
+    if (options.startingMonth != undefined) {
+      this.startingMonth = options.startingMonth;
     }
     const startDate = this.subtractMonths(new Date());
 
@@ -29,63 +34,60 @@ export class MockPacerApiGateway implements PacerGatewayInterface {
     return date;
   }
 
-  private filterMonths(cases: Chapter15Case[], filterDateGreaterThan) {
-    //
-  }
   private setUpChapter15TestCaseList() {
     //Add Cases older than 6 months
-    let oldCases: Chapter15Case[] = [];
-    let today = new Date();
+    const oldCases: Chapter15Case[] = [];
+    const today = new Date();
 
     oldCases.push(
       {
         caseNumber: '44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
-        dateFiled: new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
+        ),
       },
       {
         caseNumber: '1122',
         caseTitle: 'Jennifer Millhouse',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 7, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
+        ),
       },
       {
         caseNumber: '1166',
         caseTitle: 'Heather Anne Real',
-        dateFiled: new Date(today.getFullYear() - 10, today.getMonth(), today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
+        ),
       },
     );
     this.chapter15CaseList.push(oldCases[0], oldCases[1], oldCases[2]);
 
     // Add Cases newer than 6 months
-    let newCases: Chapter15Case[] = [];
+    const newCases: Chapter15Case[] = [];
 
     newCases.push(
       {
         caseNumber: '1167',
         caseTitle: 'Heather Anne Real',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 1, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
+        ),
       },
       {
         caseNumber: '1175',
         caseTitle: 'James P. Tennor',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
+        ),
       },
       {
         caseNumber: '1176',
         caseTitle: 'Tommy Testformiddlena tennor',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 2, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
+        ),
       },
     );
     this.chapter15CaseList.push(newCases[0], newCases[1], newCases[2]);

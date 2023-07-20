@@ -18,7 +18,6 @@ export default class AttorneysList {
     context: ApplicationContext,
     fields: { officeId?: string },
   ): Promise<AttorneyListDbResult> {
-    const attorneysList = await this.gateway.getAttorneys(context, fields);
-    return attorneysList;
+    return await this.gateway.getAttorneys(context, fields);
   }
 }

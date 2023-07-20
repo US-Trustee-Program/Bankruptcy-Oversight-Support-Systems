@@ -1,6 +1,8 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CasesController } from '../lib/adapters/controllers/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
+import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import log from '../lib/adapters/services/logger.service';
 
 const NAMESPACE = 'CASES-FUNCTION';
 
@@ -27,6 +29,7 @@ const httpTrigger: AzureFunction = async function (
     });
     functionContext.res = httpSuccess(functionContext, caseList);
   } catch (exception) {
+    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
     functionContext.res = httpError(functionContext, exception, 404);
   }
 };
