@@ -2,6 +2,7 @@ import { PacerApiGateway } from './pacer.api.gateway';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import { applicationContextCreator } from '../utils/application-context-creator';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 const http = require('../utils/http');
 const context = require('azure-function-context-mock');
 
@@ -73,11 +74,10 @@ describe('PACER API gateway tests', () => {
   });
 
   test('should set the starting month to -6 if a starting month is not passed into getChapter15Cases', async () => {
-    gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -6;
     const date = new Date();
     date.setMonth(date.getMonth() + expectedStartingMonth);
-    const expectedDate = date.toISOString().split('T')[0];
+    const expectedDate = getCamsDateStringFromDate(date);
 
     const httpPostSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
@@ -101,11 +101,10 @@ describe('PACER API gateway tests', () => {
   });
 
   test('should set the starting month to -6 if undefined is passed into getChapter15Cases', async () => {
-    gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -6;
     const date = new Date();
     date.setMonth(date.getMonth() + expectedStartingMonth);
-    const expectedDate = date.toISOString().split('T')[0];
+    const expectedDate = getCamsDateStringFromDate(date);
 
     const httpPostSpy = jest.spyOn(http, 'httpPost').mockImplementation(() => {
       return {
@@ -129,11 +128,10 @@ describe('PACER API gateway tests', () => {
   });
 
   test('should set the starting month to value passed into getChapter15Cases', async () => {
-    gatewayHelper.pacerMockExtract().slice(0, 2);
     const expectedStartingMonth = -25;
     const date = new Date();
     date.setMonth(date.getMonth() + expectedStartingMonth);
-    const expectedDate = date.toISOString().split('T')[0];
+    const expectedDate = getCamsDateStringFromDate(date);
     const gateway = new PacerApiGateway();
 
     const getCasesListFromPacerApiSpy = jest.spyOn(gateway, 'getCasesListFromPacerApi');

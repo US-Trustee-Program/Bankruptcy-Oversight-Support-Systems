@@ -2,6 +2,7 @@ import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15Case } from '../types/cases';
 import { Context } from '@azure/functions';
 import { GatewayHelper } from './gateway-helper';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 
 export class MockPacerApiGateway implements CasesInterface {
   startingMonth: number;
@@ -42,23 +43,23 @@ export class MockPacerApiGateway implements CasesInterface {
       {
         caseNumber: '44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
-        dateFiled: new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
+        ),
       },
       {
         caseNumber: '1122',
         caseTitle: 'Jennifer Millhouse',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 7, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
+        ),
       },
       {
         caseNumber: '1166',
         caseTitle: 'Heather Anne Real',
-        dateFiled: new Date(today.getFullYear() - 10, today.getMonth(), today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
+        ),
       },
     );
     this.chapter15CaseList.push(oldCases[0], oldCases[1], oldCases[2]);
@@ -70,23 +71,23 @@ export class MockPacerApiGateway implements CasesInterface {
       {
         caseNumber: '1167',
         caseTitle: 'Heather Anne Real',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 1, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
+        ),
       },
       {
         caseNumber: '1175',
         caseTitle: 'James P. Tennor',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
+        ),
       },
       {
         caseNumber: '1176',
         caseTitle: 'Tommy Testformiddlena tennor',
-        dateFiled: new Date(today.getFullYear(), today.getMonth() - 2, today.getDate())
-          .toISOString()
-          .split('T')[0],
+        dateFiled: getCamsDateStringFromDate(
+          new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
+        ),
       },
     );
     this.chapter15CaseList.push(newCases[0], newCases[1], newCases[2]);
