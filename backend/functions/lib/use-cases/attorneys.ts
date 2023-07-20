@@ -3,7 +3,7 @@ import { AttorneyListDbResult } from '../adapters/types/attorneys';
 import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
 
-export class AttorneysList {
+export default class AttorneysList {
   gateway: AttorneyGatewayInterface;
 
   constructor(gateway?: AttorneyGatewayInterface) {
@@ -21,5 +21,3 @@ export class AttorneysList {
     return await this.gateway.getAttorneys(context, fields);
   }
 }
-
-export default AttorneysList;
