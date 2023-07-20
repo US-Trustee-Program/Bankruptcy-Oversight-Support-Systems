@@ -9,7 +9,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     jest.restoreAllMocks();
   });
 
-  test('Should throw an error if getProperty return value does not contain arrorneyList array.', async () => {
+  it('Should throw an error if getProperty return value does not contain attorneyList array.', async () => {
     jest.spyOn(testingMockData, 'getProperty').mockResolvedValue({
       foo: 'bar',
     });
@@ -25,7 +25,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     }
   });
 
-  test('Should call runQuery with input including office id if office id is passed to getAttorneys()', async () => {
+  it('Should call runQuery with input including office id if office id is passed to getAttorneys()', async () => {
     const officeId = '123';
 
     const runQuerySpy = jest.spyOn(localInmemoryGateway, 'runQuery');
@@ -46,7 +46,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     );
   });
 
-  test('Should call runQuery with no input if office id is not passed to getAttorneys()', async () => {
+  it('Should call runQuery with no input if office id is not passed to getAttorneys()', async () => {
     const officeId = '';
 
     const runQuerySpy = jest.spyOn(localInmemoryGateway, 'runQuery');
@@ -67,7 +67,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     );
   });
 
-  test('Should return a failed success and an error message when runQuery returns a failed query', async () => {
+  it('Should return a failed status and an error message when runQuery returns a failed query', async () => {
     const gateway = new AttorneyLocalGateway();
     const mockContext = applicationContextCreator(context);
 
@@ -91,7 +91,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     });
   });
 
-  test('Should return a set of 4 results when all is well', async () => {
+  it('Should return a set of 4 results when all is well', async () => {
     const gateway = new AttorneyLocalGateway();
     const mockContext = applicationContextCreator(context);
 
@@ -112,7 +112,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     });
   });
 
-  test('Should return a set of 4 results when all is well and no options parameter was supplied', async () => {
+  it('Should return a set of 4 results when all is well and no options parameter was supplied', async () => {
     const gateway = new AttorneyLocalGateway();
     const mockContext = applicationContextCreator(context);
 
