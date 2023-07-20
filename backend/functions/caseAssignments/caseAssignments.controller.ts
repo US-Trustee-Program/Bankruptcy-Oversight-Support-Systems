@@ -1,5 +1,5 @@
 import log from '../lib/adapters/services/logger.service';
-import { DefaultAzureCredential } from '@azure/identity';
+import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
 import { CosmosClient } from '@azure/cosmos';
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -20,12 +20,16 @@ export class CaseAssignmentsController {
     // Authenticate to Azure CosmosDb and create client
     const dbEndpoint = process.env.COSMOS_ENDPOINT;
     const managedId = process.env.COSMOS_MANAGED_IDENTITY;
+
+    if (managedId) {
+      this.logger.info(NAMESPACE, 'Managed identity defined');
+    }
+
     this.cosmoDbClient = new CosmosClient({
       endpoint: dbEndpoint,
       aadCredentials: managedId
-        ? new DefaultAzureCredential({
-            managedIdentityClientId: managedId,
-            workloadIdentityClientId: managedId,
+        ? new ManagedIdentityCredential({
+            clientId: managedId,
           })
         : new DefaultAzureCredential(),
     });
