@@ -15,7 +15,11 @@ export default class log {
     const logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${
       undefined != data ? JSON.stringify(data) : ''
     }`;
-    context.log(log.sanitize(logString.trim()));
+    if (Object.prototype.hasOwnProperty.call(context, 'log') && typeof context.log === 'function') {
+      context.log(log.sanitize(logString.trim()));
+    } else {
+      throw new Error('Context does not contain a log function');
+    }
   }
 
   public static info(
