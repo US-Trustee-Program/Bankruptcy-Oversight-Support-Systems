@@ -1,5 +1,5 @@
 import log from '../services/logger.service';
-import { attorneyListMockData, getProperty } from '../../testing/mock-data';
+import { getProperty } from '../../testing/mock-data';
 import { ApplicationContext } from '../types/basic';
 import { QueryResults } from '../types/database';
 import { AttorneyListRecordSet, AttorneyListDbResult } from '../types/attorneys';
@@ -11,20 +11,6 @@ const NAMESPACE = 'ATTORNEYS-LOCAL-INMEMORY-DB-GATEWAY';
 const table = 'attorneys';
 
 class AttorneyLocalGateway implements AttorneyGatewayInterface {
-  private async initializeAttorneys(): Promise<AttorneyListRecordSet> {
-    let attorneyListRecords: AttorneyListRecordSet;
-
-    if (attorneyListMockData.attorneys.initialized) {
-      return attorneyListMockData[table];
-    } else {
-      attorneyListRecords = await getProperty(table, 'list');
-      attorneyListRecords.initialized = true;
-      attorneyListMockData[table] = attorneyListRecords;
-    }
-
-    return attorneyListRecords;
-  }
-
   public async getAttorneys(
     context: ApplicationContext,
     attorneyOptions: { officeId: string } = { officeId: '' },
@@ -32,7 +18,13 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     let attorneyListRecords: AttorneyListRecordSet;
     let input = [];
 
-    attorneyListRecords = await this.initializeAttorneys();
+    attorneyListRecords = await getProperty(table, 'list');
+    if (
+      !Object.prototype.hasOwnProperty.call(attorneyListRecords, 'attorneyList') ||
+      !Array.isArray(attorneyListRecords.attorneyList)
+    ) {
+      throw new Error('Attorney mock data does not contain a valid attorneyList');
+    }
 
     if (attorneyOptions.officeId.length > 0) {
       log.info(context, NAMESPACE, `${attorneyOptions.officeId}`);
