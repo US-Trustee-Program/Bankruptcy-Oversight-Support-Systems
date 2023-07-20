@@ -10,6 +10,7 @@ import { HttpResponse } from '../types/http';
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
 import { GatewayHelper } from './gateway-helper';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 
 const NAMESPACE = 'PACER-API-GATEWAY';
 dotenv.config();
@@ -33,7 +34,7 @@ class PacerApiGateway implements CasesInterface {
   ): Promise<Chapter15Case[]> {
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
-    const dateFileFrom = date.toISOString().split('T')[0];
+    const dateFileFrom = getCamsDateStringFromDate(date);
     const regionTwoPacerCourtIds = ['cm8bk', 'nyebk', 'nynbk', 'nysbk', 'nywbk', 'vtbk', 'ctbk'];
 
     const body = {
