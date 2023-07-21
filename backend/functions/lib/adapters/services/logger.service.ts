@@ -57,26 +57,4 @@ export default class log {
   ) {
     log.logMessage(context, 'debug', namespace, message, data);
   }
-
-  private readonly functionContext: ApplicationContext;
-
-  constructor(functionContext: ApplicationContext) {
-    this.functionContext = functionContext;
-  }
-
-  public info(namespace: string, message: string, data?: unknown) {
-    log.info(this.functionContext, namespace, message, data);
-  }
-
-  public warn(namespace: string, message: string, data?: unknown) {
-    log.warn(this.functionContext, namespace, message, data);
-  }
-
-  public error(namespace: string, message: string, data?: unknown) {
-    log.error(this.functionContext, namespace, message, data);
-  }
-
-  public debug(namespace: string, message: string, data?: unknown) {
-    log.debug(this.functionContext, namespace, message, data);
-  }
 }
