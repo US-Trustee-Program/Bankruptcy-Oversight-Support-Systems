@@ -10,6 +10,10 @@ param planName string
 ])
 param planType string = 'P1v2'
 
+@description('App Insights Connection Settings')
+param appInsightsConnectionString string = 'InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/'
+param appInsightsInstrumentationKey string = 'ae2343bb-5913-f69e-96e6-d3fbca320506'
+
 var planTypeToSkuMap = {
   P1v2: {
     name: 'P1v2'
@@ -227,6 +231,14 @@ var applicationSettings = concat([
     {
       name: 'AZURE_CLIENT_ID'
       value: pacerKeyVaultManagedIdentityClientId
+    }
+    {
+      name: 'APPINSIGHTS_CONNECTION_STRING'
+      value: appInsightsConnectionString
+    }
+    {
+      name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+      value: appInsightsInstrumentationKey
     }
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
