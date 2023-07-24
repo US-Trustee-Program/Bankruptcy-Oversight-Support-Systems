@@ -4,6 +4,9 @@ import { AttorneysController } from '../lib/adapters/controllers/attorneys.contr
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 
+const appInsights = require('applicationinsights');
+appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING).start();
+
 const NAMESPACE = 'ATTORNEYS-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
