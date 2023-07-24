@@ -3,6 +3,7 @@ import { ApplicationContext } from '../types/basic';
 import { Chapter15Case } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
+import { getCamsDateStringFromDate } from '../utils/date-helper';
 
 const NAMESPACE = 'CASES-LOCAL-GATEWAY';
 
@@ -18,7 +19,7 @@ export class CasesLocalGateway implements CasesInterface {
     let cases: Chapter15Case[];
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
-    const dateFiledFrom = date.toISOString().split('T')[0];
+    const dateFiledFrom = getCamsDateStringFromDate(date);
 
     try {
       cases = _gatewayHelper.chapter15MockExtract();

@@ -4,6 +4,7 @@ import { MockPacerApiGateway } from '../adapters/gateways/mock-pacer.api.gateway
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
+import { getCamsDateStringFromDate } from '../adapters/utils/date-helper';
 const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
@@ -61,9 +62,9 @@ describe('Chapter 15 case tests', () => {
 
   test('Calling getChapter15CaseList without a starting month filter should return valid chapter 15 data for the last 6 months of default', async () => {
     const today = new Date();
-    const expectedStartDate = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate())
-      .toISOString()
-      .split('T')[0];
+    const expectedStartDate = getCamsDateStringFromDate(
+      new Date(today.getFullYear(), today.getMonth() - 6, today.getDate()),
+    );
 
     const mockPacerGateway: CasesInterface = new MockPacerApiGateway();
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockPacerGateway);

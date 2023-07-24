@@ -1,6 +1,6 @@
 import { CasesLocalGateway } from './cases.local.gateway';
 import { GatewayHelper } from './gateway-helper';
-import { calculateDifferenceInMonths } from '../utils/date-helper';
+import { calculateDifferenceInMonths, getCamsDateStringFromDate } from '../utils/date-helper';
 
 const context = require('azure-function-context-mock');
 let gatewayHelper: GatewayHelper;
@@ -30,12 +30,12 @@ describe('CasesLocalGateway tests', () => {
         {
           caseNumber: '21-1234',
           caseTitle: 'Case A',
-          dateFiled: excludedDate.toISOString().slice(0, 10),
+          dateFiled: getCamsDateStringFromDate(excludedDate),
         },
         {
           caseNumber: '21-4321',
           caseTitle: 'Case B',
-          dateFiled: includedDate.toISOString().slice(0, 10),
+          dateFiled: getCamsDateStringFromDate(includedDate),
         },
       ];
     };
@@ -46,7 +46,7 @@ describe('CasesLocalGateway tests', () => {
       {
         caseNumber: '21-4321',
         caseTitle: 'Case B',
-        dateFiled: includedDate.toISOString().slice(0, 10),
+        dateFiled: getCamsDateStringFromDate(includedDate),
       },
     ]);
   });
