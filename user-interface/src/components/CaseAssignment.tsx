@@ -58,7 +58,7 @@ export const CaseAssignment = () => {
     return (
       <div className="case-list">
         <h1 data-testid="case-list-heading">{screenTitle}</h1>
-        <h2>{subTitle}</h2>
+        <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         <table>
           <thead>
             <tr className="case-headings">

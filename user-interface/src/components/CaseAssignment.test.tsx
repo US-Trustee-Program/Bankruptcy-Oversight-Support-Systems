@@ -90,4 +90,20 @@ describe('CaseAssignment Component Tests', () => {
       { timeout: 1000 },
     );
   });
+
+  test('Case Assignment should display Region and Office of the AUST who logs in', async () => {
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseAssignment />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    await waitFor(async () => {
+      const subtitle = screen.getByTestId('case-list-subtitle');
+      expect(subtitle.innerText.length).toBeGreaterThan(0); // Test line to check the length > 0
+      expect(subtitle.innerText).toBe('Region 2 (Manhattan Office)');
+    });
+  });
 });
