@@ -5,7 +5,8 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 import log from '../lib/adapters/services/logger.service';
 
 const appInsights = require('applicationinsights');
-appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING).start();
+appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING);
+appInsights.start();
 
 const NAMESPACE = 'USERS-FUNCTION';
 
