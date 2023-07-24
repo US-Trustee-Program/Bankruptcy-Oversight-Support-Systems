@@ -36,9 +36,6 @@ jobs:
           echo "Environment: ${{ vars.ENVIRONMENT }}"
           echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
-          # App Insights information
-          echo APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/"
-          echo APPLICATIONINSIGHTS_INSTRUMENTATIONKEY="ae2343bb-5913-f69e-96e6-d3fbca320506"
           # Generate resource group name(s)
           resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
           echo "Resource group appended with the following: ${resourceGroupSuffix}"
@@ -258,6 +255,8 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
+          APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/"
+          APPLICATIONINSIGHTS_INSTRUMENTATIONKEY="ae2343bb-5913-f69e-96e6-d3fbca320506"
           npm run build
 
       - name: Execute Tests
@@ -392,6 +391,8 @@ jobs:
           MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
           MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
           PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
+          APPLICATIONINSIGHTS_CONNECTION_STRING='InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/'ß
+          APPLICATIONINSIGHTS_INSTRUMENTATIONKEY='ae2343bb-5913-f69e-96e6-d3fbca320506'
           PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \

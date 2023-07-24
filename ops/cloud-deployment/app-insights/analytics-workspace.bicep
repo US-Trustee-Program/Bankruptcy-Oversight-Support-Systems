@@ -8,10 +8,6 @@ param dailyQuotaGb int
 resource symbolicname 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: analyticsName
   location: location
-  identity: {
-    type: 'string'
-    userAssignedIdentities: {}
-  }
   properties: {
     defaultDataCollectionRuleResourceId: 'string'
     features: {
