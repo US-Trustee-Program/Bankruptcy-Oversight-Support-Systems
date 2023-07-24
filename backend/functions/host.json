@@ -6,6 +6,13 @@
         "isEnabled": true,
         "excludedTypes": "Request"
       }
+    },
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Trace",
+      "Host.Results": "None",
+      "Function": "None",
+      "Worker": "None"
     }
   },
   "extensionBundle": {
