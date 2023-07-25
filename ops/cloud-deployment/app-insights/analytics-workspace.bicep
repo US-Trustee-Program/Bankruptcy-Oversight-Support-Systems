@@ -11,19 +11,18 @@ resource symbolicname 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   properties: {
     defaultDataCollectionRuleResourceId: 'string'
     features: {
-      clusterResourceId: 'string'
       disableLocalAuth: false
       enableDataExport: true
       enableLogAccessUsingOnlyResourcePermissions: true
       immediatePurgeDataOn30Days: false
     }
     forceCmkForQuery: false
-    publicNetworkAccessForIngestion: 'string'
-    publicNetworkAccessForQuery: 'string'
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
     retentionInDays: 180
     sku: {
       capacityReservationLevel: capactiyReservationLimit
-      name: 'string'
+      name: 'pergb2018'
     }
     workspaceCapping: {
       dailyQuotaGb: dailyQuotaGb
