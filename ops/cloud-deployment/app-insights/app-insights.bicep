@@ -14,7 +14,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     DisableIpMasking: false
     DisableLocalAuth: true
     Flow_Type: 'Redfield'
-    ApplicationId: 'ustp-cams-node-api202307181440'
     ImmediatePurgeDataOn30Days: true
     IngestionMode: 'LogAnalytics'
     publicNetworkAccessForIngestion: 'Enabled'
