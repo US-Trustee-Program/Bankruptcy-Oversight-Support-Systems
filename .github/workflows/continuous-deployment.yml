@@ -255,8 +255,8 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
-          APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/"
-          APPLICATIONINSIGHTS_INSTRUMENTATIONKEY="ae2343bb-5913-f69e-96e6-d3fbca320506"
+          export APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/"
+          export APPLICATIONINSIGHTS_INSTRUMENTATIONKEY="ae2343bb-5913-f69e-96e6-d3fbca320506"
           npm run build
 
       - name: Execute Tests
