@@ -96,13 +96,18 @@ eval "$cmd"
 echo "Deployment completed"
 
 if [[ -n ${identities} ]]; then
-    # configure User identities by Managed Idenity name and Resource group
+    # configure User identities given a Managed Identity principal id and resource group
     for identity in ${identities}; do
-        # get Azure resource id of managed identity by name and resource group
-        azResourceId="$(az identity show -g $id_rg -n $identity --query id -o tsv)"
+        # get Azure resource id of managed identity by principalId
+        azResourceId=$(az identity list -g $id_rg --query "[[?principalId=='$identity'].id" -o tsv)
 
-        echo "Assigning identity ${identity} to ${app_name}"
-        # assign service with specified idenity
-        az functionapp identity assign -g $app_rg -n $app_name --identities $azResourceId
+        if [[ -z "${azResourceId}" ]]; then
+            echo "Resource id not found. Invalid principalId."
+        else
+            echo "Assigning identity ${azResourceId/*\//} to ${app_name}"
+            # assign service with specified identity
+            az functionapp identity assign -g $app_rg -n $app_name --identities $azResourceId
+        fi
+
     done
 fi
