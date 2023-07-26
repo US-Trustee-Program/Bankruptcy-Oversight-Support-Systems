@@ -11,8 +11,8 @@ param planName string
 param planType string = 'P1v2'
 
 @description('App Insights Connection Settings')
-param appInsightsConnectionString string = 'InstrumentationKey=ae2343bb-5913-f69e-96e6-d3fbca320506;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/'
-param appInsightsInstrumentationKey string = 'ae2343bb-5913-f69e-96e6-d3fbca320506'
+param appInsightsConnectionString string
+param appInsightsInstrumentationKey string
 
 var planTypeToSkuMap = {
   P1v2: {
