@@ -8,9 +8,9 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
 }
 
-var cosmoDbReadWriteRoleName = 'CosmoDbReadWrite${accountName}'
+var cosmosDbReadWriteRoleName = 'CosmosDbReadWrite${accountName}'
 resource roleDefinition 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' existing = {
-  name: guid(cosmoDbReadWriteRoleName)
+  name: guid(cosmosDbReadWriteRoleName)
 }
 
 var sqlRoleAssignmentName = 'RoleAssignment${accountName}${principalId}'

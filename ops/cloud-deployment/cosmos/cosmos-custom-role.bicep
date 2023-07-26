@@ -5,12 +5,12 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
 }
 
-var cosmoDbReadWriteRoleName = 'CosmoDbReadWrite${accountName}'
+var cosmosDbReadWriteRoleName = 'CosmosDbReadWrite${accountName}'
 resource customRoleDefinition 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' = {
   parent: account
-  name: guid(cosmoDbReadWriteRoleName)
+  name: guid(cosmosDbReadWriteRoleName)
   properties: {
-    roleName: cosmoDbReadWriteRoleName
+    roleName: cosmosDbReadWriteRoleName
     type: 'CustomRole'
     assignableScopes: [
       account.id

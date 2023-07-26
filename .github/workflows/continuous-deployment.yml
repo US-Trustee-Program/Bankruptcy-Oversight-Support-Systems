@@ -326,12 +326,12 @@ jobs:
           v2=$(cat ./outputs.json | jq -r .webappName.value)
           echo "webappName=${v2}" >> $GITHUB_OUTPUT
 
-          cosmoDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
-          cosmoDbSnet=$(cat ./outputs.json | jq -r .cosmoDbAllowedSubnet.value)
-          ./ops/helper-scripts/az-cosmo-add-vnet-rule.sh \
+          cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
+          cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
+          ./ops/helper-scripts/az-cosmos-add-vnet-rule.sh \
             --networkResourceGroup ${{ steps.rgNetwork.outputs.out }} \
-            --vnetName ${cosmoDbVnet} \
-            --subnetName ${cosmoDbSnet} \
+            --vnetName ${cosmosDbVnet} \
+            --subnetName ${cosmosDbSnet} \
             --databaseResourceGroup ${{ secrets.AZURE_RG }} \
             --accountName ${{ secrets.AZ_COSMO_ACCOUNT_NAME }}
 

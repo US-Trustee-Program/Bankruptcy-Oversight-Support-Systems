@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
-# Title:        az-cosmo-add-vnet-rule.sh
-# Description:  Helper script to add CosmoDb vnet rule by subnet name, vnet name, and resource group.
-# Usage:        az-cosmo-add-vnet-rule.sh --networkResourceGroup rg-network --vnetName vnet-ustp --subnetName snet-ustp-node --databaseResourceGroup rg-database --accountName cosmo-dev-01
+# Title:        az-cosmos-add-vnet-rule.sh
+# Description:  Helper script to add CosmosDb vnet rule by subnet name, vnet name, and resource group.
+# Usage:        az-cosmos-add-vnet-rule.sh --networkResourceGroup rg-network --vnetName vnet-ustp --subnetName snet-ustp-node --databaseResourceGroup rg-database --accountName cosmos-dev-01
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 while [[ $# > 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-cosmo-add-vnet-rule.sh --networkResourceGroup rg-network --vnetName vnet-ustp --subnetName snet-ustp-node --databaseResourceGroup rg-database --accountName cosmo-dev-01"
+        echo "USAGE: az-cosmos-add-vnet-rule.sh --networkResourceGroup rg-network --vnetName vnet-ustp --subnetName snet-ustp-node --databaseResourceGroup rg-database --accountName cosmos-dev-01"
         exit 0
         shift
         ;;

@@ -18,12 +18,12 @@ export default class HealthcheckCosmoDb {
   private CONTAINER_NAME = 'healthcheck'; // NOTE: Expect a container named 'healthcheck' with one item
 
   private readonly ctx: ApplicationContext;
-  private readonly cosmoDbClient: CosmosClient;
+  private readonly cosmosDbClient: CosmosClient;
 
   constructor(applicationContext: ApplicationContext) {
     try {
       this.ctx = applicationContext;
-      this.cosmoDbClient = new CosmosClient({
+      this.cosmosDbClient = new CosmosClient({
         endpoint: this.dbEndpoint,
         aadCredentials: this.managedId
           ? new ManagedIdentityCredential({
@@ -39,7 +39,7 @@ export default class HealthcheckCosmoDb {
   public async check() {
     try {
       // Check read access
-      const { resources: results } = await this.cosmoDbClient
+      const { resources: results } = await this.cosmosDbClient
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
         .items.readAll()

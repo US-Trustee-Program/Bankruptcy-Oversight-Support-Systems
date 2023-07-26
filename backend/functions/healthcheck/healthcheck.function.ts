@@ -1,7 +1,7 @@
 import log from '../lib/adapters/services/logger.service';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
-import HealthcheckCosmoDb from './healthcheck.db';
+import HealthcheckCosmosDb from './healthcheck.db';
 
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 
@@ -13,18 +13,18 @@ const httpTrigger: AzureFunction = async function (
   req: HttpRequest,
 ): Promise<void> {
   const applicationContext = applicationContextCreator(context);
-  const healthcheckCosmoDbClient = new HealthcheckCosmoDb(applicationContext);
+  const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
   log.debug(applicationContext, NAMESPACE, 'Health check invoked');
 
-  const checkCosmoDb = await healthcheckCosmoDbClient.check();
-  log.debug(applicationContext, NAMESPACE, 'CosmoDb Check return ' + checkCosmoDb);
+  const checkCosmosDb = await healthcheckCosmosDbClient.check();
+  log.debug(applicationContext, NAMESPACE, 'CosmosDb Check return ' + checkCosmosDb);
 
   const respBody = {
-    cosmoDbStatus: checkCosmoDb,
+    cosmosDbStatus: checkCosmosDb,
   };
 
-  const allCheckPassed = checkCosmoDb; // Add boolean flag for any other checks here
+  const allCheckPassed = checkCosmosDb; // Add boolean flag for any other checks here
   context.res = allCheckPassed
     ? httpSuccess(context, { status: 'OK' })
     : httpError(context, new Error(JSON.stringify(respBody)), 500);
