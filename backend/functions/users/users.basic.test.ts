@@ -5,7 +5,15 @@ const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
 
+jest.mock('dotenv');
+
 describe('Standard User Login Http Trigger tests without class mocks', () => {
+  beforeAll(() => {
+    process.env = {
+      APPINSIGHTS_CONNECTION_STRING: 'TESTSTRING',
+    };
+    console.log(process.env.APPINSIGHTS_CONNECTION_STRING);
+  });
   test('should by default complain about missing first and last name parameters', async () => {
     const request = {
       query: {},

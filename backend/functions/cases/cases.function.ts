@@ -3,6 +3,9 @@ import { CasesController } from '../lib/adapters/controllers/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 const appInsights = require('applicationinsights');
 appInsights.setup(process.env.APPINSIGHTS_CONNECTION_STRING).start();
