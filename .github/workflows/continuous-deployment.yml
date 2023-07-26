@@ -259,7 +259,7 @@ jobs:
 
       - name: Execute Tests
         run: |
-          APPLICATIONINSIGHTS_CONNECTION_STRING="TESTSTRING" && npm run test
+          APPLICATIONINSIGHTS_CONNECTION_STRING="TESTSTRING" npm run test
 
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
