@@ -8,7 +8,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: appInsightsName
   location: location
   kind: 'web'
-  etag: '\"c10081bb-0000-2700-0000-64b6a4b90000\"'
   properties: {
     Application_Type: applicationType
     DisableIpMasking: false
