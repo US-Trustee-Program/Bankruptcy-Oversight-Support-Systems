@@ -99,7 +99,7 @@ if [[ -n ${identities} ]]; then
     # configure User identities given a Managed Identity principal id and resource group
     for identity in ${identities}; do
         # get Azure resource id of managed identity by principalId
-        azResourceId=$(az identity list -g $id_rg --query "[[?principalId=='$identity'].id" -o tsv)
+        azResourceId=$(az identity list -g $id_rg --query "[?principalId=='$identity'].id" -o tsv)
 
         if [[ -z "${azResourceId}" ]]; then
             echo "Resource id not found. Invalid principalId."
