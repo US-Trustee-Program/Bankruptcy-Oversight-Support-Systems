@@ -30,6 +30,7 @@
     "pine": "^1.1.1"
   },
   "scripts": {
+    "clean": "rm -rf ./dist & rm -rf ./node_modules",
     "build": "tsc --project tsconfig.build.json",
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
