@@ -11,7 +11,7 @@ repos:
         -   id: check-yaml
         -   id: check-added-large-files
   -   repo: https://github.com/pre-commit/mirrors-eslint
-      rev: 'v8.44.0'  # Use the sha / tag you want to point at
+      rev: 'v8.45.0'  # Use the sha / tag you want to point at
       hooks:
         - id: eslint
           files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
@@ -19,7 +19,7 @@ repos:
           additional_dependencies:
           -   eslint@8.42.0
           -   eslint-config-prettier@8.8.0
-          -   eslint-plugin-prettier@4.2.1
+          -   eslint-plugin-prettier@5.0.0
           -   eslint-plugin-react@7.32.2
           -   typescript
           -   '@typescript-eslint/eslint-plugin'
@@ -31,7 +31,7 @@ repos:
           args: [ '--baseline', '.secrets.baseline' ]
           exclude: package.lock.json
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.9.0
+    rev: v2.10.0
     hooks:
       - id: pretty-format-java
         args: [ --autofix ]
