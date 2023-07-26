@@ -56,6 +56,11 @@ param pacerKeyVaultIdentityName string
 @description('Resource group name managed identity with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityResourceGroupName string
 
+@description('App Insight Connections string for api')
+param appInsightsConnectionString string
+
+@description('App Insights InstrumentationKey for api')
+param appInsightsInstrumentationKey string
 module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -122,6 +127,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
     privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
+    appInsightsConnectionString: appInsightsConnectionString
+    appInsightsInstrumentationKey: appInsightsInstrumentationKey
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
