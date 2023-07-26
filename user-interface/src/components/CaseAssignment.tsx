@@ -7,7 +7,9 @@ import MockApi from '../models/chapter15-mock.api.cases';
 export const CaseAssignment = () => {
   const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
-  const subTitle = 'Region 2 (Connecticut, New York, Vermont)';
+  const regionId = 2;
+  const officeName = 'Manhattan';
+  const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -56,7 +58,7 @@ export const CaseAssignment = () => {
     return (
       <div className="case-list">
         <h1 data-testid="case-list-heading">{screenTitle}</h1>
-        <h2>{subTitle}</h2>
+        <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         <table>
           <thead>
             <tr className="case-headings">
