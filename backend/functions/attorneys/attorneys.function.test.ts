@@ -3,14 +3,7 @@ import httpTrigger from './attorneys.function';
 import * as httpModule from '../lib/adapters/utils/http';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 
-jest.mock('dotenv');
 describe('Attorneys Azure Function tests', () => {
-  beforeAll(() => {
-    process.env = {
-      APPINSIGHTS_CONNECTION_STRING: 'TESTSTRING',
-    };
-    console.log(process.env.APPINSIGHTS_CONNECTION_STRING);
-  });
   it('Should call getAttourneyList with office id if parameter was passed in URL', async () => {
     const officeId = '123';
     const request = {

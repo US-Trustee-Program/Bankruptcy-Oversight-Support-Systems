@@ -2,15 +2,7 @@ import httpTrigger from './cases.function';
 
 const context = require('azure-function-context-mock');
 
-jest.mock('dotenv');
-
 describe('Standard case list tests without class mocks', () => {
-  beforeAll(() => {
-    process.env = {
-      APPINSIGHTS_CONNECTION_STRING: 'TESTSTRING',
-    };
-    console.log(process.env.APPINSIGHTS_CONNECTION_STRING);
-  });
   test('Should return 0 cases successfully when an invalid chapter parameter is provided', async () => {
     const request = {
       query: {
