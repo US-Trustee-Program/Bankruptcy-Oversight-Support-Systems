@@ -36,7 +36,7 @@ export default class HealthcheckCosmoDb {
     }
   }
 
-  public async check() {
+  public async checkDbRead() {
     try {
       // Check read access
       const { resources: results } = await this.cosmosDbClient
@@ -45,6 +45,48 @@ export default class HealthcheckCosmoDb {
         .items.readAll()
         .fetchAll();
       return results.length > 0;
+    } catch (e) {
+      log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
+    }
+    return false;
+  }
+
+  public async checkDbWrite() {
+    try {
+      // Check write access
+      const { item: item } = await this.cosmosDbClient
+        .database(this.databaseName)
+        .container(this.CONTAINER_NAME)
+        .items.create({});
+      log.debug(this.ctx, NAMESPACE, `New item created ${item.id}`);
+      return item.id;
+    } catch (e) {
+      log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
+    }
+    return false;
+  }
+
+  public async checkDbDelete() {
+    try {
+      // Check read access
+      const { resources: results } = await this.cosmosDbClient
+        .database(this.databaseName)
+        .container(this.CONTAINER_NAME)
+        .items.readAll()
+        .fetchAll();
+
+      if (results.length > 0) {
+        for (const item of results) {
+          log.debug(this.ctx, NAMESPACE, `Invoking delete on item ${item.id}`);
+
+          await this.cosmosDbClient
+            .database(this.databaseName)
+            .container(this.CONTAINER_NAME)
+            .item(item.id, item.id)
+            .delete();
+        }
+      }
+      return true;
     } catch (e) {
       log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
     }

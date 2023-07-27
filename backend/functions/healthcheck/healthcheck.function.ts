@@ -15,16 +15,23 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = applicationContextCreator(context);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
-  log.debug(applicationContext, NAMESPACE, 'Health check invoked');
+  log.debug(applicationContext, NAMESPACE, 'Health check enpoint invoked');
 
-  const checkCosmosDb = await healthcheckCosmosDbClient.check();
-  log.debug(applicationContext, NAMESPACE, 'CosmosDb Check return ' + checkCosmosDb);
+  const checkCosmosDbWrite = await healthcheckCosmosDbClient.checkDbWrite();
+  log.debug(applicationContext, NAMESPACE, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
+  const checkCosmosDbRead = await healthcheckCosmosDbClient.checkDbRead();
+  log.debug(applicationContext, NAMESPACE, 'CosmosDb Read Check return ' + checkCosmosDbRead);
+  const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
 
   const respBody = {
-    cosmosDbStatus: checkCosmosDb,
+    cosmosDbWriteStatus: checkCosmosDbWrite,
+    cosmosDbReadStatus: checkCosmosDbRead,
+    cosmosDbDeleteStatus: checkCosmosDbDelete,
   };
 
-  const allCheckPassed = checkCosmosDb; // Add boolean flag for any other checks here
+  // Add boolean flag for any other checks here
+  const allCheckPassed = checkCosmosDbWrite && checkCosmosDbRead && checkCosmosDbDelete;
+
   context.res = allCheckPassed
     ? httpSuccess(context, { status: 'OK' })
     : httpError(context, new Error(JSON.stringify(respBody)), 500);
