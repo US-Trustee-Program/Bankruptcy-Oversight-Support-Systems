@@ -28,4 +28,5 @@ resource customRoleDefinition 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefi
   }
 }
 
-output roleDefinitionId string = customRoleDefinition.name
+output roleDefinitionId string = customRoleDefinition.id
+output roleDefinitionName string = customRoleDefinition.name

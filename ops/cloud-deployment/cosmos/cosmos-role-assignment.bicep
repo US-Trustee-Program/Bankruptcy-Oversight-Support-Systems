@@ -4,13 +4,11 @@ param accountName string
 @description('Object ID of the AAD identity. Must be a GUID.')
 param principalId string
 
+@description('Resource id of role definition')
+param roleDefinitionId string
+
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
-}
-
-var cosmosDbReadWriteRoleName = 'CosmosDbReadWrite${accountName}'
-resource roleDefinition 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' existing = {
-  name: guid(cosmosDbReadWriteRoleName)
 }
 
 var sqlRoleAssignmentName = 'RoleAssignment${accountName}${principalId}'
@@ -18,7 +16,7 @@ resource sqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignm
   parent: account
   name: guid(sqlRoleAssignmentName)
   properties: {
-    roleDefinitionId: resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', account.name, roleDefinition.name)
+    roleDefinitionId: roleDefinitionId
     principalId: principalId
     scope: account.id
   }
