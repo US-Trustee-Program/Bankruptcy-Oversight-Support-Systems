@@ -8,9 +8,9 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const NAMESPACE = 'HEALTHCHECK-COSMO-DB';
+const NAMESPACE = 'HEALTHCHECK-COSMOS-DB';
 
-export default class HealthcheckCosmoDb {
+export default class HealthcheckCosmosDb {
   private readonly dbEndpoint = process.env.COSMOS_ENDPOINT;
   private readonly managedId = process.env.COSMOS_MANAGED_IDENTITY;
   private readonly databaseName = process.env.COSMOS_DATABASE_NAME;
