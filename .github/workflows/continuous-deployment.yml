@@ -279,6 +279,8 @@ jobs:
     outputs:
       functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
       webappName: ${{ steps.azure-deploy.outputs.webappName }}
+      cosmosDbManagedIdentity: ${{ steps.azure-db-deploy.outputs.cosmosDbManagedIdentity }}
+
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
 
@@ -327,11 +329,27 @@ jobs:
           echo "webappName=${v2}" >> $GITHUB_OUTPUT
 
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
+          echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
+
           cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
+          echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
+
+      - name: Deploy database
+        id: azure-db-deploy
+        run: |
+          az deployment group create \
+            -g ${{ secrets.AZURE_RG }} \
+            -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
+            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            -o json --query properties.outputs | tee outputs.json
+
+          cosmosDbManagedIdentity=$(cat ./outputs.json | jq -r .cosmosDbManagedIdentity.value)
+          echo "cosmosDbManagedIdentity=${cosmosDbManagedIdentity}" >> $GITHUB_OUTPUT
+
           ./ops/helper-scripts/az-cosmos-add-vnet-rule.sh \
             --networkResourceGroup ${{ steps.rgNetwork.outputs.out }} \
-            --vnetName ${cosmosDbVnet} \
-            --subnetName ${cosmosDbSnet} \
+            --vnetName ${{ steps.azure-deploy.outputs.cosmosDbVnet }} \
+            --subnetName ${{ steps.azure-deploy.outputs.cosmosDbSnet }} \
             --databaseResourceGroup ${{ secrets.AZURE_RG }} \
             --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}
 
@@ -405,14 +423,13 @@ jobs:
           PACER_USER_ID_SECRET_NAME=${{ secrets.PACER_USER_ID_SECRET_NAME }} \
           PACER_PASSWORD_SECRET_NAME=${{ secrets.PACER_PASSWORD_SECRET_NAME }} \
           STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=${{ secrets.AZ_COSMOS_ENDPOINT }} \
+          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ secrets.AZ_COSMOS_MANAGED_IDENTITY }}" \
-          --identities "${{ secrets.AZ_COSMOS_MANAGED_IDENTITY }}" \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbManagedIdentity }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbManagedIdentity }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   integration-test:
-    if: false # TODO temporarily disable test
     defaults:
       run:
         working-directory: backend/functions

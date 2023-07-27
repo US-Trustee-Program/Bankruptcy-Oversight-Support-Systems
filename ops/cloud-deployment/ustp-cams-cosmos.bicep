@@ -74,3 +74,6 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
     roleDefinitionId: customReadWriteRole.outputs.roleDefinitionId
   }
 }
+
+
+output cosmosDbManagedIdentity string = cosmosDbUserManagedIdentity.outputs.principalId
