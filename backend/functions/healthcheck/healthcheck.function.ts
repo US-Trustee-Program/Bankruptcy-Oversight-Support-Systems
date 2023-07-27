@@ -15,7 +15,7 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = applicationContextCreator(context);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
-  log.debug(applicationContext, NAMESPACE, 'Health check enpoint invoked');
+  log.debug(applicationContext, NAMESPACE, 'Health check endpoint invoked');
 
   const checkCosmosDbWrite = await healthcheckCosmosDbClient.checkDbWrite();
   log.debug(applicationContext, NAMESPACE, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
