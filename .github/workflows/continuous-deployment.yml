@@ -378,7 +378,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.build-info.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -408,7 +408,7 @@ jobs:
         run: |
           ./ops/helper-scripts/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.deploy.outputs.functionAppName }} \
+          -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
           --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} \
           MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} \
