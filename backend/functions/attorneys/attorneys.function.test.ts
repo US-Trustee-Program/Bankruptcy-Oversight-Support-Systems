@@ -4,7 +4,7 @@ import * as httpModule from '../lib/adapters/utils/http';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 
 describe('Attorneys Azure Function tests', () => {
-  it('Should call getAttourneyList with office id if parameter was passed in URL', async () => {
+  it('Should call getAttorneyList with office id if parameter was passed in URL', async () => {
     const officeId = '123';
     const request = {
       query: {
@@ -23,7 +23,7 @@ describe('Attorneys Azure Function tests', () => {
     expect(attorneysListSpy).toHaveBeenCalledWith(expect.objectContaining({ officeId }));
   });
 
-  it('Should call getAttourneyList with office id if value was passed to httpTrigger in body', async () => {
+  it('Should call getAttorneyList with office id if value was passed to httpTrigger in body', async () => {
     const officeId = '123';
     const request = {
       query: {},
