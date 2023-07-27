@@ -333,7 +333,7 @@ jobs:
             --vnetName ${cosmosDbVnet} \
             --subnetName ${cosmosDbSnet} \
             --databaseResourceGroup ${{ secrets.AZURE_RG }} \
-            --accountName ${{ secrets.AZ_COSMO_ACCOUNT_NAME }}
+            --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}
 
   deploy-webapp:
     runs-on: ubuntu-latest
@@ -405,10 +405,10 @@ jobs:
           PACER_USER_ID_SECRET_NAME=${{ secrets.PACER_USER_ID_SECRET_NAME }} \
           PACER_PASSWORD_SECRET_NAME=${{ secrets.PACER_PASSWORD_SECRET_NAME }} \
           STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=${{ secrets.AZ_COSMO_ENDPOINT }} \
-          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMO_DATABASE_NAME }} \
-          COSMO_MANAGED_IDENTITY=${{ secrets.AZ_COSMO_MANAGED_IDENTITY }}" \
-          --identities "${{ secrets.AZ_COSMO_MANAGED_IDENTITY }}" \
+          COSMOS_ENDPOINT=${{ secrets.AZ_COSMOS_ENDPOINT }} \
+          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+          COSMOS_MANAGED_IDENTITY=${{ secrets.AZ_COSMOS_MANAGED_IDENTITY }}" \
+          --identities "${{ secrets.AZ_COSMOS_MANAGED_IDENTITY }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   integration-test:
