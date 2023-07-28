@@ -76,4 +76,5 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
 }
 
 
-output cosmosDbManagedIdentity string = cosmosDbUserManagedIdentity.outputs.clientId
+output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
+output cosmosDbPrincipalId string = cosmosDbUserManagedIdentity.outputs.principalId

@@ -58,6 +58,25 @@ param backupRetentionIntervalInHours int = 8
 @description('Backup policy configuration: Storage Redundancy')
 param backupStorageRedundancy string = 'Geo'
 
+@description('List of allowed subnet resource ids')
+param allowedSubnets array = []
+
+// Enable Azure Portal access
+var azureIpRules = [
+  {
+    ipAddressOrRange: '52.244.48.71'
+  }
+  {
+    ipAddressOrRange: '52.176.6.30'
+  }
+  {
+    ipAddressOrRange: '52.169.50.45'
+  }
+  {
+    ipAddressOrRange: '52.187.184.26'
+  }
+]
+
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: accountName
   location: location
@@ -79,6 +98,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     ]
     publicNetworkAccess: 'Enabled'
     isVirtualNetworkFilterEnabled: true
+    virtualNetworkRules: [for item in allowedSubnets: {
+      id: item
+      ignoreMissingVNetServiceEndpoint: false
+    }]
     backupPolicy: {
       type: 'Periodic'
       periodicModeProperties: {
@@ -87,6 +110,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
         backupStorageRedundancy: backupStorageRedundancy
       }
     }
+    ipRules: azureIpRules
   }
 }
 
