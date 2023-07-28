@@ -12,6 +12,8 @@ param databaseContainers array = [
     partitionKey1: '/id'
   }
 ]
+@description('List of allowed subnet resource ids')
+param allowedSubnets array = []
 
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
@@ -20,6 +22,7 @@ module account './cosmos/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
+    allowedSubnets: allowedSubnets
   }
 }
 
