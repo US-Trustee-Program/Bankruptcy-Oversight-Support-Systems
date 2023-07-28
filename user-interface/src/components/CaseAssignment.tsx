@@ -5,7 +5,7 @@ import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 
 export const CaseAssignment = () => {
-  const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
+  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
@@ -41,9 +41,9 @@ export const CaseAssignment = () => {
   useEffect(() => {
     fetchList();
 
-    if (!isLoading) {
-      fetchList();
-    }
+    //if (!isLoading) {
+    //  fetchList();
+    //}
   }, [caseList.length > 0, chapter]);
 
   if (isLoading) {

@@ -21,27 +21,33 @@
     "react-router-dom": "^6.14.1",
     "redux": "^4.2.1",
     "typescript": "^4.9.5",
+    "vite-plugin-env-compatible": "^1.1.1",
     "web-vitals": "^3.3.1"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.2.0",
+    "@typescript-eslint/parser": "^6.2.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "c8": "^8.0.1",
     "dependency-cruiser": "^13.1.0",
-    "eslint": "^8.45.0",
-    "eslint-config-prettier": "^8.8.0",
+    "eslint": "^8.46.0",
+    "eslint-config-prettier": "^8.9.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react": "^7.33.0",
     "fetch-mock": "^9.11.0",
+    "jsdom": "^22.1.0",
     "pa11y-ci": "^3.0.1",
     "prettier": "^3.0.0",
-    "react-scripts": "^5.0.1",
-    "sass": "^1.58.3"
+    "sass": "^1.58.3",
+    "vite": "^4.4.7",
+    "vite-plugin-checker": "^0.6.1",
+    "vite-plugin-eslint": "^1.8.1",
+    "vite-plugin-svgr": "^3.2.0",
+    "vite-tsconfig-paths": "^4.2.0",
+    "vitest": "^0.33.0"
   },
   "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "extends": []
   },
   "browserslist": {
     "production": [
@@ -59,24 +65,17 @@
     "nth-check": "2.0.1",
     "webpack": "^5.78.0",
     "semver": "7.5.2",
-    "word-wrap" : "@aashutoshrathi/word-wrap"
-  },
-  "jest": {
-    "coveragePathIgnorePatterns": [
-      "/index.tsx",
-      "/reportWebVitals.ts",
-      "/configuration/apiConfiguration.ts",
-      "http.adapter.ts"
-    ]
+    "word-wrap": "@aashutoshrathi/word-wrap"
   },
   "scripts": {
-    "start": "test -e ./.env && sh .env; react-scripts start",
-    "start:pa11y": "export REACT_APP_PA11Y=true && react-scripts start",
-    "build": "react-scripts build",
-    "test": "export REACT_APP_PA11Y=true && react-scripts test --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage --watchAll=false",
-    "test:watch": "npm run test -- --watchAll=true",
-    "coverage": "npm run test -- --coverage",
-    "eject": "react-scripts eject",
+    "start": "vite",
+    "start:pa11y": "export CAMS_PA11Y=true && vite",
+    "build": "tsc && vite build",
+    "serve": "vite preview",
+    "test": "export CAMS_PA11Y=true && vitest run",
+    "test:watch": "vitest watch",
+    "coverage": "vitest run --coverage",
+    "//test": "export PA11Y=true && react-scripts test --testMatch '**/*.test.{js,jsx,ts,tsx}' --coverage --watchAll=false",
     "lint": "eslint .",
     "lint:fix": "eslint --fix",
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
