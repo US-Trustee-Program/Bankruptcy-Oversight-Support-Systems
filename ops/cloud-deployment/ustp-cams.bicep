@@ -139,3 +139,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
 output webappName string = ustpWebapp.outputs.webappName
 output functionAppName string = deployFunctions ? ustpFunctions[0].outputs.functionAppName : ''
 output vnetName string = virtualNetworkName
+
+// Allowed subnet name that should have access to CosmosDb
+// Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
+output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
