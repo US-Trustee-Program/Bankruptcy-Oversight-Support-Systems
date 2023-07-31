@@ -121,7 +121,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 /*
   Subnet creation in target virtual network
 */
-module subnet './snet/network-subnet.bicep' = {
+module subnet './subnet/network-subnet.bicep' = {
   name: '${functionName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -156,7 +156,7 @@ module subnet './snet/network-subnet.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './snet/network-subnet-pep.bicep' = {
+module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
