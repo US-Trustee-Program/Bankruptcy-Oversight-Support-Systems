@@ -333,6 +333,7 @@ jobs:
           allowedSubnets=$(az deployment group create -g rg-cams-network -f ./ops/cloud-deployment/query/get-vnet.bicep --parameter virtualNetworkName=vnet-ustp-cams --query "properties.outputs.subnets.value[?name=='${{ steps.azure-deploy.outputs.cosmosDbSnet }}'].id")
 
           az deployment group create \
+            --show-what-if \
             -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
             --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnets=${allowedSubnets} \
