@@ -1,5 +1,5 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { Chapter15Case } from '../types/cases';
+import { IChapter15Case } from '../types/cases';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
 import { GatewayHelper } from './gateway-helper';
 
@@ -9,10 +9,10 @@ class PacerLocalGateway implements CasesInterface {
   getChapter15Cases = async (
     context,
     options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-  ): Promise<Chapter15Case[]> => {
+  ): Promise<IChapter15Case[]> => {
     const _gatewayHelper = options.gatewayHelper || new GatewayHelper();
     this.startingMonth = options.startingMonth || -6;
-    let cases: Chapter15Case[];
+    let cases: IChapter15Case[];
 
     try {
       cases = pacerToChapter15Data(_gatewayHelper.pacerMockExtract());
