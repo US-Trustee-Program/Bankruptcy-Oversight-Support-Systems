@@ -3,9 +3,15 @@
   "logging": {
     "applicationInsights": {
       "samplingSettings": {
-        "isEnabled": true,
-        "excludedTypes": "Request"
+        "isEnabled": true
       }
+    },
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Debug",
+      "Host.Results": "None",
+      "Function": "None",
+      "Worker": "None"
     }
   },
   "extensionBundle": {
