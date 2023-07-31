@@ -2,7 +2,29 @@ name: Continuous Deployment
 
 concurrency: ${{ github.ref }}-${{ github.workflow }}
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      deployBranch:
+        description: 'Provision Azure resources for development branch and deploy build.'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
+      deployVnet:
+        description: 'Enable Vnet creation'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
 
 jobs:
   build-info:
