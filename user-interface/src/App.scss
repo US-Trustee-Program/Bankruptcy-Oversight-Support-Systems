@@ -1,3 +1,8 @@
+@use 'uswds-core' with (
+  $theme-font-path: './styles/fonts',
+  $theme-image-path: './styles/img'
+);
+@use 'uswds';
 @use 'styles/abstracts/colors';
 
 .App {
