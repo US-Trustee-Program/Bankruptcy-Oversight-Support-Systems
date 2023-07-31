@@ -25,8 +25,8 @@
     "web-vitals": "^3.3.1"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.2.0",
-    "@typescript-eslint/parser": "^6.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-react": "^4.0.3",
     "c8": "^8.0.1",
     "dependency-cruiser": "^13.1.0",
