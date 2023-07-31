@@ -3,13 +3,12 @@
   "logging": {
     "applicationInsights": {
       "samplingSettings": {
-        "isEnabled": true,
-        "excludedTypes": ""
+        "isEnabled": true
       }
     },
     "fileLoggingMode": "always",
     "logLevel": {
-      "default": "Trace",
+      "default": "Debug",
       "Host.Results": "None",
       "Function": "None",
       "Worker": "None"
