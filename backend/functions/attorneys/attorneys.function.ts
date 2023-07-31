@@ -3,6 +3,13 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+console.log(process.env.APPINSIGHTS_CONNECTION_STRING);
+const appInsights = require('applicationinsights');
+appInsights.setup(process.env.APPINSIGHTS_CONNECTION_STRING).start();
 
 const NAMESPACE = 'ATTORNEYS-FUNCTION';
 
