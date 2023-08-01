@@ -1,7 +1,7 @@
-@use 'uswds-core/index' with ($theme-font-path: './styles/fonts',
+@use 'node_modules/@uswds/uswds/packages/uswds-core/index' with ($theme-font-path: './styles/fonts',
   $theme-image-path: './styles/img'
 );
-@use 'uswds/index';
+@use 'node_modules/@uswds/uswds/packages/uswds/index';
 @use 'styles/abstracts/colors';
 
 .App {
