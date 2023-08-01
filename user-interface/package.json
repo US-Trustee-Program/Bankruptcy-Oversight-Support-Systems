@@ -68,7 +68,7 @@
   },
   "scripts": {
     "start": "vite",
-    "start:pa11y": "export CAMS_PA11Y=true && tsc && vite build && echo $CAMS_PA11Y && vite preview",
+    "start:pa11y": "export CAMS_PA11Y=true && tsc && vite build && vite preview",
     "build": "tsc && vite build",
     "serve": "vite preview",
     "test": "export CAMS_PA11Y=true && vitest run",
