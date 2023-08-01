@@ -15,7 +15,6 @@ export default defineConfig({
       scss: {
         includePaths: ['node_modules/', 'node_modules/@uswds/uswds/packages/', 'src/'],
       },
-      includePaths: ['node_modules/', 'node_modules/@uswds/uswds/packages/', 'src/'],
     },
   },
   plugins: [
