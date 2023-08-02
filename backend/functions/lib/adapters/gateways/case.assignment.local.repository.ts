@@ -13,11 +13,17 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
     return this.addAssignment(caseAssignment);
   }
 
-  public addAssignment(caseAssignment: CaseAttorneyAssignment): number {
+  private addAssignment(caseAssignment: CaseAttorneyAssignment): number {
     const assignmentId = this._nextUnusedId;
     caseAssignment._assignmentId = assignmentId;
     this.caseAttorneyAssignments.push(caseAssignment);
     ++this._nextUnusedId;
     return assignmentId;
+  }
+
+  getAssignment(assignmentId: number): CaseAttorneyAssignment {
+    return this.caseAttorneyAssignments.find(
+      (assignment) => assignment._assignmentId === assignmentId,
+    );
   }
 }
