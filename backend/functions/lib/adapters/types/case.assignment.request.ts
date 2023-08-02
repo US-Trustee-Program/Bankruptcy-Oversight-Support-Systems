@@ -1,4 +1,4 @@
-import { CaseAssignmentRole } from './case.assignment';
+import { CaseAssignmentRole } from './case.assignment.role';
 
 export class CaseAssignmentRequest {
   private _caseId: string;

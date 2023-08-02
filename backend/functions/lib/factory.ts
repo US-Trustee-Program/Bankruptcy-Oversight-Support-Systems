@@ -9,6 +9,8 @@ import { CasesInterface } from './use-cases/cases.interface';
 import { PacerLocalGateway } from './adapters/gateways/pacer.local.gateway';
 import { PacerSecretsGateway } from './adapters/gateways/pacer-secrets.gateway';
 import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interface';
+import { ICaseAssignmentRepository } from './interfaces/ICaseAssignmentRepository';
+import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -43,3 +45,12 @@ export const getPacerGateway = (): CasesInterface => {
 export const getPacerTokenSecretGateway = (): PacerSecretsInterface => {
   return new PacerSecretsGateway();
 };
+
+export const getAssignmentRepository = (): ICaseAssignmentRepository => {
+  const config: ApplicationConfiguration = new ApplicationConfiguration();
+  if (config.get('dbMock')) {
+    return new CaseAssignmentLocalRepository();
+  } else {
+    // return new CaseAssignmentRepository(); // not yet implemented
+  }
+}
