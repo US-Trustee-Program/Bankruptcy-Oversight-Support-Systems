@@ -21,7 +21,7 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
     return assignmentId;
   }
 
-  getAssignment(assignmentId: number): CaseAttorneyAssignment {
+  public async getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment> {
     return this.caseAttorneyAssignments.find(
       (assignment) => assignment._assignmentId === assignmentId,
     );

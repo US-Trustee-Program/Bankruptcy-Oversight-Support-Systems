@@ -12,7 +12,7 @@ describe('Chapter 15 Case Assignment Tests', () => {
       CaseAssignmentRole.TrialAttorney,
     );
 
-    let result: number;
+    let resultAssignmentId: number;
     const mockCaseAssignmentRepository: ICaseAssignmentRepository =
       new CaseAssignmentLocalRepository();
     try {
@@ -20,14 +20,14 @@ describe('Chapter 15 Case Assignment Tests', () => {
         context,
         mockCaseAssignmentRepository,
       );
-      result = await assignmentController.createCaseAssignment(testCaseAssignment);
+      resultAssignmentId = await assignmentController.createCaseAssignment(testCaseAssignment);
     } catch (exception) {
       // exception.message;
     }
-    //TO DO create and check via the get call on the repository.
-    const assignmentCreated = mockCaseAssignmentRepository.getAssignment(result);
 
-    expect(result).toBeGreaterThan(0);
+    const assignmentCreated = await mockCaseAssignmentRepository.getAssignment(resultAssignmentId);
+
+    expect(resultAssignmentId).toBeGreaterThan(0);
     expect(assignmentCreated._caseId).toBe(testCaseAssignment.caseId);
     expect(assignmentCreated._professionalId).toBe(testCaseAssignment.professionalId);
     expect(assignmentCreated._role).toBe(testCaseAssignment.role);
