@@ -53,4 +53,4 @@ export const getAssignmentRepository = (): ICaseAssignmentRepository => {
   } else {
     // return new CaseAssignmentRepository(); // not yet implemented
   }
-}
+};

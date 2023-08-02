@@ -6,4 +6,6 @@ export interface ICaseAssignmentRepository {
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<number>;
+
+  getAssignment(assignmentId: number): CaseAttorneyAssignment;
 }

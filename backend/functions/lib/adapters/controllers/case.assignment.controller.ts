@@ -5,13 +5,16 @@ import { CaseAssignmentRequest } from '../types/case.assignment.request';
 import log from '../services/logger.service';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignmentService } from '../../use-cases/case.assignment.service';
+import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepository';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
+  private readonly caseAssignmentRepository: ICaseAssignmentRepository;
 
-  constructor(context: Context) {
+  constructor(context: Context, assignmentRepository?: ICaseAssignmentRepository) {
     this.applicationContext = applicationContextCreator(context);
+    this.caseAssignmentRepository = assignmentRepository;
   }
 
   public async createCaseAssignment(assignmentRequest: CaseAssignmentRequest): Promise<number> {
@@ -22,7 +25,7 @@ export class CaseAssignmentController {
       assignmentRequest.role,
     );
 
-    const assignmentService = new CaseAssignmentService();
+    const assignmentService = new CaseAssignmentService(this.caseAssignmentRepository);
     return await assignmentService.createAssignment(this.applicationContext, assignment);
   }
 }
