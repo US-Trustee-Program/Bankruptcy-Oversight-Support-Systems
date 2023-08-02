@@ -17,17 +17,24 @@
   ],
   "overrides": [],
   "parserOptions": {
+    "parser": "@typescript-eslint/parser",
     "ecmaVersion": "latest",
     "sourceType": "module",
-    "project": true,
     "ecmaFeatures": {
       "jsx": true
     }
   },
-  "plugins": ["react", "@typescript-eslint", "prettier"],
+  "plugins": [
+    "react",
+    "@typescript-eslint",
+    "prettier"
+  ],
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "brace-style": ["warn", "1tbs"],
+    "brace-style": [
+      "warn",
+      "1tbs"
+    ],
     "quotes": [
       "warn",
       "single",
@@ -36,8 +43,16 @@
         "allowTemplateLiterals": true
       }
     ],
-    "object-curly-spacing": ["warn", "always"],
-    "object-curly-newline": ["off"],
-    "block-spacing": ["warn", "always"]
+    "object-curly-spacing": [
+      "warn",
+      "always"
+    ],
+    "object-curly-newline": [
+      "off"
+    ],
+    "block-spacing": [
+      "warn",
+      "always"
+    ]
   }
 }
