@@ -1,7 +1,0 @@
-{
-  "includePaths": [
-    "node_modules/",
-    "node_modules/@uswds/uswds/packages/",
-    "src/"
-  ]
-}
