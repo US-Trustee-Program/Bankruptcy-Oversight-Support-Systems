@@ -7,5 +7,5 @@ export interface ICaseAssignmentRepository {
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<number>;
 
-  getAssignment(assignmentId: number): CaseAttorneyAssignment;
+  getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment>;
 }
