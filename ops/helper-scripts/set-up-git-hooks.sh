@@ -10,4 +10,6 @@ fi
 pre-commit install
 
 # Append the branch naming convention check
+pushd ops/helper-scripts
 cat pre-commit >> ../../.git/hooks/pre-commit
+popd
