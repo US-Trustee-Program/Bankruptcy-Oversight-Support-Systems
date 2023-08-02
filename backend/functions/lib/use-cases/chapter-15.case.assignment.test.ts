@@ -1,6 +1,6 @@
 import { CaseAssignmentRequest } from '../adapters/types/case.assignment.request';
-import { CaseAssignmentResponse, CaseAssignmentRole } from '../adapters/types/case.assignment';
-import { AssignmentController } from '../adapters/controllers/assignment.controller';
+import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+import { CaseAssignmentController } from '../adapters/controllers/case.assignment.controller';
 const context = require('azure-function-context-mock');
 describe('Chapter 15 Case Assignment Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
@@ -10,15 +10,14 @@ describe('Chapter 15 Case Assignment Tests', () => {
       CaseAssignmentRole.TrialAttorney,
     );
 
-    let result: CaseAssignmentResponse;
+    let result: number;
     try {
-      const assignmentController = new AssignmentController(context);
+      const assignmentController = new CaseAssignmentController(context);
       result = await assignmentController.createCaseAssignment(testCaseAssignment);
     } catch (exception) {
-      result.message = exception.message;
+      // exception.message;
     }
-
-    expect(result).toBeTruthy();
-    expect(result.success).toBeTruthy();
+    //TO DO create and check via the get call on the repository.
+    expect(result).toBeGreaterThan(0);
   });
 });
