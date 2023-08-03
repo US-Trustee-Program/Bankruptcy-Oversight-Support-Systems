@@ -4,6 +4,7 @@ type TOpenModalButtonProps = {
   modalId: string;
   className: string;
   onClick: MouseEventHandler<HTMLAnchorElement>;
+  children: React.ReactNode;
 };
 
 type TOpenModalButtonState = {
@@ -26,7 +27,7 @@ export class OpenModalButton extends Component<TOpenModalButtonProps, TOpenModal
         data-open-modal
         onClick={this.props.onClick}
       >
-        Open modal
+        {this.props.children}
       </a>
     );
   }

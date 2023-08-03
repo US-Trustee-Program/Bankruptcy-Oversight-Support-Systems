@@ -62,42 +62,45 @@ export const CaseAssignment = () => {
     );
   } else {
     return (
-      <div className="case-list">
-        <h1 data-testid="case-list-heading">{screenTitle}</h1>
-        <h2 data-testid="case-list-subtitle">{subTitle}</h2>
-        <table>
-          <thead>
-            <tr className="case-headings">
-              <th>Case Number</th>
-              <th>Case Title (Debtor)</th>
-              <th>Filing Date</th>
-              <th>Assigned Attorney</th>
-            </tr>
-          </thead>
-          <tbody data-testid="case-assignment-table-body">
-            {caseList.length > 0 &&
-              (caseList as Array<Chapter15Type>).map((theCase: Chapter15Type, idx: number) => {
-                return (
-                  <tr key={idx}>
-                    <td>{theCase.caseNumber}</td>
-                    <td>{theCase.caseTitle}</td>
-                    <td>{theCase.dateFiled}</td>
-                    <td>
-                      ---
-                      <OpenModalButton
-                        className="case-assignment-modal-toggle"
-                        modalId="assign-attorney-modal"
-                        onClick={() => openModal(theCase)}
-                      >
-                        Assign
-                      </OpenModalButton>
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-      </div>
+      <>
+        <div className="case-list">
+          <h1 data-testid="case-list-heading">{screenTitle}</h1>
+          <h2 data-testid="case-list-subtitle">{subTitle}</h2>
+          <table>
+            <thead>
+              <tr className="case-headings">
+                <th>Case Number</th>
+                <th>Case Title (Debtor)</th>
+                <th>Filing Date</th>
+                <th>Assigned Attorney</th>
+              </tr>
+            </thead>
+            <tbody data-testid="case-assignment-table-body">
+              {caseList.length > 0 &&
+                (caseList as Array<Chapter15Type>).map((theCase: Chapter15Type, idx: number) => {
+                  return (
+                    <tr key={idx}>
+                      <td>{theCase.caseNumber}</td>
+                      <td>{theCase.caseTitle}</td>
+                      <td>{theCase.dateFiled}</td>
+                      <td>
+                        ---
+                        <OpenModalButton
+                          className="case-assignment-modal-toggle"
+                          modalId="assign-attorney-modal"
+                          onClick={() => openModal(theCase)}
+                        >
+                          Assign
+                        </OpenModalButton>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+        <AssignAttorneyModal modalId="assign-attorney-modal"></AssignAttorneyModal>
+      </>
     );
   }
 };
