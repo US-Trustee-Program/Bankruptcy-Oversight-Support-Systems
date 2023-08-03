@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import Api from '../models/api';
+import { AssignAttorneyModal } from './AssignAttorneyModal';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
+import { OpenModalButton } from './uswds/OpenModalButton';
 
 export const CaseAssignment = () => {
   const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
@@ -46,6 +48,10 @@ export const CaseAssignment = () => {
     }
   }, [caseList.length > 0, chapter]);
 
+  const openModal = (theCase: Chapter15Type) => {
+    return theCase;
+  };
+
   if (isLoading) {
     return (
       <div className="case-list">
@@ -65,6 +71,7 @@ export const CaseAssignment = () => {
               <th>Case Number</th>
               <th>Case Title (Debtor)</th>
               <th>Filing Date</th>
+              <th>Assigned Attorney</th>
             </tr>
           </thead>
           <tbody data-testid="case-assignment-table-body">
@@ -75,6 +82,16 @@ export const CaseAssignment = () => {
                     <td>{theCase.caseNumber}</td>
                     <td>{theCase.caseTitle}</td>
                     <td>{theCase.dateFiled}</td>
+                    <td>
+                      ---
+                      <OpenModalButton
+                        className="case-assignment-modal-toggle"
+                        modalId="assign-attorney-modal"
+                        onClick={() => openModal(theCase)}
+                      >
+                        Assign
+                      </OpenModalButton>
+                    </td>
                   </tr>
                 );
               })}
