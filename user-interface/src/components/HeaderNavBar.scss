@@ -1,12 +1,16 @@
 @use '../styles/abstracts/colors';
 
+.usa-header > * {
+  background-color: colors.$navy;
+}
+
 .boss-header .usa-banner > * {
   vertical-align: middle;
   line-height: normal;
+  background-color: colors.$navy;
 }
 
 .boss-header {
-  background-color: colors.$navy;
   border-bottom: 3px solid colors.$gold;
   width: calc(100% - 100px);
   padding: 15px 50px;

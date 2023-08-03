@@ -7,6 +7,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { BrowserRouter } from 'react-router-dom';
 import * as router from 'react-router';
 import userEvent from '@testing-library/user-event';
+import { vi } from 'vitest';
 
 const mockLoginResponse = {
   success: true,
@@ -70,11 +71,11 @@ describe('Login', () => {
     };
 
     // mock the fetch call
-    jest.spyOn(global, 'fetch').mockImplementation(mockLogin);
+    vi.spyOn(global, 'fetch').mockImplementation(mockLogin);
 
     // mock the browser navigation
-    const navigate = jest.fn();
-    jest.spyOn(router, 'useNavigate').mockImplementation(() => navigate);
+    const navigate = vi.fn();
+    vi.spyOn(router, 'useNavigate').mockImplementation(() => navigate);
 
     render(
       <BrowserRouter>

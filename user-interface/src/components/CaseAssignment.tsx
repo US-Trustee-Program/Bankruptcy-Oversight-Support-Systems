@@ -5,7 +5,7 @@ import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 
 export const CaseAssignment = () => {
-  const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
+  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
@@ -27,11 +27,13 @@ export const CaseAssignment = () => {
         const sortedList = chapter15Response.body.caseList.sort((a, b): number => {
           const recordA: Chapter15Type = a as Chapter15Type;
           const recordB: Chapter15Type = b as Chapter15Type;
-          return recordA.dateFiled < recordB.dateFiled
-            ? 1
-            : recordA.dateFiled > recordB.dateFiled
-            ? -1
-            : 0;
+          if (recordA.dateFiled < recordB.dateFiled) {
+            return 1;
+          } else if (recordA.dateFiled > recordB.dateFiled) {
+            return -1;
+          } else {
+            return 0;
+          }
         });
         setCaseList(sortedList);
         setIsLoading(false);
@@ -39,8 +41,6 @@ export const CaseAssignment = () => {
   };
 
   useEffect(() => {
-    fetchList();
-
     if (!isLoading) {
       fetchList();
     }

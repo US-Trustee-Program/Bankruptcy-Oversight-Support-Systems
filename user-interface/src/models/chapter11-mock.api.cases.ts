@@ -10,18 +10,19 @@ export default class MockApi extends Api {
     let response: ResponseData;
     let caseList: object[];
 
+    const profId = options?.professional_id;
     switch (path) {
       case '/cases':
-        if (!!options && Object.hasOwn(options as ApiOptions, 'professional_id')) {
+        caseList = MockApi.caseList;
+
+        if (profId) {
           caseList = MockApi.caseList.filter((caseRecord) => {
-            const profId = (options as ApiOptions).professional_id ?? '';
             if (`${profId}`.length > 0) {
               return [caseRecord.staff1ProfId, caseRecord.staff1ProfId].includes(`${profId}`);
             }
           });
-        } else {
-          caseList = MockApi.caseList;
         }
+
         response = {
           message: 'cases list',
           count: MockApi.caseList.length,

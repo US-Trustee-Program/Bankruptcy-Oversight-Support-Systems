@@ -22,7 +22,7 @@ type caseType = {
 };
 
 export const CaseList = () => {
-  const api = process.env['REACT_APP_PA11Y'] ? MockApi : Api;
+  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
   const user = useAppSelector((state) => state.user.user);
   const [caseList, setCaseList] = useState<CaseListResponseData>({
     message: '',

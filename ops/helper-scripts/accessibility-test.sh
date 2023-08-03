@@ -2,7 +2,7 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-export REACT_APP_PA11Y=true
+export CAMS_PA11Y=true
 npm run build
 npm install serve -g
 serve -s build &

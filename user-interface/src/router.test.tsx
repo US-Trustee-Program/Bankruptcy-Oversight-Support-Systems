@@ -1,8 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
+import { vi } from 'vitest';
 
 const mockCaseList = {
   success: true,
@@ -33,7 +33,7 @@ describe('App Router Tests', () => {
   });
 
   it('should route /cases to CaseList', async () => {
-    jest.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+    vi.spyOn(global, 'fetch').mockImplementation(mockFetchList);
     render(<App />, { wrapper: BrowserRouter });
 
     await act(async () => {
