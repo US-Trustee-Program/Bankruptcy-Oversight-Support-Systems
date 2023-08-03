@@ -18,7 +18,9 @@ export default class Chapter15MockApi extends Api {
         response = {
           message: 'not found',
           count: 0,
-          body: {},
+          body: {
+            caseList: [],
+          },
         };
     }
     return Promise.resolve(response);
