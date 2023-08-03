@@ -2,6 +2,7 @@ import { Component } from 'react';
 
 type TModalProps = {
   className: string;
+  modalId: string;
 };
 
 type TModalState = {
@@ -17,7 +18,7 @@ export class AssignAttorneyModal extends Component<TModalProps, TModalState> {
     return (
       <div className={this.state.className}>
         <div className="usa-modal__main">
-          <h2 className="usa-modal__heading" id="modal-3-heading">
+          <h2 className="usa-modal__heading" id={this.props.modalId}>
             Your session will end soon.
           </h2>
           <div className="usa-prose">
