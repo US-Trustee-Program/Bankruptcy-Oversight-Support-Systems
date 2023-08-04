@@ -3,6 +3,9 @@ import { Component } from 'react';
 type TModalProps = {
   className?: string;
   modalId: string;
+  heading: string;
+  content: React.ReactNode;
+  actionButtonGroup: React.ReactNode;
 };
 
 type TModalState = {
@@ -19,20 +22,17 @@ export class AssignAttorneyModal extends Component<TModalProps, TModalState> {
       <div
         className={this.state.className}
         id={this.props.modalId}
-        aria-labelledby="modal-3-heading"
-        aria-describedby="modal-3-description"
+        aria-labelledby={this.props.modalId + '-heading'}
+        aria-describedby={this.props.modalId + '-description'}
         data-force-action
       >
         <div className="usa-modal__content">
           <div className="usa-modal__main">
-            <h2 className="usa-modal__heading" id="modal-3-heading">
-              Your session will end soon.
+            <h2 className="usa-modal__heading" id={this.props.modalId + '-heading'}>
+              {this.props.heading}
             </h2>
             <div className="usa-prose">
-              <p id="modal-3-description">
-                You&apos;ve been inactive for too long. Please choose to stay signed in or sign out.
-                Otherwise, you&apos;ll be signed out automatically in 5 minutes.
-              </p>
+              <section id={this.props.modalId + '-description'}>{this.props.content}</section>
             </div>
             <div className="usa-modal__footer">
               <ul className="usa-button-group">
