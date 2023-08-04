@@ -5,9 +5,9 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "route": "caseassignment/{caseId}/{professionalId}/{role}",
+      "route": "caseassignment/create",
       "methods": [
-        "get"
+        "post"
       ]
     },
     {
