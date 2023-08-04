@@ -34,7 +34,7 @@ const httpTrigger: AzureFunction = async function (
     );
 
     const newAssignmentId = await caseAssignmentController.createCaseAssignment(assignmentRequest);
-    /*const responseBody = {
+    /* ToDo: const responseBody = {
       message: 'A new assignment has been created successfully',
       data: { assignmentId: newAssignmentId },
     };*/
@@ -51,10 +51,31 @@ function createAssignmentRequest(
   professionalId: string,
   role: string,
 ): CaseAssignmentRequest {
+  validateRequestParameters(caseId, functionContext, professionalId, role);
+
+  const professionalRole: CaseAssignmentRole = role as unknown as CaseAssignmentRole;
+  return new CaseAssignmentRequest(caseId, professionalId, professionalRole);
+}
+
+function validateRequestParameters(
+  caseId: string,
+  functionContext: Context,
+  professionalId: string,
+  role: string,
+) {
+  validateCaseId(caseId, functionContext);
+  validateProfessionalId(professionalId, functionContext);
+  validateRole(role, functionContext);
+}
+
+function validateCaseId(caseId: string, functionContext: Context) {
   if (!caseId) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_CASE_ID_MESSAGE);
     functionContext.res = httpError(functionContext, new Error(REQUIRED_CASE_ID_MESSAGE), 400);
   }
+}
+
+function validateProfessionalId(professionalId: string, functionContext: Context) {
   if (!professionalId) {
     log.error(
       applicationContextCreator(functionContext),
@@ -67,16 +88,13 @@ function createAssignmentRequest(
       400,
     );
   }
+}
+
+function validateRole(role: string, functionContext: Context) {
   if (!role) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_ROLE_MESSAGE);
     functionContext.res = httpError(functionContext, new Error(REQUIRED_ROLE_MESSAGE), 400);
-  }
-
-  let professionalRole: CaseAssignmentRole;
-  if (role in CaseAssignmentRole) {
-    professionalRole = role as unknown as CaseAssignmentRole;
-    return new CaseAssignmentRequest(caseId, professionalId, professionalRole);
-  } else {
+  } else if (!(role in CaseAssignmentRole)) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, INVALID_ROLE_MESSAGE);
     functionContext.res = httpError(functionContext, new Error(INVALID_ROLE_MESSAGE), 400);
   }
