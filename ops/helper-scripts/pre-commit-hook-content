@@ -14,9 +14,9 @@ then
         branch_accepted=true
     else
         branch_accepted=false
-    else
-        branch_accepted=true
     fi
+else
+    branch_accepted=true
 fi
 
 if [[ $branch_accepted == false ]]
