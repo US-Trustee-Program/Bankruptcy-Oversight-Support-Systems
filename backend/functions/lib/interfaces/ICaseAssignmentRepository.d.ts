@@ -8,4 +8,6 @@ export interface ICaseAssignmentRepository {
   ): Promise<number>;
 
   getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment>;
+  findAssignment(caseAssignment: CaseAttorneyAssignment): Promise<CaseAttorneyAssignment>;
+  getCount(): Promise<number>;
 }
