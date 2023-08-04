@@ -7,9 +7,9 @@ preferred_branch_prefix_regex="^CAMS-[0-9]+-.*$"
 message="In order for Jira to associate your branch name with a ticket, the branch name must start with 'CAMS-' followed by the ticket number. You should rename your branch to a valid name and try again."
 branch_accepted=false
 
-if [[ local_branch =~ $may_be_cams_regex ]]
+if [[ $local_branch =~ $may_be_cams_regex ]]
 then
-    if [[ local_branch =~ $preferred_branch_prefix_regex ]]
+    if [[ $local_branch =~ $preferred_branch_prefix_regex ]]
     then
         branch_accepted=true
     else
