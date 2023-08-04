@@ -10,7 +10,12 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<number> {
-    return this.addAssignment(caseAssignment);
+    const assignment: CaseAttorneyAssignment = await this.findAssignment(caseAssignment);
+    if (!assignment) {
+      return this.addAssignment(caseAssignment);
+    } else {
+      return assignment._assignmentId;
+    }
   }
 
   private addAssignment(caseAssignment: CaseAttorneyAssignment): number {
@@ -25,5 +30,20 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
     return this.caseAttorneyAssignments.find(
       (assignment) => assignment._assignmentId === assignmentId,
     );
+  }
+
+  public async findAssignment(
+    caseAssignment: CaseAttorneyAssignment,
+  ): Promise<CaseAttorneyAssignment> {
+    return this.caseAttorneyAssignments.find((assignment) => {
+      return (
+        assignment._caseId === caseAssignment._caseId &&
+        assignment._professionalId === caseAssignment._professionalId &&
+        assignment._role === caseAssignment._role
+      );
+    });
+  }
+  public async getCount(): Promise<number> {
+    return this.caseAttorneyAssignments.length;
   }
 }
