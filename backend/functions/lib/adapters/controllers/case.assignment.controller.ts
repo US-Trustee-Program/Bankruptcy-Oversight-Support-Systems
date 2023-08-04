@@ -18,7 +18,14 @@ export class CaseAssignmentController {
   }
 
   public async createCaseAssignment(assignmentRequest: CaseAssignmentRequest): Promise<number> {
-    log.info(this.applicationContext, NAMESPACE, 'Creating the case assignment to an attorney');
+    log.info(this.applicationContext, NAMESPACE, 'Creating the case assignment to a professional');
+    log.info(this.applicationContext, NAMESPACE, `caseId: ${assignmentRequest.caseId}`);
+    log.info(
+      this.applicationContext,
+      NAMESPACE,
+      `professionalId: ${assignmentRequest.professionalId}`,
+    );
+    log.info(this.applicationContext, NAMESPACE, `role: ${assignmentRequest.role}`);
     const assignment = new CaseAttorneyAssignment(
       assignmentRequest.caseId,
       assignmentRequest.professionalId,
@@ -26,6 +33,11 @@ export class CaseAssignmentController {
     );
 
     const assignmentService = new CaseAssignmentService(this.caseAssignmentRepository);
-    return await assignmentService.createAssignment(this.applicationContext, assignment);
+    const assignmentId = await assignmentService.createAssignment(
+      this.applicationContext,
+      assignment,
+    );
+    log.info(this.applicationContext, NAMESPACE, `assignmentId: ${assignment}`);
+    return assignmentId;
   }
 }
