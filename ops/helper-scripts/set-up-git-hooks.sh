@@ -23,6 +23,7 @@ temp_file=$(mktemp)
 
 ## Move the modified contents back to the original file
 mv "$temp_file" ../../.git/hooks/pre-commit
+chmod +x ../../.git/hooks/pre-commit
 
 ## Remove the temporary file
 rm "$temp_file"
