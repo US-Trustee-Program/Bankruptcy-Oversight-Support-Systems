@@ -4,7 +4,11 @@ import { AssignAttorneyModal } from './AssignAttorneyModal';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
-import { OpenModalButton } from './uswds/OpenModalButton';
+import { ToggleModalButton } from './uswds/ToggleModalButton';
+import Button from './uswds/Button';
+
+const modalHeading = 'Assign Attorney to Chapter 15 Case';
+const modalContent = 'test instructions for this modal go here.';
 
 export const CaseAssignment = () => {
   const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
@@ -85,13 +89,14 @@ export const CaseAssignment = () => {
                       <td>{theCase.dateFiled}</td>
                       <td>
                         ---
-                        <OpenModalButton
+                        <ToggleModalButton
                           className="case-assignment-modal-toggle"
+                          modalState="open"
                           modalId="assign-attorney-modal"
                           onClick={() => openModal(theCase)}
                         >
                           Assign
-                        </OpenModalButton>
+                        </ToggleModalButton>
                       </td>
                     </tr>
                   );
@@ -99,7 +104,12 @@ export const CaseAssignment = () => {
             </tbody>
           </table>
         </div>
-        <AssignAttorneyModal modalId="assign-attorney-modal"></AssignAttorneyModal>
+        <AssignAttorneyModal
+          modalId="assign-attorney-modal"
+          heading={modalHeading}
+          content={modalContent}
+          actionButtonGroup={<></>}
+        ></AssignAttorneyModal>
       </>
     );
   }

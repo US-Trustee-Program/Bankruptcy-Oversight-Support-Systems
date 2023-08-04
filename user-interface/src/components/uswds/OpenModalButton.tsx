@@ -1,16 +1,16 @@
 import { Component, MouseEventHandler } from 'react';
 
-type TOpenModalButtonProps = {
+interface TOpenModalButtonProps {
   modalId: string;
   className: string;
   onClick: MouseEventHandler<HTMLAnchorElement>;
   children: React.ReactNode;
-};
+}
 
-type TOpenModalButtonState = {
+interface TOpenModalButtonState {
   href: string;
   className: string;
-};
+}
 
 export class OpenModalButton extends Component<TOpenModalButtonProps, TOpenModalButtonState> {
   state: TOpenModalButtonState = {
