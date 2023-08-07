@@ -2,6 +2,8 @@ import { ICaseAssignmentRepository } from '../interfaces/ICaseAssignmentReposito
 import { getAssignmentRepository } from '../factory';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ApplicationContext } from '../adapters/types/basic';
+import { TrialAttorneyAssignmentResponse } from '../adapters/types/trial.attorney.assignment.response';
+
 export class CaseAssignmentService {
   private _assignmentRepository: ICaseAssignmentRepository;
 
@@ -17,6 +19,28 @@ export class CaseAssignmentService {
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<number> {
-    return await this._assignmentRepository.createAssignment(context, caseAssignment);
+    try {
+      return await this._assignmentRepository.createAssignment(context, caseAssignment);
+    } catch (exception) {
+      throw exception;
+    }
+  }
+
+  async createTrialAttorneyAssignments(
+    context: ApplicationContext,
+    listOfAssignments: CaseAttorneyAssignment[],
+  ): Promise<TrialAttorneyAssignmentResponse> {
+    const listOfAssignmentIdsCreated: number[] = [];
+    for (const assignment of listOfAssignments) {
+      listOfAssignmentIdsCreated.push(await this.createAssignment(context, assignment));
+    }
+
+    const response = new TrialAttorneyAssignmentResponse();
+    response.assignmentIdList = listOfAssignmentIdsCreated;
+    response.success = true;
+    response.message = 'Trial attorney assignments created.';
+    response.resultCount = listOfAssignmentIdsCreated.length;
+
+    return response;
   }
 }

@@ -54,7 +54,7 @@ function createAssignmentRequest(
   validateRequestParameters(caseId, functionContext, professionalId, role);
 
   const professionalRole: CaseAssignmentRole = role as unknown as CaseAssignmentRole;
-  return new CaseAssignmentRequest(caseId, professionalId, professionalRole);
+  return new CaseAssignmentRequest(caseId, professionalRole, professionalId,);
 }
 
 function validateRequestParameters(

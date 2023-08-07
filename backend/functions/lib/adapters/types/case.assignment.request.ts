@@ -5,12 +5,14 @@ export class CaseAssignmentRequest {
   private _caseTitle: string;
   private _dateFiled: string;
   private _professionalId: string;
+  private _listOfProfessionalIds: string[];
   private _role: CaseAssignmentRole;
 
   constructor(
     caseId: string,
-    professionalId: string,
     role: CaseAssignmentRole,
+    professionalId?: string,
+    listOfProfessionalIds?: string[],
     caseTitle?: string,
     dateFiled?: string,
   ) {
@@ -18,6 +20,7 @@ export class CaseAssignmentRequest {
     this._caseTitle = caseTitle;
     this._dateFiled = dateFiled;
     this._professionalId = professionalId;
+    this._listOfProfessionalIds = listOfProfessionalIds;
     this._role = role;
   }
   get role(): CaseAssignmentRole {
@@ -26,6 +29,13 @@ export class CaseAssignmentRequest {
 
   set role(value: CaseAssignmentRole) {
     this._role = value;
+  }
+  get listOfProfessionalIds(): string[] {
+    return this._listOfProfessionalIds;
+  }
+
+  set listOfProfessionalIds(value: string[]) {
+    this._listOfProfessionalIds = value;
   }
   get professionalId(): string {
     return this._professionalId;
