@@ -2,7 +2,29 @@ name: Continuous Deployment
 
 concurrency: ${{ github.ref }}-${{ github.workflow }}
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      deployBranch:
+        description: 'Provision Azure resources for development branch and deploy build.'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
+      deployVnet:
+        description: 'Enable Vnet creation'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
 
 jobs:
   build-info:
@@ -36,7 +58,6 @@ jobs:
           echo "Environment: ${{ vars.ENVIRONMENT }}"
           echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
-
           # Generate resource group name(s)
           resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
           echo "Resource group appended with the following: ${resourceGroupSuffix}"
@@ -259,7 +280,8 @@ jobs:
           npm run build
 
       - name: Execute Tests
-        run: npm run test
+        run: |
+          export APPINSIGHTS_CONNECTION_STRING="TESTSTRING" && npm run test
 
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
@@ -275,7 +297,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, build-frontend, build-service, accessibility-test]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || inputs.deployBranch)
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
       cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
@@ -319,7 +341,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} pacerKeyVaultIdentityName=${{ secrets.PACER_KEYVAULT_IDENTITY }} pacerKeyVaultIdentityResourceGroupName=${{ secrets.AZURE_RG }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} pacerKeyVaultIdentityName=${{ secrets.PACER_KEYVAULT_IDENTITY }} pacerKeyVaultIdentityResourceGroupName=${{ secrets.AZURE_RG }} apiAppInsightsConnectionString=${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }} apiAppInsightsInstrumentationKey=${{ secrets.API_APPINSIGHTS_INSTRUMENTATION_KEY }}'
 
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
           echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
@@ -407,6 +429,8 @@ jobs:
           MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
           MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
           PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
+          APPINSIGHTS_CONNECTION_STRING=${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }}
+          APPINSIGHTS_INSTRUMENTATIONKEY=${{ secrets.API_APPINSIGHTS_INSTRUMENTATION_KEY }}
           PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \

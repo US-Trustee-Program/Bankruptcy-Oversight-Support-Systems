@@ -39,6 +39,10 @@ param apiPlanName string = 'plan-${apiName}'
   'B2'
 ])
 param apiPlanType string
+@description('App Insight Connections string for api')
+param apiAppInsightsConnectionString string
+@description('App Insights InstrumentationKey for api')
+param apiAppInsightsInstrumentationKey string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
@@ -122,6 +126,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
     privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
+    appInsightsConnectionString: apiAppInsightsConnectionString
+    appInsightsInstrumentationKey: apiAppInsightsInstrumentationKey
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName

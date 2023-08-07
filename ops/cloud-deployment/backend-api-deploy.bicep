@@ -10,6 +10,10 @@ param planName string
 ])
 param planType string = 'P1v2'
 
+@description('App Insights Connection Settings')
+param appInsightsConnectionString string
+param appInsightsInstrumentationKey string
+
 var planTypeToSkuMap = {
   P1v2: {
     name: 'P1v2'
@@ -233,6 +237,14 @@ var applicationSettings = concat([
     {
       name: 'AZURE_CLIENT_ID'
       value: pacerKeyVaultManagedIdentityClientId
+    }
+    {
+      name: 'APPINSIGHTS_CONNECTION_STRING'
+      value: appInsightsConnectionString
+    }
+    {
+      name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+      value: appInsightsInstrumentationKey
     }
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
