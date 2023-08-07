@@ -3,13 +3,15 @@ import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { CaseAssignmentController } from '../adapters/controllers/case.assignment.controller';
 import { ICaseAssignmentRepository } from '../interfaces/ICaseAssignmentRepository';
 import { CaseAssignmentLocalRepository } from '../adapters/gateways/case.assignment.local.repository';
+import { TrialAttorneyAssignmentResponse } from '../adapters/types/trial.attorney.assignment.response';
+import { TrialAttorneysAssignmentRequest } from '../adapters/types/trial.attorneys.assignment.request';
 const context = require('azure-function-context-mock');
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = new CaseAssignmentRequest(
       '12345',
-      '8082',
       CaseAssignmentRole.TrialAttorney,
+      '8082',
     );
 
     let resultAssignmentId: number;
@@ -39,8 +41,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const testCaseAssignment1 = new CaseAssignmentRequest(
       '12345',
-      '8082',
       CaseAssignmentRole.TrialAttorney,
+      '8082',
     );
 
     let resultAssignmentId1: number;
@@ -73,16 +75,16 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const testCaseAssignment1 = new CaseAssignmentRequest(
       '12345',
-      '8082',
       CaseAssignmentRole.TrialAttorney,
+      '8082',
     );
 
     let resultAssignmentId1: number;
 
     const testCaseAssignment2 = new CaseAssignmentRequest(
       '12345',
-      '8083',
       CaseAssignmentRole.TrialAttorney,
+      '8083',
     );
     let resultAssignmentId2: number;
 
@@ -108,5 +110,35 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const expectedNumberOfAssignments: number = 2;
     const actualNumberOfAssignments = await mockCaseAssignmentRepository.getCount();
     expect(actualNumberOfAssignments).toBe(expectedNumberOfAssignments);
+  });
+
+  test('A chapter 15 case is assigned to the list of trial attorneys provided.', async () => {
+    //given a case assignmentRequest with caseId, Attorney[], role
+    const testCaseAssignment = new TrialAttorneysAssignmentRequest(
+      '12345',
+      ['8082', '8092', '8094'],
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const mockCaseAssignmentRepository: ICaseAssignmentRepository =
+      new CaseAssignmentLocalRepository();
+
+    //When requested for assignment
+    //Then assignments created and a list of the assignmentIds are returned.
+    let assignmentResponse: TrialAttorneyAssignmentResponse;
+    try {
+      const assignmentController = new CaseAssignmentController(
+        context,
+        mockCaseAssignmentRepository,
+      );
+      assignmentResponse = await assignmentController.createTrailAttorneyAssignments(
+        testCaseAssignment,
+      );
+    } catch (exception) {
+      // exception.message;
+    }
+
+    expect(assignmentResponse.assignmentIdList.length).toBe(
+      testCaseAssignment.listOfAttorneyIds.length,
+    );
   });
 });

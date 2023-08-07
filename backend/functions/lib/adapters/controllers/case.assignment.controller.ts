@@ -6,6 +6,8 @@ import log from '../services/logger.service';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignmentService } from '../../use-cases/case.assignment.service';
 import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepository';
+import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
+import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 export class CaseAssignmentController {
@@ -39,5 +41,25 @@ export class CaseAssignmentController {
     );
     log.info(this.applicationContext, NAMESPACE, `assignmentId: ${assignment}`);
     return assignmentId;
+  }
+
+  public async createTrailAttorneyAssignments(
+    assignmentRequest: TrialAttorneysAssignmentRequest,
+  ): Promise<TrialAttorneyAssignmentResponse> {
+    const listOfAssignments: CaseAttorneyAssignment[] = [];
+
+    assignmentRequest.listOfAttorneyIds.forEach((attorney) => {
+      const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+        assignmentRequest.caseId,
+        attorney,
+        assignmentRequest.role,
+      );
+      listOfAssignments.push(assignment);
+    });
+    const assignmentService = new CaseAssignmentService(this.caseAssignmentRepository);
+    return assignmentService.createTrialAttorneyAssignments(
+      this.applicationContext,
+      listOfAssignments,
+    );
   }
 }

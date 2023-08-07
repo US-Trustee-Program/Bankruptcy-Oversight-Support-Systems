@@ -5,7 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "route": "caseassignment/create",
+      "route": "case-assignments",
       "methods": [
         "post"
       ]
