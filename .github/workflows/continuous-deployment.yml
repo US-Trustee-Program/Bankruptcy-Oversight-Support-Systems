@@ -330,13 +330,12 @@ jobs:
       - name: Deploy database
         id: azure-db-deploy
         run: |
-          allowedSubnets=$(az deployment group create -g rg-cams-network -f ./ops/cloud-deployment/query/get-vnet.bicep --parameter virtualNetworkName=vnet-ustp-cams --query "properties.outputs.subnets.value[?name=='${{ steps.azure-deploy.outputs.cosmosDbSnet }}'].id")
+          allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
 
           az deployment group create \
-            --what-if \
             -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnets=${allowedSubnets} \
+            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} \
             -o json --query properties.outputs | tee outputs.json
 
           cosmosDbClientId=$(cat ./outputs.json | jq -r .cosmosDbClientId.value)
