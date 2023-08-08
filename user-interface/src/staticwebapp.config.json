@@ -5,6 +5,5 @@
   },
   "mimeTypes": {
     ".json": "text/json"
-  },
-  "allowSyntheticDefaultImports": true
+  }
 }
