@@ -7,13 +7,18 @@ describe('Case Assignment Function Tests', () => {
   test('Return the assignment Id created for the new case assignment', async () => {
     const request = {
       query: {
-        caseId: '12345',
-        professionalId: '8082',
+        caseId: '6789',
+        attorneyIdList: ['9082'],
         role: 'TrialAttorney',
       },
     };
-    const expectedResponse = { assignmentId: 1 };
 
+    const expectedResponse = {
+      assignmentIdList: [1],
+      success: true,
+      message: 'Trial attorney assignments created.',
+      resultCount: 1,
+    };
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
   });

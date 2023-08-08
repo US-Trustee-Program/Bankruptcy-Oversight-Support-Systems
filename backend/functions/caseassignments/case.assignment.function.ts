@@ -3,42 +3,39 @@ import { CaseAssignmentController } from '../lib/adapters/controllers/case.assig
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
-import { CaseAssignmentRequest } from '../lib/adapters/types/case.assignment.request';
 import { CaseAssignmentRole } from '../lib/adapters/types/case.assignment.role';
+import { TrialAttorneysAssignmentRequest } from '../lib/adapters/types/trial.attorneys.assignment.request';
 
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
 const REQUIRED_CASE_ID_MESSAGE = 'Required parameter caseId is absent.';
 const REQUIRED_PROFESSIONAL_ID_MESSAGE = 'Required parameter professionalId is absent.';
 const REQUIRED_ROLE_MESSAGE = 'Required parameter role of the professional is absent.';
 const INVALID_ROLE_MESSAGE =
-  'Invalid role for the professional. Please pass in a valid professional role to assign';
+  'Invalid role for the professional. Requires role to be a TrialAttorney for case assignment';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
   const caseId = request.query.caseId || (request.body && request.body.caseId);
-  const professionalId =
-    request.query.professionalId || (request.body && request.body.professionalId);
+  const listOfAttorneyIds =
+    request.query.attorneyIdList || (request.body && request.body.attorneyIdList);
   const role = request.query.role || (request.body && request.body.role);
 
   try {
-    const assignmentRequest: CaseAssignmentRequest = createAssignmentRequest(
+    const assignmentRequest: TrialAttorneysAssignmentRequest = createAssignmentRequest(
       functionContext,
       caseId,
-      professionalId,
+      listOfAttorneyIds,
       role,
     );
     const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
       functionContext,
     );
 
-    const newAssignmentId = await caseAssignmentController.createCaseAssignment(assignmentRequest);
-    /* ToDo: const responseBody = {
-      message: 'A new assignment has been created successfully',
-      data: { assignmentId: newAssignmentId },
-    };*/
-    functionContext.res = httpSuccess(functionContext, { assignmentId: newAssignmentId });
+    const trialAttorneyAssignmentResponse =
+      await caseAssignmentController.createTrailAttorneyAssignments(assignmentRequest);
+    functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
   } catch (exception) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
     functionContext.res = httpError(functionContext, exception, 400);
@@ -48,23 +45,23 @@ const httpTrigger: AzureFunction = async function (
 function createAssignmentRequest(
   functionContext: Context,
   caseId: string,
-  professionalId: string,
+  listOfAttorneyIds: string[],
   role: string,
-): CaseAssignmentRequest {
-  validateRequestParameters(caseId, functionContext, professionalId, role);
+): TrialAttorneysAssignmentRequest {
+  validateRequestParameters(caseId, functionContext, listOfAttorneyIds, role);
 
   const professionalRole: CaseAssignmentRole = role as unknown as CaseAssignmentRole;
-  return new CaseAssignmentRequest(caseId, professionalRole, professionalId,);
+  return new TrialAttorneysAssignmentRequest(caseId, listOfAttorneyIds, professionalRole);
 }
 
 function validateRequestParameters(
   caseId: string,
   functionContext: Context,
-  professionalId: string,
+  listOfAttorneyIds: string[],
   role: string,
 ) {
   validateCaseId(caseId, functionContext);
-  validateProfessionalId(professionalId, functionContext);
+  validateProfessionalId(listOfAttorneyIds, functionContext);
   validateRole(role, functionContext);
 }
 
@@ -75,8 +72,8 @@ function validateCaseId(caseId: string, functionContext: Context) {
   }
 }
 
-function validateProfessionalId(professionalId: string, functionContext: Context) {
-  if (!professionalId) {
+function validateProfessionalId(listOfAttorneyIds: string[], functionContext: Context) {
+  if (listOfAttorneyIds.length < 1) {
     log.error(
       applicationContextCreator(functionContext),
       NAMESPACE,
@@ -94,7 +91,7 @@ function validateRole(role: string, functionContext: Context) {
   if (!role) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_ROLE_MESSAGE);
     functionContext.res = httpError(functionContext, new Error(REQUIRED_ROLE_MESSAGE), 400);
-  } else if (!(role in CaseAssignmentRole)) {
+  } else if (!(CaseAssignmentRole[role] === CaseAssignmentRole.TrialAttorney)) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, INVALID_ROLE_MESSAGE);
     functionContext.res = httpError(functionContext, new Error(INVALID_ROLE_MESSAGE), 400);
   }
