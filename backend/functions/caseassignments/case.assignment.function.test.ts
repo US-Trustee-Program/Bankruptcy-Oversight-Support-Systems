@@ -4,7 +4,7 @@ const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
 describe('Case Assignment Function Tests', () => {
-  test('Return the assignment Id created for the new case assignment', async () => {
+  test('Return the function response with the assignment Id created for the new case assignment', async () => {
     const request = {
       query: {
         caseId: '6789',
