@@ -63,7 +63,7 @@ while [[ $# > 0 ]]; do
 done
 
 # set ruleName in case of exit or other scenarios
-ruleName="agent-${app_name:0:26}"
+ruleName="agent-${app_name:0:26}" # rule name has a 32 character limit
 
 function on_exit() {
     # always try to remove temporary access

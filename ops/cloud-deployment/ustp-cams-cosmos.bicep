@@ -12,8 +12,7 @@ param databaseContainers array = [
     partitionKey1: '/id'
   }
 ]
-// @description('List of allowed subnet resource ids')
-// param allowedSubnets array = []
+
 @description('Allowed subnet resource id')
 param allowedSubnet string = ''
 
@@ -24,7 +23,7 @@ module account './cosmos/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
-    allowedSubnets: [allowedSubnet]
+    allowedSubnets: [ allowedSubnet ]
   }
 }
 
@@ -62,7 +61,7 @@ module customReadWriteRole './cosmos/cosmos-custom-role.bicep' = {
 }
 
 // Identity to access CosmosDb
-module cosmosDbUserManagedIdentity './id/managed-identity.bicep' = {
+module cosmosDbUserManagedIdentity './identity/managed-identity.bicep' = {
   name: '${accountName}-cosmos-user-id-module'
   params: {
     location: location
@@ -79,7 +78,6 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
     roleDefinitionId: customReadWriteRole.outputs.roleDefinitionId
   }
 }
-
 
 output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
 output cosmosDbPrincipalId string = cosmosDbUserManagedIdentity.outputs.principalId
