@@ -12,13 +12,13 @@ import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 import { AppInsightsErrorBoundary } from "@microsoft/applicationinsights-react-js";
 
-const api = import.meta.env['APPINSIGHTS_CONNECTION_STRING']
+const appInsightsConnectionString = import.meta.env['APPINSIGHTS_CONNECTION_STRING']
 var reactPlugin = new ReactPlugin();
 var appInsights = new ApplicationInsights({
     config: {
-        connectionString: 'YOUR_CONNECTION_STRING_GOES_HERE',
+        connectionString: appInsightsConnectionString,
         enableAutoRouteTracking: true,
-        extensions: [reactPlugin]
+        extensions: []
     }
 });
 appInsights.loadAppInsights();
