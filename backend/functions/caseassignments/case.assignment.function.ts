@@ -9,7 +9,7 @@ import { TrialAttorneysAssignmentRequest } from '../lib/adapters/types/trial.att
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
 const REQUIRED_CASE_ID_MESSAGE = 'Required parameter caseId is absent.';
 const REQUIRED_PROFESSIONAL_ID_MESSAGE = 'Required parameter professionalId is absent.';
-const REQUIRED_ROLE_MESSAGE = 'Required parameter role of the professional is absent.';
+const REQUIRED_ROLE_MESSAGE = 'Required parameter - role of the attorney is absent.';
 const INVALID_ROLE_MESSAGE =
   'Invalid role for the professional. Requires role to be a TrialAttorney for case assignment';
 
