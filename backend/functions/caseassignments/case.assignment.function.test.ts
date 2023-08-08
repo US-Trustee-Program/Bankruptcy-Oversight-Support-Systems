@@ -22,4 +22,24 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
   });
+
+  test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async() => {
+    const request = {
+      query: {
+        caseId: '6789',
+        attorneyIdList: ['2082', '2083'],
+        role: 'TrialAttorney',
+      },
+    };
+
+    const expectedResponse = {
+      assignmentIdList: [1, 2],
+      success: true,
+      message: 'Trial attorney assignments created.',
+      resultCount: 2,
+    };
+
+    await httpTrigger(appContext, request);
+    expect(appContext.res.body).toEqual(expectedResponse);
+  });
 });
