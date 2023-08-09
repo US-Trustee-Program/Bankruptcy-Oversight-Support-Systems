@@ -7,25 +7,15 @@ import { CaseAssignment } from './components/CaseAssignment';
 import { HeaderNavBar } from './components/HeaderNavBar';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
-import React from 'react';
-import { ApplicationInsights } from '@microsoft/applicationinsights-web';
-import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
-import { AppInsightsErrorBoundary } from "@microsoft/applicationinsights-react-js";
-
-let appInsightsConnectionString = import.meta.env['APPINSIGHTS_CONNECTION_STRING']
-var reactPlugin = new ReactPlugin();
-var appInsights = new ApplicationInsights({
-    config: {
-        connectionString: appInsightsConnectionString,
-        enableAutoRouteTracking: true,
-        extensions: [reactPlugin]
-    }
-});
-appInsights.loadAppInsights();
+import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
+import { reactPlugin } from './ApplicationInsightsService';
 
 function App() {
   return (
-    <AppInsightsErrorBoundary onError={() => <h1>Something Went Wrong</h1>} appInsights={reactPlugin}>
+    <AppInsightsErrorBoundary
+      onError={() => <h1>Something Went Wrong</h1>}
+      appInsights={reactPlugin}
+    >
       <div className="App">
         <Provider store={store}>
           <HeaderNavBar />
@@ -39,7 +29,7 @@ function App() {
           </div>
         </Provider>
       </div>
-  </AppInsightsErrorBoundary>
+    </AppInsightsErrorBoundary>
   );
 }
 
