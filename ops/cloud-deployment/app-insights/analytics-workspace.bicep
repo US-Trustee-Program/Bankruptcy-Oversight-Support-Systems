@@ -1,12 +1,12 @@
 param location string = resourceGroup().location
-param analyticsName string
+param analyticsWorkspaceName string
 param capactiyReservationLimit int
 param dailyQuotaGb int
 
 
 
-resource symbolicname 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: analyticsName
+resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: analyticsWorkspaceName
   location: location
   properties: {
     defaultDataCollectionRuleResourceId: 'string'
@@ -29,3 +29,5 @@ resource symbolicname 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
     }
   }
 }
+
+output id string = analyticsWorkspace.id
