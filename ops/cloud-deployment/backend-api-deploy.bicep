@@ -10,9 +10,8 @@ param planName string
 ])
 param planType string = 'P1v2'
 
-@description('App Insights Connection Settings')
-param appInsightsConnectionString string
-param appInsightsInstrumentationKey string
+@description('Log Analytics Workspace ID associated with Application Insights')
+param analyticsWorkspaceId string
 
 var planTypeToSkuMap = {
   P1v2: {
@@ -100,6 +99,8 @@ param pacerKeyVaultIdentityName string
 @description('Resource group name managed identity with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityResourceGroupName string
 
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+param deployAppInsights bool = false
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -200,6 +201,16 @@ resource pacerKVManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentitie
 var pacerKeyVaultManagedIdentity = pacerKVManagedIdentity.id
 var pacerKeyVaultManagedIdentityClientId = pacerKVManagedIdentity.properties.clientId
 
+module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) {
+  name: '${functionName}-appi-module'
+  params: {
+    location: location
+    kind: 'web'
+    appInsightsName: 'appi-${functionName}'
+    applicationType: 'web'
+    workspaceResourceId: analyticsWorkspaceId
+  }
+}
 /*
   Create functionapp
 */
@@ -210,7 +221,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${pacerKeyVaultManagedIdentity}':{}
+      '${pacerKeyVaultManagedIdentity}': {}
     }
   }
   properties: {
@@ -238,16 +249,9 @@ var applicationSettings = concat([
       name: 'AZURE_CLIENT_ID'
       value: pacerKeyVaultManagedIdentityClientId
     }
-    {
-      name: 'APPINSIGHTS_CONNECTION_STRING'
-      value: appInsightsConnectionString
-    }
-    {
-      name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-      value: appInsightsInstrumentationKey
-    }
   ],
-  !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
+  !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
+  deployAppInsights ? [ { name: 'APPINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }, { name: 'APPINSIGHTS_INSTRUMENTATIONKEY', value: appInsights.outputs.instrumentationKey } ] : []
 )
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
