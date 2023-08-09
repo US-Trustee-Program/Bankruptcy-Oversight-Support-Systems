@@ -125,7 +125,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 /*
   Subnet creation in target virtual network
 */
-module subnet './network-subnet-deploy.bicep' = {
+module subnet './subnet/network-subnet.bicep' = {
   name: '${functionName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -135,6 +135,12 @@ module subnet './network-subnet-deploy.bicep' = {
     subnetServiceEndpoints: [
       {
         service: 'Microsoft.Sql'
+        locations: [
+          location
+        ]
+      }
+      {
+        service: 'Microsoft.AzureCosmosDB'
         locations: [
           location
         ]
@@ -154,7 +160,7 @@ module subnet './network-subnet-deploy.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './network-subnet-pep-deploy.bicep' = {
+module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -289,7 +295,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
 }
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
-module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = if (createSqlServerVnetRule) {
+module setSqlServerVnetRule './sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
   name: '${functionName}-sql-vnet-rule-module'
   params: {

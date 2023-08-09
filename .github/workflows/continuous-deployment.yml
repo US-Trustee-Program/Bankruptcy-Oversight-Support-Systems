@@ -299,8 +299,9 @@ jobs:
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
-      functionAppName: ${{ steps.azure-deploy.outputs.functionAppName }}
-      webappName: ${{ steps.azure-deploy.outputs.webappName }}
+      cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
+
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
 
@@ -342,11 +343,27 @@ jobs:
             --file ./ops/cloud-deployment/ustp-cams.bicep \
             --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} pacerKeyVaultIdentityName=${{ secrets.PACER_KEYVAULT_IDENTITY }} pacerKeyVaultIdentityResourceGroupName=${{ secrets.AZURE_RG }} apiAppInsightsConnectionString=${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }} apiAppInsightsInstrumentationKey=${{ secrets.API_APPINSIGHTS_INSTRUMENTATION_KEY }}'
 
-          v1=$(cat ./outputs.json | jq -r .functionAppName.value)
-          echo "functionAppName=${v1}" >> $GITHUB_OUTPUT
+          cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
+          echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
 
-          v2=$(cat ./outputs.json | jq -r .webappName.value)
-          echo "webappName=${v2}" >> $GITHUB_OUTPUT
+          cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
+          echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
+
+      - name: Deploy database
+        id: azure-db-deploy
+        run: |
+          allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
+
+          az deployment group create \
+            -g ${{ secrets.AZURE_RG }} \
+            -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
+            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} \
+            -o json --query properties.outputs | tee outputs.json
+
+          cosmosDbClientId=$(cat ./outputs.json | jq -r .cosmosDbClientId.value)
+          echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
+          cosmosDbPrincipalId=$(cat ./outputs.json | jq -r .cosmosDbPrincipalId.value)
+          echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
 
   deploy-webapp:
     runs-on: ubuntu-latest
@@ -373,7 +390,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.deploy.outputs.webappName }}
+        run: ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.build-info.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -403,7 +420,7 @@ jobs:
         run: |
           ./ops/helper-scripts/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.deploy.outputs.functionAppName }} \
+          -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
           --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} \
           MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} \
@@ -419,7 +436,12 @@ jobs:
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \
           PACER_USER_ID_SECRET_NAME=${{ secrets.PACER_USER_ID_SECRET_NAME }} \
           PACER_PASSWORD_SECRET_NAME=${{ secrets.PACER_PASSWORD_SECRET_NAME }} \
-          STARTING_MONTH=${{ vars.STARTING_MONTH }}"
+          STARTING_MONTH=${{ vars.STARTING_MONTH }} \
+          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
+          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   integration-test:
     defaults:
