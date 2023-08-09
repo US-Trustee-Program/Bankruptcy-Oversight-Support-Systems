@@ -60,8 +60,7 @@ param pacerKeyVaultIdentityName string
 @description('Resource group name managed identity with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityResourceGroupName string
 
-
-module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
+module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -145,3 +144,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
 
 output webappName string = ustpWebapp.outputs.webappName
 output functionAppName string = deployFunctions ? ustpFunctions[0].outputs.functionAppName : ''
+output vnetName string = virtualNetworkName
+
+// Allowed subnet name that should have access to CosmosDb
+// Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
+output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
