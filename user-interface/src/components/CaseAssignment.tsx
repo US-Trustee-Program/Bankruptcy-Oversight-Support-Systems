@@ -1,24 +1,13 @@
 import { useState, useEffect } from 'react';
 import Api from '../models/api';
-import { AssignAttorneyModal } from './AssignAttorneyModal';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
 import useComponent from '../hooks/UseComponent';
+import AssignAttorneyModal from './AssignAttorneyModal';
 
 const modalId = 'assign-attorney-modal';
-const modalHeading = 'Assign Attorney to Chapter 15 Case';
-const modalContent = 'test instructions for this modal go here.';
-const actionButtonGroup = {
-  modalId: modalId,
-  submitButton: {
-    label: 'Submit',
-  },
-  cancelButton: {
-    label: 'Cancel',
-  },
-};
 
 export const CaseAssignment = () => {
   const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
@@ -28,6 +17,7 @@ export const CaseAssignment = () => {
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [bCase, setBCase] = useState<Chapter15Type>();
   const { isVisible, show, hide } = useComponent();
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
@@ -64,6 +54,7 @@ export const CaseAssignment = () => {
   }, [caseList.length > 0, chapter]);
 
   const openModal = (theCase: Chapter15Type) => {
+    setBCase(theCase);
     show();
     return theCase;
   };
@@ -116,10 +107,8 @@ export const CaseAssignment = () => {
           </table>
         </div>
         <AssignAttorneyModal
+          bCase={bCase}
           modalId={modalId}
-          heading={modalHeading}
-          content={modalContent}
-          actionButtonGroup={actionButtonGroup}
           hide={hide}
           isVisible={isVisible}
         ></AssignAttorneyModal>

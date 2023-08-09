@@ -1,0 +1,143 @@
+import { SubmitCancelButtonGroup, TSubmitCancelBtnProps } from './SubmitCancelButtonGroup';
+import useGlobalKeyDown from '../../hooks/UseGlobalKeyDown';
+import { ObjectKeyVal } from '../../type-declarations/basic';
+import { UswdsButtonStyle } from './Button';
+
+export interface BaseModalProps {
+  className?: string;
+  hide: () => void;
+  isVisible: boolean;
+  forceAction?: boolean;
+}
+
+export interface ModalProps extends BaseModalProps {
+  actionButtonGroup: TSubmitCancelBtnProps;
+  content: React.ReactNode;
+  modalId: string;
+  heading: string;
+}
+
+export default function Modal(props: ModalProps) {
+  const data = {
+    'data-force-action': false,
+  };
+
+  const classes = ['usa-modal'];
+  if (props.className) {
+    props.className.split(' ').forEach((cls) => {
+      classes.push(cls);
+    });
+  }
+
+  if (props.forceAction) {
+    data['data-force-action'] = true;
+  }
+
+  function handleKeyDown(e: KeyboardEvent, state: ObjectKeyVal) {
+    if (!state.forceAction) {
+      if (e.key === 'Escape') {
+        close(e);
+      }
+    }
+  }
+
+  useGlobalKeyDown(handleKeyDown, { forceAction: !!props.forceAction });
+
+  const close = (e: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
+    props.hide();
+    e.preventDefault();
+  };
+
+  function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (props.actionButtonGroup.submitButton.onClick) {
+      props.actionButtonGroup.submitButton.onClick(e);
+    }
+    close(e);
+  }
+
+  function cancelBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (props.actionButtonGroup.cancelButton?.onClick) {
+      props.actionButtonGroup.cancelButton.onClick(e);
+    }
+    close(e);
+  }
+
+  function outsideClick(e: React.MouseEvent<HTMLDivElement>, id: string) {
+    if (!props.forceAction) {
+      const clickedElement = e.target as HTMLElement;
+      if (clickedElement.id === id) {
+        close(e);
+      }
+    }
+  }
+
+  return (
+    <div
+      className={`usa-modal-wrapper ${props.isVisible ? 'is-visible' : 'is-hidden'}`}
+      role="dialog"
+      id={props.modalId + '-wrapper'}
+      aria-labelledby={props.modalId + '-heading'}
+      aria-describedby={props.modalId + '-description'}
+    >
+      <div
+        className="usa-modal-overlay"
+        aria-controls={props.modalId}
+        id={props.modalId + '-overlay'}
+        onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+          outsideClick(e, props.modalId + '-overlay')
+        }
+      >
+        <div
+          className={classes.join(' ')}
+          id={props.modalId}
+          aria-labelledby={props.modalId + '-heading'}
+          aria-describedby={props.modalId + '-description'}
+          {...data}
+        >
+          <div className="usa-modal__content">
+            <div className="usa-modal__main">
+              <h2 className="usa-modal__heading" id={props.modalId + '-heading'}>
+                {props.heading}
+              </h2>
+              <div className="usa-prose">
+                <section id={props.modalId + '-description'}>{props.content}</section>
+              </div>
+              <div className="usa-modal__footer">
+                <SubmitCancelButtonGroup
+                  modalId={props.modalId}
+                  submitButton={{
+                    label: props.actionButtonGroup.submitButton.label,
+                    onClick: submitBtnClick,
+                    className: props.actionButtonGroup.submitButton.className ?? '',
+                    uswdsStyle:
+                      props.actionButtonGroup.submitButton.uswdsStyle ?? UswdsButtonStyle.Default,
+                  }}
+                  cancelButton={{
+                    label: props.actionButtonGroup.cancelButton?.label ?? '',
+                    onClick: cancelBtnClick,
+                    className: props.actionButtonGroup.cancelButton?.className ?? '',
+                    uswdsStyle:
+                      props.actionButtonGroup.cancelButton?.uswdsStyle ?? UswdsButtonStyle.Unstyled,
+                  }}
+                ></SubmitCancelButtonGroup>
+              </div>
+            </div>
+            {props.forceAction || (
+              <button
+                type="button"
+                className="usa-button usa-modal__close"
+                aria-label="Close this window"
+                data-close-modal
+                onClick={close}
+              >
+                <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
+                  <use xlinkHref="../node_modules/@uswds/uswds/dist/img/sprite.svg#close"></use>
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
