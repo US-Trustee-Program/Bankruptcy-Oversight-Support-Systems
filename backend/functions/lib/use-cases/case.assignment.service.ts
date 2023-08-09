@@ -3,7 +3,10 @@ import { getAssignmentRepository } from '../factory';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ApplicationContext } from '../adapters/types/basic';
 import { TrialAttorneyAssignmentResponse } from '../adapters/types/trial.attorney.assignment.response';
+import log from '../adapters/services/logger.service';
+import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 
+const NAMESPACE = 'CASE-ASSIGNMENT';
 export class CaseAssignmentService {
   private _assignmentRepository: ICaseAssignmentRepository;
 
@@ -22,6 +25,8 @@ export class CaseAssignmentService {
     try {
       return await this._assignmentRepository.createAssignment(context, caseAssignment);
     } catch (exception) {
+      //Log the exception and handle depending.
+      log.error(applicationContextCreator(context), NAMESPACE, exception.message);
       throw exception;
     }
   }

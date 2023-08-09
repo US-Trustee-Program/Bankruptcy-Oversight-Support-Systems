@@ -1,9 +1,9 @@
-import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
-import { CaseAssignmentController } from '../adapters/controllers/case.assignment.controller';
-import { ICaseAssignmentRepository } from '../interfaces/ICaseAssignmentRepository';
-import { CaseAssignmentLocalRepository } from '../adapters/gateways/case.assignment.local.repository';
-import { TrialAttorneyAssignmentResponse } from '../adapters/types/trial.attorney.assignment.response';
-import { TrialAttorneysAssignmentRequest } from '../adapters/types/trial.attorneys.assignment.request';
+import { CaseAssignmentRole } from '../types/case.assignment.role';
+import { CaseAssignmentController } from './case.assignment.controller';
+import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepository';
+import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
+import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
+import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 const context = require('azure-function-context-mock');
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
