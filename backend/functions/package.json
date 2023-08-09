@@ -22,6 +22,7 @@
   "dependencies": {
     "@azure/functions": "^3.0.0",
     "@azure/identity": "^3.2.2",
+    "@azure/cosmos": "3.17.3",
     "@azure/keyvault-secrets": "^4.7.0",
     "applicationinsights": "^2.7.0",
     "dotenv": "^16.0.3",
@@ -30,6 +31,7 @@
     "pine": "^1.1.1"
   },
   "scripts": {
+    "clean": "rm -rf ./dist & rm -rf ./node_modules",
     "build": "tsc --project tsconfig.build.json",
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
