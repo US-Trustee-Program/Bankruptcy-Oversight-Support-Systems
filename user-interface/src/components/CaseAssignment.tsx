@@ -5,10 +5,20 @@ import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declaratio
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
-import Button from './uswds/Button';
+import useComponent from '../hooks/UseComponent';
 
+const modalId = 'assign-attorney-modal';
 const modalHeading = 'Assign Attorney to Chapter 15 Case';
 const modalContent = 'test instructions for this modal go here.';
+const actionButtonGroup = {
+  modalId: modalId,
+  submitButton: {
+    label: 'Submit',
+  },
+  cancelButton: {
+    label: 'Cancel',
+  },
+};
 
 export const CaseAssignment = () => {
   const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
@@ -18,6 +28,7 @@ export const CaseAssignment = () => {
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { isVisible, show, hide } = useComponent();
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
@@ -53,6 +64,7 @@ export const CaseAssignment = () => {
   }, [caseList.length > 0, chapter]);
 
   const openModal = (theCase: Chapter15Type) => {
+    show();
     return theCase;
   };
 
@@ -88,11 +100,10 @@ export const CaseAssignment = () => {
                       <td>{theCase.caseTitle}</td>
                       <td>{theCase.dateFiled}</td>
                       <td>
-                        ---
                         <ToggleModalButton
                           className="case-assignment-modal-toggle"
-                          modalState="open"
-                          modalId="assign-attorney-modal"
+                          toggleAction="open"
+                          modalId={modalId}
                           onClick={() => openModal(theCase)}
                         >
                           Assign
@@ -105,10 +116,12 @@ export const CaseAssignment = () => {
           </table>
         </div>
         <AssignAttorneyModal
-          modalId="assign-attorney-modal"
+          modalId={modalId}
           heading={modalHeading}
           content={modalContent}
-          actionButtonGroup={<></>}
+          actionButtonGroup={actionButtonGroup}
+          hide={hide}
+          isVisible={isVisible}
         ></AssignAttorneyModal>
       </>
     );
