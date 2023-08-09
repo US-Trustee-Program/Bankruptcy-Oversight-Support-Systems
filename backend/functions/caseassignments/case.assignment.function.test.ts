@@ -139,4 +139,20 @@ describe('Case Assignment Function Tests', () => {
 
     expect(httpErrorSpy).toHaveBeenCalled();
   });
+
+  test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
+    const _caseId = '6789';
+    const request = {
+      query: {},
+      body: { caseId: _caseId, attorneyIdList: ['2082'], role: 'TrialAttorney' },
+    };
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+    const createAssignmentRequestSpy = jest.spyOn(
+      Object.getPrototypeOf(assignmentController),
+      'createTrailAttorneyAssignments',
+    );
+    await httpTrigger(context, request);
+
+    expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ _caseId }));
+  });
 });
