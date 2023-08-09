@@ -32,7 +32,9 @@ export class CaseAssignmentService {
   ): Promise<TrialAttorneyAssignmentResponse> {
     const listOfAssignmentIdsCreated: number[] = [];
     for (const assignment of listOfAssignments) {
-      listOfAssignmentIdsCreated.push(await this.createAssignment(context, assignment));
+      const assignmentId = await this.createAssignment(context, assignment);
+      if (!listOfAssignmentIdsCreated.includes(assignmentId))
+        listOfAssignmentIdsCreated.push(assignmentId);
     }
 
     const response = new TrialAttorneyAssignmentResponse();
