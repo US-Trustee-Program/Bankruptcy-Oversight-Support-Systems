@@ -5,7 +5,7 @@
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System - Graphical Frontend User Interface",
   "dependencies": {
-    "@microsoft/applicationinsights-react-js": "17.0.0",
+    "@microsoft/applicationinsights-react-js": "^17.0.0",
     "@microsoft/applicationinsights-web": "^3.0.2",
     "@reduxjs/toolkit": "^1.9.3",
     "@testing-library/jest-dom": "^5.16.5",
