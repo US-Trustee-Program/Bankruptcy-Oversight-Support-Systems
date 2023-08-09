@@ -28,13 +28,10 @@ export interface ButtonProps {
 export class Button extends Component<ButtonProps & JSX.IntrinsicElements['button']> {
   private classes = ['usa-button'];
   private ariaDisabled = false;
-  private genericProps;
 
   constructor(props: ButtonProps & JSX.IntrinsicElements['button']) {
-    const { uswdsStyle, buttonState, className, disabled, ...genericProps } = props;
-    super(genericProps);
-
-    this.genericProps = genericProps;
+    const { uswdsStyle, buttonState, className, disabled } = props;
+    super(props);
 
     if (uswdsStyle) this.classes.push(uswdsStyle);
     if (buttonState) this.classes.push(buttonState);
@@ -53,7 +50,6 @@ export class Button extends Component<ButtonProps & JSX.IntrinsicElements['butto
         onClick={this.props.onClick}
         data-testid="button"
         aria-disabled={this.ariaDisabled}
-        {...this.genericProps}
       >
         {this.props.children}
       </button>
