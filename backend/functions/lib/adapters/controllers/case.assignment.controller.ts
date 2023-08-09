@@ -7,7 +7,7 @@ import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepos
 import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 
-const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
+//const NAMESPACE = 'ASSIGNMENT-CONTROLLER'; // Will need this when implementing telemetry
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
   private readonly caseAssignmentRepository: ICaseAssignmentRepository;
