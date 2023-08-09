@@ -118,7 +118,7 @@ describe('Case Assignment Function Tests', () => {
     expect(appContext.res.body);
   });
 
-  test('Should return an HTTP Error if the controller throws an error during assignment creation', async () =>{
+  test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
     jest
       .spyOn(Object.getPrototypeOf(assignmentController), 'createTrailAttorneyAssignments')
