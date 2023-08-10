@@ -1,8 +1,8 @@
-import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepository';
+import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
 
-export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository {
+export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
   private _nextUnusedId = 1;
 

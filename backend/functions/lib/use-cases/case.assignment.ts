@@ -1,4 +1,4 @@
-import { ICaseAssignmentRepository } from '../interfaces/ICaseAssignmentRepository';
+import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository } from '../factory';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ApplicationContext } from '../adapters/types/basic';
@@ -8,9 +8,9 @@ import { applicationContextCreator } from '../adapters/utils/application-context
 
 const NAMESPACE = 'CASE-ASSIGNMENT';
 export class CaseAssignment {
-  private _assignmentRepository: ICaseAssignmentRepository;
+  private _assignmentRepository: CaseAssignmentRepositoryInterface;
 
-  constructor(assignmentRepository?: ICaseAssignmentRepository) {
+  constructor(assignmentRepository?: CaseAssignmentRepositoryInterface) {
     if (!assignmentRepository) {
       this._assignmentRepository = getAssignmentRepository();
     } else {
