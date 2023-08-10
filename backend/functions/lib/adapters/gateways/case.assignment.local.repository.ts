@@ -14,13 +14,13 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
     if (!assignment) {
       return this.addAssignment(caseAssignment);
     } else {
-      return assignment._assignmentId;
+      return assignment.assignmentId;
     }
   }
 
   private addAssignment(caseAssignment: CaseAttorneyAssignment): number {
     const assignmentId = this._nextUnusedId;
-    caseAssignment._assignmentId = assignmentId;
+    caseAssignment.assignmentId = assignmentId;
     this.caseAttorneyAssignments.push(caseAssignment);
     ++this._nextUnusedId;
     return assignmentId;
@@ -28,7 +28,7 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
 
   public async getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment> {
     return this.caseAttorneyAssignments.find(
-      (assignment) => assignment._assignmentId === assignmentId,
+      (assignment) => assignment.assignmentId === assignmentId,
     );
   }
 
@@ -37,9 +37,9 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
   ): Promise<CaseAttorneyAssignment> {
     return this.caseAttorneyAssignments.find((assignment) => {
       return (
-        assignment._caseId === caseAssignment._caseId &&
-        assignment._professionalId === caseAssignment._professionalId &&
-        assignment._role === caseAssignment._role
+        assignment.caseId === caseAssignment.caseId &&
+        assignment.professionalId === caseAssignment.professionalId &&
+        assignment.role === caseAssignment.role
       );
     });
   }
