@@ -1,26 +1,29 @@
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { SubmitCancelButtonGroup, TSubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import useGlobalKeyDown from '../../hooks/UseGlobalKeyDown';
 import { ObjectKeyVal } from '../../type-declarations/basic';
 import { UswdsButtonStyle } from './Button';
+import useComponent from '../../hooks/UseComponent';
 
-export interface BaseModalProps {
-  className?: string;
-  hide: () => void;
-  isVisible: boolean;
-  forceAction?: boolean;
-}
-
-export interface ModalProps extends BaseModalProps {
-  actionButtonGroup: TSubmitCancelBtnProps;
-  content: React.ReactNode;
+export interface ModalProps {
   modalId: string;
   openerId?: string;
+  className?: string;
   heading: string;
+  content: React.ReactNode;
+  forceAction?: boolean;
+  actionButtonGroup: TSubmitCancelBtnProps;
 }
 
-export default function Modal(props: ModalProps) {
+export interface ModalRefType {
+  show: () => void;
+  hide: () => void;
+}
+
+function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
   const data = { 'data-force-action': false };
+  const { isVisible, show, hide } = useComponent();
 
   let wrapperData = {};
   if (props.openerId) {
@@ -44,7 +47,7 @@ export default function Modal(props: ModalProps) {
   useGlobalKeyDown(handleKeyDown, { forceAction: !!props.forceAction });
 
   const close = (e: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
-    props.hide();
+    hide();
     e.preventDefault();
   };
 
@@ -71,9 +74,11 @@ export default function Modal(props: ModalProps) {
     }
   }
 
+  useImperativeHandle(ref, () => ({ show, hide }));
+
   return (
     <div
-      className={`usa-modal-wrapper ${props.isVisible ? 'is-visible' : 'is-hidden'}`}
+      className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
       role="dialog"
       id={props.modalId + '-wrapper'}
       aria-labelledby={props.modalId + '-heading'}
@@ -136,3 +141,7 @@ export default function Modal(props: ModalProps) {
     </div>
   );
 }
+
+const Modal = forwardRef(ModalComponent);
+
+export default Modal;
