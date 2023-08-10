@@ -14,19 +14,19 @@ export interface ModalProps extends BaseModalProps {
   actionButtonGroup: TSubmitCancelBtnProps;
   content: React.ReactNode;
   modalId: string;
+  openerId?: string;
   heading: string;
 }
 
 export default function Modal(props: ModalProps) {
-  const data = {
-    'data-force-action': false,
-  };
+  const modalClassNames = `usa-modal ${props.className}`;
+  const data = { 'data-force-action': false };
 
-  const classes = ['usa-modal'];
-  if (props.className) {
-    props.className.split(' ').forEach((cls) => {
-      classes.push(cls);
-    });
+  let wrapperData = {};
+  if (props.openerId) {
+    wrapperData = {
+      'data-opener': props.openerId,
+    };
   }
 
   if (props.forceAction) {
@@ -78,6 +78,7 @@ export default function Modal(props: ModalProps) {
       id={props.modalId + '-wrapper'}
       aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
+      {...wrapperData}
     >
       <div
         className="usa-modal-overlay"
@@ -87,13 +88,7 @@ export default function Modal(props: ModalProps) {
           outsideClick(e, props.modalId + '-overlay')
         }
       >
-        <div
-          className={classes.join(' ')}
-          id={props.modalId}
-          aria-labelledby={props.modalId + '-heading'}
-          aria-describedby={props.modalId + '-description'}
-          {...data}
-        >
+        <div className={modalClassNames} id={props.modalId} {...data}>
           <div className="usa-modal__content">
             <div className="usa-modal__main">
               <h2 className="usa-modal__heading" id={props.modalId + '-heading'}>
