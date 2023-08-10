@@ -138,6 +138,8 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(context, request);
 
     expect(httpErrorSpy).toHaveBeenCalled();
+    expect(context.res.statusCode).toEqual(500);
+    expect(context.res.body.error).toEqual('Mock Error');
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
