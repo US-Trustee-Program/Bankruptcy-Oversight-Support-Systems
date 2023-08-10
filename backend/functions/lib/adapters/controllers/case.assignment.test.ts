@@ -33,9 +33,9 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const assignmentCreated = await mockCaseAssignmentRepository.getAssignment(resultAssignmentId);
 
     expect(resultAssignmentId).toBeGreaterThan(0);
-    expect(assignmentCreated._caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated._professionalId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
-    expect(assignmentCreated._role).toBe(testCaseAssignment.role);
+    expect(assignmentCreated.caseId).toBe(testCaseAssignment.caseId);
+    expect(assignmentCreated.professionalId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
+    expect(assignmentCreated.role).toBe(testCaseAssignment.role);
   });
 
   test('avoid creation of duplicate assignment and return the Id of an existing assignment, if one already exists in the repository for the case', async () => {
@@ -157,9 +157,9 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     );
 
     expect(resultAssignmentId1).toBeGreaterThan(0);
-    expect(assignmentCreated1._caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated1._professionalId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
-    expect(assignmentCreated1._role).toBe(testCaseAssignment.role);
+    expect(assignmentCreated1.caseId).toBe(testCaseAssignment.caseId);
+    expect(assignmentCreated1.professionalId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
+    expect(assignmentCreated1.role).toBe(testCaseAssignment.role);
 
     const resultAssignmentId2 = assignmentResponse.assignmentIdList[1];
     const assignmentCreated2 = await mockCaseAssignmentRepository.getAssignment(
@@ -167,9 +167,9 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     );
 
     expect(resultAssignmentId2).toBeGreaterThan(0);
-    expect(assignmentCreated2._caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated2._professionalId).toBe(testCaseAssignment.listOfAttorneyIds[1]);
-    expect(assignmentCreated2._role).toBe(testCaseAssignment.role);
+    expect(assignmentCreated2.caseId).toBe(testCaseAssignment.caseId);
+    expect(assignmentCreated2.professionalId).toBe(testCaseAssignment.listOfAttorneyIds[1]);
+    expect(assignmentCreated2.role).toBe(testCaseAssignment.role);
 
     const resultAssignmentId3 = assignmentResponse.assignmentIdList[2];
     const assignmentCreated3 = await mockCaseAssignmentRepository.getAssignment(
@@ -177,8 +177,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     );
 
     expect(resultAssignmentId3).toBeGreaterThan(0);
-    expect(assignmentCreated3._caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated3._professionalId).toBe(testCaseAssignment.listOfAttorneyIds[2]);
-    expect(assignmentCreated3._role).toBe(testCaseAssignment.role);
+    expect(assignmentCreated3.caseId).toBe(testCaseAssignment.caseId);
+    expect(assignmentCreated3.professionalId).toBe(testCaseAssignment.listOfAttorneyIds[2]);
+    expect(assignmentCreated3.role).toBe(testCaseAssignment.role);
   });
 });
