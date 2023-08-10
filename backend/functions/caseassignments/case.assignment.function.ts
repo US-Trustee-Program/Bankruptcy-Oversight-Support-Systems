@@ -9,10 +9,10 @@ import { CaseAssignmentException } from './case.assignment.exception';
 
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
 const REQUIRED_CASE_ID_MESSAGE = 'Required parameter caseId is absent.';
-const REQUIRED_PROFESSIONAL_ID_MESSAGE = 'Required parameter professionalId is absent.';
+const REQUIRED_ATTORNEY_ID_MESSAGE = 'Required parameter attorneyId(s) is absent.';
 const REQUIRED_ROLE_MESSAGE = 'Required parameter - role of the attorney is absent.';
 const INVALID_ROLE_MESSAGE =
-  'Invalid role for the professional. Requires role to be a TrialAttorney for case assignment';
+  'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -81,17 +81,9 @@ function validateCaseId(caseId: string, functionContext: Context) {
 
 function validateProfessionalId(listOfAttorneyIds: string[], functionContext: Context) {
   if (listOfAttorneyIds.length < 1) {
-    log.error(
-      applicationContextCreator(functionContext),
-      NAMESPACE,
-      REQUIRED_PROFESSIONAL_ID_MESSAGE,
-    );
-    functionContext.res = httpError(
-      functionContext,
-      new Error(REQUIRED_PROFESSIONAL_ID_MESSAGE),
-      400,
-    );
-    throw new CaseAssignmentException(400, REQUIRED_PROFESSIONAL_ID_MESSAGE);
+    log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_ATTORNEY_ID_MESSAGE);
+    functionContext.res = httpError(functionContext, new Error(REQUIRED_ATTORNEY_ID_MESSAGE), 400);
+    throw new CaseAssignmentException(400, REQUIRED_ATTORNEY_ID_MESSAGE);
   }
 }
 
