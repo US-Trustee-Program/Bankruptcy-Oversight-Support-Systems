@@ -1,6 +1,6 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { IChapter15Case } from '../types/cases';
+import { Chapter15CaseInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
@@ -14,9 +14,9 @@ export class CasesLocalGateway implements CasesInterface {
       startingMonth?: number;
       gatewayHelper?: GatewayHelper;
     },
-  ): Promise<IChapter15Case[]> => {
+  ): Promise<Chapter15CaseInterface[]> => {
     const _gatewayHelper = options.gatewayHelper || new GatewayHelper();
-    let cases: IChapter15Case[];
+    let cases: Chapter15CaseInterface[];
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
     const dateFiledFrom = getCamsDateStringFromDate(date);

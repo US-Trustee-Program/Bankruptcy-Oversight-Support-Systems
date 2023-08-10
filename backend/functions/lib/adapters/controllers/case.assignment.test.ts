@@ -2,8 +2,8 @@ import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentController } from './case.assignment.controller';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
-import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
+import { ITrialAttorneyAssignmentResponse } from '../types/case.assignment';
 const context = require('azure-function-context-mock');
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
@@ -16,7 +16,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
-    let assignmentResponse: TrialAttorneyAssignmentResponse;
+    let assignmentResponse: ITrialAttorneyAssignmentResponse;
     try {
       const assignmentController = new CaseAssignmentController(
         context,
@@ -134,7 +134,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
-    let assignmentResponse: TrialAttorneyAssignmentResponse;
+    let assignmentResponse: ITrialAttorneyAssignmentResponse;
     try {
       const assignmentController = new CaseAssignmentController(
         context,

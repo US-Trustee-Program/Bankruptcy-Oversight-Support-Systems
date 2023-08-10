@@ -4,8 +4,8 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
-import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
+import { ITrialAttorneyAssignmentResponse } from '../types/case.assignment';
 
 //const NAMESPACE = 'ASSIGNMENT-CONTROLLER'; // Will need this when implementing telemetry
 export class CaseAssignmentController {
@@ -19,7 +19,7 @@ export class CaseAssignmentController {
 
   public async createTrailAttorneyAssignments(
     assignmentRequest: TrialAttorneysAssignmentRequest,
-  ): Promise<TrialAttorneyAssignmentResponse> {
+  ): Promise<ITrialAttorneyAssignmentResponse> {
     const listOfAssignments: CaseAttorneyAssignment[] = [];
 
     assignmentRequest.listOfAttorneyIds.forEach((attorney) => {

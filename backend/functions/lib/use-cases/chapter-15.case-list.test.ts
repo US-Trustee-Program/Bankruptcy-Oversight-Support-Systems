@@ -1,4 +1,4 @@
-import { CaseListDbResult, IChapter15Case } from '../adapters/types/cases';
+import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case-list';
 import { MockPacerApiGateway } from '../adapters/gateways/mock-pacer.api.gateway';
 import { CasesInterface } from './cases.interface';
@@ -30,7 +30,7 @@ describe('Chapter 15 case tests', () => {
 
   test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
     const chapter15CaseList = new Chapter15CaseList();
-    const caseList: IChapter15Case[] = [
+    const caseList: Chapter15CaseInterface[] = [
       {
         caseNumber: '04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
@@ -85,7 +85,7 @@ describe('Chapter 15 case tests', () => {
         context,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<IChapter15Case[]> {
+      ): Promise<Chapter15CaseInterface[]> {
         throw Error('some random error');
       }
     }
@@ -106,7 +106,7 @@ describe('Chapter 15 case tests', () => {
         context,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<IChapter15Case[]> {
+      ): Promise<Chapter15CaseInterface[]> {
         throw Error('');
       }
     }

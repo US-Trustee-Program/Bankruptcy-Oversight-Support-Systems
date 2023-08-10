@@ -1,4 +1,4 @@
-export class TrialAttorneyAssignmentResponse {
+export interface ITrialAttorneyAssignmentResponse {
   success: boolean;
   message: string;
   resultCount: number;
