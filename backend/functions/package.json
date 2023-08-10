@@ -30,6 +30,9 @@
     "mssql": "^9.1.1",
     "pine": "^1.1.1"
   },
+  "overrides": {
+    "@opentelemetry/instrumentation": "0.41.2"
+  },
   "scripts": {
     "clean": "rm -rf ./dist & rm -rf ./node_modules",
     "build": "tsc --project tsconfig.build.json",
