@@ -7,7 +7,7 @@ import log from '../adapters/services/logger.service';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 
 const NAMESPACE = 'CASE-ASSIGNMENT';
-export class CaseAssignmentService {
+export class CaseAssignment {
   private _assignmentRepository: ICaseAssignmentRepository;
 
   constructor(assignmentRepository?: ICaseAssignmentRepository) {
