@@ -10,7 +10,7 @@
     "azure-function-context-mock": "^0.0.7",
     "dependency-cruiser": "^13.1.0",
     "eslint": "^8.39.0",
-    "eslint-config-prettier": "^8.8.0",
+    "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-n": "^16.0.1",
     "eslint-plugin-prettier": "^5.0.0",
@@ -20,9 +20,9 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
+    "@azure/cosmos": "3.17.3",
     "@azure/functions": "^3.0.0",
     "@azure/identity": "^3.2.2",
-    "@azure/cosmos": "3.17.3",
     "@azure/keyvault-secrets": "^4.7.0",
     "applicationinsights": "^2.7.0",
     "dotenv": "^16.0.3",
