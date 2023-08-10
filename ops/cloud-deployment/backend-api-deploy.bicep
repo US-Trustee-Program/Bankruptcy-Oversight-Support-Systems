@@ -10,9 +10,6 @@ param planName string
 ])
 param planType string = 'P1v2'
 
-@description('Log Analytics Workspace ID associated with Application Insights')
-param analyticsWorkspaceId string
-
 var planTypeToSkuMap = {
   P1v2: {
     name: 'P1v2'
@@ -101,6 +98,10 @@ param pacerKeyVaultIdentityResourceGroupName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
+
+@description('Log Analytics Workspace ID associated with Application Insights')
+param analyticsWorkspaceId string = ''
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */

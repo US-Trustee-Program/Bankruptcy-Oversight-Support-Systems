@@ -57,10 +57,11 @@ param pacerKeyVaultIdentityName string
 param pacerKeyVaultIdentityResourceGroupName string
 
 @description('Log Analytics Workspace ID associated with Application Insights')
-param analyticsWorkspaceId string
+param analyticsWorkspaceId string = ''
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
+
 module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)

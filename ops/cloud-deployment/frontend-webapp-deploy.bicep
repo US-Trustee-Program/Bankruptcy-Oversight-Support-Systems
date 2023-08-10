@@ -77,7 +77,7 @@ param allowVeracodeScan bool = false
 param deployAppInsights bool = false
 
 @description('Log Analytics Workspace ID associated with Application Insights')
-param analyticsWorkspaceId string
+param analyticsWorkspaceId string = ''
 /*
   Subnet creation in target virtual network
 */
