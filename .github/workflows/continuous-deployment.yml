@@ -242,7 +242,7 @@ jobs:
           export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
           export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
           export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
-          export WEBAPP_APPINSIGHTS_CONNECTION_STRING=${{ secrets.WEBAPP_APPINSIGHTS_CONNECTIONSTRING }}
+          export APPlICATIONINSIGHTS_CONNECTION_STRING='TESTSTRING'
           npm run build --if-present
 
       - name: Execute Test
