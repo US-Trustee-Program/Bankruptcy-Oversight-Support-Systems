@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
-import useComponent from '../hooks/UseComponent';
 import AssignAttorneyModal from './AssignAttorneyModal';
+import { ModalRefType } from './uswds/Modal';
 
 const modalId = 'assign-attorney-modal';
 
 export const CaseAssignment = () => {
+  const modalRef = useRef<ModalRefType>(null);
   const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
   const regionId = 2;
@@ -19,7 +20,6 @@ export const CaseAssignment = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
   const [modalOpenerId, setModalOpenerId] = useState<string>('');
-  const { isVisible, show, hide } = useComponent();
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
@@ -57,7 +57,7 @@ export const CaseAssignment = () => {
   const openModal = (theCase: Chapter15Type, openerId: string) => {
     setBCase(theCase);
     setModalOpenerId(openerId);
-    show();
+    modalRef.current?.show();
     return theCase;
   };
 
@@ -110,11 +110,10 @@ export const CaseAssignment = () => {
           </table>
         </div>
         <AssignAttorneyModal
+          ref={modalRef}
           bCase={bCase}
           modalId={modalId}
           openerId={modalOpenerId}
-          hide={hide}
-          isVisible={isVisible}
         ></AssignAttorneyModal>
       </>
     );
