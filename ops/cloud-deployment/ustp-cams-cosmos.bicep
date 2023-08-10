@@ -58,6 +58,9 @@ module customReadWriteRole './cosmos/cosmos-custom-role.bicep' = {
   params: {
     accountName: accountName
   }
+  dependsOn: [
+    account
+  ]
 }
 
 // Identity to access CosmosDb
@@ -67,6 +70,9 @@ module cosmosDbUserManagedIdentity './identity/managed-identity.bicep' = {
     location: location
     managedIdentityName: 'id-${accountName}-user'
   }
+  dependsOn: [
+    account
+  ]
 }
 
 // Assign permissions (role) to Identity
@@ -77,6 +83,11 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
     principalId: cosmosDbUserManagedIdentity.outputs.principalId
     roleDefinitionId: customReadWriteRole.outputs.roleDefinitionId
   }
+  dependsOn: [
+    account
+    customReadWriteRole
+    cosmosDbUserManagedIdentity
+  ]
 }
 
 output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
