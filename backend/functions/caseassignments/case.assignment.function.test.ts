@@ -72,7 +72,7 @@ describe('Case Assignment Function Tests', () => {
       },
     };
     const expectedResponse = {
-      error: 'Required parameter professionalId is absent.',
+      error: 'Required parameter attorneyId is absent.',
     };
 
     await httpTrigger(appContext, request);
@@ -109,7 +109,7 @@ describe('Case Assignment Function Tests', () => {
     };
     const expectedResponse = {
       error:
-        'Invalid role for the professional. Requires role to be a TrialAttorney for case assignment',
+        'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment',
     };
 
     await httpTrigger(appContext, request);
