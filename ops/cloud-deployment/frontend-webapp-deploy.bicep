@@ -166,11 +166,11 @@ var applicationSettings = concat(deployAppInsights ? [
     value: '1'
   }
   {
-    name: 'APPINSIGHTS_CONNECTION_STRING'
+    name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
     value: appInsights.outputs.connectionString
   }
   {
-    name: 'APPINSIGHTS_INSTRUMENTATION_KEY'
+    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
     value: appInsights.outputs.instrumentationKey
   }
 ]:[]
