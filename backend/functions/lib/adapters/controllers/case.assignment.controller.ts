@@ -2,7 +2,7 @@ import { ApplicationContext } from '../types/basic';
 import { Context } from '@azure/functions';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
-import { CaseAssignmentService } from '../../use-cases/case.assignment.service';
+import { CaseAssignment } from '../../use-cases/case.assignment';
 import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepository';
 import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
@@ -30,7 +30,7 @@ export class CaseAssignmentController {
       );
       listOfAssignments.push(assignment);
     });
-    const assignmentService = new CaseAssignmentService(this.caseAssignmentRepository);
+    const assignmentService = new CaseAssignment(this.caseAssignmentRepository);
     return assignmentService.createTrialAttorneyAssignments(
       this.applicationContext,
       listOfAssignments,
