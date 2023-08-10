@@ -18,6 +18,7 @@ export const CaseAssignment = () => {
   const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
+  const [modalOpenerId, setModalOpenerId] = useState<string>('');
   const { isVisible, show, hide } = useComponent();
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
@@ -53,8 +54,9 @@ export const CaseAssignment = () => {
     }
   }, [caseList.length > 0, chapter]);
 
-  const openModal = (theCase: Chapter15Type) => {
+  const openModal = (theCase: Chapter15Type, openerId: string) => {
     setBCase(theCase);
+    setModalOpenerId(openerId);
     show();
     return theCase;
   };
@@ -93,9 +95,10 @@ export const CaseAssignment = () => {
                       <td>
                         <ToggleModalButton
                           className="case-assignment-modal-toggle"
+                          id={`assign-attorney-btn-${idx}`}
                           toggleAction="open"
                           modalId={modalId}
-                          onClick={() => openModal(theCase)}
+                          onClick={() => openModal(theCase, `assign-attorney-btn-${idx}`)}
                         >
                           Assign
                         </ToggleModalButton>
@@ -109,6 +112,7 @@ export const CaseAssignment = () => {
         <AssignAttorneyModal
           bCase={bCase}
           modalId={modalId}
+          openerId={modalOpenerId}
           hide={hide}
           isVisible={isVisible}
         ></AssignAttorneyModal>

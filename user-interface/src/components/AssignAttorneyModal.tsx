@@ -4,6 +4,7 @@ import { Chapter15Type } from '../type-declarations/chapter-15';
 export interface AssignAttorneyModalProps extends BaseModalProps {
   bCase: Chapter15Type | undefined;
   modalId: string;
+  openerId: string;
 }
 
 export default function AssignAttorneyModal(props: AssignAttorneyModalProps) {
@@ -26,6 +27,7 @@ export default function AssignAttorneyModal(props: AssignAttorneyModalProps) {
   return (
     <Modal
       modalId={props.modalId}
+      openerId={props.openerId}
       heading={modalHeading}
       content={
         <table>
