@@ -1,6 +1,6 @@
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentController } from './case.assignment.controller';
-import { ICaseAssignmentRepository } from '../../interfaces/ICaseAssignmentRepository';
+import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
 import { TrialAttorneyAssignmentResponse } from '../types/trial.attorney.assignment.response';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
@@ -13,7 +13,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       CaseAssignmentRole.TrialAttorney,
     );
 
-    const mockCaseAssignmentRepository: ICaseAssignmentRepository =
+    const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
     let assignmentResponse: TrialAttorneyAssignmentResponse;
@@ -39,7 +39,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   });
 
   test('avoid creation of duplicate assignment and return the Id of an existing assignment, if one already exists in the repository for the case', async () => {
-    const mockCaseAssignmentRepository: ICaseAssignmentRepository =
+    const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
@@ -78,7 +78,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   });
 
   test('create a new trial attorney assignment on an existing case succeeds', async () => {
-    const mockCaseAssignmentRepository: ICaseAssignmentRepository =
+    const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
     const testCaseAssignment1 = new TrialAttorneysAssignmentRequest(
@@ -131,7 +131,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       ['8082', '8092', '8094'],
       CaseAssignmentRole.TrialAttorney,
     );
-    const mockCaseAssignmentRepository: ICaseAssignmentRepository =
+    const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
     let assignmentResponse: TrialAttorneyAssignmentResponse;

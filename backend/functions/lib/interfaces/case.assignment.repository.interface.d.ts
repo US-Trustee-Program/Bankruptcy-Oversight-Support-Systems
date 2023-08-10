@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 
-export interface ICaseAssignmentRepository {
+export interface CaseAssignmentRepositoryInterface {
   createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
