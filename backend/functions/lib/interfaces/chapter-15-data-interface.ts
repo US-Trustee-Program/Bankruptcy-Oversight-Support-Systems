@@ -1,7 +1,7 @@
-import { IChapter15Case } from '../adapters/types/cases';
+import { Chapter15CaseInterface } from '../adapters/types/cases';
 import { PacerCaseData } from '../adapters/types/pacer';
 
-export function pacerToChapter15Data(input: PacerCaseData[]): IChapter15Case[] {
+export function pacerToChapter15Data(input: PacerCaseData[]): Chapter15CaseInterface[] {
   const output = input.map((caseRecord: PacerCaseData) => {
     return {
       caseNumber: `${caseRecord.caseYear.toString().slice(-2)}-${caseRecord.caseNumber}`,

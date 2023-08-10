@@ -1,12 +1,12 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { IChapter15Case } from '../types/cases';
+import { Chapter15CaseInterface } from '../types/cases';
 import { Context } from '@azure/functions';
 import { GatewayHelper } from './gateway-helper';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
 
 export class MockPacerApiGateway implements CasesInterface {
   startingMonth: number;
-  private chapter15CaseList: IChapter15Case[] = [];
+  private chapter15CaseList: Chapter15CaseInterface[] = [];
 
   constructor() {
     this.setUpChapter15TestCaseList();
@@ -16,7 +16,7 @@ export class MockPacerApiGateway implements CasesInterface {
   async getChapter15Cases(
     context: Context,
     options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-  ): Promise<IChapter15Case[]> {
+  ): Promise<Chapter15CaseInterface[]> {
     if (options.startingMonth != undefined) {
       this.startingMonth = options.startingMonth;
     }
@@ -36,7 +36,7 @@ export class MockPacerApiGateway implements CasesInterface {
 
   private setUpChapter15TestCaseList() {
     //Add Cases older than 6 months
-    const oldCases: IChapter15Case[] = [];
+    const oldCases: Chapter15CaseInterface[] = [];
     const today = new Date();
 
     oldCases.push(
@@ -65,7 +65,7 @@ export class MockPacerApiGateway implements CasesInterface {
     this.chapter15CaseList.push(oldCases[0], oldCases[1], oldCases[2]);
 
     // Add Cases newer than 6 months
-    const newCases: IChapter15Case[] = [];
+    const newCases: Chapter15CaseInterface[] = [];
 
     newCases.push(
       {

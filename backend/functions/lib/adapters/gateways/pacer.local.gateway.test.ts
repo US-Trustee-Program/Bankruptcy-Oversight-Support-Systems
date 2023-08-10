@@ -1,12 +1,12 @@
 import { PacerLocalGateway } from './pacer.local.gateway';
-import { IChapter15Case } from '../types/cases';
+import { Chapter15CaseInterface } from '../types/cases';
 import { applicationContextCreator } from '../utils/application-context-creator';
 const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
 describe('PACER Local gateway tests', () => {
   test('should return content for 200 response', async () => {
-    const expectedResponseValue: IChapter15Case[] = [
+    const expectedResponseValue: Chapter15CaseInterface[] = [
       {
         caseNumber: '04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',

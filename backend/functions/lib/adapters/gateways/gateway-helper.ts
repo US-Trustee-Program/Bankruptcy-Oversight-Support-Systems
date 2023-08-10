@@ -1,6 +1,6 @@
 import { PacerCaseData } from '../types/pacer';
 import * as fs from 'fs';
-import { IChapter15Case } from '../types/cases';
+import { Chapter15CaseInterface } from '../types/cases';
 
 export class GatewayHelper {
   pacerMockExtract(): PacerCaseData[] {
@@ -15,7 +15,7 @@ export class GatewayHelper {
     }
   }
 
-  chapter15MockExtract(): IChapter15Case[] {
+  chapter15MockExtract(): Chapter15CaseInterface[] {
     const filename = './lib/testing/mock-data/chapter-15-cases.mock.json';
 
     try {

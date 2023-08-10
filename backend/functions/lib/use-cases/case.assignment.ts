@@ -2,7 +2,7 @@ import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment
 import { getAssignmentRepository } from '../factory';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ApplicationContext } from '../adapters/types/basic';
-import { TrialAttorneyAssignmentResponse } from '../adapters/types/trial.attorney.assignment.response';
+import { ITrialAttorneyAssignmentResponse } from '../adapters/types/case.assignment';
 import log from '../adapters/services/logger.service';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 
@@ -34,7 +34,7 @@ export class CaseAssignment {
   async createTrialAttorneyAssignments(
     context: ApplicationContext,
     listOfAssignments: CaseAttorneyAssignment[],
-  ): Promise<TrialAttorneyAssignmentResponse> {
+  ): Promise<ITrialAttorneyAssignmentResponse> {
     const listOfAssignmentIdsCreated: number[] = [];
     for (const assignment of listOfAssignments) {
       const assignmentId = await this.createAssignment(context, assignment);
@@ -42,12 +42,11 @@ export class CaseAssignment {
         listOfAssignmentIdsCreated.push(assignmentId);
     }
 
-    const response = new TrialAttorneyAssignmentResponse();
-    response.assignmentIdList = listOfAssignmentIdsCreated;
-    response.success = true;
-    response.message = 'Trial attorney assignments created.';
-    response.resultCount = listOfAssignmentIdsCreated.length;
-
-    return response;
+    return {
+      success: true,
+      message: 'Trial attorney assignments created.',
+      resultCount: listOfAssignmentIdsCreated.length,
+      assignmentIdList: listOfAssignmentIdsCreated,
+    };
   }
 }
