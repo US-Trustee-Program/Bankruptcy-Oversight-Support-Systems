@@ -38,7 +38,7 @@ export class CaseAssignmentLocalRepository implements ICaseAssignmentRepository 
     return this.caseAttorneyAssignments.find((assignment) => {
       return (
         assignment.caseId === caseAssignment.caseId &&
-        assignment.professionalId === caseAssignment.professionalId &&
+        assignment.attorneyId === caseAssignment.attorneyId &&
         assignment.role === caseAssignment.role
       );
     });
