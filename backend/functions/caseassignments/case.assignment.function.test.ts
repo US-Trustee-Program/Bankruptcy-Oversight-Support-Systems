@@ -31,7 +31,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyIdList: ['2082', '2083', '2082'],
+        attorneyIdList: ['2082', '2083'],
         role: 'TrialAttorney',
       },
     };
