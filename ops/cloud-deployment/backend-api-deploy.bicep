@@ -202,7 +202,8 @@ resource pacerKVManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentitie
 var pacerKeyVaultManagedIdentity = pacerKVManagedIdentity.id
 var pacerKeyVaultManagedIdentityClientId = pacerKVManagedIdentity.properties.clientId
 
-module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) {
+var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
+module appInsights './app-insights/app-insights.bicep' = if (createApplicationInsights) {
   name: '${functionName}-application-insights-module'
   params: {
     location: location
@@ -212,6 +213,7 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
     workspaceResourceId: analyticsWorkspaceId
   }
 }
+
 /*
   Create functionapp
 */
@@ -252,7 +254,7 @@ var applicationSettings = concat([
     }
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
-  deployAppInsights ? [ { name: 'APPINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }, { name: 'APPINSIGHTS_INSTRUMENTATIONKEY', value: appInsights.outputs.instrumentationKey } ] : []
+  createApplicationInsights ? [ { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString } ] : []
 )
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'

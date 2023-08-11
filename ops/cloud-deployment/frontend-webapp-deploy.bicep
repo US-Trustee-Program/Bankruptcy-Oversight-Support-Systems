@@ -169,10 +169,6 @@ var applicationSettings = concat(deployAppInsights ? [
     name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
     value: appInsights.outputs.connectionString
   }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: appInsights.outputs.instrumentationKey
-  }
 ]:[]
 )
 

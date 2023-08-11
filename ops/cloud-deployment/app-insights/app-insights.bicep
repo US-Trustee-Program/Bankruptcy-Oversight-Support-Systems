@@ -1,7 +1,15 @@
 param location string = resourceGroup().location
+
+@description('Name of Application Insight resource')
 param appInsightsName string
-param workspaceResourceId string
+
+@description('OPTIONAL. Resource id of log analytics workspace which data will be ingested to.')
+param workspaceResourceId string = ''
+
+@allowed([ 'web' ])
 param applicationType string
+
+@allowed([ 'web' ])
 param kind string
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
@@ -10,12 +18,22 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: kind
   properties: {
     Application_Type: applicationType
-    WorkspaceResourceId: workspaceResourceId
-
+    WorkspaceResourceId: !empty(workspaceResourceId) ? workspaceResourceId : null
   }
 }
 
-resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+var logRetentionPolicy = {
+  days: 30
+  enabled: true
+}
+
+var metricRetentionPolicy = {
+  days: 30
+  enabled: true
+}
+
+@description('Enable all diagnostic logs/metrics for an Application Insight resource and send data to target Log Analytics workspace for ingestion.')
+resource diagnosticLogsToLogAnalyticsWorkspace 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(workspaceResourceId)) {
   name: appInsights.name
   scope: appInsights
   properties: {
@@ -23,112 +41,65 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
     logs: [
       {
         category: 'AppAvailabilityResults'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppBrowserTimings'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppEvents'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppMetrics'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppDependencies'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppExceptions'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppPageViews'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppPerformanceCounters'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppRequests'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppSystemEvents'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
       {
         category: 'AppTraces'
-        categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: logRetentionPolicy
       }
     ]
     metrics: [
       {
         category: 'AllMetrics'
         enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true
-        }
+        retentionPolicy: metricRetentionPolicy
       }
     ]
   }
@@ -136,4 +107,3 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
 
 output id string = appInsights.id
 output connectionString string = appInsights.properties.ConnectionString
-output instrumentationKey string = appInsights.properties.InstrumentationKey

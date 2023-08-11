@@ -242,7 +242,7 @@ jobs:
           export CAMS_SERVER_PORT=${{ vars.CAMS_SERVER_PORT }}
           export CAMS_SERVER_PROTOCOL=${{ vars.CAMS_SERVER_PROTOCOL }}
           export CAMS_BASE_PATH=${{ vars.CAMS_BASE_PATH }}
-          export APPlICATIONINSIGHTS_CONNECTION_STRING='TESTSTRING'
+          export APPLICATIONINSIGHTS_CONNECTION_STRING=""
           npm run build --if-present
 
       - name: Execute Test
@@ -282,7 +282,7 @@ jobs:
 
       - name: Execute Tests
         run: |
-          export APPINSIGHTS_CONNECTION_STRING="TESTSTRING" && npm run test
+          npm run test
 
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
@@ -430,8 +430,6 @@ jobs:
           MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
           MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
           PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
-          APPINSIGHTS_CONNECTION_STRING=${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }}
-          APPINSIGHTS_INSTRUMENTATIONKEY=${{ secrets.API_APPINSIGHTS_INSTRUMENTATION_KEY }}
           PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \
