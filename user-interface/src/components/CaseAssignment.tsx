@@ -4,7 +4,7 @@ import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declaratio
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
-import AssignAttorneyModal from './AssignAttorneyModal';
+import AssignAttorneyModal, { AssignedAttorney, CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/Modal';
 
 const modalId = 'assign-attorney-modal';
@@ -61,6 +61,15 @@ export const CaseAssignment = () => {
     return theCase;
   };
 
+  function updateCase({ bCase, attorneyList }: CallBackProps) {
+    const tempCaseList = caseList;
+    tempCaseList.forEach((theCase) => {
+      if (bCase?.caseNumber == (theCase as Chapter15Type).caseNumber) {
+        (theCase as Chapter15Type).attorneyList = attorneyList;
+      }
+    });
+  }
+
   if (isLoading) {
     return (
       <div className="case-list">
@@ -114,6 +123,7 @@ export const CaseAssignment = () => {
           bCase={bCase}
           modalId={modalId}
           openerId={modalOpenerId}
+          callBack={updateCase}
         ></AssignAttorneyModal>
       </>
     );
