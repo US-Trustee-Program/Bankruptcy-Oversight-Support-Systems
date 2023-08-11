@@ -4,7 +4,7 @@ import { ResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 
 export default class Api {
-  private static _host = `${config.protocol}://${config.server}:${config.port}${
+  private static _host = `${config.protocol || 'https'}://${config.server}:${config.port}${
     config.basePath ?? ''
   }`;
 
