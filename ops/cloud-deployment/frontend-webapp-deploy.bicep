@@ -117,7 +117,7 @@ module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   }
 }
 module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) {
-  name: '${webappName}-appi-module'
+  name: '${webappName}-application-insights-module'
   params: {
     location: location
     kind: 'web'

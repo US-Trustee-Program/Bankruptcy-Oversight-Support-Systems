@@ -26,8 +26,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -35,8 +35,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -44,8 +44,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -53,8 +53,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -62,8 +62,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -71,8 +71,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -80,8 +80,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -89,8 +89,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -98,8 +98,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -107,8 +107,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
       {
@@ -116,8 +116,8 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 0
-          enabled: false
+          days: 30
+          enabled: true
         }
       }
     ]
