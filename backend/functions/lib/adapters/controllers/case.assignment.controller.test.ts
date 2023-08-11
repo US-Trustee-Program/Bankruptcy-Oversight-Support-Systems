@@ -4,6 +4,8 @@ import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignm
 import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 import { ITrialAttorneyAssignmentResponse } from '../types/case.assignment';
+import { httpError } from '../utils/http';
+import { AssignmentException } from '../../use-cases/assignment.exception';
 const context = require('azure-function-context-mock');
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
@@ -77,7 +79,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignmentCreated2).toEqual(assignmentCreated1);
   });
 
-  test('create a new trial attorney assignment on an existing case succeeds', async () => {
+  test('creating a new trial attorney assignment on a case with an existing assignment throws error', async () => {
     const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
@@ -92,6 +94,12 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       ['8083'],
       CaseAssignmentRole.TrialAttorney,
     );
+
+    const expectedResponse = {
+      error:
+        'A trial attorney assignment already exists for this case. Cannot create another assignment on an existing case assignment.',
+    };
+
     let resultAssignmentId1: number;
     let resultAssignmentId2: number;
 
@@ -103,26 +111,40 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       const assignmentResponse1 = await assignmentController.createTrailAttorneyAssignments(
         testCaseAssignment1,
       );
+
+      resultAssignmentId1 = assignmentResponse1.assignmentIdList[0];
+
       const assignmentResponse2 = await assignmentController.createTrailAttorneyAssignments(
         testCaseAssignment2,
       );
-      resultAssignmentId1 = assignmentResponse1.assignmentIdList[0];
+
       resultAssignmentId2 = assignmentResponse2.assignmentIdList[0];
     } catch (exception) {
-      // exception.message;
+      if (exception instanceof AssignmentException && exception.status === 400) {
+        context.res = httpError(context, exception, 400);
+      } else {
+        context.res = httpError(context, exception, 500);
+      }
     }
+
     const assignmentCreated1 = await mockCaseAssignmentRepository.getAssignment(
       resultAssignmentId1,
     );
+
     const assignmentCreated2 = await mockCaseAssignmentRepository.getAssignment(
       resultAssignmentId2,
     );
-    expect(resultAssignmentId2).not.toBe(resultAssignmentId1);
-    expect(assignmentCreated2).not.toEqual(assignmentCreated1);
 
-    const expectedNumberOfAssignments: number = 2;
+    const expectedNumberOfAssignments: number = 1;
     const actualNumberOfAssignments = await mockCaseAssignmentRepository.getCount();
     expect(actualNumberOfAssignments).toBe(expectedNumberOfAssignments);
+    expect(assignmentCreated1.caseId).toBe(testCaseAssignment1.caseId);
+    expect(assignmentCreated1.attorneyId).toBe(testCaseAssignment1.listOfAttorneyIds[0]);
+    expect(assignmentCreated1.role).toBe(testCaseAssignment1.role);
+    expect(assignmentCreated2).toBeFalsy();
+    expect(context.res.body).toEqual(expectedResponse);
+    expect(context.res.statusCode).toBe(400);
+    expect(context.res.body);
   });
 
   test('A chapter 15 case is assigned to the list of trial attorneys provided.', async () => {
