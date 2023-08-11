@@ -238,10 +238,10 @@ jobs:
       - name: Execute Build
         run: |
           npm ci
-          export REACT_APP_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"
-          export REACT_APP_SERVER_PORT=${{ vars.REACT_APP_SERVER_PORT }}
-          export REACT_APP_SERVER_PROTOCOL=${{ vars.REACT_APP_SERVER_PROTOCOL }}
-          export REACT_APP_BASE_PATH=${{ vars.REACT_APP_BASE_PATH }}
+          export CAMS_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"
+          export CAMS_SERVER_PORT=${{ vars.CAMS_SERVER_PORT }}
+          export CAMS_SERVER_PROTOCOL=${{ vars.CAMS_SERVER_PROTOCOL }}
+          export CAMS_BASE_PATH=${{ vars.CAMS_BASE_PATH }}
           export APPlICATIONINSIGHTS_CONNECTION_STRING='TESTSTRING'
           npm run build --if-present
 
@@ -516,10 +516,8 @@ jobs:
         run: ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{ env.stackName }} -p 100 --is-cicd
       - name: Health check api
         run: |
-          sleep 5
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
-          sleep 5
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             exit 0
