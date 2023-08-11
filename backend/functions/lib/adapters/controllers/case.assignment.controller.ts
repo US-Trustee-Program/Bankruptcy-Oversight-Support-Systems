@@ -5,7 +5,7 @@ import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
-import { ITrialAttorneyAssignmentResponse } from '../types/case.assignment';
+import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { httpError } from '../utils/http';
 import { CaseAssignmentException } from '../../../caseassignments/case.assignment.exception';
@@ -23,7 +23,7 @@ export class CaseAssignmentController {
 
   public async createTrailAttorneyAssignments(
     assignmentRequest: TrialAttorneysAssignmentRequest,
-  ): Promise<ITrialAttorneyAssignmentResponse> {
+  ): Promise<AttorneyAssignmentResponseInterface> {
     try {
       const listOfAssignments: CaseAttorneyAssignment[] = [];
 

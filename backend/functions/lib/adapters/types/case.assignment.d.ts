@@ -1,4 +1,4 @@
-export interface ITrialAttorneyAssignmentResponse {
+export interface AttorneyAssignmentResponseInterface {
   success: boolean;
   message: string;
   resultCount: number;
