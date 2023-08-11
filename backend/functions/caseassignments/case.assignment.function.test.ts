@@ -8,7 +8,8 @@ const appContext = applicationContextCreator(context);
 describe('Case Assignment Function Tests', () => {
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '6789',
         attorneyIdList: ['9082'],
         role: 'TrialAttorney',
@@ -27,7 +28,8 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '6789',
         attorneyIdList: ['2082', '2083', '2082'],
         role: 'TrialAttorney',
@@ -47,7 +49,8 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '',
         attorneyIdList: ['2082', '2083'],
         role: 'TrialAttorney',
@@ -65,7 +68,8 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a AttorneyIdList is empty or not passed in the request', async () => {
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '909',
         attorneyIdList: [],
         role: 'TrialAttorney',
@@ -83,7 +87,8 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '909',
         attorneyIdList: ['1000'],
         role: '',
@@ -101,7 +106,8 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '909',
         attorneyIdList: ['1000'],
         role: 'TrialDragon',
@@ -127,7 +133,8 @@ describe('Case Assignment Function Tests', () => {
       });
 
     const request = {
-      query: {
+      query: {},
+      body: {
         caseId: '6789',
         attorneyIdList: ['2082'],
         role: 'TrialAttorney',

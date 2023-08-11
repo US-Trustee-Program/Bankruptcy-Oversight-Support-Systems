@@ -18,10 +18,9 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const caseId = request.query.caseId || (request.body && request.body.caseId);
-  const listOfAttorneyIds =
-    request.query.attorneyIdList || (request.body && request.body.attorneyIdList);
-  const role = request.query.role || (request.body && request.body.role);
+  const caseId = request.body && request.body.caseId;
+  const listOfAttorneyIds = request.body && request.body.attorneyIdList;
+  const role = request.body && request.body.role;
 
   try {
     const assignmentRequest: TrialAttorneysAssignmentRequest = createAssignmentRequest(
