@@ -46,6 +46,26 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
   });
+  test('handle any duplicate attorney Ids passed in the request, not create duplicate assignments', async () => {
+    const request = {
+      query: {},
+      body: {
+        caseId: '6789',
+        attorneyIdList: ['2082', '2082'],
+        role: 'TrialAttorney',
+      },
+    };
+
+    const expectedResponse = {
+      assignmentIdList: [1],
+      success: true,
+      message: 'Trial attorney assignments created.',
+      resultCount: 1,
+    };
+
+    await httpTrigger(appContext, request);
+    expect(appContext.res.body).toEqual(expectedResponse);
+  });
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
     const request = {
