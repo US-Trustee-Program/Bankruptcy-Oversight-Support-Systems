@@ -3,7 +3,7 @@ import { CaseAssignmentController } from './case.assignment.controller';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
-import { ITrialAttorneyAssignmentResponse } from '../types/case.assignment';
+import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { httpError } from '../utils/http';
 import { AssignmentException } from '../../use-cases/assignment.exception';
 const context = require('azure-function-context-mock');
@@ -18,7 +18,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
-    let assignmentResponse: ITrialAttorneyAssignmentResponse;
+    let assignmentResponse: AttorneyAssignmentResponseInterface;
     try {
       const assignmentController = new CaseAssignmentController(
         context,
@@ -156,7 +156,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const mockCaseAssignmentRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository();
 
-    let assignmentResponse: ITrialAttorneyAssignmentResponse;
+    let assignmentResponse: AttorneyAssignmentResponseInterface;
     try {
       const assignmentController = new CaseAssignmentController(
         context,

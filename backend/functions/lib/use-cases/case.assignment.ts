@@ -2,7 +2,7 @@ import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment
 import { getAssignmentRepository } from '../factory';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ApplicationContext } from '../adapters/types/basic';
-import { ITrialAttorneyAssignmentResponse } from '../adapters/types/case.assignment';
+import { AttorneyAssignmentResponseInterface } from '../adapters/types/case.assignment';
 import log from '../adapters/services/logger.service';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { AssignmentException } from './assignment.exception';
@@ -37,7 +37,7 @@ export class CaseAssignment {
   async createTrialAttorneyAssignments(
     context: ApplicationContext,
     listOfAssignments: CaseAttorneyAssignment[],
-  ): Promise<ITrialAttorneyAssignmentResponse> {
+  ): Promise<AttorneyAssignmentResponseInterface> {
     if (await this.doesAssignmentExist(context, listOfAssignments)) {
       //throw an error here
       throw new AssignmentException(400, EXISTING_ASSIGNMENT_FOUND);
