@@ -10,7 +10,7 @@ dotenv.config();
 // enable instrumentation for Azure Application Insights
 if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
   const appInsights = require('applicationinsights');
-  appInsights.start();
+  appInsights.setup().start();
 }
 
 const NAMESPACE = 'ATTORNEYS-FUNCTION';
