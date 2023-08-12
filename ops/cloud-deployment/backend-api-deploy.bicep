@@ -214,6 +214,17 @@ module appInsights './app-insights/app-insights.bicep' = if (createApplicationIn
   }
 }
 
+module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
+  name: '${functionName}-diagnostic-settings-module'
+  params: {
+    functionAppName: functionName
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+  ]
+}
+
 /*
   Create functionapp
 */
