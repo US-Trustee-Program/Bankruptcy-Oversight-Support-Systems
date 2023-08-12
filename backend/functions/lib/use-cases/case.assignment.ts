@@ -38,8 +38,8 @@ export class CaseAssignment {
     context: ApplicationContext,
     listOfAssignments: CaseAttorneyAssignment[],
   ): Promise<AttorneyAssignmentResponseInterface> {
-    if (await this.doesAssignmentExist(context, listOfAssignments)) {
-      //throw an error here
+    const isValid = await this.isCreateValid(context, listOfAssignments);
+    if (!isValid) {
       throw new AssignmentException(400, EXISTING_ASSIGNMENT_FOUND);
     } else {
       const listOfAssignmentIdsCreated: number[] = [];
@@ -58,12 +58,33 @@ export class CaseAssignment {
     }
   }
 
-  async doesAssignmentExist(
+  async isCreateValid(
     context: ApplicationContext,
-    caseAssignments: CaseAttorneyAssignment[],
+    newAssignments: CaseAttorneyAssignment[],
   ): Promise<boolean> {
-    const caseId = caseAssignments[0].caseId;
+    const caseId = newAssignments[0].caseId;
     const existingAssignments = await this._assignmentRepository.findAssignmentByCaseId(caseId);
-    return existingAssignments.length > 0;
+    if (existingAssignments.length === 0) return true;
+    return await this.isExactEqual(existingAssignments, newAssignments);
+  }
+
+  async isExactEqual(
+    existingAssignments: CaseAttorneyAssignment[],
+    newAssignments: CaseAttorneyAssignment[],
+  ): Promise<boolean> {
+    if (existingAssignments.length != newAssignments.length) {
+      return false;
+    } else {
+      //compare each assignment
+      for (let i = 0; i < existingAssignments.length; i++) {
+        if (
+          existingAssignments[i].attorneyId !== newAssignments[i].attorneyId ||
+          existingAssignments[i].role !== newAssignments[i].role
+        ) {
+          return false;
+        }
+      }
+      return true;
+    }
   }
 }

@@ -77,6 +77,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     );
     expect(resultAssignmentId2).toBe(resultAssignmentId1);
     expect(assignmentCreated2).toEqual(assignmentCreated1);
+    expect(context.res.status).toBe(200);
   });
 
   test('creating a new trial attorney assignment on a case with an existing assignment throws error', async () => {
