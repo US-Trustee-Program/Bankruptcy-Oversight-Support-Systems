@@ -4,7 +4,7 @@ import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declaratio
 import './CaseList.scss';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
-import AssignAttorneyModal, { AssignedAttorney, CallBackProps } from './AssignAttorneyModal';
+import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/Modal';
 
 const modalId = 'assign-attorney-modal';
@@ -18,6 +18,7 @@ export const CaseAssignment = () => {
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [caseListUpdated, setCaseListUpdated] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
   const [modalOpenerId, setModalOpenerId] = useState<string>('');
 
@@ -54,6 +55,12 @@ export const CaseAssignment = () => {
     }
   }, [caseList.length > 0, chapter]);
 
+  useEffect(() => {
+    if (caseListUpdated) {
+      setCaseListUpdated(false);
+    }
+  }, [caseListUpdated]);
+
   const openModal = (theCase: Chapter15Type, openerId: string) => {
     setBCase(theCase);
     setModalOpenerId(openerId);
@@ -61,13 +68,20 @@ export const CaseAssignment = () => {
     return theCase;
   };
 
-  function updateCase({ bCase, attorneyList }: CallBackProps) {
-    const tempCaseList = caseList;
-    tempCaseList.forEach((theCase) => {
-      if (bCase?.caseNumber == (theCase as Chapter15Type).caseNumber) {
-        (theCase as Chapter15Type).attorneyList = attorneyList;
-      }
-    });
+  function updateCase({ bCase, selectedAttorneyList }: CallBackProps) {
+    console.log('bCase:', bCase);
+    if (selectedAttorneyList.length > 0) {
+      const tempCaseList = caseList;
+      console.log('attorneyList:', selectedAttorneyList);
+      tempCaseList.forEach((theCase) => {
+        if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
+          (theCase as Chapter15Type).attorneyList = selectedAttorneyList;
+        }
+      });
+      setCaseList(tempCaseList);
+      setCaseListUpdated(true);
+      console.log('tempCaseList:', tempCaseList);
+    }
   }
 
   if (isLoading) {
@@ -102,15 +116,17 @@ export const CaseAssignment = () => {
                       <td>{theCase.caseTitle}</td>
                       <td>{theCase.dateFiled}</td>
                       <td>
-                        <ToggleModalButton
-                          className="case-assignment-modal-toggle"
-                          id={`assign-attorney-btn-${idx}`}
-                          toggleAction="open"
-                          modalId={modalId}
-                          onClick={() => openModal(theCase, `assign-attorney-btn-${idx}`)}
-                        >
-                          Assign
-                        </ToggleModalButton>
+                        {theCase.attorneyList?.length != undefined || (
+                          <ToggleModalButton
+                            className="case-assignment-modal-toggle"
+                            id={`assign-attorney-btn-${idx}`}
+                            toggleAction="open"
+                            modalId={`${modalId}-${idx}`}
+                            onClick={() => openModal(theCase, `assign-attorney-btn-${idx}`)}
+                          >
+                            Assign
+                          </ToggleModalButton>
+                        )}
                       </td>
                     </tr>
                   );
@@ -121,7 +137,7 @@ export const CaseAssignment = () => {
         <AssignAttorneyModal
           ref={modalRef}
           bCase={bCase}
-          modalId={modalId}
+          modalId={`${modalId}`}
           openerId={modalOpenerId}
           callBack={updateCase}
         ></AssignAttorneyModal>
