@@ -7,7 +7,7 @@ export interface AssignAttorneyModalProps {
   bCase: Chapter15Type | undefined;
   modalId: string;
   openerId: string;
-  callBack: (props: object) => void;
+  callBack: (props: CallBackProps) => void;
 }
 
 export interface AssignedAttorney {
@@ -16,10 +16,10 @@ export interface AssignedAttorney {
   caseCount: number;
 }
 
-export interface callBackProps {
+export interface CallBackProps {
   openerId: string;
-  bCase: Chapter15Type;
-  attorneyList: AssignedAttorney[];
+  bCase: Chapter15Type | undefined;
+  selectedAttorneyList: AssignedAttorney[];
 }
 
 function AssignAttorneyModalComponent(
@@ -69,6 +69,7 @@ function AssignAttorneyModalComponent(
   }
 
   function cancelModal() {
+    // Isn't getting called on esc key or X
     checkListValues = [];
   }
 
@@ -81,7 +82,7 @@ function AssignAttorneyModalComponent(
     props.callBack({
       openerId: props.openerId,
       bCase: props.bCase,
-      attorneyList: finalAttorneyList,
+      selectedAttorneyList: finalAttorneyList,
     });
     //}
   }
