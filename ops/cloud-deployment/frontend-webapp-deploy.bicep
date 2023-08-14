@@ -116,6 +116,7 @@ module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
     privateLinkServiceId: webapp.id
   }
 }
+
 module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) {
   name: '${webappName}-application-insights-module'
   params: {
@@ -126,6 +127,18 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
     workspaceResourceId: analyticsWorkspaceId
   }
 }
+
+module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
+  name: '${webappName}-diagnostic-settings-module'
+  params: {
+    webappName: webappName
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+  ]
+}
+
 /*
   Create webapp
 */
@@ -141,39 +154,35 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 var applicationSettings = concat(deployAppInsights ? [
-  {
-    name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
-    value: '~2'
-  }
-  {
-    name: 'DiagnosticServices_EXTENSION_VERSION'
-    value: '~3'
-  }
-  {
-    name: 'APPINSIGHTS_PROFILERFEATURE_VERSION'
-    value: '1.0.0'
-  }
-  {
-    name: 'APPINSIGHTS_SNAPSHOTFEATURE_VERSION'
-    value: '1.0.0'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_Mode'
-    value: '1'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_NodeJS'
-    value: '1'
-  }
-  {
-    name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
-    value: appInsights.outputs.connectionString
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: appInsights.outputs.instrumentationKey
-  }
-]:[]
+    {
+      name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+      value: '~2'
+    }
+    {
+      name: 'DiagnosticServices_EXTENSION_VERSION'
+      value: '~3'
+    }
+    {
+      name: 'APPINSIGHTS_PROFILERFEATURE_VERSION'
+      value: '1.0.0'
+    }
+    {
+      name: 'APPINSIGHTS_SNAPSHOTFEATURE_VERSION'
+      value: '1.0.0'
+    }
+    {
+      name: 'XDT_MicrosoftApplicationInsights_Mode'
+      value: '1'
+    }
+    {
+      name: 'XDT_MicrosoftApplicationInsights_NodeJS'
+      value: '1'
+    }
+    {
+      name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
+      value: appInsights.outputs.connectionString
+    }
+  ] : []
 )
 
 var ipSecurityRestrictionsRules = concat([ {

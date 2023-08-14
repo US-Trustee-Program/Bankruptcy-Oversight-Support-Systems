@@ -1,7 +1,7 @@
 import { ApplicationInsights, ITelemetryItem } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 
-const appInsightsConnectionString = import.meta.env['APPINSIGHTS_CONNECTION_STRING'];
+const appInsightsConnectionString = import.meta.env['APPLICATIONINSIGHTS_CONNECTION_STRING']; // TODO : NEED TO VERIFY THIS SNIPPET
 const reactPlugin = new ReactPlugin();
 
 const appInsights = new ApplicationInsights({

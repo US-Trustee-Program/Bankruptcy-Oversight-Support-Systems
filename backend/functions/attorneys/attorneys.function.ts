@@ -7,9 +7,11 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-console.log(process.env.APPINSIGHTS_CONNECTION_STRING);
-const appInsights = require('applicationinsights');
-appInsights.setup(process.env.APPINSIGHTS_CONNECTION_STRING).start();
+// enable instrumentation for Azure Application Insights
+if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
+  const appInsights = require('applicationinsights');
+  appInsights.setup().start();
+}
 
 const NAMESPACE = 'ATTORNEYS-FUNCTION';
 
