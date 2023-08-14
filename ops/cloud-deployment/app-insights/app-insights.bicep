@@ -32,3 +32,4 @@ module diagnosticsSettings 'diagnostics-settings-appi.bicep' = {
 
 output id string = appInsights.id
 output connectionString string = appInsights.properties.ConnectionString
+output instrumentationKey string = appInsights.properties.InstrumentationKey
