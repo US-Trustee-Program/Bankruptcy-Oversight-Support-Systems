@@ -11,10 +11,12 @@ const appInsights = new ApplicationInsights({
     extensionConfig: {},
     enableAutoRouteTracking: true,
     disableAjaxTracking: false,
+    disableExceptionTracking: false,
     autoTrackPageVisitTime: true,
     enableCorsCorrelation: true,
     enableRequestHeaderTracking: true,
     enableResponseHeaderTracking: true,
+    enableDebug: true,
   },
 });
 

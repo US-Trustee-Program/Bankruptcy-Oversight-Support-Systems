@@ -242,7 +242,7 @@ jobs:
           export CAMS_SERVER_PORT=${{ vars.CAMS_SERVER_PORT }}
           export CAMS_SERVER_PROTOCOL=${{ vars.CAMS_SERVER_PROTOCOL }}
           export CAMS_BASE_PATH=${{ vars.CAMS_BASE_PATH }}
-          export APPLICATIONINSIGHTS_CONNECTION_STRING=""
+          export APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }}"
           npm run build --if-present
 
       - name: Execute Test
