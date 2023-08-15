@@ -153,66 +153,26 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
 }
-var applicationSettings = concat(deployAppInsights ? [
-  {
-    name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
-    value: '~2'
-  }
-  {
-    name: 'DiagnosticServices_EXTENSION_VERSION'
-    value: '~3'
-  }
-  {
-    name: 'APPINSIGHTS_PROFILERFEATURE_VERSION'
-    value: '1.0.0'
-  }
-  {
-    name: 'APPINSIGHTS_SNAPSHOTFEATURE_VERSION'
-    value: '1.0.0'
-  }
-  {
-    name: 'InstrumentationEngine_EXTENSION_VERSION'
-    value: 'disabled'
-  }
-  {
-    name: 'SnapshotDebugger_EXTENSION_VERSION'
-    value: 'disabled'
-  }
-  {
-    name: 'WEBSITE_NODE_DEFAULT_VERSION'
-    value: '6.9.1'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_Mode'
-    value: '1'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_NodeJS'
-    value: '1'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_BaseExtensions'
-    value: 'disabled'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_Java'
-    value: '1'
-  }
-  {
-    name: 'XDT_MicrosoftApplicationInsights_PreemptSdk'
-    value: 'disabled'
-  }
-  {
-    name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
-    value: appInsights.outputs.connectionString
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: appInsights.outputs.instrumentationKey
-  }
+var applicationSettings = concat([],
+  deployAppInsights ? [
+    {
+      name: 'WEBSITE_NODE_DEFAULT_VERSION'
+      value: '18'
+    }
+    {
+      name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+      value: '~2'
+    }
+    {
+      name: 'XDT_MicrosoftApplicationInsights_NodeJS'
+      value: '1'
+    }
+    {
+      name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
+      value: appInsights.outputs.connectionString
+    }
   ] : []
 )
-
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
       action: 'Deny'
