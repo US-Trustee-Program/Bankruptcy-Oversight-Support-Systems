@@ -7,8 +7,7 @@ import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignm
 import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
-import { httpError } from '../utils/http';
-import { CaseAssignmentException } from '../../../caseassignments/case.assignment.exception';
+import { AssignmentException } from '../../use-cases/assignment.exception';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 
@@ -42,12 +41,11 @@ export class CaseAssignmentController {
       );
     } catch (exception) {
       log.error(applicationContextCreator(this.applicationContext), NAMESPACE, exception.message);
-      this.applicationContext.res = httpError(
-        this.applicationContext,
-        new Error(exception.message),
-        exception.status,
-      );
-      throw new CaseAssignmentException(exception.status, exception.message);
+      if (!(exception instanceof AssignmentException)) {
+        throw new AssignmentException(500, exception.message);
+      } else {
+        throw new AssignmentException(exception.status, exception.message);
+      }
     }
   }
 }

@@ -5,7 +5,7 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 import log from '../lib/adapters/services/logger.service';
 import { CaseAssignmentRole } from '../lib/adapters/types/case.assignment.role';
 import { TrialAttorneysAssignmentRequest } from '../lib/adapters/types/trial.attorneys.assignment.request';
-import { CaseAssignmentException } from './case.assignment.exception';
+import { AssignmentException } from '../lib/use-cases/assignment.exception';
 
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
 const REQUIRED_CASE_ID_MESSAGE = 'Required parameter caseId is absent.';
@@ -38,8 +38,8 @@ const httpTrigger: AzureFunction = async function (
     functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
     console.log(functionContext.res.body.toString());
   } catch (exception) {
-    if (exception instanceof CaseAssignmentException && exception.status === 400) {
-      functionContext.res = httpError(functionContext, exception, 400);
+    if (exception instanceof AssignmentException) {
+      functionContext.res = httpError(functionContext, exception, exception.status);
     } else {
       functionContext.res = httpError(functionContext, exception, 500);
     }
@@ -73,28 +73,24 @@ function validateRequestParameters(
 function validateCaseId(caseId: string, functionContext: Context) {
   if (!caseId) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_CASE_ID_MESSAGE);
-    functionContext.res = httpError(functionContext, new Error(REQUIRED_CASE_ID_MESSAGE), 400);
-    throw new CaseAssignmentException(400, REQUIRED_CASE_ID_MESSAGE);
+    throw new AssignmentException(400, REQUIRED_CASE_ID_MESSAGE);
   }
 }
 
 function validateProfessionalId(listOfAttorneyIds: string[], functionContext: Context) {
   if (listOfAttorneyIds.length < 1) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_ATTORNEY_ID_MESSAGE);
-    functionContext.res = httpError(functionContext, new Error(REQUIRED_ATTORNEY_ID_MESSAGE), 400);
-    throw new CaseAssignmentException(400, REQUIRED_ATTORNEY_ID_MESSAGE);
+    throw new AssignmentException(400, REQUIRED_ATTORNEY_ID_MESSAGE);
   }
 }
 
 function validateRole(role: string, functionContext: Context) {
   if (!role) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, REQUIRED_ROLE_MESSAGE);
-    functionContext.res = httpError(functionContext, new Error(REQUIRED_ROLE_MESSAGE), 400);
-    throw new CaseAssignmentException(400, REQUIRED_ROLE_MESSAGE);
+    throw new AssignmentException(400, REQUIRED_ROLE_MESSAGE);
   } else if (!(CaseAssignmentRole[role] === CaseAssignmentRole.TrialAttorney)) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, INVALID_ROLE_MESSAGE);
-    functionContext.res = httpError(functionContext, new Error(INVALID_ROLE_MESSAGE), 400);
-    throw new CaseAssignmentException(400, INVALID_ROLE_MESSAGE);
+    throw new AssignmentException(400, INVALID_ROLE_MESSAGE);
   }
 }
 
