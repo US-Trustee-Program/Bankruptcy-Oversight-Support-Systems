@@ -17,7 +17,6 @@ const appInsights = new ApplicationInsights({
     enableRequestHeaderTracking: true,
     enableResponseHeaderTracking: true,
     enableDebug: true,
-    enableWebInstrumentation: true,
   },
 });
 
@@ -28,7 +27,6 @@ if (appInsightsConnectionString) {
     env.tags = env.tags || [];
     env.tags['component'] = 'ustp.cams.webapp'; // test tag
   });
-  appInsights.start();
 }
 
 export { reactPlugin, appInsights };
