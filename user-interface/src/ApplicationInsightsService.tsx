@@ -17,6 +17,7 @@ const appInsights = new ApplicationInsights({
     enableRequestHeaderTracking: true,
     enableResponseHeaderTracking: true,
     enableDebug: true,
+    sendLiveMetrics: true,
   },
 });
 
