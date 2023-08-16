@@ -1,8 +1,6 @@
 param location string = resourceGroup().location
 param analyticsWorkspaceName string
-param dailyQuotaGb int
-
-
+param dailyQuotaGb int = -1
 
 resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: analyticsWorkspaceName
@@ -17,6 +15,14 @@ resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01
     }
   }
 
+}
+
+module storage '../storage/storage-account.bicep' = {
+  name: '${analyticsWorkspace.name}-stg-module'
+  params: {
+    location: location
+    storageAccountName: 'stg-analytics-workspace'
+  }
 }
 
 output id string = analyticsWorkspace.id
