@@ -1,8 +1,7 @@
 import { ApplicationInsights, ITelemetryItem } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 
-const appInsightsConnectionString =
-  'InstrumentationKey=340f749a-f435-fa6a-96c6-acf683a99a18;EndpointSuffix=applicationinsights.us;IngestionEndpoint=https://usgovvirginia-1.in.applicationinsights.azure.us/;AADAudience=https://monitor.azure.us/'; // TODO : Testing instrumentation with temporary environment
+const appInsightsConnectionString = import.meta.env['CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING'];
 const reactPlugin = new ReactPlugin();
 
 const appInsights = new ApplicationInsights({
