@@ -2,6 +2,7 @@ import { forwardRef, useRef, useImperativeHandle } from 'react';
 import Modal, { ModalRefType } from './uswds/Modal';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import React from 'react';
+import Api from '../models/api';
 
 export interface AssignAttorneyModalProps {
   bCase: Chapter15Type | undefined;
@@ -73,7 +74,7 @@ function AssignAttorneyModalComponent(
     checkListValues = [];
   }
 
-  function submitValues() {
+  async function submitValues() {
     // send attorney IDs to API and if successful, then
     //if (true) {
     let finalAttorneyList: AssignedAttorney[] = [];
@@ -85,6 +86,15 @@ function AssignAttorneyModalComponent(
       selectedAttorneyList: finalAttorneyList,
     });
     //}
+    const attorneyIds = finalAttorneyList.map((atty) => atty.id.toString());
+    console.log(attorneyIds);
+    await Api.post('/case-assignments', {
+      caseId: props.bCase?.caseNumber,
+      attorneyIdList: attorneyIds,
+      role: 'TrialAttorney',
+    }).then((assignments) => {
+      console.log(assignments);
+    });
   }
 
   return (
