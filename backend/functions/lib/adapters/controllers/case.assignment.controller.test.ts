@@ -29,7 +29,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     } catch (exception) {
       // exception.message;
     }
-    const resultAssignmentId = assignmentResponse.assignmentIdList[0];
+    const resultAssignmentId = assignmentResponse.body[0];
 
     const assignmentCreated = await mockCaseAssignmentRepository.getAssignment(resultAssignmentId);
 
@@ -62,8 +62,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       const assignmentResponse2 = await assignmentController.createTrailAttorneyAssignments(
         testCaseAssignment,
       );
-      resultAssignmentId1 = assignmentResponse1.assignmentIdList[0];
-      resultAssignmentId2 = assignmentResponse2.assignmentIdList[0];
+      resultAssignmentId1 = assignmentResponse1.body[0];
+      resultAssignmentId2 = assignmentResponse2.body[0];
     } catch (exception) {
       // exception.message;
     }
@@ -103,7 +103,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       testCaseAssignment1,
     );
 
-    const resultAssignmentId1 = assignmentResponse1.assignmentIdList[0];
+    const resultAssignmentId1 = assignmentResponse1.body[0];
     const assignmentCreated1 = await mockCaseAssignmentRepository.getAssignment(
       resultAssignmentId1,
     );
@@ -142,11 +142,9 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       // exception.message;
     }
 
-    expect(assignmentResponse.assignmentIdList.length).toBe(
-      testCaseAssignment.listOfAttorneyIds.length,
-    );
+    expect(assignmentResponse.body.length).toBe(testCaseAssignment.listOfAttorneyIds.length);
 
-    const resultAssignmentId1 = assignmentResponse.assignmentIdList[0];
+    const resultAssignmentId1 = assignmentResponse.body[0];
     const assignmentCreated1 = await mockCaseAssignmentRepository.getAssignment(
       resultAssignmentId1,
     );
@@ -156,7 +154,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignmentCreated1.attorneyId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
     expect(assignmentCreated1.role).toBe(testCaseAssignment.role);
 
-    const resultAssignmentId2 = assignmentResponse.assignmentIdList[1];
+    const resultAssignmentId2 = assignmentResponse.body[1];
     const assignmentCreated2 = await mockCaseAssignmentRepository.getAssignment(
       resultAssignmentId2,
     );
@@ -166,7 +164,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignmentCreated2.attorneyId).toBe(testCaseAssignment.listOfAttorneyIds[1]);
     expect(assignmentCreated2.role).toBe(testCaseAssignment.role);
 
-    const resultAssignmentId3 = assignmentResponse.assignmentIdList[2];
+    const resultAssignmentId3 = assignmentResponse.body[2];
     const assignmentCreated3 = await mockCaseAssignmentRepository.getAssignment(
       resultAssignmentId3,
     );

@@ -51,8 +51,8 @@ export class CaseAssignment {
       return {
         success: true,
         message: 'Trial attorney assignments created.',
-        resultCount: listOfAssignmentIdsCreated.length,
-        assignmentIdList: listOfAssignmentIdsCreated,
+        count: listOfAssignmentIdsCreated.length,
+        body: listOfAssignmentIdsCreated,
       };
     }
   }

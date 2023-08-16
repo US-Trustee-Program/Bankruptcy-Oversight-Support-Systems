@@ -17,10 +17,10 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const expectedResponse = {
-      assignmentIdList: [1],
       success: true,
       message: 'Trial attorney assignments created.',
-      resultCount: 1,
+      count: 1,
+      body: [1],
     };
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
@@ -37,10 +37,10 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const expectedResponse = {
-      assignmentIdList: [1, 2],
       success: true,
       message: 'Trial attorney assignments created.',
-      resultCount: 2,
+      count: 2,
+      body: [1, 2],
     };
 
     await httpTrigger(appContext, request);
@@ -57,10 +57,10 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const expectedResponse = {
-      assignmentIdList: [1],
       success: true,
       message: 'Trial attorney assignments created.',
-      resultCount: 1,
+      count: 1,
+      body: [1],
     };
 
     await httpTrigger(appContext, request);
