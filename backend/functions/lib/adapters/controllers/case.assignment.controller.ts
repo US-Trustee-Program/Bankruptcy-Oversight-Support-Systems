@@ -40,7 +40,7 @@ export class CaseAssignmentController {
         listOfAssignments,
       );
     } catch (exception) {
-      log.error(applicationContextCreator(this.applicationContext), NAMESPACE, exception.message);
+      log.error(this.applicationContext, NAMESPACE, exception.message);
       if (!(exception instanceof AssignmentException)) {
         throw new AssignmentException(500, exception.message);
       } else {
