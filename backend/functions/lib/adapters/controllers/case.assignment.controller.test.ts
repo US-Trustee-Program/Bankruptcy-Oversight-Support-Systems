@@ -33,7 +33,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const assignmentCreated = await caseAssignmentLocalRepository.getAssignment(resultAssignmentId);
 
-    expect(resultAssignmentId).toBeGreaterThan(0);
+    expect(resultAssignmentId).toBeTruthy();
     expect(assignmentCreated.caseId).toBe(testCaseAssignment.caseId);
     expect(assignmentCreated.attorneyId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
     expect(assignmentCreated.role).toBe(testCaseAssignment.role);
@@ -149,7 +149,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       resultAssignmentId1,
     );
 
-    expect(resultAssignmentId1).toBeGreaterThan(0);
+    expect(resultAssignmentId1).toBeTruthy();
     expect(assignmentCreated1.caseId).toBe(testCaseAssignment.caseId);
     expect(assignmentCreated1.attorneyId).toBe(testCaseAssignment.listOfAttorneyIds[0]);
     expect(assignmentCreated1.role).toBe(testCaseAssignment.role);
@@ -159,7 +159,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       resultAssignmentId2,
     );
 
-    expect(resultAssignmentId2).toBeGreaterThan(0);
+    expect(resultAssignmentId2).toBeTruthy();
     expect(assignmentCreated2.caseId).toBe(testCaseAssignment.caseId);
     expect(assignmentCreated2.attorneyId).toBe(testCaseAssignment.listOfAttorneyIds[1]);
     expect(assignmentCreated2.role).toBe(testCaseAssignment.role);
@@ -169,7 +169,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       resultAssignmentId3,
     );
 
-    expect(resultAssignmentId3).toBeGreaterThan(0);
+    expect(resultAssignmentId3).toBeTruthy();
     expect(assignmentCreated3.caseId).toBe(testCaseAssignment.caseId);
     expect(assignmentCreated3.attorneyId).toBe(testCaseAssignment.listOfAttorneyIds[2]);
     expect(assignmentCreated3.role).toBe(testCaseAssignment.role);
