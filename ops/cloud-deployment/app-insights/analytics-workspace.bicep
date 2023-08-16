@@ -17,12 +17,44 @@ resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01
 
 }
 
-module storage '../storage/storage-account.bicep' = {
-  name: '${analyticsWorkspace.name}-stg-module'
-  params: {
-    location: location
-    storageAccountName: 'stg-analytics-workspace'
-  }
-}
+// module storage '../storage/storage-account.bicep' = {
+//   name: '${analyticsWorkspace.name}-storage-module'
+//   params: {
+//     location: location
+//     storageAccountName: 'stganalyticsworkspace'
+//   }
+// }
+// resource alertsStorageLink 'Microsoft.OperationalInsights/workspaces/linkedstorageaccounts@2020-08-01' = {
+//   parent: analyticsWorkspace
+//   name: 'Alerts'
+//   location: location
+//   properties: {
+//     storageAccountIds: [
+//       storage.outputs.accountId
+//     ]
+//   }
+// }
+
+// resource logsStorageLink 'Microsoft.OperationalInsights/workspaces/linkedstorageaccounts@2020-08-01' = {
+//   parent: analyticsWorkspace
+//   name: 'CustomLogs'
+//   location: location
+//   properties: {
+//     storageAccountIds: [
+//       storage.outputs.accountId
+//     ]
+//   }
+// }
+
+// resource queryStorageLink 'Microsoft.OperationalInsights/workspaces/linkedstorageaccounts@2020-08-01' = {
+//   parent: analyticsWorkspace
+//   name: 'Query'
+//   location: location
+//   properties: {
+//     storageAccountIds: [
+//       storage.outputs.accountId
+//     ]
+//   }
+// }
 
 output id string = analyticsWorkspace.id
