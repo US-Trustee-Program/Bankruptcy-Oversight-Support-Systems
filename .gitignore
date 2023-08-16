@@ -62,3 +62,6 @@ hs_err_pid*
 
 # OSX
 **/.DS_Store
+
+# Temporary Mermaid Files
+architecture/structurizr-*

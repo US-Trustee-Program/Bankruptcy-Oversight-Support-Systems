@@ -1,25 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Document</title>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="description" content="Description">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-</head>
-<body>
-  <div id="app"></div>
-  <script>
-    window.$docsify = {
-      name: 'CAse Management System',
-      repo: 'https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems',
+  <head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <meta name="description" content="Description">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      window.$docsify = {
+        name: 'CAse Management System',
+        repo: 'https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems',
 
-      // load from _sidebar.md
-      loadSidebar: true,
-    }
-  </script>
-  <!-- Docsify v4 -->
-  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
-</body>
+        // load from _sidebar.md
+        loadSidebar: true,
+        plugins: [
+          function (hook) {
+            hook.afterEach(function (html, next) {
+              // We load the HTML inside a DOM node to allow for manipulation
+              const htmlElement = document.createElement("div");
+              htmlElement.innerHTML = html;
+
+              htmlElement
+                .querySelectorAll("pre[data-lang=mermaid]")
+                .forEach((element) => {
+                  // Create a <div class="mermaid"> to replace the <pre>
+                  const replacement = document.createElement("div");
+                  replacement.textContent = element.textContent;
+                  replacement.classList.add("mermaid");
+
+                  // Replace
+                  element.parentNode.replaceChild(replacement, element);
+                });
+              next(htmlElement.innerHTML);
+            });
+            hook.doneEach(function () {
+              let mermaidConfig = {
+                querySelector: ".mermaid",
+              };
+              mermaid.run(mermaidConfig);
+            });
+          }
+        ],
+      }
+    </script>
+    <script src="//unpkg.com/docsify-mermaid@2.0.0/dist/docsify-mermaid.js"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({startOnLoad: true});
+      window.mermaid = mermaid;
+    </script>
+    <!-- Docsify v4 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  </body>
 </html>
