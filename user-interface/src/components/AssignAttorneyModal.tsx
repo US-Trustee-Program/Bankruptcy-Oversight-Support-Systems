@@ -1,7 +1,8 @@
-import { forwardRef, useRef, useImperativeHandle } from 'react';
+import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
 import Modal, { ModalRefType } from './uswds/Modal';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import React from 'react';
+import Checkbox, { CheckboxRef } from './uswds/Checkbox';
 
 export interface AssignAttorneyModalProps {
   bCase: Chapter15Type | undefined;
@@ -28,6 +29,7 @@ function AssignAttorneyModalComponent(
 ) {
   const modalRef = useRef<ModalRefType>(null);
   const modalHeading = 'Assign Attorney to Chapter 15 Case';
+  const [checkListValues, setCheckListValues] = useState<number[]>([]);
   const actionButtonGroup = {
     modalId: props.modalId,
     submitButton: {
@@ -36,7 +38,6 @@ function AssignAttorneyModalComponent(
     },
     cancelButton: {
       label: 'Go back',
-      onClick: cancelModal,
     },
   };
 
@@ -50,6 +51,12 @@ function AssignAttorneyModalComponent(
     { id: 390, name: 'Cee Threepeeo', caseCount: 0 },
   ];
 
+  const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
+  for (let i = 0; i < attorneyList.length; i++) {
+    const checkboxRef = useRef<CheckboxRef>(null);
+    checkboxListRefs.push(checkboxRef);
+  }
+
   useImperativeHandle(ref, () => {
     if (modalRef.current?.show && modalRef.current?.hide) {
       return { show: modalRef.current?.show, hide: modalRef.current?.hide };
@@ -61,16 +68,16 @@ function AssignAttorneyModalComponent(
     }
   });
 
-  let checkListValues: number[] = [];
   function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, id: number) {
+    const localCheckListValues = checkListValues;
     if (ev.target.checked && !checkListValues.includes(id)) {
-      checkListValues.push(id);
+      localCheckListValues.push(id);
     }
+    setCheckListValues(localCheckListValues);
   }
 
   function cancelModal() {
-    // Isn't getting called on esc key or X
-    checkListValues = [];
+    setCheckListValues([]);
   }
 
   function submitValues() {
@@ -84,7 +91,14 @@ function AssignAttorneyModalComponent(
       bCase: props.bCase,
       selectedAttorneyList: finalAttorneyList,
     });
+    setCheckListValues([]);
     //}
+  }
+
+  function onOpen() {
+    checkboxListRefs.forEach((cbox) => {
+      cbox.current?.setChecked(false);
+    });
   }
 
   return (
@@ -92,6 +106,8 @@ function AssignAttorneyModalComponent(
       ref={modalRef}
       modalId={props.modalId}
       openerId={props.openerId}
+      onOpen={onOpen}
+      onClose={cancelModal}
       heading={modalHeading}
       content={
         <table>
@@ -109,13 +125,14 @@ function AssignAttorneyModalComponent(
                   return (
                     <tr key={idx}>
                       <td>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           id={`${idx}-checkbox`}
-                          name="selectedItems"
-                          value={attorney.id}
+                          value={`${attorney.id}`}
                           onChange={(event) => updateCheckList(event, attorney.id)}
+                          checked={checkListValues.includes(attorney.id)}
                           className="attorney-list-checkbox"
+                          label=""
+                          ref={checkboxListRefs[idx]}
                         />
                       </td>
                       <td>{attorney.name}</td>

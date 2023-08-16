@@ -13,7 +13,7 @@ export type TSubmitCancelBtnProps = {
   };
   cancelButton?: {
     label: string;
-    onClick?: MouseEventHandler<HTMLButtonElement>;
+    onClick?: MouseEventHandler;
     className?: string;
     uswdsStyle?: UswdsButtonStyle;
   };
