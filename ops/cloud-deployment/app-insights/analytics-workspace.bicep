@@ -1,60 +1,34 @@
 param location string = resourceGroup().location
+
+@description('Specifies the name of the Log Analytics Workspace.')
 param analyticsWorkspaceName string
+
 param dailyQuotaGb int = -1
+
+@allowed([
+  'Free'
+  'Standalone'
+  'PerNode'
+  'PerGB2018'
+])
+@description('Specifies the service tier of the workspace: Free, Standalone, PerNode, Per-GB.')
+param logAnalyticsSku string = 'PerGB2018'
+
+@description('Specifies the workspace data retention in days. -1 means Unlimited retention for the Unlimited Sku. 730 days is the maximum allowed for all other Skus.')
+param logAnalyticsRetentionInDays int = 30
 
 resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: analyticsWorkspaceName
   location: location
   properties: {
     sku: {
-      name: 'pergb2018'
+      name: logAnalyticsSku
     }
-    retentionInDays: 30
+    retentionInDays: logAnalyticsRetentionInDays
     workspaceCapping: {
       dailyQuotaGb: dailyQuotaGb
     }
   }
-
 }
-
-// module storage '../storage/storage-account.bicep' = {
-//   name: '${analyticsWorkspace.name}-storage-module'
-//   params: {
-//     location: location
-//     storageAccountName: 'stganalyticsworkspace'
-//   }
-// }
-// resource alertsStorageLink 'Microsoft.OperationalInsights/workspaces/linkedstorageaccounts@2020-08-01' = {
-//   parent: analyticsWorkspace
-//   name: 'Alerts'
-//   location: location
-//   properties: {
-//     storageAccountIds: [
-//       storage.outputs.accountId
-//     ]
-//   }
-// }
-
-// resource logsStorageLink 'Microsoft.OperationalInsights/workspaces/linkedstorageaccounts@2020-08-01' = {
-//   parent: analyticsWorkspace
-//   name: 'CustomLogs'
-//   location: location
-//   properties: {
-//     storageAccountIds: [
-//       storage.outputs.accountId
-//     ]
-//   }
-// }
-
-// resource queryStorageLink 'Microsoft.OperationalInsights/workspaces/linkedstorageaccounts@2020-08-01' = {
-//   parent: analyticsWorkspace
-//   name: 'Query'
-//   location: location
-//   properties: {
-//     storageAccountIds: [
-//       storage.outputs.accountId
-//     ]
-//   }
-// }
 
 output id string = analyticsWorkspace.id
