@@ -28,7 +28,6 @@ export class CaseAssignment {
     try {
       return await this._assignmentRepository.createAssignment(context, caseAssignment);
     } catch (exception) {
-      //Log the exception and handle depending.
       log.error(applicationContextCreator(context), NAMESPACE, exception.message);
       throw exception;
     }

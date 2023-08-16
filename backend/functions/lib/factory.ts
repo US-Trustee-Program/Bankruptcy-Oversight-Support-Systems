@@ -51,6 +51,6 @@ export const getAssignmentRepository = (): CaseAssignmentRepositoryInterface => 
   if (config.get('dbMock')) {
     return new CaseAssignmentLocalRepository();
   } else {
-    // return new CaseAssignmentRepository(); // not yet implemented
+    return new CaseAssignmentLocalRepository(); // to be replaced with the cosmosdb repository, once implemented.
   }
 };
