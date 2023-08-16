@@ -13,6 +13,8 @@ export interface ModalProps {
   content: React.ReactNode;
   forceAction?: boolean;
   actionButtonGroup: TSubmitCancelBtnProps;
+  onOpen?: () => void;
+  onClose?: () => void;
 }
 
 export interface ModalRefType {
@@ -48,6 +50,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
   const close = (e: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
     hide();
+    if (props.onClose) {
+      props.onClose();
+    }
     e.preventDefault();
   };
 
@@ -74,7 +79,15 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }
 
-  useImperativeHandle(ref, () => ({ show, hide }));
+  useImperativeHandle(ref, () => ({
+    hide,
+    show: () => {
+      if (props.onOpen) {
+        props.onOpen();
+        show();
+      }
+    },
+  }));
 
   return (
     <div

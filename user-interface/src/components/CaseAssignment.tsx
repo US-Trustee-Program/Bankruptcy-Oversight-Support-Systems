@@ -69,10 +69,8 @@ export const CaseAssignment = () => {
   };
 
   function updateCase({ bCase, selectedAttorneyList }: CallBackProps) {
-    console.log('bCase:', bCase);
     if (selectedAttorneyList.length > 0) {
       const tempCaseList = caseList;
-      console.log('attorneyList:', selectedAttorneyList);
       tempCaseList.forEach((theCase) => {
         if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
           (theCase as Chapter15Type).attorneyList = selectedAttorneyList;
@@ -80,7 +78,6 @@ export const CaseAssignment = () => {
       });
       setCaseList(tempCaseList);
       setCaseListUpdated(true);
-      console.log('tempCaseList:', tempCaseList);
     }
   }
 
