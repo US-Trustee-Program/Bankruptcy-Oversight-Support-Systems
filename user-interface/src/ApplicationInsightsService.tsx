@@ -1,7 +1,7 @@
 import { ApplicationInsights, ITelemetryItem } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 
-const appInsightsConnectionString = import.meta.env['APPLICATIONINSIGHTS_CONNECTION_STRING']; // TODO : NEED TO VERIFY THIS SNIPPET
+const appInsightsConnectionString = import.meta.env['CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING'];
 const reactPlugin = new ReactPlugin();
 
 const appInsights = new ApplicationInsights({
@@ -25,7 +25,7 @@ if (appInsightsConnectionString) {
 
   appInsights.addTelemetryInitializer((env: ITelemetryItem) => {
     env.tags = env.tags || [];
-    env.tags['component'] = 'ustp.cams.webapp'; // test tag
+    env.tags['ai.cloud.role'] = 'ustp.cams.web';
   });
 }
 

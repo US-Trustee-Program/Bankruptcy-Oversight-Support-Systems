@@ -222,6 +222,7 @@ module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
   }
   dependsOn: [
     appInsights
+    functionApp
   ]
 }
 

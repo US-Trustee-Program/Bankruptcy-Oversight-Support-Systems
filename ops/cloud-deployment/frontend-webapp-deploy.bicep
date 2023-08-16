@@ -136,6 +136,7 @@ module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
   }
   dependsOn: [
     appInsights
+    webapp
   ]
 }
 
