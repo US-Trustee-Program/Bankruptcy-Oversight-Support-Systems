@@ -88,6 +88,9 @@ if [[ -n ${app_settings} ]]; then
     done
 fi
 
+# Gives some time for prior management operation to complete before starting deployment
+sleep 30s
+
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
 if [[ $enable_debug == 'true' ]]; then
