@@ -25,7 +25,7 @@ if (appInsightsConnectionString) {
 
   appInsights.addTelemetryInitializer((env: ITelemetryItem) => {
     env.tags = env.tags || [];
-    env.tags['component'] = 'ustp.cams.webapp'; // test tag
+    env.tags['ai.cloud.role'] = 'ustp.cams.web';
   });
 }
 
