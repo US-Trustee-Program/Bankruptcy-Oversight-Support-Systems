@@ -83,7 +83,6 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toBe(400);
-    expect(appContext.res.body);
   });
 
   test('returns bad request 400 when a AttorneyIdList is empty or not passed in the request', async () => {
@@ -102,7 +101,6 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toBe(400);
-    expect(appContext.res.body);
   });
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
@@ -121,7 +119,6 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toBe(400);
-    expect(appContext.res.body);
   });
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
@@ -141,7 +138,6 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toBe(400);
-    expect(appContext.res.body);
   });
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
