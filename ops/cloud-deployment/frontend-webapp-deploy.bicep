@@ -61,7 +61,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
     elasticScaleEnabled: false
     maximumElasticWorkerCount: 1
     isSpot: false
-    reserved: false // set true for Linux
+    reserved: true
     isXenon: false
     hyperV: false
     targetWorkerCount: 0
