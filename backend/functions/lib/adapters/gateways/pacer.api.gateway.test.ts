@@ -1,5 +1,5 @@
 import { PacerApiGateway } from './pacer.api.gateway';
-import { Chapter15Case } from '../types/cases';
+import { Chapter15CaseInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
@@ -46,7 +46,7 @@ describe('PACER API gateway tests', () => {
 
   test('should return content for 200 response for case-locator', async () => {
     const mockedApiResponse = gatewayHelper.pacerMockExtract().slice(0, 2);
-    const expectedResponseValue: Chapter15Case[] = [
+    const expectedResponseValue: Chapter15CaseInterface[] = [
       {
         caseNumber: '04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
