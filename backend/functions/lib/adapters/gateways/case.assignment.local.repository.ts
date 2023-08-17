@@ -4,7 +4,7 @@ import { ApplicationContext } from '../types/basic';
 
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
-  private _nextUnusedId = 1;
+  private nextUnusedId = 1;
 
   public async createAssignment(
     context: ApplicationContext,
@@ -19,10 +19,10 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   }
 
   private addAssignment(caseAssignment: CaseAttorneyAssignment): number {
-    const assignmentId = this._nextUnusedId;
+    const assignmentId = this.nextUnusedId;
     caseAssignment.assignmentId = assignmentId;
     this.caseAttorneyAssignments.push(caseAssignment);
-    ++this._nextUnusedId;
+    ++this.nextUnusedId;
     return assignmentId;
   }
 

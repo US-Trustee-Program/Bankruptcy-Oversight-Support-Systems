@@ -11,13 +11,13 @@ const NAMESPACE = 'CASE-ASSIGNMENT';
 const EXISTING_ASSIGNMENT_FOUND =
   'A trial attorney assignment already exists for this case. Cannot create another assignment on an existing case assignment.';
 export class CaseAssignment {
-  private _assignmentRepository: CaseAssignmentRepositoryInterface;
+  private assignmentRepository: CaseAssignmentRepositoryInterface;
 
   constructor(assignmentRepository?: CaseAssignmentRepositoryInterface) {
     if (!assignmentRepository) {
-      this._assignmentRepository = getAssignmentRepository();
+      this.assignmentRepository = getAssignmentRepository();
     } else {
-      this._assignmentRepository = assignmentRepository;
+      this.assignmentRepository = assignmentRepository;
     }
   }
 
@@ -26,7 +26,7 @@ export class CaseAssignment {
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<number> {
     try {
-      return await this._assignmentRepository.createAssignment(context, caseAssignment);
+      return await this.assignmentRepository.createAssignment(context, caseAssignment);
     } catch (exception) {
       log.error(applicationContextCreator(context), NAMESPACE, exception.message);
       throw exception;
@@ -62,7 +62,7 @@ export class CaseAssignment {
     newAssignments: CaseAttorneyAssignment[],
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
-    const existingAssignments = await this._assignmentRepository.findAssignmentByCaseId(caseId);
+    const existingAssignments = await this.assignmentRepository.findAssignmentByCaseId(caseId);
     if (existingAssignments.length === 0) return true;
     return await this.isExactEqual(existingAssignments, newAssignments);
   }
