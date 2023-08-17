@@ -1,4 +1,4 @@
-import { Chapter15Case } from '../types/cases';
+import { Chapter15CaseInterface } from '../types/cases';
 import * as dotenv from 'dotenv';
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { pacerToChapter15Data } from '../../interfaces/chapter-15-data-interface';
@@ -31,7 +31,7 @@ class PacerApiGateway implements CasesInterface {
   private async searchCaseLocator(
     context: ApplicationContext,
     startingMonth: number,
-  ): Promise<Chapter15Case[]> {
+  ): Promise<Chapter15CaseInterface[]> {
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
     const dateFileFrom = getCamsDateStringFromDate(date);
@@ -82,7 +82,7 @@ class PacerApiGateway implements CasesInterface {
   public async getChapter15Cases(
     context: ApplicationContext,
     options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-  ): Promise<Chapter15Case[]> {
+  ): Promise<Chapter15CaseInterface[]> {
     const _startingMonth = options.startingMonth || -6;
 
     try {
