@@ -77,7 +77,7 @@ export const CaseList = () => {
         <h1 data-testid="case-list-heading">
           Case List for {name} chapter {chapter}
         </h1>
-        <table>
+        <table className="case-list">
           <thead>
             <tr className="case-headings">
               <th>Case Number</th>
