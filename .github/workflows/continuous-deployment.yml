@@ -514,8 +514,8 @@ jobs:
         run: ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{ env.stackName }} -p 100 --is-cicd
       - name: Health check api
         run: |
-          webStatusCode=$(curl -q -o output -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
-          apiStatusCode=$(curl -q -o output -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             exit 0
