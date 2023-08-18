@@ -8,10 +8,8 @@
     "@microsoft/applicationinsights-react-js": "^17.0.0",
     "@microsoft/applicationinsights-web": "^3.0.2",
     "@reduxjs/toolkit": "^1.9.3",
-    "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.4.3",
-    "@types/jest": "^29.5.1",
     "@types/node": "^20.2.3",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
@@ -27,6 +25,8 @@
     "web-vitals": "^3.3.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.0.1",
+    "@types/jest": "^29.5.3",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-react": "^4.0.3",

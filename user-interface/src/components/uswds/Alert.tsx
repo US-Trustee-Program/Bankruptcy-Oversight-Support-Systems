@@ -1,5 +1,6 @@
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import './Alert.scss';
+import React from 'react';
 
 export interface AlertProps {
   message: string;
@@ -26,10 +27,6 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   let classes = `usa-alert ${props.type}`;
   if (props.slim === true) classes += ' usa-alert--slim';
 
-  if (props.timeout) {
-    setTimeout(hide, props.timeout * 1000);
-  }
-
   function show() {
     setIsVisible(true);
   }
@@ -37,6 +34,12 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   function hide() {
     setIsVisible(false);
   }
+
+  useEffect(() => {
+    if (props.timeout && props.timeout > 0) {
+      setTimeout(hide, props.timeout * 1000);
+    }
+  }, [isVisible === true && !!props.timeout]);
 
   useImperativeHandle(ref, () => ({
     show,
