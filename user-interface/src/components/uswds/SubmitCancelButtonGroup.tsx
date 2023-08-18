@@ -1,4 +1,4 @@
-import { MouseEventHandler } from 'react';
+import { MouseEventHandler, forwardRef, useImperativeHandle } from 'react';
 import { ToggleModalButton } from './ToggleModalButton';
 import { UswdsButtonStyle } from './Button';
 
@@ -24,10 +24,10 @@ export type SubmitCancelBtnProps = {
   };
 };
 
-export const SubmitCancelButtonGroup: React.FC<SubmitCancelBtnProps> = (
+function SubmitCancelButtonGroupComponent(
   { modalId, className, submitButton, cancelButton }: SubmitCancelBtnProps,
   ref: React.Ref<SubmitCancelButtonGroupRef>,
-) => {
+) {
   const classes = ['usa-button-group'];
   if (className) {
     className.split(' ').forEach((cls) => {
@@ -38,6 +38,10 @@ export const SubmitCancelButtonGroup: React.FC<SubmitCancelBtnProps> = (
   function disableSubmitButton(state: boolean) {
     submitButton.disabled = state;
   }
+
+  useImperativeHandle(ref, () => ({
+    disableSubmitButton,
+  }));
 
   return (
     <>
@@ -69,4 +73,8 @@ export const SubmitCancelButtonGroup: React.FC<SubmitCancelBtnProps> = (
       </ul>
     </>
   );
-};
+}
+
+const SubmitCancelButtonGroup = forwardRef(SubmitCancelButtonGroupComponent);
+
+export { SubmitCancelButtonGroup };

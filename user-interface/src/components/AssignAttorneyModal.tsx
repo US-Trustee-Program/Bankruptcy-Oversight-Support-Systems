@@ -38,6 +38,7 @@ function AssignAttorneyModalComponent(
     submitButton: {
       label: 'Assign',
       onClick: submitValues,
+      disabled: true,
     },
     cancelButton: {
       label: 'Go back',
@@ -77,6 +78,7 @@ function AssignAttorneyModalComponent(
       localCheckListValues.push(id);
     }
     setCheckListValues(localCheckListValues);
+    modalRef.current?.buttons?.current?.disableSubmitButton(false);
   }
 
   function cancelModal() {
