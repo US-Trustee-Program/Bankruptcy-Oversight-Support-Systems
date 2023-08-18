@@ -1,6 +1,6 @@
 import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from './Button';
 import { ObjectKeyVal } from '../../type-declarations/basic';
-import { useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 
 export interface ModalToggleButtonProps {
   children: React.ReactNode;
@@ -11,20 +11,27 @@ export interface ModalToggleButtonProps {
   modalId: string;
 }
 
-export function ToggleModalButton({
-  children,
-  uswdsStyle,
-  buttonState,
-  disabled,
-  toggleAction,
-  modalId,
-  onClick,
-  className,
-}: ModalToggleButtonProps & ButtonProps & JSX.IntrinsicElements['button']) {
+export interface ToggleModalButtonRef {
+  disableButton: (state: boolean) => void;
+}
+
+function ToggleModalButtonComponent(
+  {
+    children,
+    uswdsStyle,
+    buttonState,
+    disabled,
+    toggleAction,
+    modalId,
+    onClick,
+    className,
+  }: ModalToggleButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
+  ref: React.Ref<ToggleModalButtonRef>,
+) {
   const dataProp: ObjectKeyVal = {};
 
   let classes = 'usa-button';
-  const [ariaDisabled, setAriaDisabled] = useState<boolean>(false);
+  const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
 
   if (toggleAction === 'open') {
     dataProp['data-open-modal'] = 'true';
@@ -36,9 +43,13 @@ export function ToggleModalButton({
   if (buttonState) classes += ' ' + buttonState;
   if (className) classes += ' ' + className;
 
-  if (disabled === true && !ariaDisabled) {
-    setAriaDisabled(true);
+  function disableButton(state: boolean) {
+    setIsDisabled(state);
   }
+
+  useImperativeHandle(ref, () => ({
+    disableButton,
+  }));
 
   return (
     <button
@@ -47,10 +58,15 @@ export function ToggleModalButton({
       className={classes}
       onClick={onClick}
       data-testid="button"
-      aria-disabled={ariaDisabled}
+      aria-disabled={isDisabled}
+      disabled={isDisabled}
       {...dataProp}
     >
       {children}
     </button>
   );
 }
+
+const ToggleModalButton = forwardRef(ToggleModalButtonComponent);
+
+export { ToggleModalButton };
