@@ -53,6 +53,7 @@ function SubmitCancelButtonGroupComponent(
             uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
             className={submitButton.className ?? ''}
             onClick={submitButton.onClick ?? close}
+            disabled={submitButton.disabled ?? false}
           >
             {submitButton.label}
           </ToggleModalButton>
