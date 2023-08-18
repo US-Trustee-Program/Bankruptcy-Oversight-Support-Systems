@@ -17,29 +17,35 @@ export enum UswdsAlertStyle {
   Success = 'usa-alert--success',
 }
 
+enum IsVisible {
+  True = 1,
+  False = 0,
+  Unset = -1,
+}
+
 export interface AlertRefType {
   show: () => void;
   hide: () => void;
 }
 
 function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
-  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [isVisible, setIsVisible] = useState<IsVisible>(IsVisible.Unset);
   let classes = `usa-alert ${props.type}`;
   if (props.slim === true) classes += ' usa-alert--slim';
 
   function show() {
-    setIsVisible(true);
+    setIsVisible(IsVisible.True);
   }
 
   function hide() {
-    setIsVisible(false);
+    setIsVisible(IsVisible.False);
   }
 
   useEffect(() => {
-    if (props.timeout && props.timeout > 0) {
+    if (isVisible !== IsVisible.Unset && props.timeout && props.timeout > 0) {
       setTimeout(hide, props.timeout * 1000);
     }
-  }, [isVisible === true && !!props.timeout]);
+  }, [isVisible !== IsVisible.Unset && !!props.timeout]);
 
   useImperativeHandle(ref, () => ({
     show,
@@ -48,7 +54,13 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
 
   return (
     <div
-      className={`${classes} ${isVisible ? 'usa-alert__visible' : 'usa-alert__hidden'}`}
+      className={`${classes} ${
+        isVisible === IsVisible.True
+          ? 'usa-alert__visible'
+          : isVisible === IsVisible.False
+          ? 'usa-alert__hidden'
+          : 'usa-alert__unset'
+      }`}
       role={props.role}
     >
       <div className="usa-alert__body">
