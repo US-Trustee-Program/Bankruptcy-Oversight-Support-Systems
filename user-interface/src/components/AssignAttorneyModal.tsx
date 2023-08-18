@@ -1,3 +1,4 @@
+import './AssignAttorneyModal.scss';
 import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
 import Modal, { ModalRefType } from './uswds/Modal';
 import { Chapter15Type } from '../type-declarations/chapter-15';
@@ -128,6 +129,7 @@ function AssignAttorneyModalComponent(
     <Modal
       ref={modalRef}
       modalId={props.modalId}
+      className="assign-attorney-modal"
       openerId={props.openerId}
       onOpen={onOpen}
       onClose={cancelModal}
@@ -136,7 +138,6 @@ function AssignAttorneyModalComponent(
         <table>
           <thead>
             <tr>
-              <th></th>
               <th>Attorney Name</th>
               <th>Chapter 15 Cases</th>
             </tr>
@@ -147,19 +148,20 @@ function AssignAttorneyModalComponent(
                 (attorney: { id: number; name: string; caseCount: number }, idx: number) => {
                   return (
                     <tr key={idx}>
-                      <td>
+                      <td className="assign-attorney-checkbox-column">
                         <Checkbox
                           id={`${idx}-checkbox`}
                           value={`${attorney.id}`}
                           onChange={(event) => updateCheckList(event, attorney.id)}
                           checked={checkListValues.includes(attorney.id)}
                           className="attorney-list-checkbox"
-                          label=""
+                          label={attorney.name}
                           ref={checkboxListRefs[idx]}
                         />
                       </td>
-                      <td>{attorney.name}</td>
-                      <td>{attorney.caseCount}</td>
+                      <td className="assign-attorney-case-count-column">
+                        <div className="usa-fieldset">{attorney.caseCount}</div>
+                      </td>
                     </tr>
                   );
                 },
