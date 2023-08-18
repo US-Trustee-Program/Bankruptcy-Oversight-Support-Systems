@@ -1,31 +1,34 @@
 param location string = resourceGroup().location
-param analyticsName string
-param capactiyReservationLimit int
-param dailyQuotaGb int
 
+@description('Specifies the name of the Log Analytics Workspace.')
+param analyticsWorkspaceName string
 
+param dailyQuotaGb int = -1
 
-resource symbolicname 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: analyticsName
+@allowed([
+  'Free'
+  'Standalone'
+  'PerNode'
+  'PerGB2018'
+])
+@description('Specifies the service tier of the workspace: Free, Standalone, PerNode, Per-GB.')
+param logAnalyticsSku string = 'PerGB2018'
+
+@description('Specifies the workspace data retention in days. -1 means Unlimited retention for the Unlimited Sku. 730 days is the maximum allowed for all other Skus.')
+param logAnalyticsRetentionInDays int = 30
+
+resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: analyticsWorkspaceName
   location: location
   properties: {
-    defaultDataCollectionRuleResourceId: 'string'
-    features: {
-      disableLocalAuth: false
-      enableDataExport: true
-      enableLogAccessUsingOnlyResourcePermissions: true
-      immediatePurgeDataOn30Days: false
-    }
-    forceCmkForQuery: false
-    publicNetworkAccessForIngestion: 'Enabled'
-    publicNetworkAccessForQuery: 'Enabled'
-    retentionInDays: 180
     sku: {
-      capacityReservationLevel: capactiyReservationLimit
-      name: 'pergb2018'
+      name: logAnalyticsSku
     }
+    retentionInDays: logAnalyticsRetentionInDays
     workspaceCapping: {
       dailyQuotaGb: dailyQuotaGb
     }
   }
 }
+
+output id string = analyticsWorkspace.id
