@@ -30,6 +30,10 @@
   margin-bottom: 1rem;
 }
 
+.usa-alert__unset {
+  visibility: hidden;
+}
+
 .usa-alert__hidden {
   visibility: hidden;
   animation-name: usaAlertFadeOut;
