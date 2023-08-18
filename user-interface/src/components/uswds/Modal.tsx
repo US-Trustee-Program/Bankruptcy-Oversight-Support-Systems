@@ -1,5 +1,9 @@
-import React, { forwardRef, useImperativeHandle } from 'react';
-import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
+import React, { RefObject, forwardRef, useImperativeHandle, useRef } from 'react';
+import {
+  SubmitCancelButtonGroup,
+  SubmitCancelBtnProps,
+  SubmitCancelButtonGroupRef,
+} from './SubmitCancelButtonGroup';
 import useGlobalKeyDown from '../../hooks/UseGlobalKeyDown';
 import { ObjectKeyVal } from '../../type-declarations/basic';
 import { UswdsButtonStyle } from './Button';
@@ -20,12 +24,14 @@ export interface ModalProps {
 export interface ModalRefType {
   show: () => void;
   hide: () => void;
+  buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
+  const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
 
   let wrapperData = {};
   if (props.openerId) {
@@ -87,6 +93,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
         show();
       }
     },
+    buttons: submitCancelButtonGroupRef,
   }));
 
   return (
@@ -117,11 +124,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
               </div>
               <div className="usa-modal__footer">
                 <SubmitCancelButtonGroup
+                  ref={submitCancelButtonGroupRef}
                   modalId={props.modalId}
                   submitButton={{
                     label: props.actionButtonGroup.submitButton.label,
                     onClick: submitBtnClick,
                     className: props.actionButtonGroup.submitButton.className ?? '',
+                    disabled: props.actionButtonGroup.submitButton.disabled ?? false,
                     uswdsStyle:
                       props.actionButtonGroup.submitButton.uswdsStyle ?? UswdsButtonStyle.Default,
                   }}
