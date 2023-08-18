@@ -2,7 +2,11 @@ import { MouseEventHandler } from 'react';
 import { ToggleModalButton } from './ToggleModalButton';
 import { UswdsButtonStyle } from './Button';
 
-export type TSubmitCancelBtnProps = {
+export interface SubmitCancelButtonGroupRef {
+  disableSubmitButton: (state: boolean) => void;
+}
+
+export type SubmitCancelBtnProps = {
   modalId: string;
   className?: string;
   submitButton: {
@@ -10,6 +14,7 @@ export type TSubmitCancelBtnProps = {
     onClick?: MouseEventHandler<HTMLButtonElement>;
     className?: string;
     uswdsStyle?: UswdsButtonStyle;
+    disabled?: boolean;
   };
   cancelButton?: {
     label: string;
@@ -19,17 +24,19 @@ export type TSubmitCancelBtnProps = {
   };
 };
 
-export const SubmitCancelButtonGroup: React.FC<TSubmitCancelBtnProps> = ({
-  modalId,
-  className,
-  submitButton,
-  cancelButton,
-}: TSubmitCancelBtnProps) => {
+export const SubmitCancelButtonGroup: React.FC<SubmitCancelBtnProps> = (
+  { modalId, className, submitButton, cancelButton }: SubmitCancelBtnProps,
+  ref: React.Ref<SubmitCancelButtonGroupRef>,
+) => {
   const classes = ['usa-button-group'];
   if (className) {
     className.split(' ').forEach((cls) => {
       classes.push(cls);
     });
+  }
+
+  function disableSubmitButton(state: boolean) {
+    submitButton.disabled = state;
   }
 
   return (

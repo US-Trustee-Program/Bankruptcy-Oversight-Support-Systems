@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { SubmitCancelButtonGroup, TSubmitCancelBtnProps } from './SubmitCancelButtonGroup';
+import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import useGlobalKeyDown from '../../hooks/UseGlobalKeyDown';
 import { ObjectKeyVal } from '../../type-declarations/basic';
 import { UswdsButtonStyle } from './Button';
@@ -12,7 +12,7 @@ export interface ModalProps {
   heading: string;
   content: React.ReactNode;
   forceAction?: boolean;
-  actionButtonGroup: TSubmitCancelBtnProps;
+  actionButtonGroup: SubmitCancelBtnProps;
   onOpen?: () => void;
   onClose?: () => void;
 }
