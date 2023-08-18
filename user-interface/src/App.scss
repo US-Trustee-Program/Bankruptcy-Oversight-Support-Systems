@@ -76,32 +76,36 @@
     .body {
       padding: 50px 0;
 
-      table, thead, tbody, th, td,
-      tr {
+      table.case-list {
         display: block;
-      }
 
-      /* Hide table headers (but not display: none;, for accessibility) */
-      thead tr {
-        position: absolute;
-        top: -9999px;
-        left: -9999px;
-      }
+        thead, tbody, th, td,
+        tr {
+          display: block;
+        }
 
-      tr {
-        border: tables.$tableBorder;
+        /* Hide table headers (but not display: none;, for accessibility) */
+        thead tr {
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+        }
 
-        td {
-          /* Behave  like a "row" */
-          border: none;
-          position: relative;
-          .mobile-title {
-            font-weight: 700;
-            visibility: visible;
-            width: auto;
-            height: auto;
-            white-space: normal;
-            padding-right: 10px;
+        tr {
+          border: tables.$tableBorder;
+
+          td {
+            /* Behave  like a "row" */
+            border: none;
+            position: relative;
+            .mobile-title {
+              font-weight: 700;
+              visibility: visible;
+              width: auto;
+              height: auto;
+              white-space: normal;
+              padding-right: 10px;
+            }
           }
         }
       }
@@ -109,3 +113,4 @@
     }
   }
 }
+
