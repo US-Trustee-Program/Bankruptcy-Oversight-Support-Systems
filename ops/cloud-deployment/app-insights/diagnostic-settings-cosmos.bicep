@@ -5,13 +5,14 @@ param settingName string
 param dbName string
 
 @description('The resource Id of the workspace.')
-param workspaceId string
+param analyticsWorkspaceId string
+
 
 resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: 'Microsoft.DocumentDB/databaseAccounts/${dbName}'
   name: settingName
   properties: {
-    workspaceId: workspaceId
+    workspaceId: analyticsWorkspaceId
     logs: [
       {
         category: 'DataPlaneRequests'
