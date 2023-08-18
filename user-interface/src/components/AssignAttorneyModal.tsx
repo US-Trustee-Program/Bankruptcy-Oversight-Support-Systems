@@ -3,6 +3,7 @@ import Modal, { ModalRefType } from './uswds/Modal';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import React from 'react';
 import Checkbox, { CheckboxRef } from './uswds/Checkbox';
+import Api from '../models/api';
 
 export interface AssignAttorneyModalProps {
   bCase: Chapter15Type | undefined;
@@ -80,7 +81,7 @@ function AssignAttorneyModalComponent(
     setCheckListValues([]);
   }
 
-  function submitValues() {
+  async function submitValues() {
     // send attorney IDs to API and if successful, then
     //if (true) {
     let finalAttorneyList: AssignedAttorney[] = [];
@@ -93,6 +94,15 @@ function AssignAttorneyModalComponent(
     });
     setCheckListValues([]);
     //}
+    const attorneyIds = finalAttorneyList.map((atty) => atty.id.toString());
+    console.log(attorneyIds);
+    await Api.post('/case-assignments', {
+      caseId: props.bCase?.caseNumber,
+      attorneyIdList: attorneyIds,
+      role: 'TrialAttorney',
+    }).then((assignments) => {
+      console.log(assignments);
+    });
   }
 
   function onOpen() {
