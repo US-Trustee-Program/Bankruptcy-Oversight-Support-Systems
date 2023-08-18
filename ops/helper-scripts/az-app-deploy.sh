@@ -68,5 +68,8 @@ if (($? != 0)); then
     exit 12
 fi
 
+# Gives some extra time for prior management operation to complete before starting deployment
+sleep 15s
+
 az webapp up --html -n $app_name
 popd
