@@ -10,10 +10,6 @@ param planName string
 ])
 param planType string = 'P1v2'
 
-@description('App Insights Connection Settings')
-param appInsightsConnectionString string
-param appInsightsInstrumentationKey string
-
 var planTypeToSkuMap = {
   P1v2: {
     name: 'P1v2'
@@ -100,6 +96,12 @@ param pacerKeyVaultIdentityName string
 @description('Resource group name managed identity with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityResourceGroupName string
 
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+param deployAppInsights bool = false
+
+@description('Log Analytics Workspace ID associated with Application Insights')
+param analyticsWorkspaceId string = ''
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -125,7 +127,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 /*
   Subnet creation in target virtual network
 */
-module subnet './network-subnet-deploy.bicep' = {
+module subnet './subnet/network-subnet.bicep' = {
   name: '${functionName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -135,6 +137,12 @@ module subnet './network-subnet-deploy.bicep' = {
     subnetServiceEndpoints: [
       {
         service: 'Microsoft.Sql'
+        locations: [
+          location
+        ]
+      }
+      {
+        service: 'Microsoft.AzureCosmosDB'
         locations: [
           location
         ]
@@ -154,7 +162,7 @@ module subnet './network-subnet-deploy.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './network-subnet-pep-deploy.bicep' = {
+module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -194,6 +202,30 @@ resource pacerKVManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentitie
 var pacerKeyVaultManagedIdentity = pacerKVManagedIdentity.id
 var pacerKeyVaultManagedIdentityClientId = pacerKVManagedIdentity.properties.clientId
 
+var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
+module appInsights './app-insights/app-insights.bicep' = if (createApplicationInsights) {
+  name: '${functionName}-application-insights-module'
+  params: {
+    location: location
+    kind: 'web'
+    appInsightsName: 'appi-${functionName}'
+    applicationType: 'web'
+    workspaceResourceId: analyticsWorkspaceId
+  }
+}
+
+module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
+  name: '${functionName}-diagnostic-settings-module'
+  params: {
+    functionAppName: functionName
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+    functionApp
+  ]
+}
+
 /*
   Create functionapp
 */
@@ -204,7 +236,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${pacerKeyVaultManagedIdentity}':{}
+      '${pacerKeyVaultManagedIdentity}': {}
     }
   }
   properties: {
@@ -232,16 +264,9 @@ var applicationSettings = concat([
       name: 'AZURE_CLIENT_ID'
       value: pacerKeyVaultManagedIdentityClientId
     }
-    {
-      name: 'APPINSIGHTS_CONNECTION_STRING'
-      value: appInsightsConnectionString
-    }
-    {
-      name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-      value: appInsightsInstrumentationKey
-    }
   ],
-  !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : []
+  !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
+  createApplicationInsights ? [ { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString } ] : []
 )
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
@@ -289,7 +314,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
 }
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
-module setSqlServerVnetRule './sql-vnet-rule-deploy.bicep' = if (createSqlServerVnetRule) {
+module setSqlServerVnetRule './sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
   name: '${functionName}-sql-vnet-rule-module'
   params: {

@@ -1,6 +1,6 @@
 param location string = resourceGroup().location
 
-@description('Name for storage account. Limited to 3-24 characters, number and letters')
+@description('Name for storage account. Limited to 3-24 characters, number and lower-case letters')
 @minLength(3)
 @maxLength(24)
 param storageAccountName string
@@ -44,3 +44,4 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
 }
 
 output accountName string = storageAccount.name
+output accountId string = storageAccount.id

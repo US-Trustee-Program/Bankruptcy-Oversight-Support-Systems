@@ -34,7 +34,7 @@ export interface Chapter11CaseTypeWithDescription extends Chapter11CaseType {
   hearingDescription: string;
 }
 
-export interface Chapter15Case extends ObjectKeyVal {
+export interface Chapter15CaseInterface extends ObjectKeyVal {
   caseNumber: string;
   caseTitle: string;
   dateFiled: string;

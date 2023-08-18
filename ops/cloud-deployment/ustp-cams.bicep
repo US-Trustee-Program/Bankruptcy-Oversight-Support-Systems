@@ -39,10 +39,6 @@ param apiPlanName string = 'plan-${apiName}'
   'B2'
 ])
 param apiPlanType string
-@description('App Insight Connections string for api')
-param apiAppInsightsConnectionString string
-@description('App Insights InstrumentationKey for api')
-param apiAppInsightsInstrumentationKey string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
@@ -60,8 +56,13 @@ param pacerKeyVaultIdentityName string
 @description('Resource group name managed identity with access to the key vault for PACER API credentials')
 param pacerKeyVaultIdentityResourceGroupName string
 
+@description('Log Analytics Workspace ID associated with Application Insights')
+param analyticsWorkspaceId string = ''
 
-module targetVnet './vnet-deploy.bicep' = if (deployVnet && createVnet) {
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+param deployAppInsights bool = false
+
+module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -86,6 +87,8 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
   params: {
+    deployAppInsights: deployAppInsights
+    analyticsWorkspaceId: analyticsWorkspaceId
     planName: webappPlanName
     planType: webappPlanType
     webappName: webappName
@@ -117,6 +120,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
+    deployAppInsights: deployAppInsights
+    analyticsWorkspaceId: analyticsWorkspaceId
     location: location
     planName: funcParams[i].planName
     functionName: funcParams[i].functionName
@@ -127,8 +132,6 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
     privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
-    appInsightsConnectionString: apiAppInsightsConnectionString
-    appInsightsInstrumentationKey: apiAppInsightsInstrumentationKey
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
@@ -145,3 +148,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
 
 output webappName string = ustpWebapp.outputs.webappName
 output functionAppName string = deployFunctions ? ustpFunctions[0].outputs.functionAppName : ''
+output vnetName string = virtualNetworkName
+
+// Allowed subnet name that should have access to CosmosDb
+// Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
+output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
