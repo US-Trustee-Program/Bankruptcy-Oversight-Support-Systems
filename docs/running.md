@@ -79,7 +79,7 @@ MSSQL_PASS={the SQL Server Admin user password}
 MSSQL_ENCRYPT="true"
 MSSQL_TRUST_UNSIGNED_CERT="true"
 AZURE_MANAGED_IDENTITY=
-APPINSIGHTS_CONNECTION_STRING="TESTSTRING"
+APPLICATIONINSIGHTS_CONNECTION_STRING=
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.

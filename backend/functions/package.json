@@ -40,7 +40,7 @@
     "prestart": "npm run build",
     "start": "func start --typescript",
     "start:dev": "nodemon --esm src/server.ts",
-    "test": "DATABASE_MOCK='true' APPINSIGHTS_CONNECTION_STRING='test' jest -c jest.config.js",
+    "test": "DATABASE_MOCK='true' jest -c jest.config.js",
     "test:integration": "DATABASE_MOCK='true' jest -c jest.integration.config.js",
     "lint": "eslint .",
     "lint:fix": "eslint --fix",

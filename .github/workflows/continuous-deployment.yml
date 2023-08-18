@@ -243,6 +243,7 @@ jobs:
           export CAMS_SERVER_PORT=${{ vars.CAMS_SERVER_PORT }}
           export CAMS_SERVER_PROTOCOL=${{ vars.CAMS_SERVER_PROTOCOL }}
           export CAMS_BASE_PATH=${{ vars.CAMS_BASE_PATH }}
+          export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
           npm run build --if-present
 
       - name: Execute Test
@@ -282,7 +283,7 @@ jobs:
 
       - name: Execute Tests
         run: |
-          export APPINSIGHTS_CONNECTION_STRING="TESTSTRING" && npm run test
+          npm run test
 
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
@@ -342,7 +343,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} pacerKeyVaultIdentityName=${{ secrets.PACER_KEYVAULT_IDENTITY }} pacerKeyVaultIdentityResourceGroupName=${{ secrets.AZURE_RG }} apiAppInsightsConnectionString=${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }} apiAppInsightsInstrumentationKey=${{ secrets.API_APPINSIGHTS_INSTRUMENTATION_KEY }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} pacerKeyVaultIdentityName=${{ secrets.PACER_KEYVAULT_IDENTITY }} pacerKeyVaultIdentityResourceGroupName=${{ secrets.AZURE_RG }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}'
 
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
           echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
@@ -430,8 +431,6 @@ jobs:
           MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
           MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
           PACER_TOKEN_URL=${{ vars.PACER_TOKEN_URL }} \
-          APPINSIGHTS_CONNECTION_STRING=${{ secrets.API_APPINSIGHTS_CONNECTION_STRING }}
-          APPINSIGHTS_INSTRUMENTATIONKEY=${{ secrets.API_APPINSIGHTS_INSTRUMENTATION_KEY }}
           PACER_CASE_LOCATOR_URL=${{ vars.PACER_CASE_LOCATOR_URL }} \
           AZURE_KEY_VAULT_URL=${{ secrets.AZURE_KEY_VAULT_URL }} \
           PACER_TOKEN_SECRET_NAME=${{ secrets.PACER_TOKEN_SECRET_NAME }} \

@@ -73,6 +73,11 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
 @description('Flag to enable Vercode access')
 param allowVeracodeScan bool = false
 
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+param deployAppInsights bool = false
+
+@description('Log Analytics Workspace ID associated with Application Insights')
+param analyticsWorkspaceId string = ''
 /*
   Subnet creation in target virtual network
 */
@@ -112,6 +117,29 @@ module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   }
 }
 
+module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) {
+  name: '${webappName}-application-insights-module'
+  params: {
+    location: location
+    kind: 'web'
+    appInsightsName: 'appi-${webappName}'
+    applicationType: 'web'
+    workspaceResourceId: analyticsWorkspaceId
+  }
+}
+
+module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
+  name: '${webappName}-diagnostic-settings-module'
+  params: {
+    webappName: webappName
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+    webapp
+  ]
+}
+
 /*
   Create webapp
 */
@@ -126,7 +154,26 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
 }
-
+var applicationSettings = concat([],
+  deployAppInsights ? [
+    {
+      name: 'WEBSITE_NODE_DEFAULT_VERSION'
+      value: '18'
+    }
+    {
+      name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+      value: '~2'
+    }
+    {
+      name: 'XDT_MicrosoftApplicationInsights_NodeJS'
+      value: '1'
+    }
+    {
+      name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
+      value: appInsights.outputs.connectionString
+    }
+  ] : []
+)
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
       action: 'Deny'
@@ -145,6 +192,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: webapp
   name: 'web'
   properties: {
+    appSettings: applicationSettings
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
