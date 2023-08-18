@@ -73,12 +73,15 @@ function AssignAttorneyModalComponent(
   });
 
   function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, id: number) {
-    const localCheckListValues = checkListValues;
+    let localCheckListValues = checkListValues;
     if (ev.target.checked && !checkListValues.includes(id)) {
       localCheckListValues.push(id);
+      modalRef.current?.buttons?.current?.disableSubmitButton(false);
+    } else if (!ev.target.checked && checkListValues.includes(id)) {
+      localCheckListValues = checkListValues.filter((theId) => theId !== id);
+      modalRef.current?.buttons?.current?.disableSubmitButton(localCheckListValues.length === 0);
     }
     setCheckListValues(localCheckListValues);
-    modalRef.current?.buttons?.current?.disableSubmitButton(false);
   }
 
   function cancelModal() {
