@@ -19,9 +19,10 @@ export interface AssignedAttorney {
 }
 
 export interface CallBackProps {
-  openerId: string;
   bCase: Chapter15Type | undefined;
   selectedAttorneyList: AssignedAttorney[];
+  status: 'success' | 'error';
+  apiResult: object;
 }
 
 function AssignAttorneyModalComponent(
@@ -82,27 +83,39 @@ function AssignAttorneyModalComponent(
   }
 
   async function submitValues() {
-    // send attorney IDs to API and if successful, then
-    //if (true) {
     let finalAttorneyList: AssignedAttorney[] = [];
+
     // call callback from parent with IDs and names of attorneys, and case id.
     finalAttorneyList = attorneyList.filter((attorney) => checkListValues.includes(attorney.id));
-    props.callBack({
-      openerId: props.openerId,
-      bCase: props.bCase,
-      selectedAttorneyList: finalAttorneyList,
-    });
+
     setCheckListValues([]);
-    //}
+
+    // send attorney IDs to API
     const attorneyIds = finalAttorneyList.map((atty) => atty.id.toString());
-    console.log(attorneyIds);
     await Api.post('/case-assignments', {
       caseId: props.bCase?.caseNumber,
       attorneyIdList: attorneyIds,
       role: 'TrialAttorney',
-    }).then((assignments) => {
-      console.log(assignments);
-    });
+    })
+      .then((result) => {
+        props.callBack({
+          bCase: props.bCase,
+          selectedAttorneyList: finalAttorneyList,
+          status: 'success',
+          apiResult: result,
+        });
+      })
+      .catch((e: Error) => {
+        // we ought to have a section of the screen that takes a z-index top level alert to display updates
+        // that is system wide and always displays in the same place.  Probably an alert triggered by
+        // a redux update.
+        props.callBack({
+          bCase: props.bCase,
+          selectedAttorneyList: finalAttorneyList,
+          status: 'error',
+          apiResult: e,
+        });
+      });
   }
 
   function onOpen() {

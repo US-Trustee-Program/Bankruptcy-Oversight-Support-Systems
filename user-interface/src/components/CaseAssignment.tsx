@@ -24,7 +24,10 @@ export const CaseAssignment = () => {
   const [caseListUpdated, setCaseListUpdated] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
   const [modalOpenerId, setModalOpenerId] = useState<string>('');
-  const [assignmentSuccessMessage, setAssignmentSuccessMessage] = useState<string>('');
+  const [assignmentAlert, setAssignmentAlert] = useState<{
+    message: string;
+    type: UswdsAlertStyle;
+  }>({ message: '', type: UswdsAlertStyle.Success });
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
@@ -72,8 +75,11 @@ export const CaseAssignment = () => {
     return theCase;
   };
 
-  function updateCase({ bCase, selectedAttorneyList }: CallBackProps) {
-    if (selectedAttorneyList.length > 0) {
+  function updateCase({ bCase, selectedAttorneyList, status, apiResult }: CallBackProps) {
+    if (status === 'error') {
+      setAssignmentAlert({ message: (apiResult as Error).message, type: UswdsAlertStyle.Error });
+      alertRef.current?.show();
+    } else if (selectedAttorneyList.length > 0) {
       const tempCaseList = caseList;
       tempCaseList.forEach((theCase) => {
         if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
@@ -84,7 +90,7 @@ export const CaseAssignment = () => {
         const alertMessage = `${selectedAttorneyList
           .map((attorney) => attorney.name)
           .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
-        setAssignmentSuccessMessage(alertMessage);
+        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
         alertRef.current?.show();
       }
       setCaseList(tempCaseList);
@@ -107,8 +113,8 @@ export const CaseAssignment = () => {
           <h1 data-testid="case-list-heading">{screenTitle}</h1>
           <h2 data-testid="case-list-subtitle">{subTitle}</h2>
           <Alert
-            message={assignmentSuccessMessage}
-            type={UswdsAlertStyle.Success}
+            message={assignmentAlert.message}
+            type={assignmentAlert.type}
             role="status"
             slim={true}
             ref={alertRef}
