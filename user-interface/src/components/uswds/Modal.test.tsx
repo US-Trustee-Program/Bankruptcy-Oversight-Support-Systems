@@ -5,9 +5,9 @@ import { ToggleModalButton } from './ToggleModalButton';
 import Modal, { ModalRefType } from './Modal';
 
 describe('Test Modal component', () => {
-  test('should open modal', async () => {
+  const modalId = 'assign-attorney-modal';
+  beforeEach(() => {
     const modalRef = React.createRef<ModalRefType>();
-    const modalId = 'assign-attorney-modal';
     const actionButtonGroup = {
       modalId: modalId,
       modalRef: modalRef,
@@ -42,7 +42,9 @@ describe('Test Modal component', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+  });
 
+  test('should open modal', async () => {
     // click button
     const button = screen.getByTestId('toggle-modal-button-open-test');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -56,5 +58,46 @@ describe('Test Modal component', () => {
     // add test for isVisible classname
     expect(modal).toHaveClass('is-visible');
     expect(modal).not.toHaveClass('is-hidden');
+  });
+
+  test('should close modal when we press the `esc` key', async () => {
+    const button = screen.getByTestId('toggle-modal-button-open-test');
+    const modal = screen.getByTestId(`modal-${modalId}`);
+    expect(modal).toHaveClass('is-hidden');
+    expect(modal).not.toHaveClass('is-visible');
+
+    act(() => {
+      fireEvent.click(button);
+    });
+
+    expect(modal).toHaveClass('is-visible');
+
+    act(() => {
+      fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
+    });
+
+    expect(modal).toHaveClass('is-hidden');
+    expect(modal).not.toHaveClass('is-visible');
+  });
+
+  test('should close modal when we click on the X', async () => {
+    const button = screen.getByTestId('toggle-modal-button-open-test');
+    const modal = screen.getByTestId(`modal-${modalId}`);
+    expect(modal).toHaveClass('is-hidden');
+    expect(modal).not.toHaveClass('is-visible');
+
+    act(() => {
+      fireEvent.click(button);
+    });
+
+    expect(modal).toHaveClass('is-visible');
+
+    const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    act(() => {
+      fireEvent.click(closeButton);
+    });
+
+    expect(modal).toHaveClass('is-hidden');
+    expect(modal).not.toHaveClass('is-visible');
   });
 });
