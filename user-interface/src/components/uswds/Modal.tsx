@@ -24,13 +24,14 @@ export interface ModalProps {
 export interface ModalRefType {
   show: () => void;
   hide: () => void;
+  toggle: () => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
   const data = { 'data-force-action': false };
-  const { isVisible, show, hide } = useComponent();
+  const { isVisible, show, hide, toggle } = useComponent();
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
 
   let wrapperData = {};
@@ -85,14 +86,21 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }
 
+  function showModal() {
+    if (props.onOpen) {
+      props.onOpen();
+      show();
+    }
+  }
+
+  function toggleModal() {
+    toggle();
+  }
+
   useImperativeHandle(ref, () => ({
     hide,
-    show: () => {
-      if (props.onOpen) {
-        props.onOpen();
-        show();
-      }
-    },
+    show: showModal,
+    toggle: toggleModal,
     buttons: submitCancelButtonGroupRef,
   }));
 
@@ -101,6 +109,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
       role="dialog"
       id={props.modalId + '-wrapper'}
+      data-testid={`modal-${props.modalId}`}
       aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
       {...wrapperData}

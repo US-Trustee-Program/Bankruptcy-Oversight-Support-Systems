@@ -71,7 +71,7 @@ export const CaseAssignment = () => {
   const openModal = (theCase: Chapter15Type, openerId: string) => {
     setBCase(theCase);
     setModalOpenerId(openerId);
-    modalRef.current?.show();
+    //modalRef.current?.show();
     return theCase;
   };
 
@@ -153,7 +153,8 @@ export const CaseAssignment = () => {
                             className="case-assignment-modal-toggle"
                             id={`assign-attorney-btn-${idx}`}
                             toggleAction="open"
-                            modalId={`${modalId}-${idx}`}
+                            modalId={`${modalId}`}
+                            modalRef={modalRef}
                             onClick={() => openModal(theCase, `assign-attorney-btn-${idx}`)}
                           >
                             Assign

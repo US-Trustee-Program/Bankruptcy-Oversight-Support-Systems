@@ -11,9 +11,14 @@ export default function useComponent() {
     setIsVisible(true);
   };
 
+  const toggle = () => {
+    setIsVisible(!isVisible);
+  };
+
   return {
     isVisible,
     hide,
     show,
+    toggle,
   };
 }
