@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
 export enum UswdsButtonStyle {
   Default = '',
@@ -18,6 +18,10 @@ export enum UswdsButtonState {
   Focus = 'usa-focus',
 }
 
+export interface ButtonRef {
+  disableButton: (state: boolean) => void;
+}
+
 export interface ButtonProps {
   children: React.ReactNode;
   uswdsStyle?: UswdsButtonStyle;
@@ -25,36 +29,46 @@ export interface ButtonProps {
   disabled?: boolean;
 }
 
-export class Button extends Component<ButtonProps & JSX.IntrinsicElements['button']> {
-  private classes = ['usa-button'];
-  private ariaDisabled = false;
+const ButtonComponent = (
+  {
+    uswdsStyle,
+    buttonState,
+    className,
+    disabled,
+    onClick,
+    children,
+  }: ButtonProps & JSX.IntrinsicElements['button'],
+  ref: React.Ref<ButtonRef>,
+) => {
+  const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
+  const classes = ['usa-button'];
 
-  constructor(props: ButtonProps & JSX.IntrinsicElements['button']) {
-    const { uswdsStyle, buttonState, className, disabled } = props;
-    super(props);
+  if (uswdsStyle) classes.push(uswdsStyle);
+  if (buttonState) classes.push(buttonState);
+  if (className) classes.push(className);
 
-    if (uswdsStyle) this.classes.push(uswdsStyle);
-    if (buttonState) this.classes.push(buttonState);
-    if (className) this.classes.push(className);
-
-    if (disabled === true) {
-      this.ariaDisabled = true;
-    }
+  function disableButton(state: boolean) {
+    setIsDisabled(state);
   }
 
-  render() {
-    return (
-      <button
-        type="button"
-        className={this.classes.join(' ')}
-        onClick={this.props.onClick}
-        data-testid="button"
-        aria-disabled={this.ariaDisabled}
-      >
-        {this.props.children}
-      </button>
-    );
-  }
-}
+  useImperativeHandle(ref, () => ({
+    disableButton,
+  }));
+
+  return (
+    <button
+      type="button"
+      className={classes.join(' ')}
+      onClick={onClick}
+      data-testid="button"
+      aria-disabled={isDisabled}
+      disabled={isDisabled}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Button = forwardRef(ButtonComponent);
 
 export default Button;
