@@ -1,14 +1,17 @@
 import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from './Button';
 import { ObjectKeyVal } from '../../type-declarations/basic';
 import { forwardRef, useImperativeHandle, useState } from 'react';
+import { ModalRefType } from './Modal';
 
 export interface ModalToggleButtonProps {
   children: React.ReactNode;
+  buttonId?: string;
   uswdsStyle?: UswdsButtonStyle;
   buttonState?: UswdsButtonState;
   disabled?: boolean;
   toggleAction: 'open' | 'close';
   modalId: string;
+  modalRef: React.RefObject<ModalRefType>;
 }
 
 export interface ToggleModalButtonRef {
@@ -18,6 +21,7 @@ export interface ToggleModalButtonRef {
 function ToggleModalButtonComponent(
   {
     children,
+    buttonId,
     uswdsStyle,
     buttonState,
     disabled,
@@ -25,10 +29,13 @@ function ToggleModalButtonComponent(
     modalId,
     onClick,
     className,
+    modalRef,
   }: ModalToggleButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
   ref: React.Ref<ToggleModalButtonRef>,
 ) {
   const dataProp: ObjectKeyVal = {};
+
+  const dataTestidSuffix = buttonId ? `-${buttonId}` : '';
 
   let classes = 'usa-button';
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
@@ -47,6 +54,13 @@ function ToggleModalButtonComponent(
     setIsDisabled(state);
   }
 
+  function handleOnClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (onClick) {
+      onClick(e);
+    }
+    modalRef.current?.toggle();
+  }
+
   useImperativeHandle(ref, () => ({
     disableButton,
   }));
@@ -56,8 +70,8 @@ function ToggleModalButtonComponent(
       type="button"
       aria-controls={modalId}
       className={classes}
-      onClick={onClick}
-      data-testid="button"
+      onClick={handleOnClick}
+      data-testid={`toggle-modal-button${dataTestidSuffix}`}
       aria-disabled={isDisabled}
       disabled={isDisabled}
       {...dataProp}

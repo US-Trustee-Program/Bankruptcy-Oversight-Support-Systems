@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ToggleModalButton } from './ToggleModalButton';
@@ -6,7 +6,7 @@ import Modal from './Modal';
 
 describe('Test Modal component', () => {
   test('should open modal', async () => {
-    const modalId = 'modal123';
+    const modalId = 'assign-attorney-modal';
     const actionButtonGroup = {
       modalId: modalId,
       submitButton: {
@@ -21,11 +21,10 @@ describe('Test Modal component', () => {
       <React.StrictMode>
         <BrowserRouter>
           <>
-            <ToggleModalButton data-testid="toggle-button" toggleAction={'open'} modalId={modalId}>
+            <ToggleModalButton buttonId="open-test" toggleAction={'open'} modalId={modalId}>
               Open Modal
             </ToggleModalButton>
             <Modal
-              data-testid="modal"
               modalId={modalId}
               heading={'Test Heading'}
               content={'Test Content'}
@@ -37,10 +36,21 @@ describe('Test Modal component', () => {
     );
 
     // click button
-    const button = screen.getByTestId('toggle-button');
-    const modal = screen.getByTestId('modal');
-    button.click();
-    expect(modal.ariaDisabled).toBeFalsy();
+    const button = screen.getByTestId('toggle-modal-button-open-test');
+    const modal = screen.getByTestId(`modal-${modalId}`);
+    expect(modal).toHaveClass('is-hidden');
+    expect(modal).not.toHaveClass('is-visible');
+
+    act(() => {
+      fireEvent.click(button);
+    });
+
+    console.log(modal.className);
+    console.log(document.body.innerHTML);
+
     // add test for isVisible classname
+    console.log(modal.className);
+    expect(modal).toHaveClass('is-visible');
+    //expect(modal).not.toHaveClass('is-hidden');
   });
 });
