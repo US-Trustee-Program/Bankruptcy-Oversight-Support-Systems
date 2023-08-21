@@ -35,6 +35,7 @@ function AssignAttorneyModalComponent(
   const [checkListValues, setCheckListValues] = useState<number[]>([]);
   const actionButtonGroup = {
     modalId: props.modalId,
+    modalRef: ref as React.RefObject<ModalRefType>,
     submitButton: {
       label: 'Assign',
       onClick: submitValues,
