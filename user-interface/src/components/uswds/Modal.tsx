@@ -155,6 +155,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 aria-label="Close this window"
                 data-close-modal
                 onClick={close}
+                data-testid={`modal-x-button-${props.modalId}`}
               >
                 <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
                   <use xlinkHref="../node_modules/@uswds/uswds/dist/img/sprite.svg#close"></use>
