@@ -58,7 +58,11 @@ function ToggleModalButtonComponent(
     if (onClick) {
       onClick(e);
     }
-    modalRef.current?.toggle();
+    if (toggleAction === 'open') {
+      modalRef.current?.show();
+    } else {
+      modalRef.current?.hide();
+    }
   }
 
   useImperativeHandle(ref, () => ({

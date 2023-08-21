@@ -24,14 +24,13 @@ export interface ModalProps {
 export interface ModalRefType {
   show: () => void;
   hide: () => void;
-  toggle: () => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
   const data = { 'data-force-action': false };
-  const { isVisible, show, hide, toggle } = useComponent();
+  const { isVisible, show, hide } = useComponent();
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
 
   let wrapperData = {};
@@ -89,18 +88,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   function showModal() {
     if (props.onOpen) {
       props.onOpen();
-      show();
     }
-  }
-
-  function toggleModal() {
-    toggle();
+    show();
   }
 
   useImperativeHandle(ref, () => ({
     hide,
     show: showModal,
-    toggle: toggleModal,
     buttons: submitCancelButtonGroupRef,
   }));
 
@@ -135,6 +129,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 <SubmitCancelButtonGroup
                   ref={submitCancelButtonGroupRef}
                   modalId={props.modalId}
+                  modalRef={ref as React.RefObject<ModalRefType>}
                   submitButton={{
                     label: props.actionButtonGroup.submitButton.label,
                     onClick: submitBtnClick,
