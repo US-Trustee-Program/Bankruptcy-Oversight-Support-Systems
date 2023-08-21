@@ -5,7 +5,6 @@ import {
   SubmitCancelButtonGroupRef,
 } from './SubmitCancelButtonGroup';
 import useGlobalKeyDown from '../../hooks/UseGlobalKeyDown';
-import { ObjectKeyVal } from '../../type-declarations/basic';
 import { UswdsButtonStyle } from './Button';
 import useComponent from '../../hooks/UseComponent';
 
@@ -44,13 +43,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     data['data-force-action'] = true;
   }
 
-  function handleKeyDown(e: KeyboardEvent, state: ObjectKeyVal) {
-    if (!state.forceAction) {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!props.forceAction) {
       if (e.key === 'Escape') {
         close(e);
       }
     }
-  }
+  };
 
   useGlobalKeyDown(handleKeyDown, { forceAction: !!props.forceAction });
 
