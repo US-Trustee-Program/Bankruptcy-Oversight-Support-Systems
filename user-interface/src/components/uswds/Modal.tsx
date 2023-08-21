@@ -112,6 +112,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
         className="usa-modal-overlay"
         aria-controls={props.modalId}
         id={props.modalId + '-overlay'}
+        data-testid={`modal-overlay-${props.modalId}`}
         onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
           outsideClick(e, props.modalId + '-overlay')
         }
