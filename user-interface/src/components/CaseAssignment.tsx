@@ -8,7 +8,6 @@ import { ToggleModalButton } from './uswds/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/Modal';
 import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
-import { UswdsButtonExamples } from './uswds/ButtonExamples';
 
 const modalId = 'assign-attorney-modal';
 
@@ -181,7 +180,6 @@ export const CaseAssignment = () => {
           openerId={modalOpenerId}
           callBack={updateCase}
         ></AssignAttorneyModal>
-        <UswdsButtonExamples></UswdsButtonExamples>
       </>
     );
   }
