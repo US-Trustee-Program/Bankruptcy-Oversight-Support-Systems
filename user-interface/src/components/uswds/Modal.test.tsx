@@ -6,7 +6,10 @@ import Modal, { ModalRefType } from './Modal';
 
 describe('Test Modal component', () => {
   const modalId = 'assign-attorney-modal';
+  const onOpenModal = vi.fn();
   const closeModal = vi.fn();
+  const submitButtonOnClick = vi.fn();
+  const cancelButtonOnClick = vi.fn();
 
   beforeEach(() => {
     const modalRef = React.createRef<ModalRefType>();
@@ -15,9 +18,11 @@ describe('Test Modal component', () => {
       modalRef: modalRef,
       submitButton: {
         label: 'Submit',
+        onClick: submitButtonOnClick,
       },
       cancelButton: {
         label: 'Cancel',
+        onClick: cancelButtonOnClick,
       },
     };
 
@@ -40,6 +45,7 @@ describe('Test Modal component', () => {
               content={'Test Content'}
               actionButtonGroup={actionButtonGroup}
               onClose={closeModal}
+              onOpen={onOpenModal}
             ></Modal>
           </>
         </BrowserRouter>
@@ -61,6 +67,7 @@ describe('Test Modal component', () => {
     // add test for isVisible classname
     expect(modal).toHaveClass('is-visible');
     expect(modal).not.toHaveClass('is-hidden');
+    expect(onOpenModal).toHaveBeenCalled();
   });
 
   test('should close modal when we press the `esc` key', async () => {
@@ -153,6 +160,25 @@ describe('Test Modal component', () => {
     expect(modal).not.toHaveClass('is-visible');
 
     expect(closeModal).toHaveBeenCalled();
+    expect(cancelButtonOnClick).toHaveBeenCalled();
+  });
+
+  test('should run onClick handler when submit button is clicked', async () => {
+    const openButton = screen.getByTestId('toggle-modal-button-open-test');
+    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    const modal = screen.getByTestId(`modal-${modalId}`);
+
+    act(() => {
+      fireEvent.click(openButton);
+    });
+
+    expect(modal).toHaveClass('is-visible');
+
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+
+    expect(submitButtonOnClick).toHaveBeenCalled();
   });
 });
 
