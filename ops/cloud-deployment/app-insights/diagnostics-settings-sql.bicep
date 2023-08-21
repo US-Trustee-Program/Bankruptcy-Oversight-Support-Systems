@@ -1,11 +1,8 @@
-@description('The name of the diagnostic setting.')
-param settingName string
-
 @description('The name of the Azure SQL database server.')
-param serverName string
+param serverName string = 'sql-ustp-cams.database.usgovcloudapi.net'
 
 @description('The name of the SQL database.')
-param dbName string
+param databaseName string = 'ACMS_REP_SUB'
 
 @description('The resource Id of the workspace.')
 param workspaceId string
@@ -16,11 +13,11 @@ resource dbServer 'Microsoft.Sql/servers@2021-11-01-preview' existing = {
 
 resource db 'Microsoft.Sql/servers/databases@2021-11-01-preview' existing = {
   parent: dbServer
-  name: dbName
+  name: databaseName
 }
 
 resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: settingName
+  name: '${databaseName}-diagnostic-setting'
   scope: db
   properties: {
     workspaceId: workspaceId

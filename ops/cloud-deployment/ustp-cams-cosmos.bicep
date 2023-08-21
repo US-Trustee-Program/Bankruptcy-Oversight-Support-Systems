@@ -95,10 +95,14 @@ module cosmosDiagnosticSetting './app-insights/diagnostic-settings-cosmos.bicep'
   name: '${accountName}-cosmos-diagnostic-setting-module'
   params: {
     settingName: '${database.name}-diagnostic-setting'
-    dbName: database.name
-    workspaceId: analyticsWorkspaceId
-
+    databaseName: database.name
+    analyticsWorkspaceId: analyticsWorkspaceId
+    accountName: account.name
   }
+  dependsOn: [
+    database
+    containers
+  ]
 }
 
 output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
