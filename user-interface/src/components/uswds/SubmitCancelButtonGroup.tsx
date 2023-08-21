@@ -1,6 +1,7 @@
 import { MouseEventHandler, forwardRef, useImperativeHandle, useRef } from 'react';
 import { ToggleModalButton, ToggleModalButtonRef } from './ToggleModalButton';
 import { UswdsButtonStyle } from './Button';
+import { ModalRefType } from './Modal';
 
 export interface SubmitCancelButtonGroupRef {
   disableSubmitButton: (state: boolean) => void;
@@ -8,6 +9,7 @@ export interface SubmitCancelButtonGroupRef {
 
 export type SubmitCancelBtnProps = {
   modalId: string;
+  modalRef: React.RefObject<ModalRefType>;
   className?: string;
   submitButton: {
     label: string;
@@ -25,7 +27,7 @@ export type SubmitCancelBtnProps = {
 };
 
 function SubmitCancelButtonGroupComponent(
-  { modalId, className, submitButton, cancelButton }: SubmitCancelBtnProps,
+  { modalId, modalRef, className, submitButton, cancelButton }: SubmitCancelBtnProps,
   ref: React.Ref<SubmitCancelButtonGroupRef>,
 ) {
   const toggleSubmitButtonRef = useRef<ToggleModalButtonRef>(null);
@@ -54,6 +56,7 @@ function SubmitCancelButtonGroupComponent(
             ref={toggleSubmitButtonRef}
             toggleAction="close"
             modalId={modalId}
+            modalRef={modalRef}
             uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
             className={submitButton.className ?? ''}
             onClick={submitButton.onClick ?? close}
@@ -67,6 +70,7 @@ function SubmitCancelButtonGroupComponent(
             <ToggleModalButton
               toggleAction="close"
               modalId={modalId}
+              modalRef={modalRef}
               uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
               className={cancelButton.className ?? ' padding-105 text-center '}
               onClick={cancelButton.onClick ?? close}
