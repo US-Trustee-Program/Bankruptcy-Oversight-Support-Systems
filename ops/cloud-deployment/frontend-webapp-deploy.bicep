@@ -51,6 +51,23 @@ param webappPrivateEndpointSubnetName string
 @description('Webapp private endpoint subnet ip ranges')
 param webappPrivateEndpointSubnetAddressPrefix string
 
+@description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
+param hostOSType bool = true
+
+@description('Azure App Service runtime environment. Only applicable when host os type is Linux.')
+@allowed([
+  'node'
+  'php'
+])
+param appServiceRuntime string = 'php'
+// Provides mapping for runtime stack
+// Use the following query to check supported versions
+//  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
+var linuxFxVersionMap = {
+  node: 'NODE|18'
+  php: 'PHP|8.2'
+}
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
@@ -61,7 +78,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
     elasticScaleEnabled: false
     maximumElasticWorkerCount: 1
     isSpot: false
-    reserved: true
+    reserved: hostOSType
     isXenon: false
     hyperV: false
     targetWorkerCount: 0
@@ -225,6 +242,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
         preloadEnabled: true
       }
     ]
+    linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
   }
 }
 
