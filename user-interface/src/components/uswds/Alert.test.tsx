@@ -7,7 +7,6 @@ const sleep = (milliseconds: number) =>
   new Promise((callback) => setTimeout(callback, milliseconds));
 
 describe('Test Alert component', () => {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   test('should be visible for provided timeout', async () => {
     const alertRef = React.createRef<AlertRefType>();
     render(
