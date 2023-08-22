@@ -62,6 +62,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
           : 'usa-alert__unset'
       }`}
       role={props.role}
+      data-testid={`alert`}
     >
       <div className="usa-alert__body">
         <p className="usa-alert__text">{props.message}</p>
