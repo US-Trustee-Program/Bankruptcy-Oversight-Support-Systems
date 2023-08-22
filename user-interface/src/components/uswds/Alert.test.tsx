@@ -222,4 +222,42 @@ describe('Test Alert component', () => {
     const alertMessage = screen.getByTestId('alert-message');
     expect(alertMessage).toContainHTML('Test alert message');
   });
+
+  test('should put the status role in the html', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Success}
+            role="status"
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveAttribute('role', 'status');
+  });
+
+  test('should put the alert role in the html', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Success}
+            role="alert"
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveAttribute('role', 'alert');
+  });
 });
