@@ -84,4 +84,84 @@ describe('Test Alert component', () => {
     expect(alert).toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
+
+  test('should have info class', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveClass('usa-alert--info');
+  });
+
+  test('should have warning class', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Warning}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveClass('usa-alert--warning');
+  });
+
+  test('should have error class', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Error}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveClass('usa-alert--error');
+  });
+
+  test('should have success class', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Success}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveClass('usa-alert--success');
+  });
 });
