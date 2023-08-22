@@ -44,6 +44,89 @@ describe('Test Assign Attorney Modal Component', () => {
     });
 
     expect(modal).toHaveClass('is-visible');
-    //expect(button).
+    expect(submitButton).toBeDisabled();
+
+    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
+    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
+
+    act(() => {
+      fireEvent.click(checkbox1);
+    });
+
+    expect(checkbox1).toBeChecked();
+    expect(submitButton).toBeEnabled();
+
+    act(() => {
+      fireEvent.click(checkbox2);
+    });
+
+    expect(submitButton).toBeEnabled();
+
+    act(() => {
+      fireEvent.click(checkbox1);
+    });
+
+    expect(checkbox1).not.toBeChecked();
+    expect(submitButton).toBeEnabled();
+
+    act(() => {
+      fireEvent.click(checkbox2);
+    });
+
+    expect(checkbox2).not.toBeChecked();
+    expect(submitButton).toBeDisabled();
+  });
+
+  test('Should call POST with list of attorneys when assign button is clicked.', async () => {
+    const bCase: Chapter15Type = {
+      caseNumber: '123',
+      caseTitle: 'Test Case',
+      dateFiled: '01/01/2024',
+    };
+
+    const modalRef = React.createRef<ModalRefType>();
+    const callback = vi.fn();
+    const modalId = 'some-modal-id';
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <>
+            <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
+              Open Modal
+            </ToggleModalButton>
+            <AssignAttorneyModal
+              ref={modalRef}
+              bCase={bCase}
+              modalId={modalId}
+              openerId="opener-123"
+              callBack={callback}
+            ></AssignAttorneyModal>
+          </>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+    const button = screen.getByTestId('toggle-modal-button');
+    const modal = screen.getByTestId(`modal-${modalId}`);
+    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+
+    act(() => {
+      fireEvent.click(button);
+    });
+
+    expect(modal).toHaveClass('is-visible');
+
+    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
+    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
+    const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
+
+    act(() => {
+      fireEvent.click(checkbox1);
+      fireEvent.click(checkbox2);
+      fireEvent.click(checkbox3);
+    });
+
+    act(() => {
+      fireEvent.click(submitButton);
+    });
   });
 });
