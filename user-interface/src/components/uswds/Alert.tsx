@@ -65,7 +65,9 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
       data-testid={`alert`}
     >
       <div className="usa-alert__body">
-        <p className="usa-alert__text">{props.message}</p>
+        <p className="usa-alert__text" data-testid="alert-message">
+          {props.message}
+        </p>
       </div>
     </div>
   );
