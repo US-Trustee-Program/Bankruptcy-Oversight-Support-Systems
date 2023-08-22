@@ -5,6 +5,7 @@ import React from 'react';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import { ModalRefType } from './uswds/Modal';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
+import Api from '../models/api';
 
 describe('Test Assign Attorney Modal Component', () => {
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
@@ -78,12 +79,13 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
+    const postSpy = vi.spyOn(Api, 'post');
+
     const bCase: Chapter15Type = {
       caseNumber: '123',
       caseTitle: 'Test Case',
       dateFiled: '01/01/2024',
     };
-
     const modalRef = React.createRef<ModalRefType>();
     const callback = vi.fn();
     const modalId = 'some-modal-id';
@@ -107,18 +109,17 @@ describe('Test Assign Attorney Modal Component', () => {
     );
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
-    const submitButton = screen.getByTestId('toggle-modal-button-submit');
 
+    const submitButton = screen.getByTestId('toggle-modal-button-submit');
     act(() => {
       fireEvent.click(button);
     });
 
     expect(modal).toHaveClass('is-visible');
-
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-    const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
 
+    const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
     act(() => {
       fireEvent.click(checkbox1);
       fireEvent.click(checkbox2);
@@ -128,5 +129,8 @@ describe('Test Assign Attorney Modal Component', () => {
     act(() => {
       fireEvent.click(submitButton);
     });
+    expect(postSpy).toHaveBeenCalledWith(
+      expect.objectContaining(expect.arrayContaining([4, 5, 6])),
+    );
   });
 });
