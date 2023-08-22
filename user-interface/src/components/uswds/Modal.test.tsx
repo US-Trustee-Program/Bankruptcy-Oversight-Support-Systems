@@ -54,7 +54,6 @@ describe('Test Modal component', () => {
   });
 
   test('should open modal', async () => {
-    // click button
     const button = screen.getByTestId('toggle-modal-button-open-test');
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
@@ -64,13 +63,12 @@ describe('Test Modal component', () => {
       fireEvent.click(button);
     });
 
-    // add test for isVisible classname
     expect(modal).toHaveClass('is-visible');
     expect(modal).not.toHaveClass('is-hidden');
     expect(onOpenModal).toHaveBeenCalled();
   });
 
-  test('should close modal when we press the `esc` key', async () => {
+  test('should close modal and call onClose when we press the `esc` key', async () => {
     const button = screen.getByTestId('toggle-modal-button-open-test');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -93,7 +91,7 @@ describe('Test Modal component', () => {
     expect(closeModal).toHaveBeenCalled();
   });
 
-  test('should close modal when we click on the X', async () => {
+  test('should close modal and call onClose when we click on the X', async () => {
     const openButton = screen.getByTestId('toggle-modal-button-open-test');
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
@@ -116,7 +114,7 @@ describe('Test Modal component', () => {
     expect(closeModal).toHaveBeenCalled();
   });
 
-  test('should close modal when we click outside of modal', async () => {
+  test('should close modal and call onClose when we click outside of modal', async () => {
     const openButton = screen.getByTestId('toggle-modal-button-open-test');
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
@@ -139,7 +137,7 @@ describe('Test Modal component', () => {
     expect(closeModal).toHaveBeenCalled();
   });
 
-  test('should close modal when we click cancel button', async () => {
+  test('should close modal and call onClose when we click cancel button', async () => {
     const openButton = screen.getByTestId('toggle-modal-button-open-test');
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
