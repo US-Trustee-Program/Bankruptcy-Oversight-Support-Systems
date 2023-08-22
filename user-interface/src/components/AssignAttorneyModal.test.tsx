@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import AssignAttorneyModal from './AssignAttorneyModal';
+import AssignAttorneyModal, { AssignedAttorney } from './AssignAttorneyModal';
 import React from 'react';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import { ModalRefType } from './uswds/Modal';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
 import Api from '../models/api';
+import { ResponseData } from '../type-declarations/api';
 
 describe('Test Assign Attorney Modal Component', () => {
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
@@ -79,8 +80,14 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
-    //const postMock = vi.mock('../models/api', );
-    const postSpy = vi.spyOn(Api, 'post');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
+      return Promise.resolve({
+        message: 'post mock',
+        count: 0,
+        body: {},
+      });
+    });
 
     const bCase: Chapter15Type = {
       caseNumber: '123',
@@ -88,7 +95,16 @@ describe('Test Assign Attorney Modal Component', () => {
       dateFiled: '01/01/2024',
     };
     const modalRef = React.createRef<ModalRefType>();
-    const callback = vi.fn();
+    const callback = (params: {
+      bCase: Chapter15Type;
+      selectedAttorneyList: AssignedAttorney[];
+      status: string;
+      apiResult: ResponseData;
+    }) => {
+      expect(params.status).toEqual('success');
+    };
+
+    const callbackSpy = vi.spyOn('./AssignAttorneyModal.tsx', 'callback');
     const modalId = 'some-modal-id';
     render(
       <React.StrictMode>
@@ -136,6 +152,11 @@ describe('Test Assign Attorney Modal Component', () => {
         attorneyIdList: expect.arrayContaining(['4', '5', '6']),
         caseId: '123',
         role: 'TrialAttorney',
+      }),
+    );
+    expect(callbackSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'success',
       }),
     );
   });
