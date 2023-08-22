@@ -34,11 +34,13 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   }
 
   useImperativeHandle(ref, () => ({ setChecked }), []);
-
+  const checkboxTestId = props.id ? `checkbox-${props.id}` : 'checkbox';
+  const labelTestId = props.id ? `checkbox-label-${props.id}` : 'checkbox-label';
   return (
     <div className={classes}>
       <input
         type="checkbox"
+        data-testid={checkboxTestId}
         id={props.id}
         className="usa-checkbox__input"
         value={props.value}
@@ -46,7 +48,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         onChange={checkHandler}
       />
       {props.label && (
-        <label className="usa-checkbox__label" htmlFor={props.id}>
+        <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
           {props.label}
         </label>
       )}
