@@ -1,5 +1,5 @@
 @description('The name of the Azure SQL database server.')
-param serverName string = 'sql-ustp-cams.database.usgovcloudapi.net'
+param sqlServerName string = 'sql-ustp-cams.database.usgovcloudapi.net'
 
 @description('The name of the SQL database.')
 param databaseName string = 'ACMS_REP_SUB'
@@ -8,7 +8,7 @@ param databaseName string = 'ACMS_REP_SUB'
 param workspaceId string
 
 resource dbServer 'Microsoft.Sql/servers@2021-11-01-preview' existing = {
-  name: serverName
+  name: sqlServerName
 }
 
 resource db 'Microsoft.Sql/servers/databases@2021-11-01-preview' existing = {

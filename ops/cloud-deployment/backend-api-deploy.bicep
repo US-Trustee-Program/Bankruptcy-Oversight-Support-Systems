@@ -102,6 +102,8 @@ param deployAppInsights bool = false
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
+@description('Flag to create diagnostic setting for sql')
+param createSqlServerDiagnosticSetting bool = false
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -321,6 +323,16 @@ module setSqlServerVnetRule './sql/sql-vnet-rule.bicep' = if (createSqlServerVne
     stackName: functionName
     sqlServerName: sqlServerName
     subnetId: subnet.outputs.subnetId
+  }
+}
+
+
+module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bicep' = if (createSqlServerDiagnosticSetting) {
+  scope: resourceGroup(sqlServerResourceGroupName)
+  name: '${functionName}-sql-vnet-rule-module'
+  params: {
+    sqlServerName: sqlServerName
+    workspaceId: analyticsWorkspaceId
   }
 }
 
