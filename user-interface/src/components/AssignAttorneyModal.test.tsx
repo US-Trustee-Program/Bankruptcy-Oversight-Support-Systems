@@ -79,6 +79,7 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
+    //const postMock = vi.mock('../models/api', );
     const postSpy = vi.spyOn(Api, 'post');
 
     const bCase: Chapter15Type = {
@@ -130,7 +131,14 @@ describe('Test Assign Attorney Modal Component', () => {
       fireEvent.click(submitButton);
     });
     expect(postSpy).toHaveBeenCalledWith(
-      expect.objectContaining(expect.arrayContaining([4, 5, 6])),
+      '/case-assignments',
+      expect.objectContaining({
+        attorneyIdList: expect.arrayContaining(['4', '5', '6']),
+        caseId: '123',
+        role: 'TrialAttorney',
+      }),
     );
   });
+
+  //test('Should display an error, when the POST throws an error', async () => {  });
 });
