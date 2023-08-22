@@ -164,4 +164,62 @@ describe('Test Alert component', () => {
     const alert = screen.getByTestId('alert');
     expect(alert).toHaveClass('usa-alert--success');
   });
+
+  test('should have slim class', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Success}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveClass('usa-alert--slim');
+  });
+
+  test('should not have slim class', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Success}
+            role="status"
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).not.toHaveClass('usa-alert--slim');
+  });
+
+  test('should contain the message', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Success}
+            role="status"
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alertMessage = screen.getByTestId('alert-message');
+    expect(alertMessage).toContainHTML('Test alert message');
+  });
 });
