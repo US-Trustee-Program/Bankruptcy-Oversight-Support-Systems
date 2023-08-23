@@ -331,7 +331,6 @@ module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bice
   scope: resourceGroup(sqlServerResourceGroupName)
   name: '${functionName}-sql-vnet-rule-module'
   params: {
-    sqlServerName: sqlServerName
     workspaceId: analyticsWorkspaceId
   }
 }
