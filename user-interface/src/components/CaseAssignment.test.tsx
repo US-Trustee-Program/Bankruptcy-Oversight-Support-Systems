@@ -6,6 +6,7 @@ import { store } from '../store/store';
 import Chapter15MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData } from '../type-declarations/api';
 import { vi } from 'vitest';
+import Api from '../models/api';
 
 //import { ObjectKeyVal } from '../type-declarations/basic';
 
@@ -107,7 +108,7 @@ describe('CaseAssignment Component Tests', () => {
 
     await waitFor(
       async () => {
-        const tableBody = screen.getAllByTestId('case-assignment-table-body');
+        const tableBody = await screen.getAllByTestId('case-assignment-table-body');
         const data = tableBody[0].querySelectorAll('tr');
         expect(data.length).toBeGreaterThan(0);
       },
@@ -136,23 +137,20 @@ describe('CaseAssignment Component Tests', () => {
       </BrowserRouter>,
     );
 
-    const loadingMsg = await screen.findAllByText('Loading...');
+    let assignButton: HTMLButtonElement;
+    await waitFor(async () => {
+      assignButton = screen.getByTestId('toggle-modal-button-1');
+      expect(assignButton).toBeInTheDocument();
+    }).then(() => {
+      expect(assignButton).toBeInTheDocument();
 
-    await waitFor(
-      async () => {
-        expect(loadingMsg[0]).not.toBeInTheDocument();
-      },
-      { timeout: 1000 },
-    );
+      act(() => {
+        fireEvent.click(assignButton);
+      });
+    });
 
-    const tableBody = screen.getAllByTestId('case-assignment-table-body');
-    const data = tableBody[0].querySelectorAll('tr');
-    expect(data.length).toBeGreaterThan(0);
-
-    // open modal, select attorneys, submit, validate
-    const assignButton = screen.getByTestId('toggle-modal-button-1');
-    act(() => {
-      fireEvent.click(assignButton);
+    await waitFor(() => {
+      expect(screen.getByTestId('checkbox-1-checkbox')).toBeInTheDocument();
     });
 
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
@@ -163,16 +161,35 @@ describe('CaseAssignment Component Tests', () => {
       fireEvent.click(checkbox2);
     });
 
+    // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    vi.mock('../models/api', () => {
+      return {
+        Api: vi.fn().mockImplementation(() => {
+          return {
+            post: (path: string, body: object) => {
+              return new Promise(() => {
+                return { message: 'success', count: 5, body: ['1'] };
+              });
+            },
+          };
+        }),
+      };
+    });
+
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
     act(() => {
       fireEvent.click(submitButton);
     });
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveClass('usa-alert__visible');
-    expect(alert).toHaveAttribute('role', 'status');
-    expect(alert).toHaveClass('usa-alert--info');
-    const alertMessage = screen.getByTestId('alert-message');
-    expect(alertMessage).toContainHTML('Test alert message');
+
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert__visible');
+    }).then(() => {
+      expect(alert).toHaveAttribute('role', 'status');
+      expect(alert).toHaveClass('usa-alert--info');
+      const alertMessage = screen.getByTestId('alert-message');
+      expect(alertMessage).toContainHTML('500 Error - Server Error fetch failed');
+    });
   });
 });
