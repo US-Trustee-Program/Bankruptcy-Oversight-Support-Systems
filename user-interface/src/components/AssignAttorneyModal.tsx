@@ -29,9 +29,7 @@ export interface AttorneyList {
 }
 
 export interface AttorneyListResponseData extends ResponseData {
-  body: {
-    attorneyList: Array<AttorneyList>;
-  };
+  attorneyList: Array<AttorneyList>;
 }
 
 export interface CallBackProps {
@@ -64,7 +62,8 @@ function AssignAttorneyModalComponent(
   let attorneyList: AttorneyList[] = [];
   useEffect(() => {
     Api.list('/attorneys').then((response) => {
-      attorneyList = (response.body as AttorneyListResponseData).body.attorneyList;
+      const attorneyListResponse = response.body as AttorneyListResponseData;
+      attorneyList = attorneyListResponse.attorneyList;
     });
   }, [attorneyList.length > 0]);
 
