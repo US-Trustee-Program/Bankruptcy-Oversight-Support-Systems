@@ -35,9 +35,10 @@ export default class Api {
     }
   }
 
-  public static async list(path: string, options: ObjectKeyVal): Promise<ResponseData> {
+  public static async list(path: string, options?: ObjectKeyVal): Promise<ResponseData> {
     try {
-      const pathStr = Api.createPath(path, options);
+      const apiOptions = options ? options : {};
+      const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api._host + pathStr });
 
       const data = await response.json();
