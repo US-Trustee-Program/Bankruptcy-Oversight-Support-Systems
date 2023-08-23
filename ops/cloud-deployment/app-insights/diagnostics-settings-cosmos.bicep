@@ -4,25 +4,16 @@ param settingName string
 @description('Cosmos Account Name')
 param accountName string
 
-@description('The name of the database.')
-param databaseName string
-
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string
-
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' existing = {
-  parent: account
-  name: databaseName
-}
-
 resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: settingName
-  scope: database
+  scope: account
   properties: {
     workspaceId: analyticsWorkspaceId
     logs: [

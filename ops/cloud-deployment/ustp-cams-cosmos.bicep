@@ -94,8 +94,7 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
 module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = {
   name: '${accountName}-cosmos-diagnostic-setting-module'
   params: {
-    settingName: '${database.name}-diagnostic-setting'
-    databaseName: database.name
+    settingName: '${accountName}-diagnostic-setting'
     analyticsWorkspaceId: analyticsWorkspaceId
     accountName: account.name
   }
