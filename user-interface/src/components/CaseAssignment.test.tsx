@@ -136,17 +136,21 @@ describe('CaseAssignment Component Tests', () => {
       </BrowserRouter>,
     );
 
+    const loadingMsg = await screen.findAllByText('Loading...');
+
     await waitFor(
       async () => {
-        const tableBody = screen.getAllByTestId('case-assignment-table-body');
-        const data = tableBody[0].querySelectorAll('tr');
-        expect(data.length).toBeGreaterThan(0);
+        expect(loadingMsg[0]).not.toBeInTheDocument();
       },
       { timeout: 1000 },
     );
 
+    const tableBody = screen.getAllByTestId('case-assignment-table-body');
+    const data = tableBody[0].querySelectorAll('tr');
+    expect(data.length).toBeGreaterThan(0);
+
     // open modal, select attorneys, submit, validate
-    const assignButton = screen.getByTestId('toggle-modal-button-0');
+    const assignButton = screen.getByTestId('toggle-modal-button-1');
     act(() => {
       fireEvent.click(assignButton);
     });
