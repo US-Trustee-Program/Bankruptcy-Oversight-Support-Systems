@@ -8,7 +8,11 @@ import java.util.Properties;
 
 public class Driver {
 
-  private static LoaderMap loaderMap = new LoaderMap();
+  private static LoaderMap loaderMap = new LoaderMap().loadACMSREPMapping();
+  private static LoaderMap loaderMapAODATEX =
+      new LoaderMap().loadAODATEXMapping(); // TODO ML : Need to clarify this class to do the proper
+
+  // refactoring
 
   public static void main(String[] args) {
     try {
@@ -18,6 +22,7 @@ public class Driver {
     }
 
     try {
+
       Properties csvProperties = new Properties();
       csvProperties.load(Driver.class.getClassLoader().getResourceAsStream("csvfiles.properties"));
 
