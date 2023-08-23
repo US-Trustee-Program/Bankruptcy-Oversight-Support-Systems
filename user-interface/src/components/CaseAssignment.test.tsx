@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { CaseAssignment } from './CaseAssignment';
@@ -113,5 +113,62 @@ describe('CaseAssignment Component Tests', () => {
       },
       { timeout: 1000 },
     );
+  });
+
+  test('should display assigned attorneys on the case after it is updated', async () => {
+    vi.spyOn(Chapter15MockApi, 'list')
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .mockImplementation((_path: string): Promise<ResponseData> => {
+        return Promise.resolve({
+          message: '',
+          count: Chapter15MockApi.caseList.length,
+          body: {
+            caseList: Chapter15MockApi.caseList,
+          },
+        });
+      });
+
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseAssignment />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const tableBody = screen.getAllByTestId('case-assignment-table-body');
+        const data = tableBody[0].querySelectorAll('tr');
+        expect(data.length).toBeGreaterThan(0);
+      },
+      { timeout: 1000 },
+    );
+
+    // open modal, select attorneys, submit, validate
+    const assignButton = screen.getByTestId('toggle-modal-button-0');
+    act(() => {
+      fireEvent.click(assignButton);
+    });
+
+    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
+    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
+
+    act(() => {
+      fireEvent.click(checkbox1);
+      fireEvent.click(checkbox2);
+    });
+
+    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+
+    const alert = screen.getByTestId('alert');
+    expect(alert).toHaveClass('usa-alert__visible');
+    expect(alert).toHaveAttribute('role', 'status');
+    expect(alert).toHaveClass('usa-alert--info');
+    const alertMessage = screen.getByTestId('alert-message');
+    expect(alertMessage).toContainHTML('Test alert message');
   });
 });
