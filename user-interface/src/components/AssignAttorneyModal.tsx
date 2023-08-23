@@ -45,6 +45,7 @@ function AssignAttorneyModalComponent(
 ) {
   const modalRef = useRef<ModalRefType>(null);
   const modalHeading = 'Assign Attorney to Chapter 15 Case';
+  const [attorneyList, setAttorneyList] = useState<AttorneyList[]>([]);
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
   const actionButtonGroup = {
     modalId: props.modalId,
@@ -59,19 +60,18 @@ function AssignAttorneyModalComponent(
     },
   };
 
-  let attorneyList: AttorneyList[] = [];
+  const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   useEffect(() => {
     Api.list('/attorneys').then((response) => {
       const attorneyListResponse = response.body as AttorneyListResponseData;
-      attorneyList = attorneyListResponse.attorneyList;
+      setAttorneyList(attorneyListResponse.attorneyList);
+
+      for (let i = 0; i < attorneyList.length; i++) {
+        const checkboxRef = useRef<CheckboxRef>(null);
+        checkboxListRefs.push(checkboxRef);
+      }
     });
   }, [attorneyList.length > 0]);
-
-  const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
-  for (let i = 0; i < attorneyList.length; i++) {
-    const checkboxRef = useRef<CheckboxRef>(null);
-    checkboxListRefs.push(checkboxRef);
-  }
 
   useImperativeHandle(ref, () => {
     if (modalRef.current?.show && modalRef.current?.hide) {
@@ -183,7 +183,7 @@ function AssignAttorneyModalComponent(
                         />
                       </td>
                       <td className="assign-attorney-case-count-column">
-                        <div className="usa-fieldset">{Math.random() * 100}</div>
+                        <div className="usa-fieldset">{Math.round(Math.random() * 10)}</div>
                       </td>
                     </tr>
                   );
