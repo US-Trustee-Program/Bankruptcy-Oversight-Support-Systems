@@ -1,5 +1,5 @@
-@description('The name of the Azure SQL database server.')
-param sqlServerName string = 'sql-ustp-cams.database.usgovcloudapi.net'
+@description('Database Name Prefix')
+param databasePrefix string = 'sql-ustp-cams'
 
 @description('The name of the SQL database.')
 param databaseName string = 'ACMS_REP_SUB'
@@ -7,18 +7,13 @@ param databaseName string = 'ACMS_REP_SUB'
 @description('The resource Id of the workspace.')
 param workspaceId string
 
-resource dbServer 'Microsoft.Sql/servers@2021-11-01-preview' existing = {
-  name: sqlServerName
-}
-
-resource db 'Microsoft.Sql/servers/databases@2021-11-01-preview' existing = {
-  parent: dbServer
-  name: databaseName
+resource database 'Microsoft.Sql/servers/databases@2021-11-01-preview' existing = {
+  name: '${databasePrefix}/${databaseName}'
 }
 
 resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: '${databaseName}-diagnostic-setting'
-  scope: db
+  scope: database
   properties: {
     workspaceId: workspaceId
     logs: [
