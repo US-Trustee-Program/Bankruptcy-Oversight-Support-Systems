@@ -1,10 +1,11 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useRef, useImperativeHandle, useState, useEffect } from 'react';
 import Modal, { ModalRefType } from './uswds/Modal';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import React from 'react';
 import Checkbox, { CheckboxRef } from './uswds/Checkbox';
 import Api from '../models/api';
+import { ResponseData } from '../type-declarations/api';
 
 export interface AssignAttorneyModalProps {
   bCase: Chapter15Type | undefined;
@@ -17,6 +18,20 @@ export interface AssignedAttorney {
   id: number;
   name: string;
   caseCount: number;
+}
+
+export interface AttorneyList {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  generation: string;
+  office: string;
+}
+
+export interface AttorneyListResponseData extends ResponseData {
+  body: {
+    attorneyList: Array<AttorneyList>;
+  };
 }
 
 export interface CallBackProps {
@@ -32,7 +47,7 @@ function AssignAttorneyModalComponent(
 ) {
   const modalRef = useRef<ModalRefType>(null);
   const modalHeading = 'Assign Attorney to Chapter 15 Case';
-  const [checkListValues, setCheckListValues] = useState<number[]>([]);
+  const [checkListValues, setCheckListValues] = useState<string[]>([]);
   const actionButtonGroup = {
     modalId: props.modalId,
     modalRef: ref as React.RefObject<ModalRefType>,
@@ -46,15 +61,12 @@ function AssignAttorneyModalComponent(
     },
   };
 
-  const attorneyList: AssignedAttorney[] = [
-    { id: 1, name: 'Alan Shore', caseCount: 3 },
-    { id: 4, name: 'Denny Crane', caseCount: 5 },
-    { id: 5, name: 'Jane Doe', caseCount: 4 },
-    { id: 6, name: 'John Doe', caseCount: 15 },
-    { id: 7, name: 'Roger Morre', caseCount: 256 },
-    { id: 8, name: 'Roger Wilco', caseCount: 5 },
-    { id: 390, name: 'Cee Threepeeo', caseCount: 0 },
-  ];
+  let attorneyList: AttorneyList[] = [];
+  useEffect(() => {
+    Api.list('/attorneys').then((response) => {
+      attorneyList = (response.body as AttorneyListResponseData).body.attorneyList;
+    });
+  }, [attorneyList.length > 0]);
 
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   for (let i = 0; i < attorneyList.length; i++) {
@@ -73,13 +85,13 @@ function AssignAttorneyModalComponent(
     }
   });
 
-  function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, id: number) {
+  function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, name: string) {
     let localCheckListValues = checkListValues;
-    if (ev.target.checked && !checkListValues.includes(id)) {
-      localCheckListValues.push(id);
+    if (ev.target.checked && !checkListValues.includes(name)) {
+      localCheckListValues.push(name);
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
-    } else if (!ev.target.checked && checkListValues.includes(id)) {
-      localCheckListValues = checkListValues.filter((theId) => theId !== id);
+    } else if (!ev.target.checked && checkListValues.includes(name)) {
+      localCheckListValues = checkListValues.filter((theName) => theName !== name);
       modalRef.current?.buttons?.current?.disableSubmitButton(localCheckListValues.length === 0);
     }
     setCheckListValues(localCheckListValues);
@@ -90,6 +102,7 @@ function AssignAttorneyModalComponent(
   }
 
   async function submitValues() {
+    /*
     let finalAttorneyList: AssignedAttorney[] = [];
 
     // call callback from parent with IDs and names of attorneys, and case id.
@@ -123,6 +136,7 @@ function AssignAttorneyModalComponent(
           apiResult: e,
         });
       });
+      */
   }
 
   function onOpen() {
@@ -151,22 +165,26 @@ function AssignAttorneyModalComponent(
           <tbody>
             {attorneyList.length > 0 &&
               attorneyList.map(
-                (attorney: { id: number; name: string; caseCount: number }, idx: number) => {
+                (
+                  attorney: { firstName: string; middleName: string; lastName: string },
+                  idx: number,
+                ) => {
+                  const name = `${attorney.firstName} ${attorney.middleName} ${attorney.lastName}`;
                   return (
                     <tr key={idx}>
                       <td className="assign-attorney-checkbox-column">
                         <Checkbox
                           id={`${idx}-checkbox`}
-                          value={`${attorney.id}`}
-                          onChange={(event) => updateCheckList(event, attorney.id)}
-                          checked={checkListValues.includes(attorney.id)}
+                          value={`${name}`}
+                          onChange={(event) => updateCheckList(event, name)}
+                          checked={checkListValues.includes(name)}
                           className="attorney-list-checkbox"
-                          label={attorney.name}
+                          label={name}
                           ref={checkboxListRefs[idx]}
                         />
                       </td>
                       <td className="assign-attorney-case-count-column">
-                        <div className="usa-fieldset">{attorney.caseCount}</div>
+                        <div className="usa-fieldset">{Math.random() * 100}</div>
                       </td>
                     </tr>
                   );
