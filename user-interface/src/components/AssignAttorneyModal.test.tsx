@@ -1,12 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
+import AssignAttorneyModal from './AssignAttorneyModal';
 import React from 'react';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import { ModalRefType } from './uswds/Modal';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
 import Api from '../models/api';
-import MockUpdateCases from './utils/mock.update-cases';
 
 describe('Test Assign Attorney Modal Component', () => {
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
