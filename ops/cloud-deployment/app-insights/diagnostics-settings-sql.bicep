@@ -1,8 +1,8 @@
 @description('Database Name Prefix')
-param databasePrefix string = 'sql-ustp-cams'
+param databasePrefix string
 
 @description('The name of the SQL database.')
-param databaseName string = 'ACMS_REP_SUB'
+param databaseName string
 
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string

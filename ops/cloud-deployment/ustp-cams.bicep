@@ -62,9 +62,6 @@ param analyticsWorkspaceId string = ''
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
-@description('Flag to create diagnostic setting for sql')
-param createSqlServerDiagnosticSetting bool
-
 module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -143,7 +140,6 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     allowVeracodeScan: allowVeracodeScan
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
     pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
-    createSqlServerDiagnosticSetting: createSqlServerDiagnosticSetting
   }
   dependsOn: [
     ustpWebapp
