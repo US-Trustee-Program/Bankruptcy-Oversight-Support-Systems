@@ -61,15 +61,17 @@ function AssignAttorneyModalComponent(
   };
 
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
+  function setCheckBoxRefs(attorneyList: AttorneyList[]) {
+    for (let i = 0; i < attorneyList.length; i++) {
+      const checkboxRef = useRef<CheckboxRef>(null);
+      checkboxListRefs.push(checkboxRef);
+    }
+  }
   useEffect(() => {
     Api.list('/attorneys').then((response) => {
       const attorneyListResponse = response.body as AttorneyListResponseData;
       setAttorneyList(attorneyListResponse.attorneyList);
-
-      for (let i = 0; i < attorneyList.length; i++) {
-        const checkboxRef = useRef<CheckboxRef>(null);
-        checkboxListRefs.push(checkboxRef);
-      }
+      setCheckBoxRefs(attorneyListResponse.attorneyList);
     });
   }, [attorneyList.length > 0]);
 
