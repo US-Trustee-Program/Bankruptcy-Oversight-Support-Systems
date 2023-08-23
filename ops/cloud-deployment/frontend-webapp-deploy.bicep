@@ -68,6 +68,10 @@ var linuxFxVersionMap = {
   php: 'PHP|8.2'
 }
 
+@description('Filename for nginx server config and must be placed in public folder. Needed for deploying user-interface code when nginx is used.')
+param nginxConfigFilename string = 'nginx.conf'
+var appCommandLine = 'cp /home/site/wwwroot/${nginxConfigFilename} /etc/nginx/sites-enabled/default; service nginx restart'
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
@@ -243,6 +247,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
       }
     ]
     linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
+    appCommandLine: appCommandLine
   }
 }
 
