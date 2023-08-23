@@ -88,7 +88,9 @@ describe('Test Assign Attorney Modal Component', () => {
         body: {},
       });
     });
-    const callbackSpy = vi.spyOn(MockUpdateCases, 'mockCallback');
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const callback = { function: (props: CallBackProps) => {} };
+    const callbackSpy = vi.spyOn(callback, 'function');
 
     const bCase: Chapter15Type = {
       caseNumber: '123',
@@ -110,7 +112,7 @@ describe('Test Assign Attorney Modal Component', () => {
               bCase={bCase}
               modalId={modalId}
               openerId="opener-123"
-              callBack={MockUpdateCases.mockCallback}
+              callBack={callback.function}
             ></AssignAttorneyModal>
           </>
         </BrowserRouter>
