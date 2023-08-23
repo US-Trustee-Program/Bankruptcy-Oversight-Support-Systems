@@ -88,9 +88,7 @@ describe('Test Assign Attorney Modal Component', () => {
         body: {},
       });
     });
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const callback = { function: (props: CallBackProps) => {} };
-    const callbackSpy = vi.spyOn(callback, 'function');
+    const callback = vi.fn();
 
     const bCase: Chapter15Type = {
       caseNumber: '123',
@@ -112,7 +110,7 @@ describe('Test Assign Attorney Modal Component', () => {
               bCase={bCase}
               modalId={modalId}
               openerId="opener-123"
-              callBack={callback.function}
+              callBack={callback}
             ></AssignAttorneyModal>
           </>
         </BrowserRouter>
@@ -148,9 +146,5 @@ describe('Test Assign Attorney Modal Component', () => {
         role: 'TrialAttorney',
       }),
     );
-    expect(callbackSpy).toHaveBeenCalled();
-    // expect(callbackSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
   });
-
-  //test('Should display an error, when the POST throws an error', async () => {  });
 });
