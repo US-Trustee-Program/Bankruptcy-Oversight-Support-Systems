@@ -10,7 +10,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082'],
+      ['John Doe'],
       CaseAssignmentRole.TrialAttorney,
     );
 
@@ -45,7 +45,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082'],
+      ['George Newman'],
       CaseAssignmentRole.TrialAttorney,
     );
     let resultAssignmentId1: number;
@@ -85,13 +85,13 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const testCaseAssignment1 = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082'],
+      ['John Doe'],
       CaseAssignmentRole.TrialAttorney,
     );
 
     const testCaseAssignment2 = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8083'],
+      ['Jane Doe'],
       CaseAssignmentRole.TrialAttorney,
     );
     const assignmentController = new CaseAssignmentController(
@@ -123,7 +123,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to the list of trial attorneys provided.', async () => {
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082', '8092', '8094'],
+      ['George', 'Abraham', 'Samuel'],
       CaseAssignmentRole.TrialAttorney,
     );
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =

@@ -11,7 +11,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyList: ['9082'],
+        attorneyList: ['Bob Bob'],
         role: 'TrialAttorney',
       },
     };
@@ -31,7 +31,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyList: ['2082', '2083'],
+        attorneyList: ['John', 'Rachel'],
         role: 'TrialAttorney',
       },
     };
@@ -51,7 +51,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyList: ['2082', '2082'],
+        attorneyList: ['Jane', 'Jane'],
         role: 'TrialAttorney',
       },
     };
@@ -72,7 +72,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '',
-        attorneyList: ['2082', '2083'],
+        attorneyList: ['Bob', 'Denise'],
         role: 'TrialAttorney',
       },
     };
@@ -108,7 +108,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '909',
-        attorneyList: ['1000'],
+        attorneyList: ['John Doe'],
         role: '',
       },
     };
@@ -126,7 +126,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '909',
-        attorneyList: ['1000'],
+        attorneyList: ['John Doe'],
         role: 'TrialDragon',
       },
     };
@@ -143,7 +143,7 @@ describe('Case Assignment Function Tests', () => {
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
     jest
-      .spyOn(Object.getPrototypeOf(assignmentController), 'createTrailAttorneyAssignments')
+      .spyOn(Object.getPrototypeOf(assignmentController), 'createTrialAttorneyAssignments')
       .mockImplementation(() => {
         throw new Error('Mock Error');
       });
@@ -152,7 +152,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyList: ['2082'],
+        attorneyList: ['John Doe'],
         role: 'TrialAttorney',
       },
     };
@@ -169,12 +169,12 @@ describe('Case Assignment Function Tests', () => {
     const caseId = '6789';
     const request = {
       query: {},
-      body: { caseId: caseId, attorneyList: ['2082'], role: 'TrialAttorney' },
+      body: { caseId: caseId, attorneyList: ['Jane Doe'], role: 'TrialAttorney' },
     };
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
     const createAssignmentRequestSpy = jest.spyOn(
       Object.getPrototypeOf(assignmentController),
-      'createTrailAttorneyAssignments',
+      'createTrialAttorneyAssignments',
     );
     await httpTrigger(context, request);
 
