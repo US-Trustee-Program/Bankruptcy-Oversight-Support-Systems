@@ -76,7 +76,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
   sku: planTypeToSkuMap[planType]
-  kind: 'app'
+  kind: 'app,linux'
   properties: {
     perSiteScaling: false
     elasticScaleEnabled: false
