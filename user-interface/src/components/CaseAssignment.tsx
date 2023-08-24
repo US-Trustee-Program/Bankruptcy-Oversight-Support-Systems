@@ -8,6 +8,8 @@ import { ToggleModalButton } from './uswds/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/Modal';
 import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
+import AttorneysApi from '../models/attorneys-api';
+import { Attorney } from '../type-declarations/attorneys';
 
 const modalId = 'assign-attorney-modal';
 
@@ -28,6 +30,7 @@ export const CaseAssignment = () => {
     message: string;
     type: UswdsAlertStyle;
   }>({ message: '', type: UswdsAlertStyle.Success });
+  const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
@@ -40,7 +43,7 @@ export const CaseAssignment = () => {
       })
       .then((res) => {
         const chapter15Response = res as Chapter15CaseListResponseData;
-        const sortedList = chapter15Response.body.caseList.sort((a, b): number => {
+        const sortedList = chapter15Response?.body?.caseList?.sort((a, b): number => {
           const recordA: Chapter15Type = a as Chapter15Type;
           const recordB: Chapter15Type = b as Chapter15Type;
           if (recordA.dateFiled < recordB.dateFiled) {
@@ -51,8 +54,11 @@ export const CaseAssignment = () => {
             return 0;
           }
         });
-        setCaseList(sortedList);
+        setCaseList(sortedList || []);
         setIsLoading(false);
+      })
+      .catch((reason) => {
+        console.log((reason as Error).message);
       });
   };
 
@@ -67,6 +73,19 @@ export const CaseAssignment = () => {
       setCaseListUpdated(false);
     }
   }, [caseListUpdated]);
+
+  useEffect(() => {
+    AttorneysApi.getAttorneys().then((response) => {
+      const attorneys = response.map((atty) => {
+        const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
+        if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
+        if (atty.generation !== undefined) attorney.generation = atty.generation;
+        if (atty.caseCount !== undefined) attorney.caseCount = atty.caseCount;
+        return attorney;
+      });
+      setAttorneyList(attorneys);
+    });
+  }, [attorneyList.length > 0]);
 
   const openModal = (theCase: Chapter15Type, openerId: string) => {
     setBCase(theCase);
@@ -83,7 +102,9 @@ export const CaseAssignment = () => {
       const tempCaseList = caseList;
       tempCaseList.forEach((theCase) => {
         if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
-          (theCase as Chapter15Type).attorneyList = selectedAttorneyList;
+          (theCase as Chapter15Type).attorneyList = selectedAttorneyList.map((atty) => {
+            return atty.name;
+          });
         }
       });
       if (bCase) {
@@ -103,7 +124,7 @@ export const CaseAssignment = () => {
       <div className="case-assignment case-list">
         <h1>{screenTitle}</h1>
         <h2>{subTitle}</h2>
-        <p>Loading...</p>
+        <p data-testid="loading-indicator">Loading...</p>
       </div>
     );
   } else {
@@ -163,7 +184,7 @@ export const CaseAssignment = () => {
                         )}
                         {theCase.attorneyList?.map((attorney) => (
                           <>
-                            {attorney.name}
+                            {attorney}
                             <br />
                           </>
                         ))}
@@ -174,13 +195,16 @@ export const CaseAssignment = () => {
             </tbody>
           </table>
         </div>
-        <AssignAttorneyModal
-          ref={modalRef}
-          bCase={bCase}
-          modalId={`${modalId}`}
-          openerId={modalOpenerId}
-          callBack={updateCase}
-        ></AssignAttorneyModal>
+        {attorneyList.length > 0 && (
+          <AssignAttorneyModal
+            ref={modalRef}
+            attorneyList={attorneyList}
+            bCase={bCase}
+            modalId={`${modalId}`}
+            openerId={modalOpenerId}
+            callBack={updateCase}
+          ></AssignAttorneyModal>
+        )}
       </>
     );
   }
