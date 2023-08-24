@@ -13,9 +13,12 @@ const EXISTING_ASSIGNMENT_FOUND =
 export class CaseAssignment {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
 
-  constructor(assignmentRepository?: CaseAssignmentRepositoryInterface) {
+  constructor(
+    context: ApplicationContext,
+    assignmentRepository?: CaseAssignmentRepositoryInterface,
+  ) {
     if (!assignmentRepository) {
-      this.assignmentRepository = getAssignmentRepository();
+      this.assignmentRepository = getAssignmentRepository(context);
     } else {
       this.assignmentRepository = assignmentRepository;
     }

@@ -6,5 +6,6 @@ export function applicationContextCreator(functionContext: Context) {
   return {
     ...functionContext,
     config: new ApplicationConfiguration(),
+    caseAssignmentRepository: {},
   } as ApplicationContext;
 }
