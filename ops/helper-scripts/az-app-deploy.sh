@@ -72,4 +72,9 @@ fi
 sleep 15s
 
 az webapp up --html --os-type linux -n $app_name
+
+# Alternative workaround to set Azure app service container runtime
+az webapp config set -g $app_rg -n $app_name --linux-fx-version "PHP|8.2" 1>/dev/null
+sleep 15s
+
 popd
