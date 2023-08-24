@@ -1,9 +1,9 @@
 const list = {
   attorneyList: [
     {
-      firstName: 'Susan               ',
+      firstName: 'Susan',
       middleName: '',
-      lastName: 'Arbeit                       ',
+      lastName: 'Arbeit',
       generation: '',
       office: 'Manhattan',
     },
@@ -43,7 +43,7 @@ const list = {
       office: 'Manhattan',
     },
     {
-      firstName: 'Paul ',
+      firstName: 'Paul',
       middleName: 'K',
       lastName: 'Schwartzberg',
       generation: '',

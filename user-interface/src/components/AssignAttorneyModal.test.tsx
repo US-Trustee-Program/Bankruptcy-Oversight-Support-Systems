@@ -6,8 +6,23 @@ import { Chapter15Type } from '../type-declarations/chapter-15';
 import { ModalRefType } from './uswds/Modal';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
 import Api from '../models/api';
+import { Attorney } from '../type-declarations/attorneys';
 
 describe('Test Assign Attorney Modal Component', () => {
+  let susan: Attorney;
+  let mark: Attorney;
+  let shara: Attorney;
+  let brian: Attorney;
+  let attorneyList: Attorney[] = [];
+
+  beforeEach(() => {
+    susan = new Attorney('Susan', 'Arbeit', 'Manhattan');
+    mark = new Attorney('Mark', 'Bruh', 'Manhattan');
+    shara = new Attorney('Shara', 'Cornell', 'Manhattan');
+    brian = new Attorney('Brian', 'Masumoto', 'Manhattan', { middleName: 'S' });
+    attorneyList = [susan, mark, shara, brian];
+  });
+
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
     const bCase: Chapter15Type = {
       caseNumber: '123',
@@ -27,6 +42,7 @@ describe('Test Assign Attorney Modal Component', () => {
             </ToggleModalButton>
             <AssignAttorneyModal
               ref={modalRef}
+              attorneyList={attorneyList}
               bCase={bCase}
               modalId={modalId}
               openerId="opener-123"
@@ -106,6 +122,7 @@ describe('Test Assign Attorney Modal Component', () => {
             </ToggleModalButton>
             <AssignAttorneyModal
               ref={modalRef}
+              attorneyList={attorneyList}
               bCase={bCase}
               modalId={modalId}
               openerId="opener-123"
@@ -140,7 +157,11 @@ describe('Test Assign Attorney Modal Component', () => {
     expect(postSpy).toHaveBeenCalledWith(
       '/case-assignments',
       expect.objectContaining({
-        attorneyIdList: expect.arrayContaining(['4', '5', '6']),
+        attorneyList: expect.arrayContaining([
+          mark.getFullName(),
+          shara.getFullName(),
+          brian.getFullName(),
+        ]),
         caseId: '123',
         role: 'TrialAttorney',
       }),
