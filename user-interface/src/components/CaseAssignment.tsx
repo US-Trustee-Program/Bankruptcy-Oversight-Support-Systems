@@ -103,13 +103,13 @@ export const CaseAssignment = () => {
       tempCaseList.forEach((theCase) => {
         if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
           (theCase as Chapter15Type).attorneyList = selectedAttorneyList.map((atty) => {
-            return atty.name;
+            return atty;
           });
         }
       });
       if (bCase) {
         const alertMessage = `${selectedAttorneyList
-          .map((attorney) => attorney.name)
+          .map((attorney) => attorney)
           .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
         setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
         alertRef.current?.show();
