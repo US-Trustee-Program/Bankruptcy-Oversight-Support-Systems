@@ -46,7 +46,7 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
   });
-  test('handle any duplicate attorney Ids passed in the request, not create duplicate assignments', async () => {
+  test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
     const request = {
       query: {},
       body: {
