@@ -178,16 +178,8 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
 var applicationSettings = concat([],
   deployAppInsights ? [
     {
-      name: 'WEBSITE_NODE_DEFAULT_VERSION'
-      value: '18'
-    }
-    {
       name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
       value: '~2'
-    }
-    {
-      name: 'XDT_MicrosoftApplicationInsights_NodeJS'
-      value: '1'
     }
     {
       name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
