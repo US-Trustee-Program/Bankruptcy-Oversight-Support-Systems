@@ -16,18 +16,13 @@ export interface AssignAttorneyModalProps {
   callBack: (props: CallBackProps) => void;
 }
 
-export interface AssignedAttorney {
-  name: string;
-  caseCount?: number; // do we need this here?
-}
-
 export interface AttorneyListResponseData extends ResponseData {
   attorneyList: Array<AttorneyInfo>;
 }
 
 export interface CallBackProps {
   bCase: Chapter15Type | undefined;
-  selectedAttorneyList: AssignedAttorney[];
+  selectedAttorneyList: string[];
   status: 'success' | 'error';
   apiResult: object;
 }
@@ -85,24 +80,21 @@ function AssignAttorneyModalComponent(
   }
 
   async function submitValues() {
-    let finalAttorneyList: AssignedAttorney[] = [];
+    let finalAttorneyList: string[] = [];
 
     // call callback from parent with IDs and names of attorneys, and case id.
     finalAttorneyList = props.attorneyList
       .filter((attorney) => checkListValues.includes(attorney.getFullName()))
       .map((atty) => {
-        return {
-          name: atty.getFullName(),
-        };
+        return atty.getFullName();
       });
 
     setCheckListValues([]);
 
     // send attorney IDs to API
-    const attorneyNames = finalAttorneyList.map((atty) => atty.name);
     await Api.post('/case-assignments', {
       caseId: props.bCase?.caseNumber,
-      attorneyList: attorneyNames,
+      attorneyList: finalAttorneyList,
       role: 'TrialAttorney',
     })
       .then((result) => {

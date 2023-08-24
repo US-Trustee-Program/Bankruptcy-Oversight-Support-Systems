@@ -11,7 +11,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyIdList: ['9082'],
+        attorneyList: ['9082'],
         role: 'TrialAttorney',
       },
     };
@@ -31,7 +31,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyIdList: ['2082', '2083'],
+        attorneyList: ['2082', '2083'],
         role: 'TrialAttorney',
       },
     };
@@ -51,7 +51,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyIdList: ['2082', '2082'],
+        attorneyList: ['2082', '2082'],
         role: 'TrialAttorney',
       },
     };
@@ -72,7 +72,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '',
-        attorneyIdList: ['2082', '2083'],
+        attorneyList: ['2082', '2083'],
         role: 'TrialAttorney',
       },
     };
@@ -85,17 +85,17 @@ describe('Case Assignment Function Tests', () => {
     expect(appContext.res.statusCode).toBe(400);
   });
 
-  test('returns bad request 400 when a AttorneyIdList is empty or not passed in the request', async () => {
+  test('returns bad request 400 when a attorneyList is empty or not passed in the request', async () => {
     const request = {
       query: {},
       body: {
         caseId: '909',
-        attorneyIdList: [],
+        attorneyList: [],
         role: 'TrialAttorney',
       },
     };
     const expectedResponse = {
-      error: 'Required parameter attorneyId is absent.',
+      error: 'Required parameter attorneyList is absent.',
     };
 
     await httpTrigger(appContext, request);
@@ -108,7 +108,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '909',
-        attorneyIdList: ['1000'],
+        attorneyList: ['1000'],
         role: '',
       },
     };
@@ -126,7 +126,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '909',
-        attorneyIdList: ['1000'],
+        attorneyList: ['1000'],
         role: 'TrialDragon',
       },
     };
@@ -152,7 +152,7 @@ describe('Case Assignment Function Tests', () => {
       query: {},
       body: {
         caseId: '6789',
-        attorneyIdList: ['2082'],
+        attorneyList: ['2082'],
         role: 'TrialAttorney',
       },
     };
@@ -169,7 +169,7 @@ describe('Case Assignment Function Tests', () => {
     const caseId = '6789';
     const request = {
       query: {},
-      body: { caseId: caseId, attorneyIdList: ['2082'], role: 'TrialAttorney' },
+      body: { caseId: caseId, attorneyList: ['2082'], role: 'TrialAttorney' },
     };
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
     const createAssignmentRequestSpy = jest.spyOn(
