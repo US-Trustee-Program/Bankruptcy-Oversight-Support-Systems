@@ -11,6 +11,7 @@ import { PacerSecretsGateway } from './adapters/gateways/pacer-secrets.gateway';
 import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
+import { ApplicationContext } from './adapters/types/basic';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -46,10 +47,18 @@ export const getPacerTokenSecretGateway = (): PacerSecretsInterface => {
   return new PacerSecretsGateway();
 };
 
-export const getAssignmentRepository = (): CaseAssignmentRepositoryInterface => {
+export const getAssignmentRepository = (
+  context: ApplicationContext,
+): CaseAssignmentRepositoryInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
   if (config.get('dbMock')) {
-    return new CaseAssignmentLocalRepository();
+    if (Object.keys(context.caseAssignmentRepository).length !== 0) {
+      return context.caseAssignmentRepository;
+    } else {
+      const repo = new CaseAssignmentLocalRepository();
+      context.caseAssignmentRepository = repo;
+      return context.caseAssignmentRepository;
+    }
   } else {
     return new CaseAssignmentLocalRepository(); // to be replaced with the cosmosdb repository, once implemented.
   }
