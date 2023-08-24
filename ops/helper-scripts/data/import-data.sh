@@ -10,7 +10,7 @@
 # Other Notes:
 #       - For future refactoring or managing csv, the following might be of interest: https://csvkit.readthedocs.io/en/latest/index.html
 #
-# Usage:
+# Usage:        import-data.sh -S <server> -D <database> -T <table>  -u <user>  --delimiter "|" -f <filepathToCsv>
 #
 # Exitcodes
 # ==========
@@ -18,11 +18,6 @@
 # 2     Unknown flag/switch
 # +10   Validation check errors
 #
-
-
-
-#bcp ${table} in ${filepath} -S ${server} -d ${database} -U ${user} -e err-${database}-${table}.out -c -t "|" -r "0x0a"
-
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 bcp -v # check that utility is installed
@@ -78,12 +73,9 @@ if [ -z "${filepath}" ]; then
     exit 11
 fi
 
-# # create temporary copy of import file in current working directory
-# cp ${filepath} ./${filepath}-tmp
-
 if [[ "${delimiter}" == "," ]]; then
     echo "Convert delimiter [${delimiter}] to pipes"
-    sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' < ./${filepath} 1> ${filepath}-tmp
+    sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' <./${filepath} 1>${filepath}-tmp
     delimiter="|"
 fi
 
@@ -101,6 +93,6 @@ echo "Executing bcp command"
 #     -t "|" \                                      # Choose a pipe (|) as the delimiter
 #     -r "0x0a"                                     # Specify row terminator in hexadecimall format
 
-bcp ${table} in ${filepath}-tmp -S ${server} -d ${database} -U ${user} -e err-${database}-${table}.out  -c -t "|" -r "0x0a"
+bcp ${table} in ${filepath}-tmp -S ${server} -d ${database} -U ${user} -e err-${database}-${table}.out -c -t "|" -r "0x0a"
 
 echo "Completed exported command execution"
