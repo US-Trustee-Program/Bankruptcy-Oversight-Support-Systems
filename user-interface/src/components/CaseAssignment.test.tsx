@@ -13,6 +13,9 @@ import * as httpAdapter from '../components/utils/http.adapter';
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)
 
+const sleep = (milliseconds: number) =>
+  new Promise((callback) => setTimeout(callback, milliseconds));
+
 describe('CaseAssignment Component Tests', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_PA11Y', 'true');
@@ -26,30 +29,30 @@ describe('CaseAssignment Component Tests', () => {
           getAttorneys: async () => {
             return [
               {
-                firstName: 'Susan',
+                firstName: 'Martha',
                 middleName: '',
-                lastName: 'Arbeit',
+                lastName: 'Mock',
                 generation: '',
                 office: 'Manhattan',
               },
               {
-                firstName: 'Mark',
+                firstName: 'John',
                 middleName: '',
-                lastName: 'Bruh',
+                lastName: 'Doe',
                 generation: '',
                 office: 'Manhattan',
               },
               {
-                firstName: 'Shara',
+                firstName: 'Roger',
                 middleName: '',
-                lastName: 'Cornell',
+                lastName: 'Wilco',
                 generation: '',
                 office: 'Manhattan',
               },
               {
-                firstName: 'Brian',
-                middleName: 'S',
-                lastName: 'Masumoto',
+                firstName: 'Obi',
+                middleName: 'Wan',
+                lastName: 'Kenobi',
                 generation: '',
                 office: 'Manhattan',
               },
@@ -201,18 +204,24 @@ describe('CaseAssignment Component Tests', () => {
     );
 
     let assignButton: HTMLButtonElement;
-    await waitFor(async () => {
-      assignButton = screen.getByTestId('toggle-modal-button-1');
-      expect(assignButton).toBeInTheDocument();
-    }).then(() => {
+    await waitFor(
+      async () => {
+        assignButton = screen.getByTestId('toggle-modal-button-1');
+        expect(assignButton).toBeInTheDocument();
+      },
+      { timeout: 150 },
+    ).then(() => {
       act(() => {
         fireEvent.click(assignButton);
       });
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('checkbox-1-checkbox')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('checkbox-1-checkbox')).toBeInTheDocument();
+      },
+      { timeout: 100 },
+    );
 
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
@@ -256,15 +265,18 @@ describe('CaseAssignment Component Tests', () => {
     });
 
     const alert = screen.getByTestId('alert');
+    const alertMessage = screen.getByTestId('alert-message');
 
-    await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
-    }).then(() => {
+    await waitFor(
+      () => {
+        expect(alert).toHaveClass('usa-alert__visible');
+      },
+      { timeout: 5 },
+    ).then(() => {
       expect(alert).toHaveAttribute('role', 'status');
       expect(alert).toHaveClass('usa-alert--success');
-      const alertMessage = screen.getByTestId('alert-message');
       expect(alertMessage).toContainHTML(
-        'Denny Crane, Jane Doe assigned to case 23-44462 Bridget Maldonado',
+        'John Doe, Roger Wilco assigned to case 23-44462 Bridget Maldonado',
       );
     });
   }, 10000);
