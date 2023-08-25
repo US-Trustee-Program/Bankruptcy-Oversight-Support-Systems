@@ -91,7 +91,7 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
     cosmosDbUserManagedIdentity
   ]
 }
-module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = {
+module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
   name: '${accountName}-cosmos-diagnostic-setting-module'
   scope: resourceGroup(resourceGroupName)
   params: {
