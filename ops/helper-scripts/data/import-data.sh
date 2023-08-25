@@ -73,33 +73,36 @@ if [ -z "${filepath}" ]; then
     exit 11
 fi
 
-# Convert to a pipe delimited data file
-if [[ "${delimiter}" == "," ]]; then
+targetFilepath=${filepath}
+
+# Check and handle non pipeline delimited files
+if [[ "${delimiter}" == "|" ]]; then
+    echo "Handle data file at ${filepath} as a pipe delimited file."
+elif [[ "${delimiter}" == "," ]]; then
     echo "Convert delimiter [${delimiter}] to pipes"
     sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' <./${filepath} 1>${filepath}-tmp-1
+    targetFilepath=${filepath}-tmp-1
     delimiter="|"
-fi
-
-if [[ "${delimiter}" != "|" ]]; then
+else
     echo "Error: Unsupported delimiter [${delimiter}]"
     exit 12
 fi
 
 # Clean up possible quotes right after/before pipe delimiter
-sed -Ee :1 -e 's/(\|{1}"{1})|("{1}\|{1})/|/;t1' <./${filepath}-tmp-1 1>${filepath}-tmp-2
+sed -Ee :1 -e 's/(\|{1}"{1})|("{1}\|{1})/|/;t1' <./${targetFilepath} 1>${filepath}-tmp-2
+targetFilepath=${filepath}-tmp-2
 
 echo "Executing bcp command"
-# bcp ${table} in ${filepath}-tmp \
+# bcp ${table} in ${targetFilepath} \
 #     -S ${server} -d ${database} -U ${user} \      # Database connection parameters. Password will be prompted
 #     -e err-${database}-${table}.out \             # Output file with detail of errors
 #     -c \                                          # Perform bcp operation using a character type. See docs for more details.
 #     -t "|" \                                      # Choose a pipe (|) as the delimiter
 #     -r "0x0a"                                     # Specify row terminator in hexadecimall format
-bcp ${table} in ${filepath}-tmp-2 -S ${server} -d ${database} -U ${user} -e err-${database}-${table}.out -c -t "|" -r "0x0a"
+bcp ${table} in ${targetFilepath} -S ${server} -d ${database} -U ${user} -e err-${database}-${table}.out -c -t "|" -r "0x0a"
 echo "Completed exported command execution"
 
 echo "Cleaning up temporary files"
-rm ${filepath}-tmp-1
-rm ${filepath}-tmp-2
+rm ./${filepath}-tmp-*
 
 echo "DONE"
