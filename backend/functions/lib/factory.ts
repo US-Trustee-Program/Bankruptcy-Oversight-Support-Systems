@@ -52,11 +52,13 @@ export const getAssignmentRepository = (
 ): CaseAssignmentRepositoryInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
   if (config.get('dbMock')) {
-    if (Object.keys(context.caseAssignmentRepository).length !== 0) {
+    console.log('===DEBUG=== data is being mocked');
+    if (Object.prototype.hasOwnProperty.call(context.caseAssignmentRepository, 'getCount')) {
+      console.log('===DEBUG=== Repository is already initialized.');
       return context.caseAssignmentRepository;
     } else {
-      const repo = new CaseAssignmentLocalRepository();
-      context.caseAssignmentRepository = repo;
+      console.log('===DEBUG=== Repository is being NEWLY initialized.');
+      context.caseAssignmentRepository = new CaseAssignmentLocalRepository();
       return context.caseAssignmentRepository;
     }
   } else {
