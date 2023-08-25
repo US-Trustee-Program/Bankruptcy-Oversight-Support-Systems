@@ -179,95 +179,95 @@ describe('CaseAssignment Component Tests', () => {
     );
   });
 
-  // test('should display success alert after creating assignments', async () => {
-  //   vi.spyOn(Chapter15MockApi, 'list')
-  //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //     .mockImplementation((_path: string): Promise<ResponseData> => {
-  //       return Promise.resolve({
-  //         message: '',
-  //         count: Chapter15MockApi.caseList.length,
-  //         body: {
-  //           caseList: Chapter15MockApi.caseList,
-  //         },
-  //       });
-  //     });
-  //
-  //   render(
-  //     <BrowserRouter>
-  //       <Provider store={store}>
-  //         <CaseAssignment />
-  //       </Provider>
-  //     </BrowserRouter>,
-  //   );
-  //
-  //   let assignButton: HTMLButtonElement;
-  //   await waitFor(async () => {
-  //     assignButton = screen.getByTestId('toggle-modal-button-1');
-  //     expect(assignButton).toBeInTheDocument();
-  //   }).then(() => {
-  //     act(() => {
-  //       fireEvent.click(assignButton);
-  //     });
-  //   });
-  //
-  //   await waitFor(() => {
-  //     expect(screen.getByTestId('checkbox-1-checkbox')).toBeInTheDocument();
-  //   });
-  //
-  //   const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
-  //   const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-  //
-  //   act(() => {
-  //     fireEvent.click(checkbox1);
-  //     fireEvent.click(checkbox2);
-  //   });
-  //
-  //   vi.spyOn(httpAdapter, 'httpPost').mockResolvedValue({
-  //     ok: true,
-  //     json: () => Promise.resolve('{"message": "success","count": 5,"body": ["1"]}'),
-  //     headers: new Headers(),
-  //     redirected: false,
-  //     status: 0,
-  //     statusText: '',
-  //     type: 'error',
-  //     url: '',
-  //     clone: function (): Response {
-  //       throw new Error('Function not implemented.');
-  //     },
-  //     body: null,
-  //     bodyUsed: false,
-  //     arrayBuffer: function (): Promise<ArrayBuffer> {
-  //       throw new Error('Function not implemented.');
-  //     },
-  //     blob: function (): Promise<Blob> {
-  //       throw new Error('Function not implemented.');
-  //     },
-  //     formData: function (): Promise<FormData> {
-  //       throw new Error('Function not implemented.');
-  //     },
-  //     text: function (): Promise<string> {
-  //       throw new Error('Function not implemented.');
-  //     },
-  //   });
-  //
-  //   const submitButton = screen.getByTestId('toggle-modal-button-submit');
-  //   act(() => {
-  //     fireEvent.click(submitButton);
-  //   });
-  //
-  //   const alert = screen.getByTestId('alert');
-  //
-  //   await waitFor(() => {
-  //     expect(alert).toHaveClass('usa-alert__visible');
-  //   }).then(() => {
-  //     expect(alert).toHaveAttribute('role', 'status');
-  //     expect(alert).toHaveClass('usa-alert--success');
-  //     const alertMessage = screen.getByTestId('alert-message');
-  //     expect(alertMessage).toContainHTML(
-  //       'Denny Crane, Jane Doe assigned to case 23-44462 Bridget Maldonado',
-  //     );
-  //   });
-  // }, 10000);
+  test('should display success alert after creating assignments', async () => {
+    vi.spyOn(Chapter15MockApi, 'list')
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .mockImplementation((_path: string): Promise<ResponseData> => {
+        return Promise.resolve({
+          message: '',
+          count: Chapter15MockApi.caseList.length,
+          body: {
+            caseList: Chapter15MockApi.caseList,
+          },
+        });
+      });
+
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseAssignment />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    let assignButton: HTMLButtonElement;
+    await waitFor(async () => {
+      assignButton = screen.getByTestId('toggle-modal-button-1');
+      expect(assignButton).toBeInTheDocument();
+    }).then(() => {
+      act(() => {
+        fireEvent.click(assignButton);
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('checkbox-1-checkbox')).toBeInTheDocument();
+    });
+
+    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
+    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
+
+    act(() => {
+      fireEvent.click(checkbox1);
+      fireEvent.click(checkbox2);
+    });
+
+    vi.spyOn(httpAdapter, 'httpPost').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve('{"message": "success","count": 5,"body": ["1"]}'),
+      headers: new Headers(),
+      redirected: false,
+      status: 0,
+      statusText: '',
+      type: 'error',
+      url: '',
+      clone: function (): Response {
+        throw new Error('Function not implemented.');
+      },
+      body: null,
+      bodyUsed: false,
+      arrayBuffer: function (): Promise<ArrayBuffer> {
+        throw new Error('Function not implemented.');
+      },
+      blob: function (): Promise<Blob> {
+        throw new Error('Function not implemented.');
+      },
+      formData: function (): Promise<FormData> {
+        throw new Error('Function not implemented.');
+      },
+      text: function (): Promise<string> {
+        throw new Error('Function not implemented.');
+      },
+    });
+
+    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+
+    const alert = screen.getByTestId('alert');
+
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert__visible');
+    }).then(() => {
+      expect(alert).toHaveAttribute('role', 'status');
+      expect(alert).toHaveClass('usa-alert--success');
+      const alertMessage = screen.getByTestId('alert-message');
+      expect(alertMessage).toContainHTML(
+        'Denny Crane, Jane Doe assigned to case 23-44462 Bridget Maldonado',
+      );
+    });
+  }, 10000);
 
   // TODO: Add test to validate error alert after failing to create assignments
   // TODO: Add test to validate attorney names show in table

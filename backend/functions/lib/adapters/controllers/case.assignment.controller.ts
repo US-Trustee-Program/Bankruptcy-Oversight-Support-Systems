@@ -34,7 +34,10 @@ export class CaseAssignmentController {
         );
         listOfAssignments.push(assignment);
       });
-      const assignmentService = new CaseAssignment(this.caseAssignmentRepository);
+      const assignmentService = new CaseAssignment(
+        this.applicationContext,
+        this.caseAssignmentRepository,
+      );
       return assignmentService.createTrialAttorneyAssignments(
         this.applicationContext,
         listOfAssignments,
