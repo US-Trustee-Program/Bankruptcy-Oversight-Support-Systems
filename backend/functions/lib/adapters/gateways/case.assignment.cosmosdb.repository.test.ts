@@ -34,5 +34,17 @@ describe('Test case assignment cosmosdb repository tests', () => {
     // expect(actualAssignment.attorneyName).toEqual(testCaseAttorneyAssignment.attorneyName);
     // expect(actualAssignment.caseTitle).toEqual(testCaseAttorneyAssignment.caseTitle);
   });
+
+  test('Find case assignment by case id', async () => {
+    const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
+      new CaseAssignmentCosmosDbRepository();
+
+    const actualAssignment = await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(
+      '123',
+    );
+
+    expect(actualAssignment.length).toEqual(2);
+  });
+
   test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
 });

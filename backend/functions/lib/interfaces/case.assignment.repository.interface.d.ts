@@ -10,5 +10,5 @@ export interface CaseAssignmentRepositoryInterface {
   getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment>;
   findAssignment(caseAssignment: CaseAttorneyAssignment): Promise<CaseAttorneyAssignment>;
   getCount(): Promise<number>;
-  findAssignmentByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]>;
+  findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]>;
 }
