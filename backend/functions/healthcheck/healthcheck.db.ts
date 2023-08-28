@@ -1,18 +1,16 @@
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import log from '../lib/adapters/services/logger.service';
 
-import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
 import { CosmosClient } from '@azure/cosmos';
 
 import * as dotenv from 'dotenv';
+import { getCosmosDbClient } from '../lib/factory';
 
 dotenv.config();
 
 const NAMESPACE = 'HEALTHCHECK-COSMOS-DB';
 
 export default class HealthcheckCosmosDb {
-  private readonly dbEndpoint = process.env.COSMOS_ENDPOINT;
-  private readonly managedId = process.env.COSMOS_MANAGED_IDENTITY;
   private readonly databaseName = process.env.COSMOS_DATABASE_NAME;
 
   private CONTAINER_NAME = 'healthcheck'; // NOTE: Expect a container named 'healthcheck' with one item
@@ -23,14 +21,7 @@ export default class HealthcheckCosmosDb {
   constructor(applicationContext: ApplicationContext) {
     try {
       this.ctx = applicationContext;
-      this.cosmosDbClient = new CosmosClient({
-        endpoint: this.dbEndpoint,
-        aadCredentials: this.managedId
-          ? new ManagedIdentityCredential({
-              clientId: this.managedId,
-            })
-          : new DefaultAzureCredential(),
-      });
+      this.cosmosDbClient = getCosmosDbClient();
     } catch (e) {
       log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
     }
