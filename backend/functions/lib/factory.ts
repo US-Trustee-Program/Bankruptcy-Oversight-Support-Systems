@@ -12,7 +12,7 @@ import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interfa
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
 import { ApplicationContext } from './adapters/types/basic';
-// import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
+import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
 import { CosmosClient } from '@azure/cosmos';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
@@ -70,14 +70,14 @@ export const getAssignmentRepository = (
 };
 
 export const getCosmosDbClient = (): CosmosClient => {
-  // return new CosmosClient({
-  //   endpoint: this.dbEndpoint,
-  //   aadCredentials: this.managedId
-  //     ? new ManagedIdentityCredential({
-  //         clientId: this.managedId,
-  //       })
-  //     : new DefaultAzureCredential(),
-  // });
-
-  return null;
+  // TODO: evaluate whether this should be a singleton
+  const config: ApplicationConfiguration = new ApplicationConfiguration();
+  return new CosmosClient({
+    endpoint: config.get('cosmosConfig').endpoint,
+    aadCredentials: config.get('cosmosConfig').managedIdentity
+      ? new ManagedIdentityCredential({
+          clientId: config.get('cosmosConfig').managedIdentity,
+        })
+      : new DefaultAzureCredential(),
+  });
 };

@@ -1,8 +1,15 @@
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
+import { getCosmosDbClient } from '../../factory';
 
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
+  private cosmosDbClient;
+
+  constructor() {
+    this.cosmosDbClient = getCosmosDbClient();
+  }
+
   createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
