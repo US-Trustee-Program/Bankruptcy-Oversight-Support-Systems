@@ -62,6 +62,15 @@ param analyticsWorkspaceId string = ''
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
+param createActionGroup bool = false
+
+param actionGroupName string = 'EmailDevTeam'
+module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
+  name: '${actionGroupName}-action-group-module'
+  params: {
+    actionGroupName: actionGroupName
+  }
+}
 module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
