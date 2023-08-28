@@ -12,6 +12,8 @@ import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interfa
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
 import { ApplicationContext } from './adapters/types/basic';
+// import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
+import { CosmosClient } from '@azure/cosmos';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -65,4 +67,17 @@ export const getAssignmentRepository = (
   } else {
     return new CaseAssignmentLocalRepository(); // to be replaced with the cosmosdb repository, once implemented.
   }
+};
+
+export const getCosmosDbClient = (): CosmosClient => {
+  // return new CosmosClient({
+  //   endpoint: this.dbEndpoint,
+  //   aadCredentials: this.managedId
+  //     ? new ManagedIdentityCredential({
+  //         clientId: this.managedId,
+  //       })
+  //     : new DefaultAzureCredential(),
+  // });
+
+  return null;
 };
