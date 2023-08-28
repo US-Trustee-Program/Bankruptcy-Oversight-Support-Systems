@@ -101,7 +101,6 @@ param deployAppInsights bool = false
 
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
-
 /*
   App service plan (hosting plan) for Azure functions instances
 */
