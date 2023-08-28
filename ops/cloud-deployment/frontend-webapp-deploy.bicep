@@ -128,6 +128,9 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
   }
 }
 
+module alertRule './monitoring-alerts/health-check-alert-rule.bicep' = {
+  name: '${webappName}-healthcheck-alert-rule-module'
+}
 module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
   name: '${webappName}-diagnostic-settings-module'
   params: {
