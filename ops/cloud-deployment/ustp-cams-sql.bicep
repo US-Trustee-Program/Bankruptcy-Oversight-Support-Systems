@@ -10,8 +10,8 @@ param databasePrefix string
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string
 
-module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bicep' = if (createSqlServerDiagnosticSetting) {
-  name: '${databaseName}-sql-diagnostics-settings'
+module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bicep' = if (createSqlServerDiagnosticSetting && !empty(analyticsWorkspaceId)) {
+  name: '${databaseName}-sql-diagnostics-settings-module'
   params: {
     databaseName: databaseName
     databasePrefix: databasePrefix
