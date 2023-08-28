@@ -16,6 +16,8 @@ param databaseContainers array = [
 @description('Allowed subnet resource id')
 param allowedSubnet string = ''
 
+@description('The resource Id of the workspace.')
+param analyticsWorkspaceId string = ''
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -87,6 +89,19 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
     account
     customReadWriteRole
     cosmosDbUserManagedIdentity
+  ]
+}
+module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
+  name: '${accountName}-cosmos-diagnostic-setting-module'
+  scope: resourceGroup(resourceGroupName)
+  params: {
+    settingName: '${accountName}-diagnostic-setting'
+    analyticsWorkspaceId: analyticsWorkspaceId
+    accountName: accountName
+  }
+  dependsOn: [
+    database
+    containers
   ]
 }
 
