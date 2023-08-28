@@ -5,7 +5,7 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
-describe('Test case assignment cosmosdb repository tests', async () => {
+describe('Test case assignment cosmosdb repository tests', () => {
   test('Should persist case assignment', async () => {
     const testCaseAttorneyAssignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       '123',
