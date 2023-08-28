@@ -68,6 +68,7 @@ export class ApplicationConfiguration implements AppConfig {
     return {
       endpoint: process.env.COSMOS_ENDPOINT,
       managedIdentity: process.env.COSMOS_MANAGED_IDENTITY,
+      databaseName: process.env.COSMOS_DATABASE_NAME,
     };
   }
 
