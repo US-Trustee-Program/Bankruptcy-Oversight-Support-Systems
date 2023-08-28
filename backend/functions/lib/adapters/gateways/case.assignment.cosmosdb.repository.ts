@@ -30,7 +30,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
       log.debug(context, NAMESPACE, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(context, NAMESPACE, `${e.name}: ${e.message}`);
+      log.error(context, NAMESPACE, `${e.code} : ${e.name} : ${e.message}`);
       if (e.code === '403') {
         throw new Error('Request is forbidden');
       } else throw e;
@@ -48,7 +48,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     throw new Error('Method not implemented.');
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  findAssignmentByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+  findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     throw new Error('Method not implemented.');
   }
 }

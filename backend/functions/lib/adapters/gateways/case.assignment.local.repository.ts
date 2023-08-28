@@ -54,7 +54,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return this.caseAttorneyAssignments.length;
   }
 
-  public async findAssignmentByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+  public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     return this.caseAttorneyAssignments.filter((assignment) => assignment.caseId === caseId);
   }
 }
