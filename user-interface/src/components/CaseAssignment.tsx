@@ -87,9 +87,9 @@ export const CaseAssignment = () => {
     });
   }, [attorneyList.length > 0]);
 
-  const openModal = (theCase: Chapter15Type, openerId: string) => {
+  const onOpenModal = (theCase: Chapter15Type, openerId: string) => {
     setBCase(theCase);
-    setModalOpenerId(openerId);
+    setModalOpenerId(openerId); // do we need this?
     //modalRef.current?.show();
     return theCase;
   };
@@ -167,7 +167,7 @@ export const CaseAssignment = () => {
                         <span className="mobile-title">Filing Date:</span>
                         {theCase.dateFiled}
                       </td>
-                      <td>
+                      <td data-testid={`attorney-list-${idx}`}>
                         <span className="mobile-title">Assigned Attorney:</span>
                         {theCase.attorneyList?.length != undefined || (
                           <ToggleModalButton
@@ -177,7 +177,9 @@ export const CaseAssignment = () => {
                             toggleAction="open"
                             modalId={`${modalId}`}
                             modalRef={modalRef}
-                            onClick={() => openModal(theCase, `assign-attorney-btn-${idx}`)}
+                            onClick={() => {
+                              onOpenModal(theCase, `assign-attorney-btn-${idx}`);
+                            }}
                           >
                             Assign
                           </ToggleModalButton>
