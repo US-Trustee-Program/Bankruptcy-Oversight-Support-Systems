@@ -42,4 +42,5 @@ export interface IDbConfig {
 export interface CosmosConfig {
   endpoint: string;
   managedIdentity: string;
+  databaseName: string;
 }
