@@ -14,6 +14,7 @@ import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignme
 import { ApplicationContext } from './adapters/types/basic';
 import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
 import { CosmosClient } from '@azure/cosmos';
+import { CosmosConfig } from './adapters/types/database';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -80,4 +81,9 @@ export const getCosmosDbClient = (): CosmosClient => {
         })
       : new DefaultAzureCredential(),
   });
+};
+
+export const getCosmosConfig = (): CosmosConfig => {
+  const config: ApplicationConfiguration = new ApplicationConfiguration();
+  return config.get('cosmosConfig');
 };
