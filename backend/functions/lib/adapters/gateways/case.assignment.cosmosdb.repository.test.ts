@@ -17,15 +17,19 @@ describe('Test case assignment cosmosdb repository tests', async () => {
     const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
       new CaseAssignmentCosmosDbRepository();
 
-    await testCaseAssignmentCosmosDbRepository.createAssignment(
+    const assignmentId = await testCaseAssignmentCosmosDbRepository.createAssignment(
       appContext,
       testCaseAttorneyAssignment,
     );
 
-    const actual = await testCaseAssignmentCosmosDbRepository.findAssignment(
+    const actualAssignment = await testCaseAssignmentCosmosDbRepository.findAssignment(
       testCaseAttorneyAssignment,
     );
 
-    expect(actual).toEqual(testCaseAttorneyAssignment);
+    expect(assignmentId).toEqual(actualAssignment.assignmentId);
+    expect(actualAssignment.caseId).toEqual(testCaseAttorneyAssignment.caseId);
+    expect(actualAssignment.role).toEqual(testCaseAttorneyAssignment.role);
+    expect(actualAssignment.attorneyName).toEqual(testCaseAttorneyAssignment.attorneyName);
+    expect(actualAssignment.caseTitle).toEqual(testCaseAttorneyAssignment.caseTitle);
   });
 });
