@@ -1,0 +1,21 @@
+.case-assignment {
+  table.case-list {
+    td.case-number {
+      min-width: 115px;
+    }
+    td.filing-date {
+      min-width: 130px;
+    }
+  }
+}
+
+@media screen and (width < 1000px) {
+  .case-assignment.case-list {
+    width: 95%;
+
+    table.case-list {
+      margin: 0;
+      width: 100%;
+    }
+  }
+}
