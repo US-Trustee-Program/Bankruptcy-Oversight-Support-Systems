@@ -1,9 +1,14 @@
+#assign-attorney-modal-overlay.usa-modal-overlay {
+  overflow: hidden;
+  overflow: -moz-hidden-unscrollable;
+}
+
 .assign-attorney-modal {
   .visible-headings {
     label {
       display: inline-block;
       font-weight: bold;
-      padding: 3px;
+      padding: 0 5px;
     }
     .attorney-name {
       width: 250px;
@@ -26,6 +31,7 @@
       }
     }
     td.assign-attorney-checkbox-column {
+      padding-left: 0.5rem;
       padding-right: 1rem;
       width: 250px;
     }

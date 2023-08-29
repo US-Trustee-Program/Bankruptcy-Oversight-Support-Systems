@@ -42,6 +42,7 @@ function AssignAttorneyModalComponent(
     </>
   );
 
+  const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   for (let i = 0; i < props.attorneyList.length; i++) {
@@ -86,6 +87,7 @@ function AssignAttorneyModalComponent(
 
   function cancelModal() {
     setCheckListValues([]);
+    thawBackground();
   }
 
   async function submitValues() {
@@ -125,12 +127,25 @@ function AssignAttorneyModalComponent(
           apiResult: e,
         });
       });
+    thawBackground();
   }
 
   function onOpen() {
+    freezeBackground();
+
     checkboxListRefs.forEach((cbox) => {
       cbox.current?.setChecked(false);
     });
+  }
+
+  function freezeBackground() {
+    setInitialDocumentBodyStyle(document.body.style.overflow);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function thawBackground() {
+    document.body.style.overflow = initialDocumentBodyStyle;
+    setInitialDocumentBodyStyle('');
   }
 
   return (
