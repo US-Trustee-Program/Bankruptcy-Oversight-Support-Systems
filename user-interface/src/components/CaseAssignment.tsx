@@ -13,6 +13,11 @@ import { Attorney } from '../type-declarations/attorneys';
 
 const modalId = 'assign-attorney-modal';
 
+interface Chapter15Node extends Chapter15Type {
+  prettyDateFiled: string;
+  sortableDateFiled: string;
+}
+
 export const CaseAssignment = () => {
   const modalRef = useRef<ModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
@@ -43,17 +48,25 @@ export const CaseAssignment = () => {
       })
       .then((res) => {
         const chapter15Response = res as Chapter15CaseListResponseData;
-        const sortedList = chapter15Response?.body?.caseList?.sort((a, b): number => {
-          const recordA: Chapter15Type = a as Chapter15Type;
-          const recordB: Chapter15Type = b as Chapter15Type;
-          if (recordA.dateFiled < recordB.dateFiled) {
-            return 1;
-          } else if (recordA.dateFiled > recordB.dateFiled) {
-            return -1;
-          } else {
-            return 0;
-          }
-        });
+        const sortedList = chapter15Response?.body?.caseList
+          ?.map((theCase) => {
+            const caseNode = theCase as Chapter15Node;
+            const dateFiled = caseNode.dateFiled.split('-');
+            caseNode.prettyDateFiled = `${dateFiled[1]}-${dateFiled[2]}-${dateFiled[0]}`;
+            caseNode.sortableDateFiled = `${dateFiled[0]}${dateFiled[1]}${dateFiled[2]}`;
+            return caseNode;
+          })
+          .sort((a, b): number => {
+            const recordA: Chapter15Node = a as Chapter15Node;
+            const recordB: Chapter15Node = b as Chapter15Node;
+            if (recordA.dateFiled < recordB.dateFiled) {
+              return 1;
+            } else if (recordA.dateFiled > recordB.dateFiled) {
+              return -1;
+            } else {
+              return 0;
+            }
+          });
         setCaseList(sortedList || []);
         setIsLoading(false);
       })
@@ -141,61 +154,104 @@ export const CaseAssignment = () => {
             ref={alertRef}
             timeout={4}
           />
-          <table className="case-list">
-            <thead>
-              <tr className="case-headings">
-                <th>Case Number</th>
-                <th>Case Title (Debtor)</th>
-                <th>Filing Date</th>
-                <th>Assigned Attorney</th>
-              </tr>
-            </thead>
-            <tbody data-testid="case-assignment-table-body">
-              {caseList.length > 0 &&
-                (caseList as Array<Chapter15Type>).map((theCase: Chapter15Type, idx: number) => {
-                  return (
-                    <tr key={idx}>
-                      <td>
-                        <span className="mobile-title">Case Number:</span>
-                        {theCase.caseNumber}
-                      </td>
-                      <td>
-                        <span className="mobile-title">Case Title (Debtor):</span>
-                        {theCase.caseTitle}
-                      </td>
-                      <td>
-                        <span className="mobile-title">Filing Date:</span>
-                        {theCase.dateFiled}
-                      </td>
-                      <td data-testid={`attorney-list-${idx}`}>
-                        <span className="mobile-title">Assigned Attorney:</span>
-                        {theCase.attorneyList?.length != undefined || (
-                          <ToggleModalButton
-                            className="case-assignment-modal-toggle"
-                            id={`assign-attorney-btn-${idx}`}
-                            buttonId={`${idx}`}
-                            toggleAction="open"
-                            modalId={`${modalId}`}
-                            modalRef={modalRef}
-                            onClick={() => {
-                              onOpenModal(theCase, `assign-attorney-btn-${idx}`);
-                            }}
-                          >
-                            Assign
-                          </ToggleModalButton>
-                        )}
-                        {theCase.attorneyList?.map((attorney) => (
-                          <>
-                            {attorney}
-                            <br />
-                          </>
-                        ))}
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
+          <div className="usa-table-container--scrollable" tabIndex={0}>
+            <table className="case-list usa-table usa-table--striped">
+              <thead>
+                <tr className="case-headings">
+                  <th scope="col" role="columnheader">
+                    Case Number
+                  </th>
+                  <th scope="col" role="columnheader">
+                    Case Title (Debtor)
+                  </th>
+                  <th
+                    data-sortable
+                    scope="col"
+                    role="columnheader"
+                    aria-sort="descending"
+                    aria-label="Filing Date, sortable column, currently sorted descending"
+                  >
+                    Filing Date
+                    <button
+                      tabIndex={0}
+                      className="usa-table__header__button"
+                      title="Click to sort by Filing Date in ascending order."
+                      disabled={true}
+                    >
+                      <svg
+                        className="usa-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                      >
+                        <g className="descending" fill="transparent">
+                          <path d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"></path>
+                        </g>
+                        <g className="ascending" fill="transparent">
+                          <path
+                            transform="rotate(180, 12, 12)"
+                            d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"
+                          ></path>
+                        </g>
+                        <g className="unsorted" fill="transparent">
+                          <polygon points="15.17 15 13 17.17 13 6.83 15.17 9 16.58 7.59 12 3 7.41 7.59 8.83 9 11 6.83 11 17.17 8.83 15 7.42 16.41 12 21 16.59 16.41 15.17 15"></polygon>
+                        </g>
+                      </svg>
+                    </button>
+                  </th>
+                  <th scope="col" role="columnheader">
+                    Assigned Attorney
+                  </th>
+                </tr>
+              </thead>
+              <tbody data-testid="case-assignment-table-body">
+                {caseList.length > 0 &&
+                  (caseList as Array<Chapter15Node>).map((theCase: Chapter15Node, idx: number) => {
+                    return (
+                      <tr key={idx}>
+                        <td className="case-number">
+                          <span className="mobile-title">Case Number:</span>
+                          {theCase.caseNumber}
+                        </td>
+                        <td>
+                          <span className="mobile-title">Case Title (Debtor):</span>
+                          {theCase.caseTitle}
+                        </td>
+                        <td
+                          className="filing-date"
+                          data-sort-value={theCase.sortableDateFiled}
+                          data-sort-active={true}
+                        >
+                          <span className="mobile-title">Filing Date:</span>
+                          {theCase.prettyDateFiled}
+                        </td>
+                        <td data-testid={`attorney-list-${idx}`} className="attorney-list">
+                          <span className="mobile-title">Assigned Attorney:</span>
+                          {theCase.attorneyList?.length != undefined || (
+                            <ToggleModalButton
+                              className="case-assignment-modal-toggle"
+                              id={`assign-attorney-btn-${idx}`}
+                              buttonId={`${idx}`}
+                              toggleAction="open"
+                              modalId={`${modalId}`}
+                              modalRef={modalRef}
+                              onClick={() => onOpenModal(theCase, `assign-attorney-btn-${idx}`)}
+                            >
+                              Assign
+                            </ToggleModalButton>
+                          )}
+                          {theCase.attorneyList?.map((attorney) => (
+                            <>
+                              {attorney}
+                              <br />
+                            </>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
         </div>
         {attorneyList.length > 0 && (
           <AssignAttorneyModal
