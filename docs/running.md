@@ -72,7 +72,7 @@ This will serve the functions app on port 7071.
 You will need to have a file named `.env` placed in the `backend/functions` directory. The contents of that file must be:
 
 ```
-MSSQL_HOST={the TLD of the database}
+MSSQL_HOST={the FQDN of the database}
 MSSQL_DATABASE={the name of the database}
 MSSQL_USER={the SQL Server Admin username}
 MSSQL_PASS={the SQL Server Admin user password}
