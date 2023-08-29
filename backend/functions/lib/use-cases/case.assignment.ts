@@ -13,9 +13,12 @@ const EXISTING_ASSIGNMENT_FOUND =
 export class CaseAssignment {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
 
-  constructor(assignmentRepository?: CaseAssignmentRepositoryInterface) {
+  constructor(
+    context: ApplicationContext,
+    assignmentRepository?: CaseAssignmentRepositoryInterface,
+  ) {
     if (!assignmentRepository) {
-      this.assignmentRepository = getAssignmentRepository();
+      this.assignmentRepository = getAssignmentRepository(context);
     } else {
       this.assignmentRepository = assignmentRepository;
     }
@@ -63,11 +66,14 @@ export class CaseAssignment {
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
     const existingAssignments = await this.assignmentRepository.findAssignmentByCaseId(caseId);
+    log.info(context, NAMESPACE, 'Existing assignments:', existingAssignments.toString());
+    console.log('Existing assignments:', existingAssignments.toString());
     if (existingAssignments.length === 0) return true;
-    return await this.isExactEqual(existingAssignments, newAssignments);
+    return await this.isExactEqual(context, existingAssignments, newAssignments);
   }
 
   async isExactEqual(
+    context: ApplicationContext,
     existingAssignments: CaseAttorneyAssignment[],
     newAssignments: CaseAttorneyAssignment[],
   ): Promise<boolean> {
@@ -77,12 +83,14 @@ export class CaseAssignment {
       //compare each assignment
       for (let i = 0; i < existingAssignments.length; i++) {
         if (
-          existingAssignments[i].attorneyId !== newAssignments[i].attorneyId ||
+          existingAssignments[i].attorneyName !== newAssignments[i].attorneyName ||
           existingAssignments[i].role !== newAssignments[i].role
         ) {
           return false;
         }
       }
+      log.info(context, NAMESPACE, 'We found the assignment already.');
+      console.log('We found the assignment already.');
       return true;
     }
   }

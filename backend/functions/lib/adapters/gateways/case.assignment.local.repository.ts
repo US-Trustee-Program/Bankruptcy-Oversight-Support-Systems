@@ -1,6 +1,9 @@
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
+import log from '../services/logger.service';
+
+const NAMESPACE = 'LOCAL-ASSIGNMENT-REPOSITORY';
 
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
@@ -12,16 +15,20 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   ): Promise<number> {
     const assignment: CaseAttorneyAssignment = await this.findAssignment(caseAssignment);
     if (!assignment) {
-      return this.addAssignment(caseAssignment);
+      return this.addAssignment(context, caseAssignment);
     } else {
       return assignment.assignmentId;
     }
   }
 
-  private addAssignment(caseAssignment: CaseAttorneyAssignment): number {
+  private addAssignment(
+    context: ApplicationContext,
+    caseAssignment: CaseAttorneyAssignment,
+  ): number {
     const assignmentId = this.nextUnusedId;
     caseAssignment.assignmentId = assignmentId;
     this.caseAttorneyAssignments.push(caseAssignment);
+    log.info(context, NAMESPACE, caseAssignment.attorneyName);
     ++this.nextUnusedId;
     return assignmentId;
   }
@@ -38,7 +45,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return this.caseAttorneyAssignments.find((assignment) => {
       return (
         assignment.caseId === caseAssignment.caseId &&
-        assignment.attorneyId === caseAssignment.attorneyId &&
+        assignment.attorneyName === caseAssignment.attorneyName &&
         assignment.role === caseAssignment.role
       );
     });

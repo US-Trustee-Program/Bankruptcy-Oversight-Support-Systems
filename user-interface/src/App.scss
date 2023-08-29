@@ -3,12 +3,31 @@
 );
 @use 'uswds';
 @use 'styles/abstracts/colors';
+@use 'styles/abstracts/tables';
 
 .App {
   padding: 0;
 
   .body {
     padding: 50px;
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    table.case-list {
+      td {
+        .mobile-title {
+          visibility: hidden;
+          display: inline-block;
+          width: 0;
+          height: 0;
+          padding: 0;
+          margin: 0;
+          white-space: nowrap;
+        }
+      }
+    }
   }
 
   .App-logo {
@@ -31,4 +50,47 @@
     color: #61dafb;
   }
 
+}
+
+@media screen and (max-width: 800px) {
+  .App {
+    .body {
+      padding: 50px 0;
+
+      table.case-list {
+        display: block;
+
+        thead, tbody, th, td,
+        tr {
+          display: block;
+        }
+
+        /* Hide table headers (but not display: none;, for accessibility) */
+        thead tr {
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+        }
+
+        tr {
+          border: tables.$tableBorder;
+
+          td {
+            /* Behave  like a "row" */
+            border: none;
+            position: relative;
+            .mobile-title {
+              font-weight: 700;
+              visibility: visible;
+              width: auto;
+              height: auto;
+              white-space: normal;
+              padding-right: 10px;
+            }
+          }
+        }
+      }
+
+    }
+  }
 }

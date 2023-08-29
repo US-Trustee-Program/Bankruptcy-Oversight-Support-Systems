@@ -20,13 +20,13 @@ export class CaseAssignmentController {
     this.caseAssignmentRepository = assignmentRepository;
   }
 
-  public async createTrailAttorneyAssignments(
+  public async createTrialAttorneyAssignments(
     assignmentRequest: TrialAttorneysAssignmentRequest,
   ): Promise<AttorneyAssignmentResponseInterface> {
     try {
       const listOfAssignments: CaseAttorneyAssignment[] = [];
 
-      assignmentRequest.listOfAttorneyIds.forEach((attorney) => {
+      assignmentRequest.listOfAttorneyNames.forEach((attorney) => {
         const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
           assignmentRequest.caseId,
           attorney,
@@ -34,7 +34,10 @@ export class CaseAssignmentController {
         );
         listOfAssignments.push(assignment);
       });
-      const assignmentService = new CaseAssignment(this.caseAssignmentRepository);
+      const assignmentService = new CaseAssignment(
+        this.applicationContext,
+        this.caseAssignmentRepository,
+      );
       return assignmentService.createTrialAttorneyAssignments(
         this.applicationContext,
         listOfAssignments,
