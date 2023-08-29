@@ -38,6 +38,25 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
       } else throw e;
     }
   }
+  async createAssignmentString(
+    context: ApplicationContext,
+    caseAssignment: CaseAttorneyAssignment,
+  ): Promise<string> {
+    try {
+      // Check write access
+      const { item: item } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.create(caseAssignment);
+      log.debug(context, NAMESPACE, `New item created ${item.id}`);
+      return item.id;
+    } catch (e) {
+      log.error(context, NAMESPACE, `${e.code} : ${e.name} : ${e.message}`);
+      if (e.code === '403') {
+        throw new Error('Request is forbidden');
+      } else throw e;
+    }
+  }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment> {
     throw new Error('Method not implemented.');
