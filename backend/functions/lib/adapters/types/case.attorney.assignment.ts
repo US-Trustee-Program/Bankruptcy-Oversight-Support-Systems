@@ -1,6 +1,7 @@
 import { CaseAssignmentRole } from './case.assignment.role';
 
 export class CaseAttorneyAssignment {
+  id: string;
   assignmentId: number;
   caseId: string;
   caseTitle: string;
