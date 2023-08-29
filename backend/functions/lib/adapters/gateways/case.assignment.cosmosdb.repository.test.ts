@@ -7,57 +7,53 @@ const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
 describe('Test case assignment cosmosdb repository tests', () => {
-  test('Should persist case assignment', async () => {
+  test('should create two assignments and find both of them', async () => {
     const caseNumber = randomUUID();
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumber,
       'Susan Arbeit',
       CaseAssignmentRole.TrialAttorney,
-      'Drew kerrigan',
+      'Drew Kerrigan',
+    );
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumber,
+      'Jeffery McCaslin',
+      CaseAssignmentRole.TrialAttorney,
+      'Drew Kerrigan',
     );
 
     const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
       new CaseAssignmentCosmosDbRepository();
 
-    const assignmentId = await testCaseAssignmentCosmosDbRepository.createAssignment(
+    const assignmentId1 = await testCaseAssignmentCosmosDbRepository.createAssignment(
       appContext,
-      testCaseAttorneyAssignment,
+      testCaseAttorneyAssignment1,
+    );
+    const assignmentId2 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+      appContext,
+      testCaseAttorneyAssignment2,
     );
 
-    expect(assignmentId).toBeTruthy();
+    expect(assignmentId1).toBeTruthy();
+    expect(assignmentId2).toBeTruthy();
 
-    const actualAssignment = await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(
+    const actualAssignments = await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(
       caseNumber,
     );
 
-    console.log('Item id:', actualAssignment[0].id);
-    console.log('Case id:', actualAssignment[0].caseId);
-    console.log(actualAssignment[0].caseTitle);
-    console.log(actualAssignment[0].attorneyName);
-    console.log(actualAssignment[0].role);
-    // const filteredAssignment = actualAssignment.filter((assignment) => {
-    //   console.log(assignment);
-    //   return assignment.id === assignmentId;
-    // });
-    //
-    // expect(filteredAssignment.length).toEqual(1);
-    //
-    // expect(actualAssignment[0].caseId).toEqual(testCaseAttorneyAssignment.caseId);
-    // expect(actualAssignment[0].role).toEqual(testCaseAttorneyAssignment.role);
-    // expect(actualAssignment[0].attorneyName).toEqual(testCaseAttorneyAssignment.attorneyName);
-    // expect(actualAssignment[0].caseTitle).toEqual(testCaseAttorneyAssignment.caseTitle);
-  });
+    expect(actualAssignments.length).toEqual(2);
 
-  test('Find case assignment by case id', async () => {
-    const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
-      new CaseAssignmentCosmosDbRepository();
+    const assignment1 = actualAssignments.find((assign) => assign.id === assignmentId1);
+    const assignment2 = actualAssignments.find((assign) => assign.id === assignmentId2);
 
-    const actualAssignment = await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(
-      '123',
-    );
-
-    expect(actualAssignment).not.toBeNull();
-    expect(actualAssignment.length).toBeGreaterThanOrEqual(2);
+    expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
+    expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
+    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.caseTitle).toEqual(testCaseAttorneyAssignment1.caseTitle);
+    expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
+    expect(assignment2.role).toEqual(testCaseAttorneyAssignment2.role);
+    expect(assignment2.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignment2.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
   });
 
   test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
