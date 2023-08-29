@@ -24,15 +24,21 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignmentId).toBeTruthy();
 
-    // const actualAssignment = await testCaseAssignmentCosmosDbRepository.findAssignment(
-    //   testCaseAttorneyAssignment,
-    // );
+    const actualAssignment = await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(
+      '123',
+    );
 
-    // expect(assignmentId).toEqual(actualAssignment.assignmentId);
-    // expect(actualAssignment.caseId).toEqual(testCaseAttorneyAssignment.caseId);
-    // expect(actualAssignment.role).toEqual(testCaseAttorneyAssignment.role);
-    // expect(actualAssignment.attorneyName).toEqual(testCaseAttorneyAssignment.attorneyName);
-    // expect(actualAssignment.caseTitle).toEqual(testCaseAttorneyAssignment.caseTitle);
+    const filteredAssignment = actualAssignment.filter((assignment) => {
+      console.log(assignment);
+      return assignment.assignmentId === assignmentId;
+    });
+
+    expect(filteredAssignment.length).toEqual(1);
+
+    expect(actualAssignment[0].caseId).toEqual(testCaseAttorneyAssignment.caseId);
+    expect(actualAssignment[0].role).toEqual(testCaseAttorneyAssignment.role);
+    expect(actualAssignment[0].attorneyName).toEqual(testCaseAttorneyAssignment.attorneyName);
+    expect(actualAssignment[0].caseTitle).toEqual(testCaseAttorneyAssignment.caseTitle);
   });
 
   test('Find case assignment by case id', async () => {
