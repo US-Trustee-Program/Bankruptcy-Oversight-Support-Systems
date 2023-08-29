@@ -32,7 +32,16 @@ function AssignAttorneyModalComponent(
   ref: React.Ref<ModalRefType>,
 ) {
   const modalRef = useRef<ModalRefType>(null);
-  const modalHeading = 'Assign Attorney to Chapter 15 Case';
+  const modalHeading = (
+    <>
+      Choose Trial Attorney to assign to:
+      <br />
+      {props.bCase?.caseTitle}
+      <br />
+      case number {props.bCase?.caseNumber}
+    </>
+  );
+
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   for (let i = 0; i < props.attorneyList.length; i++) {
@@ -134,38 +143,46 @@ function AssignAttorneyModalComponent(
       onClose={cancelModal}
       heading={modalHeading}
       content={
-        <table>
-          <thead>
-            <tr>
-              <th>Attorney Name</th>
-              <th>Chapter 15 Cases</th>
-            </tr>
-          </thead>
-          <tbody>
-            {props.attorneyList.length > 0 &&
-              props.attorneyList.map((attorney: Attorney, idx: number) => {
-                const name = attorney.getFullName();
-                return (
-                  <tr key={idx}>
-                    <td className="assign-attorney-checkbox-column">
-                      <Checkbox
-                        id={`${idx}-checkbox`}
-                        value={`${name}`}
-                        onChange={(event) => updateCheckList(event, name)}
-                        checked={checkListValues.includes(name)}
-                        className="attorney-list-checkbox"
-                        label={name}
-                        ref={checkboxListRefs[idx]}
-                      />
-                    </td>
-                    <td className="assign-attorney-case-count-column">
-                      <div className="usa-fieldset">{Math.round(Math.random() * 10)}</div>
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
+        <>
+          <div className="visible-headings">
+            <label className="attorney-name">Attorney Name</label>
+            <label className="chapter-15-cases">Chapter 15 Cases</label>
+          </div>
+          <div className="usa-table-container--scrollable" tabIndex={0}>
+            <table className="attorney-list">
+              <thead>
+                <tr>
+                  <th>Attorney Name</th>
+                  <th>Chapter 15 Cases</th>
+                </tr>
+              </thead>
+              <tbody>
+                {props.attorneyList.length > 0 &&
+                  props.attorneyList.map((attorney: Attorney, idx: number) => {
+                    const name = attorney.getFullName();
+                    return (
+                      <tr key={idx}>
+                        <td className="assign-attorney-checkbox-column">
+                          <Checkbox
+                            id={`${idx}-checkbox`}
+                            value={`${name}`}
+                            onChange={(event) => updateCheckList(event, name)}
+                            checked={checkListValues.includes(name)}
+                            className="attorney-list-checkbox"
+                            label={name}
+                            ref={checkboxListRefs[idx]}
+                          />
+                        </td>
+                        <td className="assign-attorney-case-count-column">
+                          <div className="usa-fieldset">{Math.round(Math.random() * 10)}</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </>
       }
       actionButtonGroup={actionButtonGroup}
     ></Modal>

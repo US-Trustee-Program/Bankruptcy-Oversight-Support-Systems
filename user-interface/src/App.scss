@@ -16,6 +16,21 @@
     }
 
     table.case-list {
+      td {
+        .mobile-title {
+          visibility: hidden;
+          display: inline-block;
+          width: 0;
+          height: 0;
+          padding: 0;
+          margin: 0;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    /*
+    table.case-list {
       border: tables.$tableBorder;
       border-collapse: tables.$tableBorderCollapse;
       border-radius: tables.$tableBorderRadius;
@@ -46,6 +61,7 @@
         background: tables.$tableBodyBackgroundOddRows;
       }
     }
+    */
 
   }
 

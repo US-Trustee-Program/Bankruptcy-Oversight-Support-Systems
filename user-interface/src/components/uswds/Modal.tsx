@@ -12,7 +12,7 @@ export interface ModalProps {
   modalId: string;
   openerId?: string;
   className?: string;
-  heading: string;
+  heading: React.ReactNode;
   content: React.ReactNode;
   forceAction?: boolean;
   actionButtonGroup: SubmitCancelBtnProps;

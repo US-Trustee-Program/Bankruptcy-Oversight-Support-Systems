@@ -1,11 +1,12 @@
 @use '../styles/abstracts/colors';
 @use '../styles/abstracts/tables';
 
-.case-list {
+.usa-table-container--scrollable .usa-table.case-list {
   width: 83.3%;
   max-width: 2000px;
   margin: 0 auto;
 
+  /*
   table.case-list {
     width: 100%;
     .case-headings {
@@ -17,11 +18,15 @@
       }
     }
   }
+  */
 }
 
 @media screen and (max-width: 800px) {
-  .case-list {
+  .usa-table-container--scrollable .usa-table.case-list {
     width: 100%;
     padding: 50px 0;
+    td.attorney-list {
+      white-space: wrap;
+    }
   }
 }

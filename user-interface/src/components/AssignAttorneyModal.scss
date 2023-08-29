@@ -1,7 +1,41 @@
 .assign-attorney-modal {
-  td.assign-attorney-case-count-column {
-    div.usa-fieldset {
-      margin-top: 12px;
+  .visible-headings {
+    label {
+      display: inline-block;
+      font-weight: bold;
+      padding: 3px;
+    }
+    .attorney-name {
+      width: 250px;
+    }
+  }
+  .usa-table-container--scrollable {
+    margin-top: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 250px;
+
+    thead {
+      visibility: hidden;
+      height: 0;
+      padding: 0;
+      margin: 0;
+      th {
+        font-size: 1px;
+        line-height: 1px;
+      }
+    }
+    td.assign-attorney-checkbox-column {
+      padding-right: 1rem;
+      width: 250px;
+    }
+    td.assign-attorney-case-count-column {
+      text-align: right;
+      padding-right: 0.5rem;
+      width: 140px;
+      div.usa-fieldset {
+        margin-top: 12px;
+      }
     }
   }
 }
