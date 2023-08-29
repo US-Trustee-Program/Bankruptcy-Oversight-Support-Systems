@@ -47,8 +47,39 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   getCount(): Promise<number> {
     throw new Error('Method not implemented.');
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
-    throw new Error('Method not implemented.');
+
+  async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+    try {
+      // Check read access
+
+      // // Approach 1: Gets everything and filter list down to match caseId
+      // const { resources: results } = await this.cosmosDbClient
+      //   .database(this.cosmosConfig.databaseName)
+      //   .container(this.containerName)
+      //   .items.readAll()
+      //   .fetchAll();
+      // return results.filter((r) => r.caseId == caseId); // TODO ML : not be efficient because it query all from container
+
+      // Approach 2: The sql like approach
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.caseId = @caseId',
+        parameters: [
+          {
+            name: '@caseId',
+            value: caseId,
+          },
+        ],
+      };
+      const { resources: results } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.query(querySpec)
+        .fetchAll();
+      return results.filter((r) => r.caseId == caseId);
+    } catch (e) {
+      console.error(`${e.name}: ${e.message}`);
+      // log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
+    }
+    return [];
   }
 }

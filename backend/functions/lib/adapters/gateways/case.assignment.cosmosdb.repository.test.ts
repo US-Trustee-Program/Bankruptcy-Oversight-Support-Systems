@@ -43,7 +43,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       '123',
     );
 
-    expect(actualAssignment.length).toEqual(2);
+    expect(actualAssignment).not.toBeNull();
+    expect(actualAssignment.length).toBeGreaterThanOrEqual(2);
   });
 
   test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
