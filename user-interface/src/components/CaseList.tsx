@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/store';
 import Api from '../models/api';
 import { CaseListResponseData } from '../type-declarations/api';
@@ -77,7 +77,7 @@ export const CaseList = () => {
         <h1 data-testid="case-list-heading">
           Case List for {name} chapter {chapter}
         </h1>
-        <table>
+        <table className="case-list">
           <thead>
             <tr className="case-headings">
               <th>Case Number</th>

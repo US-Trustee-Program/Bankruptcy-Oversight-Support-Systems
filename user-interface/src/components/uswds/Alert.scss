@@ -1,0 +1,75 @@
+.usa-alert--info .usa-alert__body::before {
+  background: transparent;
+  background-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/info.svg);
+  background-repeat: no-repeat;
+  mask-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/info.svg), linear-gradient(transparent, transparent);
+}
+
+.usa-alert--warning .usa-alert__body::before {
+  background: transparent;
+  background-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/warning.svg);
+  background-repeat: no-repeat;
+  mask-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/warning.svg), linear-gradient(transparent, transparent);
+}
+
+.usa-alert--success .usa-alert__body::before {
+  background: transparent;
+  background-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/check_circle.svg);
+  background-repeat: no-repeat;
+  mask-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/check_circle.svg), linear-gradient(transparent, transparent);
+}
+
+.usa-alert--error .usa-alert__body::before {
+  background: transparent;
+  background-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/error.svg);
+  background-repeat: no-repeat;
+  mask-image: url(/node_modules/@uswds/uswds/dist/img/usa-icons/error.svg), linear-gradient(transparent, transparent);
+}
+
+.usa-alert {
+  margin-bottom: 1rem;
+}
+
+.usa-alert__unset {
+  visibility: hidden;
+}
+
+.usa-alert__hidden {
+  visibility: hidden;
+  animation-name: usaAlertFadeOut;
+  animation-duration: 1s;
+  animation-timing-function: 0;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+}
+
+.usa-alert__visible {
+  visibility: visible;
+  animation-name: usaAlertFadeIn;
+  animation-duration: 1s;
+  animation-timing-function: 0;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+}
+
+@keyframes usaAlertFadeIn {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@keyframes usaAlertFadeOut {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
