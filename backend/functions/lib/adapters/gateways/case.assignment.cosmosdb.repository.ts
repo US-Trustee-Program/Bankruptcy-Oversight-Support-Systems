@@ -4,6 +4,8 @@ import { ApplicationContext } from '../types/basic';
 import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import log from '../services/logger.service';
+import { AggregateAuthenticationError } from '@azure/identity';
+import { AssignmentException } from '../../use-cases/assignment.exception';
 
 const NAMESPACE: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
@@ -77,6 +79,9 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results.filter((r) => r.caseId == caseId);
     } catch (e) {
+      if (e instanceof AggregateAuthenticationError) {
+        throw new AssignmentException(403, 'Failed to authenticate to Azure');
+      }
       console.error(`${e.name}: ${e.message}`);
       // log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
     }
