@@ -12,31 +12,29 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   public async createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
-  ): Promise<number> {
+  ): Promise<string> {
     const assignment: CaseAttorneyAssignment = await this.findAssignment(caseAssignment);
     if (!assignment) {
       return this.addAssignment(context, caseAssignment);
     } else {
-      return assignment.assignmentId;
+      return assignment.id;
     }
   }
 
   private addAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
-  ): number {
+  ): string {
     const assignmentId = this.nextUnusedId;
-    caseAssignment.assignmentId = assignmentId;
+    caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
     log.info(context, NAMESPACE, caseAssignment.attorneyName);
     ++this.nextUnusedId;
-    return assignmentId;
+    return assignmentId.toString();
   }
 
-  public async getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment> {
-    return this.caseAttorneyAssignments.find(
-      (assignment) => assignment.assignmentId === assignmentId,
-    );
+  public async getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
+    return this.caseAttorneyAssignments.find((assignment) => assignment.id === assignmentId);
   }
 
   public async findAssignment(

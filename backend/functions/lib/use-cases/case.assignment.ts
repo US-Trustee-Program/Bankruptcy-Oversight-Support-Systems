@@ -27,7 +27,7 @@ export class CaseAssignment {
   async createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
-  ): Promise<number> {
+  ): Promise<string> {
     try {
       return await this.assignmentRepository.createAssignment(context, caseAssignment);
     } catch (exception) {
@@ -44,7 +44,7 @@ export class CaseAssignment {
     if (!isValid) {
       throw new AssignmentException(400, EXISTING_ASSIGNMENT_FOUND);
     } else {
-      const listOfAssignmentIdsCreated: number[] = [];
+      const listOfAssignmentIdsCreated: string[] = [];
       for (const assignment of listOfAssignments) {
         const assignmentId = await this.createAssignment(context, assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))

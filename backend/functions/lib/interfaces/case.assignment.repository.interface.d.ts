@@ -5,9 +5,8 @@ export interface CaseAssignmentRepositoryInterface {
   createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
-  ): Promise<number>;
-
-  getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment>;
+  ): Promise<string>;
+  getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment>;
   findAssignment(caseAssignment: CaseAttorneyAssignment): Promise<CaseAttorneyAssignment>;
   getCount(): Promise<number>;
   findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]>;

@@ -48,8 +48,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       ['Jane'],
       CaseAssignmentRole.TrialAttorney,
     );
-    let resultAssignmentId1: number;
-    let resultAssignmentId2: number;
+    let resultAssignmentId1: string;
+    let resultAssignmentId2: string;
 
     try {
       const assignmentController = new CaseAssignmentController(
