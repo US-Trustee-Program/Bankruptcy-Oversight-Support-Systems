@@ -17,7 +17,7 @@ repos:
           files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
           types: [ file ]
           additional_dependencies:
-          -   eslint@8.42.0
+          -   eslint@8.48.0
           -   eslint-config-prettier@8.8.0
           -   eslint-plugin-prettier@5.0.0
           -   eslint-plugin-react@7.32.2
