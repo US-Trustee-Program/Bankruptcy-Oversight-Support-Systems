@@ -7,7 +7,8 @@ const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
 describe('Test case assignment cosmosdb repository tests', () => {
-  test('should create two assignments and find both of them', async () => {
+  // TODO : still need to refactor to use mocked cosmos client
+  xtest('should create two assignments and find both of them', async () => {
     const caseNumber = randomUUID();
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumber,
@@ -56,5 +57,5 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment2.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
   });
 
-  test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
+  xtest('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
 });
