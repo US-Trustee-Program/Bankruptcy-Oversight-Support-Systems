@@ -22,25 +22,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   async createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
-  ): Promise<number> {
-    try {
-      // Check write access
-      const { item: item } = await this.cosmosDbClient
-        .database(this.cosmosConfig.databaseName)
-        .container(this.containerName)
-        .items.create(caseAssignment);
-      log.debug(context, NAMESPACE, `New item created ${item.id}`);
-      return item.id;
-    } catch (e) {
-      log.error(context, NAMESPACE, `${e.code} : ${e.name} : ${e.message}`);
-      if (e.code === '403') {
-        throw new Error('Request is forbidden');
-      } else throw e;
-    }
-  }
-  async createAssignmentString(
-    context: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
   ): Promise<string> {
     try {
       // Check write access
@@ -58,7 +39,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     }
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment> {
+  getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
     throw new Error('Method not implemented.');
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
