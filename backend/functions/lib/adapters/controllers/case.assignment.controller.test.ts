@@ -23,9 +23,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
         context,
         caseAssignmentLocalRepository,
       );
-      assignmentResponse = await assignmentController.createTrailAttorneyAssignments(
-        testCaseAssignment,
-      );
+      assignmentResponse =
+        await assignmentController.createTrailAttorneyAssignments(testCaseAssignment);
     } catch (exception) {
       // exception.message;
     }
@@ -56,24 +55,20 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
         context,
         caseAssignmentLocalRepository,
       );
-      const assignmentResponse1 = await assignmentController.createTrailAttorneyAssignments(
-        testCaseAssignment,
-      );
-      const assignmentResponse2 = await assignmentController.createTrailAttorneyAssignments(
-        testCaseAssignment,
-      );
+      const assignmentResponse1 =
+        await assignmentController.createTrailAttorneyAssignments(testCaseAssignment);
+      const assignmentResponse2 =
+        await assignmentController.createTrailAttorneyAssignments(testCaseAssignment);
       resultAssignmentId1 = assignmentResponse1.body[0];
       resultAssignmentId2 = assignmentResponse2.body[0];
     } catch (exception) {
       // exception.message;
     }
 
-    const assignmentCreated1 = await caseAssignmentLocalRepository.getAssignment(
-      resultAssignmentId1,
-    );
-    const assignmentCreated2 = await caseAssignmentLocalRepository.getAssignment(
-      resultAssignmentId2,
-    );
+    const assignmentCreated1 =
+      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId1);
+    const assignmentCreated2 =
+      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId2);
     expect(resultAssignmentId2).toBe(resultAssignmentId1);
     expect(assignmentCreated2).toEqual(assignmentCreated1);
     expect(context.res.status).toBe(200);
@@ -99,14 +94,12 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       caseAssignmentLocalRepository,
     );
 
-    const assignmentResponse1 = await assignmentController.createTrailAttorneyAssignments(
-      testCaseAssignment1,
-    );
+    const assignmentResponse1 =
+      await assignmentController.createTrailAttorneyAssignments(testCaseAssignment1);
 
     const resultAssignmentId1 = assignmentResponse1.body[0];
-    const assignmentCreated1 = await caseAssignmentLocalRepository.getAssignment(
-      resultAssignmentId1,
-    );
+    const assignmentCreated1 =
+      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId1);
 
     await expect(
       assignmentController.createTrailAttorneyAssignments(testCaseAssignment2),
@@ -135,9 +128,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
         context,
         caseAssignmentLocalRepository,
       );
-      assignmentResponse = await assignmentController.createTrailAttorneyAssignments(
-        testCaseAssignment,
-      );
+      assignmentResponse =
+        await assignmentController.createTrailAttorneyAssignments(testCaseAssignment);
     } catch (exception) {
       // exception.message;
     }
@@ -145,9 +137,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignmentResponse.body.length).toBe(testCaseAssignment.listOfAttorneyIds.length);
 
     const resultAssignmentId1 = assignmentResponse.body[0];
-    const assignmentCreated1 = await caseAssignmentLocalRepository.getAssignment(
-      resultAssignmentId1,
-    );
+    const assignmentCreated1 =
+      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId1);
 
     expect(resultAssignmentId1).toBeTruthy();
     expect(assignmentCreated1.caseId).toBe(testCaseAssignment.caseId);
@@ -155,9 +146,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignmentCreated1.role).toBe(testCaseAssignment.role);
 
     const resultAssignmentId2 = assignmentResponse.body[1];
-    const assignmentCreated2 = await caseAssignmentLocalRepository.getAssignment(
-      resultAssignmentId2,
-    );
+    const assignmentCreated2 =
+      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId2);
 
     expect(resultAssignmentId2).toBeTruthy();
     expect(assignmentCreated2.caseId).toBe(testCaseAssignment.caseId);
@@ -165,9 +155,8 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignmentCreated2.role).toBe(testCaseAssignment.role);
 
     const resultAssignmentId3 = assignmentResponse.body[2];
-    const assignmentCreated3 = await caseAssignmentLocalRepository.getAssignment(
-      resultAssignmentId3,
-    );
+    const assignmentCreated3 =
+      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId3);
 
     expect(resultAssignmentId3).toBeTruthy();
     expect(assignmentCreated3.caseId).toBe(testCaseAssignment.caseId);
