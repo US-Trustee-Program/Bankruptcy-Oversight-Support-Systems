@@ -101,6 +101,9 @@ param deployAppInsights bool = false
 
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
+
+@description('Action Group ID for alerts')
+param actionGroupId string = ''
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -224,7 +227,34 @@ module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
     functionApp
   ]
 }
-
+module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+  name: '${functionName}-healthcheck-alert-rule-module'
+  params: {
+    alertName: '${functionName}-health-check-alert'
+    appId: functionApp.id
+    actionGroupId: actionGroupId
+    timeAggregation: 'Average'
+    operator: 'LessThan'
+    targetResourceType: 'Microsoft.Web/sites'
+    metricName: 'HealthCheckStatus'
+    severity: 2
+    threshold: 100
+  }
+}
+module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+  name: '${functionName}-http-error-alert-rule-module'
+  params: {
+    alertName: '${functionName}-http-error-alert'
+    appId: functionApp.id
+    actionGroupId: actionGroupId
+    timeAggregation: 'Total'
+    operator: 'GreaterThanOrEqual'
+    targetResourceType: 'Microsoft.Web/sites'
+    metricName: 'Http5xx'
+    severity: 1
+    threshold: 1
+  }
+}
 /*
   Create functionapp
 */

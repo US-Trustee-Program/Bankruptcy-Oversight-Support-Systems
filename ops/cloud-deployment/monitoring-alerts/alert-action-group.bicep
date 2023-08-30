@@ -45,3 +45,4 @@ resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
     armRoleReceivers: []
   }
 }
+output actionGroupId string = actionGroup.id

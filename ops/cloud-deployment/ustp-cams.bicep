@@ -64,7 +64,7 @@ param deployAppInsights bool = false
 
 param createActionGroup bool = false
 
-param actionGroupName string = 'EmailDevTeam'
+param actionGroupName string = 'EmailDevelopmentTeam'
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
   name: '${actionGroupName}-action-group-module'
   params: {
@@ -96,6 +96,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
   params: {
+    actionGroupId: actionGroup.outputs.actionGroupId
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: analyticsWorkspaceId
     planName: webappPlanName
@@ -129,6 +130,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
+    actionGroupId: actionGroup.outputs.actionGroupId
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: analyticsWorkspaceId
     location: location

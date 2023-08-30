@@ -78,6 +78,9 @@ param deployAppInsights bool = false
 
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
+
+@description('Action Group ID for alerts')
+param actionGroupId string = ''
 /*
   Subnet creation in target virtual network
 */
@@ -128,8 +131,34 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
   }
 }
 
-module alertRule './monitoring-alerts/health-check-alert-rule.bicep' = {
+module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
   name: '${webappName}-healthcheck-alert-rule-module'
+  params: {
+    alertName: '${webappName}-health-check-alert'
+    appId: webapp.id
+    actionGroupId: actionGroupId
+    timeAggregation: 'Average'
+    operator: 'LessThan'
+    targetResourceType: 'Microsoft.Web/sites'
+    metricName: 'HealthCheckStatus'
+    severity: 2
+    threshold: 100
+
+  }
+}
+module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+  name: '${webappName}-http-error-alert-rule-module'
+  params: {
+    alertName: '${webappName}-http-error-alert'
+    appId: webapp.id
+    actionGroupId: actionGroupId
+    timeAggregation: 'Total'
+    operator: 'GreaterThanOrEqual'
+    targetResourceType: 'Microsoft.Web/sites'
+    metricName: 'Http5xx'
+    severity: 1
+    threshold: 1
+  }
 }
 module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
   name: '${webappName}-diagnostic-settings-module'

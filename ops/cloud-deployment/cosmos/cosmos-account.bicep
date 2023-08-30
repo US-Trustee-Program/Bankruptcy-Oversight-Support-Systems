@@ -115,3 +115,4 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
 }
 
 output name string = account.name // URI e.g: https://<NAME>.documents.azure.us:443/
+output id string = account.id

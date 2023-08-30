@@ -1,9 +1,9 @@
-param activitylogalerts_SqlHealthAlertTest_name string = 'SqlHealthAlertTest'
-param servers_sql_ustp_cams_externalid string = '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/bankruptcy-oversight-support-systems/providers/Microsoft.Sql/servers/sql-ustp-cams'
-param actiongroups_emailappcontributors_externalid string = '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app/providers/microsoft.insights/actiongroups/emailappcontributors'
+param sqlAlertName string
+param serverId string
+param actionGroupId string
 
-resource activitylogalerts_SqlHealthAlertTest_name_resource 'microsoft.insights/activitylogalerts@2020-10-01' = {
-  name: activitylogalerts_SqlHealthAlertTest_name
+resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
+  name: sqlAlertName
   location: 'global'
   properties: {
     scopes: [
@@ -27,7 +27,7 @@ resource activitylogalerts_SqlHealthAlertTest_name_resource 'microsoft.insights/
           anyOf: [
             {
               field: 'resourceId'
-              equals: '${servers_sql_ustp_cams_externalid}/databases/ACMS_REP_SUB'
+              equals: '${serverId}/databases/ACMS_REP_SUB'
             }
           ]
         }
@@ -44,7 +44,7 @@ resource activitylogalerts_SqlHealthAlertTest_name_resource 'microsoft.insights/
     actions: {
       actionGroups: [
         {
-          actionGroupId: actiongroups_emailappcontributors_externalid
+          actionGroupId: actionGroupId
           webhookProperties: {}
         }
       ]

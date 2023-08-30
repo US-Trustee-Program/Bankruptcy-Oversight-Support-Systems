@@ -18,6 +18,9 @@ param allowedSubnet string = ''
 
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string = ''
+
+@description('Action Group ID for alerts')
+param actionGroupId string = ''
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -90,6 +93,21 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
     customReadWriteRole
     cosmosDbUserManagedIdentity
   ]
+}
+
+module cosmosAvailabilityAlert './monitoring-alerts/metrics-alert-rule.bicep' = {
+  name: '${accountName}-availability-alert-module'
+  params: {
+    alertName: '${accountName}-availability-alert'
+    appId: account.outputs.id
+    actionGroupId: actionGroupId
+    timeAggregation: 'Average'
+    operator: 'LessThan'
+    targetResourceType: 'Microsoft.DocumentDB/databaseAccounts'
+    metricName: 'ServiceAvailability'
+    severity: 2
+    threshold: 100
+  }
 }
 module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
   name: '${accountName}-cosmos-diagnostic-setting-module'
