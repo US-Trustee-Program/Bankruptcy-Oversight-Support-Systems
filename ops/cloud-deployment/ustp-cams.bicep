@@ -116,7 +116,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
     webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
     allowVeracodeScan: allowVeracodeScan
-    createAlerts: true
+    createAlerts: createAlerts
   }
 }
 
@@ -157,7 +157,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     allowVeracodeScan: allowVeracodeScan
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
     pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
-    createAlerts: true
+    createAlerts: createAlerts
   }
   dependsOn: [
     ustpWebapp

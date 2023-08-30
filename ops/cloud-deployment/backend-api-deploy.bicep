@@ -230,7 +230,7 @@ module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
     functionApp
   ]
 }
-module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)) {
   name: '${functionName}-healthcheck-alert-rule-module'
   params: {
     alertName: '${functionName}-health-check-alert'
@@ -244,7 +244,7 @@ module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
     threshold: 100
   }
 }
-module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)) {
   name: '${functionName}-http-error-alert-rule-module'
   params: {
     alertName: '${functionName}-http-error-alert'
