@@ -68,8 +68,8 @@ export class CaseAssignment {
     const existingAssignments = await this.assignmentRepository.findAssignmentByCaseId(caseId);
     log.info(context, NAMESPACE, 'Existing assignments:', existingAssignments.toString());
     console.log('Existing assignments:', existingAssignments.toString());
-    if (existingAssignments.length === 0) return true;
-    return await this.isExactEqual(context, existingAssignments, newAssignments);
+    return existingAssignments.length === 0;
+    // return await this.isExactEqual(context, existingAssignments, newAssignments);
   }
 
   async isExactEqual(
