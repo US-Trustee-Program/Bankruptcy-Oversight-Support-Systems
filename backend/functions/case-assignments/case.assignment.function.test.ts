@@ -68,38 +68,6 @@ describe('Case Assignment Function Tests', () => {
     expect(appContext.res.body).toEqual(expectedResponse);
   });
 
-  test('should not create new assignment if previous assignment exists when a previously assigned attorney is included', async () => {
-    const requestOne = {
-      query: {},
-      body: {
-        caseId: '6789',
-        attorneyList: ['Jane'],
-        role: 'TrialAttorney',
-      },
-    };
-
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 1,
-      body: [1],
-    };
-
-    await httpTrigger(appContext, requestOne);
-    expect(appContext.res.body).toEqual(expectedResponse);
-
-    const requestTwo = {
-      query: {},
-      body: {
-        caseId: '6789',
-        attorneyList: ['Jane', 'John'],
-        role: 'TrialAttorney',
-      },
-    };
-    await httpTrigger(appContext, requestTwo);
-    expect(appContext.res.body).toEqual(expectedResponse);
-  });
-
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
     const request = {
       query: {},
