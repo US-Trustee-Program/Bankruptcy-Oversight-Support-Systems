@@ -12,26 +12,26 @@ resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
         emailAddress: 'amorrow@flexion.us'
         useCommonAlertSchema: true
       }
-      // {
-      //   name: 'EmailMike_-EmailAction-'
-      //   emailAddress: 'mly@flexion.us'
-      //   useCommonAlertSchema: true
-      // }
-      // {
-      //   name: 'EmailFritz_-EmailAction-'
-      //   emailAddress: 'fmadden@flexion.us'
-      //   useCommonAlertSchema: true
-      // }
-      // {
-      //   name: 'EmailJames_-EmailAction-'
-      //   emailAddress: 'jbrooks@flexion.us'
-      //   useCommonAlertSchema: true
-      // }
-      // {
-      //   name: 'EmailSwathi_-EmailAction-'
-      //   emailAddress: 'sdarbha@flexion.us'
-      //   useCommonAlertSchema: true
-      // }
+      {
+        name: 'EmailMike_-EmailAction-'
+        emailAddress: 'mly@flexion.us'
+        useCommonAlertSchema: true
+      }
+      {
+        name: 'EmailFritz_-EmailAction-'
+        emailAddress: 'fmadden@flexion.us'
+        useCommonAlertSchema: true
+      }
+      {
+        name: 'EmailJames_-EmailAction-'
+        emailAddress: 'jbrooks@flexion.us'
+        useCommonAlertSchema: true
+      }
+      {
+        name: 'EmailSwathi_-EmailAction-'
+        emailAddress: 'sdarbha@flexion.us'
+        useCommonAlertSchema: true
+      }
     ]
     smsReceivers: []
     webhookReceivers: []
