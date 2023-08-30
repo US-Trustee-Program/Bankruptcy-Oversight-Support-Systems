@@ -46,6 +46,7 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
   });
+
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
     const request = {
       query: {},
@@ -64,6 +65,38 @@ describe('Case Assignment Function Tests', () => {
     };
 
     await httpTrigger(appContext, request);
+    expect(appContext.res.body).toEqual(expectedResponse);
+  });
+
+  test('should not create new assignment if previous assignment exists when a previously assigned attorney is included', async () => {
+    const requestOne = {
+      query: {},
+      body: {
+        caseId: '6789',
+        attorneyList: ['Jane'],
+        role: 'TrialAttorney',
+      },
+    };
+
+    const expectedResponse = {
+      success: true,
+      message: 'Trial attorney assignments created.',
+      count: 1,
+      body: [1],
+    };
+
+    await httpTrigger(appContext, requestOne);
+    expect(appContext.res.body).toEqual(expectedResponse);
+
+    const requestTwo = {
+      query: {},
+      body: {
+        caseId: '6789',
+        attorneyList: ['Jane', 'John'],
+        role: 'TrialAttorney',
+      },
+    };
+    await httpTrigger(appContext, requestTwo);
     expect(appContext.res.body).toEqual(expectedResponse);
   });
 
