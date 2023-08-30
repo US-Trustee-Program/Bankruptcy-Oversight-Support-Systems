@@ -239,11 +239,11 @@ export const CaseAssignment = () => {
                               Assign
                             </ToggleModalButton>
                           )}
-                          {theCase.attorneyList?.map((attorney) => (
-                            <>
+                          {theCase.attorneyList?.map((attorney, key: number) => (
+                            <div key={key}>
                               {attorney}
                               <br />
-                            </>
+                            </div>
                           ))}
                         </td>
                       </tr>
