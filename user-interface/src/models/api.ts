@@ -24,7 +24,7 @@ export default class Api {
       const response = await httpPost({ url: Api._host + path, body });
       console.log('DEBUG:: line 25', response);
 
-      const data = await response.json();
+      const data = await JSON.parse(await response.json());
       console.log('DEBUG:: line 28', data);
 
       if (response.ok) {
