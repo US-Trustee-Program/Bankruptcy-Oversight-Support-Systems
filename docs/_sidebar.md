@@ -5,3 +5,4 @@
 * [Operations](ops.md)
 * [Contributing](contributing.md)
 * [Architecture](architecture/README.md)
+* [Troubleshooting](troubleshooting.md)
