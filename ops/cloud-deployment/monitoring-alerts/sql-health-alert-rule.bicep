@@ -1,9 +1,17 @@
+@description('Alert Rule Name')
 param sqlAlertName string
-param serverId string
-param databaseName string
-param actionGroupName string
-param actionGroupResourceGroupName string
 
+@description('Id of the server the database belongs to')
+param serverId string
+
+@description('Name of the database')
+param databaseName string
+
+@description('Action Group Name for alerts')
+param actionGroupName string
+
+@description('Action Group Resource Group Name for alerts')
+param actionGroupResourceGroupName string
 @allowed([
   'Microsoft.Sql/servers/databases'
 ])

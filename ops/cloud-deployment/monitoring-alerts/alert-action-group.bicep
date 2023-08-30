@@ -1,4 +1,4 @@
-param actionGroupName string = 'EmailDevelopmentTeam'
+param actionGroupName string
 
 resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
   name: actionGroupName

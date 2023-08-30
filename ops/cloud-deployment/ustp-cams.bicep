@@ -68,7 +68,8 @@ param createActionGroup bool = false
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
-param analyticsResourceGroupName string = 'rg-analytics'
+@description('Resource Group name for analytics and monitoring')
+param analyticsResourceGroupName string
 
 @description('Action Group Name for alerts')
 param actionGroupName string

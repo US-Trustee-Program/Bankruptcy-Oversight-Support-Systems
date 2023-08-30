@@ -1,6 +1,13 @@
+@description('Alert Rule Name')
 param alertName string
+
+@description('Id of the application or resource this metric alert is for')
 param appId string
+
+@description('Action Group Name for alerts')
 param actionGroupName string
+
+@description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
 
 @allowed([
