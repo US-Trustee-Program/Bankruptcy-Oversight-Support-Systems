@@ -22,13 +22,18 @@ export default class Api {
   public static async post(path: string, body: object): Promise<ResponseData> {
     try {
       const response = await httpPost({ url: Api._host + path, body });
+      console.log('DEBUG:: line 25', response);
 
       const data = await response.json();
+      console.log('DEBUG:: line 28', data);
 
       if (response.ok) {
         return data;
       } else {
-        return Promise.reject(new Error(`${data?.error.toString()}`));
+        console.log('problem with data', data);
+        const error = new Error(`${data?.error.toString()}`);
+        console.log('DEBUG:: line 33', error);
+        return Promise.reject(error);
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
