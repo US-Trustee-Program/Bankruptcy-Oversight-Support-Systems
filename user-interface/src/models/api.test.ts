@@ -28,9 +28,9 @@ describe('Specific tests for the API model', () => {
     expect(mockHttpPost).toHaveBeenCalled();
   });
 
-  test('call to Post with invalid parameters should return with a 400', () => {
+  test('should return error message when response is not ok', () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
-      json: () => 'mock post',
+      json: () => Promise.resolve('{"error": "mock post"}'),
       ok: false,
     }));
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
@@ -38,7 +38,7 @@ describe('Specific tests for the API model', () => {
     expect(Api.post('/some/path', {})).rejects.toThrow('400 Error - Invalid Request mock post');
   });
 
-  test('call to Post with valid parameters should return with an OK', () => {
+  test('should return data when response is Ok', () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
       json: () => 'mock post',
       ok: true,
