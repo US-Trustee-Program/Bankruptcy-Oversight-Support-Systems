@@ -70,7 +70,8 @@ param createAlerts bool = false
 
 param analyticsResourceGroupName string = 'rg-analytics'
 
-param actionGroupName string = 'EmailDevelopmentTeam'
+@description('Action Group Name for alerts')
+param actionGroupName string
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
   name: '${actionGroupName}-action-group-module'
   scope: resourceGroup(analyticsResourceGroupName)
@@ -103,7 +104,6 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
   params: {
-    actionGroupId: actionGroup.outputs.actionGroupId
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: analyticsWorkspaceId
     planName: webappPlanName
@@ -119,6 +119,8 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
     allowVeracodeScan: allowVeracodeScan
     createAlerts: createAlerts
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: analyticsResourceGroupName
   }
 }
 
@@ -138,7 +140,6 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
-    actionGroupId: actionGroup.outputs.actionGroupId
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: analyticsWorkspaceId
     location: location
@@ -160,6 +161,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
     pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
     createAlerts: createAlerts
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: analyticsResourceGroupName
   }
   dependsOn: [
     ustpWebapp

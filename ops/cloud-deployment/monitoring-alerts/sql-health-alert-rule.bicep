@@ -1,14 +1,20 @@
 param sqlAlertName string
 param serverId string
-param actionGroupId string
-param resourceGroup string
 param databaseName string
+param actionGroupName string
+param actionGroupResourceGroupName string
 
 @allowed([
   'Microsoft.Sql/servers/databases'
 ])
 @description('Allowed values for targetResourceType')
 param targetResourceType string
+
+resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
+  name: actionGroupName
+  scope: resourceGroup(actionGroupResourceGroupName)
+
+}
 
 resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
   name: sqlAlertName
@@ -27,7 +33,7 @@ resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
           anyOf: [
             {
               field: 'resourceGroup'
-              equals: resourceGroup
+              equals: resourceGroup().name
             }
           ]
         }
@@ -52,7 +58,7 @@ resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
     actions: {
       actionGroups: [
         {
-          actionGroupId: actionGroupId
+          actionGroupId: actionGroup.id
           webhookProperties: {}
         }
       ]

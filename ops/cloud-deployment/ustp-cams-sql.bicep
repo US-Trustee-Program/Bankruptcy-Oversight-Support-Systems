@@ -10,8 +10,11 @@ param databasePrefix string
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string
 
-@description('Action Group ID for alerts')
-param actionGroupId string = ''
+@description('Action Group Name for alerts')
+param actionGroupName string
+
+@description('Action Group Resource Group Name for alerts')
+param actionGroupResourceGroupName string
 
 param serverId string = '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/bankruptcy-oversight-support-systems/providers/Microsoft.Sql/servers/sql-ustp-cams'
 
@@ -28,11 +31,11 @@ module sqlHealthAlert './monitoring-alerts/sql-health-alert-rule.bicep' = {
   name: '${databaseName}-health-alert-module'
   params: {
     sqlAlertName: '${databaseName}-health-alert'
-    actionGroupId: actionGroupId
     serverId: serverId
-    resourceGroup: resourceGroup().name
     targetResourceType: 'Microsoft.Sql/servers/databases'
     databaseName: databaseName
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
 
@@ -41,14 +44,13 @@ module sqlSpaceAlert './monitoring-alerts/metrics-alert-rule.bicep' = {
   params: {
     alertName: '${databaseName}-low-space-alert'
     appId: '${serverId}/databases/${databaseName}'
-    actionGroupId: actionGroupId
     timeAggregation: 'Maximum'
     operator: 'GreaterThan'
     severity: 1
     threshold: 85
     metricName: 'storage_percent'
     targetResourceType: 'Microsoft.Sql/servers/databases'
-
-
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }

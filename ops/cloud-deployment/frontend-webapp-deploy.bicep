@@ -79,8 +79,11 @@ param deployAppInsights bool = false
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
-@description('Action Group ID for alerts')
-param actionGroupId string = ''
+@description('Action Group Name for alerts')
+param actionGroupName string
+
+@description('Action Group Resource Group Name for alerts')
+param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
@@ -134,33 +137,35 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
   }
 }
 
-module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)) {
+module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${webappName}-healthcheck-alert-rule-module'
   params: {
     alertName: '${webappName}-health-check-alert'
     appId: webapp.id
-    actionGroupId: actionGroupId
     timeAggregation: 'Average'
     operator: 'LessThan'
     targetResourceType: 'Microsoft.Web/sites'
     metricName: 'HealthCheckStatus'
     severity: 2
     threshold: 100
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
 
   }
 }
-module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)) {
+module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${webappName}-http-error-alert-rule-module'
   params: {
     alertName: '${webappName}-http-error-alert'
     appId: webapp.id
-    actionGroupId: actionGroupId
     timeAggregation: 'Total'
     operator: 'GreaterThanOrEqual'
     targetResourceType: 'Microsoft.Web/sites'
     metricName: 'Http5xx'
     severity: 1
     threshold: 1
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
 module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
