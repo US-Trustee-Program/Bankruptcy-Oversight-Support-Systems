@@ -359,7 +359,7 @@ jobs:
           az deployment group create \
             -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} analyticsWorkspaceId=${{ secrets.ANALYTICS_WORKSPACE_ID }} \
+            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} analyticsWorkspaceId=${{ secrets.ANALYTICS_WORKSPACE_ID }} actionGroupResourceGroupName=rg-analytics actionGroupName=EmailDevelopmentTeam \
             -o json --query properties.outputs | tee outputs.json
 
           cosmosDbClientId=$(cat ./outputs.json | jq -r .cosmosDbClientId.value)
