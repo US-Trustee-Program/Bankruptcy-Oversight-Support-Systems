@@ -28,7 +28,7 @@ export default class Api {
       if (response.ok) {
         return data;
       } else {
-        return Promise.reject(new Error(`400 Error - Invalid Request ${data?.toString()}`));
+        return Promise.reject(new Error(`${data?.error.toString()}`));
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
