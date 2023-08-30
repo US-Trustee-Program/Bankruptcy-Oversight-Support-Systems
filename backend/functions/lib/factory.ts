@@ -19,6 +19,7 @@ export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   if (config.get('dbMock')) {
     return new AttorneyLocalGateway();
   } else {
+    return new AttorneyLocalGateway();
     // return new AttorneyApiGateway(); // not yet implemented
   }
 };
