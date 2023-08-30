@@ -18,6 +18,10 @@ param allowedSubnet string = ''
 
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string = ''
+
+@description('WARNING: Set CosmosDb account for public access for all. Should be only enable for development environment.')
+param allowAllNetworks bool = false
+
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -26,6 +30,7 @@ module account './cosmos/cosmos-account.bicep' = {
     accountName: accountName
     location: location
     allowedSubnets: [ allowedSubnet ]
+    allowAllNetworks: allowAllNetworks
   }
 }
 
