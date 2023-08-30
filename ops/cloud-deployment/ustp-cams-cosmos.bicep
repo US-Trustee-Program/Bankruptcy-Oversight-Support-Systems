@@ -26,7 +26,7 @@ param actionGroupName string
 param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool = false
+param createAlerts bool
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'

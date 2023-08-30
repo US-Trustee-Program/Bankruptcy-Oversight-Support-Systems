@@ -109,7 +109,7 @@ param actionGroupName string
 param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool = false
+param createAlerts bool
 /*
   App service plan (hosting plan) for Azure functions instances
 */

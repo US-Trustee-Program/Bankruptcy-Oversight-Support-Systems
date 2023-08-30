@@ -86,7 +86,7 @@ param actionGroupName string
 param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool = false
+param createAlerts bool
 /*
   Subnet creation in target virtual network
 */
