@@ -68,10 +68,12 @@ param createActionGroup bool = false
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
+param analyticsResourceGroupName string = 'rg-analytics'
 
 param actionGroupName string = 'EmailDevelopmentTeam'
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
   name: '${actionGroupName}-action-group-module'
+  scope: resourceGroup(analyticsResourceGroupName)
   params: {
     actionGroupName: actionGroupName
   }
