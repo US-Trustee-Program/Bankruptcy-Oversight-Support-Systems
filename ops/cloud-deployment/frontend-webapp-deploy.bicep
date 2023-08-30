@@ -81,6 +81,9 @@ param analyticsWorkspaceId string = ''
 
 @description('Action Group ID for alerts')
 param actionGroupId string = ''
+
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = false
 /*
   Subnet creation in target virtual network
 */
@@ -131,7 +134,7 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
   }
 }
 
-module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)) {
   name: '${webappName}-healthcheck-alert-rule-module'
   params: {
     alertName: '${webappName}-health-check-alert'
@@ -146,7 +149,7 @@ module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
 
   }
 }
-module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = {
+module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)) {
   name: '${webappName}-http-error-alert-rule-module'
   params: {
     alertName: '${webappName}-http-error-alert'

@@ -1,6 +1,14 @@
 param sqlAlertName string
 param serverId string
 param actionGroupId string
+param resourceGroup string
+param databaseName string
+
+@allowed([
+  'Microsoft.Sql/servers/databases'
+])
+@description('Allowed values for targetResourceType')
+param targetResourceType string
 
 resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
   name: sqlAlertName
@@ -19,7 +27,7 @@ resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
           anyOf: [
             {
               field: 'resourceGroup'
-              equals: 'bankruptcy-oversight-support-systems'
+              equals: resourceGroup
             }
           ]
         }
@@ -27,7 +35,7 @@ resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
           anyOf: [
             {
               field: 'resourceId'
-              equals: '${serverId}/databases/ACMS_REP_SUB'
+              equals: '${serverId}/databases/${databaseName}'
             }
           ]
         }
@@ -35,7 +43,7 @@ resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
           anyOf: [
             {
               field: 'resourceType'
-              equals: 'Microsoft.Sql/servers/databases'
+              equals: targetResourceType
             }
           ]
         }

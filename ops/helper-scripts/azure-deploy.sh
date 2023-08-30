@@ -75,7 +75,7 @@ function az_vnet_exists_func() {
 function az_action_group_exists_func() {
     local rg=$1
     local actionGroupName=$2
-    local count=$(az monitor action-group list -g rg-analytics --query "length([?name=='EmailDevTeamTest'])")
+    local count=$(az monitor action-group list -g rg-analytics --query "length([?name=='EmailDevelopmentTeam'])")
     if [[ $count -eq 0 ]]; then
         exists=false
     else

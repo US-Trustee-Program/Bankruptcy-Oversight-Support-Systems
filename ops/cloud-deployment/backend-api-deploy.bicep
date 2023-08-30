@@ -104,6 +104,9 @@ param analyticsWorkspaceId string = ''
 
 @description('Action Group ID for alerts')
 param actionGroupId string = ''
+
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = false
 /*
   App service plan (hosting plan) for Azure functions instances
 */

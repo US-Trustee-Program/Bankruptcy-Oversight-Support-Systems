@@ -62,7 +62,12 @@ param analyticsWorkspaceId string = ''
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param createActionGroup bool = false
+
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = false
+
 
 param actionGroupName string = 'EmailDevelopmentTeam'
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
@@ -111,6 +116,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
     webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
     allowVeracodeScan: allowVeracodeScan
+    createAlerts: true
   }
 }
 
@@ -151,6 +157,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     allowVeracodeScan: allowVeracodeScan
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
     pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
+    createAlerts: true
   }
   dependsOn: [
     ustpWebapp

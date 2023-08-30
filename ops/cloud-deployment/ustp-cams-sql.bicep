@@ -30,6 +30,9 @@ module sqlHealthAlert './monitoring-alerts/sql-health-alert-rule.bicep' = {
     sqlAlertName: '${databaseName}-health-alert'
     actionGroupId: actionGroupId
     serverId: serverId
+    resourceGroup: resourceGroup().name
+    targetResourceType: 'Microsoft.Sql/servers/databases'
+    databaseName: databaseName
   }
 }
 

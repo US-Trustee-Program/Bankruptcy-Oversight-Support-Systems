@@ -1,6 +1,6 @@
-param alertName string = 'HTTPErrorAlert-Node-Api'
-param appId string = '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app/providers/Microsoft.Web/sites/ustp-cams-node-api'
-param actionGroupId string = '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-analytics/providers/microsoft.insights/actiongroups/emaildevelopmentteam'
+param alertName string
+param appId string
+param actionGroupId string
 
 @allowed([
   'Total'
@@ -45,6 +45,12 @@ param severity int
 @description('Values for threshold')
 param threshold int
 
+@description('Values for Evaluation Frequency')
+param evaluationFrequency string = 'PT15M' //Default to 15M for most Alerts, Servicevailability is an exception requires 1h+
+
+@description('Values for evaluation Window Size')
+param windowSize string = 'PT30M' //Default to 30M for most Alerts,  Servicevailability is an exception requires 1h+
+
 
 resource alertRule 'microsoft.insights/metricAlerts@2018-03-01' = {
   name: alertName
@@ -55,8 +61,8 @@ resource alertRule 'microsoft.insights/metricAlerts@2018-03-01' = {
     scopes: [
       appId
     ]
-    evaluationFrequency: 'PT15M'
-    windowSize: 'PT30M'
+    evaluationFrequency: evaluationFrequency
+    windowSize: windowSize
     criteria: {
       allOf: [
         {

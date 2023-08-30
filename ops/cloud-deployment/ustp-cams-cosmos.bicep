@@ -21,6 +21,9 @@ param analyticsWorkspaceId string = ''
 
 @description('Action Group ID for alerts')
 param actionGroupId string = ''
+
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = false
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -95,7 +98,7 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
   ]
 }
 
-module cosmosAvailabilityAlert './monitoring-alerts/metrics-alert-rule.bicep' = {
+module cosmosAvailabilityAlert './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts && !empty(actionGroupId)){
   name: '${accountName}-availability-alert-module'
   params: {
     alertName: '${accountName}-availability-alert'
@@ -107,6 +110,8 @@ module cosmosAvailabilityAlert './monitoring-alerts/metrics-alert-rule.bicep' = 
     metricName: 'ServiceAvailability'
     severity: 2
     threshold: 100
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT1H'
   }
 }
 module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
