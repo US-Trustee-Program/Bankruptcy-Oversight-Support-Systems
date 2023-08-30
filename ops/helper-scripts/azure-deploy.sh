@@ -144,7 +144,6 @@ if [ "$(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName)" != t
 fi
 if [ "$(az_action_group_exists_func $analyticsResourceGroupName $actionGroupName)" != true ]; then
     deployment_parameters="${deployment_parameters} createActionGroup=true"
-    echo "Deploy Action Group: true"
 fi
 
 az_deploy_func $app_rg $deployment_file "${deployment_parameters}"
