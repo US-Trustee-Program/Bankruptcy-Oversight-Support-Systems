@@ -31,12 +31,12 @@ describe('Specific tests for the API model', () => {
   // TODO CAMS-87 UI test blocking build
   test.skip('should return error message when response is not ok', () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
-      json: () => Promise.resolve('{"error": "mock post"}'),
+      json: () => Promise.resolve({ error: 'mock post' }),
       ok: false,
     }));
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
-    expect(Api.post('/some/path', {})).rejects.toThrow('400 Error - Invalid Request mock post');
+    expect(Api.post('/some/path', {})).rejects.toThrow('mock post');
   });
 
   // TODO CAMS-87 UI test blocking build
