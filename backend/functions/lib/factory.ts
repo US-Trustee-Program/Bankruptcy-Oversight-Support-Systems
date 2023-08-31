@@ -15,6 +15,7 @@ import { ApplicationContext } from './adapters/types/basic';
 import { CosmosConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
+import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-humble';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -70,10 +71,12 @@ export const getAssignmentRepository = (
   }
 };
 
-export const getCosmosDbClient = (): CosmosClientHumble => {
+export const getCosmosDbClient = (
+  testClient: boolean,
+): CosmosClientHumble | FakeCosmosClientHumble => {
   // TODO: evaluate whether this should be a singleton
   const config: ApplicationConfiguration = new ApplicationConfiguration();
-  return new CosmosClientHumble(config);
+  return testClient ? new FakeCosmosClientHumble() : new CosmosClientHumble(config);
 };
 
 export const getCosmosConfig = (): CosmosConfig => {

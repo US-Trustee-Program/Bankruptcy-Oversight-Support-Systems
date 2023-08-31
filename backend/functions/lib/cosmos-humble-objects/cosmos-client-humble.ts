@@ -5,8 +5,6 @@ import {
   DatabaseAccount,
   Databases,
   GlobalEndpointManager,
-  Offer,
-  Offers,
   RequestOptions,
   ResourceResponse,
 } from '@azure/cosmos';
@@ -19,7 +17,7 @@ export default class CosmosClientHumble {
   private clientContext: ClientContext;
   private databases: Databases;
   private options: CosmosClientOptions;
-  private offers: Offers;
+  // private offers: Offers;
   private endpointRefresher: NodeJS.Timeout;
 
   constructor(config: ApplicationConfiguration) {
@@ -39,14 +37,14 @@ export default class CosmosClientHumble {
     this.clientContext = new ClientContext(this.options, globalEndpointManager);
 
     this.databases = new Databases(this.cosmosClient, this.clientContext);
-    this.offers = new Offers(this.cosmosClient, this.clientContext);
+    // this.offers = new Offers(this.cosmosClient, this.clientContext);
   }
 
   public database(id: string): CosmosDatabaseHumble {
     return new CosmosDatabaseHumble(this.cosmosClient, id, this.clientContext);
   }
 
-  public async getDatabaseAccount(
+  private async getDatabaseAccount(
     options?: RequestOptions,
   ): Promise<ResourceResponse<DatabaseAccount>> {
     const response = await this.clientContext.getDatabaseAccount(options);
@@ -58,26 +56,26 @@ export default class CosmosClientHumble {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public offer(id: string): Offer {
-    throw new Error('not implemented');
-  }
-
-  public getWriteEndpoint(): Promise<string> {
-    return this.clientContext.getWriteEndpoint();
-  }
-
-  public getReadEndpoint(): Promise<string> {
-    return this.clientContext.getReadEndpoint();
-  }
-
-  public getWriteEndpoints(): Promise<readonly string[]> {
-    return this.clientContext.getWriteEndpoints();
-  }
-
-  public getReadEndpoints(): Promise<readonly string[]> {
-    return this.clientContext.getReadEndpoints();
-  }
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // public offer(id: string): Offer {
+  //   throw new Error('not implemented');
+  // }
+  //
+  // public getWriteEndpoint(): Promise<string> {
+  //   return this.clientContext.getWriteEndpoint();
+  // }
+  //
+  // public getReadEndpoint(): Promise<string> {
+  //   return this.clientContext.getReadEndpoint();
+  // }
+  //
+  // public getWriteEndpoints(): Promise<readonly string[]> {
+  //   return this.clientContext.getWriteEndpoints();
+  // }
+  //
+  // public getReadEndpoints(): Promise<readonly string[]> {
+  //   return this.clientContext.getReadEndpoints();
+  // }
 
   public dispose(): void {
     clearTimeout(this.endpointRefresher);
