@@ -62,7 +62,7 @@ param analyticsWorkspaceId string = ''
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
-@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+@description('boolean to determine creation of Action Groups')
 param createActionGroup bool = false
 
 @description('boolean to determine creation and configuration of Alerts')
