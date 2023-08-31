@@ -54,10 +54,10 @@ param severity int
 param threshold int
 
 @description('Values for Evaluation Frequency')
-param evaluationFrequency string = 'PT15M' //Default to 15M for most Alerts, Servicevailability is an exception requires 1h+
+param evaluationFrequency string = 'PT15M' //Default to 15M for most Alerts
 
 @description('Values for evaluation Window Size')
-param windowSize string = 'PT30M' //Default to 30M for most Alerts,  Servicevailability is an exception requires 1h+
+param windowSize string = 'PT30M' //Default to 30M for most Alerts,  Service Availability is an exception requires 1h+
 
 resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
   name: actionGroupName
