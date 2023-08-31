@@ -6,33 +6,7 @@ resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
   properties: {
     groupShortName: 'Email Team'
     enabled: true
-    emailReceivers: [
-      {
-        name: 'EmailArthur-EmailAction-'
-        emailAddress: 'amorrow@flexion.us'
-        useCommonAlertSchema: true
-      }
-      {
-        name: 'EmailMike_-EmailAction-'
-        emailAddress: 'mly@flexion.us'
-        useCommonAlertSchema: true
-      }
-      {
-        name: 'EmailFritz_-EmailAction-'
-        emailAddress: 'fmadden@flexion.us'
-        useCommonAlertSchema: true
-      }
-      {
-        name: 'EmailJames_-EmailAction-'
-        emailAddress: 'jbrooks@flexion.us'
-        useCommonAlertSchema: true
-      }
-      {
-        name: 'EmailSwathi_-EmailAction-'
-        emailAddress: 'sdarbha@flexion.us'
-        useCommonAlertSchema: true
-      }
-    ]
+    emailReceivers: []
     smsReceivers: []
     webhookReceivers: []
     eventHubReceivers: []
@@ -42,7 +16,18 @@ resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
     voiceReceivers: []
     logicAppReceivers: []
     azureFunctionReceivers: []
-    armRoleReceivers: []
+    armRoleReceivers: [
+      {
+        name: 'EmailMonitoringContributors'
+        roleId: '749f88d5-cbae-40b8-bcfc-e573ddc772fa'
+        useCommonAlertSchema: true
+      }
+      {
+        name: 'EmailMonitoringReaders'
+        roleId: '43d0d8ad-25c7-4714-9337-8ba259a9fe05'
+        useCommonAlertSchema: true
+      }
+    ]
   }
 }
 output actionGroupId string = actionGroup.id

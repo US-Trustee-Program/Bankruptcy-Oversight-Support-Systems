@@ -72,17 +72,6 @@ function az_vnet_exists_func() {
     fi
     echo $exists
 }
-function az_action_group_exists_func() {
-    local rg=$1
-    local actionGroupName=$2
-    local count=$(az monitor action-group list -g rg-analytics --query "length([?name=='EmailDevelopmentTeam'])")
-    if [[ $count -eq 0 ]]; then
-        exists=false
-    else
-        exists=true
-    fi
-    echo $exists
-}
 
 function az_deploy_func() {
     local rg=$1
@@ -141,9 +130,6 @@ validation_func $app_rg $deployment_file "$deployment_parameters"
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [ "$(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName)" != true ]; then
     deployment_parameters="${deployment_parameters} createVnet=true"
-fi
-if [ "$(az_action_group_exists_func $analyticsResourceGroupName $actionGroupName)" != true ]; then
-    deployment_parameters="${deployment_parameters} createActionGroup=true"
 fi
 
 az_deploy_func $app_rg $deployment_file "${deployment_parameters}"
