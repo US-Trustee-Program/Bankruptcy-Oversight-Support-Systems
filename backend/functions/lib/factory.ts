@@ -14,7 +14,7 @@ import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignme
 import { ApplicationContext } from './adapters/types/basic';
 import { CosmosConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
-import CosmosHumble from './cosmosHumble';
+import CosmosHumble from './cosmos-humble-objects/cosmosHumble';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
