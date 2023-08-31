@@ -12,10 +12,9 @@ import { PacerSecretsInterface } from './adapters/gateways/pacer-secrets.interfa
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
 import { ApplicationContext } from './adapters/types/basic';
-import { ManagedIdentityCredential, DefaultAzureCredential } from '@azure/identity';
-import { CosmosClient } from '@azure/cosmos';
 import { CosmosConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
+import CosmosHumble from './cosmosHumble';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -71,17 +70,10 @@ export const getAssignmentRepository = (
   }
 };
 
-export const getCosmosDbClient = (): CosmosClient => {
+export const getCosmosDbClient = (): CosmosHumble => {
   // TODO: evaluate whether this should be a singleton
   const config: ApplicationConfiguration = new ApplicationConfiguration();
-  return new CosmosClient({
-    endpoint: config.get('cosmosConfig').endpoint,
-    aadCredentials: config.get('cosmosConfig').managedIdentity
-      ? new ManagedIdentityCredential({
-          clientId: config.get('cosmosConfig').managedIdentity,
-        })
-      : new DefaultAzureCredential(),
-  });
+  return new CosmosHumble(config);
 };
 
 export const getCosmosConfig = (): CosmosConfig => {
