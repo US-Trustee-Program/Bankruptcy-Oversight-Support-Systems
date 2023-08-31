@@ -62,6 +62,24 @@ param analyticsWorkspaceId string = ''
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
+@description('boolean to determine creation of Action Groups')
+param createActionGroup bool = false
+
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = false
+
+@description('Resource Group name for analytics and monitoring')
+param analyticsResourceGroupName string
+
+@description('Action Group Name for alerts')
+param actionGroupName string
+module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
+  name: '${actionGroupName}-action-group-module'
+  scope: resourceGroup(analyticsResourceGroupName)
+  params: {
+    actionGroupName: actionGroupName
+  }
+}
 module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -101,6 +119,9 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
     webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
     allowVeracodeScan: allowVeracodeScan
+    createAlerts: createAlerts
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: analyticsResourceGroupName
   }
 }
 
@@ -140,6 +161,9 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     allowVeracodeScan: allowVeracodeScan
     pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
     pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
+    createAlerts: createAlerts
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: analyticsResourceGroupName
   }
   dependsOn: [
     ustpWebapp
