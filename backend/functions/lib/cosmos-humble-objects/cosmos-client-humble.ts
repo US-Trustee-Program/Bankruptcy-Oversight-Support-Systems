@@ -12,9 +12,9 @@ import {
 } from '@azure/cosmos';
 import { ApplicationConfiguration } from '../configs/application-configuration';
 import { DefaultAzureCredential, ManagedIdentityCredential } from '@azure/identity';
-import CosmosDatabaseHumble from './cosmosDatabaseHumble';
+import CosmosDatabaseHumble from './cosmos-database-humble';
 
-export default class CosmosHumble {
+export default class CosmosClientHumble {
   private cosmosClient: CosmosClient;
   private clientContext: ClientContext;
   private databases: Databases;

@@ -1,5 +1,5 @@
 import { ClientContext, Containers, CosmosClient, Database, Users } from '@azure/cosmos';
-import CosmosContainerHumble from './cosmosContainerHumble';
+import CosmosContainerHumble from './cosmos-container-humble';
 
 export default class CosmosDatabaseHumble {
   private containers: Containers;
