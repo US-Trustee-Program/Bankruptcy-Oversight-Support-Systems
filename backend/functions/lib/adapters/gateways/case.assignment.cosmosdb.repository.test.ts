@@ -8,7 +8,7 @@ const context = require('azure-function-context-mock');
 const appContext = applicationContextCreator(context);
 describe('Test case assignment cosmosdb repository tests', () => {
   // TODO : still need to refactor to use mocked cosmos client
-  xtest('should create two assignments and find both of them', async () => {
+  test('should create two assignments and find both of them', async () => {
     const caseNumber = randomUUID();
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumber,
@@ -24,7 +24,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
 
     const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
-      new CaseAssignmentCosmosDbRepository();
+      new CaseAssignmentCosmosDbRepository(true);
 
     const assignmentId1 = await testCaseAssignmentCosmosDbRepository.createAssignment(
       appContext,
@@ -38,9 +38,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignmentId1).toBeTruthy();
     expect(assignmentId2).toBeTruthy();
 
-    const actualAssignments = await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(
-      caseNumber,
-    );
+    const actualAssignments =
+      await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(caseNumber);
 
     expect(actualAssignments.length).toEqual(2);
 
