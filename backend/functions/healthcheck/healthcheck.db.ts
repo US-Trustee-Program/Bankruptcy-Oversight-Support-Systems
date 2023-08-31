@@ -1,8 +1,6 @@
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import log from '../lib/adapters/services/logger.service';
 
-import { CosmosClient } from '@azure/cosmos';
-
 import * as dotenv from 'dotenv';
 import { getCosmosDbClient } from '../lib/factory';
 
@@ -16,7 +14,7 @@ export default class HealthcheckCosmosDb {
   private CONTAINER_NAME = 'healthcheck'; // NOTE: Expect a container named 'healthcheck' with one item
 
   private readonly ctx: ApplicationContext;
-  private readonly cosmosDbClient: CosmosClient;
+  private readonly cosmosDbClient;
 
   constructor(applicationContext: ApplicationContext) {
     try {
