@@ -29,7 +29,7 @@ describe('Specific tests for the API model', () => {
   });
 
   // TODO CAMS-87 UI test blocking build
-  test.skip('should return error message when response is not ok', () => {
+  test('should return error message when response is not ok', () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ error: 'mock post' }),
       ok: false,
@@ -40,7 +40,7 @@ describe('Specific tests for the API model', () => {
   });
 
   // TODO CAMS-87 UI test blocking build
-  test.skip('should return data when response is Ok', () => {
+  test('should return data when response is Ok', () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
       json: () => 'mock post',
       ok: true,
