@@ -56,16 +56,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     try {
       // Check read access
-
-      // // Approach 1: Gets everything and filter list down to match caseId
-      // const { resources: results } = await this.cosmosDbClient
-      //   .database(this.cosmosConfig.databaseName)
-      //   .container(this.containerName)
-      //   .items.readAll()
-      //   .fetchAll();
-      // return results.filter((r) => r.caseId == caseId); // TODO ML : not be efficient because it query all from container
-
-      // Approach 2: The sql like approach
       const querySpec = {
         query: 'SELECT * FROM c WHERE c.caseId = @caseId',
         parameters: [
