@@ -56,5 +56,62 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment2.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
   });
 
+  test('should find only assignments for the requested case', async () => {
+    const caseNumberOne = randomUUID();
+    const caseNumberTwo = randomUUID();
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberOne,
+      'Susan Arbeit',
+      CaseAssignmentRole.TrialAttorney,
+      'Drew Kerrigan',
+    );
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberTwo,
+      'Jeffery McCaslin',
+      CaseAssignmentRole.TrialAttorney,
+      'Drew Kerrigan',
+    );
+
+    const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
+      new CaseAssignmentCosmosDbRepository(true);
+
+    const assignmentId1 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+      appContext,
+      testCaseAttorneyAssignment1,
+    );
+    const assignmentId2 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+      appContext,
+      testCaseAttorneyAssignment2,
+    );
+
+    const actualAssignmentsOne =
+      await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(caseNumberOne);
+
+    expect(actualAssignmentsOne.length).toEqual(1);
+
+    const assignment1 = actualAssignmentsOne.find((assign) => assign.id === assignmentId1);
+    const assignment2 = actualAssignmentsOne.find((assign) => assign.id === assignmentId2);
+
+    expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
+    expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
+    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.caseTitle).toEqual(testCaseAttorneyAssignment1.caseTitle);
+    expect(assignment2).toBeFalsy();
+
+    const actualAssignmentsTwo =
+      await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(caseNumberTwo);
+
+    expect(actualAssignmentsOne.length).toEqual(1);
+
+    const assignmentOne = actualAssignmentsTwo.find((assign) => assign.id === assignmentId1);
+    const assignmentTwo = actualAssignmentsTwo.find((assign) => assign.id === assignmentId2);
+
+    expect(assignmentTwo.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
+    expect(assignmentTwo.role).toEqual(testCaseAttorneyAssignment2.role);
+    expect(assignmentTwo.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignmentTwo.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
+    expect(assignmentOne).toBeFalsy();
+  });
+
   xtest('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
 });
