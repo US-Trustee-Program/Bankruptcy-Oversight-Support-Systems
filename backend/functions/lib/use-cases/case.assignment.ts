@@ -66,32 +66,6 @@ export class CaseAssignment {
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
-    // log.info(context, NAMESPACE, 'Existing assignments:', existingAssignments.toString());
-    // console.log('Existing assignments:', existingAssignments.toString());
     return existingAssignments.length === 0;
-    // return await this.isExactEqual(context, existingAssignments, newAssignments);
-  }
-
-  async isExactEqual(
-    context: ApplicationContext,
-    existingAssignments: CaseAttorneyAssignment[],
-    newAssignments: CaseAttorneyAssignment[],
-  ): Promise<boolean> {
-    if (existingAssignments.length != newAssignments.length) {
-      return false;
-    } else {
-      //compare each assignment
-      for (let i = 0; i < existingAssignments.length; i++) {
-        if (
-          existingAssignments[i].attorneyName !== newAssignments[i].attorneyName ||
-          existingAssignments[i].role !== newAssignments[i].role
-        ) {
-          return false;
-        }
-      }
-      log.info(context, NAMESPACE, 'We found the assignment already.');
-      console.log('We found the assignment already.');
-      return true;
-    }
   }
 }
