@@ -57,12 +57,9 @@ export const getAssignmentRepository = (
 ): CaseAssignmentRepositoryInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
   if (config.get('dbMock')) {
-    console.log('===DEBUG=== data is being mocked');
     if (Object.prototype.hasOwnProperty.call(context.caseAssignmentRepository, 'getCount')) {
-      console.log('===DEBUG=== Repository is already initialized.');
       return context.caseAssignmentRepository;
     } else {
-      console.log('===DEBUG=== Repository is being NEWLY initialized.');
       context.caseAssignmentRepository = new CaseAssignmentLocalRepository();
       return context.caseAssignmentRepository;
     }
@@ -72,7 +69,7 @@ export const getAssignmentRepository = (
 };
 
 export const getCosmosDbClient = (
-  testClient: boolean,
+  testClient: boolean = false,
 ): CosmosClientHumble | FakeCosmosClientHumble => {
   // TODO: evaluate whether this should be a singleton
   const config: ApplicationConfiguration = new ApplicationConfiguration();
