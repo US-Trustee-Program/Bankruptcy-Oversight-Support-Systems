@@ -7,7 +7,11 @@ const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
 describe('Test case assignment cosmosdb repository tests', () => {
-  // TODO : still need to refactor to use mocked cosmos client
+  let repository: CaseAssignmentCosmosDbRepository;
+  beforeEach(() => {
+    repository = new CaseAssignmentCosmosDbRepository(true);
+  });
+
   test('should create two assignments and find both of them', async () => {
     const caseNumber = randomUUID();
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
@@ -23,14 +27,11 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'Drew Kerrigan',
     );
 
-    const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
-      new CaseAssignmentCosmosDbRepository(true);
-
-    const assignmentId1 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+    const assignmentId1 = await repository.createAssignment(
       appContext,
       testCaseAttorneyAssignment1,
     );
-    const assignmentId2 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+    const assignmentId2 = await repository.createAssignment(
       appContext,
       testCaseAttorneyAssignment2,
     );
@@ -38,8 +39,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignmentId1).toBeTruthy();
     expect(assignmentId2).toBeTruthy();
 
-    const actualAssignments =
-      await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(caseNumber);
+    const actualAssignments = await repository.findAssignmentsByCaseId(caseNumber);
 
     expect(actualAssignments.length).toEqual(2);
 
@@ -72,20 +72,16 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'Drew Kerrigan',
     );
 
-    const testCaseAssignmentCosmosDbRepository: CaseAssignmentCosmosDbRepository =
-      new CaseAssignmentCosmosDbRepository(true);
-
-    const assignmentId1 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+    const assignmentId1 = await repository.createAssignment(
       appContext,
       testCaseAttorneyAssignment1,
     );
-    const assignmentId2 = await testCaseAssignmentCosmosDbRepository.createAssignment(
+    const assignmentId2 = await repository.createAssignment(
       appContext,
       testCaseAttorneyAssignment2,
     );
 
-    const actualAssignmentsOne =
-      await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(caseNumberOne);
+    const actualAssignmentsOne = await repository.findAssignmentsByCaseId(caseNumberOne);
 
     expect(actualAssignmentsOne.length).toEqual(1);
 
@@ -98,8 +94,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment1.caseTitle).toEqual(testCaseAttorneyAssignment1.caseTitle);
     expect(assignment2).toBeFalsy();
 
-    const actualAssignmentsTwo =
-      await testCaseAssignmentCosmosDbRepository.findAssignmentsByCaseId(caseNumberTwo);
+    const actualAssignmentsTwo = await repository.findAssignmentsByCaseId(caseNumberTwo);
 
     expect(actualAssignmentsOne.length).toEqual(1);
 
@@ -113,5 +108,52 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignmentOne).toBeFalsy();
   });
 
-  xtest('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {});
+  test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {
+    const testCaseAttorneyAssignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      'throw-permissions-error',
+      'some-attorney-name',
+      CaseAssignmentRole.TrialAttorney,
+      'some-case-title',
+    );
+
+    await expect(
+      repository.createAssignment(appContext, testCaseAttorneyAssignment),
+    ).rejects.toThrow('Request is forbidden');
+  });
+
+  test('should throw a not implemented error when getAssignment is called', async () => {
+    try {
+      await repository.getAssignment('some-assignment');
+      // Ensure that if we do not catch the expected error, we will fail.
+      expect(true).toBeFalsy();
+    } catch (e) {
+      expect((e as Error).message).toEqual('Method not implemented.');
+    }
+  });
+
+  test('should throw a not implemented error when findAssignment is called', async () => {
+    const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      'some-case-number',
+      'some-attorney-name',
+      CaseAssignmentRole.TrialAttorney,
+      'some-case-title',
+    );
+    try {
+      await repository.findAssignment(assignment);
+      // Ensure that if we do not catch the expected error, we will fail.
+      expect(true).toBeFalsy();
+    } catch (e) {
+      expect((e as Error).message).toEqual('Method not implemented.');
+    }
+  });
+
+  test('should throw a not implemented error when getCount is called', async () => {
+    try {
+      await repository.getCount();
+      // Ensure that if we do not catch the expected error, we will fail.
+      expect(true).toBeFalsy();
+    } catch (e) {
+      expect((e as Error).message).toEqual('Method not implemented.');
+    }
+  });
 });

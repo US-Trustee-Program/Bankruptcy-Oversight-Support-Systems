@@ -1,4 +1,5 @@
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { AssignmentException } from '../use-cases/assignment.exception';
 
 interface QueryParams {
   name: string;
@@ -22,6 +23,9 @@ export default class FakeCosmosClientHumble {
         return {
           items: {
             create: (assignment: CaseAttorneyAssignment) => {
+              if (assignment.caseId === 'throw-permissions-error') {
+                throw new AssignmentException(403, 'forbidden');
+              }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);
               return {
