@@ -25,7 +25,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   ): Promise<string> {
     try {
       // Check write access
-      const { item: item } = await this.cosmosDbClient
+      const { item } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
@@ -77,7 +77,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .container(this.containerName)
         .items.query(querySpec)
         .fetchAll();
-      return results.filter((r) => r.caseId == caseId);
+      return results;
     } catch (e) {
       if (e instanceof AggregateAuthenticationError) {
         throw new AssignmentException(403, 'Failed to authenticate to Azure');
