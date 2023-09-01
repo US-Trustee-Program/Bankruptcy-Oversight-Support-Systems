@@ -11,6 +11,7 @@ module.exports = {
     'coverage/',
     'lib/adapters/types/',
     'lib/testing/mock-data/',
+    'lib/cosmos-humble-objects/',
     'jest.*config.js',
   ],
   testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)'],
