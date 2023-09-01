@@ -18,12 +18,12 @@ resource appInsight 'Microsoft.Insights/components@2020-02-02' existing = {
 }
 
 var logRetentionPolicy = {
-  days: 30
+  days: 0
   enabled: true
 }
 
 var metricRetentionPolicy = {
-  days: 30
+  days: 0
   enabled: true
 }
 

@@ -22,7 +22,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
       }
@@ -31,7 +31,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
       }
@@ -40,7 +40,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
       }
@@ -49,7 +49,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
       }
@@ -58,7 +58,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         categoryGroup: null
         enabled: true
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
       }
@@ -67,7 +67,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         categoryGroup: null
         enabled: false
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
       }
@@ -77,7 +77,7 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         timeGrain: null
         enabled: false
         retentionPolicy: {
-          days: 30
+          days: 0
           enabled: true
         }
         category: 'Requests'
