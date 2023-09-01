@@ -212,7 +212,7 @@ export const CaseAssignment = () => {
                           <span className="mobile-title">Case Number:</span>
                           {theCase.caseNumber}
                         </td>
-                        <td>
+                        <td className="case-title-column">
                           <span className="mobile-title">Case Title (Debtor):</span>
                           {theCase.caseTitle}
                         </td>
