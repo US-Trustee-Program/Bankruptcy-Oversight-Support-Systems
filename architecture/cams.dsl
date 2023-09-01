@@ -14,14 +14,9 @@ workspace {
             nodeapi = container "API" "An Azure Functions App (Node.js)" {
                 cases = component "Cases" "Cases API"
                 assign = component "Assignments" "Assignments API"
-                attorneys = component "Attorneys" "Attorneys API"
             }
             dxtrsql = container "DXTR DB" "DXTR SQL Database"
             cosmos = container "Cosmos DB" "NoSQL Database"
-        }
-
-        appi = softwareSystem "App Insights" {
-
         }
 
         # Relationships
@@ -40,7 +35,6 @@ workspace {
         cases -> dxtrsql "Gets case data"
         cases -> cosmos "Reads case assignments"
         assign -> cosmos "Reads and writes case assignments"
-        webapp -> attorneys "Reads Manhattan attorneys"
     }
 
     views {
