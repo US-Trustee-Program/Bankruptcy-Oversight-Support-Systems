@@ -11,6 +11,10 @@ param databaseContainers array = [
     name: 'healthcheck'
     partitionKey1: '/id'
   }
+  {
+    name: 'assignments'
+    partitionKey1: '/caseId'
+  }
 ]
 
 @description('Allowed subnet resource id')
