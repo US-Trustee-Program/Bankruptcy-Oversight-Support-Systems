@@ -10,29 +10,28 @@ import { AssignmentException } from '../../use-cases/assignment.exception';
 const NAMESPACE: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
   private cosmosDbClient;
+  private appContext: ApplicationContext;
 
   private containerName = 'assignments';
   private cosmosConfig: CosmosConfig;
 
-  constructor(testClient = false) {
+  constructor(context: ApplicationContext, testClient = false) {
     this.cosmosDbClient = getCosmosDbClient(testClient);
     this.cosmosConfig = getCosmosConfig();
+    this.appContext = context;
   }
 
-  async createAssignment(
-    context: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
-  ): Promise<string> {
+  async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
     try {
       // Check write access
       const { item } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
-      log.debug(context, NAMESPACE, `New item created ${item.id}`);
+      log.debug(this.appContext, NAMESPACE, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(context, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new Error('Request is forbidden');
       } else throw e;
@@ -72,12 +71,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results;
     } catch (e) {
+      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new AssignmentException(403, 'Failed to authenticate to Azure');
       }
-      console.error(`${e.name}: ${e.message}`);
-      // log.error(this.ctx, NAMESPACE, `${e.name}: ${e.message}`);
     }
-    return [];
   }
 }

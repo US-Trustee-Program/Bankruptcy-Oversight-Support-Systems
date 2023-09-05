@@ -29,7 +29,7 @@ export class CaseAssignment {
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<string> {
     try {
-      return await this.assignmentRepository.createAssignment(context, caseAssignment);
+      return await this.assignmentRepository.createAssignment(caseAssignment);
     } catch (exception) {
       log.error(applicationContextCreator(context), NAMESPACE, exception.message);
       throw exception;
