@@ -4,7 +4,7 @@ import { Context } from '@azure/functions';
 import { GatewayHelper } from './gateway-helper';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
 
-export class MockPacerApiGateway implements CasesInterface {
+export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
   private chapter15CaseList: Chapter15CaseInterface[] = [];
 
