@@ -2,6 +2,7 @@ import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { Chapter15CaseInterface } from '../types/cases';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
+// import { getRecord } from './azure.sql.gateway';
 
 export default class CasesDxtrGateway implements CasesInterface {
   async getChapter15Cases(

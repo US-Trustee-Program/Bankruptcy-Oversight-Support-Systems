@@ -7,12 +7,24 @@ const NAMESPACE = 'DATABASE-UTILITY';
 
 export async function executeQuery(
   context: ApplicationContext,
+  database: string,
   query: string,
   input?: DbTableFieldSpec[],
 ): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
+    switch (database) {
+      case 'ACMS_REP_SUB':
+        console.log(database);
+        break;
+      case 'AODATEX_SUB':
+        console.log(database);
+        break;
+      default:
+        throw new Error();
+    }
+
     const sqlConnectionPool = new mssql.ConnectionPool(
       context.config.dbConfig as unknown as mssql.config,
     );
