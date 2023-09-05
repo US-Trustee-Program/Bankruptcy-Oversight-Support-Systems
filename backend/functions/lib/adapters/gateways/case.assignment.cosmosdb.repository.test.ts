@@ -156,4 +156,48 @@ describe('Test case assignment cosmosdb repository tests', () => {
       expect((e as Error).message).toEqual('Method not implemented.');
     }
   });
+
+  test('Test exception', async () => {
+    const caseNumber = randomUUID();
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumber,
+      'Susan Arbeit',
+      CaseAssignmentRole.TrialAttorney,
+      'Drew Kerrigan',
+    );
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumber,
+      'Jeffery McCaslin',
+      CaseAssignmentRole.TrialAttorney,
+      'Drew Kerrigan',
+    );
+
+    const assignmentId1 = await repository.createAssignment(
+      appContext,
+      testCaseAttorneyAssignment1,
+    );
+    const assignmentId2 = await repository.createAssignment(
+      appContext,
+      testCaseAttorneyAssignment2,
+    );
+
+    expect(assignmentId1).toBeTruthy();
+    expect(assignmentId2).toBeTruthy();
+
+    const actualAssignments = await repository.findAssignmentsByCaseId(caseNumber);
+
+    expect(actualAssignments.length).toEqual(2);
+
+    const assignment1 = actualAssignments.find((assign) => assign.id === assignmentId1);
+    const assignment2 = actualAssignments.find((assign) => assign.id === assignmentId2);
+
+    expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
+    expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
+    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.caseTitle).toEqual(testCaseAttorneyAssignment1.caseTitle);
+    expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
+    expect(assignment2.role).toEqual(testCaseAttorneyAssignment2.role);
+    expect(assignment2.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignment2.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
+  });
 });
