@@ -20,7 +20,7 @@ export default class FakeCosmosClientHumble {
   public database(databaseId: string) {
     return {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      container: (containerId: string) => {
+      container: (containerName: string) => {
         return {
           items: {
             create: (assignment: CaseAttorneyAssignment) => {
@@ -39,7 +39,7 @@ export default class FakeCosmosClientHumble {
               this.itemQueryParams = query.parameters;
               return {
                 fetchAll: () => {
-                  if (containerId == 'throw error') {
+                  if (this.itemQueryParams[0].value === 'throw auth error') {
                     throw new AggregateAuthenticationError([], 'forbidden');
                   }
                   const result: CaseAttorneyAssignment[] = [];
