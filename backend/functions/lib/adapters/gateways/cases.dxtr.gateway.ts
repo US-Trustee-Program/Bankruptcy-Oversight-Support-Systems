@@ -4,7 +4,7 @@ import { Chapter15CaseInterface } from '../types/cases';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
 
 export default class CasesDxtrGateway implements CasesInterface {
-  getChapter15Cases(
+  async getChapter15Cases(
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<Chapter15CaseInterface[]> {
