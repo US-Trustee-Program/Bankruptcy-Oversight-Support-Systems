@@ -3,8 +3,11 @@ import { ApplicationContext } from '../types/basic';
 import { Chapter15CaseInterface } from '../types/cases';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
 import { executeQuery } from '../utils/database';
-import { DbTableFieldSpec } from '../types/database';
+import { DbTableFieldSpec, QueryResults } from '../types/database';
 import * as mssql from 'mssql';
+import log from '../services/logger.service';
+
+const MODULENAME = 'CASES-DXTR-GATEWAY';
 
 export default class CasesDxtrGateway implements CasesInterface {
   async getChapter15Cases(
@@ -23,23 +26,24 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     // TODO: find cases in DXTR
     const query = `select TOP 20 CS_DIV,
-        CS_CASE_NUMBER,
-        CS_SHORT_TITLE,
-        CS_DATE_FILED
+        CS_CASE_NUMBER + CS_SHORT_TITLE as caseNumber,
+        CS_SHORT_TITLE as caseTitle,
+        CS_DATE_FILED as dateFiled
         FROM [dbo].[AO_CS]
         WHERE CS_CHAPTER = '15'
-        AND CS_DATEFILED >= Convert(datetime, @dateFiledFrom)`;
+        AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)`;
 
-    console.log(query);
+    const queryResult: QueryResults = await executeQuery(context, 'AODATEX_SUB', query, input);
 
-    const bCases = await executeQuery(context, 'AODATEX_SUB', query, input);
+    if (queryResult.success) {
+      log.debug(context, MODULENAME, `Results received from DXTR ${queryResult}`);
 
-    // TODO: convert bCases to Chapter15CaseInterface[]
-    // bCases.results['recordset'].
-    // get the recordset, and map `CS_DIV-CS_NUMBER` to `caseNumber`,
-    //   `CS_SHORT_TITLE` to `caseTitle`, and `CS_DATE_FILED` to `dateFiled`
-
-    console.log(bCases);
-    return Promise.resolve([]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const caseList = (queryResult.results as mssql.IResult<any>).recordset;
+      console.log(caseList);
+      return caseList;
+    } else {
+      throw Error(queryResult.message);
+    }
   }
 }

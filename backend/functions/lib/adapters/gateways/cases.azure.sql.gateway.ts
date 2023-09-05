@@ -1,6 +1,6 @@
 import * as mssql from 'mssql';
 import { ApplicationContext } from '../types/basic';
-import { CaseListDbResult, CaseListRecordSet, Chapter11CaseType } from '../types/cases';
+import { CaseListDbResult, Chapter11CaseListRecordSet, Chapter11CaseType } from '../types/cases';
 import { Chapter11GatewayInterface } from '../../use-cases/chapter-11.gateway.interface';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
 import { executeQuery } from '../utils/database';
@@ -10,7 +10,7 @@ import { ReviewCodeDescription } from '../utils/review-code-description';
 
 const table = 'cases';
 
-const NAMESPACE = 'CASES-MSSQL-DB-GATEWAY';
+const MODULENAME = 'CASES-MSSQL-DB-GATEWAY';
 
 class Chapter11ApiGateway implements Chapter11GatewayInterface {
   public async getCaseList(
@@ -44,7 +44,7 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
       WHERE a.DELETE_CODE != 'D' and a.CLOSED_BY_COURT_DATE = 0 and a.CLOSED_BY_UST_DATE = 0 and a.TRANSFERRED_OUT_DATE = 0 and a.DISMISSED_DATE = 0
       `;
 
-    log.info(context, NAMESPACE, `${caseOptions.chapter} ${caseOptions.professionalId}`);
+    log.info(context, MODULENAME, `${caseOptions.chapter} ${caseOptions.professionalId}`);
     if (caseOptions.chapter.length > 0) {
       query += ` AND a.CURR_CASE_CHAPT = @chapt`;
 
@@ -64,15 +64,20 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
       });
     }
 
-    const queryResult: QueryResults = await executeQuery(context, query, input);
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      query,
+      context.config.acmsDbConfig.database,
+      input,
+    );
     let results: CaseListDbResult;
 
     try {
       if (queryResult.success) {
-        log.debug(context, NAMESPACE, 'About to call the updateReviewDescription');
+        log.debug(context, MODULENAME, 'About to call the updateReviewDescription');
 
         await this.updateReviewDescription(queryResult.results['recordset']);
-        const body: CaseListRecordSet = { staff1Label: '', staff2Label: '', caseList: [] };
+        const body: Chapter11CaseListRecordSet = { staff1Label: '', staff2Label: '', caseList: [] };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         body.caseList = (queryResult.results as mssql.IResult<any>).recordset;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
