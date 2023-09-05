@@ -1,7 +1,6 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15CaseInterface } from '../types/cases';
 import { Context } from '@azure/functions';
-import { GatewayHelper } from './gateway-helper';
 import { getCamsDateStringFromDate } from '../utils/date-helper';
 
 export class MockCasesGateway implements CasesInterface {
@@ -15,7 +14,7 @@ export class MockCasesGateway implements CasesInterface {
 
   async getChapter15Cases(
     context: Context,
-    options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+    options: { startingMonth?: number },
   ): Promise<Chapter15CaseInterface[]> {
     if (options.startingMonth != undefined) {
       this.startingMonth = options.startingMonth;
