@@ -1,5 +1,6 @@
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { AssignmentException } from '../use-cases/assignment.exception';
+import { AggregateAuthenticationError } from '@azure/identity';
 
 interface QueryParams {
   name: string;
@@ -38,6 +39,9 @@ export default class FakeCosmosClientHumble {
               this.itemQueryParams = query.parameters;
               return {
                 fetchAll: () => {
+                  if (containerId == 'throw error') {
+                    throw new AggregateAuthenticationError([], 'forbidden');
+                  }
                   const result: CaseAttorneyAssignment[] = [];
                   query.parameters.forEach((params) => {
                     this.caseAssignments.find((caseItem) => {
