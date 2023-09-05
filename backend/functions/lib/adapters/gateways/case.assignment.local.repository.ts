@@ -8,27 +8,25 @@ const NAMESPACE = 'LOCAL-ASSIGNMENT-REPOSITORY';
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
   private nextUnusedId = 1;
+  private appContext: ApplicationContext;
 
-  public async createAssignment(
-    context: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
-  ): Promise<string> {
+  constructor(context: ApplicationContext) {
+    this.appContext = context;
+  }
+  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
     const assignment: CaseAttorneyAssignment = await this.findAssignment(caseAssignment);
     if (!assignment) {
-      return this.addAssignment(context, caseAssignment);
+      return this.addAssignment(caseAssignment);
     } else {
       return assignment.id;
     }
   }
 
-  private addAssignment(
-    context: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
-  ): string {
+  private addAssignment(caseAssignment: CaseAttorneyAssignment): string {
     const assignmentId = this.nextUnusedId;
     caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
-    log.info(context, NAMESPACE, caseAssignment.attorneyName);
+    log.info(this.appContext, NAMESPACE, caseAssignment.attorneyName);
     ++this.nextUnusedId;
     return assignmentId.toString();
   }

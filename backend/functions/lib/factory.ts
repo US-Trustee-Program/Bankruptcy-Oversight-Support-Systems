@@ -60,11 +60,11 @@ export const getAssignmentRepository = (
     if (Object.prototype.hasOwnProperty.call(context.caseAssignmentRepository, 'getCount')) {
       return context.caseAssignmentRepository;
     } else {
-      context.caseAssignmentRepository = new CaseAssignmentLocalRepository();
+      context.caseAssignmentRepository = new CaseAssignmentLocalRepository(context);
       return context.caseAssignmentRepository;
     }
   } else {
-    return new CaseAssignmentCosmosDbRepository();
+    return new CaseAssignmentCosmosDbRepository(context);
   }
 };
 

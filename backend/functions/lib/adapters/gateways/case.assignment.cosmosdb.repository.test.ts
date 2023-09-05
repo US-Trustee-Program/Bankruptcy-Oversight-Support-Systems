@@ -10,7 +10,7 @@ const appContext = applicationContextCreator(context);
 describe('Test case assignment cosmosdb repository tests', () => {
   let repository: CaseAssignmentCosmosDbRepository;
   beforeEach(() => {
-    repository = new CaseAssignmentCosmosDbRepository(true);
+    repository = new CaseAssignmentCosmosDbRepository(appContext, true);
   });
 
   test('should create two assignments and find both of them', async () => {
@@ -28,14 +28,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'Drew Kerrigan',
     );
 
-    const assignmentId1 = await repository.createAssignment(
-      appContext,
-      testCaseAttorneyAssignment1,
-    );
-    const assignmentId2 = await repository.createAssignment(
-      appContext,
-      testCaseAttorneyAssignment2,
-    );
+    const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
+    const assignmentId2 = await repository.createAssignment(testCaseAttorneyAssignment2);
 
     expect(assignmentId1).toBeTruthy();
     expect(assignmentId2).toBeTruthy();
@@ -73,14 +67,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'Drew Kerrigan',
     );
 
-    const assignmentId1 = await repository.createAssignment(
-      appContext,
-      testCaseAttorneyAssignment1,
-    );
-    const assignmentId2 = await repository.createAssignment(
-      appContext,
-      testCaseAttorneyAssignment2,
-    );
+    const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
+    const assignmentId2 = await repository.createAssignment(testCaseAttorneyAssignment2);
 
     const actualAssignmentsOne = await repository.findAssignmentsByCaseId(caseNumberOne);
 
@@ -117,9 +105,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'some-case-title',
     );
 
-    await expect(
-      repository.createAssignment(appContext, testCaseAttorneyAssignment),
-    ).rejects.toThrow('Request is forbidden');
+    await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
+      'Request is forbidden',
+    );
   });
 
   test('should throw a not implemented error when getAssignment is called', async () => {
@@ -159,8 +147,11 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('Should throw AggregateAuthentication Error for authentication errors from credentials', async () => {
-    expect(await repository.findAssignmentsByCaseId('throw auth error')).toThrow(
-      'Failed to authenticate to Azure',
-    );
+    try {
+      await repository.findAssignmentsByCaseId('throw auth error');
+      expect(true).toBeFalsy();
+    } catch (e) {
+      expect((e as Error).message).toEqual('Failed to authenticate to Azure');
+    }
   });
 });
