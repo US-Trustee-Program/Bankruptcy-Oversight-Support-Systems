@@ -6,17 +6,15 @@ dotenv.config();
 
 export class ApplicationConfiguration implements AppConfig {
   public readonly server: ServerType;
-  public readonly dbConfig: IDbConfig;
+  public readonly acmsDbConfig: IDbConfig;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
-  public readonly pacerMock: boolean;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
-    this.pacerMock = process.env.PACER_MOCK?.toLowerCase() === 'true';
 
     this.server = this.getAppServerConfig();
-    this.dbConfig = this.getDbConfig(process.env.MSSQL_DATABASE);
+    this.acmsDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE);
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
   }
 

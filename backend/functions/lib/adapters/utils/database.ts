@@ -14,20 +14,19 @@ export async function executeQuery(
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
+    let dbConfig;
     switch (database) {
       case 'ACMS_REP_SUB':
-        console.log(database);
+        dbConfig = context.config.acmsDbConfig as unknown as mssql.config;
         break;
       case 'AODATEX_SUB':
-        console.log(database);
+        dbConfig = context.config.dxtrDbConfig as unknown as mssql.config;
         break;
       default:
-        throw new Error();
+        throw new Error('No database found by that name.');
     }
 
-    const sqlConnectionPool = new mssql.ConnectionPool(
-      context.config.dbConfig as unknown as mssql.config,
-    );
+    const sqlConnectionPool = new mssql.ConnectionPool(dbConfig);
     const sqlConnection = await sqlConnectionPool.connect();
     const sqlRequest = await sqlConnection.request();
 
