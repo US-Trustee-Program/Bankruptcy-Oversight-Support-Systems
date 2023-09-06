@@ -23,14 +23,14 @@ export default class CasesDxtrGateway implements CasesInterface {
       type: mssql.Date,
       value: dateFiledFrom,
     });
-
+    const MANHATTAN_GROUP_DESIGNATOR = 'NY';
     const query = `select TOP 20
-        CS_DIV,
-        CS_CASE_NUMBER,
+        CS_CASE_NUMBER as caseNumber,
         CS_SHORT_TITLE as caseTitle,
         CS_DATE_FILED as dateFiled
         FROM [dbo].[AO_CS]
         WHERE CS_CHAPTER = '15'
+        AND GRP_DES = '${MANHATTAN_GROUP_DESIGNATOR}'
         AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)`;
 
     // TODO: caseNumber should actually be the 2-digit year from filed date with CS_CASE_NUMBER
