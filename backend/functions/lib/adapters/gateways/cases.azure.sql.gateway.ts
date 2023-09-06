@@ -1,6 +1,11 @@
 import * as mssql from 'mssql';
 import { ApplicationContext } from '../types/basic';
-import { CaseListDbResult, Chapter11CaseListRecordSet, Chapter11CaseType } from '../types/cases';
+import {
+  CaseListDbResult,
+  Chapter11CaseListDbResult,
+  Chapter11CaseListRecordSet,
+  Chapter11CaseType,
+} from '../types/cases';
 import { Chapter11GatewayInterface } from '../../use-cases/chapter-11.gateway.interface';
 import { DbResult, DbTableFieldSpec, QueryResults } from '../types/database';
 import { executeQuery } from '../utils/database';
@@ -16,7 +21,7 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
   public async getCaseList(
     context: ApplicationContext,
     caseOptions: { chapter: string; professionalId: string } = { chapter: '', professionalId: '' },
-  ): Promise<CaseListDbResult> {
+  ): Promise<Chapter11CaseListDbResult> {
     const input: DbTableFieldSpec[] = [];
 
     let query = `select TOP 20 a.CURR_CASE_CHAPT as currentCaseChapter
@@ -66,8 +71,8 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
 
     const queryResult: QueryResults = await executeQuery(
       context,
-      query,
       context.config.acmsDbConfig.database,
+      query,
       input,
     );
     let results: CaseListDbResult;
@@ -123,7 +128,7 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
   }
 
   public async getCase(context: ApplicationContext, id: number): Promise<DbResult> {
-    return await getRecord(context, table, id);
+    return await getRecord(context, context.config.acmsDbConfig.database, table, id);
   }
 }
 

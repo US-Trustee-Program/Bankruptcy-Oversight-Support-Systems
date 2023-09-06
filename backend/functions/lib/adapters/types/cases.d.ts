@@ -18,6 +18,13 @@ export interface CaseListDbResult {
   body: CaseListRecordSet;
 }
 
+export interface Chapter11CaseListDbResult {
+  success: boolean;
+  message: string;
+  count: number;
+  body: Chapter11CaseListRecordSet;
+}
+
 export interface Chapter11CaseType extends ObjectKeyVal {
   caseNumber: string;
   currentCaseChapter: string;

@@ -36,7 +36,12 @@ const login = async (
     },
   ];
 
-  const queryResult: QueryResults = await executeQuery(context, query, input);
+  const queryResult: QueryResults = await executeQuery(
+    context,
+    context.config.acmsDbConfig.database,
+    query,
+    input,
+  );
   let results: DbResult;
 
   if (queryResult.success) {

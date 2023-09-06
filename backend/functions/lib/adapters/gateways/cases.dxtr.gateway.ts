@@ -24,24 +24,29 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: dateFiledFrom,
     });
 
-    // TODO: find cases in DXTR
-    const query = `select TOP 20 CS_DIV,
-        CS_CASE_NUMBER + CS_SHORT_TITLE as caseNumber,
+    const query = `select TOP 20
+        CS_DIV,
+        CS_CASE_NUMBER,
         CS_SHORT_TITLE as caseTitle,
         CS_DATE_FILED as dateFiled
         FROM [dbo].[AO_CS]
         WHERE CS_CHAPTER = '15'
         AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)`;
 
-    const queryResult: QueryResults = await executeQuery(context, 'AODATEX_SUB', query, input);
+    // TODO: caseNumber should actually be the 2-digit year from filed date with CS_CASE_NUMBER
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig.database,
+      query,
+      input,
+    );
 
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Results received from DXTR ${queryResult}`);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const caseList = (queryResult.results as mssql.IResult<any>).recordset;
-      console.log(caseList);
-      return caseList;
+      return (queryResult.results as mssql.IResult<any>).recordset;
     } else {
       throw Error(queryResult.message);
     }
