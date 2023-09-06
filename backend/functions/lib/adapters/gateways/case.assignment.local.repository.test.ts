@@ -15,12 +15,9 @@ describe('Case Assignment Repository Tests', () => {
       'Drew kerrigan',
     );
     const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository();
+      new CaseAssignmentLocalRepository(appContext);
 
-    await testCaseAssignmentLocalRepository.createAssignment(
-      appContext,
-      testCaseAttorneyAssignment,
-    );
+    await testCaseAssignmentLocalRepository.createAssignment(testCaseAttorneyAssignment);
     const actual = await testCaseAssignmentLocalRepository.findAssignment(
       testCaseAttorneyAssignment,
     );
@@ -35,10 +32,9 @@ describe('Case Assignment Repository Tests', () => {
       'Drew kerrigan',
     );
     const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository();
+      new CaseAssignmentLocalRepository(appContext);
 
     const firstId = await testCaseAssignmentLocalRepository.createAssignment(
-      appContext,
       testCaseAttorneyAssignment,
     );
     const first = await testCaseAssignmentLocalRepository.findAssignment(
@@ -46,7 +42,6 @@ describe('Case Assignment Repository Tests', () => {
     );
     expect(first).toEqual(testCaseAttorneyAssignment);
     const secondId = await testCaseAssignmentLocalRepository.createAssignment(
-      appContext,
       testCaseAttorneyAssignment,
     );
     expect(firstId).toEqual(secondId);

@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { ServerType, AppConfig } from '../adapters/types/basic';
-import { IDbConfig } from '../adapters/types/database';
+import { CosmosConfig, IDbConfig } from '../adapters/types/database';
 
 dotenv.config();
 
@@ -9,6 +9,7 @@ export class ApplicationConfiguration implements AppConfig {
   public readonly dbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly pacerMock: boolean;
+  public readonly cosmosConfig: CosmosConfig;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -16,6 +17,7 @@ export class ApplicationConfiguration implements AppConfig {
 
     this.server = this.getAppServerConfig();
     this.dbConfig = this.getDbConfig();
+    this.cosmosConfig = this.getCosmosConfig();
   }
 
   private getAppServerConfig(): ServerType {
@@ -60,6 +62,14 @@ export class ApplicationConfiguration implements AppConfig {
     }
 
     return dbConfig;
+  }
+
+  private getCosmosConfig(): CosmosConfig {
+    return {
+      endpoint: process.env.COSMOS_ENDPOINT,
+      managedIdentity: process.env.COSMOS_MANAGED_IDENTITY,
+      databaseName: process.env.COSMOS_DATABASE_NAME,
+    };
   }
 
   public get(prop: string) {
