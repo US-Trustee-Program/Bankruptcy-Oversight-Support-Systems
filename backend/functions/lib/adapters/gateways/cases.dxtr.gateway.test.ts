@@ -9,8 +9,13 @@ const context = require('azure-function-context-mock');
 const appContext = applicationContextCreator(context);
 
 const querySpy = jest.spyOn(database, 'executeQuery');
+const dxtrDatabaseName = 'some-database-name';
 
 describe('Test DXTR Gateway', () => {
+  beforeEach(() => {
+    appContext.config.dxtrDbConfig.database = dxtrDatabaseName;
+  });
+
   test('should call executeQuery with the default starting month and return expected results', async () => {
     const cases = [
       {
@@ -49,7 +54,7 @@ describe('Test DXTR Gateway', () => {
     };
     expect(querySpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.any(String),
+      dxtrDatabaseName,
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
@@ -88,7 +93,7 @@ describe('Test DXTR Gateway', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.any(String),
+      dxtrDatabaseName,
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
