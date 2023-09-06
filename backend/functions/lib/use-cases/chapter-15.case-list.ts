@@ -34,7 +34,6 @@ export class Chapter15CaseList {
       };
     } catch (e) {
       const message = (e as Error).message;
-      // TODO: change message for unknown error
       return {
         success: false,
         message:
