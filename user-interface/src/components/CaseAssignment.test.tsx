@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { CaseAssignment } from './CaseAssignment';
@@ -6,15 +6,17 @@ import { store } from '../store/store';
 import Chapter15MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData } from '../type-declarations/api';
 import { vi } from 'vitest';
+import * as httpAdapter from './utils/http.adapter';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)
 
 /*
  * Used in tests that are commented out below
+ */
 const sleep = (milliseconds: number) =>
   new Promise((callback) => setTimeout(callback, milliseconds));
-*/
+/**/
 
 describe('CaseAssignment Component Tests', () => {
   beforeEach(() => {
@@ -182,6 +184,9 @@ describe('CaseAssignment Component Tests', () => {
   });
 
   /***
+   * This test seems to pass most of the time when running it locally, but fails sometimes.
+   * We spent a lot of time on this test, but until we can get it to pass consistentely,
+   * we are commenting it out for now.
   test('should display success alert after creating assignments', async () => {
     vi.spyOn(Chapter15MockApi, 'list')
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -336,6 +341,7 @@ describe('CaseAssignment Component Tests', () => {
   /***
   //TODO: Add test to validate error alert after failing to create assignments
   //TODO: Need to come back and fix test for CAMS-87
+  */
   test(`should display selected attorneys' names after creating assignments`, async () => {
     vi.spyOn(Chapter15MockApi, 'list')
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -480,5 +486,5 @@ describe('CaseAssignment Component Tests', () => {
 
     expect(passedExpects).toEqual(4);
   }, 10000);
-  ***/
+  /****/
 });
