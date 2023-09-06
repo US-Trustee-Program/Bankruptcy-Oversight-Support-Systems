@@ -20,7 +20,7 @@ describe('Case Assignment Function Tests', () => {
       success: true,
       message: 'Trial attorney assignments created.',
       count: 1,
-      body: [1],
+      body: ['1'],
     };
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
@@ -40,12 +40,13 @@ describe('Case Assignment Function Tests', () => {
       success: true,
       message: 'Trial attorney assignments created.',
       count: 2,
-      body: [1, 2],
+      body: ['1', '2'],
     };
 
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
   });
+
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
     const request = {
       query: {},
@@ -60,7 +61,7 @@ describe('Case Assignment Function Tests', () => {
       success: true,
       message: 'Trial attorney assignments created.',
       count: 1,
-      body: [1],
+      body: ['1'],
     };
 
     await httpTrigger(appContext, request);

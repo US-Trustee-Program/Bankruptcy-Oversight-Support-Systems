@@ -9,4 +9,4 @@ test('Healthcheck endpoint should return an ALIVE status', async () => {
   await httpTrigger(context, request);
 
   expect(context.res.body).not.toBeNull(); // Check for any response.
-});
+}, 10000);

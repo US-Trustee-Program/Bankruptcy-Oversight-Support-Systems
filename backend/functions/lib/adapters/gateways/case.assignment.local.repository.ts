@@ -8,35 +8,31 @@ const NAMESPACE = 'LOCAL-ASSIGNMENT-REPOSITORY';
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
   private nextUnusedId = 1;
+  private appContext: ApplicationContext;
 
-  public async createAssignment(
-    context: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
-  ): Promise<number> {
+  constructor(context: ApplicationContext) {
+    this.appContext = context;
+  }
+  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
     const assignment: CaseAttorneyAssignment = await this.findAssignment(caseAssignment);
     if (!assignment) {
-      return this.addAssignment(context, caseAssignment);
+      return this.addAssignment(caseAssignment);
     } else {
-      return assignment.assignmentId;
+      return assignment.id;
     }
   }
 
-  private addAssignment(
-    context: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
-  ): number {
+  private addAssignment(caseAssignment: CaseAttorneyAssignment): string {
     const assignmentId = this.nextUnusedId;
-    caseAssignment.assignmentId = assignmentId;
+    caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
-    log.info(context, NAMESPACE, caseAssignment.attorneyName);
+    log.info(this.appContext, NAMESPACE, caseAssignment.attorneyName);
     ++this.nextUnusedId;
-    return assignmentId;
+    return assignmentId.toString();
   }
 
-  public async getAssignment(assignmentId: number): Promise<CaseAttorneyAssignment> {
-    return this.caseAttorneyAssignments.find(
-      (assignment) => assignment.assignmentId === assignmentId,
-    );
+  public async getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
+    return this.caseAttorneyAssignments.find((assignment) => assignment.id === assignmentId);
   }
 
   public async findAssignment(
@@ -54,7 +50,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return this.caseAttorneyAssignments.length;
   }
 
-  public async findAssignmentByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+  public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     return this.caseAttorneyAssignments.filter((assignment) => assignment.caseId === caseId);
   }
 }

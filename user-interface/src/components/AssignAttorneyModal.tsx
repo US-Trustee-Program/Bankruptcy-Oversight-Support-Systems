@@ -34,11 +34,8 @@ function AssignAttorneyModalComponent(
   const modalRef = useRef<ModalRefType>(null);
   const modalHeading = (
     <>
-      Choose Trial Attorney to assign to:
-      <br />
-      {props.bCase?.caseTitle}
-      <br />
-      case number {props.bCase?.caseNumber}
+      Choose Trial Attorney to assign to: {props.bCase?.caseTitle},{' '}
+      <span className="case-number">{props.bCase?.caseNumber}</span>
     </>
   );
 

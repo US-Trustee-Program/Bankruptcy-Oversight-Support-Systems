@@ -18,12 +18,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' existing = {
 }
 
 var logRetentionPolicy = {
-  days: 30
+  days: 0
   enabled: true
 }
 
 var metricRetentionPolicy = {
-  days: 30
+  days: 0
   enabled: true
 }
 

@@ -42,10 +42,10 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }
 
   useEffect(() => {
-    if (isVisible !== IsVisible.Unset && props.timeout && props.timeout > 0) {
+    if (isVisible === IsVisible.True && props.timeout && props.timeout > 0) {
       setTimeout(hide, props.timeout * 1000);
     }
-  }, [isVisible !== IsVisible.Unset && !!props.timeout]);
+  }, [isVisible === IsVisible.True && !!props.timeout]);
 
   useImperativeHandle(ref, () => ({
     show,

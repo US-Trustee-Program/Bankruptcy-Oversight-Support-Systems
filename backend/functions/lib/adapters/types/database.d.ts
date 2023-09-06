@@ -38,3 +38,9 @@ export interface IDbConfig {
     trustServerCertificate: boolean | undefined;
   };
 }
+
+export interface CosmosConfig {
+  endpoint: string;
+  managedIdentity: string;
+  databaseName: string;
+}
