@@ -9,6 +9,7 @@ import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.
 import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
+import CasesDxtrGateway from './adapters/gateways/cases.dxtr.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
@@ -37,7 +38,7 @@ export const getCasesGateway = (): CasesInterface => {
   if (config.get('dbMock')) {
     return new CasesLocalGateway();
   } else {
-    return new CasesLocalGateway();
+    return new CasesDxtrGateway();
   }
 };
 
