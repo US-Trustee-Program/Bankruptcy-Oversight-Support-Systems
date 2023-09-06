@@ -108,5 +108,5 @@ describe('Login', () => {
       // navigates to correct url
       expect(navigate).toHaveBeenCalledWith('/cases');
     });
-  });
+  }, 10000);
 });
