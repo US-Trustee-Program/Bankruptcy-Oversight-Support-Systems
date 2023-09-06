@@ -68,7 +68,7 @@ export default class CosmosClientHumble {
       try {
         globalEndpointManager.refreshEndpointList();
       } catch (e: unknown) {
-        console.warn('Failed to refresh endpoints', e);
+        // Failed to refresh endpoints
       }
     }, refreshRate);
     if (this.endpointRefresher.unref && typeof this.endpointRefresher.unref === 'function') {
