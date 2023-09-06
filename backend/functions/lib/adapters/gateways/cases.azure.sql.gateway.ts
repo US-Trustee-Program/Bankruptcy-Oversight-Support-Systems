@@ -71,7 +71,7 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
 
     const queryResult: QueryResults = await executeQuery(
       context,
-      context.config.acmsDbConfig.database,
+      context.config.acmsDbConfig,
       query,
       input,
     );
@@ -128,7 +128,7 @@ class Chapter11ApiGateway implements Chapter11GatewayInterface {
   }
 
   public async getCase(context: ApplicationContext, id: number): Promise<DbResult> {
-    return await getRecord(context, context.config.acmsDbConfig.database, table, id);
+    return await getRecord(context, table, id);
   }
 }
 

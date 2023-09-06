@@ -54,7 +54,7 @@ describe('Test DXTR Gateway', () => {
     };
     expect(querySpy).toHaveBeenCalledWith(
       expect.anything(),
-      dxtrDatabaseName,
+      appContext.config.dxtrDbConfig,
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
@@ -93,7 +93,7 @@ describe('Test DXTR Gateway', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       expect.anything(),
-      dxtrDatabaseName,
+      appContext.config.dxtrDbConfig,
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );

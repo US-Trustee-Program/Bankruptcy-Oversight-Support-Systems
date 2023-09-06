@@ -38,7 +38,7 @@ const login = async (
 
   const queryResult: QueryResults = await executeQuery(
     context,
-    context.config.acmsDbConfig.database,
+    context.config.acmsDbConfig,
     query,
     input,
   );

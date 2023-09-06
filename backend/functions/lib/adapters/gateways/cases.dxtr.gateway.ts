@@ -35,7 +35,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const queryResult: QueryResults = await executeQuery(
       context,
-      context.config.dxtrDbConfig.database,
+      context.config.dxtrDbConfig,
       query,
       input,
     );

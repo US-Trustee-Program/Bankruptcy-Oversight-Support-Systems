@@ -7,13 +7,9 @@ import { ApplicationContext } from '../types/basic';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NAMESPACE = 'AZURE-SQL-MODULE';
 
-const getAll = async (
-  context: ApplicationContext,
-  database: string,
-  table: string,
-): Promise<DbResult> => {
+const getAll = async (context: ApplicationContext, table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
-  const queryResult: QueryResults = await executeQuery(context, database, query);
+  const queryResult: QueryResults = await executeQuery(context, context.config.acmsDbConfig, query);
   let results: DbResult;
 
   if (queryResult.success) {
@@ -39,7 +35,6 @@ const getAll = async (
 
 const getRecord = async (
   context: ApplicationContext,
-  database: string,
   table: string,
   id: number,
 ): Promise<DbResult> => {
@@ -52,7 +47,7 @@ const getRecord = async (
       value: id,
     },
   ];
-  const queryResult = await executeQuery(context, database, query, input);
+  const queryResult = await executeQuery(context, context.config.acmsDbConfig, query, input);
 
   if (
     Boolean(queryResult) &&

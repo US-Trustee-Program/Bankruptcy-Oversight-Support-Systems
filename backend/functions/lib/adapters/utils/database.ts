@@ -1,32 +1,20 @@
 import * as mssql from 'mssql';
 import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
-import { DbTableFieldSpec, QueryResults } from '../types/database';
+import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 
 const NAMESPACE = 'DATABASE-UTILITY';
 
 export async function executeQuery(
   context: ApplicationContext,
-  database: string,
+  databaseConfig: IDbConfig,
   query: string,
   input?: DbTableFieldSpec[],
 ): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
-    let dbConfig;
-    switch (database) {
-      case 'ACMS_REP_SUB':
-        dbConfig = context.config.acmsDbConfig as unknown as mssql.config;
-        break;
-      case 'AODATEX_SUB':
-        dbConfig = context.config.dxtrDbConfig as unknown as mssql.config;
-        break;
-      default:
-        throw new Error('No database found by that name.');
-    }
-
-    const sqlConnectionPool = new mssql.ConnectionPool(dbConfig);
+    const sqlConnectionPool = new mssql.ConnectionPool(databaseConfig as unknown as mssql.config);
     const sqlConnection = await sqlConnectionPool.connect();
     const sqlRequest = await sqlConnection.request();
 

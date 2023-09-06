@@ -42,7 +42,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: list,
     };
 
-    const results = await db.getAll(appContext, appContext.config.acmsDbConfig.database, table);
+    const results = await db.getAll(appContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -77,12 +77,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: list[5],
     };
 
-    const results = await db.getRecord(
-      appContext,
-      appContext.config.acmsDbConfig.database,
-      table,
-      6,
-    );
+    const results = await db.getRecord(appContext, table, 6);
 
     expect(results).toEqual(mockResults);
   });
@@ -103,7 +98,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: {},
     };
 
-    const results = await db.getAll(appContext, appContext.config.acmsDbConfig.database, table);
+    const results = await db.getAll(appContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -124,12 +119,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: {},
     };
 
-    const results = await db.getRecord(
-      appContext,
-      appContext.config.acmsDbConfig.database,
-      table,
-      6,
-    );
+    const results = await db.getRecord(appContext, table, 6);
 
     expect(results).toEqual(mockResults);
   });
