@@ -17,7 +17,6 @@ export default class CosmosDatabaseHumble {
   }
 
   public container(id: string): CosmosContainerHumble {
-    console.log('We are in the humble object database ', id);
     return new CosmosContainerHumble(this.database, id, this.clientContext);
   }
 }
