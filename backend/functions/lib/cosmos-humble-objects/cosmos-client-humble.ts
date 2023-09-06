@@ -56,27 +56,6 @@ export default class CosmosClientHumble {
     );
   }
 
-  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // public offer(id: string): Offer {
-  //   throw new Error('not implemented');
-  // }
-  //
-  // public getWriteEndpoint(): Promise<string> {
-  //   return this.clientContext.getWriteEndpoint();
-  // }
-  //
-  // public getReadEndpoint(): Promise<string> {
-  //   return this.clientContext.getReadEndpoint();
-  // }
-  //
-  // public getWriteEndpoints(): Promise<readonly string[]> {
-  //   return this.clientContext.getWriteEndpoints();
-  // }
-  //
-  // public getReadEndpoints(): Promise<readonly string[]> {
-  //   return this.clientContext.getReadEndpoints();
-  // }
-
   public dispose(): void {
     clearTimeout(this.endpointRefresher);
   }
