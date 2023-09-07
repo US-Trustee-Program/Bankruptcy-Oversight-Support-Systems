@@ -4,7 +4,6 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import { CaseAssignmentRole } from '../lib/adapters/types/case.assignment.role';
-import { TrialAttorneysAssignmentRequest } from '../lib/adapters/types/trial.attorneys.assignment.request';
 import { AssignmentException } from '../lib/use-cases/assignment.exception';
 
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
@@ -27,16 +26,6 @@ const httpTrigger: AzureFunction = async function (
     await handleGetMethod();
   }
 };
-
-function createAssignmentRequest(
-  functionContext: Context,
-  caseId: string,
-  listOfAttorneyNames: string[],
-  role: string,
-): TrialAttorneysAssignmentRequest {
-  const professionalRole: CaseAssignmentRole = role as unknown as CaseAssignmentRole;
-  return new TrialAttorneysAssignmentRequest(caseId, listOfAttorneyNames, professionalRole);
-}
 
 function validateRequestParameters(
   caseId: string,
@@ -72,18 +61,16 @@ function validateRequestParameters(
 
 async function handlePostMethod(functionContext: Context, caseId, listOfAttorneyNames, role) {
   try {
-    const assignmentRequest: TrialAttorneysAssignmentRequest = createAssignmentRequest(
-      functionContext,
-      caseId,
-      listOfAttorneyNames,
-      role,
-    );
     const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
       functionContext,
     );
 
     const trialAttorneyAssignmentResponse =
-      await caseAssignmentController.createTrialAttorneyAssignments(assignmentRequest);
+      await caseAssignmentController.createTrialAttorneyAssignments({
+        caseId,
+        listOfAttorneyNames,
+        role,
+      });
     functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
     console.log(functionContext.res.body.toString());
   } catch (exception) {
