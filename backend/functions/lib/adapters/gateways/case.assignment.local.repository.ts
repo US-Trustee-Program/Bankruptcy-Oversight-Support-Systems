@@ -2,6 +2,7 @@ import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignm
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
+import { randomUUID } from 'crypto';
 
 const NAMESPACE = 'LOCAL-ASSIGNMENT-REPOSITORY';
 
@@ -9,9 +10,11 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
   private nextUnusedId = 1;
   private appContext: ApplicationContext;
+  private id: string;
 
   constructor(context: ApplicationContext) {
     this.appContext = context;
+    this.id = randomUUID();
   }
 
   public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
@@ -20,6 +23,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     this.caseAttorneyAssignments.push(caseAssignment);
     log.info(this.appContext, NAMESPACE, caseAssignment.attorneyName);
     ++this.nextUnusedId;
+    console.log('Creating the assignment in:', this.id);
     return assignmentId.toString();
   }
 
@@ -32,6 +36,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   }
 
   public async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
+    console.log('Reading the assignments in:', this.id);
     return this.caseAttorneyAssignments;
   }
 }
