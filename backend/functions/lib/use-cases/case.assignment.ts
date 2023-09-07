@@ -70,6 +70,6 @@ export class CaseAssignment {
   }
 
   async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
-    return this.assignmentRepository.getAllAssignments();
+    return await this.assignmentRepository.getAllAssignments();
   }
 }

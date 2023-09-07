@@ -20,11 +20,20 @@ const httpTrigger: AzureFunction = async function (
   const listOfAttorneyNames = request.body && request.body.attorneyList;
   const role = request.body && request.body.role;
 
-  if (request.method === 'POST') {
-    validateRequestParameters(caseId, functionContext, listOfAttorneyNames, role);
-    await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
-  } else if (request.method === 'GET') {
-    await handleGetMethod(functionContext);
+  try {
+    if (request.method === 'POST') {
+      validateRequestParameters(caseId, functionContext, listOfAttorneyNames, role);
+      await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
+    } else if (request.method === 'GET') {
+      await handleGetMethod(functionContext);
+    }
+  } catch (e) {
+    if (e instanceof AssignmentException) {
+      functionContext.res = httpError(functionContext, e, e.status);
+    } else {
+      functionContext.res = httpError(functionContext, e, 500);
+    }
+    log.error(applicationContextCreator(functionContext), NAMESPACE, e.message, e);
   }
 };
 
@@ -59,39 +68,30 @@ function validateRequestParameters(
   if (errors) {
     if (badParams.length > 0)
       message += `Required parameter(s) ${badParams.join(', ')} is/are absent.`;
-    log.error(applicationContextCreator(functionContext), NAMESPACE, message.trim());
     throw new AssignmentException(400, message.trim());
   }
 }
 
 async function handlePostMethod(functionContext: Context, caseId, listOfAttorneyNames, role) {
-  try {
-    const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
-      functionContext,
-    );
+  const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
+    functionContext,
+  );
 
-    const trialAttorneyAssignmentResponse =
-      await caseAssignmentController.createTrialAttorneyAssignments({
-        caseId,
-        listOfAttorneyNames,
-        role,
-      });
-    functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
-  } catch (exception) {
-    if (exception instanceof AssignmentException) {
-      functionContext.res = httpError(functionContext, exception, exception.status);
-    } else {
-      functionContext.res = httpError(functionContext, exception, 500);
-    }
-    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
-  }
+  const trialAttorneyAssignmentResponse =
+    await caseAssignmentController.createTrialAttorneyAssignments({
+      caseId,
+      listOfAttorneyNames,
+      role,
+    });
+  functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
 }
 
 async function handleGetMethod(functionContext: Context) {
   const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
     functionContext,
   );
-  return caseAssignmentController.getAllAssignments();
+  const assignments = await caseAssignmentController.getAllAssignments();
+  functionContext.res = httpSuccess(functionContext, assignments);
 }
 
 export default httpTrigger;
