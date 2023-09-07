@@ -3,7 +3,6 @@ import { Context } from '@azure/functions';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
-import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { AssignmentException } from '../../use-cases/assignment.exception';
@@ -13,11 +12,9 @@ const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
-  private readonly caseAssignmentRepository: CaseAssignmentRepositoryInterface;
 
-  constructor(context: Context, assignmentRepository?: CaseAssignmentRepositoryInterface) {
+  constructor(context: Context) {
     this.applicationContext = applicationContextCreator(context);
-    this.caseAssignmentRepository = assignmentRepository;
   }
 
   public async createTrialAttorneyAssignments(params: {
@@ -26,23 +23,21 @@ export class CaseAssignmentController {
     role: CaseAssignmentRole;
   }): Promise<AttorneyAssignmentResponseInterface> {
     try {
-      const listOfAssignments = new Set<CaseAttorneyAssignment>();
+      const listOfAssignments: CaseAttorneyAssignment[] = [];
 
-      params.listOfAttorneyNames.forEach((attorney) => {
+      const attorneys = [...new Set(params.listOfAttorneyNames)];
+      attorneys.forEach((attorney) => {
         const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
           params.caseId,
           attorney,
           params.role,
         );
-        listOfAssignments.add(assignment);
+        listOfAssignments.push(assignment);
       });
-      const assignmentService = new CaseAssignment(
+      const assignmentUseCase = new CaseAssignment(this.applicationContext);
+      return assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
-        this.caseAssignmentRepository,
-      );
-      return assignmentService.createTrialAttorneyAssignments(
-        this.applicationContext,
-        Array.from(listOfAssignments),
+        listOfAssignments,
       );
     } catch (exception) {
       log.error(this.applicationContext, NAMESPACE, exception.message);
@@ -52,5 +47,10 @@ export class CaseAssignmentController {
         throw new AssignmentException(exception.status, exception.message);
       }
     }
+  }
+
+  public async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
+    const assignmentUseCase = new CaseAssignment(this.applicationContext);
+    return assignmentUseCase.getAllAssignments();
   }
 }

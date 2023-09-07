@@ -24,7 +24,7 @@ const httpTrigger: AzureFunction = async function (
     validateRequestParameters(caseId, functionContext, listOfAttorneyNames, role);
     await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
   } else if (request.method === 'GET') {
-    await handleGetMethod();
+    await handleGetMethod(functionContext);
   }
 };
 
@@ -87,8 +87,11 @@ async function handlePostMethod(functionContext: Context, caseId, listOfAttorney
   }
 }
 
-async function handleGetMethod() {
-  // TODO: implement the get
+async function handleGetMethod(functionContext: Context) {
+  const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
+    functionContext,
+  );
+  return caseAssignmentController.getAllAssignments();
 }
 
 export default httpTrigger;
