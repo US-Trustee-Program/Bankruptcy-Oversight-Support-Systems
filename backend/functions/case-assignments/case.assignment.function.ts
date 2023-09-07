@@ -9,7 +9,8 @@ import { AssignmentException } from '../lib/use-cases/assignment.exception';
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
 const INVALID_ROLE_MESSAGE =
   'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. ';
-const CASEID_LENGTH = 8;
+const VALID_CASEID_PATTERN = RegExp('^\\d{2}-\\d{5}$');
+const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345. ';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -36,8 +37,11 @@ function validateRequestParameters(
   const badParams = [];
   let errors = false;
   let message = '';
-  if (!caseId || caseId.length != CASEID_LENGTH) {
+  if (!caseId) {
     badParams.push('caseId');
+    errors = true;
+  } else if (!caseId.match(VALID_CASEID_PATTERN)) {
+    message += INVALID_CASEID_MESSAGE;
     errors = true;
   }
   if (!listOfAttorneyNames || listOfAttorneyNames.length < 1) {
@@ -49,13 +53,14 @@ function validateRequestParameters(
     errors = true;
   }
   if (!(role in CaseAssignmentRole)) {
-    message = INVALID_ROLE_MESSAGE;
+    message += INVALID_ROLE_MESSAGE;
     errors = true;
   }
   if (errors) {
-    message += `Required parameter(s) ${badParams.join(', ')} is/are absent.`;
-    log.error(applicationContextCreator(functionContext), NAMESPACE, message);
-    throw new AssignmentException(400, message);
+    if (badParams.length > 0)
+      message += `Required parameter(s) ${badParams.join(', ')} is/are absent.`;
+    log.error(applicationContextCreator(functionContext), NAMESPACE, message.trim());
+    throw new AssignmentException(400, message.trim());
   }
 }
 

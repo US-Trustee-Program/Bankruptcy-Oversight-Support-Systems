@@ -12,7 +12,6 @@ describe('Case Assignment Repository Tests', () => {
       '123',
       'Susan Arbeit',
       CaseAssignmentRole.TrialAttorney,
-      'Drew kerrigan',
     );
     const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(appContext);
@@ -29,7 +28,6 @@ describe('Case Assignment Repository Tests', () => {
       '123',
       'Susan Arbeit',
       CaseAssignmentRole.TrialAttorney,
-      'Drew kerrigan',
     );
     const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(appContext);
