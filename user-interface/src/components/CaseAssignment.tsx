@@ -212,7 +212,7 @@ export const CaseAssignment = () => {
                           <span className="mobile-title">Case Number:</span>
                           {theCase.caseNumber}
                         </td>
-                        <td>
+                        <td className="case-title-column">
                           <span className="mobile-title">Case Title (Debtor):</span>
                           {theCase.caseTitle}
                         </td>
@@ -239,11 +239,11 @@ export const CaseAssignment = () => {
                               Assign
                             </ToggleModalButton>
                           )}
-                          {theCase.attorneyList?.map((attorney) => (
-                            <>
+                          {theCase.attorneyList?.map((attorney, key: number) => (
+                            <div key={key}>
                               {attorney}
                               <br />
-                            </>
+                            </div>
                           ))}
                         </td>
                       </tr>

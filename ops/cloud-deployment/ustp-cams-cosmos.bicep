@@ -11,6 +11,10 @@ param databaseContainers array = [
     name: 'healthcheck'
     partitionKey1: '/id'
   }
+  {
+    name: 'assignments'
+    partitionKey1: '/caseId'
+  }
 ]
 
 @description('Allowed subnet resource id')
@@ -18,6 +22,9 @@ param allowedSubnet string = ''
 
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string = ''
+
+@description('WARNING: Set CosmosDb account for public access for all. Should be only enable for development environment.')
+param allowAllNetworks bool = false
 
 @description('Action Group Name for alerts')
 param actionGroupName string
@@ -27,6 +34,7 @@ param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
+
 // CosmosDb
 module account './cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -35,6 +43,7 @@ module account './cosmos/cosmos-account.bicep' = {
     accountName: accountName
     location: location
     allowedSubnets: [ allowedSubnet ]
+    allowAllNetworks: allowAllNetworks
   }
 }
 

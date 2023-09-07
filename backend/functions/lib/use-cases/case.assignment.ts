@@ -27,9 +27,9 @@ export class CaseAssignment {
   async createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
-  ): Promise<number> {
+  ): Promise<string> {
     try {
-      return await this.assignmentRepository.createAssignment(context, caseAssignment);
+      return await this.assignmentRepository.createAssignment(caseAssignment);
     } catch (exception) {
       log.error(applicationContextCreator(context), NAMESPACE, exception.message);
       throw exception;
@@ -44,7 +44,7 @@ export class CaseAssignment {
     if (!isValid) {
       throw new AssignmentException(400, EXISTING_ASSIGNMENT_FOUND);
     } else {
-      const listOfAssignmentIdsCreated: number[] = [];
+      const listOfAssignmentIdsCreated: string[] = [];
       for (const assignment of listOfAssignments) {
         const assignmentId = await this.createAssignment(context, assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
@@ -65,33 +65,7 @@ export class CaseAssignment {
     newAssignments: CaseAttorneyAssignment[],
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
-    const existingAssignments = await this.assignmentRepository.findAssignmentByCaseId(caseId);
-    log.info(context, NAMESPACE, 'Existing assignments:', existingAssignments.toString());
-    console.log('Existing assignments:', existingAssignments.toString());
-    if (existingAssignments.length === 0) return true;
-    return await this.isExactEqual(context, existingAssignments, newAssignments);
-  }
-
-  async isExactEqual(
-    context: ApplicationContext,
-    existingAssignments: CaseAttorneyAssignment[],
-    newAssignments: CaseAttorneyAssignment[],
-  ): Promise<boolean> {
-    if (existingAssignments.length != newAssignments.length) {
-      return false;
-    } else {
-      //compare each assignment
-      for (let i = 0; i < existingAssignments.length; i++) {
-        if (
-          existingAssignments[i].attorneyName !== newAssignments[i].attorneyName ||
-          existingAssignments[i].role !== newAssignments[i].role
-        ) {
-          return false;
-        }
-      }
-      log.info(context, NAMESPACE, 'We found the assignment already.');
-      console.log('We found the assignment already.');
-      return true;
-    }
+    const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
+    return existingAssignments.length === 0;
   }
 }

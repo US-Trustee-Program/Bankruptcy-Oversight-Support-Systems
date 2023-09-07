@@ -1,3 +1,10 @@
+.usa-modal .usa-modal__content h2.usa-modal__heading {
+  text-align: left;
+  .case-number {
+    white-space: nowrap;
+  }
+}
+
 #assign-attorney-modal-overlay.usa-modal-overlay {
   overflow: hidden;
   overflow: -moz-hidden-unscrollable;

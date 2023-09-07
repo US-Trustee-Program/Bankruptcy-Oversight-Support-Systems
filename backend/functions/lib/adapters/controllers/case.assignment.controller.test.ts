@@ -10,12 +10,12 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082'],
+      ['Jane'],
       CaseAssignmentRole.TrialAttorney,
     );
 
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository();
+      new CaseAssignmentLocalRepository(context);
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
     try {
@@ -40,15 +40,15 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('avoid creation of duplicate assignment and return the Id of an existing assignment, if one already exists in the repository for the case', async () => {
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository();
+      new CaseAssignmentLocalRepository(context);
 
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082'],
+      ['Jane'],
       CaseAssignmentRole.TrialAttorney,
     );
-    let resultAssignmentId1: number;
-    let resultAssignmentId2: number;
+    let resultAssignmentId1: string;
+    let resultAssignmentId2: string;
 
     try {
       const assignmentController = new CaseAssignmentController(
@@ -76,17 +76,17 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('creating a new trial attorney assignment on a case with an existing assignment throws error', async () => {
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository();
+      new CaseAssignmentLocalRepository(context);
 
     const testCaseAssignment1 = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082'],
+      ['Jane'],
       CaseAssignmentRole.TrialAttorney,
     );
 
     const testCaseAssignment2 = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8083'],
+      ['John', 'Jane'],
       CaseAssignmentRole.TrialAttorney,
     );
     const assignmentController = new CaseAssignmentController(
@@ -116,11 +116,11 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to the list of trial attorneys provided.', async () => {
     const testCaseAssignment = new TrialAttorneysAssignmentRequest(
       '12345',
-      ['8082', '8092', '8094'],
+      ['Jane', 'Tom', 'Adrian'],
       CaseAssignmentRole.TrialAttorney,
     );
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository();
+      new CaseAssignmentLocalRepository(context);
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
     try {
