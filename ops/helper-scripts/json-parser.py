@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # DESCRIPTION: Script to help parse bicep 'output' json file.
 
