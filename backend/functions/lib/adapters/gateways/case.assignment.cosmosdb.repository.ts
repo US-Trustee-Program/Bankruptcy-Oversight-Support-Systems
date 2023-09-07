@@ -81,7 +81,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .container(this.containerName)
         .items.readAll()
         .fetchAll();
-      return results.filter((r) => r.caseId == caseId);
+      return results;
     } catch (e) {
       throw new AssignmentException(500, 'Failed to retrieve assignments from the database.');
     }

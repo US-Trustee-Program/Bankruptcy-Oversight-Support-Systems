@@ -26,7 +26,7 @@ export class CaseAssignmentController {
     role: CaseAssignmentRole;
   }): Promise<AttorneyAssignmentResponseInterface> {
     try {
-      const listOfAssignments: CaseAttorneyAssignment[] = [];
+      const listOfAssignments = new Set<CaseAttorneyAssignment>();
 
       params.listOfAttorneyNames.forEach((attorney) => {
         const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
@@ -34,7 +34,7 @@ export class CaseAssignmentController {
           attorney,
           params.role,
         );
-        listOfAssignments.push(assignment);
+        listOfAssignments.add(assignment);
       });
       const assignmentService = new CaseAssignment(
         this.applicationContext,
@@ -42,7 +42,7 @@ export class CaseAssignmentController {
       );
       return assignmentService.createTrialAttorneyAssignments(
         this.applicationContext,
-        listOfAssignments,
+        Array.from(listOfAssignments),
       );
     } catch (exception) {
       log.error(this.applicationContext, NAMESPACE, exception.message);
