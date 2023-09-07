@@ -4,10 +4,10 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
-import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { AssignmentException } from '../../use-cases/assignment.exception';
+import { CaseAssignmentRole } from '../types/case.assignment.role';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 
@@ -20,17 +20,19 @@ export class CaseAssignmentController {
     this.caseAssignmentRepository = assignmentRepository;
   }
 
-  public async createTrialAttorneyAssignments(
-    assignmentRequest: TrialAttorneysAssignmentRequest,
-  ): Promise<AttorneyAssignmentResponseInterface> {
+  public async createTrialAttorneyAssignments(params: {
+    caseId: string;
+    listOfAttorneyNames: string[];
+    role: CaseAssignmentRole;
+  }): Promise<AttorneyAssignmentResponseInterface> {
     try {
       const listOfAssignments: CaseAttorneyAssignment[] = [];
 
-      assignmentRequest.listOfAttorneyNames.forEach((attorney) => {
+      params.listOfAttorneyNames.forEach((attorney) => {
         const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-          assignmentRequest.caseId,
+          params.caseId,
           attorney,
-          assignmentRequest.role,
+          params.role,
         );
         listOfAssignments.push(assignment);
       });

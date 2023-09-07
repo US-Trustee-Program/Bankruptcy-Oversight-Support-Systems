@@ -2,17 +2,16 @@ import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentController } from './case.assignment.controller';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
-import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { AssignmentException } from '../../use-cases/assignment.exception';
 const context = require('azure-function-context-mock');
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
-    const testCaseAssignment = new TrialAttorneysAssignmentRequest(
-      '12345',
-      ['Jane'],
-      CaseAssignmentRole.TrialAttorney,
-    );
+    const testCaseAssignment = {
+      caseId: '12345',
+      listOfAttorneyNames: ['Jane '],
+      role: CaseAssignmentRole.TrialAttorney,
+    };
 
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(context);
@@ -42,11 +41,11 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(context);
 
-    const testCaseAssignment = new TrialAttorneysAssignmentRequest(
-      '12345',
-      ['Jane'],
-      CaseAssignmentRole.TrialAttorney,
-    );
+    const testCaseAssignment = {
+      caseId: '12345',
+      listOfAttorneyNames: ['Jane'],
+      role: CaseAssignmentRole.TrialAttorney,
+    };
     let resultAssignmentId1: string;
     let resultAssignmentId2: string;
 
@@ -78,17 +77,18 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(context);
 
-    const testCaseAssignment1 = new TrialAttorneysAssignmentRequest(
-      '12345',
-      ['Jane'],
-      CaseAssignmentRole.TrialAttorney,
-    );
+    const testCaseAssignment1 = {
+      caseId: '12345',
+      listOfAttorneyNames: ['Jane'],
+      role: CaseAssignmentRole.TrialAttorney,
+    };
 
-    const testCaseAssignment2 = new TrialAttorneysAssignmentRequest(
-      '12345',
-      ['John', 'Jane'],
-      CaseAssignmentRole.TrialAttorney,
-    );
+    const testCaseAssignment2 = {
+      caseId: '12345',
+      listOfAttorneyNames: ['John', 'Jane'],
+      role: CaseAssignmentRole.TrialAttorney,
+    };
+
     const assignmentController = new CaseAssignmentController(
       context,
       caseAssignmentLocalRepository,
@@ -114,11 +114,12 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   });
 
   test('A chapter 15 case is assigned to the list of trial attorneys provided.', async () => {
-    const testCaseAssignment = new TrialAttorneysAssignmentRequest(
-      '12345',
-      ['Jane', 'Tom', 'Adrian'],
-      CaseAssignmentRole.TrialAttorney,
-    );
+    const testCaseAssignment = {
+      caseId: '12345',
+      listOfAttorneyNames: ['Jane', 'Tom', 'Adrian'],
+      role: CaseAssignmentRole.TrialAttorney,
+    };
+
     const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(context);
 
