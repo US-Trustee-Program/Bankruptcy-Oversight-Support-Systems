@@ -154,10 +154,13 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Download baseline file
-        run:
-          az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key
-          ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f
-          ./results-latest.json
+        run: |
+          az storage blob download \
+          --account-name ${{ secrets.az_stor_veracode_name }} \
+          --account-key ${{ secrets.az_stor_veracode_key }} \
+          -c baseline \
+          -n results-latest.json \
+          -f ./results-latest.json
 
       - name: pipeline-scan
         id: pipeline-scan
@@ -395,9 +398,11 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run:
-          ./ops/helper-scripts/az-app-deploy.sh --src ./${{ needs.build-info.outputs.webappName
-          }}.tar -g ${{ steps.rgApp.outputs.out }} -n ${{ needs.build-info.outputs.webappName }}
+        run: |
+          ./ops/helper-scripts/az-app-deploy.sh \
+          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -479,9 +484,12 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Enable GHA runner access
-        run:
-          ../../ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{
-          env.stackName }} -p 100 --is-cicd
+        run: |
+          ../../ops/helper-scripts/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p 100 \
+          --is-cicd
 
       - name: Execute Integration Tests
         run: |
@@ -515,9 +523,12 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
-        run:
-          ops/helper-scripts/dev-add-allowed-ip.sh -g ${{ steps.rgApp.outputs.out }} -s ${{
-          env.stackName }} -p 100 --is-cicd
+        run: |
+          ops/helper-scripts/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p 100 \
+          --is-cicd
       - name: Health check api
         run: |
           webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
