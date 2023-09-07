@@ -126,16 +126,6 @@ describe('Test case assignment cosmosdb repository tests', () => {
     }
   });
 
-  test('should throw a not implemented error when getCount is called', async () => {
-    try {
-      await repository.getCount();
-      // Ensure that if we do not catch the expected error, we will fail.
-      expect(true).toBeFalsy();
-    } catch (e) {
-      expect((e as Error).message).toEqual('Method not implemented.');
-    }
-  });
-
   test('Should throw AggregateAuthentication Error for authentication errors from credentials', async () => {
     try {
       await repository.findAssignmentsByCaseId('throw auth error');

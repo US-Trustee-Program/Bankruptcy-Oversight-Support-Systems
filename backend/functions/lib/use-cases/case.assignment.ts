@@ -68,4 +68,8 @@ export class CaseAssignment {
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     return existingAssignments.length === 0;
   }
+
+  async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
+    return this.assignmentRepository.getAllAssignments();
+  }
 }

@@ -57,7 +57,9 @@ export const getAssignmentRepository = (
 ): CaseAssignmentRepositoryInterface => {
   const config: ApplicationConfiguration = new ApplicationConfiguration();
   if (config.get('dbMock')) {
-    if (Object.prototype.hasOwnProperty.call(context.caseAssignmentRepository, 'getCount')) {
+    if (
+      Object.prototype.hasOwnProperty.call(context.caseAssignmentRepository, 'createAssignment')
+    ) {
       return context.caseAssignmentRepository;
     } else {
       context.caseAssignmentRepository = new CaseAssignmentLocalRepository(context);
