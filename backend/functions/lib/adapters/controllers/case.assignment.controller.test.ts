@@ -1,7 +1,5 @@
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentController } from './case.assignment.controller';
-import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
-import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local.repository';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { AssignmentException } from '../../use-cases/assignment.exception';
 const context = require('azure-function-context-mock');
@@ -25,7 +23,6 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const resultAssignmentId = assignmentResponse.body[0];
 
     const assignments = await assignmentController.getAllAssignments();
-    // const assignmentCreated = await caseAssignmentLocalRepository.getAssignment(resultAssignmentId);
 
     expect(resultAssignmentId).toBeTruthy();
     expect(assignments[0].caseId).toBe(testCaseAssignment.caseId);
@@ -33,43 +30,27 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     expect(assignments[0].role).toBe(testCaseAssignment.role);
   });
 
-  test('avoid creation of duplicate assignment and return the Id of an existing assignment, if one already exists in the repository for the case', async () => {
-    const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository(context);
-
+  test('should throw an assignment exception, if one already exists in the repository for the case', async () => {
     const testCaseAssignment = {
       caseId: '12345',
       listOfAttorneyNames: ['Jane'],
       role: CaseAssignmentRole.TrialAttorney,
     };
-    let resultAssignmentId1: string;
-    let resultAssignmentId2: string;
+
+    const assignmentController = new CaseAssignmentController(context);
 
     try {
-      const assignmentController = new CaseAssignmentController(context);
-      const assignmentResponse1 =
-        await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-      const assignmentResponse2 =
-        await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-      resultAssignmentId1 = assignmentResponse1.body[0];
-      resultAssignmentId2 = assignmentResponse2.body[0];
+      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
+      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
+      expect(true).toBeFalsy();
     } catch (exception) {
-      // exception.message;
+      expect(exception.message).toEqual(
+        'A trial attorney assignment already exists for this case. Cannot create another assignment on an existing case assignment.',
+      );
     }
-
-    const assignmentCreated1 =
-      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId1);
-    const assignmentCreated2 =
-      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId2);
-    expect(resultAssignmentId2).toBe(resultAssignmentId1);
-    expect(assignmentCreated2).toEqual(assignmentCreated1);
-    expect(context.res.status).toBe(200);
   });
 
   test('creating a new trial attorney assignment on a case with an existing assignment throws error', async () => {
-    const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository(context);
-
     const testCaseAssignment1 = {
       caseId: '12345',
       listOfAttorneyNames: ['Jane'],
@@ -84,12 +65,10 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const assignmentController = new CaseAssignmentController(context);
 
-    const assignmentResponse1 =
-      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment1);
+    await assignmentController.createTrialAttorneyAssignments(testCaseAssignment1);
 
-    const resultAssignmentId1 = assignmentResponse1.body[0];
-    const assignmentCreated1 =
-      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId1);
+    const assignments = await assignmentController.getAllAssignments();
+    const assignmentCreated1 = assignments[0];
 
     await expect(
       assignmentController.createTrialAttorneyAssignments(testCaseAssignment2),
@@ -107,12 +86,9 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       role: CaseAssignmentRole.TrialAttorney,
     };
 
-    const caseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository(context);
-
     let assignmentResponse: AttorneyAssignmentResponseInterface;
+    const assignmentController = new CaseAssignmentController(context);
     try {
-      const assignmentController = new CaseAssignmentController(context);
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
     } catch (exception) {
@@ -121,31 +97,18 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     expect(assignmentResponse.body.length).toBe(testCaseAssignment.listOfAttorneyNames.length);
 
-    const resultAssignmentId1 = assignmentResponse.body[0];
-    const assignmentCreated1 =
-      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId1);
+    const assignments = await assignmentController.getAllAssignments();
 
-    expect(resultAssignmentId1).toBeTruthy();
-    expect(assignmentCreated1.caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated1.attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[0]);
-    expect(assignmentCreated1.role).toBe(testCaseAssignment.role);
+    expect(assignments[0].caseId).toBe(testCaseAssignment.caseId);
+    expect(assignments[0].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[0]);
+    expect(assignments[0].role).toBe(testCaseAssignment.role);
 
-    const resultAssignmentId2 = assignmentResponse.body[1];
-    const assignmentCreated2 =
-      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId2);
+    expect(assignments[1].caseId).toBe(testCaseAssignment.caseId);
+    expect(assignments[1].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[1]);
+    expect(assignments[1].role).toBe(testCaseAssignment.role);
 
-    expect(resultAssignmentId2).toBeTruthy();
-    expect(assignmentCreated2.caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated2.attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[1]);
-    expect(assignmentCreated2.role).toBe(testCaseAssignment.role);
-
-    const resultAssignmentId3 = assignmentResponse.body[2];
-    const assignmentCreated3 =
-      await caseAssignmentLocalRepository.getAssignment(resultAssignmentId3);
-
-    expect(resultAssignmentId3).toBeTruthy();
-    expect(assignmentCreated3.caseId).toBe(testCaseAssignment.caseId);
-    expect(assignmentCreated3.attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[2]);
-    expect(assignmentCreated3.role).toBe(testCaseAssignment.role);
+    expect(assignments[2].caseId).toBe(testCaseAssignment.caseId);
+    expect(assignments[2].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[2]);
+    expect(assignments[2].role).toBe(testCaseAssignment.role);
   });
 });
