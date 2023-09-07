@@ -13,16 +13,8 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   constructor(context: ApplicationContext) {
     this.appContext = context;
   }
-  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
-    const assignment: CaseAttorneyAssignment = await this.findAssignment(caseAssignment);
-    if (!assignment) {
-      return this.addAssignment(caseAssignment);
-    } else {
-      return assignment.id;
-    }
-  }
 
-  private addAssignment(caseAssignment: CaseAttorneyAssignment): string {
+  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
     const assignmentId = this.nextUnusedId;
     caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
@@ -35,22 +27,11 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return this.caseAttorneyAssignments.find((assignment) => assignment.id === assignmentId);
   }
 
-  public async findAssignment(
-    caseAssignment: CaseAttorneyAssignment,
-  ): Promise<CaseAttorneyAssignment> {
-    return this.caseAttorneyAssignments.find((assignment) => {
-      return (
-        assignment.caseId === caseAssignment.caseId &&
-        assignment.attorneyName === caseAssignment.attorneyName &&
-        assignment.role === caseAssignment.role
-      );
-    });
-  }
-  public async getCount(): Promise<number> {
-    return this.caseAttorneyAssignments.length;
-  }
-
   public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     return this.caseAttorneyAssignments.filter((assignment) => assignment.caseId === caseId);
+  }
+
+  public async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
+    return this.caseAttorneyAssignments;
   }
 }

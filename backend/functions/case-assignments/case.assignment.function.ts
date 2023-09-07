@@ -77,7 +77,6 @@ async function handlePostMethod(functionContext: Context, caseId, listOfAttorney
         role,
       });
     functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
-    console.log(functionContext.res.body.toString());
   } catch (exception) {
     if (exception instanceof AssignmentException) {
       functionContext.res = httpError(functionContext, exception, exception.status);

@@ -105,9 +105,6 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       assignmentController.createTrialAttorneyAssignments(testCaseAssignment2),
     ).rejects.toThrow(AssignmentException);
 
-    const expectedNumberOfAssignments: number = 1;
-    const actualNumberOfAssignments = await caseAssignmentLocalRepository.getCount();
-    expect(actualNumberOfAssignments).toBe(expectedNumberOfAssignments);
     expect(assignmentCreated1.caseId).toBe(testCaseAssignment1.caseId);
     expect(assignmentCreated1.attorneyName).toBe(testCaseAssignment1.listOfAttorneyNames[0]);
     expect(assignmentCreated1.role).toBe(testCaseAssignment1.role);

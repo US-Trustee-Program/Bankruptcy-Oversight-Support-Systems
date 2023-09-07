@@ -8,8 +8,9 @@ const context = require('azure-function-context-mock');
 const appContext = applicationContextCreator(context);
 describe('Case Assignment Repository Tests', () => {
   test('Should persist case assignment', async () => {
+    const caseId = '123';
     const testCaseAttorneyAssignment = new CaseAttorneyAssignment(
-      '123',
+      caseId,
       'Susan Arbeit',
       CaseAssignmentRole.TrialAttorney,
     );
@@ -17,31 +18,7 @@ describe('Case Assignment Repository Tests', () => {
       new CaseAssignmentLocalRepository(appContext);
 
     await testCaseAssignmentLocalRepository.createAssignment(testCaseAttorneyAssignment);
-    const actual = await testCaseAssignmentLocalRepository.findAssignment(
-      testCaseAttorneyAssignment,
-    );
-    expect(actual).toEqual(testCaseAttorneyAssignment);
-  });
-
-  test('should not create a duplicate assignment', async () => {
-    const testCaseAttorneyAssignment = new CaseAttorneyAssignment(
-      '123',
-      'Susan Arbeit',
-      CaseAssignmentRole.TrialAttorney,
-    );
-    const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository(appContext);
-
-    const firstId = await testCaseAssignmentLocalRepository.createAssignment(
-      testCaseAttorneyAssignment,
-    );
-    const first = await testCaseAssignmentLocalRepository.findAssignment(
-      testCaseAttorneyAssignment,
-    );
-    expect(first).toEqual(testCaseAttorneyAssignment);
-    const secondId = await testCaseAssignmentLocalRepository.createAssignment(
-      testCaseAttorneyAssignment,
-    );
-    expect(firstId).toEqual(secondId);
+    const actual = await testCaseAssignmentLocalRepository.findAssignmentsByCaseId(caseId);
+    expect(actual[0]).toEqual(testCaseAttorneyAssignment);
   });
 });
