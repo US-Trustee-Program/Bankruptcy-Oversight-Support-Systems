@@ -22,28 +22,10 @@ const httpTrigger: AzureFunction = async function (
   const listOfAttorneyNames = request.body && request.body.attorneyList;
   const role = request.body && request.body.role;
 
-  try {
-    const assignmentRequest: TrialAttorneysAssignmentRequest = createAssignmentRequest(
-      functionContext,
-      caseId,
-      listOfAttorneyNames,
-      role,
-    );
-    const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
-      functionContext,
-    );
-
-    const trialAttorneyAssignmentResponse =
-      await caseAssignmentController.createTrialAttorneyAssignments(assignmentRequest);
-    functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
-    console.log(functionContext.res.body.toString());
-  } catch (exception) {
-    if (exception instanceof AssignmentException) {
-      functionContext.res = httpError(functionContext, exception, exception.status);
-    } else {
-      functionContext.res = httpError(functionContext, exception, 500);
-    }
-    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
+  if (request.method === 'POST') {
+    await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
+  } else if (request.method === 'GET') {
+    await handleGetMethod();
   }
 };
 
@@ -96,6 +78,36 @@ function validateRole(role: string, functionContext: Context) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, INVALID_ROLE_MESSAGE);
     throw new AssignmentException(400, INVALID_ROLE_MESSAGE);
   }
+}
+
+async function handlePostMethod(functionContext: Context, caseId, listOfAttorneyNames, role) {
+  try {
+    const assignmentRequest: TrialAttorneysAssignmentRequest = createAssignmentRequest(
+      functionContext,
+      caseId,
+      listOfAttorneyNames,
+      role,
+    );
+    const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
+      functionContext,
+    );
+
+    const trialAttorneyAssignmentResponse =
+      await caseAssignmentController.createTrialAttorneyAssignments(assignmentRequest);
+    functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
+    console.log(functionContext.res.body.toString());
+  } catch (exception) {
+    if (exception instanceof AssignmentException) {
+      functionContext.res = httpError(functionContext, exception, exception.status);
+    } else {
+      functionContext.res = httpError(functionContext, exception, 500);
+    }
+    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
+  }
+}
+
+async function handleGetMethod() {
+  // TODO: implement the get
 }
 
 export default httpTrigger;
