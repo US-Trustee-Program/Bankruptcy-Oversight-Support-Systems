@@ -6,9 +6,9 @@ import proxyData from './data-access.proxy';
 const applicationContext = applicationContextCreator(context);
 let dbMock = true;
 
-jest.mock('./gateways/cases.local.inmemory.gateway', () => {
+jest.mock('./gateways/users.local.inmemory.gateway', () => {
   return {
-    getCaseList: jest.fn(() => {
+    login: jest.fn(() => {
       return 'in-memory-test';
     }),
   };
@@ -48,16 +48,12 @@ describe('Testing Data Access Proxy loader', () => {
     dbMock = true;
 
     type ProxyGateway = {
-      getCaseList: Function;
-      getCase: Function;
-      createCase: Function;
-      updateCase: Function;
-      deleteCase: Function;
+      login: Function;
     };
 
-    const result: ProxyGateway = (await proxyData(applicationContext, 'cases')) as ProxyGateway;
+    const result: ProxyGateway = (await proxyData(applicationContext, 'users')) as ProxyGateway;
 
-    expect(result.getCaseList()).toBe('in-memory-test');
+    expect(result.login()).toBe('in-memory-test');
   });
 
   test('Data Access Proxy should load azure mssql database when config.dbMock is set to false', async () => {

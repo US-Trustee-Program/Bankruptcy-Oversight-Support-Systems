@@ -3,7 +3,7 @@ import { CaseListDbResult, Chapter11CaseListDbResult } from '../types/cases';
 import * as dataUtils from './local.inmemory.gateway';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { ObjectKeyValArrayKeyVal } from '../types/basic';
-import { Chapter11LocalGateway } from './cases.local.inmemory.gateway';
+import { Chapter11LocalGateway } from './chapter11.local.gateway';
 const context = require('azure-function-context-mock');
 
 const table = 'cases';
