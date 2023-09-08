@@ -1,4 +1,9 @@
-import { getDate, calculateDifferenceInMonths, getCamsDateStringFromDate } from './date-helper';
+import {
+  getDate,
+  calculateDifferenceInMonths,
+  getCamsDateStringFromDate,
+  convertYearMonthDayToMonthDayYear,
+} from './date-helper';
 
 describe('date-helper tests', () => {
   describe('getDate tests', () => {
@@ -186,6 +191,12 @@ describe('date-helper tests', () => {
 
     test('should properly handle date later than Dec 31, 9999', async () => {
       expect(getCamsDateStringFromDate(new Date(10000, 0, 1))).toEqual('+010000-01-01');
+    });
+  });
+
+  describe('convertYearMonthDayToMonthDayYear tests', () => {
+    test('should convert 2023-12-31 to 12-31-2023', async () => {
+      expect(convertYearMonthDayToMonthDayYear('2023-12-31')).toEqual('12-31-2023');
     });
   });
 });
