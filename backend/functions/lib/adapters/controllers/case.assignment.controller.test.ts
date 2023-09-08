@@ -2,12 +2,22 @@ import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentController } from './case.assignment.controller';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { AssignmentException } from '../../use-cases/assignment.exception';
+import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 const context = require('azure-function-context-mock');
 
 describe('Chapter 15 Case Assignment Creation Tests', () => {
+  const env = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...env,
+      DATABASE_MOCK: 'true',
+    };
+  });
+
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = {
-      caseId: '12345',
+      caseId: '18-12345',
       listOfAttorneyNames: ['Jane '],
       role: CaseAssignmentRole.TrialAttorney,
     };
@@ -25,14 +35,16 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const assignments = await assignmentController.getAllAssignments();
 
     expect(resultAssignmentId).toBeTruthy();
-    expect(assignments[0].caseId).toBe(testCaseAssignment.caseId);
-    expect(assignments[0].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[0]);
-    expect(assignments[0].role).toBe(testCaseAssignment.role);
+    expect((assignments.body[0] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
+    expect((assignments.body[0] as CaseAttorneyAssignment).attorneyName).toBe(
+      testCaseAssignment.listOfAttorneyNames[0],
+    );
+    expect((assignments.body[0] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
   });
 
   test('should throw an assignment exception, if one already exists in the repository for the case', async () => {
     const testCaseAssignment = {
-      caseId: '12345',
+      caseId: '18-12345',
       listOfAttorneyNames: ['Jane'],
       role: CaseAssignmentRole.TrialAttorney,
     };
@@ -52,13 +64,13 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('creating a new trial attorney assignment on a case with an existing assignment throws error', async () => {
     const testCaseAssignment1 = {
-      caseId: '12345',
+      caseId: '18-12345',
       listOfAttorneyNames: ['Jane'],
       role: CaseAssignmentRole.TrialAttorney,
     };
 
     const testCaseAssignment2 = {
-      caseId: '12345',
+      caseId: '18-12345',
       listOfAttorneyNames: ['John', 'Jane'],
       role: CaseAssignmentRole.TrialAttorney,
     };
@@ -68,7 +80,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     await assignmentController.createTrialAttorneyAssignments(testCaseAssignment1);
 
     const assignments = await assignmentController.getAllAssignments();
-    const assignmentCreated1 = assignments[0];
+    const assignmentCreated1 = assignments.body[0] as CaseAttorneyAssignment;
 
     await expect(
       assignmentController.createTrialAttorneyAssignments(testCaseAssignment2),
@@ -81,7 +93,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('A chapter 15 case is assigned to the list of trial attorneys provided.', async () => {
     const testCaseAssignment = {
-      caseId: '12345',
+      caseId: '18-12345',
       listOfAttorneyNames: ['Jane', 'Tom', 'Adrian'],
       role: CaseAssignmentRole.TrialAttorney,
     };
@@ -99,16 +111,22 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     const assignments = await assignmentController.getAllAssignments();
 
-    expect(assignments[0].caseId).toBe(testCaseAssignment.caseId);
-    expect(assignments[0].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[0]);
-    expect(assignments[0].role).toBe(testCaseAssignment.role);
+    expect((assignments.body[0] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
+    expect((assignments.body[0] as CaseAttorneyAssignment).attorneyName).toBe(
+      testCaseAssignment.listOfAttorneyNames[0],
+    );
+    expect((assignments.body[0] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
 
-    expect(assignments[1].caseId).toBe(testCaseAssignment.caseId);
-    expect(assignments[1].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[1]);
-    expect(assignments[1].role).toBe(testCaseAssignment.role);
+    expect((assignments.body[1] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
+    expect((assignments.body[1] as CaseAttorneyAssignment).attorneyName).toBe(
+      testCaseAssignment.listOfAttorneyNames[1],
+    );
+    expect((assignments.body[1] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
 
-    expect(assignments[2].caseId).toBe(testCaseAssignment.caseId);
-    expect(assignments[2].attorneyName).toBe(testCaseAssignment.listOfAttorneyNames[2]);
-    expect(assignments[2].role).toBe(testCaseAssignment.role);
+    expect((assignments.body[2] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
+    expect((assignments.body[2] as CaseAttorneyAssignment).attorneyName).toBe(
+      testCaseAssignment.listOfAttorneyNames[2],
+    );
+    expect((assignments.body[2] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
   });
 });
