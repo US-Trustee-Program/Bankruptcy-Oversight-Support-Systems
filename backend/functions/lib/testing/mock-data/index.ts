@@ -1,6 +1,5 @@
 import { ObjectKeyValArrayKeyVal } from '../../adapters/types/basic';
-import { CaseListRecordSet } from '../../adapters/types/cases';
-import { AttorneyListRecordSet } from '../../adapters/types/attorneys';
+import { Chapter11CaseListRecordSet } from '../../adapters/types/cases';
 
 async function getProperty(table: string, item: string) {
   const obj = await import(`./${table}.mock`);
@@ -9,20 +8,11 @@ async function getProperty(table: string, item: string) {
 
 const mockData: ObjectKeyValArrayKeyVal = {};
 
-const attorneyListRecord: AttorneyListRecordSet = {
-  attorneyList: [{}],
-  initialized: false,
-};
-
-const caseListRecord: CaseListRecordSet = {
+const caseListRecord: Chapter11CaseListRecordSet = {
   staff1Label: '',
   staff2Label: '',
   caseList: [{}],
   initialized: false,
-};
-
-const attorneyListMockData = {
-  attorneys: attorneyListRecord,
 };
 
 const caseListMockData = {
@@ -36,4 +26,4 @@ const userMockData = {
   },
 };
 
-export { getProperty, mockData, caseListMockData, userMockData, attorneyListMockData };
+export { getProperty, mockData, caseListMockData, userMockData };
