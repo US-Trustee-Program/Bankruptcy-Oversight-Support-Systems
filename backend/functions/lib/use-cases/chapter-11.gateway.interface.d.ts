@@ -1,9 +1,9 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseListDbResult } from '../adapters/types/cases';
+import { Chapter11CaseListDbResult } from '../adapters/types/cases';
 
 export interface Chapter11GatewayInterface {
   getCaseList(
     context: ApplicationContext,
     caseOptions: { chapter: string; professionalId: string },
-  ): Promise<CaseListDbResult>;
+  ): Promise<Chapter11CaseListDbResult>;
 }
