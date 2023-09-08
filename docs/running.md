@@ -39,6 +39,7 @@ CAMS_BASE_PATH={the base path of the backend, if any}
 CAMS_SERVER_HOSTNAME={the fully qualified domain name (FQDN) of the backend}
 CAMS_SERVER_PORT={the port the backend is served on}
 CAMS_SERVER_PROTOCOL=http[s]
+CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 CAMS_PA11Y={a string: true | false}
 ```
 
