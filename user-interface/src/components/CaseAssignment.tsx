@@ -27,6 +27,7 @@ export const CaseAssignment = () => {
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
+  const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [caseListUpdated, setCaseListUpdated] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
@@ -36,11 +37,13 @@ export const CaseAssignment = () => {
     type: UswdsAlertStyle;
   }>({ message: '', type: UswdsAlertStyle.Success });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
+  const [assignments, setAssignments] = useState<Array<object>>([]);
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
 
-  const fetchList = async () => {
+  // TODO: figure out how we want to get cases and assignments
+  const fetchCases = async () => {
     setIsLoading(true);
     api
       .list('/cases', {
@@ -75,9 +78,22 @@ export const CaseAssignment = () => {
       });
   };
 
+  const fetchAssignments = async () => {
+    api.list('/case-assignments').then((res) => {
+      const list: Array<object> = [];
+      (res.body as Array<object>).forEach((assignment) => {
+        list.push(assignment);
+        console.log(assignment);
+      });
+      setAssignments(list);
+      console.log(assignments);
+    });
+  };
+
   useEffect(() => {
     if (!isLoading) {
-      fetchList();
+      fetchCases();
+      fetchAssignments(); // not sure if this should stay here
     }
   }, [unassignedCaseList.length > 0, chapter]);
 
