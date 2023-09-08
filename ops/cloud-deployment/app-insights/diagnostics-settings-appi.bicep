@@ -17,21 +17,10 @@ resource appInsight 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
 }
 
-var logRetentionPolicy = {
-  days: 0
-  enabled: true
-}
-
-var metricRetentionPolicy = {
-  days: 0
-  enabled: true
-}
-
 var metricsEnableAll = [
   {
     category: 'AllMetrics'
     enabled: true
-    retentionPolicy: metricRetentionPolicy
   }
 ]
 
@@ -39,57 +28,47 @@ var applicationInsightsLogsEnableAll = [
   {
     category: 'AppAvailabilityResults'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppBrowserTimings'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppEvents'
     enabled: true
-    retentionPolicy: logRetentionPolicy
+
   }
   {
     category: 'AppMetrics'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppDependencies'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppExceptions'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppPageViews'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppPerformanceCounters'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppRequests'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppSystemEvents'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
   {
     category: 'AppTraces'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 ]
 
