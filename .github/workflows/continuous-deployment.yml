@@ -153,6 +153,7 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Download baseline file
+        if: ${{ false }}
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
 
       - name: pipeline-scan
