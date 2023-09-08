@@ -27,7 +27,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const query = `select TOP 20
         Format(CS_DATE_FILED, 'yy') + '-' + CS_CASE_NUMBER as caseNumber,
         CS_SHORT_TITLE as caseTitle,
-        CS_DATE_FILED as dateFiled
+        FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
         FROM [dbo].[AO_CS]
         WHERE CS_CHAPTER = '15'
         AND GRP_DES = '${MANHATTAN_GROUP_DESIGNATOR}'
@@ -40,6 +40,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
+    console.log(queryResult.results);
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Results received from DXTR ${queryResult}`);
 
