@@ -45,6 +45,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
         ),
+        assignments: [],
       },
       {
         caseNumber: '1122',
@@ -52,6 +53,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
         ),
+        assignments: [],
       },
       {
         caseNumber: '1166',
@@ -59,6 +61,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
         ),
+        assignments: [],
       },
     );
     this.chapter15CaseList.push(oldCases[0], oldCases[1], oldCases[2]);
@@ -73,6 +76,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
         ),
+        assignments: [],
       },
       {
         caseNumber: '1175',
@@ -80,6 +84,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
         ),
+        assignments: [],
       },
       {
         caseNumber: '1176',
@@ -87,6 +92,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
         ),
+        assignments: [],
       },
     );
     this.chapter15CaseList.push(newCases[0], newCases[1], newCases[2]);

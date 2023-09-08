@@ -24,11 +24,13 @@ describe('Chapter 15 case tests', () => {
         caseNumber: '04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: '2005-05-04',
+        assignments: [],
       },
       {
         caseNumber: '06-1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: '2006-03-27',
+        assignments: [],
       },
     ];
     const mockChapterList: CaseListDbResult = {
@@ -115,6 +117,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: 'not a number',
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -128,6 +131,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: '-70',
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -141,6 +145,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: '70',
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -154,6 +159,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: undefined,
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -167,6 +173,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: null,
     };
     await chapter15CaseList.getChapter15CaseList(appContext);

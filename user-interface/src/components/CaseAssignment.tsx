@@ -3,7 +3,7 @@ import './CaseList.scss';
 import React, { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
-import MockApi from '../models/chapter15-mock.api.cases';
+//import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/Modal';
@@ -21,7 +21,8 @@ interface Chapter15Node extends Chapter15Type {
 export const CaseAssignment = () => {
   const modalRef = useRef<ModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
-  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
+  //  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
+  const api = Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
@@ -37,7 +38,6 @@ export const CaseAssignment = () => {
     type: UswdsAlertStyle;
   }>({ message: '', type: UswdsAlertStyle.Success });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
-  const [assignments, setAssignments] = useState<Array<object>>([]);
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
@@ -78,22 +78,9 @@ export const CaseAssignment = () => {
       });
   };
 
-  const fetchAssignments = async () => {
-    api.list('/case-assignments').then((res) => {
-      const list: Array<object> = [];
-      (res.body as Array<object>).forEach((assignment) => {
-        list.push(assignment);
-        console.log(assignment);
-      });
-      setAssignments(list);
-      console.log(assignments);
-    });
-  };
-
   useEffect(() => {
     if (!isLoading) {
       fetchCases();
-      fetchAssignments(); // not sure if this should stay here
     }
   }, [unassignedCaseList.length > 0, chapter]);
 
@@ -131,7 +118,7 @@ export const CaseAssignment = () => {
       const tempCaseList = unassignedCaseList;
       tempCaseList.forEach((theCase) => {
         if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
-          (theCase as Chapter15Type).attorneyList = selectedAttorneyList.map((atty) => {
+          (theCase as Chapter15Type).assignments = selectedAttorneyList.map((atty) => {
             return atty;
           });
         }
@@ -243,7 +230,7 @@ export const CaseAssignment = () => {
                           </td>
                           <td data-testid={`attorney-list-${idx}`} className="attorney-list">
                             <span className="mobile-title">Assigned Attorney:</span>
-                            {theCase.attorneyList?.length != undefined || (
+                            {!!theCase.assignments?.length || (
                               <ToggleModalButton
                                 className="case-assignment-modal-toggle"
                                 id={`assign-attorney-btn-${idx}`}
@@ -256,7 +243,7 @@ export const CaseAssignment = () => {
                                 Assign
                               </ToggleModalButton>
                             )}
-                            {theCase.attorneyList?.map((attorney, key: number) => (
+                            {theCase.assignments?.map((attorney, key: number) => (
                               <div key={key}>
                                 {attorney}
                                 <br />

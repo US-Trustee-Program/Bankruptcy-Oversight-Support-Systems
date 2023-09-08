@@ -16,7 +16,7 @@ export interface ApplicationContext extends Context {
 }
 
 export interface ObjectKeyVal {
-  [key: string]: string | number;
+  [key: string]: string | number | unknown[];
 }
 export interface ObjectKeyValArrayKeyVal {
   [key: string]: ObjectKeyVal[];
