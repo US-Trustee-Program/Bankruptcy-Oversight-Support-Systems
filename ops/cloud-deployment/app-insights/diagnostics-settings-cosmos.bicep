@@ -21,65 +21,37 @@ resource setting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
         category: 'DataPlaneRequests'
         categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
       }
       {
         category: 'QueryRuntimeStatistics'
         categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
       }
       {
         category: 'PartitionKeyStatistics'
         categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
       }
       {
         category: 'PartitionKeyRUConsumption'
         categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
       }
       {
         category: 'ControlPlaneRequests'
         categoryGroup: null
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
       }
       {
         category: 'TableApiRequests'
         categoryGroup: null
         enabled: false
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
       }
     ]
     metrics: [
       {
         timeGrain: null
         enabled: false
-        retentionPolicy: {
-          days: 0
-          enabled: true
-        }
         category: 'Requests'
       }
     ]
