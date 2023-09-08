@@ -36,3 +36,8 @@ export function calculateDifferenceInMonths(left: Date, right: Date): number {
 export function getCamsDateStringFromDate(date: Date) {
   return date.toISOString().split('T')[0];
 }
+
+export function convertYearMonthDayToMonthDayYear(date: string) {
+  const parts = date.split('-');
+  return `${parts[1]}-${parts[2]}-${parts[0]}`;
+}
