@@ -1,16 +1,16 @@
 import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
-import { getPacerGateway } from '../factory';
+import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 
 export class Chapter15CaseList {
-  pacerGateway: CasesInterface;
+  casesGateway: CasesInterface;
 
-  constructor(pacerGateway?: CasesInterface) {
-    if (!pacerGateway) {
-      this.pacerGateway = getPacerGateway();
+  constructor(casesGateway?: CasesInterface) {
+    if (!casesGateway) {
+      this.casesGateway = getCasesGateway();
     } else {
-      this.pacerGateway = pacerGateway;
+      this.casesGateway = casesGateway;
     }
   }
 
@@ -20,7 +20,7 @@ export class Chapter15CaseList {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const cases = await this.pacerGateway.getChapter15Cases(context, {
+      const cases = await this.casesGateway.getChapter15Cases(context, {
         startingMonth: startingMonth || undefined,
       });
 
@@ -36,7 +36,8 @@ export class Chapter15CaseList {
       const message = (e as Error).message;
       return {
         success: false,
-        message: message && message.length ? message : 'Unknown Error received from PACER server',
+        message:
+          message && message.length ? message : 'Unknown Error received while retrieving cases',
         count: 0,
         body: {
           caseList: [],

@@ -6,17 +6,17 @@ dotenv.config();
 
 export class ApplicationConfiguration implements AppConfig {
   public readonly server: ServerType;
-  public readonly dbConfig: IDbConfig;
+  public readonly acmsDbConfig: IDbConfig;
+  public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
-  public readonly pacerMock: boolean;
   public readonly cosmosConfig: CosmosConfig;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
-    this.pacerMock = process.env.PACER_MOCK?.toLowerCase() === 'true';
 
     this.server = this.getAppServerConfig();
-    this.dbConfig = this.getDbConfig();
+    this.acmsDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE);
+    this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.cosmosConfig = this.getCosmosConfig();
   }
 
@@ -27,10 +27,10 @@ export class ApplicationConfiguration implements AppConfig {
     };
   }
 
-  private getDbConfig(): IDbConfig {
+  private getDbConfig(database: string): IDbConfig {
     const dbConfig: IDbConfig = {
       server: process.env.MSSQL_HOST,
-      database: process.env.MSSQL_DATABASE,
+      database: database,
       user: process.env.MSSQL_USER,
       password: '',
       azureManagedIdentity: process.env.AZURE_MANAGED_IDENTITY || '',

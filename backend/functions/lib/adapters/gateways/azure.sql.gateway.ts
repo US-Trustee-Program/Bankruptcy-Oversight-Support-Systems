@@ -9,7 +9,7 @@ const NAMESPACE = 'AZURE-SQL-MODULE';
 
 const getAll = async (context: ApplicationContext, table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;
-  const queryResult: QueryResults = await executeQuery(context, query);
+  const queryResult: QueryResults = await executeQuery(context, context.config.acmsDbConfig, query);
   let results: DbResult;
 
   if (queryResult.success) {
@@ -47,7 +47,7 @@ const getRecord = async (
       value: id,
     },
   ];
-  const queryResult = await executeQuery(context, query, input);
+  const queryResult = await executeQuery(context, context.config.acmsDbConfig, query, input);
 
   if (
     Boolean(queryResult) &&

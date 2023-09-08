@@ -1,9 +1,9 @@
 import { getProperty } from '../../testing/mock-data';
-import { CaseListDbResult } from '../types/cases';
+import { CaseListDbResult, Chapter11CaseListDbResult } from '../types/cases';
 import * as dataUtils from './local.inmemory.gateway';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { ObjectKeyValArrayKeyVal } from '../types/basic';
-import { Chapter11LocalGateway } from './cases.local.inmemory.gateway';
+import { Chapter11LocalGateway } from './chapter11.local.gateway';
 const context = require('azure-function-context-mock');
 
 const table = 'cases';
@@ -43,7 +43,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
   });
 
   test('Should return a maximum of 20 results when fetching all records from Cases table', async () => {
-    const mockResults: CaseListDbResult = {
+    const mockResults: Chapter11CaseListDbResult = {
       success: true,
       message: `${table} list`,
       count: 20,
@@ -63,7 +63,7 @@ describe('Local in-memory database gateway tests specific for cases', () => {
   test('Should return 5 results when fetching all chapter 11 records on Cases table', async () => {
     const filteredList = list.caseList.filter((rec) => rec.currentCaseChapter === '11');
 
-    const mockResults: CaseListDbResult = {
+    const mockResults: Chapter11CaseListDbResult = {
       success: true,
       message: `${table} list`,
       count: 5,
