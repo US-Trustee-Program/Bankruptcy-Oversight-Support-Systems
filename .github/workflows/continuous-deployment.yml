@@ -153,7 +153,6 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Download baseline file
-        if: ${{ false }}
         run: az storage blob download --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -c baseline -n results-latest.json -f ./results-latest.json
 
       - name: pipeline-scan
@@ -165,6 +164,9 @@ jobs:
 
           java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
+          -bf results-latest.json \
+          -jf results.json \
+          -fjf filtered_results.json \
           --file cams.zip
 
       - name: Upload to storage account
