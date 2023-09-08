@@ -38,6 +38,8 @@ export function getCamsDateStringFromDate(date: Date) {
 }
 
 export function convertYearMonthDayToMonthDayYear(date: string) {
+  // example: 2023-12-31 -> 12-31-2023
+  // index:      0  1  2 ->  1  2  0
   const parts = date.split('-');
   return `${parts[1]}-${parts[2]}-${parts[0]}`;
 }
