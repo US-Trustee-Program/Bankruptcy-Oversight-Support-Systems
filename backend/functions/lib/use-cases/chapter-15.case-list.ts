@@ -2,6 +2,8 @@ import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
+import { CaseAssignment } from './case.assignment';
+import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 
 export class Chapter15CaseList {
   casesGateway: CasesInterface;
@@ -20,9 +22,17 @@ export class Chapter15CaseList {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
+      const caseAssignment = new CaseAssignment(context);
       const cases = await this.casesGateway.getChapter15Cases(context, {
         startingMonth: startingMonth || undefined,
       });
+      let assignment: CaseAttorneyAssignment[];
+      for (let i = 0; i < cases.length; i++) {
+        assignment = await caseAssignment.findAssignmentsByCaseId(cases[i].caseNumber);
+        cases[i].assignments = assignment.map((ass) => {
+          return ass.attorneyName;
+        });
+      }
 
       return {
         success: true,
