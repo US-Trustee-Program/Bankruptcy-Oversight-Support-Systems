@@ -17,21 +17,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' existing = {
   name: functionAppName
 }
 
-var logRetentionPolicy = {
-  days: 0
-  enabled: true
-}
-
-var metricRetentionPolicy = {
-  days: 0
-  enabled: true
-}
-
 var metricsEnableAll = [
   {
     category: 'AllMetrics'
     enabled: true
-    retentionPolicy: metricRetentionPolicy
   }
 ]
 
@@ -39,7 +28,7 @@ var functionAppLogsEnableAll = [
   {
     category: 'FunctionAppLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
+
   }
 ]
 

@@ -17,21 +17,10 @@ resource webapp 'Microsoft.Web/sites@2022-09-01' existing = {
   name: webappName
 }
 
-var logRetentionPolicy = {
-  days: 0
-  enabled: true
-}
-
-var metricRetentionPolicy = {
-  days: 0
-  enabled: true
-}
-
 var metricsEnableAll = [
   {
     category: 'AllMetrics'
     enabled: true
-    retentionPolicy: metricRetentionPolicy
   }
 ]
 
@@ -39,49 +28,41 @@ var webappLogsEnableAll = [
   {
     category: 'AppServiceAntivirusScanAuditLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServiceHTTPLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServiceConsoleLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServiceAppLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServiceFileAuditLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServiceAuditLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServiceIPSecAuditLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 
   {
     category: 'AppServicePlatformLogs'
     enabled: true
-    retentionPolicy: logRetentionPolicy
   }
 ]
 
