@@ -40,7 +40,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    console.log(queryResult.results);
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Results received from DXTR ${queryResult}`);
 
