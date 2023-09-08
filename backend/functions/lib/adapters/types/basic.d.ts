@@ -5,8 +5,8 @@ import { CaseAssignmentLocalRepository } from '../gateways/case.assignment.local
 
 export interface AppConfig {
   dbMock: boolean;
-  dbConfig: IDbConfig;
-  pacerMock: boolean;
+  acmsDbConfig: IDbConfig;
+  dxtrDbConfig: IDbConfig;
   server: ServerType;
 }
 

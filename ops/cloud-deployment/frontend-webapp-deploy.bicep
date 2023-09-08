@@ -51,17 +51,38 @@ param webappPrivateEndpointSubnetName string
 @description('Webapp private endpoint subnet ip ranges')
 param webappPrivateEndpointSubnetAddressPrefix string
 
+@description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
+param hostOSType bool = true
+
+@description('Azure App Service runtime environment. Only applicable when host os type is Linux.')
+@allowed([
+  'node'
+  'php'
+])
+param appServiceRuntime string = 'php'
+// Provides mapping for runtime stack
+// Use the following query to check supported versions
+//  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
+var linuxFxVersionMap = {
+  node: 'NODE|18'
+  php: 'PHP|8.2'
+}
+
+@description('Filename for nginx server config and must be placed in public folder. Needed for deploying user-interface code when nginx is used.')
+param nginxConfigFilename string = 'nginx.conf'
+var appCommandLine = 'cp /home/site/wwwroot/${nginxConfigFilename} /etc/nginx/sites-enabled/default; service nginx restart'
+
 resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
   sku: planTypeToSkuMap[planType]
-  kind: 'app'
+  kind: 'app,linux'
   properties: {
     perSiteScaling: false
     elasticScaleEnabled: false
     maximumElasticWorkerCount: 1
     isSpot: false
-    reserved: false // set true for Linux
+    reserved: hostOSType
     isXenon: false
     hyperV: false
     targetWorkerCount: 0
@@ -197,16 +218,8 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
 var applicationSettings = concat([],
   deployAppInsights ? [
     {
-      name: 'WEBSITE_NODE_DEFAULT_VERSION'
-      value: '18'
-    }
-    {
       name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
       value: '~2'
-    }
-    {
-      name: 'XDT_MicrosoftApplicationInsights_NodeJS'
-      value: '1'
     }
     {
       name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
@@ -265,6 +278,8 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
         preloadEnabled: true
       }
     ]
+    linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
+    appCommandLine: appCommandLine
   }
 }
 
