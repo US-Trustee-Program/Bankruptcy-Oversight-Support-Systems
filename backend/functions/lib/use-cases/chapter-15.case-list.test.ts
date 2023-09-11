@@ -5,9 +5,46 @@ import { applicationContextCreator } from '../adapters/utils/application-context
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { getCamsDateStringFromDate } from '../adapters/utils/date-helper';
 import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
+import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+
 const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
+
+const attorneyJaneSmith = 'Jane Smith';
+const attorneyJoeNobel = 'Joe Nobel';
+const assignments: CaseAttorneyAssignment[] = [
+  {
+    id: '1',
+    caseId: '23-01176',
+    attorneyName: attorneyJaneSmith,
+    role: CaseAssignmentRole.TrialAttorney,
+  },
+  {
+    id: '2',
+    caseId: '23-01176',
+    attorneyName: attorneyJoeNobel,
+    role: CaseAssignmentRole.TrialAttorney,
+  },
+];
+
+const caseNumberWithAssignments = '1176';
+jest.mock('./case.assignment', () => {
+  return {
+    CaseAssignment: jest.fn().mockImplementation(() => {
+      return {
+        findAssignmentsByCaseId: (caseId: string) => {
+          if (caseId === caseNumberWithAssignments) {
+            return Promise.resolve(assignments);
+          } else {
+            return Promise.resolve([]);
+          }
+        },
+      };
+    }),
+  };
+});
 
 describe('Chapter 15 case tests', () => {
   beforeEach(() => {
@@ -70,7 +107,31 @@ describe('Chapter 15 case tests', () => {
   });
 
   test('should return results with expected assignments', async () => {
-    //
+    const mockCasesGateway: CasesInterface = new MockCasesGateway();
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const cases = await chapter15CaseList.getChapter15CaseList(appContext);
+    const caseWithAssignments = cases.body.caseList.filter((theCase) => {
+      return theCase.caseNumber === caseNumberWithAssignments;
+    })[0];
+    expect(caseWithAssignments).toEqual(
+      expect.objectContaining({
+        caseNumber: caseNumberWithAssignments,
+        assignments: expect.arrayContaining([attorneyJaneSmith, attorneyJoeNobel]),
+      }),
+    );
+    const casesWithoutAssignments = cases.body.caseList.filter((theCase) => {
+      return theCase.caseNumber !== caseNumberWithAssignments;
+    });
+    let count = 0;
+    casesWithoutAssignments.forEach((bCase) => {
+      expect(bCase).toEqual(
+        expect.objectContaining({
+          assignments: [],
+        }),
+      );
+      count++;
+    });
+    expect(count).toEqual(2);
   });
 
   test('should throw error and return specific error message received when error is thrown in casesGateway.getChapter15Cases', async () => {
