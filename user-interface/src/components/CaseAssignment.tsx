@@ -1,6 +1,6 @@
 import './CaseAssignment.scss';
 import './CaseList.scss';
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import MockApi from '../models/chapter15-mock.api.cases';
@@ -26,7 +26,7 @@ export const CaseAssignment = () => {
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
-  const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
+  //const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [caseListUpdated, setCaseListUpdated] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
