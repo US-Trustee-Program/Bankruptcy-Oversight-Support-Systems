@@ -3,7 +3,7 @@ import './CaseList.scss';
 import React, { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
-//import MockApi from '../models/chapter15-mock.api.cases';
+import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/Modal';
@@ -21,8 +21,7 @@ interface Chapter15Node extends Chapter15Type {
 export const CaseAssignment = () => {
   const modalRef = useRef<ModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
-  //  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
-  const api = Api;
+  const api = import.meta.env['CAMS_PA11Y'] ? MockApi : Api;
   const screenTitle = 'Chapter 15 Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
@@ -138,8 +137,8 @@ export const CaseAssignment = () => {
   if (isLoading) {
     return (
       <div className="case-assignment case-list">
-        <h1>{screenTitle}</h1>
-        <h2>{subTitle}</h2>
+        <h1 data-testid="case-list-heading">{screenTitle}</h1>
+        <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         <p data-testid="loading-indicator">Loading...</p>
       </div>
     );
