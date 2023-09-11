@@ -48,4 +48,5 @@ export interface Chapter15CaseInterface extends ObjectKeyVal {
   caseNumber: string;
   caseTitle: string;
   dateFiled: string;
+  assignments: string[];
 }

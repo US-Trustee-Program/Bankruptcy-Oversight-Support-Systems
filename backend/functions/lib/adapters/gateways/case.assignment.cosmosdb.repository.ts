@@ -48,10 +48,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     throw new Error('Method not implemented.');
   }
 
-  getCount(): Promise<number> {
-    throw new Error('Method not implemented.');
-  }
-
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     try {
       // Check read access
@@ -75,6 +71,19 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
       if (e instanceof AggregateAuthenticationError) {
         throw new AssignmentException(403, 'Failed to authenticate to Azure');
       }
+    }
+  }
+
+  async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
+    try {
+      const { resources: results } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.readAll()
+        .fetchAll();
+      return results;
+    } catch (e) {
+      throw new AssignmentException(500, 'Failed to retrieve assignments from the database.');
     }
   }
 }

@@ -3,42 +3,39 @@ import { Context } from '@azure/functions';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
-import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
-import { TrialAttorneysAssignmentRequest } from '../types/trial.attorneys.assignment.request';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { AssignmentException } from '../../use-cases/assignment.exception';
+import { CaseAssignmentRole } from '../types/case.assignment.role';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
-  private readonly caseAssignmentRepository: CaseAssignmentRepositoryInterface;
 
-  constructor(context: Context, assignmentRepository?: CaseAssignmentRepositoryInterface) {
+  constructor(context: Context) {
     this.applicationContext = applicationContextCreator(context);
-    this.caseAssignmentRepository = assignmentRepository;
   }
 
-  public async createTrialAttorneyAssignments(
-    assignmentRequest: TrialAttorneysAssignmentRequest,
-  ): Promise<AttorneyAssignmentResponseInterface> {
+  public async createTrialAttorneyAssignments(params: {
+    caseId: string;
+    listOfAttorneyNames: string[];
+    role: CaseAssignmentRole;
+  }): Promise<AttorneyAssignmentResponseInterface> {
     try {
       const listOfAssignments: CaseAttorneyAssignment[] = [];
 
-      assignmentRequest.listOfAttorneyNames.forEach((attorney) => {
+      const attorneys = [...new Set(params.listOfAttorneyNames)];
+      attorneys.forEach((attorney) => {
         const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-          assignmentRequest.caseId,
+          params.caseId,
           attorney,
-          assignmentRequest.role,
+          params.role,
         );
         listOfAssignments.push(assignment);
       });
-      const assignmentService = new CaseAssignment(
-        this.applicationContext,
-        this.caseAssignmentRepository,
-      );
-      return assignmentService.createTrialAttorneyAssignments(
+      const assignmentUseCase = new CaseAssignment(this.applicationContext);
+      return assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
         listOfAssignments,
       );
@@ -50,5 +47,27 @@ export class CaseAssignmentController {
         throw new AssignmentException(exception.status, exception.message);
       }
     }
+  }
+
+  public async getAllAssignments(): Promise<AttorneyAssignmentResponseInterface> {
+    const assignmentUseCase = new CaseAssignment(this.applicationContext);
+    const assignments = await assignmentUseCase.getAllAssignments();
+    let response;
+    if (assignments.length > 0) {
+      response = {
+        success: true,
+        message: '',
+        count: assignments.length,
+        body: assignments,
+      };
+    } else {
+      response = {
+        success: false,
+        message: 'Found no case assignments',
+        count: 0,
+        body: undefined,
+      };
+    }
+    return response;
   }
 }
