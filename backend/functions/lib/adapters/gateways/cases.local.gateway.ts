@@ -3,6 +3,7 @@ import { ApplicationContext } from '../types/basic';
 import { Chapter15CaseInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
+import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
 
 const NAMESPACE = 'CASES-LOCAL-GATEWAY';
 
@@ -19,6 +20,9 @@ export class CasesLocalGateway implements CasesInterface {
 
     try {
       cases = gatewayHelper.chapter15MockExtract();
+      cases.map((bCase) => {
+        bCase.dateFiled = convertYearMonthDayToMonthDayYear(bCase.dateFiled);
+      });
     } catch (err) {
       log.error(context, NAMESPACE, 'Failed to read mock cases.', err);
       const message = (err as Error).message;

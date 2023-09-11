@@ -14,7 +14,6 @@ import { Attorney } from '../type-declarations/attorneys';
 const modalId = 'assign-attorney-modal';
 
 interface Chapter15Node extends Chapter15Type {
-  prettyDateFiled: string;
   sortableDateFiled: string;
 }
 
@@ -54,16 +53,17 @@ export const CaseAssignment = () => {
           ?.map((theCase) => {
             const caseNode = theCase as Chapter15Node;
             const dateFiled = caseNode.dateFiled.split('-');
-            caseNode.prettyDateFiled = `${dateFiled[1]}-${dateFiled[2]}-${dateFiled[0]}`;
-            caseNode.sortableDateFiled = `${dateFiled[0]}${dateFiled[1]}${dateFiled[2]}`;
+            // Filing date formatted in SQL query as MM-dd-yyyy (ISO is yyyy-MM-dd)
+            // dateFiled[0] = month, dateFiled[1] = day, dateFiled[2] = year
+            caseNode.sortableDateFiled = `${dateFiled[2]}${dateFiled[0]}${dateFiled[1]}`;
             return caseNode;
           })
           .sort((a, b): number => {
             const recordA: Chapter15Node = a as Chapter15Node;
             const recordB: Chapter15Node = b as Chapter15Node;
-            if (recordA.dateFiled < recordB.dateFiled) {
+            if (recordA.sortableDateFiled < recordB.sortableDateFiled) {
               return 1;
-            } else if (recordA.dateFiled > recordB.dateFiled) {
+            } else if (recordA.sortableDateFiled > recordB.sortableDateFiled) {
               return -1;
             } else {
               return 0;
@@ -225,7 +225,7 @@ export const CaseAssignment = () => {
                             data-sort-active={true}
                           >
                             <span className="mobile-title">Filing Date:</span>
-                            {theCase.prettyDateFiled}
+                            {theCase.dateFiled}
                           </td>
                           <td data-testid={`attorney-list-${idx}`} className="attorney-list">
                             <span className="mobile-title">Assigned Attorney:</span>
