@@ -66,7 +66,11 @@ describe('Chapter 15 case tests', () => {
     }
 
     expect(actual.body.caseList.every(checkDate)).toBe(true);
-    expect(actual.body.caseList.length == 3);
+    expect(actual.body.caseList.length).toEqual(3);
+  });
+
+  test('should return results with expected assignments', async () => {
+    //
   });
 
   test('should throw error and return specific error message received when error is thrown in casesGateway.getChapter15Cases', async () => {
