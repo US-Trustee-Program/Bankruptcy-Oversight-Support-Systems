@@ -1,6 +1,6 @@
 import './CaseAssignment.scss';
 import './CaseList.scss';
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
 import MockApi from '../models/chapter15-mock.api.cases';
@@ -25,7 +25,8 @@ export const CaseAssignment = () => {
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
-  const [caseList, setCaseList] = useState<Array<object>>(Array<object>);
+  const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
+  //const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [caseListUpdated, setCaseListUpdated] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
@@ -39,7 +40,8 @@ export const CaseAssignment = () => {
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
 
-  const fetchList = async () => {
+  // TODO: figure out how we want to get cases and assignments
+  const fetchCases = async () => {
     setIsLoading(true);
     api
       .list('/cases', {
@@ -67,7 +69,7 @@ export const CaseAssignment = () => {
               return 0;
             }
           });
-        setCaseList(sortedList || []);
+        setUnassignedCaseList(sortedList || []);
         setIsLoading(false);
       })
       .catch((reason) => {
@@ -77,9 +79,9 @@ export const CaseAssignment = () => {
 
   useEffect(() => {
     if (!isLoading) {
-      fetchList();
+      fetchCases();
     }
-  }, [caseList.length > 0, chapter]);
+  }, [unassignedCaseList.length > 0, chapter]);
 
   useEffect(() => {
     if (caseListUpdated) {
@@ -112,10 +114,10 @@ export const CaseAssignment = () => {
       setAssignmentAlert({ message: (apiResult as Error).message, type: UswdsAlertStyle.Error });
       alertRef.current?.show();
     } else if (selectedAttorneyList.length > 0) {
-      const tempCaseList = caseList;
+      const tempCaseList = unassignedCaseList;
       tempCaseList.forEach((theCase) => {
         if (bCase?.caseNumber === (theCase as Chapter15Type).caseNumber) {
-          (theCase as Chapter15Type).attorneyList = selectedAttorneyList.map((atty) => {
+          (theCase as Chapter15Type).assignments = selectedAttorneyList.map((atty) => {
             return atty;
           });
         }
@@ -127,7 +129,7 @@ export const CaseAssignment = () => {
         setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
         alertRef.current?.show();
       }
-      setCaseList(tempCaseList);
+      setUnassignedCaseList(tempCaseList);
       setCaseListUpdated(true);
     }
   }
@@ -135,8 +137,8 @@ export const CaseAssignment = () => {
   if (isLoading) {
     return (
       <div className="case-assignment case-list">
-        <h1>{screenTitle}</h1>
-        <h2>{subTitle}</h2>
+        <h1 data-testid="case-list-heading">{screenTitle}</h1>
+        <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         <p data-testid="loading-indicator">Loading...</p>
       </div>
     );
@@ -204,51 +206,53 @@ export const CaseAssignment = () => {
                 </tr>
               </thead>
               <tbody data-testid="case-assignment-table-body">
-                {caseList.length > 0 &&
-                  (caseList as Array<Chapter15Node>).map((theCase: Chapter15Node, idx: number) => {
-                    return (
-                      <tr key={idx}>
-                        <td className="case-number">
-                          <span className="mobile-title">Case Number:</span>
-                          {theCase.caseNumber}
-                        </td>
-                        <td className="case-title-column">
-                          <span className="mobile-title">Case Title (Debtor):</span>
-                          {theCase.caseTitle}
-                        </td>
-                        <td
-                          className="filing-date"
-                          data-sort-value={theCase.sortableDateFiled}
-                          data-sort-active={true}
-                        >
-                          <span className="mobile-title">Filing Date:</span>
-                          {theCase.dateFiled}
-                        </td>
-                        <td data-testid={`attorney-list-${idx}`} className="attorney-list">
-                          <span className="mobile-title">Assigned Attorney:</span>
-                          {theCase.attorneyList?.length != undefined || (
-                            <ToggleModalButton
-                              className="case-assignment-modal-toggle"
-                              id={`assign-attorney-btn-${idx}`}
-                              buttonId={`${idx}`}
-                              toggleAction="open"
-                              modalId={`${modalId}`}
-                              modalRef={modalRef}
-                              onClick={() => onOpenModal(theCase, `assign-attorney-btn-${idx}`)}
-                            >
-                              Assign
-                            </ToggleModalButton>
-                          )}
-                          {theCase.attorneyList?.map((attorney, key: number) => (
-                            <div key={key}>
-                              {attorney}
-                              <br />
-                            </div>
-                          ))}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                {unassignedCaseList.length > 0 &&
+                  (unassignedCaseList as Array<Chapter15Node>).map(
+                    (theCase: Chapter15Node, idx: number) => {
+                      return (
+                        <tr key={idx}>
+                          <td className="case-number">
+                            <span className="mobile-title">Case Number:</span>
+                            {theCase.caseNumber}
+                          </td>
+                          <td className="case-title-column">
+                            <span className="mobile-title">Case Title (Debtor):</span>
+                            {theCase.caseTitle}
+                          </td>
+                          <td
+                            className="filing-date"
+                            data-sort-value={theCase.sortableDateFiled}
+                            data-sort-active={true}
+                          >
+                            <span className="mobile-title">Filing Date:</span>
+                            {theCase.dateFiled}
+                          </td>
+                          <td data-testid={`attorney-list-${idx}`} className="attorney-list">
+                            <span className="mobile-title">Assigned Attorney:</span>
+                            {!!theCase.assignments?.length || (
+                              <ToggleModalButton
+                                className="case-assignment-modal-toggle"
+                                id={`assign-attorney-btn-${idx}`}
+                                buttonId={`${idx}`}
+                                toggleAction="open"
+                                modalId={`${modalId}`}
+                                modalRef={modalRef}
+                                onClick={() => onOpenModal(theCase, `assign-attorney-btn-${idx}`)}
+                              >
+                                Assign
+                              </ToggleModalButton>
+                            )}
+                            {theCase.assignments?.map((attorney, key: number) => (
+                              <div key={key}>
+                                {attorney}
+                                <br />
+                              </div>
+                            ))}
+                          </td>
+                        </tr>
+                      );
+                    },
+                  )}
               </tbody>
             </table>
           </div>

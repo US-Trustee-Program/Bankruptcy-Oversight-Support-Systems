@@ -5,9 +5,46 @@ import { applicationContextCreator } from '../adapters/utils/application-context
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { getCamsDateStringFromDate } from '../adapters/utils/date-helper';
 import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
+import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+
 const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
+
+const attorneyJaneSmith = 'Jane Smith';
+const attorneyJoeNobel = 'Joe Nobel';
+const assignments: CaseAttorneyAssignment[] = [
+  {
+    id: '1',
+    caseId: '23-01176',
+    attorneyName: attorneyJaneSmith,
+    role: CaseAssignmentRole.TrialAttorney,
+  },
+  {
+    id: '2',
+    caseId: '23-01176',
+    attorneyName: attorneyJoeNobel,
+    role: CaseAssignmentRole.TrialAttorney,
+  },
+];
+
+const caseNumberWithAssignments = '1176';
+jest.mock('./case.assignment', () => {
+  return {
+    CaseAssignment: jest.fn().mockImplementation(() => {
+      return {
+        findAssignmentsByCaseId: (caseId: string) => {
+          if (caseId === caseNumberWithAssignments) {
+            return Promise.resolve(assignments);
+          } else {
+            return Promise.resolve([]);
+          }
+        },
+      };
+    }),
+  };
+});
 
 describe('Chapter 15 case tests', () => {
   beforeEach(() => {
@@ -24,11 +61,13 @@ describe('Chapter 15 case tests', () => {
         caseNumber: '04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: '2005-05-04',
+        assignments: [],
       },
       {
         caseNumber: '06-1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: '2006-03-27',
+        assignments: [],
       },
     ];
     const mockChapterList: CaseListDbResult = {
@@ -64,7 +103,35 @@ describe('Chapter 15 case tests', () => {
     }
 
     expect(actual.body.caseList.every(checkDate)).toBe(true);
-    expect(actual.body.caseList.length == 3);
+    expect(actual.body.caseList.length).toEqual(3);
+  });
+
+  test('should return results with expected assignments', async () => {
+    const mockCasesGateway: CasesInterface = new MockCasesGateway();
+    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const cases = await chapter15CaseList.getChapter15CaseList(appContext);
+    const caseWithAssignments = cases.body.caseList.filter((theCase) => {
+      return theCase.caseNumber === caseNumberWithAssignments;
+    })[0];
+    expect(caseWithAssignments).toEqual(
+      expect.objectContaining({
+        caseNumber: caseNumberWithAssignments,
+        assignments: expect.arrayContaining([attorneyJaneSmith, attorneyJoeNobel]),
+      }),
+    );
+    const casesWithoutAssignments = cases.body.caseList.filter((theCase) => {
+      return theCase.caseNumber !== caseNumberWithAssignments;
+    });
+    let count = 0;
+    casesWithoutAssignments.forEach((bCase) => {
+      expect(bCase).toEqual(
+        expect.objectContaining({
+          assignments: [],
+        }),
+      );
+      count++;
+    });
+    expect(count).toEqual(2);
   });
 
   test('should throw error and return specific error message received when error is thrown in casesGateway.getChapter15Cases', async () => {
@@ -115,6 +182,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: 'not a number',
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -128,6 +196,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: '-70',
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -141,6 +210,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: '70',
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -154,6 +224,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: undefined,
     };
     await chapter15CaseList.getChapter15CaseList(appContext);
@@ -167,6 +238,7 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
 
     process.env = {
+      ...process.env,
       STARTING_MONTH: null,
     };
     await chapter15CaseList.getChapter15CaseList(appContext);

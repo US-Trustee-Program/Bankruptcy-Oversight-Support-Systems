@@ -19,13 +19,11 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseNumber,
       'Susan Arbeit',
       CaseAssignmentRole.TrialAttorney,
-      'Drew Kerrigan',
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumber,
       'Jeffery McCaslin',
       CaseAssignmentRole.TrialAttorney,
-      'Drew Kerrigan',
     );
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -44,11 +42,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
     expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
     expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
-    expect(assignment1.caseTitle).toEqual(testCaseAttorneyAssignment1.caseTitle);
     expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
     expect(assignment2.role).toEqual(testCaseAttorneyAssignment2.role);
     expect(assignment2.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
-    expect(assignment2.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
   });
 
   test('should find only assignments for the requested case', async () => {
@@ -58,13 +54,11 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseNumberOne,
       'Susan Arbeit',
       CaseAssignmentRole.TrialAttorney,
-      'Drew Kerrigan',
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberTwo,
       'Jeffery McCaslin',
       CaseAssignmentRole.TrialAttorney,
-      'Drew Kerrigan',
     );
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -80,7 +74,6 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
     expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
     expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
-    expect(assignment1.caseTitle).toEqual(testCaseAttorneyAssignment1.caseTitle);
     expect(assignment2).toBeFalsy();
 
     const actualAssignmentsTwo = await repository.findAssignmentsByCaseId(caseNumberTwo);
@@ -93,7 +86,6 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignmentTwo.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
     expect(assignmentTwo.role).toEqual(testCaseAttorneyAssignment2.role);
     expect(assignmentTwo.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
-    expect(assignmentTwo.caseTitle).toEqual(testCaseAttorneyAssignment2.caseTitle);
     expect(assignmentOne).toBeFalsy();
   });
 
@@ -102,7 +94,6 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'throw-permissions-error',
       'some-attorney-name',
       CaseAssignmentRole.TrialAttorney,
-      'some-case-title',
     );
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
@@ -125,20 +116,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
       'some-case-number',
       'some-attorney-name',
       CaseAssignmentRole.TrialAttorney,
-      'some-case-title',
     );
     try {
       await repository.findAssignment(assignment);
-      // Ensure that if we do not catch the expected error, we will fail.
-      expect(true).toBeFalsy();
-    } catch (e) {
-      expect((e as Error).message).toEqual('Method not implemented.');
-    }
-  });
-
-  test('should throw a not implemented error when getCount is called', async () => {
-    try {
-      await repository.getCount();
       // Ensure that if we do not catch the expected error, we will fail.
       expect(true).toBeFalsy();
     } catch (e) {

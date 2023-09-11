@@ -4,7 +4,7 @@ export interface Chapter15Type {
   caseNumber: string;
   caseTitle: string;
   dateFiled: string;
-  attorneyList?: string[];
+  assignments?: string[];
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {

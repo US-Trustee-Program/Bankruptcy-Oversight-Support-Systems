@@ -24,7 +24,7 @@ export class CaseAssignment {
     }
   }
 
-  async createAssignment(
+  public async createAssignment(
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<string> {
@@ -36,7 +36,7 @@ export class CaseAssignment {
     }
   }
 
-  async createTrialAttorneyAssignments(
+  public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     listOfAssignments: CaseAttorneyAssignment[],
   ): Promise<AttorneyAssignmentResponseInterface> {
@@ -60,12 +60,20 @@ export class CaseAssignment {
     }
   }
 
-  async isCreateValid(
+  public async isCreateValid(
     context: ApplicationContext,
     newAssignments: CaseAttorneyAssignment[],
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     return existingAssignments.length === 0;
+  }
+
+  public async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
+    return await this.assignmentRepository.getAllAssignments();
+  }
+
+  public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+    return await this.assignmentRepository.findAssignmentsByCaseId(caseId);
   }
 }
