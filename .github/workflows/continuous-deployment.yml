@@ -458,6 +458,7 @@ jobs:
     env:
       stackName: ${{ needs.build-info.outputs.stackName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
+      ruleNumber: 100
 
     strategy:
       matrix:
@@ -486,7 +487,7 @@ jobs:
           ../../ops/helper-scripts/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
-          -p 100 \
+          -p ${{ env.ruleNumber }} \
           --is-cicd
 
       - name: Execute Integration Tests
@@ -497,7 +498,7 @@ jobs:
       - name: Disable GHA runner access
         if: always()
         run: |
-          name="gha-agent-${{ env.stackName }}"
+          name="gha-${{ env.ruleNumber }}-${{ env.stackName }}"
           ../../ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   smoke-test-application:
@@ -508,6 +509,7 @@ jobs:
       stackName: ${{ needs.build-info.outputs.stackName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
+      ruleNumber: 200
     steps:
       - uses: actions/checkout@v3
       - uses: azure/login@v1
@@ -525,7 +527,7 @@ jobs:
           ops/helper-scripts/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
-          -p 100 \
+          -p ${{ env.ruleNumber }} \
           --is-cicd
       - name: Health check api
         run: |
@@ -541,7 +543,7 @@ jobs:
       - name: Disable GHA runner access
         if: always()
         run: |
-          name="gha-agent-${{ env.stackName }}"
+          name="gha-${{ env.ruleNumber }}-${{ env.stackName }}"
           ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   enable-access:
@@ -551,6 +553,7 @@ jobs:
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
+
     steps:
       - uses: azure/login@v1
         with:
