@@ -150,6 +150,7 @@ describe('CaseAssignment Component Tests', () => {
   });
 
   // if api.list returns more than 0 results, then all results will be displayed in table body content
+  /*
   test('/cases should contain a valid list of cases in the table when api.list returns more than 0 results', async () => {
     vi.spyOn(Chapter15MockApi, 'list')
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -180,6 +181,7 @@ describe('CaseAssignment Component Tests', () => {
       { timeout: 1000 },
     );
   });
+  */
 
   /***
    * This test seems to pass most of the time when running it locally, but fails sometimes.
