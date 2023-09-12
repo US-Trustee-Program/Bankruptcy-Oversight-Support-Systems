@@ -5,7 +5,7 @@ export const HeaderNavBar = () => {
   return (
     <>
       <div className="usa-overlay"></div>
-      <header role="banner" className="boss-header usa-header usa-header--basic">
+      <header role="banner" className="cams-header usa-header usa-header--basic">
         <div className="usa-banner">
           <img
             src="doj-logo.png"
