@@ -12,14 +12,14 @@
 
     tr.in-table-transfer-mode {
       animation-name: moveHighlightBorder;
-      animation-duration: 3s;
+      animation-duration: 5s;
       animation-timing-function: 0;
       animation-iteration-count: 1;
       animation-direction: normal;
 
       td {
         animation-name: moveHighlightBackground;
-        animation-duration: 3s;
+        animation-duration: 5s;
         animation-timing-function: 0;
         animation-iteration-count: 1;
         animation-direction: normal;
@@ -28,23 +28,24 @@
 
     @keyframes moveHighlightBorder {
       from {
-        outline-width: 0;
-        outline-color: transparent;
-        outline-style: none;
-      }
-      to {
         outline-width: 5px;
         outline-color: yellow;
         outline-style: solid;
+        outline-offset: -5px;
+      }
+      to {
+        outline-width: 0;
+        outline-color: transparent;
+        outline-style: none;
       }
     }
 
     @keyframes moveHighlightBackground {
       from {
-        background-color: white;
+        background-color: lightyellow;
       }
       to {
-        background-color: lightyellow;
+        background-color: white;
       }
     }
 

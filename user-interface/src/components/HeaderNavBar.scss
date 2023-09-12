@@ -4,15 +4,15 @@
   background-color: colors.$navy;
 }
 
-.boss-header .usa-banner > * {
+.cams-header .usa-banner > * {
   vertical-align: middle;
   line-height: normal;
-  background-color: colors.$navy;
 }
 
-.boss-header {
+.cams-header {
+  background-color: colors.$navy;
   border-bottom: 3px solid colors.$gold;
-  width: calc(100% - 100px);
+  width: 100%;
   padding: 15px 50px;
   position: relative;
 

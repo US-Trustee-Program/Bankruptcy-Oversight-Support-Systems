@@ -170,8 +170,6 @@ export const CaseAssignment = () => {
     return (
       <>
         <div className="case-assignment case-list">
-          <h1 data-testid="case-list-heading">{screenTitle}</h1>
-          <h2 data-testid="case-list-subtitle">{subTitle}</h2>
           <Alert
             message={assignmentAlert.message}
             type={assignmentAlert.type}
@@ -180,11 +178,11 @@ export const CaseAssignment = () => {
             ref={alertRef}
             timeout={4}
           />
+          <h1 data-testid="case-list-heading">{screenTitle}</h1>
+          <h2 data-testid="case-list-subtitle">{subTitle}</h2>
           <div className="usa-table-container--scrollable" tabIndex={0}>
             <table className="case-list usa-table usa-table--striped">
-              <caption>
-                <center>Unassigned Cases</center>
-              </caption>
+              <caption>Unassigned Cases</caption>
               <thead>
                 <tr className="case-headings">
                   <th scope="col" role="columnheader">
@@ -278,9 +276,7 @@ export const CaseAssignment = () => {
 
           <div className="usa-table-container--scrollable" tabIndex={1}>
             <table className="case-list usa-table usa-table--striped">
-              <caption>
-                <center>Assigned Cases</center>
-              </caption>
+              <caption>Assigned Cases</caption>
               <thead>
                 <tr className="case-headings">
                   <th scope="col" role="columnheader">
