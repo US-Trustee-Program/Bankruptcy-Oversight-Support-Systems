@@ -83,10 +83,7 @@ You will need to have a file named `.env` placed in the `backend/functions` dire
 of that file must be:
 
 ```
-APPLICATIONINSIGHTS_CONNECTION_STRING=
-
-AZURE_KEY_VAULT_URL={URI to KeyVault}
-AZURE_MANAGED_IDENTITY=
+APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 
 COSMOS_DATABASE_NAME={the name of the CosmosDb database}
 COSMOS_ENDPOINT={the URI to the CosmosDb endpoint}
