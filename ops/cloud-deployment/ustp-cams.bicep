@@ -50,12 +50,6 @@ param sqlServerResourceGroupName string = ''
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
 
-@description('Managed identity name with access to the key vault for PACER API credentials')
-param pacerKeyVaultIdentityName string
-
-@description('Resource group name managed identity with access to the key vault for PACER API credentials')
-param pacerKeyVaultIdentityResourceGroupName string
-
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
@@ -73,7 +67,7 @@ param analyticsResourceGroupName string
 
 @description('Action Group Name for alerts')
 param actionGroupName string
-module actionGroup './monitoring-alerts/alert-action-group.bicep' = if(createActionGroup) {
+module actionGroup './monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
   name: '${actionGroupName}-action-group-module'
   scope: resourceGroup(analyticsResourceGroupName)
   params: {
@@ -159,8 +153,6 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     sqlServerResourceGroupName: sqlServerResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
-    pacerKeyVaultIdentityName: pacerKeyVaultIdentityName
-    pacerKeyVaultIdentityResourceGroupName: pacerKeyVaultIdentityResourceGroupName
     createAlerts: createAlerts
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
