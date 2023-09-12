@@ -80,17 +80,6 @@ fi
 agentIp=$(curl -s https://api.ipify.org)
 az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true 1>/dev/null
 
-# configure Application Settings
-if [[ -n ${app_settings} ]]; then
-    echo "Set Application Settings for ${app_name}"
-    for item in ${app_settings}; do
-        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[?name=='${item%=*}'].name | [0]" --output tsv
-    done
-fi
-
-# Gives some time for prior management operation to complete before starting deployment
-sleep 30s
-
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
 if [[ $enable_debug == 'true' ]]; then
@@ -116,3 +105,14 @@ if [[ -n ${identities} ]]; then
 
     done
 fi
+
+# configure Application Settings
+if [[ -n ${app_settings} ]]; then
+    echo "Set Application Settings for ${app_name}"
+    for item in ${app_settings}; do
+        az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[?name=='${item%=*}'].name | [0]" --output tsv
+    done
+fi
+
+# Gives some time for prior management operation to complete before going forward
+sleep 45s
