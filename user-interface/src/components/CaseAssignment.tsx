@@ -176,7 +176,7 @@ export const CaseAssignment = () => {
             role="status"
             slim={true}
             ref={alertRef}
-            timeout={4}
+            timeout={8}
           />
           <h1 data-testid="case-list-heading">{screenTitle}</h1>
           <h2 data-testid="case-list-subtitle">{subTitle}</h2>
