@@ -36,7 +36,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     expect(resultAssignmentId).toBeTruthy();
     expect((assignments.body[0] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
-    expect((assignments.body[0] as CaseAttorneyAssignment).attorneyName).toBe(
+    expect((assignments.body[0] as CaseAttorneyAssignment).name).toBe(
       testCaseAssignment.listOfAttorneyNames[0],
     );
     expect((assignments.body[0] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
@@ -87,7 +87,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     ).rejects.toThrow(AssignmentException);
 
     expect(assignmentCreated1.caseId).toBe(testCaseAssignment1.caseId);
-    expect(assignmentCreated1.attorneyName).toBe(testCaseAssignment1.listOfAttorneyNames[0]);
+    expect(assignmentCreated1.name).toBe(testCaseAssignment1.listOfAttorneyNames[0]);
     expect(assignmentCreated1.role).toBe(testCaseAssignment1.role);
   });
 
@@ -112,19 +112,19 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const assignments = await assignmentController.getAllAssignments();
 
     expect((assignments.body[0] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
-    expect((assignments.body[0] as CaseAttorneyAssignment).attorneyName).toBe(
+    expect((assignments.body[0] as CaseAttorneyAssignment).name).toBe(
       testCaseAssignment.listOfAttorneyNames[0],
     );
     expect((assignments.body[0] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
 
     expect((assignments.body[1] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
-    expect((assignments.body[1] as CaseAttorneyAssignment).attorneyName).toBe(
+    expect((assignments.body[1] as CaseAttorneyAssignment).name).toBe(
       testCaseAssignment.listOfAttorneyNames[1],
     );
     expect((assignments.body[1] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);
 
     expect((assignments.body[2] as CaseAttorneyAssignment).caseId).toBe(testCaseAssignment.caseId);
-    expect((assignments.body[2] as CaseAttorneyAssignment).attorneyName).toBe(
+    expect((assignments.body[2] as CaseAttorneyAssignment).name).toBe(
       testCaseAssignment.listOfAttorneyNames[2],
     );
     expect((assignments.body[2] as CaseAttorneyAssignment).role).toBe(testCaseAssignment.role);

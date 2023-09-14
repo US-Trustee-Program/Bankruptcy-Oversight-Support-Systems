@@ -4,13 +4,13 @@ export class AttorneyInfo {
   lastName: string;
   generation?: string;
   office: string;
-  caseCount?: number;
+  caseLoad?: number;
 
   constructor(
     firstName: string,
     lastName: string,
     office: string,
-    optionals?: { middleName?: string; generation?: string; caseCount?: number },
+    optionals?: { middleName?: string; generation?: string; caseLoad?: number },
   ) {
     this.firstName = firstName;
     this.lastName = lastName;
@@ -18,7 +18,7 @@ export class AttorneyInfo {
     if (optionals) {
       this.middleName = optionals.middleName || undefined;
       this.generation = optionals.generation || undefined;
-      this.caseCount = optionals.caseCount || undefined;
+      this.caseLoad = optionals.caseLoad || undefined;
     }
   }
 }
@@ -28,7 +28,7 @@ export class Attorney extends AttorneyInfo {
     first: string,
     last: string,
     office: string,
-    optionals?: { middleName?: string; generation?: string; caseCount?: number },
+    optionals?: { middleName?: string; generation?: string; caseLoad?: number },
   ) {
     super(first, last, office, optionals);
   }
