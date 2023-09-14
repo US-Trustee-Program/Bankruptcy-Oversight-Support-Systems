@@ -134,4 +134,57 @@ describe('Test case assignment cosmosdb repository tests', () => {
       expect((e as Error).message).toEqual('Failed to authenticate to Azure');
     }
   });
+
+  test('should find all assignments for a given attorney', async () => {
+    const caseNumberOne = randomUUID();
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberOne,
+      'Perry Mason',
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberOne,
+      'Ben Matlock',
+      CaseAssignmentRole.TrialAttorney,
+    );
+
+    const caseNumberTwo = randomUUID();
+    const testCaseAttorneyAssignment3: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberTwo,
+      'Clair Huxtable',
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const testCaseAttorneyAssignment4: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberTwo,
+      'Perry Mason',
+      CaseAssignmentRole.TrialAttorney,
+    );
+
+    const caseNumberThree = randomUUID();
+    const testCaseAttorneyAssignment5: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberThree,
+      'Clair Huxtable',
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const testCaseAttorneyAssignment6: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberThree,
+      'Ben Matlock',
+      CaseAssignmentRole.TrialAttorney,
+    );
+
+    await repository.createAssignment(testCaseAttorneyAssignment1);
+    await repository.createAssignment(testCaseAttorneyAssignment2);
+    await repository.createAssignment(testCaseAttorneyAssignment3);
+    await repository.createAssignment(testCaseAttorneyAssignment4);
+    await repository.createAssignment(testCaseAttorneyAssignment5);
+    await repository.createAssignment(testCaseAttorneyAssignment6);
+
+    const perryAssignments = await repository.findAssignmentsByAssigneeName('Perry Mason');
+    const clairAssignments = await repository.findAssignmentsByAssigneeName('Clair Huxtable');
+    const benAssignments = await repository.findAssignmentsByAssigneeName('Ben Matlock');
+
+    expect(perryAssignments.length).toEqual(2);
+    expect(clairAssignments.length).toEqual(2);
+    expect(benAssignments.length).toEqual(2);
+  });
 });

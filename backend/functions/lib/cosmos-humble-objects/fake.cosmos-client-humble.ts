@@ -48,6 +48,9 @@ export default class FakeCosmosClientHumble {
                       if (caseItem.caseId === params.value) {
                         result.push(caseItem);
                       }
+                      if (caseItem.name === params.value) {
+                        result.push(caseItem);
+                      }
                     });
                   });
                   return { resources: result };
