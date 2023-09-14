@@ -122,13 +122,13 @@ export const CaseAssignment = () => {
         tempAssignedCaseList.sort(sortMethod);
         setAssignedCaseList(tempAssignedCaseList);
 
-        if (bCase) {
-          const alertMessage = `${selectedAttorneyList
-            .map((attorney) => attorney)
-            .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
-          setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
-          alertRef.current?.show();
-        }
+        setAttorneyList([]);
+
+        const alertMessage = `${selectedAttorneyList
+          .map((attorney) => attorney)
+          .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
+        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
+        alertRef.current?.show();
 
         setTimeout(() => {
           setInTableTransferMode('');
