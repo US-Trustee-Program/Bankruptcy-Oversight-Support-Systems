@@ -8,8 +8,7 @@
       "cardinality": "many",
       "route": "case-assignments",
       "methods": [
-        "post",
-        "get"
+        "post"
       ]
     },
     {

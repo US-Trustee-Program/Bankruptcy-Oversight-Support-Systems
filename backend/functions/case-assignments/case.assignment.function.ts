@@ -21,12 +21,8 @@ const httpTrigger: AzureFunction = async function (
   const role = request.body && request.body.role;
 
   try {
-    if (request.method === 'POST') {
-      validateRequestParameters(caseId, functionContext, listOfAttorneyNames, role);
-      await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
-    } else if (request.method === 'GET') {
-      await handleGetMethod(functionContext);
-    }
+    validateRequestParameters(caseId, functionContext, listOfAttorneyNames, role);
+    await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
   } catch (e) {
     if (e instanceof AssignmentException) {
       functionContext.res = httpError(functionContext, e, e.status);
@@ -84,14 +80,6 @@ async function handlePostMethod(functionContext: Context, caseId, listOfAttorney
       role,
     });
   functionContext.res = httpSuccess(functionContext, trialAttorneyAssignmentResponse);
-}
-
-async function handleGetMethod(functionContext: Context) {
-  const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
-    functionContext,
-  );
-  const assignments = await caseAssignmentController.getAllAssignments();
-  functionContext.res = httpSuccess(functionContext, assignments);
 }
 
 export default httpTrigger;
