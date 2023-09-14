@@ -41,10 +41,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
     expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
-    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
     expect(assignment2.role).toEqual(testCaseAttorneyAssignment2.role);
-    expect(assignment2.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignment2.name).toEqual(testCaseAttorneyAssignment2.name);
   });
 
   test('should find only assignments for the requested case', async () => {
@@ -73,7 +73,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
     expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
-    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2).toBeFalsy();
 
     const actualAssignmentsTwo = await repository.findAssignmentsByCaseId(caseNumberTwo);
@@ -85,7 +85,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignmentTwo.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
     expect(assignmentTwo.role).toEqual(testCaseAttorneyAssignment2.role);
-    expect(assignmentTwo.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignmentTwo.name).toEqual(testCaseAttorneyAssignment2.name);
     expect(assignmentOne).toBeFalsy();
   });
 

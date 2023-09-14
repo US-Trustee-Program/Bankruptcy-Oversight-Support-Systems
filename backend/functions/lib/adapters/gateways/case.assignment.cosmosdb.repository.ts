@@ -74,6 +74,31 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     }
   }
 
+  async findAssignmentsByAttorneyName(attorney: string): Promise<CaseAttorneyAssignment[]> {
+    try {
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.name = @attorney',
+        parameters: [
+          {
+            name: '@attorney',
+            value: attorney,
+          },
+        ],
+      };
+      const { resources: results } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.query(querySpec)
+        .fetchAll();
+      return results;
+    } catch (e) {
+      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      if (e instanceof AggregateAuthenticationError) {
+        throw new AssignmentException(403, 'Failed to authenticate to Azure');
+      }
+    }
+  }
+
   async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
     try {
       const { resources: results } = await this.cosmosDbClient

@@ -186,7 +186,7 @@ function AssignAttorneyModalComponent(
                           />
                         </td>
                         <td className="assign-attorney-case-count-column">
-                          <div className="usa-fieldset">{Math.round(Math.random() * 10)}</div>
+                          <div className="usa-fieldset">{attorney.caseLoad}</div>
                         </td>
                       </tr>
                     );
