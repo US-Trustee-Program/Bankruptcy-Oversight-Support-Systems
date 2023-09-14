@@ -453,7 +453,7 @@ jobs:
         working-directory: backend/functions
 
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp, deploy-service]
+    needs: [build-info, smoke-test-application]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       stackName: ${{ needs.build-info.outputs.stackName }}
