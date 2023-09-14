@@ -5,7 +5,6 @@ export class Attorney {
   middleName: string;
   lastName: string;
   generation: string;
-  courtId: string;
   office: string;
   caseLoad: number;
 
@@ -44,7 +43,6 @@ export class Attorney {
       middleName: this.middleName,
       lastName: this.lastName,
       generation: this.generation,
-      courtId: this.courtId,
       office: this.office,
       caseLoad: this.caseLoad,
     };
