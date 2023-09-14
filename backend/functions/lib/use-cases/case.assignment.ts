@@ -78,7 +78,7 @@ export class CaseAssignment {
   }
 
   public async getCaseLoad(name: string): Promise<number> {
-    const assignments = await this.assignmentRepository.findAssignmentsByAttorneyName(name);
+    const assignments = await this.assignmentRepository.findAssignmentsByAssigneeName(name);
     return assignments.length;
   }
 }

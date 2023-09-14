@@ -74,14 +74,14 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     }
   }
 
-  async findAssignmentsByAttorneyName(attorney: string): Promise<CaseAttorneyAssignment[]> {
+  async findAssignmentsByAssigneeName(name: string): Promise<CaseAttorneyAssignment[]> {
     try {
       const querySpec = {
-        query: 'SELECT * FROM c WHERE c.name = @attorney',
+        query: 'SELECT * FROM c WHERE c.name = @name',
         parameters: [
           {
-            name: '@attorney',
-            value: attorney,
+            name: '@name',
+            value: name,
           },
         ],
       };
