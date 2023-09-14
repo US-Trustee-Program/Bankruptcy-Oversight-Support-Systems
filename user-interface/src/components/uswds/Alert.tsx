@@ -53,21 +53,23 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }));
 
   return (
-    <div
-      className={`${classes} ${
-        isVisible === IsVisible.True
-          ? 'usa-alert__visible'
-          : isVisible === IsVisible.False
-          ? 'usa-alert__hidden'
-          : 'usa-alert__unset'
-      }`}
-      role={props.role}
-      data-testid={`alert`}
-    >
-      <div className="usa-alert__body">
-        <p className="usa-alert__text" data-testid="alert-message">
-          {props.message}
-        </p>
+    <div className="usa-alert-container">
+      <div
+        className={`${classes} ${
+          isVisible === IsVisible.True
+            ? 'usa-alert__visible'
+            : isVisible === IsVisible.False
+            ? 'usa-alert__hidden'
+            : 'usa-alert__unset'
+        }`}
+        role={props.role}
+        data-testid={`alert`}
+      >
+        <div className="usa-alert__body">
+          <p className="usa-alert__text" data-testid="alert-message">
+            {props.message}
+          </p>
+        </div>
       </div>
     </div>
   );
