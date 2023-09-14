@@ -48,26 +48,4 @@ export class CaseAssignmentController {
       }
     }
   }
-
-  public async getAllAssignments(): Promise<AttorneyAssignmentResponseInterface> {
-    const assignmentUseCase = new CaseAssignment(this.applicationContext);
-    const assignments = await assignmentUseCase.getAllAssignments();
-    let response;
-    if (assignments.length > 0) {
-      response = {
-        success: true,
-        message: '',
-        count: assignments.length,
-        body: assignments,
-      };
-    } else {
-      response = {
-        success: false,
-        message: 'Found no case assignments',
-        count: 0,
-        body: undefined,
-      };
-    }
-    return response;
-  }
 }
