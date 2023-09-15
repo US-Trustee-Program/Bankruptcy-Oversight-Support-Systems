@@ -456,6 +456,9 @@ jobs:
       webappName: ${{ needs.build-info.outputs.webappName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
       ruleNumber: 200
+    strategy:
+    matrix:
+      node-version: [18.x]
     steps:
       - uses: actions/checkout@v3
       - uses: azure/login@v1
@@ -488,8 +491,11 @@ jobs:
           fi
       - name: Execute Integration Tests
         run: |
+          pushd backend/functions
+          npm ci
           export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
           npm run test:integration
+          popd
       - name: Disable GHA runner access
         if: always()
         run: |
