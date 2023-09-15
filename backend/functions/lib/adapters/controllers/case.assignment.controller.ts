@@ -9,6 +9,10 @@ import { AssignmentException } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
+const INVALID_ROLE_MESSAGE =
+  'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. ';
+const VALID_CASEID_PATTERN = RegExp('^\\d{2}-\\d{5}$');
+const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345. ';
 
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
@@ -20,8 +24,9 @@ export class CaseAssignmentController {
   public async createTrialAttorneyAssignments(params: {
     caseId: string;
     listOfAttorneyNames: string[];
-    role: CaseAssignmentRole;
+    role: string;
   }): Promise<AttorneyAssignmentResponseInterface> {
+    this.validateRequestParameters(params);
     try {
       const listOfAssignments: CaseAttorneyAssignment[] = [];
 
@@ -46,6 +51,40 @@ export class CaseAssignmentController {
       } else {
         throw new AssignmentException(exception.status, exception.message);
       }
+    }
+  }
+
+  private validateRequestParameters(params: {
+    caseId: string;
+    listOfAttorneyNames: string[];
+    role: string;
+  }) {
+    const badParams = [];
+    let errors = false;
+    let message = '';
+    if (!params.caseId) {
+      badParams.push('caseId');
+      errors = true;
+    } else if (!params.caseId.match(VALID_CASEID_PATTERN)) {
+      message += INVALID_CASEID_MESSAGE;
+      errors = true;
+    }
+    if (!params.listOfAttorneyNames || params.listOfAttorneyNames.length < 1) {
+      badParams.push('attorneyList');
+      errors = true;
+    }
+    if (!params.role) {
+      badParams.push('role');
+      errors = true;
+    }
+    if (!(params.role in CaseAssignmentRole)) {
+      message += INVALID_ROLE_MESSAGE;
+      errors = true;
+    }
+    if (errors) {
+      if (badParams.length > 0)
+        message += `Required parameter(s) ${badParams.join(', ')} is/are absent.`;
+      throw new AssignmentException(400, message.trim());
     }
   }
 }
