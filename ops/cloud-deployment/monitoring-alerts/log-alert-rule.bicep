@@ -1,11 +1,8 @@
 @description('Alert Rule Name')
-param sqlAlertName string
+param logAlertName string
 
 @description('Id of the server the database belongs to')
-param serverId string
-
-@description('Name of the database')
-param databaseName string
+param resourceId string
 
 @description('Action Group Name for alerts')
 param actionGroupName string
@@ -13,7 +10,9 @@ param actionGroupName string
 @description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
 @allowed([
+  'Microsoft.Web/sites'
   'Microsoft.Sql/servers/databases'
+  'Microsoft.DocumentDB/databaseAccounts'
 ])
 @description('Allowed values for targetResourceType')
 param targetResourceType string
@@ -25,7 +24,7 @@ resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
 }
 
 resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
-  name: sqlAlertName
+  name: logAlertName
   location: 'global'
   properties: {
     scopes: [
@@ -49,7 +48,7 @@ resource alertRule 'microsoft.insights/activitylogalerts@2020-10-01' = {
           anyOf: [
             {
               field: 'resourceId'
-              equals: '${serverId}/databases/${databaseName}'
+              equals: resourceId
             }
           ]
         }

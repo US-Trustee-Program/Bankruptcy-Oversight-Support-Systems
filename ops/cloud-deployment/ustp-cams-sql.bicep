@@ -24,19 +24,6 @@ module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bice
     analyticsWorkspaceId: analyticsWorkspaceId
   }
 }
-
-module sqlHealthAlert './monitoring-alerts/sql-health-alert-rule.bicep' = {
-  name: '${databaseName}-health-alert-module'
-  params: {
-    sqlAlertName: '${databaseName}-health-alert'
-    serverId: '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/${resourceGroup().name}/providers/Microsoft.Sql/servers/${databasePrefix}'
-    targetResourceType: 'Microsoft.Sql/servers/databases'
-    databaseName: databaseName
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: actionGroupResourceGroupName
-  }
-}
-
 module sqlSpaceAlert './monitoring-alerts/metrics-alert-rule.bicep' = {
   name: '${databaseName}-low-space-alert-module'
   params: {
