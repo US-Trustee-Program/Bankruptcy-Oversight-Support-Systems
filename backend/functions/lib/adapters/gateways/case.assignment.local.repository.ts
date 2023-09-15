@@ -18,7 +18,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     const assignmentId = this.nextUnusedId;
     caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
-    log.info(this.appContext, NAMESPACE, caseAssignment.attorneyName);
+    log.info(this.appContext, NAMESPACE, caseAssignment.name);
     ++this.nextUnusedId;
     return assignmentId.toString();
   }
@@ -31,7 +31,8 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return this.caseAttorneyAssignments.filter((assignment) => assignment.caseId === caseId);
   }
 
-  public async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
-    return this.caseAttorneyAssignments;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  findAssignmentsByAssigneeName(attorney: string): Promise<CaseAttorneyAssignment[]> {
+    return Promise.resolve([]);
   }
 }

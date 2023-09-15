@@ -18,13 +18,13 @@ const assignments: CaseAttorneyAssignment[] = [
   {
     id: '1',
     caseId: '23-01176',
-    attorneyName: attorneyJaneSmith,
+    name: attorneyJaneSmith,
     role: CaseAssignmentRole.TrialAttorney,
   },
   {
     id: '2',
     caseId: '23-01176',
-    attorneyName: attorneyJoeNobel,
+    name: attorneyJoeNobel,
     role: CaseAssignmentRole.TrialAttorney,
   },
 ];

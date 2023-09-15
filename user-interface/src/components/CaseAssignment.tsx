@@ -122,13 +122,13 @@ export const CaseAssignment = () => {
         tempAssignedCaseList.sort(sortMethod);
         setAssignedCaseList(tempAssignedCaseList);
 
-        if (bCase) {
-          const alertMessage = `${selectedAttorneyList
-            .map((attorney) => attorney)
-            .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
-          setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
-          alertRef.current?.show();
-        }
+        setAttorneyList([]);
+
+        const alertMessage = `${selectedAttorneyList
+          .map((attorney) => attorney)
+          .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
+        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
+        alertRef.current?.show();
 
         setTimeout(() => {
           setInTableTransferMode('');
@@ -151,7 +151,7 @@ export const CaseAssignment = () => {
         const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
         if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
         if (atty.generation !== undefined) attorney.generation = atty.generation;
-        if (atty.caseCount !== undefined) attorney.caseCount = atty.caseCount;
+        if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
         return attorney;
       });
       setAttorneyList(attorneys);

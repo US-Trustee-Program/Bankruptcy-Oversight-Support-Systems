@@ -30,7 +30,7 @@ export class Chapter15CaseList {
       for (let i = 0; i < cases.length; i++) {
         assignment = await caseAssignment.findAssignmentsByCaseId(cases[i].caseNumber);
         cases[i].assignments = assignment.map((ass) => {
-          return ass.attorneyName;
+          return ass.name;
         });
       }
 

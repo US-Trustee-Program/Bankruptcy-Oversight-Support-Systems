@@ -1,56 +1,50 @@
+import { ObjectKeyVal } from './basic';
+
 export class Attorney {
-  private _firstName: string;
-  private _middleName: string;
-  private _lastName: string;
-  private _generation: string;
-  private _courtId: string;
-  private _office: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  generation: string;
+  office: string;
+  caseLoad: number;
 
-  get firstName(): string {
-    return this._firstName;
+  constructor(attorney?: ObjectKeyVal) {
+    if (attorney) {
+      Object.entries(attorney).forEach(([key, value]) => {
+        if (key === 'firstName') {
+          this.firstName = value as string;
+        } else if (key === 'middleName') {
+          this.middleName = value as string;
+        } else if (key === 'lastName') {
+          this.lastName = value as string;
+        } else if (key === 'generation') {
+          this.generation = value as string;
+        }
+      });
+    }
   }
 
-  set firstName(value: string) {
-    this._firstName = value;
+  getFullName(fullMiddle = false) {
+    let full = this.firstName;
+    if (this.middleName) {
+      const middle = fullMiddle ? ' ' + this.middleName : ' ' + this.middleName.slice(0, 1);
+      full += middle;
+    }
+    full += ' ' + this.lastName;
+    if (this.generation) {
+      full += ' ' + this.generation;
+    }
+    return full;
   }
 
-  get middleName(): string {
-    return this._middleName;
-  }
-
-  set middleName(value: string) {
-    this._middleName = value;
-  }
-
-  get lastName(): string {
-    return this._lastName;
-  }
-
-  set lastName(value: string) {
-    this._lastName = value;
-  }
-
-  get generation(): string {
-    return this._generation;
-  }
-
-  set generation(value: string) {
-    this._generation = value;
-  }
-
-  get courtId(): string {
-    return this._courtId;
-  }
-
-  set courtId(value: string) {
-    this._courtId = value;
-  }
-
-  get office(): string {
-    return this._office;
-  }
-
-  set office(value: string) {
-    this._office = value;
+  getAsObjectKeyVal(): ObjectKeyVal {
+    return {
+      firstName: this.firstName,
+      middleName: this.middleName,
+      lastName: this.lastName,
+      generation: this.generation,
+      office: this.office,
+      caseLoad: this.caseLoad,
+    };
   }
 }

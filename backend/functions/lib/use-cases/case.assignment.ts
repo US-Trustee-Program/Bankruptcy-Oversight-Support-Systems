@@ -69,11 +69,12 @@ export class CaseAssignment {
     return existingAssignments.length === 0;
   }
 
-  public async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
-    return await this.assignmentRepository.getAllAssignments();
-  }
-
   public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     return await this.assignmentRepository.findAssignmentsByCaseId(caseId);
+  }
+
+  public async getCaseLoad(name: string): Promise<number> {
+    const assignments = await this.assignmentRepository.findAssignmentsByAssigneeName(name);
+    return assignments.length;
   }
 }

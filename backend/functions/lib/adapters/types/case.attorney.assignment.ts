@@ -3,12 +3,12 @@ import { CaseAssignmentRole } from './case.assignment.role';
 export class CaseAttorneyAssignment {
   id: string;
   caseId: string;
-  attorneyName: string;
+  name: string;
   role: CaseAssignmentRole;
 
   constructor(caseId: string, name: string, role: CaseAssignmentRole) {
     this.caseId = caseId;
-    this.attorneyName = name;
+    this.name = name;
     this.role = role;
   }
 }
