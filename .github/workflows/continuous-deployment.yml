@@ -447,60 +447,6 @@ jobs:
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
-  integration-test:
-    defaults:
-      run:
-        working-directory: backend/functions
-
-    runs-on: ubuntu-latest
-    needs: [build-info, smoke-test-application]
-    environment: ${{ needs.build-info.outputs.environment }}
-    env:
-      stackName: ${{ needs.build-info.outputs.stackName }}
-      apiName: ${{ needs.build-info.outputs.apiName }}
-      ruleNumber: 100
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install
-        run: npm ci
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
-      - name: Enable GHA runner access
-        run: |
-          ../../ops/helper-scripts/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.ruleNumber }} \
-          --is-cicd
-
-      - name: Execute Integration Tests
-        run: |
-          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-          npm run test:integration
-
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.ruleNumber }}-${{ env.stackName }}"
-          ../../ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
-
   smoke-test-application:
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]
@@ -540,6 +486,10 @@ jobs:
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
             exit 1
           fi
+      - name: Execute Integration Tests
+        run: |
+          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+          npm run test:integration
       - name: Disable GHA runner access
         if: always()
         run: |
