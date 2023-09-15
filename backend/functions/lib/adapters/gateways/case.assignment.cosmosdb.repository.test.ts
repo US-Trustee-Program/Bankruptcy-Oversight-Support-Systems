@@ -7,6 +7,9 @@ import { randomUUID } from 'crypto';
 const context = require('azure-function-context-mock');
 
 const appContext = applicationContextCreator(context);
+const perryMason = 'Perry Mason';
+const benMatlock = 'Ben Matlock';
+const clairHuxtable = 'Clair Huxtable';
 describe('Test case assignment cosmosdb repository tests', () => {
   let repository: CaseAssignmentCosmosDbRepository;
   beforeEach(() => {
@@ -41,10 +44,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
     expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
-    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
     expect(assignment2.role).toEqual(testCaseAttorneyAssignment2.role);
-    expect(assignment2.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignment2.name).toEqual(testCaseAttorneyAssignment2.name);
   });
 
   test('should find only assignments for the requested case', async () => {
@@ -73,7 +76,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
     expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
-    expect(assignment1.attorneyName).toEqual(testCaseAttorneyAssignment1.attorneyName);
+    expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2).toBeFalsy();
 
     const actualAssignmentsTwo = await repository.findAssignmentsByCaseId(caseNumberTwo);
@@ -85,7 +88,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     expect(assignmentTwo.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
     expect(assignmentTwo.role).toEqual(testCaseAttorneyAssignment2.role);
-    expect(assignmentTwo.attorneyName).toEqual(testCaseAttorneyAssignment2.attorneyName);
+    expect(assignmentTwo.name).toEqual(testCaseAttorneyAssignment2.name);
     expect(assignmentOne).toBeFalsy();
   });
 
@@ -133,5 +136,120 @@ describe('Test case assignment cosmosdb repository tests', () => {
     } catch (e) {
       expect((e as Error).message).toEqual('Failed to authenticate to Azure');
     }
+  });
+
+  test('should find all assignments for a given attorney', async () => {
+    const caseNumberOne = randomUUID();
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberOne,
+      perryMason,
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberOne,
+      benMatlock,
+      CaseAssignmentRole.TrialAttorney,
+    );
+
+    const caseNumberTwo = randomUUID();
+    const testCaseAttorneyAssignment3: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberTwo,
+      clairHuxtable,
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const testCaseAttorneyAssignment4: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberTwo,
+      perryMason,
+      CaseAssignmentRole.TrialAttorney,
+    );
+
+    const caseNumberThree = randomUUID();
+    const testCaseAttorneyAssignment5: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberThree,
+      clairHuxtable,
+      CaseAssignmentRole.TrialAttorney,
+    );
+    const testCaseAttorneyAssignment6: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+      caseNumberThree,
+      benMatlock,
+      CaseAssignmentRole.TrialAttorney,
+    );
+
+    await repository.createAssignment(testCaseAttorneyAssignment1);
+    await repository.createAssignment(testCaseAttorneyAssignment2);
+    await repository.createAssignment(testCaseAttorneyAssignment3);
+    await repository.createAssignment(testCaseAttorneyAssignment4);
+    await repository.createAssignment(testCaseAttorneyAssignment5);
+    await repository.createAssignment(testCaseAttorneyAssignment6);
+
+    const perryAssignments = await repository.findAssignmentsByAssigneeName(perryMason);
+    const clairAssignments = await repository.findAssignmentsByAssigneeName(clairHuxtable);
+    const benAssignments = await repository.findAssignmentsByAssigneeName(benMatlock);
+
+    expect(perryAssignments.length).toEqual(2);
+    expect(perryAssignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: caseNumberOne,
+          name: perryMason,
+          role: CaseAssignmentRole.TrialAttorney,
+        }),
+        expect.objectContaining({
+          caseId: caseNumberTwo,
+          name: perryMason,
+          role: CaseAssignmentRole.TrialAttorney,
+        }),
+      ]),
+    );
+    expect(perryAssignments).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ name: clairHuxtable })]),
+    );
+    expect(perryAssignments).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ name: benMatlock })]),
+    );
+
+    expect(clairAssignments.length).toEqual(2);
+    expect(clairAssignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: caseNumberTwo,
+          name: clairHuxtable,
+          role: CaseAssignmentRole.TrialAttorney,
+        }),
+        expect.objectContaining({
+          caseId: caseNumberThree,
+          name: clairHuxtable,
+          role: CaseAssignmentRole.TrialAttorney,
+        }),
+      ]),
+    );
+    expect(clairAssignments).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ name: perryMason })]),
+    );
+    expect(clairAssignments).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ name: benMatlock })]),
+    );
+
+    expect(benAssignments.length).toEqual(2);
+    expect(benAssignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: caseNumberOne,
+          name: benMatlock,
+          role: CaseAssignmentRole.TrialAttorney,
+        }),
+        expect.objectContaining({
+          caseId: caseNumberThree,
+          name: benMatlock,
+          role: CaseAssignmentRole.TrialAttorney,
+        }),
+      ]),
+    );
+    expect(benAssignments).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ name: perryMason })]),
+    );
+    expect(benAssignments).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ name: clairHuxtable })]),
+    );
   });
 });

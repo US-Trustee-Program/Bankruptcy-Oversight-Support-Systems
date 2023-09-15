@@ -49,17 +49,33 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   }
 
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+    const querySpec = {
+      query: 'SELECT * FROM c WHERE c.caseId = @caseId',
+      parameters: [
+        {
+          name: '@caseId',
+          value: caseId,
+        },
+      ],
+    };
+    return await this.queryData(querySpec);
+  }
+
+  async findAssignmentsByAssigneeName(name: string): Promise<CaseAttorneyAssignment[]> {
+    const querySpec = {
+      query: 'SELECT * FROM c WHERE c.name = @name',
+      parameters: [
+        {
+          name: '@name',
+          value: name,
+        },
+      ],
+    };
+    return await this.queryData(querySpec);
+  }
+
+  private async queryData(querySpec: object): Promise<CaseAttorneyAssignment[]> {
     try {
-      // Check read access
-      const querySpec = {
-        query: 'SELECT * FROM c WHERE c.caseId = @caseId',
-        parameters: [
-          {
-            name: '@caseId',
-            value: caseId,
-          },
-        ],
-      };
       const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
@@ -71,19 +87,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
       if (e instanceof AggregateAuthenticationError) {
         throw new AssignmentException(403, 'Failed to authenticate to Azure');
       }
-    }
-  }
-
-  async getAllAssignments(): Promise<CaseAttorneyAssignment[]> {
-    try {
-      const { resources: results } = await this.cosmosDbClient
-        .database(this.cosmosConfig.databaseName)
-        .container(this.containerName)
-        .items.readAll()
-        .fetchAll();
-      return results;
-    } catch (e) {
-      throw new AssignmentException(500, 'Failed to retrieve assignments from the database.');
     }
   }
 }
