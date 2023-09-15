@@ -58,7 +58,7 @@ fi
 if [[ -z "${ci}" ]]; then
     ruleName="dev-agent-${agentIp}"
 else
-    ruleName="gha-agent-${stack_name}"
+    ruleName="gha-${priority}-${stack_name}"
 fi
 
 ruleName=${ruleName:0:32} # trim up to 32 character limit
