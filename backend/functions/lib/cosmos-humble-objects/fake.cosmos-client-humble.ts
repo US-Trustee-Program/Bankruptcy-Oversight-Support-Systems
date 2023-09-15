@@ -1,6 +1,7 @@
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { AssignmentException } from '../use-cases/assignment.exception';
 import { AggregateAuthenticationError } from '@azure/identity';
+import * as fs from 'fs';
 
 interface QueryParams {
   name: string;
@@ -23,12 +24,17 @@ export default class FakeCosmosClientHumble {
       container: (containerName: string) => {
         return {
           items: {
-            create: (assignment: CaseAttorneyAssignment) => {
+            create: async (assignment: CaseAttorneyAssignment) => {
               if (assignment.caseId === 'throw-permissions-error') {
                 throw new AssignmentException(403, 'forbidden');
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);
+              await fs.writeFile('local-data.json', JSON.stringify(this.caseAssignments), (err) => {
+                if (err) {
+                  throw new Error('Failed to write to local-data.json.');
+                }
+              });
               return {
                 item: {
                   ...assignment,
