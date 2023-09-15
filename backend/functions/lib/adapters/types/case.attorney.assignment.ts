@@ -6,9 +6,9 @@ export class CaseAttorneyAssignment {
   name: string;
   role: CaseAssignmentRole;
 
-  constructor(caseId: string, name: string, role: CaseAssignmentRole) {
+  constructor(caseId: string, name: string, role: string) {
     this.caseId = caseId;
     this.name = name;
-    this.role = role;
+    this.role = CaseAssignmentRole[role];
   }
 }
