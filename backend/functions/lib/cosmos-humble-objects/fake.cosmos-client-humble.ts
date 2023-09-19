@@ -1,7 +1,7 @@
+import * as fs from 'fs';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { AssignmentException } from '../use-cases/assignment.exception';
 import { AggregateAuthenticationError } from '@azure/identity';
-import * as fs from 'fs';
 
 interface QueryParams {
   name: string;
@@ -30,7 +30,8 @@ export default class FakeCosmosClientHumble {
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);
-              await fs.writeFile('local-data.json', JSON.stringify(this.caseAssignments), (err) => {
+              const jsonString = JSON.stringify(this.caseAssignments);
+              fs.writeFile('local-data.json', jsonString, 'utf-8', (err) => {
                 if (err) {
                   throw new Error('Failed to write to local-data.json.');
                 }
@@ -43,6 +44,16 @@ export default class FakeCosmosClientHumble {
             },
             query: (query: QueryOptions) => {
               this.itemQueryParams = query.parameters;
+              try {
+                const data = fs.readFileSync('local-data.json', 'utf-8');
+                if (data) {
+                  this.caseAssignments = JSON.parse(data);
+                }
+              } catch (err) {
+                if (err) {
+                  throw new Error('Failed to read from local-data.json.');
+                }
+              }
               return {
                 fetchAll: () => {
                   if (this.itemQueryParams[0].value === 'throw auth error') {
