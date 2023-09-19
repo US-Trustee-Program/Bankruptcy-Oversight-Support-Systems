@@ -1,7 +1,7 @@
 import { MouseEventHandler, forwardRef, useImperativeHandle, useRef } from 'react';
-import { ToggleModalButton, ToggleModalButtonRef } from './ToggleModalButton';
+import { ToggleModalButton } from './ToggleModalButton';
 import { UswdsButtonStyle } from '../Button';
-import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
+import { ModalRefType, SubmitCancelButtonGroupRef, ToggleModalButtonRef } from './modal-refs';
 
 export type SubmitCancelBtnProps = {
   modalId: string;

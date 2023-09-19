@@ -10,3 +10,7 @@ export interface ModalRefType {
 export interface SubmitCancelButtonGroupRef {
   disableSubmitButton: (state: boolean) => void;
 }
+
+export interface ToggleModalButtonRef {
+  disableButton: (state: boolean) => void;
+}
