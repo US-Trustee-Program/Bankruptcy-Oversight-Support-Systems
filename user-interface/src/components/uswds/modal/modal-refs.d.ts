@@ -1,5 +1,4 @@
 import { RefObject } from 'react';
-import { SubmitCancelButtonGroupRef } from './SubmitCancelButtonGroup';
 
 export interface ModalRefType {
   show: () => void;
