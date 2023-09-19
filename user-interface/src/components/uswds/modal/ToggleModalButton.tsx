@@ -1,7 +1,7 @@
-import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from './Button';
-import { ObjectKeyVal } from '../../type-declarations/basic';
+import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from '../Button';
+import { ObjectKeyVal } from '../../../type-declarations/basic';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { ModalRefType } from './Modal';
+import { ModalRefType } from './modal-refs';
 
 export interface ModalToggleButtonProps {
   children: React.ReactNode;
