@@ -1,4 +1,13 @@
+@use '../styles/abstracts/colors';
+@use '../styles/abstracts/tables';
+
 .case-assignment {
+  .usa-table-container--scrollable .usa-table.case-list {
+    width: 83.3%;
+    max-width: 2000px;
+    margin: 0 auto;
+  }
+
   table.case-list {
     td.case-number {
       min-width: 115px;
@@ -59,6 +68,16 @@
     table.case-list {
       margin: 0;
       width: 100%;
+    }
+  }
+}
+
+@media screen and (max-width: 800px) {
+  .usa-table-container--scrollable .usa-table.case-list {
+    width: 100%;
+    padding: 50px 0;
+    td.attorney-list {
+      white-space: wrap;
     }
   }
 }

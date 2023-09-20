@@ -9,19 +9,38 @@ const mockCaseList = {
   message: '',
   count: 0,
   body: {
-    staff1Label: 'Trial Attorney',
-    staff2Label: 'Auditor',
     caseList: [],
   },
 };
 
-const mockFetchList = () => {
+const mockAttorneyList = {
+  success: true,
+  message: '',
+  count: 0,
+  body: {
+    AttorneyList: [],
+  },
+};
+
+const mockFetchCaseList = () => {
   return Promise.resolve({
     ok: true,
     status: 200,
     json: () => Promise.resolve(mockCaseList),
   } as unknown as Response);
 };
+
+vi.mock('../src/models/attorneys-api.ts', () => {
+  return {
+    AttorneysApi: () => {
+      return {
+        getAttorneys: () => {
+          return mockAttorneyList;
+        },
+      };
+    },
+  };
+});
 
 describe('App Router Tests', () => {
   it('should load screen with login form when route is /', async () => {
@@ -32,13 +51,13 @@ describe('App Router Tests', () => {
     expect(forms.length).toBe(1);
   });
 
-  it('should route /cases to CaseList', async () => {
-    vi.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+  it('should route /case-assignment to CaseAssignment', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(mockFetchCaseList);
     render(<App />, { wrapper: BrowserRouter });
 
     await act(async () => {
       // verify page content for expected route after navigating
-      await userEvent.click(screen.getByTestId('main-nav-cases-link'));
+      await userEvent.click(screen.getByTestId('main-nav-case-assignment-link'));
     });
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
