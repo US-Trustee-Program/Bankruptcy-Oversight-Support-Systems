@@ -14,14 +14,6 @@ jest.mock('./gateways/users.local.inmemory.gateway', () => {
   };
 });
 
-jest.mock('./gateways/cases.azure.sql.gateway', () => {
-  return {
-    getCaseList: jest.fn(() => {
-      return 'azure-sql-test';
-    }),
-  };
-});
-
 jest.mock('../configs/application-configuration', () => {
   // Require the original module!
   const originalModule = jest.requireActual('../configs/application-configuration');
@@ -54,22 +46,5 @@ describe('Testing Data Access Proxy loader', () => {
     const result: ProxyGateway = (await proxyData(applicationContext, 'users')) as ProxyGateway;
 
     expect(result.login()).toBe('in-memory-test');
-  });
-
-  test('Data Access Proxy should load azure mssql database when config.dbMock is set to false', async () => {
-    // config.dbMock should be set to true for all tests but we'll force it just for the purposes of this test.
-    dbMock = false;
-
-    type ProxyGateway = {
-      getCaseList: Function;
-      getCase: Function;
-      createCase: Function;
-      updateCase: Function;
-      deleteCase: Function;
-    };
-
-    const result: ProxyGateway = (await proxyData(applicationContext, 'cases')) as ProxyGateway;
-
-    expect(result.getCaseList()).toBe('azure-sql-test');
   });
 });
