@@ -51,6 +51,7 @@ export default defineConfig({
         'http.adapter.ts',
         'node_modules/',
         'src/setupTests.ts',
+        'src/ApplicationInsightsService.tsx',
         'build',
       ],
     },
