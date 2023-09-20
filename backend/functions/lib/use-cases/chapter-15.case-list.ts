@@ -29,9 +29,13 @@ export class Chapter15CaseList {
       let assignment: CaseAttorneyAssignment[];
       for (let i = 0; i < cases.length; i++) {
         assignment = await caseAssignment.findAssignmentsByCaseId(cases[i].caseNumber);
-        cases[i].assignments = assignment.map((ass) => {
-          return ass.name;
-        });
+        if (assignment && assignment.length > 0) {
+          cases[i].assignments = assignment.map((ass) => {
+            return ass.name;
+          });
+        } else {
+          cases[i].assignments = [];
+        }
       }
 
       return {

@@ -66,7 +66,11 @@ export class CaseAssignment {
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
-    return existingAssignments.length === 0;
+    if (existingAssignments && existingAssignments.length) {
+      return existingAssignments.length === 0;
+    } else {
+      return true;
+    }
   }
 
   public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
@@ -75,6 +79,10 @@ export class CaseAssignment {
 
   public async getCaseLoad(name: string): Promise<number> {
     const assignments = await this.assignmentRepository.findAssignmentsByAssigneeName(name);
-    return assignments.length;
+    if (assignments && assignments.length > 0) {
+      return assignments.length;
+    } else {
+      return 0;
+    }
   }
 }
