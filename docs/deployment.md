@@ -16,8 +16,8 @@ Note required environment variables and secrets defined in build tool for pipeli
 | CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING | Secret | --- | Optional for log ingestion to Azure Log Analytics. |
 | --- | --- | --- | --- |
 | **Azure** | | | |
-| AZURE_SUBSCRIPTION | Secret | --- | --- |
-| AZURE_CREDENTIALS | Secret | --- | --- |
+| AZURE_SUBSCRIPTION | Secret | --- | Azure Subscription ID |
+| AZURE_CREDENTIALS | Secret | --- | Credentials for Azure Cloud Environment |
 | AZURE_ENVIRONMENT | Variable | Yes | Specify target Azure cloud environment. |
 | AZ_HOSTNAME_SUFFIX | Variable | --- | e.g. (.us, .com, .net) |
 | AZ_APP_RG | Secret | --- | Resource group name for all application related infrastructure. |
@@ -48,16 +48,16 @@ Note required environment variables and secrets defined in build tool for pipeli
 | VERACODE_APP_ID | Secrets | Yes | Reference application identifier for scan results. |
 | VERACODE_API_ID | Secrets | Yes | --- |
 | VERACODE_API_KEY | Secrets | Yes | --- |
-| SRCCLR_API_TOKEN | Secrets | Yes | --- |
-| SRCCLR_REGION | Secrets | Yes | --- |
-| AZ_STOR_VERACODE_NAME | Secrets | Yes | --- |
-| AZ_STOR_VERACODE_KEY | Secrets | Yes | --- |
+| SRCCLR_API_TOKEN | Secrets | Yes | API Token for Static Code Analysis |
+| SRCCLR_REGION | Secrets | Yes | Region for Statis Code analysis |
+| AZ_STOR_VERACODE_NAME | Secrets | Yes | Azure Storage account name for veracode scans |
+| AZ_STOR_VERACODE_KEY | Secrets | Yes | Access key for Azure Storage account |
 | --- | --- | --- | --- |
 | **Azure Log Anlaytics** | | | |
 | AZ_ANALYTICS_WORKSPACE_ID | Secrets | --- | Azure resource id of Log Analytics. |
 | --- | --- | --- | --- |
 | **Azure Alert** | | | |
-| AZ_ACTION_GROUP_NAME | Secrets | Yes | --- |
+| AZ_ACTION_GROUP_NAME | Secrets | Yes | Action Group Name for alert rules |
 | --- | --- | --- | --- |
 | **Application** | --- | --- | --- |
 | STARTING_MONTH | Variable | --- | Used by application for filtering cases by date range. |
