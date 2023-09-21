@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { vi } from 'vitest';
+import MockAttorneysApi from './models/attorneys-api.mock';
 
 const mockCaseList = {
   success: true,
@@ -10,15 +11,6 @@ const mockCaseList = {
   count: 0,
   body: {
     caseList: [],
-  },
-};
-
-const mockAttorneyList = {
-  success: true,
-  message: '',
-  count: 0,
-  body: {
-    AttorneyList: [],
   },
 };
 
@@ -30,15 +22,10 @@ const mockFetchCaseList = () => {
   } as unknown as Response);
 };
 
-vi.mock('../src/models/attorneys-api.ts', () => {
+vi.mock('../models/attorneys-api', () => {
   return {
-    AttorneysApi: () => {
-      return {
-        getAttorneys: () => {
-          return mockAttorneyList;
-        },
-      };
-    },
+    //__esModule: true,
+    default: MockAttorneysApi,
   };
 });
 
@@ -52,6 +39,7 @@ describe('App Router Tests', () => {
   });
 
   /** Skipping test due to some weird issue being caught by AppInsightsErrorBoundary
+   */
   it('should route /case-assignment to CaseAssignment', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(mockFetchCaseList);
     render(<App />, { wrapper: BrowserRouter });
@@ -63,7 +51,7 @@ describe('App Router Tests', () => {
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });
-  */
+  /**/
 
   it('should render Not Found 404 page when an invalid URL is supplied', () => {
     const badRoute = '/some/bad/route';
