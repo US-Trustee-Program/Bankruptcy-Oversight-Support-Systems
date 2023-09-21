@@ -53,6 +53,8 @@ export default defineConfig({
         'src/setupTests.ts',
         'src/ApplicationInsightsService.tsx',
         'build',
+        'src/models/chapter15-mock.api.cases.ts',
+        'src/components/utils/http.adapter.ts',
       ],
     },
   },
