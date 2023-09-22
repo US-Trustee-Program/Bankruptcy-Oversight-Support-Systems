@@ -116,8 +116,7 @@ describe('CaseAssignment Component Tests', () => {
     );
   });
 
-  // if api.list returns an empty set, then screen should contain an empty table with valid header but no content
-  test('/cases should contain an empty table with valid header but no table body when api.list returns an empty set', async () => {
+  test('/cases should not contain any Unassigned Cases table when all cases are assigned', async () => {
     vi.spyOn(Chapter15MockApi, 'list')
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .mockImplementation((_path: string): Promise<ResponseData> => {
@@ -125,7 +124,26 @@ describe('CaseAssignment Component Tests', () => {
           message: 'not found',
           count: 0,
           body: {
-            caseList: [],
+            caseList: [
+              {
+                caseNumber: '23-44463',
+                caseTitle: 'Flo Esterly and Neas Van Sampson',
+                dateFiled: '2023-05-04',
+                assignments: ['Sara', 'Bob'],
+              },
+              {
+                caseNumber: '23-44462',
+                caseTitle: 'Bridget Maldonado',
+                dateFiled: '2023-04-14',
+                assignments: ['Frank', 'Sue'],
+              },
+              {
+                caseNumber: '23-44461',
+                caseTitle: 'Talia Torres and Tylor Stevenson',
+                dateFiled: '2023-04-04',
+                assignments: ['Joe', 'Sam'],
+              },
+            ],
           },
         });
       });
@@ -139,15 +157,120 @@ describe('CaseAssignment Component Tests', () => {
     );
 
     await waitFor(() => {
-      const tableHeader = screen.getAllByRole('columnheader');
-      expect(tableHeader[0].textContent).toBe('Case Number');
-      expect(tableHeader[1].textContent).toBe('Case Title (Debtor)');
-      expect(tableHeader[2].textContent).toBe('Filing Date');
-      const tableBody = screen.getAllByTestId('case-assignment-table-body');
+      screen.getAllByTestId('assigned-table-body');
+    });
+    let unassignedTableBody;
+    try {
+      unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
+      expect(true).toBeFalsy();
+    } catch (err) {
+      expect(unassignedTableBody).toBeUndefined();
+      console.log('unassigned table does not exist');
+    }
+  });
+
+  test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
+    vi.spyOn(Chapter15MockApi, 'list')
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .mockImplementation((_path: string): Promise<ResponseData> => {
+        return Promise.resolve({
+          message: 'not found',
+          count: 0,
+          body: {
+            caseList: [
+              {
+                caseNumber: '23-44463',
+                caseTitle: 'Flo Esterly and Neas Van Sampson',
+                dateFiled: '2023-05-04',
+                assignments: ['Sara', 'Bob'],
+              },
+              {
+                caseNumber: '23-44462',
+                caseTitle: 'Bridget Maldonado',
+                dateFiled: '2023-04-14',
+                assignments: ['Frank', 'Sue'],
+              },
+              {
+                caseNumber: '23-44461',
+                caseTitle: 'Talia Torres and Tylor Stevenson',
+                dateFiled: '2023-04-04',
+                assignments: ['Joe', 'Sam'],
+              },
+            ],
+          },
+        });
+      });
+
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseAssignment />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const tableBody = screen.getAllByTestId('assigned-table-body');
       const data = tableBody[0].querySelectorAll('tr');
-      expect(data).toHaveLength(0);
+      expect(data).toHaveLength(3);
     });
   });
+
+  test('/cases should contain table displaying 1 unassigned case and table with 2 assigned cases when 2 cases are assigned and 1 is not', async () => {
+    vi.spyOn(Chapter15MockApi, 'list')
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .mockImplementation((_path: string): Promise<ResponseData> => {
+        return Promise.resolve({
+          message: 'not found',
+          count: 0,
+          body: {
+            caseList: [
+              {
+                caseNumber: '23-44463',
+                caseTitle: 'Flo Esterly and Neas Van Sampson',
+                dateFiled: '2023-05-04',
+                assignments: ['Sara', 'Bob'],
+              },
+              {
+                caseNumber: '23-44462',
+                caseTitle: 'Bridget Maldonado',
+                dateFiled: '2023-04-14',
+                assignments: [],
+              },
+              {
+                caseNumber: '23-44461',
+                caseTitle: 'Talia Torres and Tylor Stevenson',
+                dateFiled: '2023-04-04',
+                assignments: ['Joe', 'Sam'],
+              },
+            ],
+          },
+        });
+      });
+
+    render(
+      <BrowserRouter>
+        <Provider store={store}>
+          <CaseAssignment />
+        </Provider>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
+      const unassignedData = unassignedTableBody[0].querySelectorAll('tr');
+      expect(unassignedData).toHaveLength(1);
+      const assignedTableBody = screen.getAllByTestId('assigned-table-body');
+      const assignedData = assignedTableBody[0].querySelectorAll('tr');
+      expect(assignedData).toHaveLength(2);
+    });
+  });
+
+  /**
+   * We need to add a test that starts with 1 unassigned case and assignes attorneys to it.
+   * The attorneys table should then contain the 1 case and the unassigned cases table
+   * should go away.
+   */
 
   // if api.list returns more than 0 results, then all results will be displayed in table body content
   /*
