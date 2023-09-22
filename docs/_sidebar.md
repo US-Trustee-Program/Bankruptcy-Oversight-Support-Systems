@@ -3,6 +3,7 @@
 * [Home](/)
 * [Running the Application](running.md)
 * [Operations](ops.md)
+* [Deployment](deployment.md)
 * [Contributing](contributing.md)
 * [Architecture](architecture/README.md)
 * [Troubleshooting](troubleshooting.md)
