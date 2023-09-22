@@ -278,7 +278,7 @@ export const CaseAssignment = () => {
             )}
           </div>
 
-          <div className="usa-table-container--scrollable" tabIndex={1}>
+          <div className="usa-table-container--scrollable" tabIndex={0}>
             {assignedCaseList.length > 0 && (
               <table className="case-list usa-table usa-table--striped">
                 <caption>Assigned Cases</caption>
