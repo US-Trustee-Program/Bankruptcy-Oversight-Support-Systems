@@ -52,6 +52,9 @@
     color: #61dafb;
   }
 
+  #assign-attorney-modal-overlay.usa-modal-overlay{
+    overflow-y: scroll;
+  }
 }
 
 @media screen and (max-width: 800px) {
