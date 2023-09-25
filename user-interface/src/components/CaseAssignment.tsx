@@ -183,8 +183,8 @@ export const CaseAssignment = () => {
           />
           <h1 data-testid="case-list-heading">{screenTitle}</h1>
           <h2 data-testid="case-list-subtitle">{subTitle}</h2>
-          <div className="usa-table-container--scrollable" tabIndex={0}>
-            {unassignedCaseList.length > 0 && (
+          {unassignedCaseList.length > 0 && (
+            <div className="usa-table-container--scrollable" tabIndex={0}>
               <table className="case-list usa-table usa-table--striped">
                 <caption>Unassigned Cases</caption>
                 <thead>
@@ -275,11 +275,10 @@ export const CaseAssignment = () => {
                   )}
                 </tbody>
               </table>
-            )}
-          </div>
-
-          <div className="usa-table-container--scrollable" tabIndex={0}>
-            {assignedCaseList.length > 0 && (
+            </div>
+          )}
+          {assignedCaseList.length > 0 && (
+            <div className="usa-table-container--scrollable" tabIndex={0}>
               <table className="case-list usa-table usa-table--striped">
                 <caption>Assigned Cases</caption>
                 <thead>
@@ -372,8 +371,8 @@ export const CaseAssignment = () => {
                   )}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         {attorneyList.length > 0 && (
           <AssignAttorneyModal
