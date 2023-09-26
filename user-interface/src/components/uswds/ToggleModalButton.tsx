@@ -5,7 +5,6 @@ import { ModalRefType } from './Modal';
 
 export interface ModalToggleButtonProps {
   children: React.ReactNode;
-  id: string;
   buttonIndex?: string;
   uswdsStyle?: UswdsButtonStyle;
   buttonState?: UswdsButtonState;
@@ -22,7 +21,6 @@ export interface ToggleModalButtonRef {
 function ToggleModalButtonComponent(
   {
     children,
-    id,
     buttonIndex,
     uswdsStyle,
     buttonState,
@@ -74,7 +72,6 @@ function ToggleModalButtonComponent(
   return (
     <button
       type="button"
-      id={id}
       aria-controls={modalId}
       className={classes}
       onClick={handleOnClick}
