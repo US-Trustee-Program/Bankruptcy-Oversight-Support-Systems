@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
+import * as HTTP from './components/utils/http.adapter';
 import { vi } from 'vitest';
 
 const mockCaseList = {
@@ -9,18 +10,17 @@ const mockCaseList = {
   message: '',
   count: 0,
   body: {
-    staff1Label: 'Trial Attorney',
-    staff2Label: 'Auditor',
     caseList: [],
   },
 };
 
-const mockFetchList = () => {
-  return Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve(mockCaseList),
-  } as unknown as Response);
+const mockAttorneysList = {
+  success: true,
+  message: '',
+  count: 0,
+  body: {
+    attorneyList: [],
+  },
 };
 
 describe('App Router Tests', () => {
@@ -32,17 +32,35 @@ describe('App Router Tests', () => {
     expect(forms.length).toBe(1);
   });
 
-  it('should route /cases to CaseList', async () => {
-    vi.spyOn(global, 'fetch').mockImplementation(mockFetchList);
+  it('should route /case-assignment to CaseAssignment', async () => {
+    vi.spyOn(HTTP, 'httpGet').mockImplementation(
+      (data: { url: string; headers?: object }): Promise<Response> => {
+        if (data.url.includes('/attorneys')) {
+          return Promise.resolve({
+            json: () => mockAttorneysList,
+            ok: true,
+            status: 200,
+          } as unknown as Response);
+        } else {
+          return Promise.resolve({
+            json: () => mockCaseList,
+            ok: true,
+            status: 200,
+          } as unknown as Response);
+        }
+      },
+    );
+
     render(<App />, { wrapper: BrowserRouter });
 
     await act(async () => {
       // verify page content for expected route after navigating
-      await userEvent.click(screen.getByTestId('main-nav-cases-link'));
+      await userEvent.click(screen.getByTestId('main-nav-case-assignment-link'));
     });
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });
+  /**/
 
   it('should render Not Found 404 page when an invalid URL is supplied', () => {
     const badRoute = '/some/bad/route';
