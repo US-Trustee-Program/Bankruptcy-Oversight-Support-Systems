@@ -1,5 +1,4 @@
 import './CaseAssignment.scss';
-import './CaseList.scss';
 import { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
