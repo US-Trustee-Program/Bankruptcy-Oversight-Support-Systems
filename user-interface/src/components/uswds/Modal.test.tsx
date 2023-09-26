@@ -31,7 +31,6 @@ describe('Test Modal component', () => {
         <BrowserRouter>
           <>
             <ToggleModalButton
-              id={'toggle'}
               buttonIndex="open-test"
               toggleAction={'open'}
               modalId={modalId}
@@ -198,7 +197,6 @@ describe('Test Modal component with force action', () => {
         <BrowserRouter>
           <>
             <ToggleModalButton
-              id={'toggle'}
               buttonIndex="open-test"
               toggleAction={'open'}
               modalId={modalId}

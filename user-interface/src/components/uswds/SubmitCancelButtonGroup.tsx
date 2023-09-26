@@ -53,7 +53,6 @@ function SubmitCancelButtonGroupComponent(
       <ul className={classes.join(' ')}>
         <li className="usa-button-group__item">
           <ToggleModalButton
-            id={'toggle'}
             ref={toggleSubmitButtonRef}
             toggleAction="close"
             buttonIndex="submit"
@@ -70,7 +69,6 @@ function SubmitCancelButtonGroupComponent(
         {cancelButton && (
           <li className="usa-button-group__item">
             <ToggleModalButton
-              id={'toggle'}
               toggleAction="close"
               buttonIndex="cancel"
               modalId={modalId}

@@ -3,6 +3,10 @@ import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseData } from '../type-declarations/api';
 
 describe('Attorneys API test', () => {
+  beforeAll(() => {
+    process.env = {};
+  });
+
   test('should return only the list of attorneys', async () => {
     vi.mock('./api', () => {
       return {
