@@ -73,12 +73,10 @@ export const CaseAssignment = () => {
           // Filing date formatted in SQL query as MM-dd-yyyy (ISO is yyyy-MM-dd)
           // dateFiled[0] = month, dateFiled[1] = day, dateFiled[2] = year
           caseNode.sortableDateFiled = `${dateFiled[2]}${dateFiled[0]}${dateFiled[1]}`;
-          if (caseNode.assignments) {
-            if (caseNode.assignments.length > 0) {
-              assignmentList.push(caseNode);
-            } else {
-              nonAssignmentList.push(caseNode);
-            }
+          if (caseNode.assignments && caseNode.assignments.length > 0) {
+            assignmentList.push(caseNode);
+          } else {
+            nonAssignmentList.push(caseNode);
           }
         });
         const sortedAssignedList = assignmentList.sort(sortMethod);

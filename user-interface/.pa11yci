@@ -7,6 +7,14 @@
     },
     "timeout": 10000
   },
-  "urls": ["http://localhost:3000/", "http://localhost:3000/cases"],
+  "urls": ["http://localhost:3000/",
+    {
+      "url": "http://localhost:3000/assignments",
+      "actions": [
+        "click element [data-testid='toggle-modal-button-0']"
+      ],
+      "timeout": 60000
+    }
+  ],
   "standard": "WCAG2AA"
 }
