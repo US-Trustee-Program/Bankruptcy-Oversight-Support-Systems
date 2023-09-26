@@ -1,9 +1,6 @@
 import { ApplicationConfiguration } from './configs/application-configuration';
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
-import { Chapter11ApiGateway } from './adapters/gateways/cases.azure.sql.gateway';
-import { Chapter11GatewayInterface } from './use-cases/chapter-11.gateway.interface';
-import { Chapter11LocalGateway } from './adapters/gateways/chapter11.local.gateway';
 import { CasesInterface } from './use-cases/cases.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
@@ -23,16 +20,6 @@ export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   } else {
     return new AttorneyLocalGateway();
     // return new AttorneyApiGateway(); // not yet implemented
-  }
-};
-
-export const getChapter11Gateway = (): Chapter11GatewayInterface => {
-  const config: ApplicationConfiguration = new ApplicationConfiguration();
-
-  if (config.get('dbMock')) {
-    return new Chapter11LocalGateway();
-  } else {
-    return new Chapter11ApiGateway();
   }
 };
 
