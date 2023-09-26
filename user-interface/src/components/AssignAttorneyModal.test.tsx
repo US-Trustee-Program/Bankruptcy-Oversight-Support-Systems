@@ -37,7 +37,12 @@ describe('Test Assign Attorney Modal Component', () => {
       <React.StrictMode>
         <BrowserRouter>
           <>
-            <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
+            <ToggleModalButton
+              id={'toggle'}
+              toggleAction={'open'}
+              modalId={modalId}
+              modalRef={modalRef}
+            >
               Open Modal
             </ToggleModalButton>
             <AssignAttorneyModal
@@ -117,7 +122,12 @@ describe('Test Assign Attorney Modal Component', () => {
       <React.StrictMode>
         <BrowserRouter>
           <>
-            <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
+            <ToggleModalButton
+              id={'toggle'}
+              toggleAction={'open'}
+              modalId={modalId}
+              modalRef={modalRef}
+            >
               Open Modal
             </ToggleModalButton>
             <AssignAttorneyModal
