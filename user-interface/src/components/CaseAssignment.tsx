@@ -258,7 +258,7 @@ export const CaseAssignment = () => {
                             <ToggleModalButton
                               className="case-assignment-modal-toggle"
                               id={`assign-attorney-btn-${idx}`}
-                              buttonId={`${idx}`}
+                              buttonIndex={`${idx}`}
                               toggleAction="open"
                               modalId={`${modalId}`}
                               modalRef={modalRef}

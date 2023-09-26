@@ -9,11 +9,12 @@
   },
   "urls": ["http://localhost:3000/",
     {
-      "url": "http://localhost:3000/assignments",
+      "url": "http://localhost:3000/case-assignment",
       "actions": [
-        "click element [data-testid='toggle-modal-button-0']"
+        "wait for element #assign-attorney-btn-0 to be visible",
+        "click element #assign-attorney-btn-0"
       ],
-      "timeout": 60000
+      "timeout": 20000
     }
   ],
   "standard": "WCAG2AA"
