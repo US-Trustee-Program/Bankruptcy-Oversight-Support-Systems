@@ -2,8 +2,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
+import * as HTTP from './components/utils/http.adapter';
 import { vi } from 'vitest';
-import MockAttorneysApi from './models/attorneys-api.mock';
 
 const mockCaseList = {
   success: true,
@@ -14,20 +14,14 @@ const mockCaseList = {
   },
 };
 
-const mockFetchCaseList = () => {
-  return Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve(mockCaseList),
-  } as unknown as Response);
+const mockAttorneysList = {
+  success: true,
+  message: '',
+  count: 0,
+  body: {
+    attorneyList: [],
+  },
 };
-
-vi.mock('../models/attorneys-api', () => {
-  return {
-    //__esModule: true,
-    default: MockAttorneysApi,
-  };
-});
 
 describe('App Router Tests', () => {
   it('should load screen with login form when route is /', async () => {
@@ -38,10 +32,25 @@ describe('App Router Tests', () => {
     expect(forms.length).toBe(1);
   });
 
-  /** Skipping test due to some weird issue being caught by AppInsightsErrorBoundary
-   */
   it('should route /case-assignment to CaseAssignment', async () => {
-    vi.spyOn(global, 'fetch').mockImplementation(mockFetchCaseList);
+    vi.spyOn(HTTP, 'httpGet').mockImplementation(
+      (data: { url: string; headers?: object }): Promise<Response> => {
+        if (data.url.includes('/attorneys')) {
+          return Promise.resolve({
+            json: () => mockAttorneysList,
+            ok: true,
+            status: 200,
+          } as unknown as Response);
+        } else {
+          return Promise.resolve({
+            json: () => mockCaseList,
+            ok: true,
+            status: 200,
+          } as unknown as Response);
+        }
+      },
+    );
+
     render(<App />, { wrapper: BrowserRouter });
 
     await act(async () => {
