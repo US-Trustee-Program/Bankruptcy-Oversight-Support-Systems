@@ -15,10 +15,10 @@ graph TB
     subgraph 3 [CAMS]
       style 3 fill:#ffffff,stroke:#0b4884,color:#0b4884
 
-      10("<div style='font-weight: bold'>DXTR DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>DXTR SQL Database</div>")
-      style 10 fill:#438dd5,stroke:#2e6295,color:#ffffff
-      11("<div style='font-weight: bold'>Cosmos DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>NoSQL Database</div>")
+      11("<div style='font-weight: bold'>DXTR DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>DXTR SQL Database</div>")
       style 11 fill:#438dd5,stroke:#2e6295,color:#ffffff
+      12("<div style='font-weight: bold'>Cosmos DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>NoSQL Database</div>")
+      style 12 fill:#438dd5,stroke:#2e6295,color:#ffffff
       4("<div style='font-weight: bold'>Webapp</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>The user interface for CAMS</div>")
       style 4 fill:#438dd5,stroke:#2e6295,color:#ffffff
       7("<div style='font-weight: bold'>API</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>An Azure Functions App<br />(Node.js)</div>")
@@ -28,7 +28,7 @@ graph TB
     1-. "<div>Assigns cases to attorneys</div><div style='font-size: 70%'></div>" .->4
     2-. "<div>Views bankruptcy cases</div><div style='font-size: 70%'></div>" .->4
     4-. "<div>Reads and writes case data<br />and assignments</div><div style='font-size: 70%'></div>" .->7
-    7-. "<div>Reads and writes case<br />assignments</div><div style='font-size: 70%'></div>" .->11
-    7-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->10
+    7-. "<div>Reads and writes case<br />assignments</div><div style='font-size: 70%'></div>" .->12
+    7-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->11
   end
 ```
