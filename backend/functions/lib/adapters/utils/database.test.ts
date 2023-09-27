@@ -31,9 +31,8 @@ function mssqlMock() {
 describe('Tests database', () => {
   test('???', async () => {
     // setup test
-    jest.mock('mssql', mssqlMock);
+    jest.mock('ConnectionPool', mssqlMock);
 
-    // execute method under test
     const context = appContext;
     const config = { server: 'foo' } as IDbConfig;
     const query = 'SELECT * FROM foo WHERE data = @param1 AND name=@param2';
@@ -49,6 +48,8 @@ describe('Tests database', () => {
         value: 'nameValue',
       },
     ];
+
+    // execute method under test
     const queryResult: QueryResults = await executeQuery(context, config, query, input);
 
     // assert
