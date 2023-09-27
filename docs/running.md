@@ -121,3 +121,13 @@ contents of that file must be:
     }
 }
 ```
+
+## These Docs
+
+These docs are hosted on GitHub Pages using [Docsify](https://docsify.js.org/). To run them locally to validate changes run the following command:
+
+```shell
+docsify serve docs [path] [--open false] [--port 3000]
+```
+
+?> Note that `[]` denote optional portions of the command and are not intended to be included in the actual command you run. For further information about how to use the command line interface see [their docs](https://github.com/docsifyjs/docsify-cli).
