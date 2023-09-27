@@ -109,18 +109,5 @@ fi
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
-    # for item in ${app_settings}; do
-    #     az functionapp config appsettings set -g $app_rg -n $app_name --settings "${item}" --query "[?name=='${item%=*}'].name | [0]" --output tsv
-    # done
-    # TODO ML : Need to test locally and verify contents of output. MAKE SURE NOT TO OUTPUT ANYTHING THAT COULD BE A SECRET
-
-    echo "*****"
-    echo ${app_settings}
-    echo "*****"
-
-    az functionapp config appsettings set -g $app_rg -n $app_name --settings "${app_settings}"
-        # --query "[?name=='${item%=*}'].name | [0]" --output tsv
+    az functionapp config appsettings set -g $app_rg -n $app_name --settings ${app_settings} --query "[].name" --output tsv
 fi
-
-# Gives some time for prior management operation to complete before going forward
-sleep 45s
