@@ -1,16 +1,17 @@
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
-import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentCosmosDbRepository } from './case.assignment.cosmosdb.repository';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { randomUUID } from 'crypto';
+import { CaseAssignmentRole } from '../types/case.assignment.role';
 
 const context = require('azure-function-context-mock');
-
 const appContext = applicationContextCreator(context);
-const perryMason = 'Perry Mason';
-const benMatlock = 'Ben Matlock';
-const clairHuxtable = 'Clair Huxtable';
+
 describe('Test case assignment cosmosdb repository tests', () => {
+  const perryMason = 'Perry Mason';
+  const benMatlock = 'Ben Matlock';
+  const clairHuxtable = 'Clair Huxtable';
+  const trialAttorneyRole = 'TrialAttorney';
   let repository: CaseAssignmentCosmosDbRepository;
   beforeEach(() => {
     repository = new CaseAssignmentCosmosDbRepository(appContext, true);
@@ -21,12 +22,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumber,
       'Susan Arbeit',
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumber,
       'Jeffery McCaslin',
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -43,10 +44,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignment2 = actualAssignments.find((assign) => assign.id === assignmentId2);
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
-    expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
+    expect(assignment1.role).toEqual(CaseAssignmentRole.TrialAttorney);
     expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
-    expect(assignment2.role).toEqual(testCaseAttorneyAssignment2.role);
+    expect(assignment2.role).toEqual(CaseAssignmentRole.TrialAttorney);
     expect(assignment2.name).toEqual(testCaseAttorneyAssignment2.name);
   });
 
@@ -56,12 +57,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberOne,
       'Susan Arbeit',
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberTwo,
       'Jeffery McCaslin',
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -75,7 +76,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignment2 = actualAssignmentsOne.find((assign) => assign.id === assignmentId2);
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
-    expect(assignment1.role).toEqual(testCaseAttorneyAssignment1.role);
+    expect(assignment1.role).toEqual(CaseAssignmentRole.TrialAttorney);
     expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2).toBeFalsy();
 
@@ -87,7 +88,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignmentTwo = actualAssignmentsTwo.find((assign) => assign.id === assignmentId2);
 
     expect(assignmentTwo.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
-    expect(assignmentTwo.role).toEqual(testCaseAttorneyAssignment2.role);
+    expect(assignmentTwo.role).toEqual(CaseAssignmentRole.TrialAttorney);
     expect(assignmentTwo.name).toEqual(testCaseAttorneyAssignment2.name);
     expect(assignmentOne).toBeFalsy();
   });
@@ -96,7 +97,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       'throw-permissions-error',
       'some-attorney-name',
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
@@ -118,7 +119,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       'some-case-number',
       'some-attorney-name',
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
     try {
       await repository.findAssignment(assignment);
@@ -143,36 +144,36 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberOne,
       perryMason,
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberOne,
       benMatlock,
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
 
     const caseNumberTwo = randomUUID();
     const testCaseAttorneyAssignment3: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberTwo,
       clairHuxtable,
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
     const testCaseAttorneyAssignment4: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberTwo,
       perryMason,
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
 
     const caseNumberThree = randomUUID();
     const testCaseAttorneyAssignment5: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberThree,
       clairHuxtable,
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
     const testCaseAttorneyAssignment6: CaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseNumberThree,
       benMatlock,
-      CaseAssignmentRole.TrialAttorney,
+      trialAttorneyRole,
     );
 
     await repository.createAssignment(testCaseAttorneyAssignment1);

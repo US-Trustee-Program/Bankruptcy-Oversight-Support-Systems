@@ -3,7 +3,6 @@ import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface
 import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
 import { CasesInterface } from './use-cases/cases.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
-import { CaseAssignmentLocalRepository } from './adapters/gateways/case.assignment.local.repository';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/cases.dxtr.gateway';
@@ -34,7 +33,7 @@ export const getAssignmentRepository = (
     if (context.caseAssignmentRepository) {
       return context.caseAssignmentRepository;
     } else {
-      context.caseAssignmentRepository = new CaseAssignmentLocalRepository(context);
+      context.caseAssignmentRepository = new CaseAssignmentCosmosDbRepository(context, true);
       return context.caseAssignmentRepository;
     }
   } else {

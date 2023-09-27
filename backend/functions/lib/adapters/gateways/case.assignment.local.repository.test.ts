@@ -1,5 +1,4 @@
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
-import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { CaseAssignmentLocalRepository } from './case.assignment.local.repository';
 import { applicationContextCreator } from '../utils/application-context-creator';
@@ -12,7 +11,7 @@ describe('Case Assignment Repository Tests', () => {
     const testCaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseId,
       'Susan Arbeit',
-      CaseAssignmentRole.TrialAttorney,
+      'TrialAttorney',
     );
     const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
       new CaseAssignmentLocalRepository(appContext);

@@ -1,4 +1,3 @@
-import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { CaseAssignmentController } from './case.assignment.controller';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { AssignmentException } from '../../use-cases/assignment.exception';
@@ -7,6 +6,7 @@ const context = require('azure-function-context-mock');
 
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   const env = process.env;
+  const trialAttorneyRole = 'TrialAttorney';
 
   beforeEach(() => {
     process.env = {
@@ -19,7 +19,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const testCaseAssignment = {
       caseId: '18-12345',
       listOfAttorneyNames: ['Jane'],
-      role: CaseAssignmentRole.TrialAttorney,
+      role: trialAttorneyRole,
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
@@ -39,7 +39,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const testCaseAssignment = {
       caseId: '18-12345',
       listOfAttorneyNames: ['Jane'],
-      role: CaseAssignmentRole.TrialAttorney,
+      role: trialAttorneyRole,
     };
 
     const assignmentController = new CaseAssignmentController(context);
@@ -59,13 +59,13 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const testCaseAssignment1 = {
       caseId: '18-12345',
       listOfAttorneyNames: ['Jane'],
-      role: CaseAssignmentRole.TrialAttorney,
+      role: trialAttorneyRole,
     };
 
     const testCaseAssignment2 = {
       caseId: '18-12345',
       listOfAttorneyNames: ['John', 'Jane'],
-      role: CaseAssignmentRole.TrialAttorney,
+      role: trialAttorneyRole,
     };
 
     const assignmentController = new CaseAssignmentController(context);
@@ -82,7 +82,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const testCaseAssignment = {
       caseId: '18-12345',
       listOfAttorneyNames,
-      role: CaseAssignmentRole.TrialAttorney,
+      role: trialAttorneyRole,
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
@@ -102,7 +102,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     const testCaseAssignment = {
       caseId: '18-12345',
       listOfAttorneyNames,
-      role: CaseAssignmentRole.TrialAttorney,
+      role: trialAttorneyRole,
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;

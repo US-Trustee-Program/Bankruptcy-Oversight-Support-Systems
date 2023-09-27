@@ -31,10 +31,10 @@ describe('Case Assignment Function Tests', () => {
       success: true,
       message: 'Trial attorney assignments created.',
       count: 1,
-      body: ['1'],
     };
     await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
+    expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
+    expect(appContext.res.body.body.length).toEqual(1);
   });
 
   test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
@@ -52,11 +52,11 @@ describe('Case Assignment Function Tests', () => {
       success: true,
       message: 'Trial attorney assignments created.',
       count: 2,
-      body: ['1', '2'],
     };
 
     await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
+    expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
+    expect(appContext.res.body.body.length).toEqual(2);
   });
 
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
@@ -74,11 +74,11 @@ describe('Case Assignment Function Tests', () => {
       success: true,
       message: 'Trial attorney assignments created.',
       count: 1,
-      body: ['1'],
     };
 
     await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
+    expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
+    expect(appContext.res.body.body.length).toEqual(1);
   });
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
