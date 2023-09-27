@@ -24,14 +24,6 @@ const mockAttorneysList = {
 };
 
 describe('App Router Tests', () => {
-  it('should load screen with login form when route is /', async () => {
-    const { container } = render(<App />, { wrapper: BrowserRouter });
-
-    // verify page content for default route
-    const forms = container.getElementsByClassName('login-form');
-    expect(forms.length).toBe(1);
-  });
-
   it('should route /case-assignment to CaseAssignment', async () => {
     vi.spyOn(HTTP, 'httpGet').mockImplementation(
       (data: { url: string; headers?: object }): Promise<Response> => {

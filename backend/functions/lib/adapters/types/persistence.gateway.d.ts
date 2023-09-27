@@ -29,15 +29,6 @@ export interface AttorneyPersistenceGateway {
   getAttorneyList(context: ApplicationContext, fields: ObjectKeyVal): Promise<AttorneyListDbResult>;
 }
 
-interface UserNameType {
-  firstName: string;
-  lastName: string;
-}
-
-export interface UserPersistenceGateway {
-  login(context: ApplicationContext, name: UserNameType): Promise<DbResult>;
-}
-
 export interface ChaptersPersistenceGateway {
   getChaptersList(): Promise<DbResult>;
 }

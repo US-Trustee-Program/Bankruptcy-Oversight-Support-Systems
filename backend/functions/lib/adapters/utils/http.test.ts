@@ -1,11 +1,17 @@
 import { httpGet, httpPost } from './http';
+import { HttpResponse } from '../types/http';
 
 const fetchSpy = jest
   .spyOn(global, 'fetch')
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   .mockImplementation((_url: URL, requestInit: RequestInit): Promise<Response> => {
     // has to return a Promise<Response>
-    return;
+    return Promise.resolve({
+      ok: true,
+      json: jest.fn().mockImplementation(async () => {
+        return JSON.parse('{ "responsejson":"testdata" }');
+      }),
+    } as unknown as Response);
   });
 
 describe('Tests out the http calls', () => {
@@ -45,9 +51,12 @@ describe('Tests out the http calls', () => {
       url: 'urlString',
       headers: { mimeType: 'application/json' },
     };
+    let response: HttpResponse = {} as HttpResponse;
     try {
-      await httpGet(data);
+      response = await httpGet(data);
+      console.log(response);
     } catch (e) {
+      console.log('Into Catch block');
       // Because we are not returning a Promise<Response> we catch the error and ignore as the test only
       //  cares about how fetch was called.
     }
@@ -56,5 +65,7 @@ describe('Tests out the http calls', () => {
       data.url,
       expect.objectContaining({ headers: expectedHeaders }),
     );
+    expect(response.ok).toEqual(true);
+    expect(response.data).toEqual({ responsejson: 'testdata' });
   });
 });

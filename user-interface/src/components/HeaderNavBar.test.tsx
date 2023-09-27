@@ -15,11 +15,9 @@ describe('App', () => {
     const mainTitle = await screen.findByText('U.S. Trustee Program');
     const subTitle = await screen.findByText('CAse Management System (CAMS)');
     const caseMenu = await screen.findByTestId('main-nav-case-assignment-link');
-    const loginMenu = await screen.findByTestId('main-nav-login-link');
 
     expect(mainTitle).toBeInTheDocument();
     expect(subTitle).toBeInTheDocument();
     expect(caseMenu).toBeInTheDocument();
-    expect(loginMenu).toBeInTheDocument();
   });
 });
