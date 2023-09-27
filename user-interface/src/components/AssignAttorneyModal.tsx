@@ -1,12 +1,13 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
-import Modal, { ModalRefType } from './uswds/Modal';
+import Modal from './uswds/modal/Modal';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import React from 'react';
 import Checkbox, { CheckboxRef } from './uswds/Checkbox';
 import { ResponseData } from '../type-declarations/api';
 import { Attorney, AttorneyInfo } from '../type-declarations/attorneys';
 import Api from '../models/api';
+import { ModalRefType } from './uswds/modal/modal-refs';
 
 export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];

@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ToggleModalButton } from './ToggleModalButton';
-import Modal, { ModalRefType } from './Modal';
+import Modal from './Modal';
+import { ModalRefType } from './modal-refs';
 
 describe('Test Modal component', () => {
   const modalId = 'assign-attorney-modal';

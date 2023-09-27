@@ -1,12 +1,9 @@
-import React, { RefObject, forwardRef, useImperativeHandle, useRef } from 'react';
-import {
-  SubmitCancelButtonGroup,
-  SubmitCancelBtnProps,
-  SubmitCancelButtonGroupRef,
-} from './SubmitCancelButtonGroup';
-import useGlobalKeyDown from '../../hooks/UseGlobalKeyDown';
-import { UswdsButtonStyle } from './Button';
-import useComponent from '../../hooks/UseComponent';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
+import useGlobalKeyDown from '../../../hooks/UseGlobalKeyDown';
+import { UswdsButtonStyle } from '../Button';
+import useComponent from '../../../hooks/UseComponent';
+import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
 
 export interface ModalProps {
   modalId: string;
@@ -18,12 +15,6 @@ export interface ModalProps {
   actionButtonGroup: SubmitCancelBtnProps;
   onOpen?: () => void;
   onClose?: () => void;
-}
-
-export interface ModalRefType {
-  show: () => void;
-  hide: () => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {

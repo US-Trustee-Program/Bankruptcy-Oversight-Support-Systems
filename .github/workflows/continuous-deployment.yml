@@ -5,9 +5,9 @@ concurrency: ${{ github.ref }}-${{ github.workflow }}
 on:
   push:
     paths-ignore:
+      - 'docs/**'
       - '*.md'
       - '**/*.md'
-      - '**/*.dsl'
   workflow_dispatch:
     inputs:
       deployBranch:

@@ -1,7 +1,7 @@
-import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from './Button';
-import { ObjectKeyVal } from '../../type-declarations/basic';
+import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from '../Button';
+import { ObjectKeyVal } from '../../../type-declarations/basic';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { ModalRefType } from './Modal';
+import { ModalRefType, ToggleModalButtonRef } from './modal-refs';
 
 export interface ModalToggleButtonProps {
   children: React.ReactNode;
@@ -12,10 +12,6 @@ export interface ModalToggleButtonProps {
   toggleAction: 'open' | 'close';
   modalId: string;
   modalRef: React.RefObject<ModalRefType>;
-}
-
-export interface ToggleModalButtonRef {
-  disableButton: (state: boolean) => void;
 }
 
 function ToggleModalButtonComponent(
