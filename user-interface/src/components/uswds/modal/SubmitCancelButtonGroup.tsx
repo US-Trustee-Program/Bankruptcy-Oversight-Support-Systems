@@ -51,7 +51,7 @@ function SubmitCancelButtonGroupComponent(
           <ToggleModalButton
             ref={toggleSubmitButtonRef}
             toggleAction="close"
-            buttonId="submit"
+            buttonIndex="submit"
             modalId={modalId}
             modalRef={modalRef}
             uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
@@ -66,7 +66,7 @@ function SubmitCancelButtonGroupComponent(
           <li className="usa-button-group__item">
             <ToggleModalButton
               toggleAction="close"
-              buttonId="cancel"
+              buttonIndex="cancel"
               modalId={modalId}
               modalRef={modalRef}
               uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}

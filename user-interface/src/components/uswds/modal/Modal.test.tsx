@@ -32,7 +32,7 @@ describe('Test Modal component', () => {
         <BrowserRouter>
           <>
             <ToggleModalButton
-              buttonId="open-test"
+              buttonIndex="open-test"
               toggleAction={'open'}
               modalId={modalId}
               modalRef={modalRef}
@@ -198,7 +198,7 @@ describe('Test Modal component with force action', () => {
         <BrowserRouter>
           <>
             <ToggleModalButton
-              buttonId="open-test"
+              buttonIndex="open-test"
               toggleAction={'open'}
               modalId={modalId}
               modalRef={modalRef}

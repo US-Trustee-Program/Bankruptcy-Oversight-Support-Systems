@@ -13,14 +13,7 @@ import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-humble';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
-  const config: ApplicationConfiguration = new ApplicationConfiguration();
-
-  if (config.get('dbMock')) {
-    return new AttorneyLocalGateway();
-  } else {
-    return new AttorneyLocalGateway();
-    // return new AttorneyApiGateway(); // not yet implemented
-  }
+  return new AttorneyLocalGateway();
 };
 
 export const getCasesGateway = (): CasesInterface => {

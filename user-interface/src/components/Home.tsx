@@ -1,10 +1,10 @@
 import './Home.scss';
-import Login from './Login';
+import { CaseAssignment } from './CaseAssignment';
 
 function Home() {
   return (
     <div className="home">
-      <Login />
+      <CaseAssignment />
     </div>
   );
 }

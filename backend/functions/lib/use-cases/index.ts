@@ -1,18 +1,9 @@
-import { UserPersistenceGateway } from '../adapters/types/persistence.gateway';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case-list';
 import AttorneysList from './attorneys';
 import InvalidChapterCaseList from './invalid-chapter.case-list';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
-
-async function login(
-  context: ApplicationContext,
-  database: UserPersistenceGateway,
-  userName: { firstName: string; lastName: string },
-) {
-  return await database.login(context, userName);
-}
 
 async function listAttorneys(
   context: ApplicationContext,
@@ -41,5 +32,4 @@ async function listCases(
 export default {
   listAttorneys,
   listCases,
-  login,
 };

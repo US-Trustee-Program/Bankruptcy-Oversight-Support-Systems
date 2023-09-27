@@ -5,7 +5,7 @@ import { ModalRefType, ToggleModalButtonRef } from './modal-refs';
 
 export interface ModalToggleButtonProps {
   children: React.ReactNode;
-  buttonId?: string;
+  buttonIndex?: string;
   uswdsStyle?: UswdsButtonStyle;
   buttonState?: UswdsButtonState;
   disabled?: boolean;
@@ -17,7 +17,7 @@ export interface ModalToggleButtonProps {
 function ToggleModalButtonComponent(
   {
     children,
-    buttonId,
+    buttonIndex,
     uswdsStyle,
     buttonState,
     disabled,
@@ -31,7 +31,7 @@ function ToggleModalButtonComponent(
 ) {
   const dataProp: ObjectKeyVal = {};
 
-  const dataTestidSuffix = buttonId ? `-${buttonId}` : '';
+  const dataTestidSuffix = buttonIndex ? `-${buttonIndex}` : '';
 
   let classes = 'usa-button';
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
