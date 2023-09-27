@@ -47,7 +47,7 @@
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
     "coverage": "DATABASE_MOCK='true' jest --coverage",
-    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' attorneys case-assignments cases healthcheck lib users | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_${current_time}.svg",
-    "dependency-cruiser-ci": "npx depcruise --output-type err-long cases healthcheck lib users"
+    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' attorneys case-assignments cases healthcheck lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_${current_time}.svg",
+    "dependency-cruiser-ci": "npx depcruise --output-type err-long attorneys case-assignments cases healthcheck lib "
   }
 }
