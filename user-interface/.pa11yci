@@ -7,6 +7,15 @@
     },
     "timeout": 10000
   },
-  "urls": ["http://localhost:3000/", "http://localhost:3000/case-assignment"],
+  "urls": ["http://localhost:3000/",
+    {
+      "url": "http://localhost:3000/case-assignment",
+      "actions": [
+        "wait for element [data-testid='toggle-modal-button-0'] to be visible",
+        "click element [data-testid='toggle-modal-button-0']"
+      ],
+      "timeout": 20000
+    }
+  ],
   "standard": "WCAG2AA"
 }
