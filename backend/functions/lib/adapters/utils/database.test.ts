@@ -11,28 +11,32 @@ type sqlConnect = {
   query: () => void;
 };
 
-function mssqlMock() {
-  return class ConnectionPool {
-    public connect = jest.fn().mockImplementation(
-      (): Promise<sqlConnect> =>
-        Promise.resolve({
-          request: jest.fn().mockImplementation(() => ({
-            input: jest.fn(),
-          })),
-          close: jest.fn(),
-          query: jest
-            .fn()
-            .mockImplementation((): Promise<string> => Promise.resolve('test string')),
-        }),
-    );
+jest.mock('mssql', () => {
+  return {
+    constructor: jest.fn(),
+    ConnectionPool: jest.fn().mockImplementation(() => {
+      return {
+        connect: jest.fn().mockImplementation(
+          (): Promise<sqlConnect> =>
+            Promise.resolve({
+              request: jest.fn().mockImplementation(() => ({
+                input: jest.fn(),
+                query: jest.fn(),
+              })),
+              close: jest.fn(),
+              query: jest
+                .fn()
+                .mockImplementation((): Promise<string> => Promise.resolve('test string')),
+            }),
+        ),
+      };
+    }),
   };
-}
+});
 
 describe('Tests database', () => {
   test('???', async () => {
-    // setup test
-    jest.mock('ConnectionPool', mssqlMock);
-
+    // execute method under test
     const context = appContext;
     const config = { server: 'foo' } as IDbConfig;
     const query = 'SELECT * FROM foo WHERE data = @param1 AND name=@param2';
