@@ -5,7 +5,6 @@ import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declaratio
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
-// import { ModalRefType } from './uswds/modal/Modal';
 import { ModalRefType } from './uswds/modal/modal-refs';
 import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
 import AttorneysApi from '../models/attorneys-api';
