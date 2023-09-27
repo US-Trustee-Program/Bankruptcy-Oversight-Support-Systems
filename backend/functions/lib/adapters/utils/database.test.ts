@@ -13,7 +13,6 @@ type sqlConnect = {
 
 jest.mock('mssql', () => {
   return {
-    constructor: jest.fn(),
     ConnectionPool: jest.fn().mockImplementation(() => {
       return {
         connect: jest.fn().mockImplementation(
@@ -21,12 +20,17 @@ jest.mock('mssql', () => {
             Promise.resolve({
               request: jest.fn().mockImplementation(() => ({
                 input: jest.fn(),
-                query: jest.fn(),
+                query: jest
+                  .fn()
+                  .mockImplementation((): Promise<string> => Promise.resolve('test string')),
               })),
               close: jest.fn(),
               query: jest
                 .fn()
-                .mockImplementation((): Promise<string> => Promise.resolve('test string')),
+                .mockImplementation(
+                  (): Promise<string> =>
+                    Promise.resolve("this is not the string you're looking for"),
+                ),
             }),
         ),
       };
@@ -35,7 +39,8 @@ jest.mock('mssql', () => {
 });
 
 describe('Tests database', () => {
-  test('???', async () => {
+  test('should get appropriate results', async () => {
+    // setup test
     // execute method under test
     const context = appContext;
     const config = { server: 'foo' } as IDbConfig;
@@ -57,6 +62,7 @@ describe('Tests database', () => {
     const queryResult: QueryResults = await executeQuery(context, config, query, input);
 
     // assert
+    expect(queryResult).toEqual({ results: 'test string', message: '', success: true });
     console.log(queryResult);
   });
 });
