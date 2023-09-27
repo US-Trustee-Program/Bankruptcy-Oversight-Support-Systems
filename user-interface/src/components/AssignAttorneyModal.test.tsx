@@ -3,10 +3,10 @@ import { BrowserRouter } from 'react-router-dom';
 import AssignAttorneyModal from './AssignAttorneyModal';
 import React from 'react';
 import { Chapter15Type } from '../type-declarations/chapter-15';
-import { ModalRefType } from './uswds/Modal';
-import { ToggleModalButton } from './uswds/ToggleModalButton';
+import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
 import Api from '../models/api';
 import { Attorney } from '../type-declarations/attorneys';
+import { ModalRefType } from './uswds/modal/modal-refs';
 
 describe('Test Assign Attorney Modal Component', () => {
   let susan: Attorney;

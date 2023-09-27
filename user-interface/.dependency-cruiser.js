@@ -127,20 +127,6 @@ module.exports = {
 
     /* rules you might want to tweak for your specific situation: */
     {
-      name: 'not-to-test',
-      comment:
-        "This module depends on code within a folder that should only contain tests. As tests don't " +
-        "implement functionality this is odd. Either you're writing a test outside the test folder " +
-        "or there's something in the test folder that isn't a test.",
-      severity: 'error',
-      from: {
-        pathNot: '^(tests)'
-      },
-      to: {
-        path: '^(tests)'
-      }
-    },
-    {
       name: 'not-to-spec',
       comment:
         'This module depends on a spec (test) file. The sole responsibility of a spec file is to test code. ' +
@@ -369,73 +355,82 @@ module.exports = {
            for details and some examples. If you don't specify a theme
            don't worry - dependency-cruiser will fall back to the default one.
         */
-        // theme: {
-        //   graph: {
+        theme: {
+          graph: {
+            splines: "ortho"
+          },
+          edge: {
+            arrowhead: "vee",
+            arrowsize: "0.5",
+            penwidth: "1.0",
+            color: "black",
+            fontcolor: "black"
+          },
         //     /* use splines: "ortho" for straight lines. Be aware though
         //       graphviz might take a long time calculating ortho(gonal)
         //       routings.
         //    */
         //     splines: "true"
         //   },
-        //   modules: [
-        //     {
-        //       criteria: { matchesFocus: true },
-        //       attributes: {
-        //         fillcolor: "lime",
-        //         penwidth: 2,
-        //       },
+        // modules: [
+        //   {
+        //     criteria: { matchesFocus: true },
+        //     attributes: {
+        //       fillcolor: "lime",
+        //       penwidth: 2,
         //     },
-        //     {
-        //       criteria: { matchesFocus: false },
-        //       attributes: {
-        //         fillcolor: "lightgrey",
-        //       },
+        //   },
+        //   {
+        //     criteria: { matchesFocus: false },
+        //     attributes: {
+        //       fillcolor: "lightgrey",
         //     },
-        //     {
-        //       criteria: { matchesReaches: true },
-        //       attributes: {
-        //         fillcolor: "lime",
-        //         penwidth: 2,
-        //       },
+        //   },
+        //   {
+        //     criteria: { matchesReaches: true },
+        //     attributes: {
+        //       fillcolor: "lime",
+        //       penwidth: 2,
         //     },
-        //     {
-        //       criteria: { matchesReaches: false },
-        //       attributes: {
-        //         fillcolor: "lightgrey",
-        //       },
+        //   },
+        //   {
+        //     criteria: { matchesReaches: false },
+        //     attributes: {
+        //       fillcolor: "lightgrey",
         //     },
-        //     {
-        //       criteria: { source: "^src/model" },
-        //       attributes: { fillcolor: "#ccccff" }
-        //     },
-        //     {
-        //       criteria: { source: "^src/view" },
-        //       attributes: { fillcolor: "#ccffcc" }
-        //     },
-        //   ],
-        //   dependencies: [
-        //     {
-        //       criteria: { "rules[0].severity": "error" },
-        //       attributes: { fontcolor: "red", color: "red" }
-        //     },
-        //     {
-        //       criteria: { "rules[0].severity": "warn" },
-        //       attributes: { fontcolor: "orange", color: "orange" }
-        //     },
-        //     {
-        //       criteria: { "rules[0].severity": "info" },
-        //       attributes: { fontcolor: "blue", color: "blue" }
-        //     },
-        //     {
-        //       criteria: { resolved: "^src/model" },
-        //       attributes: { color: "#0000ff77" }
-        //     },
-        //     {
-        //       criteria: { resolved: "^src/view" },
-        //       attributes: { color: "#00770077" }
-        //     }
-        //   ]
-        // }
+        //   },
+        //   {
+        //     criteria: { source: "^src/model" },
+        //     attributes: { fillcolor: "#ccccff" }
+        //   },
+        //   {
+        //     criteria: { source: "^src/view" },
+        //     attributes: { fillcolor: "#ccffcc" }
+        //   },
+        // ],
+          // dependencies: [
+          //   {
+          //     criteria: { "rules[0].severity": "error" },
+          //     attributes: { fontcolor: "red", color: "red" }
+          //   },
+          //   {
+          //     criteria: { "rules[0].severity": "warn" },
+          //     attributes: { fontcolor: "orange", color: "orange" }
+          //   },
+          //   {
+          //     criteria: { "rules[0].severity": "info" },
+          //     attributes: { fontcolor: "blue", color: "blue" }
+          //   },
+          //   {
+          //     criteria: { resolved: "^src/model" },
+          //     attributes: { color: "#0000ff77" }
+          //   },
+          //   {
+          //     criteria: { resolved: "^src/view" },
+          //     attributes: { color: "#00770077" }
+          //   }
+          // ]
+        }
       },
       archi: {
         /* pattern of modules that can be consolidated in the high level
@@ -460,4 +455,4 @@ module.exports = {
     }
   }
 };
-// generated: dependency-cruiser@12.11.3 on 2023-04-26T20:44:34.114Z
+// generated: dependency-cruiser@12.11.3 on 2023-04-26T20:43:50.393Z
