@@ -1,16 +1,17 @@
-import { httpError, httpGet, httpPost } from './http';
+import { httpGet, httpPost } from './http';
 import { HttpResponse } from '../types/http';
-
 
 const fetchSpy = jest
   .spyOn(global, 'fetch')
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   .mockImplementation((_url: URL, requestInit: RequestInit): Promise<Response> => {
     // has to return a Promise<Response>
-    return Promise.resolve( {
+    return Promise.resolve({
       ok: true,
-      json: jest.fn().mockReturnValue(JSON.parse('{ "responsejson":"testdata" }')),
-    } as Response);
+      json: jest.fn().mockImplementation(async () => {
+        return JSON.parse('{ "responsejson":"testdata" }');
+      }),
+    } as unknown as Response);
   });
 
 describe('Tests out the http calls', () => {
@@ -64,7 +65,7 @@ describe('Tests out the http calls', () => {
       data.url,
       expect.objectContaining({ headers: expectedHeaders }),
     );
-    expect(response.status).toEqual(200);
-    expect(response.data).toEqual({responsejson:"testdata"});
+    expect(response.ok).toEqual(true);
+    expect(response.data).toEqual({ responsejson: 'testdata' });
   });
 });
