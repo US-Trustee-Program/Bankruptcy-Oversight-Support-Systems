@@ -1,12 +1,7 @@
-import { CaseAssignment } from './CaseAssignment';
 import './Home.scss';
 
 function Home() {
-  return (
-    <div className="home">
-      <CaseAssignment />
-    </div>
-  );
+  return <div className="home"></div>;
 }
 
 export default Home;
