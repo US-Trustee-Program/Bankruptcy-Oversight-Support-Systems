@@ -1,7 +1,9 @@
 import { executeQuery } from '../utils/database';
 import { QueryResults, IDbConfig } from '../types/database';
-// import log from '../services/logger.service';
-import { ApplicationContext } from '../types/basic';
+const context = require('azure-function-context-mock');
+import { applicationContextCreator } from '../utils/application-context-creator';
+
+const appContext = applicationContextCreator(context);
 
 type sqlConnect = {
   request: () => void;
@@ -26,22 +28,14 @@ function mssqlMock() {
   };
 }
 
-function logMock() {
-  return class log {
-    public static info = jest.fn();
-    public static error = jest.fn();
-  };
-}
-
 describe('Tests database', () => {
   test('???', async () => {
     // setup test
-    jest.mock('../services/logger.service', logMock);
     jest.mock('mssql', mssqlMock);
 
     // execute method under test
-    const context = {} as ApplicationContext;
-    const config = {} as IDbConfig;
+    const context = appContext;
+    const config = { server: 'foo' } as IDbConfig;
     const query = 'SELECT * FROM foo WHERE data = @param1 AND name=@param2';
     const input = [
       {
