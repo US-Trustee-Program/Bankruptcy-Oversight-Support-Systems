@@ -77,7 +77,6 @@ export async function httpGet(data: {
     },
   });
   const responseJson = await response.json();
-
   const httpResponse: HttpResponse = {
     data: responseJson,
     status: response.status,

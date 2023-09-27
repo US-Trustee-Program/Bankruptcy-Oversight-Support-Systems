@@ -7,11 +7,4 @@ async function getProperty(table: string, item: string) {
 
 const mockData: ObjectKeyValArrayKeyVal = {};
 
-const userMockData = {
-  users: {
-    userList: [{}],
-    initialized: false,
-  },
-};
-
-export { getProperty, mockData, userMockData };
+export { getProperty, mockData };

@@ -1,4 +1,4 @@
-import * as mssql from 'mssql';
+import { ConnectionPool, config } from 'mssql';
 import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
@@ -14,7 +14,7 @@ export async function executeQuery(
   // we should do some sanitization here to eliminate sql injection issues
 
   try {
-    const sqlConnectionPool = new mssql.ConnectionPool(databaseConfig as unknown as mssql.config);
+    const sqlConnectionPool = new ConnectionPool(databaseConfig as unknown as config);
     const sqlConnection = await sqlConnectionPool.connect();
     const sqlRequest = await sqlConnection.request();
 
