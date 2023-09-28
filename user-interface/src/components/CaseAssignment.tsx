@@ -9,6 +9,7 @@ import { ModalRefType } from './uswds/modal/modal-refs';
 import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
 import AttorneysApi from '../models/attorneys-api';
 import { Attorney } from '../type-declarations/attorneys';
+import { getCaseNumber } from '../utils/formatCaseNumber';
 
 const modalId = 'assign-attorney-modal';
 
@@ -105,11 +106,11 @@ export const CaseAssignment = () => {
     } else if (selectedAttorneyList.length > 0) {
       if (bCase) {
         bCase.assignments = selectedAttorneyList;
-        setInTableTransferMode(bCase.caseNumber);
+        setInTableTransferMode(bCase.caseId);
 
         // prepare new unassigned case list table to remove case from unassigned list
         const tempUnassignedCaseList = unassignedCaseList.filter((theCase) => {
-          if (bCase.caseNumber !== (theCase as Chapter15Type).caseNumber) {
+          if (bCase.caseId !== (theCase as Chapter15Type).caseId) {
             return true;
           }
           return false;
@@ -126,7 +127,7 @@ export const CaseAssignment = () => {
 
         const alertMessage = `${selectedAttorneyList
           .map((attorney) => attorney)
-          .join(', ')} assigned to case ${bCase.caseNumber} ${bCase.caseTitle}`;
+          .join(', ')} assigned to case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}`;
         setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
         alertRef.current?.show();
 
@@ -227,7 +228,7 @@ export const CaseAssignment = () => {
                       </button>
                     </th>
                     <th scope="col" role="columnheader">
-                      Assigned Attorney
+                      Assign Attorney
                     </th>
                   </tr>
                 </thead>
@@ -238,7 +239,9 @@ export const CaseAssignment = () => {
                         <tr key={idx}>
                           <td className="case-number">
                             <span className="mobile-title">Case Number:</span>
-                            {theCase.caseNumber}
+                            <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                              {getCaseNumber(theCase.caseId)}
+                            </a>
                           </td>
                           <td className="case-title-column">
                             <span className="mobile-title">Case Title (Debtor):</span>
@@ -331,14 +334,12 @@ export const CaseAssignment = () => {
                         <tr
                           key={idx}
                           className={
-                            theCase.caseNumber === inTableTransferMode
-                              ? 'in-table-transfer-mode'
-                              : ''
+                            theCase.caseId === inTableTransferMode ? 'in-table-transfer-mode' : ''
                           }
                         >
                           <td className="case-number">
                             <span className="mobile-title">Case Number:</span>
-                            {theCase.caseNumber}
+                            {getCaseNumber(theCase.caseId)}
                           </td>
                           <td className="case-title-column">
                             <span className="mobile-title">Case Title (Debtor):</span>

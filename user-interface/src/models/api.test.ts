@@ -1,6 +1,6 @@
 import { ObjectKeyVal } from '../type-declarations/basic';
 import Api from './api';
-import * as httpAdapter from '../components/utils/http.adapter';
+import * as httpAdapter from '../utils/http.adapter';
 import { vi } from 'vitest';
 
 describe('Specific tests for the API model', () => {
