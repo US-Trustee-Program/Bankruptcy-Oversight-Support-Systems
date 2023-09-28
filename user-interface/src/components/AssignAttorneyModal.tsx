@@ -36,7 +36,7 @@ function AssignAttorneyModalComponent(
   const modalHeading = (
     <>
       Choose Trial Attorney to assign to: {props.bCase?.caseTitle},{' '}
-      <span className="case-number">{props.bCase?.caseNumber}</span>
+      <span className="case-number">{props.bCase?.caseId}</span>
     </>
   );
 
@@ -102,7 +102,7 @@ function AssignAttorneyModalComponent(
 
     // send attorney IDs to API
     await Api.post('/case-assignments', {
-      caseId: props.bCase?.caseNumber,
+      caseId: props.bCase?.caseId,
       attorneyList: finalAttorneyList,
       role: 'TrialAttorney',
     })

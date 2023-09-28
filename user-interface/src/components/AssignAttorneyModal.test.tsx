@@ -25,7 +25,7 @@ describe('Test Assign Attorney Modal Component', () => {
 
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
     const bCase: Chapter15Type = {
-      caseNumber: '123',
+      caseId: '123',
       caseTitle: 'Test Case',
       dateFiled: '01/01/2024',
     };
@@ -106,7 +106,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const callback = vi.fn();
 
     const bCase: Chapter15Type = {
-      caseNumber: '123',
+      caseId: '123',
       caseTitle: 'Test Case',
       dateFiled: '01/01/2024',
     };
