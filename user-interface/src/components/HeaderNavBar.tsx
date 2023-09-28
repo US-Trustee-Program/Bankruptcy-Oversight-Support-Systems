@@ -8,7 +8,7 @@ export const HeaderNavBar = () => {
       <header role="banner" className="cams-header usa-header usa-header--basic">
         <div className="usa-banner">
           <img
-            src="doj-logo.png"
+            src="/doj-logo.png"
             alt="U.S. Trustee Program banner"
             className="doj-logo usa-banner__header"
           ></img>

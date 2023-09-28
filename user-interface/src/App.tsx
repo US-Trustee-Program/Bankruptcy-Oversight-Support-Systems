@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './components/Home';
 import NotFound from './components/NotFound';
 import { CaseAssignment } from './components/CaseAssignment';
+import { CaseDetail } from './components/CaseDetail';
 import { HeaderNavBar } from './components/HeaderNavBar';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
@@ -33,6 +34,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />}></Route>
               <Route path="/case-assignment" element={<CaseAssignment />}></Route>
+              <Route path="/case-detail/:caseNumber" element={<CaseDetail />}></Route>
               <Route path="*" element={<NotFound />}></Route>
             </Routes>
           </div>

@@ -1,0 +1,29 @@
+.App {
+  .body {
+    .case-detail {
+      h2 {
+        .case-number {
+          padding-right: 2rem;
+        }
+      }
+      .case-card-list {
+        .case-card {
+          ul {
+            li {
+              padding-left: 0.5rem;
+            }
+          }
+        }
+      }
+      .date-information {
+        .date-list {
+          .usa-list {
+            .date-name {
+              padding-right: 0.5rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}

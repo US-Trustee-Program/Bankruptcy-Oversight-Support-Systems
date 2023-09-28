@@ -1,7 +1,7 @@
 import { ResponseData } from './api';
 
 export interface Chapter15Type {
-  caseNumber: string;
+  caseId: string;
   caseTitle: string;
   dateFiled: string;
   assignments?: string[];
