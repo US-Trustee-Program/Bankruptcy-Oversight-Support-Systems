@@ -1,4 +1,5 @@
 import { ResponseData } from '../type-declarations/api';
+import { Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 import Api from './api';
 
 export default class Chapter15MockApi extends Api {
@@ -84,9 +85,9 @@ export default class Chapter15MockApi extends Api {
     return Promise.resolve(response);
   }
 
-  public static async get(path: string): Promise<ResponseData> {
+  public static async get(path: string): Promise<Chapter15CaseDetailsResponseData> {
     let response: ResponseData;
-    if (path.match(/\\cases\\[\d]+/)) {
+    if (path.match(/\/cases\/[\d-]+/)) {
       response = {
         message: '',
         count: 1,
@@ -104,6 +105,6 @@ export default class Chapter15MockApi extends Api {
       };
     }
 
-    return Promise.resolve(response);
+    return Promise.resolve(response as Chapter15CaseDetailsResponseData);
   }
 }
