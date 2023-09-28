@@ -12,7 +12,7 @@ interface CaseDetailType {
   caseTitle: string;
   dateFiled: string;
   dateClosed: string;
-  assignedStaff: string[];
+  assignedStaff: StaffType[];
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {
@@ -25,4 +25,8 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
     caseDetails: CaseDetailType;
   };
+}
+export interface StaffType {
+  name: string;
+  type: string;
 }
