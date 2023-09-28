@@ -3,9 +3,6 @@
   "logging": {
     "applicationInsights": {
       "enableDependencyTracking": true,
-      "depdendencyTrackingOptions": {
-        "enableSqlCommandTextInstrumentation": true
-      },
       "samplingSettings": {
         "isEnabled": true
       }
