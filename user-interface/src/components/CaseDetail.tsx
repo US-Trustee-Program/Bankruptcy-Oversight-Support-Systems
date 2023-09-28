@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
+import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 
 export const CaseDetail = () => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  const [caseDetail, setCaseDetail] = useState<CaseDetailType>({});
   const caseTitle = 'ABC Company, Inc.';
   const caseNumber = '34-56789';
   interface CaseDateType {
@@ -46,7 +48,8 @@ export const CaseDetail = () => {
 
   const fetchCaseDetail = async () => {
     setIsLoading(true);
-    api.get(`/cases/${caseId}`, {}).then(() => {
+    api.get(`/cases/${caseId}`, {}).then((data: Chapter15CaseDetailsResponseData) => {
+      setCaseDetail(data.body?.caseDetails as CaseDetailType);
       return;
     });
   };
