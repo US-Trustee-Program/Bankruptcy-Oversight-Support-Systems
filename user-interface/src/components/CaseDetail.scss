@@ -8,17 +8,11 @@
       }
       .case-card-list {
         .case-card {
-          ul {
+          ul.usa-list {
             li {
               padding-left: 0.5rem;
             }
-          }
-        }
-      }
-      .date-information {
-        .date-list {
-          .usa-list {
-            .date-name {
+            .case-detail-item-name {
               padding-right: 0.5rem;
             }
           }
