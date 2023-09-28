@@ -3,15 +3,17 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
-import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
+import {
+  CaseDetailType,
+  Chapter15CaseDetailsResponseData,
+  StaffType,
+} from '../type-declarations/chapter-15';
 
 export const CaseDetail = () => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseDetail, setCaseDetail] = useState<CaseDetailType>({});
-  const caseTitle = 'ABC Company, Inc.';
-  const caseNumber = '34-56789';
   interface CaseDateType {
     name: string;
     tooltip: string;
@@ -48,9 +50,9 @@ export const CaseDetail = () => {
 
   const fetchCaseDetail = async () => {
     setIsLoading(true);
-    api.get(`/cases/${caseId}`, {}).then((data: Chapter15CaseDetailsResponseData) => {
-      setCaseDetail(data.body?.caseDetails as CaseDetailType);
-      return;
+    api.get(`/cases/${caseId}`, {}).then((data) => {
+      const response = data as Chapter15CaseDetailsResponseData;
+      setCaseDetail(response.body?.caseDetails);
     });
   };
 
@@ -63,10 +65,10 @@ export const CaseDetail = () => {
   return (
     <>
       <div className="case-detail">
-        <h1>{caseTitle}</h1>
+        <h1>{caseDetail.caseTitle}</h1>
         <h2>
           <span className="case-number" title="Case Number">
-            {caseNumber}
+            {caseDetail.caseId}
           </span>
         </h2>
 
@@ -75,14 +77,14 @@ export const CaseDetail = () => {
             <h3>Dates</h3>
             <div className="date-list">
               <ul className="usa-list usa-list--unstyled">
-                {(caseDate as Array<CaseDateType>).map((dateItem: CaseDateType, idx: number) => {
-                  return (
-                    <li key={idx} title={dateItem.tooltip}>
-                      <span className="date-name">{dateItem.name}:</span>
-                      <span className="date-value">{dateItem.date}</span>
-                    </li>
-                  );
-                })}
+                <li>
+                  <span className="date-name">Filed:</span>
+                  <span className="date-value">{caseDetail.dateFiled}</span>
+                </li>
+                <li>
+                  <span className="date-name">Closed:</span>
+                  <span className="date-value">{caseDetail.dateClosed}</span>
+                </li>
               </ul>
             </div>
           </div>
@@ -90,12 +92,12 @@ export const CaseDetail = () => {
             <h3>Assigned Staff</h3>
             <div className="assigned-staff-list">
               <ul className="usa-list usa-list--unstyled">
-                {(assignedStaff as Array<AssignedStaffType>).map(
+                {(caseDetail.assignedStaff as Array<StaffType>).map(
                   (staff: AssignedStaffType, idx: number) => {
                     return (
                       <li key={idx}>
-                        <span className="date-name">{staff.name}:</span>
-                        <span className="date-value">{staff.type}</span>
+                        <span>{staff.name}:</span>
+                        <span>{staff.type}</span>
                       </li>
                     );
                   },
