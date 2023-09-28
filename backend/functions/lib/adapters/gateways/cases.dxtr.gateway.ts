@@ -25,6 +25,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
     const MANHATTAN_GROUP_DESIGNATOR = 'NY';
     const query = `select TOP 20
+        CS_DIV+'-'+CASE_ID as caseId,
         CASE_ID as caseNumber,
         CS_SHORT_TITLE as caseTitle,
         FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled

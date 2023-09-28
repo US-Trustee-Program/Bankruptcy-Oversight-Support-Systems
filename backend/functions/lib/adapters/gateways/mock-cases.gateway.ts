@@ -40,6 +40,7 @@ export class MockCasesGateway implements CasesInterface {
 
     oldCases.push(
       {
+        caseId: '44449',
         caseNumber: '44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: getCamsDateStringFromDate(
@@ -48,6 +49,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
       {
+        caseId: '1122',
         caseNumber: '1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: getCamsDateStringFromDate(
@@ -56,6 +58,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: ['Mr. Jones', 'Diana', 'Joe'],
       },
       {
+        caseId: '1166',
         caseNumber: '1166',
         caseTitle: 'Heather Anne Real',
         dateFiled: getCamsDateStringFromDate(
@@ -71,6 +74,7 @@ export class MockCasesGateway implements CasesInterface {
 
     newCases.push(
       {
+        caseId: '1167',
         caseNumber: '1167',
         caseTitle: 'Heather Anne Real',
         dateFiled: getCamsDateStringFromDate(
@@ -79,6 +83,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
       {
+        caseId: '1175',
         caseNumber: '1175',
         caseTitle: 'James P. Tennor',
         dateFiled: getCamsDateStringFromDate(
@@ -87,6 +92,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: ['Daisy', 'Roger', 'Frank'],
       },
       {
+        caseId: '1176',
         caseNumber: '1176',
         caseTitle: 'Tommy Testformiddlena tennor',
         dateFiled: getCamsDateStringFromDate(
