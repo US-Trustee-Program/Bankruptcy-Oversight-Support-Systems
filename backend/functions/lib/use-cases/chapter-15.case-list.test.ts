@@ -58,12 +58,14 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList = new Chapter15CaseList();
     const caseList: Chapter15CaseInterface[] = [
       {
+        caseId: '001-04-44449',
         caseNumber: '04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: '2005-05-04',
         assignments: [],
       },
       {
+        caseId: '001-06-1122',
         caseNumber: '06-1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: '2006-03-27',

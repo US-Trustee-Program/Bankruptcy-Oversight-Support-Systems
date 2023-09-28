@@ -27,10 +27,10 @@ export class Chapter15CaseList {
         startingMonth: startingMonth || undefined,
       });
       let assignment: CaseAttorneyAssignment[];
-      for (let i = 0; i < cases.length; i++) {
-        assignment = await caseAssignment.findAssignmentsByCaseId(cases[i].caseNumber);
-        cases[i].assignments = assignment.map((ass) => {
-          return ass.name;
+      for (const c of cases) {
+        assignment = await caseAssignment.findAssignmentsByCaseId(c.caseNumber);
+        c.assignments = assignment.map((a) => {
+          return a.name;
         });
       }
 
@@ -46,8 +46,7 @@ export class Chapter15CaseList {
       const message = (e as Error).message;
       return {
         success: false,
-        message:
-          message && message.length ? message : 'Unknown Error received while retrieving cases',
+        message: message || 'Unknown Error received while retrieving cases',
         count: 0,
         body: {
           caseList: [],
