@@ -24,7 +24,10 @@ function App() {
 
   return (
     <AppInsightsErrorBoundary
-      onError={() => <h1>Something Went Wrong</h1>}
+      onError={(e) => {
+        console.log(e);
+        return <h1>Something Went Wrong</h1>;
+      }}
       appInsights={reactPlugin}
     >
       <div className={appClasses}>
@@ -34,7 +37,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />}></Route>
               <Route path="/case-assignment" element={<CaseAssignment />}></Route>
-              <Route path="/case-detail/:caseNumber" element={<CaseDetail />}></Route>
+              <Route path="/case-detail/:caseId" element={<CaseDetail />}></Route>
               <Route path="*" element={<NotFound />}></Route>
             </Routes>
           </div>

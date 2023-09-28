@@ -48,10 +48,31 @@ export default class Chapter15MockApi extends Api {
 
   static caseDetails = {
     caseId: '101-23-12345',
-    caseTitle: 'Marilyn Lang and Rudy Bryant',
-    dateFiled: '01-04-2023',
-    dateClosed: '01-08-2023',
-    assignedStaff: ['John Lennon', 'Jimmy Hendrix', 'Bob Marley', 'Buddy Rich'],
+    caseTitle: 'The Beach Boys',
+    dateFiled: '01-04-1962',
+    dateClosed: '01-08-1963',
+    assignedStaff: [
+      {
+        name: 'Brian Wilson',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Carl Wilson',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Dennis Wilson',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Mike Love',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Al Jardine',
+        type: 'Trial Attorney',
+      },
+    ],
   };
 
   public static async list(path: string): Promise<ResponseData> {
