@@ -29,7 +29,7 @@ export const CaseDetail = () => {
     if (!isLoading) {
       fetchCaseDetail();
     }
-  }, []);
+  }, [caseDetail]);
 
   if (isLoading) {
     return (
@@ -46,53 +46,58 @@ export const CaseDetail = () => {
   } else {
     return (
       <>
-        <div className="case-detail">
-          <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
-          <h2>
-            <span className="case-number" title="Case Number">
-              {caseDetail.caseId}
-            </span>
-          </h2>
+        {!!caseDetail && (
+          <div className="case-detail">
+            <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
+            <h2>
+              <span className="case-number" title="Case Number">
+                {caseDetail.caseId}
+              </span>
+            </h2>
 
-          <div className="case-card-list">
-            <div className="date-information padding-bottom-4 case-card">
-              <h3>Dates</h3>
-              <div className="date-list">
-                <ul className="usa-list usa-list--unstyled">
-                  <li>
-                    <span className="case-detail-item-name">Filed:</span>
-                    <span data-testid="case-detail-filed-date" className="case-detail-item-value">
-                      {caseDetail.dateFiled}
-                    </span>
-                  </li>
-                  <li>
-                    <span className="case-detail-item-name">Closed by court:</span>
-                    <span data-testid="case-detail-closed-date" className="case-detail-item-value">
-                      {caseDetail.dateClosed}
-                    </span>
-                  </li>
-                </ul>
+            <div className="case-card-list">
+              <div className="date-information padding-bottom-4 case-card">
+                <h3>Dates</h3>
+                <div className="date-list">
+                  <ul className="usa-list usa-list--unstyled">
+                    <li>
+                      <span className="case-detail-item-name">Filed:</span>
+                      <span data-testid="case-detail-filed-date" className="case-detail-item-value">
+                        {caseDetail.dateFiled}
+                      </span>
+                    </li>
+                    <li>
+                      <span className="case-detail-item-name">Closed by court:</span>
+                      <span
+                        data-testid="case-detail-closed-date"
+                        className="case-detail-item-value"
+                      >
+                        {caseDetail.dateClosed}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
               </div>
-            </div>
-            <div className="assigned-staff-information padding-bottom-4 case-card">
-              <h3>Assigned Staff</h3>
-              <div className="assigned-staff-list">
-                <ul className="usa-list usa-list--unstyled">
-                  {(caseDetail.assignedStaff as Array<StaffType>)?.map(
-                    (staff: StaffType, idx: number) => {
-                      return (
-                        <li key={idx}>
-                          <span className="case-detail-item-name">{staff.name}:</span>
-                          <span className="case-detail-item-value">{staff.type}</span>
-                        </li>
-                      );
-                    },
-                  )}
-                </ul>
+              <div className="assigned-staff-information padding-bottom-4 case-card">
+                <h3>Assigned Staff</h3>
+                <div className="assigned-staff-list">
+                  <ul className="usa-list usa-list--unstyled">
+                    {(caseDetail.assignedStaff as Array<StaffType>)?.map(
+                      (staff: StaffType, idx: number) => {
+                        return (
+                          <li key={idx}>
+                            <span className="case-detail-item-name">{staff.name}:</span>
+                            <span className="case-detail-item-value">{staff.type}</span>
+                          </li>
+                        );
+                      },
+                    )}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </>
     );
   }
