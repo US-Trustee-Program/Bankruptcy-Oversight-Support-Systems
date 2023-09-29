@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from '../store/store';
@@ -61,9 +61,11 @@ describe('Case Detail screen tests', () => {
       </BrowserRouter>,
     );
     await waitFor(async () => {
-      const subtitles = document.querySelectorAll('.case-detail-item-value');
-      const dateFiled = subtitles[0];
-      const closeDate = subtitles[1];
+      const dateFiled = screen.getByTestId('case-detail-filed-date');
+      const dateClosed = screen.getByTestId('case-detail-closed-date');
+
+      expect(dateFiled.innerHTML).toEqual('01-04-1962');
+      expect(dateClosed.innerHTML).toEqual('01-08-1963');
     });
   });
 });

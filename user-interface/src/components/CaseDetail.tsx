@@ -61,11 +61,15 @@ export const CaseDetail = () => {
                 <ul className="usa-list usa-list--unstyled">
                   <li>
                     <span className="case-detail-item-name">Filed:</span>
-                    <span className="case-detail-item-value">{caseDetail.dateFiled}</span>
+                    <span data-testid="case-detail-filed-date" className="case-detail-item-value">
+                      {caseDetail.dateFiled}
+                    </span>
                   </li>
                   <li>
                     <span className="case-detail-item-name">Closed by court:</span>
-                    <span className="case-detail-item-value">{caseDetail.dateClosed}</span>
+                    <span data-testid="case-detail-closed-date" className="case-detail-item-value">
+                      {caseDetail.dateClosed}
+                    </span>
                   </li>
                 </ul>
               </div>
