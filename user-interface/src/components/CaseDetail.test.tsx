@@ -3,7 +3,6 @@ import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from '../store/store';
-import { CaseAssignment } from './CaseAssignment';
 import { CaseDetail } from './CaseDetail';
 
 describe('Case Detail screen tests', () => {
@@ -43,6 +42,17 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should display dates for the case', async () => {
+    vi.mock('react-router-dom', async () => {
+      const actual = (await vi.importActual('react-router-dom')) as object;
+      return {
+        ...actual,
+        useSearchParams: () => {
+          return {
+            caseId: '101-23-12345',
+          };
+        },
+      };
+    });
     render(
       <BrowserRouter>
         <Provider store={store}>
