@@ -17,19 +17,19 @@ const attorneyJoeNobel = 'Joe Nobel';
 const assignments: CaseAttorneyAssignment[] = [
   {
     id: '1',
-    caseId: '23-01176',
+    caseId: '081-23-01176',
     name: attorneyJaneSmith,
     role: CaseAssignmentRole.TrialAttorney,
   },
   {
     id: '2',
-    caseId: '23-01176',
+    caseId: '081-23-01176',
     name: attorneyJoeNobel,
     role: CaseAssignmentRole.TrialAttorney,
   },
 ];
 
-const caseIdWithAssignments = '1176';
+const caseIdWithAssignments = '081-23-01176';
 jest.mock('./case.assignment', () => {
   return {
     CaseAssignment: jest.fn().mockImplementation(() => {
