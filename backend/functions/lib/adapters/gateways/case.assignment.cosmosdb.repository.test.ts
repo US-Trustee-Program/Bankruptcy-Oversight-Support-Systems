@@ -18,14 +18,14 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should create two assignments and find both of them', async () => {
-    const caseNumber = randomUUID();
+    const caseId = randomUUID();
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumber,
+      caseId,
       'Susan Arbeit',
       trialAttorneyRole,
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumber,
+      caseId,
       'Jeffery McCaslin',
       trialAttorneyRole,
     );
@@ -36,7 +36,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignmentId1).toBeTruthy();
     expect(assignmentId2).toBeTruthy();
 
-    const actualAssignments = await repository.findAssignmentsByCaseId(caseNumber);
+    const actualAssignments = await repository.findAssignmentsByCaseId(caseId);
 
     expect(actualAssignments.length).toEqual(2);
 
