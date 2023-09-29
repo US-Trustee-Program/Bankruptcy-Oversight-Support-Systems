@@ -5,6 +5,9 @@ import { Provider } from 'react-redux';
 import { store } from '../store/store';
 import { CaseDetail } from './CaseDetail';
 
+const sleep = (milliseconds: number) =>
+  new Promise((callback) => setTimeout(callback, milliseconds));
+
 describe('Case Detail screen tests', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_PA11Y', 'true');
@@ -15,6 +18,7 @@ describe('Case Detail screen tests', () => {
       return {
         default: {
           get: async () => {
+            await sleep(1000);
             return {
               caseId: '101-23-12345',
               caseTitle: 'The Beach Boys',
@@ -62,17 +66,19 @@ describe('Case Detail screen tests', () => {
     );
     await waitFor(
       async () => {
-        const title = screen.getByTestId('case-detail-heading');
-        expect(title).toEqual('The Beach Boys');
-        /*
-        const dateFiled = screen.getByTestId('case-detail-filed-date');
-        const dateClosed = screen.getByTestId('case-detail-closed-date');
-
-        expect(dateFiled.innerHTML).toEqual('01-04-1962');
-        expect(dateClosed.innerHTML).toEqual('01-08-1963');
-        */
+        const loadingText = screen.getByTestId('loading-indicator');
+        if (loadingText) throw Error('is still loading');
       },
       { timeout: 10000 },
     );
+    const title = screen.getByTestId('case-detail-heading');
+    expect(title).toEqual('The Beach Boys');
+    /*
+    const dateFiled = screen.getByTestId('case-detail-filed-date');
+    const dateClosed = screen.getByTestId('case-detail-closed-date');
+
+    expect(dateFiled.innerHTML).toEqual('01-04-1962');
+    expect(dateClosed.innerHTML).toEqual('01-08-1963');
+    */
   }, 20000);
 });

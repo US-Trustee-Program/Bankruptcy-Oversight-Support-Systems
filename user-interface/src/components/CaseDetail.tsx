@@ -13,7 +13,7 @@ export const CaseDetail = () => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  const [caseDetail, setCaseDetail] = useState<CaseDetailType>({} as CaseDetailType);
+  const [caseDetail, setCaseDetail] = useState<CaseDetailType>();
 
   const fetchCaseDetail = async () => {
     setIsLoading(true);
@@ -46,7 +46,7 @@ export const CaseDetail = () => {
   } else {
     return (
       <>
-        {!!caseDetail && (
+        {caseDetail && (
           <div className="case-detail">
             <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
             <h2>
