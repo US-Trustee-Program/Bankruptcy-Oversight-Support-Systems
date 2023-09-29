@@ -52,15 +52,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should find only assignments for the requested case', async () => {
-    const caseNumberOne = randomUUID();
-    const caseNumberTwo = randomUUID();
+    const caseIdOne = randomUUID();
+    const caseIdTwo = randomUUID();
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberOne,
+      caseIdOne,
       'Susan Arbeit',
       trialAttorneyRole,
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberTwo,
+      caseIdTwo,
       'Jeffery McCaslin',
       trialAttorneyRole,
     );
@@ -68,7 +68,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
     const assignmentId2 = await repository.createAssignment(testCaseAttorneyAssignment2);
 
-    const actualAssignmentsOne = await repository.findAssignmentsByCaseId(caseNumberOne);
+    const actualAssignmentsOne = await repository.findAssignmentsByCaseId(caseIdOne);
 
     expect(actualAssignmentsOne.length).toEqual(1);
 
@@ -80,7 +80,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2).toBeFalsy();
 
-    const actualAssignmentsTwo = await repository.findAssignmentsByCaseId(caseNumberTwo);
+    const actualAssignmentsTwo = await repository.findAssignmentsByCaseId(caseIdTwo);
 
     expect(actualAssignmentsOne.length).toEqual(1);
 
@@ -140,38 +140,38 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should find all assignments for a given attorney', async () => {
-    const caseNumberOne = randomUUID();
+    const caseIdOne = randomUUID();
     const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberOne,
+      caseIdOne,
       perryMason,
       trialAttorneyRole,
     );
     const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberOne,
+      caseIdOne,
       benMatlock,
       trialAttorneyRole,
     );
 
-    const caseNumberTwo = randomUUID();
+    const caseIdTwo = randomUUID();
     const testCaseAttorneyAssignment3: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberTwo,
+      caseIdTwo,
       clairHuxtable,
       trialAttorneyRole,
     );
     const testCaseAttorneyAssignment4: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberTwo,
+      caseIdTwo,
       perryMason,
       trialAttorneyRole,
     );
 
-    const caseNumberThree = randomUUID();
+    const caseIdThree = randomUUID();
     const testCaseAttorneyAssignment5: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberThree,
+      caseIdThree,
       clairHuxtable,
       trialAttorneyRole,
     );
     const testCaseAttorneyAssignment6: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseNumberThree,
+      caseIdThree,
       benMatlock,
       trialAttorneyRole,
     );
@@ -191,12 +191,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(perryAssignments).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          caseId: caseNumberOne,
+          caseId: caseIdOne,
           name: perryMason,
           role: CaseAssignmentRole.TrialAttorney,
         }),
         expect.objectContaining({
-          caseId: caseNumberTwo,
+          caseId: caseIdTwo,
           name: perryMason,
           role: CaseAssignmentRole.TrialAttorney,
         }),
@@ -213,12 +213,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(clairAssignments).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          caseId: caseNumberTwo,
+          caseId: caseIdTwo,
           name: clairHuxtable,
           role: CaseAssignmentRole.TrialAttorney,
         }),
         expect.objectContaining({
-          caseId: caseNumberThree,
+          caseId: caseIdThree,
           name: clairHuxtable,
           role: CaseAssignmentRole.TrialAttorney,
         }),
@@ -235,12 +235,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(benAssignments).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          caseId: caseNumberOne,
+          caseId: caseIdOne,
           name: benMatlock,
           role: CaseAssignmentRole.TrialAttorney,
         }),
         expect.objectContaining({
-          caseId: caseNumberThree,
+          caseId: caseIdThree,
           name: benMatlock,
           role: CaseAssignmentRole.TrialAttorney,
         }),

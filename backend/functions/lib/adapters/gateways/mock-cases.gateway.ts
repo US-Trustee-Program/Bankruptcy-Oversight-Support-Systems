@@ -41,7 +41,6 @@ export class MockCasesGateway implements CasesInterface {
     oldCases.push(
       {
         caseId: '44449',
-        caseNumber: '44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
@@ -50,7 +49,6 @@ export class MockCasesGateway implements CasesInterface {
       },
       {
         caseId: '1122',
-        caseNumber: '1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
@@ -59,7 +57,6 @@ export class MockCasesGateway implements CasesInterface {
       },
       {
         caseId: '1166',
-        caseNumber: '1166',
         caseTitle: 'Heather Anne Real',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
@@ -75,7 +72,6 @@ export class MockCasesGateway implements CasesInterface {
     newCases.push(
       {
         caseId: '1167',
-        caseNumber: '1167',
         caseTitle: 'Heather Anne Real',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
@@ -84,7 +80,6 @@ export class MockCasesGateway implements CasesInterface {
       },
       {
         caseId: '1175',
-        caseNumber: '1175',
         caseTitle: 'James P. Tennor',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
@@ -93,7 +88,6 @@ export class MockCasesGateway implements CasesInterface {
       },
       {
         caseId: '1176',
-        caseNumber: '1176',
         caseTitle: 'Tommy Testformiddlena tennor',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
