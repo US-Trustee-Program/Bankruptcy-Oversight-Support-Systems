@@ -29,7 +29,7 @@ export const CaseDetail = () => {
     if (!isLoading) {
       fetchCaseDetail();
     }
-  }, [caseDetail]);
+  }, [caseDetail !== undefined]);
 
   if (isLoading) {
     return (
@@ -85,7 +85,7 @@ export const CaseDetail = () => {
                     {(caseDetail.assignedStaff as Array<StaffType>)?.map(
                       (staff: StaffType, idx: number) => {
                         return (
-                          <li key={idx}>
+                          <li key={idx} className="individual-assignee">
                             <span className="case-detail-item-name">{staff.name}:</span>
                             <span className="case-detail-item-value">{staff.type}</span>
                           </li>
