@@ -2,6 +2,10 @@
   "version": "2.0",
   "logging": {
     "applicationInsights": {
+      "enableDependencyTracking": true,
+      "dependencyTrackingOptions": {
+        "enableSqlCommandTextInstrumentation": true
+      },
       "samplingSettings": {
         "isEnabled": true
       }
@@ -9,9 +13,9 @@
     "fileLoggingMode": "always",
     "logLevel": {
       "default": "Debug",
-      "Host.Results": "None",
-      "Function": "None",
-      "Worker": "None"
+      "Host.Results": "Information",
+      "Function": "Information",
+      "Worker": "Information"
     }
   },
   "extensionBundle": {
