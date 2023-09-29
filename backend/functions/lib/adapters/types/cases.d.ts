@@ -15,7 +15,6 @@ export interface CaseListDbResult {
 
 export interface Chapter15CaseInterface extends ObjectKeyVal {
   caseId: string;
-  caseNumber: string;
   caseTitle: string;
   dateFiled: string;
   assignments: string[];
