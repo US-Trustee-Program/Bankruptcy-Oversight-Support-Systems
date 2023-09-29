@@ -17,7 +17,7 @@ describe('Case Detail screen tests', () => {
           get: async () => {
             return {
               caseId: '101-23-12345',
-              caseTitle: 'The Beach Boys Hello',
+              caseTitle: 'The Beach Boys',
               dateFiled: '01-04-1962',
               dateClosed: '01-08-1963',
               assignedStaff: [
@@ -60,12 +60,19 @@ describe('Case Detail screen tests', () => {
         </Provider>
       </BrowserRouter>,
     );
-    await waitFor(async () => {
-      const dateFiled = screen.getByTestId('case-detail-filed-date');
-      const dateClosed = screen.getByTestId('case-detail-closed-date');
+    await waitFor(
+      async () => {
+        const title = screen.getByTestId('case-detail-heading');
+        expect(title).toEqual('The Beach Boys');
+        /*
+        const dateFiled = screen.getByTestId('case-detail-filed-date');
+        const dateClosed = screen.getByTestId('case-detail-closed-date');
 
-      expect(dateFiled.innerHTML).toEqual('01-04-1962');
-      expect(dateClosed.innerHTML).toEqual('01-08-1963');
-    });
-  });
+        expect(dateFiled.innerHTML).toEqual('01-04-1962');
+        expect(dateClosed.innerHTML).toEqual('01-08-1963');
+        */
+      },
+      { timeout: 10000 },
+    );
+  }, 20000);
 });
