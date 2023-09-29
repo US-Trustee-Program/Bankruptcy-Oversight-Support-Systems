@@ -40,7 +40,7 @@ export class MockCasesGateway implements CasesInterface {
 
     oldCases.push(
       {
-        caseId: '44449',
+        caseId: '081-19-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
@@ -48,7 +48,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
       {
-        caseId: '1122',
+        caseId: '081-23-01122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
@@ -56,7 +56,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: ['Mr. Jones', 'Diana', 'Joe'],
       },
       {
-        caseId: '1166',
+        caseId: '081-13-01166',
         caseTitle: 'Heather Anne Real',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
@@ -71,7 +71,7 @@ export class MockCasesGateway implements CasesInterface {
 
     newCases.push(
       {
-        caseId: '1167',
+        caseId: '081-23-01167',
         caseTitle: 'Heather Anne Real',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
@@ -79,7 +79,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
       {
-        caseId: '1175',
+        caseId: '081-23-01175',
         caseTitle: 'James P. Tennor',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
@@ -87,7 +87,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: ['Daisy', 'Roger', 'Frank'],
       },
       {
-        caseId: '1176',
+        caseId: '081-23-01176',
         caseTitle: 'Tommy Testformiddlena tennor',
         dateFiled: getCamsDateStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
