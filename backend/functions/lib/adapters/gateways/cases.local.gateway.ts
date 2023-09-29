@@ -31,4 +31,13 @@ export class CasesLocalGateway implements CasesInterface {
 
     return cases;
   };
+
+  async getChapter15Case(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    context: ApplicationContext,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    caseId: string,
+  ): Promise<Chapter15CaseInterface> {
+    throw new Error('not implemented');
+  }
 }

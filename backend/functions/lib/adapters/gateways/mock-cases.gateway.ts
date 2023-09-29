@@ -28,6 +28,12 @@ export class MockCasesGateway implements CasesInterface {
     return Promise.resolve(filteredCases);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getChapter15Case(context: Context, caseId: string): Promise<Chapter15CaseInterface> {
+    // const bCase = this.chapter15CaseList.filter((aCase) => )
+    throw new Error('not implemented');
+  }
+
   private subtractMonths(date) {
     date.setMonth(date.getMonth() + this.startingMonth);
     return date;
