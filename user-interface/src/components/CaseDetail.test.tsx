@@ -9,6 +9,9 @@ const sleep = (milliseconds: number) =>
   new Promise((callback) => setTimeout(callback, milliseconds));
 
 const caseId = '101-23-12345';
+const brianWilsonName = 'Brian Wilson';
+const carlWilsonName = 'Carl Wilson';
+const trialAttorneyRole = 'Trial Attorney';
 describe('Case Detail screen tests', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_PA11Y', 'true');
@@ -31,12 +34,12 @@ describe('Case Detail screen tests', () => {
                   dateClosed: '01-08-1963',
                   assignedStaff: [
                     {
-                      name: 'Brian Wilson',
-                      type: 'Trial Attorney',
+                      name: brianWilsonName,
+                      type: trialAttorneyRole,
                     },
                     {
-                      name: 'Carl Wilson',
-                      type: 'Trial Attorney',
+                      name: carlWilsonName,
+                      type: trialAttorneyRole,
                     },
                   ],
                 },
@@ -87,10 +90,19 @@ describe('Case Detail screen tests', () => {
         expect(dateFiled.innerHTML).toEqual('01-04-1962');
         expect(dateClosed.innerHTML).toEqual('01-08-1963');
 
-        /*const assignees = document.querySelectorAll('.assigned-staff-list .individual-assignee');
-        assignees?.forEach((assignee) => {
-
-        });*/
+        const assigneeMap = new Map<string, string>();
+        const assigneeElements = document.querySelectorAll(
+          '.assigned-staff-list .individual-assignee',
+        );
+        assigneeElements?.forEach((assignee) => {
+          const name = assignee.querySelector('.assignee-name')?.innerHTML;
+          const role = assignee.querySelector('.assignee-role')?.innerHTML;
+          if (name && role) {
+            assigneeMap.set(name, role);
+          }
+        });
+        expect(assigneeMap.get(`${brianWilsonName}:`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${carlWilsonName}:`)).toEqual(trialAttorneyRole);
       },
       { timeout: 5000 },
     );

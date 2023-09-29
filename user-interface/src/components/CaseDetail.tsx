@@ -19,7 +19,6 @@ export const CaseDetail = () => {
     setIsLoading(true);
     api.get(`/cases/${caseId}`, {}).then((data) => {
       const response = data as Chapter15CaseDetailsResponseData;
-      console.log(response);
       setCaseDetail(response.body?.caseDetails);
       setIsLoading(false);
     });
@@ -86,8 +85,8 @@ export const CaseDetail = () => {
                       (staff: StaffType, idx: number) => {
                         return (
                           <li key={idx} className="individual-assignee">
-                            <span className="case-detail-item-name">{staff.name}:</span>
-                            <span className="case-detail-item-value">{staff.type}</span>
+                            <span className="assignee-name">{staff.name}:</span>
+                            <span className="assignee-role">{staff.type}</span>
                           </li>
                         );
                       },
