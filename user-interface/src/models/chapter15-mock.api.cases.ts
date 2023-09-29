@@ -87,13 +87,6 @@ export default class Chapter15MockApi extends Api {
           },
         };
         break;
-      case '/cases/.+':
-        response = {
-          message: '',
-          count: Chapter15MockApi.caseList.length,
-          body: {},
-        };
-        break;
       default:
         response = {
           message: 'not found',
