@@ -15,7 +15,8 @@
         "click element [data-testid='toggle-modal-button-0']"
       ],
       "timeout": 20000
-    }
+    },
+    "http://localhost:3000/case-detail/101-23-44461"
   ],
   "standard": "WCAG2AA"
 }
