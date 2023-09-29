@@ -60,9 +60,10 @@ describe('Case Detail screen tests', () => {
         </Provider>
       </BrowserRouter>,
     );
-    /*
     await waitFor(async () => {
-      const
-    });*/
+      const subtitles = document.querySelectorAll('.case-detail-item-value');
+      const dateFiled = subtitles[0];
+      const closeDate = subtitles[1];
+    });
   });
 });
