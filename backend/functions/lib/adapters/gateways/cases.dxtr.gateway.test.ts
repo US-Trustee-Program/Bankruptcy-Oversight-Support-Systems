@@ -19,17 +19,17 @@ describe('Test DXTR Gateway', () => {
   test('should call executeQuery with the default starting month and return expected results', async () => {
     const cases = [
       {
-        caseNumber: 'case-one',
+        caseId: 'case-one',
         caseTitle: 'Debtor One',
         dateFiled: '2018-11-16T00:00:00.000Z',
       },
       {
-        caseNumber: 'case-two',
+        caseId: 'case-two',
         caseTitle: 'Debtor Two',
         dateFiled: '2019-04-18T00:00:00.000Z',
       },
       {
-        caseNumber: 'case-three',
+        caseId: 'case-three',
         caseTitle: 'Debtor Three',
         dateFiled: '2019-04-18T00:00:00.000Z',
       },
@@ -64,7 +64,7 @@ describe('Test DXTR Gateway', () => {
   test('should call executeQuery with the right date when a startingMonth option is passed', async () => {
     const cases = [
       {
-        caseNumber: 'case-one',
+        caseId: 'case-one',
         caseTitle: 'Debtor One',
         dateFiled: '2018-11-16T00:00:00.000Z',
       },
