@@ -13,6 +13,12 @@ export interface CaseListDbResult {
   body: CaseListRecordSet;
 }
 
+export interface CaseDetailsDbResult {
+  success: boolean;
+  message: string;
+  body: Chapter15CaseInterface;
+}
+
 export interface Chapter15CaseInterface extends ObjectKeyVal {
   caseId: string;
   caseTitle: string;

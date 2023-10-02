@@ -7,12 +7,35 @@ jest.mock('../lib/adapters/controllers/cases.controller.ts', () => {
     CasesController: jest.fn().mockImplementation(() => {
       return {
         getCaseDetails: () => {
-          console.log('==== called the getCaseDetails mock');
-          return {};
+          return {
+            message: '',
+            success: true,
+            body: {
+              caseDetails: {
+                caseId: '111-11-1111',
+                caseTitle: '',
+                dateFiled: '',
+                dateClosed: '',
+              },
+            },
+          };
         },
         getCaseList: () => {
-          console.log('==== called the getCaseList mock');
-          return {};
+          return {
+            success: true,
+            message: '',
+            count: 2,
+            body: {
+              caseList: [
+                {
+                  caseId: '081-11-06541',
+                  caseTitle: 'Crawford, Turner and Garrett',
+                  dateFiled: '2011-05-20',
+                },
+                { caseId: '081-14-03544', caseTitle: 'Ali-Cruz', dateFiled: '2014-04-23' },
+              ],
+            },
+          };
         },
       };
     }),
@@ -40,6 +63,7 @@ describe('Standard case list tests without class mocks', () => {
 
     expect(context.res.body).toEqual(responseBody);
   });
+
   test('Should return 1 case when called with a caseId', async () => {
     const caseId = '081-11-06541';
     const request = {
@@ -51,7 +75,6 @@ describe('Standard case list tests without class mocks', () => {
     const expectedResponseBody = {
       success: true,
       message: '',
-      count: 0,
       body: {
         caseDetails: {
           caseId: '111-11-1111',
@@ -62,11 +85,36 @@ describe('Standard case list tests without class mocks', () => {
       },
     };
 
-    console.log(expectedResponseBody);
-
     await httpTrigger(context, request);
-    //console.log(context.res.body);
 
     expect(expectedResponseBody).toEqual(context.res.body);
+  });
+
+  test('should return an array of cases when called without a caseId', async () => {
+    const request = {
+      query: {
+        chapter: '15',
+      },
+    };
+
+    const expectedResponseBody = {
+      success: true,
+      message: '',
+      count: 2,
+      body: {
+        caseList: [
+          {
+            caseId: '081-11-06541',
+            caseTitle: 'Crawford, Turner and Garrett',
+            dateFiled: '2011-05-20',
+          },
+          { caseId: '081-14-03544', caseTitle: 'Ali-Cruz', dateFiled: '2014-04-23' },
+        ],
+      },
+    };
+
+    await httpTrigger(context, request);
+
+    expect(context.res.body).toEqual(expectedResponseBody);
   });
 });
