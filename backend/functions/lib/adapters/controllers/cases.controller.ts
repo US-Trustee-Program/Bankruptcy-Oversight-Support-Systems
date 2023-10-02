@@ -29,4 +29,9 @@ export class CasesController {
       professionalId: professionalId,
     });
   }
+
+  public async getCaseDetails(requestQueryFilters: { caseId: string }) {
+    console.log(requestQueryFilters);
+    return {};
+  }
 }
