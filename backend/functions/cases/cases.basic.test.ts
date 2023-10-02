@@ -24,9 +24,26 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body).toEqual(responseBody);
   });
   test('Should return 1 case when called with a caseId', async () => {
+    const caseId = '081-11-06541';
     const request = {
-      path: '/101-22-44447',
+      path: '/' + caseId,
     };
+
+    const responseBody = {
+      success: true,
+      message: '',
+      count: 0,
+      body: {
+        case: {
+          caseId: caseId,
+          caseTitle: 'Crawford, Turner and Garrett',
+          dateFiled: '2011-05-20',
+          assignments: ['', '', '', ''],
+        },
+      },
+    };
+
+    console.log(responseBody);
     await httpTrigger(context, request);
   });
 });
