@@ -23,4 +23,10 @@ describe('Standard case list tests without class mocks', () => {
 
     expect(context.res.body).toEqual(responseBody);
   });
+  test('Should return 1 case when called with a caseId', async () => {
+    const request = {
+      path: '/101-22-44447',
+    };
+    await httpTrigger(context, request);
+  });
 });

@@ -22,10 +22,10 @@ const httpTrigger: AzureFunction = async function (
   let caseChapter = '';
   let professionalId = '';
 
-  if (casesRequest.query.chapter) caseChapter = casesRequest.query.chapter;
+  if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
   else if (casesRequest.body && casesRequest.body.chapter) caseChapter = casesRequest.body.chapter;
 
-  if (casesRequest.query.professional_id) professionalId = casesRequest.query.professional_id;
+  if (casesRequest.query?.professional_id) professionalId = casesRequest.query.professional_id;
   else if (casesRequest.body && casesRequest.body.professional_id)
     professionalId = casesRequest.body.professional_id;
 
