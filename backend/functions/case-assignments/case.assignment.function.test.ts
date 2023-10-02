@@ -21,7 +21,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '67-89123',
+        caseId: '001-67-89123',
         attorneyList: ['Bob Bob'],
         role: 'TrialAttorney',
       },
@@ -42,7 +42,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '67-89123',
+        caseId: '001-67-89123',
         attorneyList: ['John', 'Rachel'],
         role: 'TrialAttorney',
       },
@@ -64,7 +64,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '67-89123',
+        caseId: '001-67-89123',
         attorneyList: ['Jane', 'Jane'],
         role: 'TrialAttorney',
       },
@@ -121,7 +121,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '90-90123',
+        caseId: '001-90-90123',
         attorneyList: [],
         role: 'TrialAttorney',
       },
@@ -138,7 +138,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '90-90123',
+        caseId: '001-90-90123',
         attorneyList: ['John Doe'],
         role: '',
       },
@@ -158,7 +158,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '90-90123',
+        caseId: '001-90-90123',
         attorneyList: ['John Doe'],
         role: 'TrialDragon',
       },
@@ -185,7 +185,7 @@ describe('Case Assignment Function Tests', () => {
       method: 'POST',
       query: {},
       body: {
-        caseId: '67-89123',
+        caseId: '001-67-89123',
         attorneyList: ['John Doe'],
         role: 'TrialAttorney',
       },
@@ -200,7 +200,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
-    const caseId = '67-89012';
+    const caseId = '001-67-89012';
     const request = {
       method: 'POST',
       query: {},
