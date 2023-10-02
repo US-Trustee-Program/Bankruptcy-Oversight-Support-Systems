@@ -39,5 +39,6 @@ export function getCamsDateStringFromDate(date: Date) {
 
 export function convertYearMonthDayToMonthDayYear(date: string) {
   const parts = date.split('-');
-  return `${parts[1]}-${parts[2]}-${parts[0]}`;
+
+  return parts.length > 1 ? `${parts[1]}-${parts[2]}-${parts[0]}` : '';
 }

@@ -1,6 +1,7 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case-list';
+import Chapter15CaseDetail from './chapter-15.case-detail';
 import AttorneysList from './attorneys';
 import InvalidChapterCaseList from './invalid-chapter.case-list';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
@@ -26,7 +27,13 @@ async function listCases(context: ApplicationContext, fields: { chapter: string 
   return result;
 }
 
+async function getCaseDetail(context: ApplicationContext, fields: { caseId: string }) {
+  const chapter15CaseDetail = new Chapter15CaseDetail();
+  return chapter15CaseDetail.getChapter15CaseDetail(context, fields.caseId);
+}
+
 export default {
   listAttorneys,
   listCases,
+  getCaseDetail,
 };
