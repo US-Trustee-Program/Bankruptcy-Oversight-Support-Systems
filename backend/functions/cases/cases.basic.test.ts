@@ -20,22 +20,38 @@ jest.mock('../lib/adapters/controllers/cases.controller.ts', () => {
             },
           };
         },
-        getCaseList: () => {
-          return {
-            success: true,
-            message: '',
-            count: 2,
-            body: {
-              caseList: [
-                {
-                  caseId: '081-11-06541',
-                  caseTitle: 'Crawford, Turner and Garrett',
-                  dateFiled: '2011-05-20',
-                },
-                { caseId: '081-14-03544', caseTitle: 'Ali-Cruz', dateFiled: '2014-04-23' },
-              ],
-            },
-          };
+        getCaseList: (params: { caseChapter: string }) => {
+          if (params.caseChapter === '15') {
+            return {
+              success: true,
+              message: '',
+              count: 2,
+              body: {
+                caseList: [
+                  {
+                    caseId: '081-11-06541',
+                    caseTitle: 'Crawford, Turner and Garrett',
+                    dateFiled: '2011-05-20',
+                  },
+                  {
+                    caseId: '081-14-03544',
+                    caseTitle: 'Ali-Cruz',
+                    dateFiled: '2014-04-23',
+                  },
+                ],
+              },
+            };
+          } else {
+            const result = {
+              success: false,
+              message: 'Invalid Chapter value provided',
+              count: 0,
+              body: {
+                caseList: [],
+              },
+            };
+            return result;
+          }
         },
       };
     }),
@@ -108,7 +124,11 @@ describe('Standard case list tests without class mocks', () => {
             caseTitle: 'Crawford, Turner and Garrett',
             dateFiled: '2011-05-20',
           },
-          { caseId: '081-14-03544', caseTitle: 'Ali-Cruz', dateFiled: '2014-04-23' },
+          {
+            caseId: '081-14-03544',
+            caseTitle: 'Ali-Cruz',
+            dateFiled: '2014-04-23',
+          },
         ],
       },
     };
