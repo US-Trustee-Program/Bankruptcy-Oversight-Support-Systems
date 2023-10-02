@@ -24,6 +24,19 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body).toEqual(responseBody);
   });
   test('Should return 1 case when called with a caseId', async () => {
+    jest.mock('../lib/adapters/controllers/cases.controller.ts', () => {
+      return {
+        CasesController: jest.fn(() => {
+          /*
+          getCaseDetails: jest.fn(() => {
+            console.log('==== called the mock');
+            return {};
+          });
+          */
+        }),
+      };
+    });
+
     const caseId = '081-11-06541';
     const request = {
       params: {
@@ -48,7 +61,7 @@ describe('Standard case list tests without class mocks', () => {
     console.log(expectedResponseBody);
 
     await httpTrigger(context, request);
-    console.log(context.res.body);
+    //console.log(context.res.body);
 
     expect(expectedResponseBody).toEqual(context.res.body);
   });

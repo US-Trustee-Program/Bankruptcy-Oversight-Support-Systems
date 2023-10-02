@@ -20,13 +20,15 @@ const httpTrigger: AzureFunction = async function (
   casesRequest: HttpRequest,
 ): Promise<void> {
   const casesController = new CasesController(functionContext);
-
   let caseChapter = '';
   let professionalId = '';
 
   try {
     if (casesRequest.params?.caseId) {
-      console.log('We are trying to get just one case with id:', casesRequest.params.caseId);
+      const caseDetails = await casesController.getCaseDetails({
+        caseId: casesRequest.params.caseId,
+      });
+      functionContext.res = httpSuccess(functionContext, caseDetails);
     } else {
       if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
       else if (casesRequest.body && casesRequest.body.chapter)
