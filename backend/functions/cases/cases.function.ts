@@ -21,7 +21,6 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const casesController = new CasesController(functionContext);
   let caseChapter = '';
-  let professionalId = '';
 
   try {
     if (casesRequest.params?.caseId) {
@@ -34,13 +33,8 @@ const httpTrigger: AzureFunction = async function (
       else if (casesRequest.body && casesRequest.body.chapter)
         caseChapter = casesRequest.body.chapter;
 
-      if (casesRequest.query?.professional_id) professionalId = casesRequest.query.professional_id;
-      else if (casesRequest.body && casesRequest.body.professional_id)
-        professionalId = casesRequest.body.professional_id;
-
       const caseList = await casesController.getCaseList({
         caseChapter: caseChapter,
-        professionalId,
       });
       functionContext.res = httpSuccess(functionContext, caseList);
     }
