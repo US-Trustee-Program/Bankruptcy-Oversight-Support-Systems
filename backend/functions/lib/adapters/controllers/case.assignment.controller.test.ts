@@ -17,7 +17,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('A chapter 15 case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = {
-      caseId: '18-12345',
+      caseId: '001-18-12345',
       listOfAttorneyNames: ['Jane'],
       role: trialAttorneyRole,
     };
@@ -37,7 +37,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('should throw an assignment exception, if one already exists in the repository for the case', async () => {
     const testCaseAssignment = {
-      caseId: '18-12345',
+      caseId: '001-18-12345',
       listOfAttorneyNames: ['Jane'],
       role: trialAttorneyRole,
     };
@@ -57,13 +57,13 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
   test('creating a new trial attorney assignment on a case with an existing assignment throws error', async () => {
     const testCaseAssignment1 = {
-      caseId: '18-12345',
+      caseId: '001-18-12345',
       listOfAttorneyNames: ['Jane'],
       role: trialAttorneyRole,
     };
 
     const testCaseAssignment2 = {
-      caseId: '18-12345',
+      caseId: '001-18-12345',
       listOfAttorneyNames: ['John', 'Jane'],
       role: trialAttorneyRole,
     };
@@ -80,7 +80,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('should assign all attorneys in the list', async () => {
     const listOfAttorneyNames = ['Jane', 'Tom', 'Adrian'];
     const testCaseAssignment = {
-      caseId: '18-12345',
+      caseId: '001-18-12345',
       listOfAttorneyNames,
       role: trialAttorneyRole,
     };
@@ -100,7 +100,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
   test('should create only one assignment per attorney', async () => {
     const listOfAttorneyNames = ['Jane', 'Tom', 'Jane', 'Adrian', 'Tom'];
     const testCaseAssignment = {
-      caseId: '18-12345',
+      caseId: '001-18-12345',
       listOfAttorneyNames,
       role: trialAttorneyRole,
     };
