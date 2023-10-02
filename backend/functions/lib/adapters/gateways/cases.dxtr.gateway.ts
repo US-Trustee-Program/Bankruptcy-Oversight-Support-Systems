@@ -9,6 +9,8 @@ import log from '../services/logger.service';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
+const MANHATTAN_GROUP_DESIGNATOR = 'NY';
+
 export default class CasesDxtrGateway implements CasesInterface {
   async getChapter15Cases(
     context: ApplicationContext,
@@ -23,7 +25,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       type: mssql.Date,
       value: dateFiledFrom,
     });
-    const MANHATTAN_GROUP_DESIGNATOR = 'NY';
     const query = `select TOP 20
         CS_DIV+'-'+CASE_ID as caseId,
         CS_SHORT_TITLE as caseTitle,
@@ -51,11 +52,51 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   async getChapter15Case(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     context: ApplicationContext,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     caseId: string,
   ): Promise<Chapter15CaseInterface> {
-    throw new Error('not implemented');
+    const input: DbTableFieldSpec[] = [];
+
+    const courtDiv = caseId.slice(0, 3);
+    const dxtrCaseId = caseId.slice(4);
+
+    input.push({
+      name: 'courtDiv',
+      type: mssql.VarChar,
+      value: courtDiv,
+    });
+
+    input.push({
+      name: 'dxtrCaseId',
+      type: mssql.VarChar,
+      value: dxtrCaseId,
+    });
+
+    const query = `select
+        CS_DIV+'-'+CASE_ID as caseId,
+        CS_SHORT_TITLE as caseTitle,
+        FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
+        FROM [dbo].[AO_CS]
+        WHERE CS_CHAPTER = '15'
+        AND CASE_ID = @dxtrCaseId
+        AND CS_DIV = @courtDiv
+        AND GRP_DES = '${MANHATTAN_GROUP_DESIGNATOR}'`;
+
+    //    FORMAT(CS_DATE_CLOSED, 'MM-dd-yyyy') as dateClosed
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    if (queryResult.success) {
+      log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (queryResult.results as mssql.IResult<any>).recordset[0];
+    } else {
+      throw Error(queryResult.message);
+    }
   }
 }

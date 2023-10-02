@@ -22,8 +22,8 @@ export class CasesController {
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
-    return {
-      requestQueryFilters,
-    };
+    return await useCase.getCaseDetail(this.applicationContext, {
+      caseId: requestQueryFilters.caseId,
+    });
   }
 }

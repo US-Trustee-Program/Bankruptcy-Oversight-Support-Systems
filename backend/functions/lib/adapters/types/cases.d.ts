@@ -16,7 +16,9 @@ export interface CaseListDbResult {
 export interface CaseDetailsDbResult {
   success: boolean;
   message: string;
-  body: Chapter15CaseInterface;
+  body: {
+    caseDetails: Chapter15CaseInterface;
+  };
 }
 
 export interface Chapter15CaseInterface extends ObjectKeyVal {

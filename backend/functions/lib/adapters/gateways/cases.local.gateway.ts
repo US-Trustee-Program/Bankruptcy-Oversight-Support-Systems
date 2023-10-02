@@ -33,11 +33,26 @@ export class CasesLocalGateway implements CasesInterface {
   };
 
   async getChapter15Case(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     context: ApplicationContext,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     caseId: string,
   ): Promise<Chapter15CaseInterface> {
-    throw new Error('not implemented');
+    const gatewayHelper = new GatewayHelper();
+    let caseDetail;
+
+    try {
+      const cases = gatewayHelper.chapter15MockExtract();
+      caseDetail = cases.find((bCase) => {
+        return bCase.caseId === caseId;
+      });
+
+      caseDetail.dateFiled = convertYearMonthDayToMonthDayYear(caseDetail.dateFiled);
+      caseDetail.dateClosed = convertYearMonthDayToMonthDayYear(caseDetail.dateClosed);
+    } catch (err) {
+      log.error(context, NAMESPACE, `Failed to read mock case detail for ${caseId}.`, err);
+      const message = (err as Error).message;
+      return Promise.reject(message);
+    }
+    console.log(caseDetail);
+    return caseDetail;
   }
 }
