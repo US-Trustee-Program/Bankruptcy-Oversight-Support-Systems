@@ -22,6 +22,9 @@ const httpTrigger: AzureFunction = async function (
   let caseChapter = '';
   let professionalId = '';
 
+  if (casesRequest.params?.caseId) {
+    console.log('We are trying to get just one case with id:', casesRequest.params.caseId);
+  }
   if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
   else if (casesRequest.body && casesRequest.body.chapter) caseChapter = casesRequest.body.chapter;
 

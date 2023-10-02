@@ -26,7 +26,9 @@ describe('Standard case list tests without class mocks', () => {
   test('Should return 1 case when called with a caseId', async () => {
     const caseId = '081-11-06541';
     const request = {
-      path: '/' + caseId,
+      params: {
+        caseId,
+      },
     };
 
     const responseBody = {
@@ -38,12 +40,13 @@ describe('Standard case list tests without class mocks', () => {
           caseId: caseId,
           caseTitle: 'Crawford, Turner and Garrett',
           dateFiled: '2011-05-20',
-          assignments: ['', '', '', ''],
+          // assignments: ['', '', '', ''],
         },
       },
     };
 
     console.log(responseBody);
     await httpTrigger(context, request);
+    console.log(context.res.body);
   });
 });
