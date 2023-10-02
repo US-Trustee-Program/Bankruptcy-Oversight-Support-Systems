@@ -25,7 +25,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
     const MANHATTAN_GROUP_DESIGNATOR = 'NY';
     const query = `select TOP 20
-        CASE_ID as caseNumber,
+        CS_DIV+'-'+CASE_ID as caseId,
         CS_SHORT_TITLE as caseTitle,
         FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
         FROM [dbo].[AO_CS]
@@ -41,7 +41,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     if (queryResult.success) {
-      log.debug(context, MODULENAME, `Results received from DXTR ${queryResult}`);
+      log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (queryResult.results as mssql.IResult<any>).recordset;
