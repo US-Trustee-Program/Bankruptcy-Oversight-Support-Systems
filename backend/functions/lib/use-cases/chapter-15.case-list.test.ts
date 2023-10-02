@@ -17,25 +17,25 @@ const attorneyJoeNobel = 'Joe Nobel';
 const assignments: CaseAttorneyAssignment[] = [
   {
     id: '1',
-    caseId: '23-01176',
+    caseId: '081-23-01176',
     name: attorneyJaneSmith,
     role: CaseAssignmentRole.TrialAttorney,
   },
   {
     id: '2',
-    caseId: '23-01176',
+    caseId: '081-23-01176',
     name: attorneyJoeNobel,
     role: CaseAssignmentRole.TrialAttorney,
   },
 ];
 
-const caseNumberWithAssignments = '1176';
+const caseIdWithAssignments = '081-23-01176';
 jest.mock('./case.assignment', () => {
   return {
     CaseAssignment: jest.fn().mockImplementation(() => {
       return {
         findAssignmentsByCaseId: (caseId: string) => {
-          if (caseId === caseNumberWithAssignments) {
+          if (caseId === caseIdWithAssignments) {
             return Promise.resolve(assignments);
           } else {
             return Promise.resolve([]);
@@ -58,13 +58,13 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList = new Chapter15CaseList();
     const caseList: Chapter15CaseInterface[] = [
       {
-        caseNumber: '04-44449',
+        caseId: '001-04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: '2005-05-04',
         assignments: [],
       },
       {
-        caseNumber: '06-1122',
+        caseId: '001-06-1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: '2006-03-27',
         assignments: [],
@@ -111,16 +111,16 @@ describe('Chapter 15 case tests', () => {
     const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
     const cases = await chapter15CaseList.getChapter15CaseList(appContext);
     const caseWithAssignments = cases.body.caseList.filter((theCase) => {
-      return theCase.caseNumber === caseNumberWithAssignments;
+      return theCase.caseId === caseIdWithAssignments;
     })[0];
     expect(caseWithAssignments).toEqual(
       expect.objectContaining({
-        caseNumber: caseNumberWithAssignments,
+        caseId: caseIdWithAssignments,
         assignments: expect.arrayContaining([attorneyJaneSmith, attorneyJoeNobel]),
       }),
     );
     const casesWithoutAssignments = cases.body.caseList.filter((theCase) => {
-      return theCase.caseNumber !== caseNumberWithAssignments;
+      return theCase.caseId !== caseIdWithAssignments;
     });
     let count = 0;
     casesWithoutAssignments.forEach((bCase) => {
