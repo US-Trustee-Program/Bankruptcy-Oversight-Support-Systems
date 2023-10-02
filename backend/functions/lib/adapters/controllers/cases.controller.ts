@@ -31,7 +31,6 @@ export class CasesController {
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
-    console.log(requestQueryFilters);
     return {};
   }
 }
