@@ -13,10 +13,7 @@ async function listAttorneys(
   return await attorneysList.getAttorneyList(context, fields);
 }
 
-async function listCases(
-  context: ApplicationContext,
-  fields: { chapter: string; professionalId: string },
-) {
+async function listCases(context: ApplicationContext, fields: { chapter: string }) {
   let result: CaseListDbResult;
   if (fields.chapter == '15') {
     const chapter15CaseList = new Chapter15CaseList();
