@@ -31,22 +31,25 @@ describe('Standard case list tests without class mocks', () => {
       },
     };
 
-    const responseBody = {
+    const expectedResponseBody = {
       success: true,
       message: '',
       count: 0,
       body: {
-        case: {
-          caseId: caseId,
-          caseTitle: 'Crawford, Turner and Garrett',
-          dateFiled: '2011-05-20',
-          // assignments: ['', '', '', ''],
+        caseDetails: {
+          caseId: '111-11-1111',
+          caseTitle: '',
+          dateFiled: '',
+          dateClosed: '',
         },
       },
     };
 
-    console.log(responseBody);
+    console.log(expectedResponseBody);
+
     await httpTrigger(context, request);
     console.log(context.res.body);
+
+    expect(expectedResponseBody).toEqual(context.res.body);
   });
 });
