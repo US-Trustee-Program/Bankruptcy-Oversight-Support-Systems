@@ -16,17 +16,9 @@ export class CasesController {
   public async getCaseList(requestQueryFilters: { caseChapter: string; professionalId: string }) {
     log.info(this.applicationContext, NAMESPACE, 'Getting case list.');
 
-    let professionalId = '';
-    let caseChapter = '';
-    if (requestQueryFilters.professionalId) {
-      professionalId = requestQueryFilters.professionalId;
-    }
-    if (requestQueryFilters.caseChapter) {
-      caseChapter = requestQueryFilters.caseChapter;
-    }
     return await useCase.listCases(this.applicationContext, {
-      chapter: caseChapter,
-      professionalId: professionalId,
+      chapter: requestQueryFilters.caseChapter,
+      professionalId: requestQueryFilters.professionalId,
     });
   }
 
