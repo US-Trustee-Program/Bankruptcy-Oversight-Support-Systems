@@ -2,6 +2,23 @@ import httpTrigger from './cases.function';
 
 const context = require('azure-function-context-mock');
 
+jest.mock('../lib/adapters/controllers/cases.controller.ts', () => {
+  return {
+    CasesController: jest.fn().mockImplementation(() => {
+      return {
+        getCaseDetails: () => {
+          console.log('==== called the getCaseDetails mock');
+          return {};
+        },
+        getCaseList: () => {
+          console.log('==== called the getCaseList mock');
+          return {};
+        },
+      };
+    }),
+  };
+});
+
 describe('Standard case list tests without class mocks', () => {
   test('Should return 0 cases successfully when an invalid chapter parameter is provided', async () => {
     const request = {
@@ -24,19 +41,6 @@ describe('Standard case list tests without class mocks', () => {
     expect(context.res.body).toEqual(responseBody);
   });
   test('Should return 1 case when called with a caseId', async () => {
-    jest.mock('../lib/adapters/controllers/cases.controller.ts', () => {
-      return {
-        CasesController: jest.fn(() => {
-          /*
-          getCaseDetails: jest.fn(() => {
-            console.log('==== called the mock');
-            return {};
-          });
-          */
-        }),
-      };
-    });
-
     const caseId = '081-11-06541';
     const request = {
       params: {
