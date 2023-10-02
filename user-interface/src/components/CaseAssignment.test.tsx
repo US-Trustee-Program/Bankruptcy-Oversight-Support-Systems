@@ -109,7 +109,7 @@ describe('CaseAssignment Component Tests', () => {
 
     await waitFor(
       async () => {
-        const subtitle = await screen.getByTestId('case-list-subtitle');
+        const subtitle = screen.getByTestId('case-list-subtitle');
         expect(subtitle.textContent).toBe('Region 2 (Manhattan Office)');
       },
       { timeout: 3000 },
@@ -126,19 +126,19 @@ describe('CaseAssignment Component Tests', () => {
           body: {
             caseList: [
               {
-                caseNumber: '23-44463',
+                caseId: '081-23-44463',
                 caseTitle: 'Flo Esterly and Neas Van Sampson',
                 dateFiled: '2023-05-04',
                 assignments: ['Sara', 'Bob'],
               },
               {
-                caseNumber: '23-44462',
+                caseId: '081-23-44462',
                 caseTitle: 'Bridget Maldonado',
                 dateFiled: '2023-04-14',
                 assignments: ['Frank', 'Sue'],
               },
               {
-                caseNumber: '23-44461',
+                caseId: '081-23-44461',
                 caseTitle: 'Talia Torres and Tylor Stevenson',
                 dateFiled: '2023-04-04',
                 assignments: ['Joe', 'Sam'],
@@ -179,19 +179,19 @@ describe('CaseAssignment Component Tests', () => {
           body: {
             caseList: [
               {
-                caseNumber: '23-44463',
+                caseId: '081-23-44463',
                 caseTitle: 'Flo Esterly and Neas Van Sampson',
                 dateFiled: '2023-05-04',
                 assignments: ['Sara', 'Bob'],
               },
               {
-                caseNumber: '23-44462',
+                caseId: '081-23-44462',
                 caseTitle: 'Bridget Maldonado',
                 dateFiled: '2023-04-14',
                 assignments: ['Frank', 'Sue'],
               },
               {
-                caseNumber: '23-44461',
+                caseId: '081-23-44461',
                 caseTitle: 'Talia Torres and Tylor Stevenson',
                 dateFiled: '2023-04-04',
                 assignments: ['Joe', 'Sam'],
@@ -226,19 +226,19 @@ describe('CaseAssignment Component Tests', () => {
           body: {
             caseList: [
               {
-                caseNumber: '23-44463',
+                caseId: '081-23-44463',
                 caseTitle: 'Flo Esterly and Neas Van Sampson',
                 dateFiled: '2023-05-04',
                 assignments: ['Sara', 'Bob'],
               },
               {
-                caseNumber: '23-44462',
+                caseId: '081-23-44462',
                 caseTitle: 'Bridget Maldonado',
                 dateFiled: '2023-04-14',
                 assignments: [],
               },
               {
-                caseNumber: '23-44461',
+                caseId: '081-23-44461',
                 caseTitle: 'Talia Torres and Tylor Stevenson',
                 dateFiled: '2023-04-04',
                 assignments: ['Joe', 'Sam'],
@@ -320,42 +320,42 @@ describe('CaseAssignment Component Tests', () => {
           body: {
             caseList: [
               {
-                caseNumber: '23-44463',
+                caseId: '081-23-44463',
                 caseTitle: 'Flo Esterly and Neas Van Sampson',
                 dateFiled: '2023-05-04',
               },
               {
-                caseNumber: '23-44462',
+                caseId: '081-23-44462',
                 caseTitle: 'Bridget Maldonado',
                 dateFiled: '2023-04-14',
               },
               {
-                caseNumber: '23-44461',
+                caseId: '081-23-44461',
                 caseTitle: 'Talia Torres and Tylor Stevenson',
                 dateFiled: '2023-04-04',
               },
               {
-                caseNumber: '23-44460',
+                caseId: '081-23-44460',
                 caseTitle: 'Asia Hodges',
                 dateFiled: '2023-03-01',
               },
               {
-                caseNumber: '23-44459',
+                caseId: '081-23-44459',
                 caseTitle: 'Marilyn Lawson',
                 dateFiled: '2023-02-14',
               },
               {
-                caseNumber: '23-44458',
+                caseId: '081-23-44458',
                 caseTitle: 'April Pierce and Leah Pierce',
                 dateFiled: '2023-02-04',
               },
               {
-                caseNumber: '23-44457',
+                caseId: '081-23-44457',
                 caseTitle: 'Corinne Gordon',
                 dateFiled: '2023-01-14',
               },
               {
-                caseNumber: '23-44456',
+                caseId: '081-23-44456',
                 caseTitle: 'Marilyn Lang and Rudy Bryant',
                 dateFiled: '2023-01-04',
               },
@@ -477,42 +477,42 @@ describe('CaseAssignment Component Tests', () => {
           body: {
             caseList: [
               {
-                caseNumber: '23-44463',
+                caseId: '081-23-44463',
                 caseTitle: 'Flo Esterly and Neas Van Sampson',
                 dateFiled: '2023-05-04',
               },
               {
-                caseNumber: '23-44462',
+                caseId: '081-23-44462',
                 caseTitle: 'Bridget Maldonado',
                 dateFiled: '2023-04-14',
               },
               {
-                caseNumber: '23-44461',
+                caseId: '081-23-44461',
                 caseTitle: 'Talia Torres and Tylor Stevenson',
                 dateFiled: '2023-04-04',
               },
               {
-                caseNumber: '23-44460',
+                caseId: '081-23-44460',
                 caseTitle: 'Asia Hodges',
                 dateFiled: '2023-03-01',
               },
               {
-                caseNumber: '23-44459',
+                caseId: '081-23-44459',
                 caseTitle: 'Marilyn Lawson',
                 dateFiled: '2023-02-14',
               },
               {
-                caseNumber: '23-44458',
+                caseId: '081-23-44458',
                 caseTitle: 'April Pierce and Leah Pierce',
                 dateFiled: '2023-02-04',
               },
               {
-                caseNumber: '23-44457',
+                caseId: '081-23-44457',
                 caseTitle: 'Corinne Gordon',
                 dateFiled: '2023-01-14',
               },
               {
-                caseNumber: '23-44456',
+                caseId: '081-23-44456',
                 caseTitle: 'Marilyn Lang and Rudy Bryant',
                 dateFiled: '2023-01-04',
               },

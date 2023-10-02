@@ -1,7 +1,80 @@
 import { ResponseData } from '../type-declarations/api';
+import { Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 import Api from './api';
 
 export default class Chapter15MockApi extends Api {
+  static caseList = [
+    {
+      caseId: '101-23-44463',
+      caseTitle: 'Flo Esterly and Neas Van Sampson',
+      dateFiled: '05-04-2023',
+    },
+    {
+      caseId: '101-23-44462',
+      caseTitle: 'Bridget Maldonado',
+      dateFiled: '04-14-2023',
+    },
+    {
+      caseId: '101-23-44461',
+      caseTitle: 'Talia Torres and Tylor Stevenson',
+      dateFiled: '04-04-2023',
+    },
+    {
+      caseId: '101-23-44460',
+      caseTitle: 'Asia Hodges',
+      dateFiled: '03-01-2023',
+    },
+    {
+      caseId: '101-23-44459',
+      caseTitle: 'Marilyn Lawson',
+      dateFiled: '02-14-2023',
+    },
+    {
+      caseId: '101-23-44458',
+      caseTitle: 'April Pierce and Leah Pierce',
+      dateFiled: '02-04-2023',
+    },
+    {
+      caseId: '101-23-44457',
+      caseTitle: 'Corinne Gordon',
+      dateFiled: '01-14-2023',
+    },
+    {
+      caseId: '101-23-44456',
+      caseTitle: 'Marilyn Lang and Rudy Bryant',
+      dateFiled: '01-04-2023',
+    },
+  ];
+
+  static caseDetails = {
+    caseId: '101-23-12345',
+    caseTitle: 'The Beach Boys',
+    dateFiled: '01-04-1962',
+    dateClosed: '01-08-1963',
+    assignedStaff: [
+      {
+        name: 'Brian Wilson',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Carl Wilson',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Dennis Wilson',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Mike Love',
+        type: 'Trial Attorney',
+      },
+      {
+        name: 'Al Jardine',
+        type: 'Trial Attorney',
+      },
+    ],
+  };
+
   public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;
     switch (path) {
@@ -26,46 +99,26 @@ export default class Chapter15MockApi extends Api {
     return Promise.resolve(response);
   }
 
-  static caseList = [
-    {
-      caseNumber: '23-44463',
-      caseTitle: 'Flo Esterly and Neas Van Sampson',
-      dateFiled: '05-04-2023',
-    },
-    {
-      caseNumber: '23-44462',
-      caseTitle: 'Bridget Maldonado',
-      dateFiled: '04-14-2023',
-    },
-    {
-      caseNumber: '23-44461',
-      caseTitle: 'Talia Torres and Tylor Stevenson',
-      dateFiled: '04-04-2023',
-    },
-    {
-      caseNumber: '23-44460',
-      caseTitle: 'Asia Hodges',
-      dateFiled: '03-01-2023',
-    },
-    {
-      caseNumber: '23-44459',
-      caseTitle: 'Marilyn Lawson',
-      dateFiled: '02-14-2023',
-    },
-    {
-      caseNumber: '23-44458',
-      caseTitle: 'April Pierce and Leah Pierce',
-      dateFiled: '02-04-2023',
-    },
-    {
-      caseNumber: '23-44457',
-      caseTitle: 'Corinne Gordon',
-      dateFiled: '01-14-2023',
-    },
-    {
-      caseNumber: '23-44456',
-      caseTitle: 'Marilyn Lang and Rudy Bryant',
-      dateFiled: '01-04-2023',
-    },
-  ];
+  public static async get(path: string): Promise<Chapter15CaseDetailsResponseData> {
+    let response: ResponseData;
+    if (path.match(/\/cases\/[\d-]+/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: {
+          caseDetails: Chapter15MockApi.caseDetails,
+        },
+      };
+    } else {
+      response = {
+        message: 'not found',
+        count: 0,
+        body: {
+          caseDetails: {},
+        },
+      };
+    }
+
+    return Promise.resolve(response as Chapter15CaseDetailsResponseData);
+  }
 }
