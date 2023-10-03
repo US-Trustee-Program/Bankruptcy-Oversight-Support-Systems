@@ -138,12 +138,18 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const closedByCourtTxCode = 'CBC';
 
+    input.push({
+      name: 'closedByCourtTxCode',
+      type: mssql.VarChar,
+      value: closedByCourtTxCode,
+    });
+
     const query = `select
         REC as txRecord
         FROM [dbo].[AO_TX]
         WHERE CS_CASEID = @dxtrId
         AND COURT_ID = @courtId
-        AND TX_CODE = ${closedByCourtTxCode}`;
+        AND TX_CODE = @closedByCourtTxCode`;
 
     const queryResult: QueryResults = await executeQuery(
       context,
