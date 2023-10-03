@@ -152,7 +152,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    // O000000811174140CBC22123115000000 [15]221231 Case Closed
     const closedDates = [];
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Transaction results received from DXTR:`, queryResult);
