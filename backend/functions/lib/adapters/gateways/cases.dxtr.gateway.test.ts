@@ -7,14 +7,16 @@ import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 
 const context = require('azure-function-context-mock');
 const appContext = applicationContextCreator(context);
-
-const querySpy = jest.spyOn(database, 'executeQuery');
 const dxtrDatabaseName = 'some-database-name';
 
 describe('Test DXTR Gateway', () => {
+  const querySpy = jest.spyOn(database, 'executeQuery');
   beforeEach(() => {
     appContext.config.dxtrDbConfig.database = dxtrDatabaseName;
-    jest.resetAllMocks();
+    querySpy.mockImplementation(jest.fn());
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   test('should call executeQuery with the default starting month and return expected results', async () => {
@@ -137,6 +139,7 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
     querySpy.mockImplementationOnce(async () => {
+      console.log('Inside MockImplementation Once: ', mockResults);
       return Promise.resolve(mockResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
