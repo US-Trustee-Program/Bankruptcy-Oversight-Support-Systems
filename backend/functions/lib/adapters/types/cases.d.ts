@@ -25,5 +25,12 @@ export interface Chapter15CaseInterface extends ObjectKeyVal {
   caseId: string;
   caseTitle: string;
   dateFiled: string;
+  closedDate?: string;
+  dxtrId?: string;
+  courtId?: string;
   assignments: string[];
+}
+
+export interface DxtrTransactionRecord {
+  txRecord: string;
 }
