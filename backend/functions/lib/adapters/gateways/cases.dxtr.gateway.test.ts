@@ -14,6 +14,7 @@ const dxtrDatabaseName = 'some-database-name';
 describe('Test DXTR Gateway', () => {
   beforeEach(() => {
     appContext.config.dxtrDbConfig.database = dxtrDatabaseName;
+    jest.resetAllMocks();
   });
 
   test('should call executeQuery with the default starting month and return expected results', async () => {
@@ -117,5 +118,30 @@ describe('Test DXTR Gateway', () => {
     } catch (e) {
       expect((e as Error).message).toEqual(errorMessage);
     }
+  });
+
+  test('should return a single chapter 15 case when supplied a caseId', async () => {
+    const caseId = 'case-one';
+    const cases = [
+      {
+        caseId: caseId,
+        caseTitle: 'Debtor Two',
+        dateFiled: '2019-04-18T00:00:00.000Z',
+        dxtrId: '123',
+        courtId: '567',
+      },
+    ];
+    const mockResults: QueryResults = {
+      success: true,
+      results: cases,
+      message: '',
+    };
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockResults);
+    });
+    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+    const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
+
+    expect(actualResult).toEqual(cases);
   });
 });
