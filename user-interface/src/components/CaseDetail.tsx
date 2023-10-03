@@ -3,11 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
-import {
-  CaseDetailType,
-  Chapter15CaseDetailsResponseData,
-  StaffType,
-} from '../type-declarations/chapter-15';
+import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 
 export const CaseDetail = () => {
   const { caseId } = useParams();
@@ -71,7 +67,7 @@ export const CaseDetail = () => {
                         data-testid="case-detail-closed-date"
                         className="case-detail-item-value"
                       >
-                        {caseDetail.dateClosed}
+                        {caseDetail.closedDate}
                       </span>
                     </li>
                   </ul>
@@ -81,12 +77,12 @@ export const CaseDetail = () => {
                 <h3>Assigned Staff</h3>
                 <div className="assigned-staff-list">
                   <ul className="usa-list usa-list--unstyled">
-                    {(caseDetail.assignedStaff as Array<StaffType>)?.map(
-                      (staff: StaffType, idx: number) => {
+                    {(caseDetail.assignments as Array<string>)?.map(
+                      (staff: string, idx: number) => {
                         return (
                           <li key={idx} className="individual-assignee">
-                            <span className="assignee-name">{staff.name}:</span>
-                            <span className="assignee-role">{staff.type}</span>
+                            <span className="assignee-name">{staff}:</span>
+                            <span className="assignee-role">Trial Attorney</span>
                           </li>
                         );
                       },
