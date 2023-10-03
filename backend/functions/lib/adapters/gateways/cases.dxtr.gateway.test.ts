@@ -162,12 +162,20 @@ describe('Test DXTR Gateway', () => {
       console.log('Inside MockImplementation Once: ', mockCaseResults);
       return Promise.resolve(mockCaseResults);
     });
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
     });
-    expect(actualResult).toEqual(cases);
+
+    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+    const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
+
+    const closedDate = '10-31-2023';
+    const expected = {
+      ...cases[0],
+      closedDate,
+    };
+    expect(actualResult).toStrictEqual(expected);
+    expect(actualResult.closedDate).toEqual(closedDate);
   });
 });
