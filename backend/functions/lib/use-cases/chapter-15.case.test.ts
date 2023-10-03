@@ -249,8 +249,24 @@ describe('Chapter 15 case list tests', () => {
 
 describe('Chapter 15 case detail tests', () => {
   test('Should return a properly formatted case when a case number is supplied', () => {
-    //const caseId = '';
-    //getChapter15CaseDetail(appContext, caseId);
+    // const chapter15CaseList = new Chapter15CaseList();
+    // const caseId = '081-18-00235';
+    // const caseDetail = {
+    //   caseId: caseId,
+    //   caseTitle: 'Daniels LLC',
+    //   dateFiled: '2018-11-16',
+    //   dateClosed: '2019-06-21',
+    //   assignments: [],
+    // };
+    // const expectedCaseDetail = {
+    //   success: true,
+    //   message: '',
+    //   body: {
+    //     caseDetail,
+    //   },
+    // };
+    // // invoke method under test
+    // const actualCaseDetail = chapter15CaseList.getChapter15CaseDetail(appContext, caseId);
     // context and caseId
   });
 });
