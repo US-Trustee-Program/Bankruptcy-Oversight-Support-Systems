@@ -19,24 +19,25 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   casesRequest: HttpRequest,
 ): Promise<void> {
-  let caseChapter = '';
-  let professionalId = '';
-
-  if (casesRequest.query.chapter) caseChapter = casesRequest.query.chapter;
-  else if (casesRequest.body && casesRequest.body.chapter) caseChapter = casesRequest.body.chapter;
-
-  if (casesRequest.query.professional_id) professionalId = casesRequest.query.professional_id;
-  else if (casesRequest.body && casesRequest.body.professional_id)
-    professionalId = casesRequest.body.professional_id;
-
   const casesController = new CasesController(functionContext);
+  let caseChapter = '';
 
   try {
-    const caseList = await casesController.getCaseList({
-      caseChapter: caseChapter,
-      professionalId,
-    });
-    functionContext.res = httpSuccess(functionContext, caseList);
+    if (casesRequest.params?.caseId) {
+      const caseDetails = await casesController.getCaseDetails({
+        caseId: casesRequest.params.caseId,
+      });
+      functionContext.res = httpSuccess(functionContext, caseDetails);
+    } else {
+      if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
+      else if (casesRequest.body && casesRequest.body.chapter)
+        caseChapter = casesRequest.body.chapter;
+
+      const caseList = await casesController.getCaseList({
+        caseChapter: caseChapter,
+      });
+      functionContext.res = httpSuccess(functionContext, caseList);
+    }
   } catch (exception) {
     log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
     functionContext.res = httpError(functionContext, exception, 404);

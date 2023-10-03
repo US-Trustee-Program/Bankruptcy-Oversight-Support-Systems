@@ -13,20 +13,17 @@ export class CasesController {
     this.applicationContext = applicationContextCreator(context);
   }
 
-  public async getCaseList(requestQueryFilters: { caseChapter: string; professionalId: string }) {
+  public async getCaseList(requestQueryFilters: { caseChapter: string }) {
     log.info(this.applicationContext, NAMESPACE, 'Getting case list.');
 
-    let professionalId = '';
-    let caseChapter = '';
-    if (requestQueryFilters.professionalId) {
-      professionalId = requestQueryFilters.professionalId;
-    }
-    if (requestQueryFilters.caseChapter) {
-      caseChapter = requestQueryFilters.caseChapter;
-    }
     return await useCase.listCases(this.applicationContext, {
-      chapter: caseChapter,
-      professionalId: professionalId,
+      chapter: requestQueryFilters.caseChapter,
+    });
+  }
+
+  public async getCaseDetails(requestQueryFilters: { caseId: string }) {
+    return await useCase.getCaseDetail(this.applicationContext, {
+      caseId: requestQueryFilters.caseId,
     });
   }
 }

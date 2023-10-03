@@ -1,9 +1,9 @@
 import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
-import Chapter15CaseList from './chapter-15.case-list';
+import Chapter15CaseList from './chapter-15.case';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
-import { getCamsDateStringFromDate } from '../adapters/utils/date-helper';
+import { getYearMonthDayStringFromDate } from '../adapters/utils/date-helper';
 import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
@@ -46,7 +46,7 @@ jest.mock('./case.assignment', () => {
   };
 });
 
-describe('Chapter 15 case tests', () => {
+describe('Chapter 15 case list tests', () => {
   beforeEach(() => {
     process.env = {
       STARTING_MONTH: '-6',
@@ -90,7 +90,7 @@ describe('Chapter 15 case tests', () => {
 
   test('Calling getChapter15CaseList without a starting month filter should return valid chapter 15 data for the last 6 months of default', async () => {
     const today = new Date();
-    const expectedStartDate = getCamsDateStringFromDate(
+    const expectedStartDate = getYearMonthDayStringFromDate(
       new Date(today.getFullYear(), today.getMonth() - 6, today.getDate()),
     );
 
@@ -244,5 +244,35 @@ describe('Chapter 15 case tests', () => {
     await chapter15CaseList.getChapter15CaseList(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: undefined });
+  });
+});
+
+describe('Chapter 15 case detail tests', () => {
+  test('Should return a properly formatted case when a case number is supplied', async () => {
+    const caseId = caseIdWithAssignments;
+    const dateFiled = '2018-11-16';
+    const dateClosed = '2019-06-21';
+    const assignments = [attorneyJaneSmith, attorneyJoeNobel];
+    const caseDetail = {
+      caseId: caseId,
+      caseTitle: 'Daniels LLC',
+      dateFiled,
+      dateClosed,
+      assignments: [],
+      dxtrId: '12345',
+      courtId: '0208',
+    };
+
+    const chapter15CaseList = new Chapter15CaseList();
+    jest.spyOn(chapter15CaseList.casesGateway, 'getChapter15Case').mockImplementation(async () => {
+      return Promise.resolve(caseDetail);
+    });
+
+    const actualCaseDetail = await chapter15CaseList.getChapter15CaseDetail(appContext, caseId);
+
+    expect(actualCaseDetail.body.caseDetails.caseId).toEqual(caseId);
+    expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);
+    expect(actualCaseDetail.body.caseDetails.dateClosed).toEqual(dateClosed);
+    expect(actualCaseDetail.body.caseDetails.assignments).toEqual(assignments);
   });
 });

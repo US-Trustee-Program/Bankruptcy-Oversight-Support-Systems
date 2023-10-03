@@ -3,17 +3,20 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import * as database from '../utils/database';
 import { QueryResults } from '../types/database';
 import * as mssql from 'mssql';
-import { getCamsDateStringFromDate } from '../utils/date-helper';
+import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 
 const context = require('azure-function-context-mock');
 const appContext = applicationContextCreator(context);
-
-const querySpy = jest.spyOn(database, 'executeQuery');
 const dxtrDatabaseName = 'some-database-name';
 
 describe('Test DXTR Gateway', () => {
+  const querySpy = jest.spyOn(database, 'executeQuery');
   beforeEach(() => {
     appContext.config.dxtrDbConfig.database = dxtrDatabaseName;
+    querySpy.mockImplementation(jest.fn());
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   test('should call executeQuery with the default starting month and return expected results', async () => {
@@ -46,7 +49,7 @@ describe('Test DXTR Gateway', () => {
     const actualResult = await testCasesDxtrGateway.getChapter15Cases(appContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
-    const dateFiledFrom = getCamsDateStringFromDate(date);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
     const expectedDateInput = {
       name: 'dateFiledFrom',
       type: mssql.Date,
@@ -84,7 +87,7 @@ describe('Test DXTR Gateway', () => {
     });
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
-    const dateFiledFrom = getCamsDateStringFromDate(date);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
     const expectedDateInput = {
       name: 'dateFiledFrom',
       type: mssql.Date,
@@ -117,5 +120,62 @@ describe('Test DXTR Gateway', () => {
     } catch (e) {
       expect((e as Error).message).toEqual(errorMessage);
     }
+  });
+
+  test('should return a single chapter 15 case when supplied a caseId', async () => {
+    const caseId = 'case-one';
+    const cases = [
+      {
+        caseId: caseId,
+        caseTitle: 'Debtor Two',
+        dateFiled: '2019-04-18T00:00:00.000Z',
+        dxtrId: '123',
+        courtId: '567',
+      },
+    ];
+    const mockCaseResults: QueryResults = {
+      success: true,
+      results: {
+        recordset: cases,
+      },
+      message: '',
+    };
+
+    const transactions = [
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
+      },
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
+      },
+    ];
+
+    const mockTransactionResults: QueryResults = {
+      success: true,
+      results: {
+        recordset: transactions,
+      },
+      message: '',
+    };
+
+    querySpy.mockImplementationOnce(async () => {
+      console.log('Inside MockImplementation Once: ', mockCaseResults);
+      return Promise.resolve(mockCaseResults);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockTransactionResults);
+    });
+
+    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+    const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
+
+    const closedDate = '10-31-2023';
+    const expected = {
+      ...cases[0],
+      closedDate,
+    };
+    expect(actualResult).toStrictEqual(expected);
+    expect(actualResult.closedDate).toEqual(closedDate);
   });
 });

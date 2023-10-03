@@ -33,11 +33,16 @@ export function calculateDifferenceInMonths(left: Date, right: Date): number {
   return incompleteMonth ? monthsDiff - 1 : monthsDiff;
 }
 
-export function getCamsDateStringFromDate(date: Date) {
+export function getYearMonthDayStringFromDate(date: Date) {
   return date.toISOString().split('T')[0];
 }
 
 export function convertYearMonthDayToMonthDayYear(date: string) {
   const parts = date.split('-');
-  return `${parts[1]}-${parts[2]}-${parts[0]}`;
+
+  return parts.length > 1 ? `${parts[1]}-${parts[2]}-${parts[0]}` : '';
+}
+
+export function getMonthDayYearStringFromDate(date: Date) {
+  return convertYearMonthDayToMonthDayYear(getYearMonthDayStringFromDate(date));
 }
