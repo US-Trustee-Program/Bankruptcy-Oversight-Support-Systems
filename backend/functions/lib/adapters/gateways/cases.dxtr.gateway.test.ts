@@ -133,18 +133,41 @@ describe('Test DXTR Gateway', () => {
         courtId: '567',
       },
     ];
-    const mockResults: QueryResults = {
+    const mockCaseResults: QueryResults = {
       success: true,
-      results: cases,
+      results: {
+        recordset: cases,
+      },
       message: '',
     };
+
+    const transactions = [
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
+      },
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
+      },
+    ];
+
+    const mockTransactionResults: QueryResults = {
+      success: true,
+      results: {
+        recordset: transactions,
+      },
+      message: '',
+    };
+
     querySpy.mockImplementationOnce(async () => {
-      console.log('Inside MockImplementation Once: ', mockResults);
-      return Promise.resolve(mockResults);
+      console.log('Inside MockImplementation Once: ', mockCaseResults);
+      return Promise.resolve(mockCaseResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
 
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockTransactionResults);
+    });
     expect(actualResult).toEqual(cases);
   });
 });
