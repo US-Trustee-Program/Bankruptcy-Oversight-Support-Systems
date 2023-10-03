@@ -1,7 +1,11 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { Chapter15CaseInterface, DxtrTransactionRecord } from '../types/cases';
-import { getCamsDateStringFromDate } from '../utils/date-helper';
+import {
+  getDate,
+  getMonthDayYearStringFromDate,
+  getYearMonthDayStringFromDate,
+} from '../utils/date-helper';
 import { executeQuery } from '../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../types/database';
 import * as mssql from 'mssql';
@@ -19,7 +23,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const input: DbTableFieldSpec[] = [];
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
-    const dateFiledFrom = getCamsDateStringFromDate(date);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
     input.push({
       name: 'dateFiledFrom',
       type: mssql.Date,
@@ -62,7 +66,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const closedDates = await this.queryTransactions(context, bCase.dxtrId, bCase.courtId);
     if (closedDates.length > 0) {
-      bCase.closedDate = closedDates[0];
+      bCase.closedDate = getMonthDayYearStringFromDate(closedDates[0]);
     }
 
     return bCase;
@@ -117,7 +121,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<string[]> {
+  ): Promise<Date[]> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -149,17 +153,38 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Transaction results received from DXTR:`, queryResult);
       (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
-        const closedDateYear = record.txRecord.slice(19, 21);
-        const closedDateMonth = record.txRecord.slice(21, 23);
-        const closedDateDay = record.txRecord.slice(23, 25);
+        const transactionYearStart = 19;
+        const closedDateYear = record.txRecord.slice(
+          transactionYearStart,
+          transactionYearStart + 2,
+        );
+
+        const transactionMonthStart = 21;
+        const closedDateMonth = record.txRecord.slice(
+          transactionMonthStart,
+          transactionMonthStart + 2,
+        );
+
+        const transactionDayStart = 23;
+        const closedDateDay = record.txRecord.slice(transactionDayStart, transactionDayStart + 2);
+
+        // `new Date()` uses a base year of 1900, so we add 2000 to the 2-digit year
+        const baseYear = 2000;
+
         closedDates.push(
-          new Date(
-            parseInt(closedDateYear) + 2000,
-            parseInt(closedDateMonth) - 1,
+          getDate(
+            parseInt(closedDateYear) + baseYear,
+            parseInt(closedDateMonth),
             parseInt(closedDateDay),
-          ).toString(),
+          ),
         );
       });
+
+      closedDates.sort((a: Date, b: Date) => {
+        // sort in order of newest to oldest
+        return b.valueOf() - a.valueOf();
+      });
+
       return closedDates;
     } else {
       throw Error(queryResult.message);

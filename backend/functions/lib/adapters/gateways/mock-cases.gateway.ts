@@ -1,7 +1,7 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15CaseInterface } from '../types/cases';
 import { Context } from '@azure/functions';
-import { getCamsDateStringFromDate } from '../utils/date-helper';
+import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
@@ -48,7 +48,7 @@ export class MockCasesGateway implements CasesInterface {
       {
         caseId: '081-19-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
-        dateFiled: getCamsDateStringFromDate(
+        dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
         ),
         assignments: [],
@@ -56,7 +56,7 @@ export class MockCasesGateway implements CasesInterface {
       {
         caseId: '081-23-01122',
         caseTitle: 'Jennifer Millhouse',
-        dateFiled: getCamsDateStringFromDate(
+        dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
         ),
         assignments: ['Mr. Jones', 'Diana', 'Joe'],
@@ -64,7 +64,7 @@ export class MockCasesGateway implements CasesInterface {
       {
         caseId: '081-13-01166',
         caseTitle: 'Heather Anne Real',
-        dateFiled: getCamsDateStringFromDate(
+        dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
         ),
         assignments: [],
@@ -79,7 +79,7 @@ export class MockCasesGateway implements CasesInterface {
       {
         caseId: '081-23-01167',
         caseTitle: 'Heather Anne Real',
-        dateFiled: getCamsDateStringFromDate(
+        dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
         ),
         assignments: [],
@@ -87,7 +87,7 @@ export class MockCasesGateway implements CasesInterface {
       {
         caseId: '081-23-01175',
         caseTitle: 'James P. Tennor',
-        dateFiled: getCamsDateStringFromDate(
+        dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
         ),
         assignments: ['Daisy', 'Roger', 'Frank'],
@@ -95,7 +95,7 @@ export class MockCasesGateway implements CasesInterface {
       {
         caseId: '081-23-01176',
         caseTitle: 'Tommy Testformiddlena tennor',
-        dateFiled: getCamsDateStringFromDate(
+        dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
         ),
         assignments: [],

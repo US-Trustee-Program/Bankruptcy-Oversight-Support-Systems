@@ -3,7 +3,7 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import * as database from '../utils/database';
 import { QueryResults } from '../types/database';
 import * as mssql from 'mssql';
-import { getCamsDateStringFromDate } from '../utils/date-helper';
+import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 
 const context = require('azure-function-context-mock');
 const appContext = applicationContextCreator(context);
@@ -46,7 +46,7 @@ describe('Test DXTR Gateway', () => {
     const actualResult = await testCasesDxtrGateway.getChapter15Cases(appContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
-    const dateFiledFrom = getCamsDateStringFromDate(date);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
     const expectedDateInput = {
       name: 'dateFiledFrom',
       type: mssql.Date,
@@ -84,7 +84,7 @@ describe('Test DXTR Gateway', () => {
     });
     const date = new Date();
     date.setMonth(date.getMonth() + startingMonth);
-    const dateFiledFrom = getCamsDateStringFromDate(date);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
     const expectedDateInput = {
       name: 'dateFiledFrom',
       type: mssql.Date,
