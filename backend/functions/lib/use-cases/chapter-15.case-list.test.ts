@@ -3,7 +3,7 @@ import Chapter15CaseList from './chapter-15.case-list';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
-import { getCamsDateStringFromDate } from '../adapters/utils/date-helper';
+import { getYearMonthDayStringFromDate } from '../adapters/utils/date-helper';
 import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
@@ -90,7 +90,7 @@ describe('Chapter 15 case tests', () => {
 
   test('Calling getChapter15CaseList without a starting month filter should return valid chapter 15 data for the last 6 months of default', async () => {
     const today = new Date();
-    const expectedStartDate = getCamsDateStringFromDate(
+    const expectedStartDate = getYearMonthDayStringFromDate(
       new Date(today.getFullYear(), today.getMonth() - 6, today.getDate()),
     );
 

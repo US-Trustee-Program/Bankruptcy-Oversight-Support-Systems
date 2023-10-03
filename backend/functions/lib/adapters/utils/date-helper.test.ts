@@ -1,8 +1,9 @@
 import {
   getDate,
   calculateDifferenceInMonths,
-  getCamsDateStringFromDate,
+  getYearMonthDayStringFromDate,
   convertYearMonthDayToMonthDayYear,
+  getMonthDayYearStringFromDate,
 } from './date-helper';
 
 describe('date-helper tests', () => {
@@ -180,23 +181,29 @@ describe('date-helper tests', () => {
     });
   });
 
-  describe('getCamsDateStringFromDate tests', () => {
+  describe('getYearMonthDayStringFromDate tests', () => {
     test('should properly handle dates between Jan 1, 1000 and Dec 31, 9999', async () => {
-      expect(getCamsDateStringFromDate(new Date(2023, 6, 19))).toEqual('2023-07-19');
+      expect(getYearMonthDayStringFromDate(new Date(2023, 6, 19))).toEqual('2023-07-19');
     });
 
     test('should properly handle dates prior to Jan 1, 1000', async () => {
-      expect(getCamsDateStringFromDate(new Date(680, 0, 1))).toEqual('0680-01-01');
+      expect(getYearMonthDayStringFromDate(new Date(680, 0, 1))).toEqual('0680-01-01');
     });
 
     test('should properly handle date later than Dec 31, 9999', async () => {
-      expect(getCamsDateStringFromDate(new Date(10000, 0, 1))).toEqual('+010000-01-01');
+      expect(getYearMonthDayStringFromDate(new Date(10000, 0, 1))).toEqual('+010000-01-01');
     });
   });
 
   describe('convertYearMonthDayToMonthDayYear tests', () => {
     test('should convert 2023-12-31 to 12-31-2023', async () => {
       expect(convertYearMonthDayToMonthDayYear('2023-12-31')).toEqual('12-31-2023');
+    });
+  });
+
+  describe('getMonthDayYearStringFromDate tests', () => {
+    test('should convert Jan 1, 2023 to 01-01-2023', async () => {
+      expect(getMonthDayYearStringFromDate(new Date(2023, 0, 1))).toEqual('01-01-2023');
     });
   });
 });
