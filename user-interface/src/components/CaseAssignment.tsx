@@ -339,7 +339,9 @@ export const CaseAssignment = () => {
                         >
                           <td className="case-number">
                             <span className="mobile-title">Case Number:</span>
-                            {getCaseNumber(theCase.caseId)}
+                            <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                              {getCaseNumber(theCase.caseId)}
+                            </a>
                           </td>
                           <td className="case-title-column">
                             <span className="mobile-title">Case Title (Debtor):</span>
