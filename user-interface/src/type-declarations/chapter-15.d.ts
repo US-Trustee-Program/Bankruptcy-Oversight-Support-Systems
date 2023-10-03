@@ -11,8 +11,8 @@ interface CaseDetailType {
   caseId: string;
   caseTitle: string;
   dateFiled: string;
-  dateClosed: string;
-  assignedStaff: StaffType[];
+  closedDate: string;
+  assignments: string[];
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {
