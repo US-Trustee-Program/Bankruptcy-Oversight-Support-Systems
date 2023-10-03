@@ -32,7 +32,7 @@ describe('Case Detail screen tests', () => {
                   caseTitle: 'The Beach Boys',
                   dateFiled: '01-04-1962',
                   closedDate: '01-08-1963',
-                  assignedStaff: [brianWilsonName, carlWilsonName],
+                  assignments: [brianWilsonName, carlWilsonName],
                 },
               },
             };
