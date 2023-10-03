@@ -136,11 +136,14 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: courtId,
     });
 
+    const closedByCourtTxCode = 'CBC';
+
     const query = `select
         REC as txRecord
         FROM [dbo].[AO_TX]
         WHERE CS_CASEID = @dxtrId
-        AND COURT_ID = RIGHT(REPLICATE('0', 10) + @courtId, 4)`;
+        AND COURT_ID = @courtId
+        AND TX_CODE = ${closedByCourtTxCode}`;
 
     const queryResult: QueryResults = await executeQuery(
       context,
@@ -149,6 +152,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
+    // O000000811174140CBC22123115000000 [15]221231 Case Closed
     const closedDates = [];
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Transaction results received from DXTR:`, queryResult);
