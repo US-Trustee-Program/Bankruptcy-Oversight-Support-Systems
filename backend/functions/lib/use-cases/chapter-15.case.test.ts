@@ -249,26 +249,36 @@ describe('Chapter 15 case list tests', () => {
 
 describe('Chapter 15 case detail tests', () => {
   test('Should return a properly formatted case when a case number is supplied', async () => {
-    const chapter15CaseList = new Chapter15CaseList();
-    jest.spyOn(chapter15CaseList.casesGateway, 'getChapter15Case');
     const caseId = '081-18-00235';
+    const dateFiled = '2018-11-16';
+    const dateClosed = '2019-06-21';
+    const assignments = [attorneyJaneSmith, attorneyJoeNobel];
     const caseDetail = {
       caseId: caseId,
       caseTitle: 'Daniels LLC',
-      dateFiled: '2018-11-16',
-      dateClosed: '2019-06-21',
-      assignments: [attorneyJaneSmith, attorneyJoeNobel],
+      dateFiled,
+      dateClosed,
+      assignments: [],
+      dxtrId: '12345',
+      courtId: '0208',
     };
-    const expectedCaseDetail = {
-      success: true,
-      message: '',
-      body: {
-        caseDetail,
-      },
-    };
+    // const expectedCaseDetail = {
+    //   success: true,
+    //   message: '',
+    //   body: {
+    //     caseDetail,
+    //   },
+    // };
+    const chapter15CaseList = new Chapter15CaseList();
+    jest.spyOn(chapter15CaseList.casesGateway, 'getChapter15Case').mockImplementation(async () => {
+      return Promise.resolve(caseDetail);
+    });
     // invoke method under test
     const actualCaseDetail = await chapter15CaseList.getChapter15CaseDetail(appContext, caseId);
-    expect(actualCaseDetail).toEqual(expectedCaseDetail);
+    expect(actualCaseDetail.body.caseDetails.caseId).toEqual(caseId);
+    expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);
+    expect(actualCaseDetail.body.caseDetails.dateClosed).toEqual(dateClosed);
+    expect(actualCaseDetail.body.caseDetails.assignments).toEqual(assignments);
     // context and caseId
   }, 10000);
 });

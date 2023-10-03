@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case';
-import Chapter15CaseDetail from './chapter-15.case-detail';
+import Chapter15CaseDetail from './chapter-15.case';
 import AttorneysList from './attorneys';
 import InvalidChapterCaseList from './invalid-chapter.case-list';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
