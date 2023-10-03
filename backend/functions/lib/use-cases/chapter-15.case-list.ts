@@ -1,5 +1,5 @@
 import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
-import { CaseListDbResult } from '../adapters/types/cases';
+import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
 import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
@@ -26,12 +26,9 @@ export class Chapter15CaseList {
       const cases = await this.casesGateway.getChapter15Cases(context, {
         startingMonth: startingMonth || undefined,
       });
-      let assignment: CaseAttorneyAssignment[];
+
       for (const c of cases) {
-        assignment = await caseAssignment.findAssignmentsByCaseId(c.caseId);
-        c.assignments = assignment.map((a) => {
-          return a.name;
-        });
+        c.assignments = await this.getCaseAssigneeNames(caseAssignment, c);
       }
 
       return {
@@ -53,6 +50,16 @@ export class Chapter15CaseList {
         },
       };
     }
+  }
+
+  private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: Chapter15CaseInterface) {
+    const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
+      c.caseId,
+    );
+    const assigneeNames = assignments.map((a) => {
+      return a.name;
+    });
+    return assigneeNames;
   }
 }
 
