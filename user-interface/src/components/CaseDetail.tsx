@@ -15,7 +15,6 @@ export const CaseDetail = () => {
     setIsLoading(true);
     api.get(`/cases/${caseId}`, {}).then((data) => {
       const response = data as Chapter15CaseDetailsResponseData;
-      console.log(response.body.caseDetails);
       setCaseDetail(response.body?.caseDetails);
       setIsLoading(false);
     });

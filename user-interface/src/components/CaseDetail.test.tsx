@@ -82,7 +82,6 @@ describe('Case Detail screen tests', () => {
         expect(closedDate.innerHTML).toEqual('01-08-1963');
 
         const assigneeMap = new Map<string, string>();
-        console.log(document.body);
         const assigneeElements = document.querySelectorAll(
           '.assigned-staff-list .individual-assignee',
         );
