@@ -1,5 +1,5 @@
 import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
-import Chapter15CaseList from './chapter-15.case-list';
+import Chapter15CaseList from './chapter-15.case';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
@@ -46,7 +46,7 @@ jest.mock('./case.assignment', () => {
   };
 });
 
-describe('Chapter 15 case tests', () => {
+describe('Chapter 15 case list tests', () => {
   beforeEach(() => {
     process.env = {
       STARTING_MONTH: '-6',
@@ -244,5 +244,13 @@ describe('Chapter 15 case tests', () => {
     await chapter15CaseList.getChapter15CaseList(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: undefined });
+  });
+});
+
+describe('Chapter 15 case detail tests', () => {
+  test('Should return a properly formatted case when a case number is supplied', () => {
+    //const caseId = '';
+    //getChapter15CaseDetail(appContext, caseId);
+    // context and caseId
   });
 });

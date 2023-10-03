@@ -1,5 +1,9 @@
 import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
-import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
+import {
+  CaseDetailsDbResult,
+  CaseListDbResult,
+  Chapter15CaseInterface,
+} from '../adapters/types/cases';
 import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
@@ -50,6 +54,23 @@ export class Chapter15CaseList {
         },
       };
     }
+  }
+
+  public async getChapter15CaseDetail(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailsDbResult> {
+    const caseDetails = await this.casesGateway.getChapter15Case(context, caseId);
+    const caseAssignment = new CaseAssignment(context);
+    caseDetails.assignments = await this.getCaseAssigneeNames(caseAssignment, caseDetails);
+
+    return {
+      success: true,
+      message: '',
+      body: {
+        caseDetails,
+      },
+    };
   }
 
   private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: Chapter15CaseInterface) {
