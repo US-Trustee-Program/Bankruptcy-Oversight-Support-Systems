@@ -1,5 +1,5 @@
 import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
-import Chapter15CaseList from './chapter-15.case';
+import { Chapter15CaseList } from './chapter-15.case';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
