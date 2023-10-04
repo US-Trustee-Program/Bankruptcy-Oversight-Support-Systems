@@ -1,5 +1,5 @@
 import { CasesController } from './cases.controller';
-import useCases from '../../use-cases/index';
+import useCases from '../../use-cases/chapter-15.case';
 
 const context = require('azure-function-context-mock');
 
@@ -24,7 +24,11 @@ describe('cases controller test', () => {
         ],
       },
     };
-    jest.spyOn(useCases, 'listCases').mockReturnValue(Promise.resolve(expectedResult));
+
+    const chapter15caseList = new useCases();
+    jest
+      .spyOn(chapter15caseList, 'getChapter15CaseList')
+      .mockReturnValue(Promise.resolve(expectedResult));
 
     const controller = new CasesController(context);
     const actual = await controller.getCaseList({ caseChapter: '15' });
