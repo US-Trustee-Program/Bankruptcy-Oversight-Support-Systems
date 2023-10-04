@@ -8,8 +8,8 @@ workspace {
         # System
         cams = softwareSystem "CAMS" "CAse Management System" {
             webapp = container "Webapp" "The user interface for CAMS" {
-                casesScreen = component "Cases Screen" "Displays case metadata in a tabular format"
                 assignScreen = component "Assignments Screen" "Displays case assignment data and provides for creating assignments"
+                caseDetailsScreen = component "Case Details Screen" "Displays case data including dates and assigned staff"
             }
             nodeapi = container "API" "An Azure Functions App (Node.js)" {
                 cases = component "Cases" "Cases API"
@@ -24,7 +24,7 @@ workspace {
         ## People to system components
         aust -> webapp "Assigns cases to attorneys"
         attorney -> webapp "Views bankruptcy cases"
-        attorney -> casesScreen "Views bankruptcy cases"
+        attorney -> caseDetailsScreen "Views bankruptcy cases"
         aust -> assignScreen "Assigns cases to attorneys"
         attorney -> assignScreen "Views cases assigned to them"
 
@@ -62,7 +62,7 @@ workspace {
             animation {
                 aust
                 attorney
-                casesScreen
+                caseDetailsScreen
                 assignScreen
             }
             autoLayout
