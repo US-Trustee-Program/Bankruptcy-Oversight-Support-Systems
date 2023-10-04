@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
+import { getCaseNumber } from '../utils/formatCaseNumber';
 
 export const CaseDetail = () => {
   const { caseId } = useParams();
@@ -46,7 +47,7 @@ export const CaseDetail = () => {
             <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
             <h2>
               <span className="case-number" title="Case Number">
-                {caseDetail.caseId}
+                {getCaseNumber(caseDetail.caseId)}
               </span>
             </h2>
 
