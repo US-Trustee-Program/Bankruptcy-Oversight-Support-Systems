@@ -1,34 +1,46 @@
 import { CasesController } from './cases.controller';
-import useCases from '../../use-cases/chapter-15.case';
 
 const context = require('azure-function-context-mock');
 
+const expectedResult = {
+  success: true,
+  message: '',
+  count: 2,
+  body: {
+    caseList: [
+      {
+        caseId: '081-11-06541',
+        caseTitle: 'Crawford, Turner and Garrett',
+        dateFiled: '2011-05-20',
+      },
+      {
+        caseId: '081-14-03544',
+        caseTitle: 'Ali-Cruz',
+        dateFiled: '2014-04-23',
+      },
+    ],
+  },
+};
+
+jest.mock('../../use-cases/chapter-15.case', () => {
+  return {
+    default: {
+      Chapter15CaseList: jest.fn().mockImplementation(() => {
+        return {
+          getChapter15CaseList: () => {
+            return Promise.resolve(expectedResult);
+          },
+        };
+      }),
+    },
+  };
+});
+
 describe('cases controller test', () => {
   test('Should get list of chapter 15 cases', async () => {
-    const expectedResult = {
-      success: true,
-      message: '',
-      count: 2,
-      body: {
-        caseList: [
-          {
-            caseId: '081-11-06541',
-            caseTitle: 'Crawford, Turner and Garrett',
-            dateFiled: '2011-05-20',
-          },
-          {
-            caseId: '081-14-03544',
-            caseTitle: 'Ali-Cruz',
-            dateFiled: '2014-04-23',
-          },
-        ],
-      },
-    };
-
-    const chapter15caseList = new useCases();
-    jest
-      .spyOn(chapter15caseList, 'getChapter15CaseList')
-      .mockReturnValue(Promise.resolve(expectedResult));
+    // jest
+    //   .spyOn(chapter15caseList, 'getChapter15CaseList')
+    //   .mockReturnValue(Promise.resolve(expectedResult));
 
     const controller = new CasesController(context);
     const actual = await controller.getCaseList({ caseChapter: '15' });
