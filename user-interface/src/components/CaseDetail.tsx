@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
+import { getCaseNumber } from '../utils/formatCaseNumber';
 
 export const CaseDetail = () => {
   const { caseId } = useParams();
@@ -29,10 +30,10 @@ export const CaseDetail = () => {
   if (isLoading) {
     return (
       <div className="case-detail">
-        <h1 data-testid="case-detail-heading">Case Details</h1>
+        <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
         <h2>
           <span className="case-number" title="Case Number">
-            {caseId}
+            {getCaseNumber(caseId)}
           </span>
         </h2>
         <p data-testid="loading-indicator">Loading...</p>
@@ -46,7 +47,7 @@ export const CaseDetail = () => {
             <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
             <h2>
               <span className="case-number" title="Case Number">
-                {caseDetail.caseId}
+                {getCaseNumber(caseDetail.caseId)}
               </span>
             </h2>
 
@@ -77,15 +78,20 @@ export const CaseDetail = () => {
                 <h3>Assigned Staff</h3>
                 <div className="assigned-staff-list">
                   <ul className="usa-list usa-list--unstyled">
-                    {(caseDetail.assignments as Array<string>)?.map(
-                      (staff: string, idx: number) => {
-                        return (
-                          <li key={idx} className="individual-assignee">
-                            <span className="assignee-name">{staff}:</span>
-                            <span className="assignee-role">Trial Attorney</span>
-                          </li>
-                        );
-                      },
+                    {caseDetail.assignments.length > 0 &&
+                      (caseDetail.assignments as Array<string>)?.map(
+                        (staff: string, idx: number) => {
+                          return (
+                            <li key={idx} className="individual-assignee">
+                              <span className="assignee-name">{staff}</span>
+                              <span className="vertical-divider">|</span>
+                              <span className="assignee-role">Trial Attorney</span>
+                            </li>
+                          );
+                        },
+                      )}
+                    {caseDetail.assignments.length == 0 && (
+                      <span className="unassigned-placeholder">(unassigned)</span>
                     )}
                   </ul>
                 </div>

@@ -83,5 +83,3 @@ export class Chapter15CaseList {
     return assigneeNames;
   }
 }
-
-export default Chapter15CaseList;
