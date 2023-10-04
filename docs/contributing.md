@@ -35,3 +35,60 @@ We run `pa11y` to validate accessibility compliance with Web Content Accessibili
 1. Execute `npm run start:pa11y`
 1. In a separate shell, execute `npm run pa11y:ci`
     1. Ensure that the output does not reflect any errors
+
+## Node Version
+
+[Node Version Manager](https://github.com/nvm-sh/nvm) supports consistent use of a specific version of Node across environments.
+
+### Install `nvm`
+
+See: https://github.com/nvm-sh/nvm#install--update-script
+
+### `.nvmrc`
+
+The Node versions used by the project are specified in `.nvmrc` resource files. These resource files are found adjacent to `package.json` files
+in Node app root directories.
+
+### Installing a Node version
+
+Use `nvm` to install a Node version.
+
+```sh
+nvm install <node version string>
+
+# For example:
+nvm install v18.17
+```
+
+### Use a specified Node version
+
+Use `nvm` to switch to the Node version in use. Run the following shell command to manually switch Node versions
+when changing into a Node app directory. The `nvm` utility uses the `.nvmrc` file to determine which Node version to use.
+
+```sh
+nvm use
+```
+
+Alternatively a version can be specified. Note the version must have been previously installed using `nvm install`. This can be
+used to override the version specified in the `.nvmrc` file.
+
+```sh
+nvm use <node version string>
+
+# For example:
+nvm use v18.17
+```
+
+### Automatically use a specified Node version
+
+The `nvm use` command can be automatically called when changing into a the root directory of a Node app.
+
+See: https://github.com/nvm-sh/nvm#deeper-shell-integration
+
+### Updating the Node version
+
+Update the `.nvmrc` file when the version of Node in use for a given Node app is changed.
+
+```sh
+node -v > .nvmrc
+```
