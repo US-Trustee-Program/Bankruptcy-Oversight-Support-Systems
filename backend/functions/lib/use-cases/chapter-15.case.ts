@@ -9,7 +9,7 @@ import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 
-export default class Chapter15CaseList {
+export class Chapter15CaseList {
   casesGateway: CasesInterface;
 
   constructor(casesGateway?: CasesInterface) {
@@ -83,5 +83,3 @@ export default class Chapter15CaseList {
     return assigneeNames;
   }
 }
-
-// export default Chapter15CaseList;
