@@ -33,7 +33,7 @@ export const CaseDetail = () => {
         <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
         <h2>
           <span className="case-number" title="Case Number">
-            {caseId}
+            {getCaseNumber(caseId)}
           </span>
         </h2>
         <p data-testid="loading-indicator">Loading...</p>
@@ -91,7 +91,7 @@ export const CaseDetail = () => {
                         },
                       )}
                     {caseDetail.assignments.length == 0 && (
-                      <span className="assignee-name">(unassigned)</span>
+                      <span className="unassigned-placeholder">(unassigned)</span>
                     )}
                   </ul>
                 </div>
