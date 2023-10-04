@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from '../store/store';
 import { CaseDetail } from './CaseDetail';
+import { getCaseNumber } from '../utils/formatCaseNumber';
 
 const sleep = (milliseconds: number) =>
   new Promise((callback) => setTimeout(callback, milliseconds));
@@ -74,7 +75,7 @@ describe('Case Detail screen tests', () => {
         const title = screen.getByTestId('case-detail-heading');
         expect(title.innerHTML).toEqual('The Beach Boys');
         const caseNumber = document.querySelector('.case-number');
-        expect(caseNumber?.innerHTML).toEqual(caseId);
+        expect(caseNumber?.innerHTML).toEqual(getCaseNumber(caseId));
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
         const closedDate = screen.getByTestId('case-detail-closed-date');
@@ -92,8 +93,8 @@ describe('Case Detail screen tests', () => {
             assigneeMap.set(name, role);
           }
         });
-        expect(assigneeMap.get(`${brianWilsonName}:`)).toEqual(trialAttorneyRole);
-        expect(assigneeMap.get(`${carlWilsonName}:`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${brianWilsonName}`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${carlWilsonName}`)).toEqual(trialAttorneyRole);
       },
       { timeout: 5000 },
     );
