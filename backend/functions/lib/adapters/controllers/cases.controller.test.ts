@@ -1,3 +1,4 @@
+import { ApplicationContext } from '../types/basic';
 import { CasesController } from './cases.controller';
 
 const context = require('azure-function-context-mock');
@@ -24,15 +25,14 @@ const expectedResult = {
 
 jest.mock('../../use-cases/chapter-15.case', () => {
   return {
-    default: {
-      Chapter15CaseList: jest.fn().mockImplementation(() => {
-        return {
-          getChapter15CaseList: () => {
-            return Promise.resolve(expectedResult);
-          },
-        };
-      }),
-    },
+    Chapter15CaseList: jest.fn().mockImplementation(() => {
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        getChapter15CaseList: (context: ApplicationContext) => {
+          return Promise.resolve(expectedResult);
+        },
+      };
+    }),
   };
 });
 
