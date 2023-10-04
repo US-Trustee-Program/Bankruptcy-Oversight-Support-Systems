@@ -2,17 +2,7 @@ import { ApplicationContext } from '../adapters/types/basic';
 import { CaseListDbResult } from '../adapters/types/cases';
 import Chapter15CaseList from './chapter-15.case';
 import Chapter15CaseDetail from './chapter-15.case';
-import AttorneysList from './attorneys';
 import InvalidChapterCaseList from './invalid-chapter.case-list';
-import { AttorneyListDbResult } from '../adapters/types/attorneys';
-
-async function listAttorneys(
-  context: ApplicationContext,
-  fields: { officeId?: string },
-): Promise<AttorneyListDbResult> {
-  const attorneysList = new AttorneysList();
-  return await attorneysList.getAttorneyList(context, fields);
-}
 
 async function listCases(context: ApplicationContext, fields: { chapter: string }) {
   let result: CaseListDbResult;
@@ -33,7 +23,6 @@ async function getCaseDetail(context: ApplicationContext, fields: { caseId: stri
 }
 
 export default {
-  listAttorneys,
   listCases,
   getCaseDetail,
 };

@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../types/basic';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { Context } from '@azure/functions';
-import useCase from '../../use-cases/index';
+import AttorneysList from '../../use-cases/attorneys';
 import log from '../services/logger.service';
 import { AttorneyListDbResult } from '../types/attorneys';
 
@@ -18,8 +18,7 @@ export class AttorneysController {
     officeId?: string;
   }): Promise<AttorneyListDbResult> {
     log.info(this.applicationContext, NAMESPACE, 'Getting Attorneys list.');
-
-    const attorneysList = await useCase.listAttorneys(this.applicationContext, requestQueryFilters);
-    return attorneysList;
+    const attorneysList = new AttorneysList();
+    return await attorneysList.getAttorneyList(this.applicationContext, requestQueryFilters);
   }
 }
