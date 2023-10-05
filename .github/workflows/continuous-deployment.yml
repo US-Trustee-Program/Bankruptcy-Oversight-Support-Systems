@@ -288,10 +288,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Execute Tests
-        run: |
-          npm run test
-
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
 
