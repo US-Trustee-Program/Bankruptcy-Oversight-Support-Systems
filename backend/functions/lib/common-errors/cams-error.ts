@@ -1,11 +1,18 @@
+export interface CamsErrorOptions {
+  status?: number;
+  message?: string;
+  originalError?: Error;
+}
+
 export class CamsError extends Error {
   status: number;
   module: string;
+  originalError?: Error;
 
-  constructor(status: number, message: string, module: string) {
+  constructor(module: string, options: CamsErrorOptions = {}) {
     super();
-    super.message = message;
-    this.status = status;
+    this.message = options.message || options.originalError?.message || 'Unknown CAMS Error';
+    this.status = options.status ?? 500;
     this.module = module;
   }
 }

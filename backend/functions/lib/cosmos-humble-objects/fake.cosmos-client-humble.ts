@@ -1,7 +1,8 @@
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
-import { AssignmentException } from '../use-cases/assignment.exception';
+import { ForbiddenError } from '../common-errors/forbidden-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 
+const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
   name: string;
   value: string;
@@ -25,7 +26,7 @@ export default class FakeCosmosClientHumble {
           items: {
             create: (assignment: CaseAttorneyAssignment) => {
               if (assignment.caseId === 'throw-permissions-error') {
-                throw new AssignmentException(403, 'forbidden');
+                throw new ForbiddenError(MODULE_NAME, 'forbidden');
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);
