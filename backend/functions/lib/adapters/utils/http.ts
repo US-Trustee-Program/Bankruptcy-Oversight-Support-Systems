@@ -20,7 +20,7 @@ export function httpSuccess(context: Context, body: object = {}): ApiResponse {
 }
 
 export function httpError(context: Context, error: Error, code: number): ApiResponse {
-  // log.error(context as ApplicationContext, NAMESPACE, error.message, error);
+  log.error(context as ApplicationContext, NAMESPACE, error.message, error);
   return {
     headers: commonHeaders,
     statusCode: code,

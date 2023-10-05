@@ -3,11 +3,11 @@ import { getAssignmentRepository } from '../factory';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ApplicationContext } from '../adapters/types/basic';
 import { AttorneyAssignmentResponseInterface } from '../adapters/types/case.assignment';
-// import log from '../adapters/services/logger.service';
-// import { applicationContextCreator } from '../adapters/utils/application-context-creator';
+import log from '../adapters/services/logger.service';
+import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { AssignmentException } from './assignment.exception';
 
-// const NAMESPACE = 'CASE-ASSIGNMENT';
+const NAMESPACE = 'CASE-ASSIGNMENT';
 const EXISTING_ASSIGNMENT_FOUND =
   'A trial attorney assignment already exists for this case. Cannot create another assignment on an existing case assignment.';
 export class CaseAssignment {
@@ -28,12 +28,12 @@ export class CaseAssignment {
     context: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<string> {
-    // try {
-    return await this.assignmentRepository.createAssignment(caseAssignment);
-    // } catch (exception) {
-    //   log.error(applicationContextCreator(context), NAMESPACE, exception.message);
-    //   throw exception;
-    // }
+    try {
+      return await this.assignmentRepository.createAssignment(caseAssignment);
+    } catch (exception) {
+      log.error(applicationContextCreator(context), NAMESPACE, exception.message);
+      throw exception;
+    }
   }
 
   public async createTrialAttorneyAssignments(
