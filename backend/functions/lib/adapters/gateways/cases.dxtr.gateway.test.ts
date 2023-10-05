@@ -144,9 +144,15 @@ describe('Test DXTR Gateway', () => {
     const transactions = [
       {
         txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
+        txCode: 'CBC',
       },
       {
         txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
+        txCode: 'CBC',
+      },
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
+        txCode: 'CDC',
       },
     ];
 
