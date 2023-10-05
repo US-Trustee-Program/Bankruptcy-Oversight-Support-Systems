@@ -1,16 +1,9 @@
-import { CamsError } from './cams-error';
+import { CamsError, CamsErrorOptions } from './cams-error';
 
-interface UnknownErrorOptions {
-  status?: number;
-  message?: string;
-}
+interface UnknownErrorOptions extends CamsErrorOptions {}
 
 export class UnknownError extends CamsError {
-  originalError: Error;
-
-  constructor(module: string, error: Error, options: UnknownErrorOptions = {}) {
-    const message = options.message || error.message || 'Unknown error';
-    super(options.status || 500, message, module);
-    this.originalError = error;
+  constructor(module: string, options: UnknownErrorOptions = {}) {
+    super(module, { status: 500, message: 'Unknown error', ...options });
   }
 }

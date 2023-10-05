@@ -1,11 +1,8 @@
-import { CamsError } from './cams-error';
+import { CamsError, CamsErrorOptions } from './cams-error';
 
+interface ForbiddenErrorOptions extends CamsErrorOptions {}
 export class ForbiddenError extends CamsError {
-  originalError: Error;
-
-  constructor(module: string, error: Error, message?: string) {
-    message = message || error.message || 'Request is Forbidden';
-    super(403, message, module);
-    this.originalError = error;
+  constructor(module: string, options: ForbiddenErrorOptions = {}) {
+    super(module, { status: 403, message: 'Request is Forbidden', ...options });
   }
 }
