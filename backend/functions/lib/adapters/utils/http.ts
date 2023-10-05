@@ -3,7 +3,7 @@ import { ApplicationContext } from '../types/basic';
 import { Context } from '@azure/functions';
 import { ApiResponse, HttpResponse } from '../types/http';
 
-const NAMESPACE = 'HTTP-UTILITY-ADAPTER';
+const MODULE_NAME = 'HTTP-UTILITY-ADAPTER';
 
 const commonHeaders = {
   'Content-Type': 'application/json',
@@ -11,7 +11,7 @@ const commonHeaders = {
 };
 
 export function httpSuccess(context: Context, body: object = {}): ApiResponse {
-  log.info(context as ApplicationContext, NAMESPACE, 'HTTP Success');
+  log.info(context as ApplicationContext, MODULE_NAME, 'HTTP Success');
   return {
     headers: commonHeaders,
     statusCode: 200,
@@ -20,7 +20,7 @@ export function httpSuccess(context: Context, body: object = {}): ApiResponse {
 }
 
 export function httpError(context: Context, error: Error, code: number): ApiResponse {
-  log.error(context as ApplicationContext, NAMESPACE, error.message, error);
+  log.error(context as ApplicationContext, MODULE_NAME, error.message, error);
   return {
     headers: commonHeaders,
     statusCode: code,

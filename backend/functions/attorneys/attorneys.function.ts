@@ -13,7 +13,7 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
   appInsights.setup().start();
 }
 
-const NAMESPACE = 'ATTORNEYS-FUNCTION';
+const MODULE_NAME = 'ATTORNEYS-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -31,7 +31,12 @@ const httpTrigger: AzureFunction = async function (
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
     functionContext.res = httpSuccess(functionContext, attorneysList);
   } catch (exception) {
-    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
+    log.error(
+      applicationContextCreator(functionContext),
+      MODULE_NAME,
+      exception.message,
+      exception,
+    );
     functionContext.res = httpError(functionContext, exception, 404);
   }
 };

@@ -3,7 +3,7 @@ import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 
-const NAMESPACE = 'DATABASE-UTILITY';
+const MODULE_NAME = 'DATABASE-UTILITY';
 
 export async function executeQuery(
   context: ApplicationContext,
@@ -31,13 +31,13 @@ export async function executeQuery(
       success: true,
     };
 
-    log.info(context, NAMESPACE, 'Closing connection.');
+    log.info(context, MODULE_NAME, 'Closing connection.');
 
     sqlConnection.close();
 
     return queryResult;
   } catch (error) {
-    log.error(context, NAMESPACE, (error as Error).message, error);
+    log.error(context, MODULE_NAME, (error as Error).message, error);
 
     const queryResult: QueryResults = {
       results: {},

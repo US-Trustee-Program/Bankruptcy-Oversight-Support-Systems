@@ -5,7 +5,7 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 import log from '../lib/adapters/services/logger.service';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 
-const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
+const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -23,7 +23,7 @@ const httpTrigger: AzureFunction = async function (
     } else {
       functionContext.res = httpError(functionContext, e, 500);
     }
-    log.error(applicationContextCreator(functionContext), NAMESPACE, e.message, e);
+    log.error(applicationContextCreator(functionContext), MODULE_NAME, e.message, e);
   }
 };
 
