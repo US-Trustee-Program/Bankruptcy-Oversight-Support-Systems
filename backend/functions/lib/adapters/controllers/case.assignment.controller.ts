@@ -7,6 +7,7 @@ import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { AssignmentException } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
+import { UnknownError } from '../../cams-error';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -47,9 +48,9 @@ export class CaseAssignmentController {
     } catch (exception) {
       log.error(this.applicationContext, NAMESPACE, exception.message);
       if (exception instanceof AssignmentException) {
-        throw exception
-      };
-      throw new AssignmentException(500, exception.message);
+        throw exception;
+      }
+      throw new UnknownError(exception.module || NAMESPACE, exception);
     }
   }
 
