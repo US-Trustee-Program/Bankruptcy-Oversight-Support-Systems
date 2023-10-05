@@ -7,7 +7,7 @@ import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { AssignmentException } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
-import { UnknownError } from '../../cams-error';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
