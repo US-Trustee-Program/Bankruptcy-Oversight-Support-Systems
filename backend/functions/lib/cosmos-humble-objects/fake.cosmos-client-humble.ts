@@ -26,7 +26,7 @@ export default class FakeCosmosClientHumble {
           items: {
             create: (assignment: CaseAttorneyAssignment) => {
               if (assignment.caseId === 'throw-permissions-error') {
-                throw new ForbiddenError(MODULE_NAME, 'forbidden');
+                throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);

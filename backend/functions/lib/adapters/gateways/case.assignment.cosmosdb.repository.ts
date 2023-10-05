@@ -35,8 +35,8 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     } catch (e) {
       log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
-        throw new ForbiddenError(MODULE_NAME, e.message, e);
-      } else throw new UnknownError(MODULE_NAME, e);
+        throw new ForbiddenError(MODULE_NAME, { originalError: e });
+      } else throw new UnknownError(MODULE_NAME, { originalError: e });
     }
   }
 
@@ -82,7 +82,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     } catch (e) {
       log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, e);
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError: e,
+        });
       }
     }
   }

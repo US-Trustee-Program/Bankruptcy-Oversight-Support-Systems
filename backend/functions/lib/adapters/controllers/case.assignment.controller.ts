@@ -5,16 +5,16 @@ import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
-import { AssignmentException } from '../../use-cases/assignment.exception';
+import { AssignmentError } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
 
-const NAMESPACE = 'ASSIGNMENT-CONTROLLER';
+const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
-  'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. ';
+  'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.';
 const VALID_CASEID_PATTERN = RegExp('^\\d{3}-\\d{2}-\\d{5}$');
-const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345. ';
+const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345.';
 
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
@@ -47,11 +47,11 @@ export class CaseAssignmentController {
         listOfAssignments,
       );
     } catch (exception) {
-      log.error(this.applicationContext, NAMESPACE, exception.message);
+      log.error(this.applicationContext, MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
         throw exception;
       }
-      throw new UnknownError(exception.module || NAMESPACE, exception);
+      throw new UnknownError(exception.module || MODULE_NAME, { originalError: exception });
     }
   }
 
@@ -83,9 +83,11 @@ export class CaseAssignmentController {
       errors = true;
     }
     if (errors) {
-      if (badParams.length > 0)
+      if (badParams.length > 0) {
+        if (message.length > 0) message += ' ';
         message += `Required parameter(s) ${badParams.join(', ')} is/are absent.`;
-      throw new AssignmentException(400, message.trim());
+      }
+      throw new AssignmentError(MODULE_NAME, { message });
     }
   }
 }
