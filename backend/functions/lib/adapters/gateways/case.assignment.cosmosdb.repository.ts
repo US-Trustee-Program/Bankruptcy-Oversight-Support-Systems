@@ -5,9 +5,9 @@ import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
-import { AssignmentException } from '../../use-cases/assignment.exception';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { ServerConfigError } from '../../common-errors/server-config-error';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
@@ -82,7 +82,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     } catch (e) {
       log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
-        throw new AssignmentException(500, 'Failed to authenticate to Azure', MODULE_NAME);
+        throw new ServerConfigError(MODULE_NAME, e);
       }
     }
   }
