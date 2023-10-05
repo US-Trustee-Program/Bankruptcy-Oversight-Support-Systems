@@ -5,7 +5,7 @@ import HealthcheckCosmosDb from './healthcheck.db';
 
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 
-const NAMESPACE = 'HEALTHCHECK';
+const MODULE_NAME = 'HEALTHCHECK';
 
 const httpTrigger: AzureFunction = async function (
   context: Context,
@@ -15,12 +15,12 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = applicationContextCreator(context);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
-  log.debug(applicationContext, NAMESPACE, 'Health check endpoint invoked');
+  log.debug(applicationContext, MODULE_NAME, 'Health check endpoint invoked');
 
   const checkCosmosDbWrite = await healthcheckCosmosDbClient.checkDbWrite();
-  log.debug(applicationContext, NAMESPACE, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
+  log.debug(applicationContext, MODULE_NAME, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
   const checkCosmosDbRead = await healthcheckCosmosDbClient.checkDbRead();
-  log.debug(applicationContext, NAMESPACE, 'CosmosDb Read Check return ' + checkCosmosDbRead);
+  log.debug(applicationContext, MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
   const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
 
   const respBody = {

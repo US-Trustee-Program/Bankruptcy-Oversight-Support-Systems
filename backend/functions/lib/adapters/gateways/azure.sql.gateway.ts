@@ -5,7 +5,7 @@ import { executeQuery } from '../utils/database';
 import { ApplicationContext } from '../types/basic';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const NAMESPACE = 'AZURE-SQL-MODULE';
+const MODULE_NAME = 'AZURE-SQL-MODULE';
 
 const getAll = async (context: ApplicationContext, table: string): Promise<DbResult> => {
   const query = `SELECT * FROM ${table}`;

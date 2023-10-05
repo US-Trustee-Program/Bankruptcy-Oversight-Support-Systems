@@ -13,7 +13,7 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
   appInsights.setup().start();
 }
 
-const NAMESPACE = 'CASES-FUNCTION';
+const MODULE_NAME = 'CASES-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -39,7 +39,12 @@ const httpTrigger: AzureFunction = async function (
       functionContext.res = httpSuccess(functionContext, caseList);
     }
   } catch (exception) {
-    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
+    log.error(
+      applicationContextCreator(functionContext),
+      MODULE_NAME,
+      exception.message,
+      exception,
+    );
     functionContext.res = httpError(functionContext, exception, 404);
   }
 };

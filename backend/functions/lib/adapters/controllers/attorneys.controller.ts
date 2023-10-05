@@ -5,7 +5,7 @@ import AttorneysList from '../../use-cases/attorneys';
 import log from '../services/logger.service';
 import { AttorneyListDbResult } from '../types/attorneys';
 
-const NAMESPACE = 'ATTORNEYS-CONTROLLER';
+const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
 
 export class AttorneysController {
   private readonly applicationContext: ApplicationContext;
@@ -17,7 +17,7 @@ export class AttorneysController {
   public async getAttorneyList(requestQueryFilters: {
     officeId?: string;
   }): Promise<AttorneyListDbResult> {
-    log.info(this.applicationContext, NAMESPACE, 'Getting Attorneys list.');
+    log.info(this.applicationContext, MODULE_NAME, 'Getting Attorneys list.');
     const attorneysList = new AttorneysList();
     return await attorneysList.getAttorneyList(this.applicationContext, requestQueryFilters);
   }

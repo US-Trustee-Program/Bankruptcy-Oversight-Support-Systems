@@ -3,7 +3,7 @@ import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
 
-const NAMESPACE = 'LOCAL-ASSIGNMENT-REPOSITORY';
+const MODULE_NAME = 'LOCAL-ASSIGNMENT-REPOSITORY';
 
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
@@ -18,7 +18,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     const assignmentId = this.nextUnusedId;
     caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
-    log.info(this.appContext, NAMESPACE, caseAssignment.name);
+    log.info(this.appContext, MODULE_NAME, caseAssignment.name);
     ++this.nextUnusedId;
     return assignmentId.toString();
   }
