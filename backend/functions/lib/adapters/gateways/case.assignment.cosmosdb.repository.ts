@@ -7,7 +7,7 @@ import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { AssignmentException } from '../../use-cases/assignment.exception';
 
-const NAMESPACE: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
+const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
   private cosmosDbClient;
   private appContext: ApplicationContext;
@@ -28,10 +28,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
-      log.debug(this.appContext, NAMESPACE, `New item created ${item.id}`);
+      log.debug(this.appContext, MODULE_NAME, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new Error('Request is forbidden');
       } else throw e;
@@ -83,9 +83,9 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results;
     } catch (e) {
-      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
-        throw new AssignmentException(403, 'Failed to authenticate to Azure');
+        throw new AssignmentException(403, 'Failed to authenticate to Azure', MODULE_NAME);
       }
     }
   }
