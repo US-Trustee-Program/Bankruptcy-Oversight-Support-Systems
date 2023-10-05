@@ -31,7 +31,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
       log.debug(this.appContext, NAMESPACE, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      // log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new Error('Request is forbidden');
       } else throw e;
@@ -83,7 +83,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results;
     } catch (e) {
-      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      // log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new AssignmentException(403, 'Failed to authenticate to Azure');
       }
