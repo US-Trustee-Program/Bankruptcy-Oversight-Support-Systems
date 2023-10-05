@@ -33,6 +33,7 @@ describe('Case Detail screen tests', () => {
                   caseTitle: 'The Beach Boys',
                   dateFiled: '01-04-1962',
                   closedDate: '01-08-1963',
+                  dismissedDate: '01-08-1964',
                   assignments: [brianWilsonName, carlWilsonName],
                 },
               },
@@ -78,9 +79,13 @@ describe('Case Detail screen tests', () => {
         expect(caseNumber?.innerHTML).toEqual(getCaseNumber(caseId));
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
-        const closedDate = screen.getByTestId('case-detail-closed-date');
         expect(dateFiled.innerHTML).toEqual('01-04-1962');
+
+        const closedDate = screen.getByTestId('case-detail-closed-date');
         expect(closedDate.innerHTML).toEqual('01-08-1963');
+
+        const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
+        expect(dismissedDate.innerHTML).toEqual('01-08-1964');
 
         const assigneeMap = new Map<string, string>();
         const assigneeElements = document.querySelectorAll(

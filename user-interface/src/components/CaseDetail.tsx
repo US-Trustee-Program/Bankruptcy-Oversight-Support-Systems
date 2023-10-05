@@ -71,6 +71,15 @@ export const CaseDetail = () => {
                         {caseDetail.closedDate}
                       </span>
                     </li>
+                    <li>
+                      <span className="case-detail-item-name">Dismissed by court:</span>
+                      <span
+                        data-testid="case-detail-dismissed-date"
+                        className="case-detail-item-value"
+                      >
+                        {caseDetail.dismissedDate}
+                      </span>
+                    </li>
                   </ul>
                 </div>
               </div>
