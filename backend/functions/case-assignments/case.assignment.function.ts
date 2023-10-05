@@ -3,7 +3,7 @@ import { CaseAssignmentController } from '../lib/adapters/controllers/case.assig
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
-import { AssignmentException } from '../lib/use-cases/assignment.exception';
+import { AssignmentError } from '../lib/use-cases/assignment.exception';
 
 const NAMESPACE = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
@@ -18,7 +18,7 @@ const httpTrigger: AzureFunction = async function (
   try {
     await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
   } catch (e) {
-    if (e instanceof AssignmentException) {
+    if (e instanceof AssignmentError) {
       functionContext.res = httpError(functionContext, e, e.status);
     } else {
       functionContext.res = httpError(functionContext, e, 500);

@@ -1,11 +1,9 @@
-import { CamsError } from './cams-error';
+import { CamsError, CamsErrorOptions } from './cams-error';
+
+export interface ServerConfigErrorOptions extends CamsErrorOptions {}
 
 export class ServerConfigError extends CamsError {
-  originalError: Error;
-
-  constructor(module: string, error: Error, message?: string) {
-    message = message || error.message || 'Server config error';
-    super(500, message, module);
-    this.originalError = error;
+  constructor(module: string, options: ServerConfigErrorOptions = {}) {
+    super(module, { message: 'Server configuration error', ...options });
   }
 }

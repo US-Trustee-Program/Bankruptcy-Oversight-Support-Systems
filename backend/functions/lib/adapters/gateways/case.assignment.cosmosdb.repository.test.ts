@@ -101,7 +101,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
-      'forbidden',
+      'Request is Forbidden',
     );
   });
 
