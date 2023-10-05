@@ -12,6 +12,7 @@ interface CaseDetailType {
   caseTitle: string;
   dateFiled: string;
   closedDate: string;
+  dismissedDate: string;
   assignments: string[];
 }
 
