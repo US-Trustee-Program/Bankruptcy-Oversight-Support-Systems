@@ -46,11 +46,10 @@ export class CaseAssignmentController {
       );
     } catch (exception) {
       log.error(this.applicationContext, NAMESPACE, exception.message);
-      if (!(exception instanceof AssignmentException)) {
-        throw new AssignmentException(500, exception.message);
-      } else {
-        throw new AssignmentException(exception.status, exception.message);
-      }
+      if (exception instanceof AssignmentException) {
+        throw exception
+      };
+      throw new AssignmentException(500, exception.message);
     }
   }
 
