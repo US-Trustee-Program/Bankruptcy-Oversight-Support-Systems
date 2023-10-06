@@ -16,5 +16,6 @@ export class CamsError extends Error {
     this.message = options.message || options.originalError?.message || 'Unknown CAMS Error';
     this.status = options.status ?? INTERNAL_SERVER_ERROR;
     this.module = module;
+    this.originalError = options.originalError;
   }
 }
