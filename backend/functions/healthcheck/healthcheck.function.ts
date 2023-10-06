@@ -1,6 +1,8 @@
 import log from '../lib/adapters/services/logger.service';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
 import HealthcheckCosmosDb from './healthcheck.db';
 
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
@@ -33,8 +35,13 @@ const httpTrigger: AzureFunction = async function (
   const allCheckPassed = checkCosmosDbWrite && checkCosmosDbRead && checkCosmosDbDelete;
 
   context.res = allCheckPassed
-    ? httpSuccess(context, { status: 'OK' })
-    : httpError(context, new Error(JSON.stringify(respBody)), 500);
+    ? httpSuccess({ status: 'OK' })
+    : httpError(
+        new CamsError(MODULE_NAME, {
+          message: JSON.stringify(respBody),
+          status: INTERNAL_SERVER_ERROR,
+        }),
+      );
 };
 
 export default httpTrigger;
