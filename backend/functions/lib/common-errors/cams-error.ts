@@ -1,3 +1,5 @@
+import { INTERNAL_SERVER_ERROR } from './constants';
+
 export interface CamsErrorOptions {
   status?: number;
   message?: string;
@@ -12,7 +14,7 @@ export class CamsError extends Error {
   constructor(module: string, options: CamsErrorOptions = {}) {
     super();
     this.message = options.message || options.originalError?.message || 'Unknown CAMS Error';
-    this.status = options.status ?? 500;
+    this.status = options.status ?? INTERNAL_SERVER_ERROR;
     this.module = module;
   }
 }
