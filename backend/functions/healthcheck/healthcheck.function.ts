@@ -1,6 +1,6 @@
 import log from '../lib/adapters/services/logger.service';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-client';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
 import HealthcheckCosmosDb from './healthcheck.db';

@@ -1,7 +1,7 @@
 import httpTrigger from './case.assignment.function';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
-import * as httpModule from '../lib/adapters/utils/http';
+import * as httpModule from '../lib/adapters/utils/http-client';
 
 const context = require('azure-function-context-mock');
 

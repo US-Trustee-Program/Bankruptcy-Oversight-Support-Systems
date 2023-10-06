@@ -1,6 +1,6 @@
 const context = require('azure-function-context-mock');
 import httpTrigger from './attorneys.function';
-import * as httpModule from '../lib/adapters/utils/http';
+import * as httpModule from '../lib/adapters/utils/http-client';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 
 describe('Attorneys Azure Function tests', () => {
