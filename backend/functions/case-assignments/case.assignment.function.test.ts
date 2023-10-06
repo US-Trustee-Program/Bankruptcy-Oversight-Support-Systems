@@ -1,7 +1,7 @@
 import httpTrigger from './case.assignment.function';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
-import * as httpModule from '../lib/adapters/utils/http-client';
+import * as httpResponseModule from '../lib/adapters/utils/http-response';
 
 const context = require('azure-function-context-mock');
 
@@ -191,7 +191,7 @@ describe('Case Assignment Function Tests', () => {
       },
     };
 
-    const httpErrorSpy = jest.spyOn(httpModule, 'httpError');
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(context, request);
 
     expect(httpErrorSpy).toHaveBeenCalled();

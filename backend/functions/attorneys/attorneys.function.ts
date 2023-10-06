@@ -1,5 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-client';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
