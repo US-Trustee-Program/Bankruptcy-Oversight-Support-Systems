@@ -48,7 +48,7 @@ describe('Attorneys Azure Function tests', () => {
     jest
       .spyOn(Object.getPrototypeOf(attorneysController), 'getAttorneyList')
       .mockImplementation(() => {
-        throw new Error('Test Error');
+        throw new Error();
       });
 
     const request = {

@@ -7,7 +7,7 @@ jest.mock('../lib/adapters/controllers/cases.controller', () => {
     CasesController: jest.fn().mockImplementation(() => {
       return {
         getCaseList: () => {
-          throw new Error('Test error');
+          throw new Error();
         },
       };
     }),
@@ -33,6 +33,6 @@ describe('Mocking CasesController to get error handling', () => {
     await httpTrigger(context, request);
 
     expect(context.res.statusCode).toEqual(INTERNAL_SERVER_ERROR);
-    expect(context.res.body.error).toEqual('Test error');
+    expect(context.res.body.error).toEqual('Unknown error');
   });
 });
