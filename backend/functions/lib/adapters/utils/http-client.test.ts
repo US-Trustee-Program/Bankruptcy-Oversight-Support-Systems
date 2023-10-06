@@ -1,4 +1,4 @@
-import { httpGet, httpPost } from './http';
+import { httpGet, httpPost } from './http-client';
 import { HttpResponse } from '../types/http';
 
 const fetchSpy = jest
