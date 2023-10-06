@@ -1,7 +1,5 @@
-import log from '../services/logger.service';
-import { ApplicationContext } from '../types/basic';
-import { Context } from '@azure/functions';
 import { ApiResponse, HttpResponse } from '../types/http';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'HTTP-UTILITY-ADAPTER';
 
@@ -10,8 +8,7 @@ const commonHeaders = {
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(context: Context, body: object = {}): ApiResponse {
-  log.info(context as ApplicationContext, MODULE_NAME, 'HTTP Success');
+export function httpSuccess(body: object = {}): ApiResponse {
   return {
     headers: commonHeaders,
     statusCode: 200,
@@ -19,11 +16,10 @@ export function httpSuccess(context: Context, body: object = {}): ApiResponse {
   };
 }
 
-export function httpError(context: Context, error: Error, code: number): ApiResponse {
-  log.error(context as ApplicationContext, MODULE_NAME, error.message, error);
+export function httpError(error: CamsError): ApiResponse {
   return {
     headers: commonHeaders,
-    statusCode: code,
+    statusCode: error.status,
     body: {
       error: error.message,
     },
