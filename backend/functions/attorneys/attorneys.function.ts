@@ -4,6 +4,7 @@ import { AttorneysController } from '../lib/adapters/controllers/attorneys.contr
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
+import { toCamsError } from '../lib/common-errors/utility';
 
 dotenv.config();
 
@@ -29,15 +30,12 @@ const httpTrigger: AzureFunction = async function (
 
   try {
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
-    functionContext.res = httpSuccess(functionContext, attorneysList);
+    functionContext.res = httpSuccess(attorneysList);
   } catch (exception) {
-    log.error(
-      applicationContextCreator(functionContext),
-      MODULE_NAME,
-      exception.message,
-      exception,
-    );
-    functionContext.res = httpError(exception);
+    const camsError = toCamsError(MODULE_NAME, exception);
+
+    log.camsError(applicationContextCreator(functionContext), camsError);
+    functionContext.res = httpError(camsError);
   }
 };
 
