@@ -57,12 +57,12 @@ export async function httpPost(
   };
 
   if (response.ok) {
+    log.info(context, MODULE_NAME, 'success', data.url);
     return Promise.resolve(httpResponse);
   } else {
     return Promise.reject(httpResponse);
   }
 }
-/**/
 
 export async function httpGet(
   context: ApplicationContext,
@@ -94,4 +94,3 @@ export async function httpGet(
     return Promise.reject(httpResponse);
   }
 }
-/**/
