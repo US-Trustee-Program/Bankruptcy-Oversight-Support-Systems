@@ -37,7 +37,7 @@ const httpTrigger: AzureFunction = async function (
       exception.message,
       exception,
     );
-    functionContext.res = httpError(functionContext, exception, 404);
+    functionContext.res = httpError(exception);
   }
 };
 
