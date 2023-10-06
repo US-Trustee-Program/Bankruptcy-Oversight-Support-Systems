@@ -4,7 +4,8 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
-import { toCamsError } from '../lib/common-errors/utility';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 dotenv.config();
 
@@ -39,8 +40,9 @@ const httpTrigger: AzureFunction = async function (
       });
       functionContext.res = httpSuccess(caseList);
     }
-  } catch (exception) {
-    const camsError = toCamsError(MODULE_NAME, exception);
+  } catch (originalError) {
+    if (originalError instanceof CamsError) throw originalError;
+    const camsError = new UnknownError(MODULE_NAME, { originalError });
     log.camsError(applicationContextCreator(functionContext), camsError);
     functionContext.res = httpError(camsError);
   }

@@ -3,7 +3,8 @@ import { CaseAssignmentController } from '../lib/adapters/controllers/case.assig
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
-import { toCamsError } from '../lib/common-errors/utility';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
@@ -17,8 +18,9 @@ const httpTrigger: AzureFunction = async function (
 
   try {
     await handlePostMethod(functionContext, caseId, listOfAttorneyNames, role);
-  } catch (e) {
-    const camsError = toCamsError(MODULE_NAME, e);
+  } catch (originalError) {
+    if (originalError instanceof CamsError) throw originalError;
+    const camsError = new UnknownError(MODULE_NAME, { originalError });
     log.camsError(applicationContextCreator(functionContext), camsError);
     functionContext.res = httpError(camsError);
   }
