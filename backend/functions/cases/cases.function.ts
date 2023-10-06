@@ -4,6 +4,7 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
+import { toCamsError } from '../lib/common-errors/utility';
 
 dotenv.config();
 
@@ -27,7 +28,7 @@ const httpTrigger: AzureFunction = async function (
       const caseDetails = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
-      functionContext.res = httpSuccess(functionContext, caseDetails);
+      functionContext.res = httpSuccess(caseDetails);
     } else {
       if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
       else if (casesRequest.body && casesRequest.body.chapter)
@@ -36,16 +37,12 @@ const httpTrigger: AzureFunction = async function (
       const caseList = await casesController.getCaseList({
         caseChapter: caseChapter,
       });
-      functionContext.res = httpSuccess(functionContext, caseList);
+      functionContext.res = httpSuccess(caseList);
     }
   } catch (exception) {
-    log.error(
-      applicationContextCreator(functionContext),
-      MODULE_NAME,
-      exception.message,
-      exception,
-    );
-    functionContext.res = httpError(functionContext, exception, 404);
+    const camsError = toCamsError(MODULE_NAME, exception);
+    log.camsError(applicationContextCreator(functionContext), camsError);
+    functionContext.res = httpError(camsError);
   }
 };
 
