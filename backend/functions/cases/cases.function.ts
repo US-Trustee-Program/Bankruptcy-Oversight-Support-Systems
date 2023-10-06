@@ -1,6 +1,6 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CasesController } from '../lib/adapters/controllers/cases.controller';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-client';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';

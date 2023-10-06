@@ -1,6 +1,6 @@
 const context = require('azure-function-context-mock');
 import httpTrigger from './attorneys.function';
-import * as httpModule from '../lib/adapters/utils/http-client';
+import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 
 describe('Attorneys Azure Function tests', () => {
@@ -57,7 +57,7 @@ describe('Attorneys Azure Function tests', () => {
       },
     };
 
-    const httpErrorSpy = jest.spyOn(httpModule, 'httpError');
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
 
     await httpTrigger(context, request);
 

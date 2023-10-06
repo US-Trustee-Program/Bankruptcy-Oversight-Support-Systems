@@ -1,6 +1,6 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-client';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import { toCamsError } from '../lib/common-errors/utility';
