@@ -1,9 +1,5 @@
 import { ApiResponse, HttpResponse } from '../types/http';
 import { CamsError } from '../../common-errors/cams-error';
-import { ApplicationContext } from '../types/basic';
-import log from '../services/logger.service';
-
-const MODULE_NAME = 'HTTP-UTILITY-ADAPTER';
 
 const commonHeaders = {
   'Content-Type': 'application/json',
@@ -29,15 +25,12 @@ export function httpError(error: CamsError): ApiResponse {
 }
 
 // fetch post
-export async function httpPost(
-  context: ApplicationContext,
-  data: {
-    url: string;
-    body: object;
-    headers?: object;
-    credentials?: string;
-  },
-): Promise<HttpResponse> {
+export async function httpPost(data: {
+  url: string;
+  body: object;
+  headers?: object;
+  credentials?: string;
+}): Promise<HttpResponse> {
   const bodyContent = JSON.stringify(data.body);
   const response = await fetch(data.url, {
     method: 'POST',
@@ -57,21 +50,17 @@ export async function httpPost(
   };
 
   if (response.ok) {
-    log.info(context, MODULE_NAME, 'success', data.url);
     return Promise.resolve(httpResponse);
   } else {
     return Promise.reject(httpResponse);
   }
 }
 
-export async function httpGet(
-  context: ApplicationContext,
-  data: {
-    url: string;
-    headers?: object;
-    credentials?: string;
-  },
-): Promise<HttpResponse> {
+export async function httpGet(data: {
+  url: string;
+  headers?: object;
+  credentials?: string;
+}): Promise<HttpResponse> {
   const response = await fetch(data.url, {
     method: 'GET',
     headers: {
@@ -88,7 +77,6 @@ export async function httpGet(
   };
 
   if (response.ok) {
-    log.info(context, MODULE_NAME, 'success', data.url);
     return Promise.resolve(httpResponse);
   } else {
     return Promise.reject(httpResponse);
