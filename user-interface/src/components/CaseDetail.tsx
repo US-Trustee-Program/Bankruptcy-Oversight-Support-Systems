@@ -31,6 +31,11 @@ export const CaseDetail = () => {
   if (isLoading) {
     return (
       <div className="case-detail">
+        <Link className="back-button" to="/case-assignment">
+          <Icon name="arrow_back"></Icon>
+          Back to Case List
+        </Link>
+
         <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
         <h2>
           <span className="case-number" title="Case Number">
