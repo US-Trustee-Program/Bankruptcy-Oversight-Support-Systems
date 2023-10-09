@@ -1,0 +1,25 @@
+# Title: Summary, imperative, start upper case, don't end with a period
+# No more than 50 chars. #### 50 chars is here:  #
+
+# Remember blank line between title and body (i.e leave the next line blank).
+
+# Body: Explain *what* and *why* (not *how*). Include task ID (Jira issue).
+# Wrap at 72 chars. ################################## which is here:  #
+
+
+# If you know the code is not ready for the workflow, you can skip it by including the next line
+# [skip ci]
+
+# Add the Jira ticket number
+# If not working on USTP repositories, comment out the next line.
+Jira ticket: CAMS-
+
+# Co-authored-by: Fritz Madden <>
+# Co-authored-by: Arthur Morrow <133667008+amorrow-flexion@users.noreply.github.com>
+# Co-authored-by: James Brooks <12275865+jamesobrooks@users.noreply.github.com>
+# Co-authored-by: Michael Ly <105381067+magile32@users.noreply.github.com>
+# Co-authored-by: Stanley Smith <>
+# Co-authored-by: Mrinalini Sinha <20514925+mrinsin@users.noreply.github.com>
+# Co-authored-by: Brian Posey <15091170+btposey@users.noreply.github.com>
+
+# Squash commit message will follow this line for mob.sh sessions
