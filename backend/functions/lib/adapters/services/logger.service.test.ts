@@ -10,30 +10,30 @@ describe('Basic logger service tests', () => {
   test('logMessage() should throw an error if context doesnt contain a log method.', () => {
     const mockContext = applicationContextCreator({ foo: 'bar' } as unknown as Context);
     try {
-      log.info(mockContext, 'FOO-NAMESPACE', 'test message');
+      log.info(mockContext, 'FOO-MODULE_NAME', 'test message');
     } catch (e) {
       expect(e).toEqual(Error('Context does not contain a log function'));
     }
   });
 
   test('Info log should set context.log to the expected string', async () => {
-    log.info(appContext, 'FOO-NAMESPACE', 'test message');
-    expect(mockLog).toHaveBeenCalledWith('[INFO] [FOO-NAMESPACE] test message');
+    log.info(appContext, 'FOO-MODULE_NAME', 'test message');
+    expect(mockLog).toHaveBeenCalledWith('[INFO] [FOO-MODULE_NAME] test message');
   });
 
   test('Warning log should set context.log to the expected string', async () => {
-    log.warn(appContext, 'FOO-NAMESPACE', 'test message');
-    expect(mockLog).toHaveBeenCalledWith('[WARN] [FOO-NAMESPACE] test message');
+    log.warn(appContext, 'FOO-MODULE_NAME', 'test message');
+    expect(mockLog).toHaveBeenCalledWith('[WARN] [FOO-MODULE_NAME] test message');
   });
 
   test('Error log should set context.log to the expected string', async () => {
-    log.error(appContext, 'FOO-NAMESPACE', 'test message');
-    expect(mockLog).toHaveBeenCalledWith('[ERROR] [FOO-NAMESPACE] test message');
+    log.error(appContext, 'FOO-MODULE_NAME', 'test message');
+    expect(mockLog).toHaveBeenCalledWith('[ERROR] [FOO-MODULE_NAME] test message');
   });
 
   test('Debug log should set context.log to the expected string', async () => {
-    log.debug(appContext, 'FOO-NAMESPACE', 'test message');
-    expect(mockLog).toHaveBeenCalledWith('[DEBUG] [FOO-NAMESPACE] test message');
+    log.debug(appContext, 'FOO-MODULE_NAME', 'test message');
+    expect(mockLog).toHaveBeenCalledWith('[DEBUG] [FOO-MODULE_NAME] test message');
   });
 
   test('Info log with an object passed to it, should set context.log to the expected string', async () => {
@@ -41,9 +41,9 @@ describe('Basic logger service tests', () => {
       property: 'value',
     };
 
-    log.info(appContext, 'FOO-NAMESPACE', 'test message', testObj);
+    log.info(appContext, 'FOO-MODULE_NAME', 'test message', testObj);
     expect(mockLog).toHaveBeenCalledWith(
-      `[INFO] [FOO-NAMESPACE] test message ${JSON.stringify(testObj)}`,
+      `[INFO] [FOO-MODULE_NAME] test message ${JSON.stringify(testObj)}`,
     );
   });
 

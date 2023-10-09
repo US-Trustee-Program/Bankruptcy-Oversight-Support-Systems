@@ -1,3 +1,4 @@
+import { CamsError } from '../../common-errors/cams-error';
 import { ApplicationContext } from '../types/basic';
 
 export default class log {
@@ -8,11 +9,11 @@ export default class log {
   private static logMessage(
     context: ApplicationContext,
     logType: string,
-    namespace: string,
+    moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    const logString = `[${logType.toUpperCase()}] [${namespace}] ${message} ${
+    const logString = `[${logType.toUpperCase()}] [${moduleName}] ${message} ${
       undefined != data ? JSON.stringify(data) : ''
     }`;
     if (Object.prototype.hasOwnProperty.call(context, 'log') && typeof context.log === 'function') {
@@ -24,37 +25,41 @@ export default class log {
 
   public static info(
     context: ApplicationContext,
-    namespace: string,
+    moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'info', namespace, message, data);
+    log.logMessage(context, 'info', moduleName, message, data);
   }
 
   public static warn(
     context: ApplicationContext,
-    namespace: string,
+    moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'warn', namespace, message, data);
+    log.logMessage(context, 'warn', moduleName, message, data);
   }
 
   public static error(
     context: ApplicationContext,
-    namespace: string,
+    moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'error', namespace, message, data);
+    log.logMessage(context, 'error', moduleName, message, data);
   }
 
   public static debug(
     context: ApplicationContext,
-    namespace: string,
+    moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'debug', namespace, message, data);
+    log.logMessage(context, 'debug', moduleName, message, data);
+  }
+
+  public static camsError(context: ApplicationContext, camsError: CamsError) {
+    log.logMessage(context, 'error', camsError.module, camsError.message, camsError);
   }
 }

@@ -101,28 +101,13 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
-      'Request is forbidden',
+      'Request is Forbidden',
     );
   });
 
   test('should throw a not implemented error when getAssignment is called', async () => {
     try {
       await repository.getAssignment('some-assignment');
-      // Ensure that if we do not catch the expected error, we will fail.
-      expect(true).toBeFalsy();
-    } catch (e) {
-      expect((e as Error).message).toEqual('Method not implemented.');
-    }
-  });
-
-  test('should throw a not implemented error when findAssignment is called', async () => {
-    const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      'some-case-number',
-      'some-attorney-name',
-      trialAttorneyRole,
-    );
-    try {
-      await repository.findAssignment(assignment);
       // Ensure that if we do not catch the expected error, we will fail.
       expect(true).toBeFalsy();
     } catch (e) {

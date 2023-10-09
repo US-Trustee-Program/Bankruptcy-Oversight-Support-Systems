@@ -1,9 +1,11 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CasesController } from '../lib/adapters/controllers/cases.controller';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 dotenv.config();
 
@@ -13,7 +15,7 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
   appInsights.setup().start();
 }
 
-const NAMESPACE = 'CASES-FUNCTION';
+const MODULE_NAME = 'CASES-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -27,7 +29,7 @@ const httpTrigger: AzureFunction = async function (
       const caseDetails = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
-      functionContext.res = httpSuccess(functionContext, caseDetails);
+      functionContext.res = httpSuccess(caseDetails);
     } else {
       if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
       else if (casesRequest.body && casesRequest.body.chapter)
@@ -36,11 +38,15 @@ const httpTrigger: AzureFunction = async function (
       const caseList = await casesController.getCaseList({
         caseChapter: caseChapter,
       });
-      functionContext.res = httpSuccess(functionContext, caseList);
+      functionContext.res = httpSuccess(caseList);
     }
-  } catch (exception) {
-    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
-    functionContext.res = httpError(functionContext, exception, 404);
+  } catch (originalError) {
+    let error = originalError;
+    if (!(error instanceof CamsError)) {
+      error = new UnknownError(MODULE_NAME, { originalError });
+    }
+    log.camsError(applicationContextCreator(functionContext), error);
+    functionContext.res = httpError(error);
   }
 };
 

@@ -1,6 +1,6 @@
 import { CaseAssignmentController } from './case.assignment.controller';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
-import { AssignmentException } from '../../use-cases/assignment.exception';
+import { AssignmentError } from '../../use-cases/assignment.exception';
 
 const context = require('azure-function-context-mock');
 
@@ -74,7 +74,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
 
     await expect(
       assignmentController.createTrialAttorneyAssignments(testCaseAssignment2),
-    ).rejects.toThrow(AssignmentException);
+    ).rejects.toThrow(AssignmentError);
   });
 
   test('should assign all attorneys in the list', async () => {

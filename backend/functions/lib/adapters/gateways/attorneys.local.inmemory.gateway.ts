@@ -6,7 +6,7 @@ import { AttorneyListRecordSet, AttorneyListDbResult } from '../types/attorneys'
 import { runQuery } from './local.inmemory.gateway';
 import { AttorneyGatewayInterface } from '../../use-cases/attorney.gateway.interface';
 
-const NAMESPACE = 'ATTORNEYS-LOCAL-INMEMORY-DB-GATEWAY';
+const MODULE_NAME = 'ATTORNEYS-LOCAL-INMEMORY-DB-GATEWAY';
 
 const table = 'attorneys';
 
@@ -26,7 +26,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     }
 
     if (attorneyOptions.officeId.length > 0) {
-      log.info(context, NAMESPACE, `${attorneyOptions.officeId}`);
+      log.info(context, MODULE_NAME, `${attorneyOptions.officeId}`);
       input.push({
         name: 'officeId',
         value: attorneyOptions.officeId,
@@ -42,7 +42,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     let results: AttorneyListDbResult;
 
     if (queryResult.success) {
-      log.info(context, NAMESPACE, 'Attorney List DB query successful');
+      log.info(context, MODULE_NAME, 'Attorney List DB query successful');
       const body: AttorneyListRecordSet = { attorneyList: [] };
       body.attorneyList = queryResult.results as [];
       const rowsAffected = (queryResult.results as Array<object>).length;
@@ -53,7 +53,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
         body,
       };
     } else {
-      log.warn(context, NAMESPACE, 'Attorney List DB query unsuccessful');
+      log.warn(context, MODULE_NAME, 'Attorney List DB query unsuccessful');
       results = {
         success: false,
         message: queryResult.message,

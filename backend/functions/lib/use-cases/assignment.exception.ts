@@ -1,9 +1,9 @@
-export class AssignmentException extends Error {
-  status: number;
+import { CamsError, CamsErrorOptions } from '../common-errors/cams-error';
 
-  constructor(status: number, message: string) {
-    super();
-    super.message = message;
-    this.status = status;
+export interface AssignmentErrorOptions extends CamsErrorOptions {}
+
+export class AssignmentError extends CamsError {
+  constructor(module: string, options: AssignmentErrorOptions = {}) {
+    super(module, { status: 400, ...options });
   }
 }
