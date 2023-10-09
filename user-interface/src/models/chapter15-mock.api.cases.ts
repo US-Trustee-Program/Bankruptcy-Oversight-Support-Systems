@@ -51,28 +51,7 @@ export default class Chapter15MockApi extends Api {
     caseTitle: 'The Beach Boys',
     dateFiled: '01-04-1962',
     dateClosed: '01-08-1963',
-    assignedStaff: [
-      {
-        name: 'Brian Wilson',
-        type: 'Trial Attorney',
-      },
-      {
-        name: 'Carl Wilson',
-        type: 'Trial Attorney',
-      },
-      {
-        name: 'Dennis Wilson',
-        type: 'Trial Attorney',
-      },
-      {
-        name: 'Mike Love',
-        type: 'Trial Attorney',
-      },
-      {
-        name: 'Al Jardine',
-        type: 'Trial Attorney',
-      },
-    ],
+    assignments: ['Brian Wilson', 'Carl Wilson', 'Dennis Wilson', 'Mike Love', 'Al Jardine'],
   };
 
   public static async list(path: string): Promise<ResponseData> {
