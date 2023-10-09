@@ -22,7 +22,12 @@ For branches related to Jira tickets, the branch name should begin with `CAMS-` 
 
 ### Git Hooks
 
-We have created a script to run to set up a pre-commit git hook to verify that your branch name is appropriate. It is located at `ops/helper-scripts/set-up-git-hooks.sh`.
+We have created a script to set up git hooks to handle the following:
+
+1. verify that a branch name is appropriate
+1. use a common git commit template
+
+The script is located at `ops/helper-scripts/set-up-git-hooks.sh`.
 
 !> Please run this script by executing `sh ops/helper-scripts/set-up-git-hooks.sh` from the top directory of the repository.
 

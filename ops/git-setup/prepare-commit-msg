@@ -1,0 +1,10 @@
+#!/bin/bash
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+
+if [ "$COMMIT_SOURCE" = "squash" ]; then
+  temp_msg=$(mktemp)
+  cat "$(git config commit.template)" >> $temp_msg
+  cat $COMMIT_MSG_FILE >> $temp_msg
+  mv "$temp_msg" "$COMMIT_MSG_FILE"
+fi

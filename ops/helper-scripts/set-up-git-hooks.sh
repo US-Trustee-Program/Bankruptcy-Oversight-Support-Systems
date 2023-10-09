@@ -9,8 +9,9 @@ then
 fi
 pre-commit install
 
-# Insert the branch naming convention check
 pushd ops/helper-scripts
+
+# Insert the branch naming convention check
 ## Create a temporary file to hold the modified contents
 temp_file=$(mktemp)
 
@@ -25,6 +26,10 @@ temp_file=$(mktemp)
 mv "$temp_file" ../../.git/hooks/pre-commit
 chmod +x ../../.git/hooks/pre-commit
 
-## Remove the temporary file
-rm "$temp_file"
+# Set up prepare-commit-msg hook
+cp ../git-setup/prepare-commit-msg ../../.git/hooks/prepare-commit-msg
+
 popd
+
+# Set up commit template
+git config commit.template ./ops/git-setup/commit.template
