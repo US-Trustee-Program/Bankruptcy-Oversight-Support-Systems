@@ -5,7 +5,7 @@ import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
 import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
 
-const NAMESPACE = 'CASES-LOCAL-GATEWAY';
+const MODULE_NAME = 'CASES-LOCAL-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
   getChapter15Cases = async (
@@ -24,7 +24,7 @@ export class CasesLocalGateway implements CasesInterface {
         bCase.dateFiled = convertYearMonthDayToMonthDayYear(bCase.dateFiled);
       });
     } catch (err) {
-      log.error(context, NAMESPACE, 'Failed to read mock cases.', err);
+      log.error(context, MODULE_NAME, 'Failed to read mock cases.', err);
       const message = (err as Error).message;
       return Promise.reject(message);
     }
@@ -48,7 +48,7 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail.dateFiled = convertYearMonthDayToMonthDayYear(caseDetail.dateFiled);
       caseDetail.dateClosed = convertYearMonthDayToMonthDayYear(caseDetail.dateClosed);
     } catch (err) {
-      log.error(context, NAMESPACE, `Failed to read mock case detail for ${caseId}.`, err);
+      log.error(context, MODULE_NAME, `Failed to read mock case detail for ${caseId}.`, err);
       const message = (err as Error).message;
       return Promise.reject(message);
     }

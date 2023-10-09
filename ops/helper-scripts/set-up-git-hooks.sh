@@ -28,6 +28,7 @@ chmod +x ../../.git/hooks/pre-commit
 
 # Set up prepare-commit-msg hook
 cp ../git-setup/prepare-commit-msg ../../.git/hooks/prepare-commit-msg
+chmod +x ../../.git/hooks/prepare-commit-msg
 
 popd
 

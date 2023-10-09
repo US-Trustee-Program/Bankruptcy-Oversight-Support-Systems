@@ -1,7 +1,9 @@
 import httpTrigger from './case.assignment.function';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
-import * as httpModule from '../lib/adapters/utils/http';
+import * as httpResponseModule from '../lib/adapters/utils/http-response';
+import { AssignmentError } from '../lib/use-cases/assignment.exception';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 const context = require('azure-function-context-mock');
 
@@ -94,9 +96,12 @@ describe('Case Assignment Function Tests', () => {
 
     const expectedResponse = { error: 'Required parameter(s) caseId is/are absent.' };
 
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toEqual(400);
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
+    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a caseId is invalid format', async () => {
@@ -111,9 +116,12 @@ describe('Case Assignment Function Tests', () => {
     };
     const expectedResponse = { error: 'caseId must be formatted like 01-12345.' };
 
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toEqual(400);
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
+    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a attorneyList is empty or not passed in the request', async () => {
@@ -128,9 +136,12 @@ describe('Case Assignment Function Tests', () => {
     };
     const expectedResponse = { error: 'Required parameter(s) attorneyList is/are absent.' };
 
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toEqual(400);
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
+    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
@@ -148,9 +159,12 @@ describe('Case Assignment Function Tests', () => {
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
     };
 
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toEqual(400);
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
+    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
@@ -168,9 +182,12 @@ describe('Case Assignment Function Tests', () => {
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
     };
 
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(appContext, request);
     expect(appContext.res.body).toEqual(expectedResponse);
     expect(appContext.res.statusCode).toEqual(400);
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
+    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
@@ -178,7 +195,7 @@ describe('Case Assignment Function Tests', () => {
     jest
       .spyOn(Object.getPrototypeOf(assignmentController), 'createTrialAttorneyAssignments')
       .mockImplementation(() => {
-        throw new Error('Mock Error');
+        throw new Error();
       });
 
     const request = {
@@ -191,12 +208,13 @@ describe('Case Assignment Function Tests', () => {
       },
     };
 
-    const httpErrorSpy = jest.spyOn(httpModule, 'httpError');
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(context, request);
 
     expect(httpErrorSpy).toHaveBeenCalled();
     expect(context.res.statusCode).toEqual(500);
-    expect(context.res.body.error).toEqual('Mock Error');
+    expect(context.res.body.error).toEqual('Unknown error');
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {

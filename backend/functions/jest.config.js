@@ -2,6 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  clearMocks: true,
   collectCoverageFrom: ['**/*.{js,ts}'],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',

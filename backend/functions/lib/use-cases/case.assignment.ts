@@ -5,9 +5,9 @@ import { ApplicationContext } from '../adapters/types/basic';
 import { AttorneyAssignmentResponseInterface } from '../adapters/types/case.assignment';
 import log from '../adapters/services/logger.service';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
-import { AssignmentException } from './assignment.exception';
+import { AssignmentError } from './assignment.exception';
 
-const NAMESPACE = 'CASE-ASSIGNMENT';
+const MODULE_NAME = 'CASE-ASSIGNMENT';
 const EXISTING_ASSIGNMENT_FOUND =
   'A trial attorney assignment already exists for this case. Cannot create another assignment on an existing case assignment.';
 export class CaseAssignment {
@@ -31,7 +31,7 @@ export class CaseAssignment {
     try {
       return await this.assignmentRepository.createAssignment(caseAssignment);
     } catch (exception) {
-      log.error(applicationContextCreator(context), NAMESPACE, exception.message);
+      log.error(applicationContextCreator(context), MODULE_NAME, exception.message);
       throw exception;
     }
   }
@@ -42,7 +42,7 @@ export class CaseAssignment {
   ): Promise<AttorneyAssignmentResponseInterface> {
     const isValid = await this.isCreateValid(context, listOfAssignments);
     if (!isValid) {
-      throw new AssignmentException(400, EXISTING_ASSIGNMENT_FOUND);
+      throw new AssignmentError(MODULE_NAME, { message: EXISTING_ASSIGNMENT_FOUND });
     } else {
       const listOfAssignmentIdsCreated: string[] = [];
       for (const assignment of listOfAssignments) {

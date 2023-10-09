@@ -5,9 +5,11 @@ import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
-import { AssignmentException } from '../../use-cases/assignment.exception';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { ServerConfigError } from '../../common-errors/server-config-error';
 
-const NAMESPACE: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
+const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
   private cosmosDbClient;
   private appContext: ApplicationContext;
@@ -28,23 +30,18 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
-      log.debug(this.appContext, NAMESPACE, `New item created ${item.id}`);
+      log.debug(this.appContext, MODULE_NAME, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
-        throw new Error('Request is forbidden');
-      } else throw e;
+        throw new ForbiddenError(MODULE_NAME, { originalError: e });
+      } else throw new UnknownError(MODULE_NAME, { originalError: e });
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
-    throw new Error('Method not implemented.');
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  findAssignment(caseAssignment: CaseAttorneyAssignment): Promise<CaseAttorneyAssignment> {
     throw new Error('Method not implemented.');
   }
 
@@ -83,9 +80,12 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results;
     } catch (e) {
-      log.error(this.appContext, NAMESPACE, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
-        throw new AssignmentException(403, 'Failed to authenticate to Azure');
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError: e,
+        });
       }
     }
   }

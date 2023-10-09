@@ -1,9 +1,11 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 dotenv.config();
 
@@ -13,7 +15,7 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
   appInsights.setup().start();
 }
 
-const NAMESPACE = 'ATTORNEYS-FUNCTION';
+const MODULE_NAME = 'ATTORNEYS-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -29,10 +31,14 @@ const httpTrigger: AzureFunction = async function (
 
   try {
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
-    functionContext.res = httpSuccess(functionContext, attorneysList);
-  } catch (exception) {
-    log.error(applicationContextCreator(functionContext), NAMESPACE, exception.message, exception);
-    functionContext.res = httpError(functionContext, exception, 404);
+    functionContext.res = httpSuccess(attorneysList);
+  } catch (originalError) {
+    let error = originalError;
+    if (!(error instanceof CamsError)) {
+      error = new UnknownError(MODULE_NAME, { originalError });
+    }
+    log.camsError(applicationContextCreator(functionContext), error);
+    functionContext.res = httpError(error);
   }
 };
 

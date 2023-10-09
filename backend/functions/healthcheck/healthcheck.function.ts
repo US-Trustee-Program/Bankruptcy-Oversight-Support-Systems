@@ -1,11 +1,13 @@
 import log from '../lib/adapters/services/logger.service';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
 import HealthcheckCosmosDb from './healthcheck.db';
 
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 
-const NAMESPACE = 'HEALTHCHECK';
+const MODULE_NAME = 'HEALTHCHECK';
 
 const httpTrigger: AzureFunction = async function (
   context: Context,
@@ -15,12 +17,12 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = applicationContextCreator(context);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
-  log.debug(applicationContext, NAMESPACE, 'Health check endpoint invoked');
+  log.debug(applicationContext, MODULE_NAME, 'Health check endpoint invoked');
 
   const checkCosmosDbWrite = await healthcheckCosmosDbClient.checkDbWrite();
-  log.debug(applicationContext, NAMESPACE, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
+  log.debug(applicationContext, MODULE_NAME, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
   const checkCosmosDbRead = await healthcheckCosmosDbClient.checkDbRead();
-  log.debug(applicationContext, NAMESPACE, 'CosmosDb Read Check return ' + checkCosmosDbRead);
+  log.debug(applicationContext, MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
   const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
 
   const respBody = {
@@ -33,8 +35,13 @@ const httpTrigger: AzureFunction = async function (
   const allCheckPassed = checkCosmosDbWrite && checkCosmosDbRead && checkCosmosDbDelete;
 
   context.res = allCheckPassed
-    ? httpSuccess(context, { status: 'OK' })
-    : httpError(context, new Error(JSON.stringify(respBody)), 500);
+    ? httpSuccess({ status: 'OK' })
+    : httpError(
+        new CamsError(MODULE_NAME, {
+          message: JSON.stringify(respBody),
+          status: INTERNAL_SERVER_ERROR,
+        }),
+      );
 };
 
 export default httpTrigger;
