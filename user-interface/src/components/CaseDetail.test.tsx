@@ -3,6 +3,7 @@ import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail } from './CaseDetail';
 import { getCaseNumber } from '../utils/formatCaseNumber';
 import { CaseDetailType } from '../type-declarations/chapter-15';
+import { BrowserRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -19,7 +20,11 @@ describe('Case Detail screen tests', () => {
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
     };
-    render(<CaseDetail caseDetail={testCaseDetail} />);
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
 
     await waitFor(
       async () => {
@@ -63,7 +68,11 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       assignments: [brianWilsonName, carlWilsonName],
     };
-    render(<CaseDetail caseDetail={testCaseDetail} />);
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
 
     await waitFor(
       async () => {
