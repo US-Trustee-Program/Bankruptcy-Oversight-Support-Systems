@@ -1,10 +1,11 @@
 import './CaseDetail.scss';
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 import { getCaseNumber } from '../utils/formatCaseNumber';
+import Icon from './uswds/Icon';
 
 export const CaseDetail = () => {
   const { caseId } = useParams();
@@ -30,6 +31,11 @@ export const CaseDetail = () => {
   if (isLoading) {
     return (
       <div className="case-detail">
+        <Link className="back-button" to="/case-assignment">
+          <Icon name="arrow_back"></Icon>
+          Back to Case List
+        </Link>
+
         <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
         <h2>
           <span className="case-number" title="Case Number">
@@ -44,6 +50,11 @@ export const CaseDetail = () => {
       <>
         {caseDetail && (
           <div className="case-detail">
+            <Link className="back-button" to="/case-assignment">
+              <Icon name="arrow_back"></Icon>
+              Back to Case List
+            </Link>
+
             <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
             <h2>
               <span className="case-number" title="Case Number">
