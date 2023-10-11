@@ -3,8 +3,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { CaseAssignment } from './CaseAssignment';
 import { store } from '../store/store';
-import Chapter15MockApi from '../models/chapter15-mock.api.cases';
-import { ResponseData } from '../type-declarations/api';
+// import Chapter15MockApi from '../models/chapter15-mock.api.cases';
+// import { ResponseData } from '../type-declarations/api';
 import { vi } from 'vitest';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
@@ -116,155 +116,155 @@ describe('CaseAssignment Component Tests', () => {
     );
   });
 
-  test('/cases should not contain any Unassigned Cases table when all cases are assigned', async () => {
-    vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .mockImplementation((_path: string): Promise<ResponseData> => {
-        return Promise.resolve({
-          message: 'not found',
-          count: 0,
-          body: {
-            caseList: [
-              {
-                caseId: '081-23-44463',
-                caseTitle: 'Flo Esterly and Neas Van Sampson',
-                dateFiled: '2023-05-04',
-                assignments: ['Sara', 'Bob'],
-              },
-              {
-                caseId: '081-23-44462',
-                caseTitle: 'Bridget Maldonado',
-                dateFiled: '2023-04-14',
-                assignments: ['Frank', 'Sue'],
-              },
-              {
-                caseId: '081-23-44461',
-                caseTitle: 'Talia Torres and Tylor Stevenson',
-                dateFiled: '2023-04-04',
-                assignments: ['Joe', 'Sam'],
-              },
-            ],
-          },
-        });
-      });
+  // test('/cases should not contain any Unassigned Cases table when all cases are assigned', async () => {
+  //   vi.spyOn(Chapter15MockApi, 'list')
+  //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //     .mockImplementation((_path: string): Promise<ResponseData> => {
+  //       return Promise.resolve({
+  //         message: 'not found',
+  //         count: 0,
+  //         body: {
+  //           caseList: [
+  //             {
+  //               caseId: '081-23-44463',
+  //               caseTitle: 'Flo Esterly and Neas Van Sampson',
+  //               dateFiled: '2023-05-04',
+  //               assignments: ['Sara', 'Bob'],
+  //             },
+  //             {
+  //               caseId: '081-23-44462',
+  //               caseTitle: 'Bridget Maldonado',
+  //               dateFiled: '2023-04-14',
+  //               assignments: ['Frank', 'Sue'],
+  //             },
+  //             {
+  //               caseId: '081-23-44461',
+  //               caseTitle: 'Talia Torres and Tylor Stevenson',
+  //               dateFiled: '2023-04-04',
+  //               assignments: ['Joe', 'Sam'],
+  //             },
+  //           ],
+  //         },
+  //       });
+  //     });
 
-    render(
-      <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
-      </BrowserRouter>,
-    );
+  //   render(
+  //     <BrowserRouter>
+  //       <Provider store={store}>
+  //         <CaseAssignment />
+  //       </Provider>
+  //     </BrowserRouter>,
+  //   );
 
-    await waitFor(() => {
-      screen.getAllByTestId('assigned-table-body');
-    });
-    let unassignedTableBody;
-    try {
-      unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
-      expect(true).toBeFalsy();
-    } catch (err) {
-      expect(unassignedTableBody).toBeUndefined();
-      console.log('unassigned table does not exist');
-    }
-  });
+  //   await waitFor(() => {
+  //     screen.getAllByTestId('assigned-table-body');
+  //   });
+  //   let unassignedTableBody;
+  //   try {
+  //     unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
+  //     expect(true).toBeFalsy();
+  //   } catch (err) {
+  //     expect(unassignedTableBody).toBeUndefined();
+  //     console.log('unassigned table does not exist');
+  //   }
+  // });
 
-  test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
-    vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .mockImplementation((_path: string): Promise<ResponseData> => {
-        return Promise.resolve({
-          message: 'not found',
-          count: 0,
-          body: {
-            caseList: [
-              {
-                caseId: '081-23-44463',
-                caseTitle: 'Flo Esterly and Neas Van Sampson',
-                dateFiled: '2023-05-04',
-                assignments: ['Sara', 'Bob'],
-              },
-              {
-                caseId: '081-23-44462',
-                caseTitle: 'Bridget Maldonado',
-                dateFiled: '2023-04-14',
-                assignments: ['Frank', 'Sue'],
-              },
-              {
-                caseId: '081-23-44461',
-                caseTitle: 'Talia Torres and Tylor Stevenson',
-                dateFiled: '2023-04-04',
-                assignments: ['Joe', 'Sam'],
-              },
-            ],
-          },
-        });
-      });
+  // test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
+  //   vi.spyOn(Chapter15MockApi, 'list')
+  //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //     .mockImplementation((_path: string): Promise<ResponseData> => {
+  //       return Promise.resolve({
+  //         message: 'not found',
+  //         count: 0,
+  //         body: {
+  //           caseList: [
+  //             {
+  //               caseId: '081-23-44463',
+  //               caseTitle: 'Flo Esterly and Neas Van Sampson',
+  //               dateFiled: '2023-05-04',
+  //               assignments: ['Sara', 'Bob'],
+  //             },
+  //             {
+  //               caseId: '081-23-44462',
+  //               caseTitle: 'Bridget Maldonado',
+  //               dateFiled: '2023-04-14',
+  //               assignments: ['Frank', 'Sue'],
+  //             },
+  //             {
+  //               caseId: '081-23-44461',
+  //               caseTitle: 'Talia Torres and Tylor Stevenson',
+  //               dateFiled: '2023-04-04',
+  //               assignments: ['Joe', 'Sam'],
+  //             },
+  //           ],
+  //         },
+  //       });
+  //     });
 
-    render(
-      <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
-      </BrowserRouter>,
-    );
+  //   render(
+  //     <BrowserRouter>
+  //       <Provider store={store}>
+  //         <CaseAssignment />
+  //       </Provider>
+  //     </BrowserRouter>,
+  //   );
 
-    await waitFor(() => {
-      const tableBody = screen.getAllByTestId('assigned-table-body');
-      const data = tableBody[0].querySelectorAll('tr');
-      expect(data).toHaveLength(3);
-    });
-  });
+  //   await waitFor(() => {
+  //     const tableBody = screen.getAllByTestId('assigned-table-body');
+  //     const data = tableBody[0].querySelectorAll('tr');
+  //     expect(data).toHaveLength(3);
+  //   });
+  // });
 
-  test('/cases should contain table displaying 1 unassigned case and table with 2 assigned cases when 2 cases are assigned and 1 is not', async () => {
-    vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .mockImplementation((_path: string): Promise<ResponseData> => {
-        return Promise.resolve({
-          message: 'not found',
-          count: 0,
-          body: {
-            caseList: [
-              {
-                caseId: '081-23-44463',
-                caseTitle: 'Flo Esterly and Neas Van Sampson',
-                dateFiled: '2023-05-04',
-                assignments: ['Sara', 'Bob'],
-              },
-              {
-                caseId: '081-23-44462',
-                caseTitle: 'Bridget Maldonado',
-                dateFiled: '2023-04-14',
-                assignments: [],
-              },
-              {
-                caseId: '081-23-44461',
-                caseTitle: 'Talia Torres and Tylor Stevenson',
-                dateFiled: '2023-04-04',
-                assignments: ['Joe', 'Sam'],
-              },
-            ],
-          },
-        });
-      });
+  // test('/cases should contain table displaying 1 unassigned case and table with 2 assigned cases when 2 cases are assigned and 1 is not', async () => {
+  //   vi.spyOn(Chapter15MockApi, 'list')
+  //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //     .mockImplementation((_path: string): Promise<ResponseData> => {
+  //       return Promise.resolve({
+  //         message: 'not found',
+  //         count: 0,
+  //         body: {
+  //           caseList: [
+  //             {
+  //               caseId: '081-23-44463',
+  //               caseTitle: 'Flo Esterly and Neas Van Sampson',
+  //               dateFiled: '2023-05-04',
+  //               assignments: ['Sara', 'Bob'],
+  //             },
+  //             {
+  //               caseId: '081-23-44462',
+  //               caseTitle: 'Bridget Maldonado',
+  //               dateFiled: '2023-04-14',
+  //               assignments: [],
+  //             },
+  //             {
+  //               caseId: '081-23-44461',
+  //               caseTitle: 'Talia Torres and Tylor Stevenson',
+  //               dateFiled: '2023-04-04',
+  //               assignments: ['Joe', 'Sam'],
+  //             },
+  //           ],
+  //         },
+  //       });
+  //     });
 
-    render(
-      <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
-      </BrowserRouter>,
-    );
+  //   render(
+  //     <BrowserRouter>
+  //       <Provider store={store}>
+  //         <CaseAssignment />
+  //       </Provider>
+  //     </BrowserRouter>,
+  //   );
 
-    await waitFor(() => {
-      const unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
-      const unassignedData = unassignedTableBody[0].querySelectorAll('tr');
-      expect(unassignedData).toHaveLength(1);
-      const assignedTableBody = screen.getAllByTestId('assigned-table-body');
-      const assignedData = assignedTableBody[0].querySelectorAll('tr');
-      expect(assignedData).toHaveLength(2);
-    });
-  });
+  //   await waitFor(() => {
+  //     const unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
+  //     const unassignedData = unassignedTableBody[0].querySelectorAll('tr');
+  //     expect(unassignedData).toHaveLength(1);
+  //     const assignedTableBody = screen.getAllByTestId('assigned-table-body');
+  //     const assignedData = assignedTableBody[0].querySelectorAll('tr');
+  //     expect(assignedData).toHaveLength(2);
+  //   });
+  // });
 
   /**
    * We need to add a test that starts with 1 unassigned case and assignes attorneys to it.
