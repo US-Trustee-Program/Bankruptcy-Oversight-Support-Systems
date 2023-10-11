@@ -66,6 +66,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <span className="case-number" title="Case Number">
                 {getCaseNumber(caseDetail.caseId)}
               </span>
+              <span className="case-chapter" title="Case Chapter" data-testid="case-chapter">
+                Chapter {caseDetail.chapter}
+              </span>
             </h2>
 
             <div className="case-card-list">

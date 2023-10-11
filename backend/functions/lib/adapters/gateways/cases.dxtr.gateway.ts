@@ -104,6 +104,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         CS_SHORT_TITLE as caseTitle,
         FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
         CS_CASEID as dxtrId,
+        CS_CHAPTER as chapter,
         COURT_ID as courtId
         FROM [dbo].[AO_CS]
         WHERE CASE_ID = @dxtrCaseId

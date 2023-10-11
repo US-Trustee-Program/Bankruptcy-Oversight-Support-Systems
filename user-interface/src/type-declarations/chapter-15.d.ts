@@ -9,6 +9,7 @@ export interface Chapter15Type {
 
 interface CaseDetailType {
   caseId: string;
+  chapter: string;
   caseTitle: string;
   dateFiled: string;
   closedDate: string;
