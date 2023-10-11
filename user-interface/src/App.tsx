@@ -10,6 +10,8 @@ import { store } from './store/store';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { reactPlugin } from './ApplicationInsightsService';
 import { useState } from 'react';
+import { withLDProvider } from 'launchdarkly-react-client-sdk';
+import featureFlags from './configuration/featureFlagConfiguration';
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
@@ -47,4 +49,15 @@ function App() {
   );
 }
 
-export default App;
+let AppToExport;
+if (featureFlags.useExternalProvider) {
+  AppToExport = withLDProvider({
+    clientSideID: featureFlags.clientId,
+    reactOptions: {
+      useCamelCaseFlagKeys: featureFlags.useCamelCaseFlagKeys,
+    },
+  })(App);
+} else {
+  AppToExport = App;
+}
+export default AppToExport;
