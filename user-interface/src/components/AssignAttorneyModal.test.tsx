@@ -4,7 +4,7 @@ import AssignAttorneyModal from './AssignAttorneyModal';
 import React from 'react';
 import { Chapter15Type } from '../type-declarations/chapter-15';
 import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
-// import Api from '../models/api';
+import Api from '../models/api';
 import { Attorney } from '../type-declarations/attorneys';
 import { ModalRefType } from './uswds/modal/modal-refs';
 
@@ -94,77 +94,77 @@ describe('Test Assign Attorney Modal Component', () => {
     expect(submitButton).toBeDisabled();
   });
 
-  // test('Should call POST with list of attorneys when assign button is clicked.', async () => {
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //   const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
-  //     return Promise.resolve({
-  //       message: 'post mock',
-  //       count: 0,
-  //       body: {},
-  //     });
-  //   });
-  //   const callback = vi.fn();
+  test('Should call POST with list of attorneys when assign button is clicked.', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
+      return Promise.resolve({
+        message: 'post mock',
+        count: 0,
+        body: {},
+      });
+    });
+    const callback = vi.fn();
 
-  //   const bCase: Chapter15Type = {
-  //     caseId: '123',
-  //     caseTitle: 'Test Case',
-  //     dateFiled: '01/01/2024',
-  //   };
-  //   const modalRef = React.createRef<ModalRefType>();
+    const bCase: Chapter15Type = {
+      caseId: '123',
+      caseTitle: 'Test Case',
+      dateFiled: '01/01/2024',
+    };
+    const modalRef = React.createRef<ModalRefType>();
 
-  //   const modalId = 'some-modal-id';
-  //   render(
-  //     <React.StrictMode>
-  //       <BrowserRouter>
-  //         <>
-  //           <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
-  //             Open Modal
-  //           </ToggleModalButton>
-  //           <AssignAttorneyModal
-  //             ref={modalRef}
-  //             attorneyList={attorneyList}
-  //             bCase={bCase}
-  //             modalId={modalId}
-  //             openerId="opener-123"
-  //             callBack={callback}
-  //           ></AssignAttorneyModal>
-  //         </>
-  //       </BrowserRouter>
-  //     </React.StrictMode>,
-  //   );
-  //   const button = screen.getByTestId('toggle-modal-button');
-  //   const modal = screen.getByTestId(`modal-${modalId}`);
+    const modalId = 'some-modal-id';
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <>
+            <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
+              Open Modal
+            </ToggleModalButton>
+            <AssignAttorneyModal
+              ref={modalRef}
+              attorneyList={attorneyList}
+              bCase={bCase}
+              modalId={modalId}
+              openerId="opener-123"
+              callBack={callback}
+            ></AssignAttorneyModal>
+          </>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+    const button = screen.getByTestId('toggle-modal-button');
+    const modal = screen.getByTestId(`modal-${modalId}`);
 
-  //   const submitButton = screen.getByTestId('toggle-modal-button-submit');
-  //   act(() => {
-  //     fireEvent.click(button);
-  //   });
+    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    act(() => {
+      fireEvent.click(button);
+    });
 
-  //   expect(modal).toHaveClass('is-visible');
-  //   const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
-  //   const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
+    expect(modal).toHaveClass('is-visible');
+    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
+    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
 
-  //   const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
-  //   act(() => {
-  //     fireEvent.click(checkbox1);
-  //     fireEvent.click(checkbox2);
-  //     fireEvent.click(checkbox3);
-  //   });
+    const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
+    act(() => {
+      fireEvent.click(checkbox1);
+      fireEvent.click(checkbox2);
+      fireEvent.click(checkbox3);
+    });
 
-  //   act(() => {
-  //     fireEvent.click(submitButton);
-  //   });
-  //   expect(postSpy).toHaveBeenCalledWith(
-  //     '/case-assignments',
-  //     expect.objectContaining({
-  //       attorneyList: expect.arrayContaining([
-  //         mark.getFullName(),
-  //         shara.getFullName(),
-  //         brian.getFullName(),
-  //       ]),
-  //       caseId: '123',
-  //       role: 'TrialAttorney',
-  //     }),
-  //   );
-  // });
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+    expect(postSpy).toHaveBeenCalledWith(
+      '/case-assignments',
+      expect.objectContaining({
+        attorneyList: expect.arrayContaining([
+          mark.getFullName(),
+          shara.getFullName(),
+          brian.getFullName(),
+        ]),
+        caseId: '123',
+        role: 'TrialAttorney',
+      }),
+    );
+  });
 });
