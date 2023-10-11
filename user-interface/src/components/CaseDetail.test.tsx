@@ -14,6 +14,7 @@ describe('Case Detail screen tests', () => {
   test('should display case title, case number, dates, and assignees for the case', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
+      chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
@@ -42,6 +43,9 @@ describe('Case Detail screen tests', () => {
         const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
         expect(dismissedDate.innerHTML).toEqual('01-08-1964');
 
+        const chapter = screen.getByTestId('case-chapter');
+        expect(chapter.innerHTML).toEqual('Chapter 15');
+
         const assigneeMap = new Map<string, string>();
         const assigneeElements = document.querySelectorAll(
           '.assigned-staff-list .individual-assignee',
@@ -63,6 +67,7 @@ describe('Case Detail screen tests', () => {
   test('should not display case dismissed date if not supplied in api response', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
+      chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',

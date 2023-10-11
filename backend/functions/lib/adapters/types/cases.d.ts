@@ -23,13 +23,14 @@ export interface CaseDetailsDbResult {
 
 export interface Chapter15CaseInterface extends ObjectKeyVal {
   caseId: string;
+  chapter: string;
   caseTitle: string;
   dateFiled: string;
   closedDate?: string;
   dismissedDate?: string;
   dxtrId?: string;
   courtId?: string;
-  assignments: string[];
+  assignments?: string[];
 }
 
 export interface DxtrTransactionRecord {
