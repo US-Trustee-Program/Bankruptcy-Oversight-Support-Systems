@@ -253,12 +253,12 @@ jobs:
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
           npm run build --if-present
 
-      - name: Execute Coverage
+      - name: Execute Tests
         if: ${{ vars.ENVIRONMENT != 'Main-Gov' && github.event_name != 'pull_request' }}
         run: |
           CI=true npm run test
 
-      - name: Execute Tests
+      - name: Execute Coverage
         if: ${{ vars.ENVIRONMENT == 'Main-Gov' || (github.event_name == 'pull_request' && github.base_ref == 'main') }}
         run: |
           CI=true npm run coverage
@@ -295,12 +295,12 @@ jobs:
           npm ci
           npm run build
 
-      - name: Execute Coverage
+      - name: Execute Tests
         if: ${{ vars.ENVIRONMENT != 'Main-Gov' && github.event_name != 'pull_request' }}
         run: |
           npm run test
 
-      - name: Execute Tests
+      - name: Execute Coverage
         if: ${{ vars.ENVIRONMENT == 'Main-Gov' || (github.event_name == 'pull_request' && github.base_ref == 'main') }}
         run: |
           npm run coverage
