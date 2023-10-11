@@ -56,7 +56,7 @@ export default defineConfig({
         'src/models/chapter15-mock.api.cases.ts',
         'src/components/utils/http.adapter.ts',
       ],
-      lines: 90,
+      branches: 90,
     },
   },
   build: {
