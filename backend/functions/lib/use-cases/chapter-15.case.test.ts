@@ -62,12 +62,14 @@ describe('Chapter 15 case list tests', () => {
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: '2005-05-04',
         assignments: [],
+        chapter: '15',
       },
       {
         caseId: '001-06-1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: '2006-03-27',
         assignments: [],
+        chapter: '15',
       },
     ];
     const mockChapterList: CaseListDbResult = {
@@ -261,6 +263,7 @@ describe('Chapter 15 case detail tests', () => {
       assignments: [],
       dxtrId: '12345',
       courtId: '0208',
+      chapter: '15',
     };
 
     const chapter15CaseList = new Chapter15CaseList();
