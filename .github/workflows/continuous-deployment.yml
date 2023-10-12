@@ -114,10 +114,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x]
-
     steps:
       - name: Install chrome
         uses: browser-actions/setup-chrome@v1
@@ -125,10 +121,10 @@ jobs:
       - name: Get source code
         uses: actions/checkout@v3
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 18.17.1
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 18.17.1
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
 
@@ -228,18 +224,13 @@ jobs:
     needs: [build-info, security-sca-scan-frontend, security-sast-scan]
     environment: ${{ needs.build-info.outputs.environment }}
 
-    strategy:
-      matrix:
-        node-version: [18.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
       - uses: actions/checkout@v3
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 18.17.1
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 18.17.1
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
 
@@ -277,10 +268,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, security-sca-scan-backend, security-sast-scan]
     environment: ${{ needs.build-info.outputs.environment }}
-
-    strategy:
-      matrix:
-        node-version: [18.x]
 
     steps:
       - uses: actions/checkout@v3
@@ -459,9 +446,6 @@ jobs:
       webappName: ${{ needs.build-info.outputs.webappName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
       priority: 200
-    strategy:
-      matrix:
-        node-version: [18.x]
     steps:
       - uses: actions/checkout@v3
       - uses: azure/login@v1
