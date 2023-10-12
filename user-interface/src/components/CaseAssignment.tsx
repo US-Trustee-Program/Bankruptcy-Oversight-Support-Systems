@@ -10,7 +10,7 @@ import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
 import AttorneysApi from '../models/attorneys-api';
 import { Attorney } from '../type-declarations/attorneys';
 import { getCaseNumber } from '../utils/formatCaseNumber';
-import useFeatureFlags from '../hooks/UseFeatureFlags';
+import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
 
 const modalId = 'assign-attorney-modal';
 
@@ -21,12 +21,12 @@ interface Chapter15Node extends Chapter15Type {
 const TABLE_TRANSFER_TIMEOUT = 10;
 
 export const CaseAssignment = () => {
-  // const { featureFlagPoc } = useFeatureFlags();
   const flags = useFeatureFlags();
   const modalRef = useRef<ModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  const screenTitle = 'Chapter 15 Bankruptcy Cases';
+  const chapterTwelveEnabled = flags[CHAPTER_TWELVE_ENABLED];
+  const screenTitle = chapterTwelveEnabled ? 'Bankruptcy Cases' : 'Chapter 15 Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
@@ -165,7 +165,7 @@ export const CaseAssignment = () => {
   if (isLoading) {
     return (
       <div className="case-assignment case-list">
-        <div>Feature Flag POC Value: {flags['feature-flag-poc']}</div>
+        {/* <div>Feature Flag POC Value: {flags['feature-flag-poc']}</div> */}
         <h1 data-testid="case-list-heading">{screenTitle}</h1>
         <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         <p data-testid="loading-indicator">Loading...</p>
@@ -174,7 +174,7 @@ export const CaseAssignment = () => {
   } else {
     return (
       <>
-        <div>Feature Flag POC Value: {flags['feature-flag-poc']}</div>
+        {/* <div>Feature Flag POC Value: {flags['feature-flag-poc']}</div> */}
         <div className="case-assignment case-list">
           <Alert
             message={assignmentAlert.message}
