@@ -1,8 +1,7 @@
 import { useFlags } from 'launchdarkly-react-client-sdk';
-import featureFlags from '../configuration/featureFlagConfiguration';
+import config from '../configuration/featureFlagConfiguration';
 
-// TESTING. The useFeatureFlags hook should be able to be mocked in tests to inject
-// the desired feature flag to test flag driven logic in the app.
+export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 
 // This internal interface aligns with the LaunchDarkly LDFlagSet interface that
 // types the return of the useFlags hook. It is more restrictive than the `any` type
@@ -13,14 +12,15 @@ interface FeatureFlagSet {
   [key: string]: boolean | string | number;
 }
 
-// NOTE: The default below uses the kebab case used in the LaunchDarkly flag configuration.
-// This is controlled via the `useCamelCaseFlagKeys` flag in featureFlagConfiguration.ts
-// If true then LaunchDarkly converts the kebab cases of the flags in LD to camel case equivalents.
 const defaultFeatureFlags: FeatureFlagSet = {
-  'feature-flag-poc': true,
+  'chapter-twelve-enabled': false,
 };
 
 export default function useFeatureFlags(): FeatureFlagSet {
-  if (featureFlags.useExternalProvider) return useFlags();
-  return defaultFeatureFlags;
+  if (!config.useExternalProvider) return defaultFeatureFlags;
+
+  const featureFlags = useFlags();
+  return !featureFlags || Object.keys(featureFlags).length === 0
+    ? defaultFeatureFlags
+    : featureFlags;
 }

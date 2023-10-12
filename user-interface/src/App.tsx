@@ -49,12 +49,17 @@ function App() {
   );
 }
 
-let AppToExport;
+let AppToExport: React.ComponentType;
 if (featureFlags.useExternalProvider) {
   AppToExport = withLDProvider({
     clientSideID: featureFlags.clientId,
     reactOptions: {
       useCamelCaseFlagKeys: featureFlags.useCamelCaseFlagKeys,
+    },
+    options: {
+      baseUrl: 'https://clientsdk.launchdarkly.us',
+      streamUrl: 'https://clientstream.launchdarkly.us',
+      eventsUrl: 'https://events.launchdarkly.us',
     },
   })(App);
 } else {
