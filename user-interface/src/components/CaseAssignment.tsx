@@ -165,7 +165,6 @@ export const CaseAssignment = () => {
   if (isLoading) {
     return (
       <div className="case-assignment case-list">
-        {/* <div>Feature Flag POC Value: {flags['feature-flag-poc']}</div> */}
         <h1 data-testid="case-list-heading">{screenTitle}</h1>
         <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         <p data-testid="loading-indicator">Loading...</p>
@@ -174,7 +173,6 @@ export const CaseAssignment = () => {
   } else {
     return (
       <>
-        {/* <div>Feature Flag POC Value: {flags['feature-flag-poc']}</div> */}
         <div className="case-assignment case-list">
           <Alert
             message={assignmentAlert.message}
