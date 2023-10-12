@@ -16,4 +16,4 @@ MOB_TIMER_LOCAL=true
 MOB_TIMER_USER=""
 MOB_TIMER_URL="https://timer.mob.sh/"
 MOB_TIMER_INSECURE=false
-MOB_TIMER_ROOM="friendly-toad-87"
+MOB_TIMER_ROOM=""
