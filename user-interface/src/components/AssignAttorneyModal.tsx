@@ -164,7 +164,7 @@ function AssignAttorneyModalComponent(
         <>
           <div className="visible-headings">
             <label className="attorney-name">Attorney Name</label>
-            <label className="case-load-label" data-testid="case-load-label">
+            <label className="case-load-label text-right" data-testid="case-load-label">
               {caseLoadLabel}
             </label>
           </div>
@@ -173,7 +173,9 @@ function AssignAttorneyModalComponent(
               <thead>
                 <tr>
                   <th>Attorney Name</th>
-                  <th data-testid="case-load-table-header">{caseLoadLabel}</th>
+                  <th className="case-load-label" data-testid="case-load-table-header">
+                    {caseLoadLabel}
+                  </th>
                 </tr>
               </thead>
               <tbody>
