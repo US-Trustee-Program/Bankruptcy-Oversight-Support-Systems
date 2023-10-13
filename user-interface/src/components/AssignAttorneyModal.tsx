@@ -9,6 +9,7 @@ import { Attorney, AttorneyInfo } from '../type-declarations/attorneys';
 import Api from '../models/api';
 import { ModalRefType } from './uswds/modal/modal-refs';
 import { getCaseNumber } from '../utils/formatCaseNumber';
+import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
 
 export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
@@ -33,6 +34,7 @@ function AssignAttorneyModalComponent(
   props: AssignAttorneyModalProps,
   ref: React.Ref<ModalRefType>,
 ) {
+  const flags = useFeatureFlags();
   const modalRef = useRef<ModalRefType>(null);
   const modalHeading = (
     <>
@@ -40,6 +42,8 @@ function AssignAttorneyModalComponent(
       <span className="case-number">{getCaseNumber(props.bCase?.caseId)}</span>
     </>
   );
+  const chapterTwelveEnabled = flags[CHAPTER_TWELVE_ENABLED];
+  const caseLoadLabel = chapterTwelveEnabled ? 'Case Load' : 'Chapter 15 Cases';
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
@@ -160,14 +164,14 @@ function AssignAttorneyModalComponent(
         <>
           <div className="visible-headings">
             <label className="attorney-name">Attorney Name</label>
-            <label className="chapter-15-cases">Chapter 15 Cases</label>
+            <label className="case-load-label">{caseLoadLabel}</label>
           </div>
           <div className="usa-table-container--scrollable" tabIndex={0}>
             <table className="attorney-list">
               <thead>
                 <tr>
                   <th>Attorney Name</th>
-                  <th>Chapter 15 Cases</th>
+                  <th>{caseLoadLabel}</th>
                 </tr>
               </thead>
               <tbody>
