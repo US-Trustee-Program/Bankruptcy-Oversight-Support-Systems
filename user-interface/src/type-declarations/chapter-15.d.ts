@@ -2,6 +2,7 @@ import { ResponseData } from './api';
 
 export interface Chapter15Type {
   caseId: string;
+  chapter?: string;
   caseTitle: string;
   dateFiled: string;
   assignments?: string[];
