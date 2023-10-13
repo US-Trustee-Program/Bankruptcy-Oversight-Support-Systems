@@ -87,6 +87,7 @@ export const CaseAssignment = () => {
 
         setUnassignedCaseList(sortedNonAssignedList || []);
         setAssignedCaseList(sortedAssignedList || []);
+        console.log(unassignedCaseList);
         setIsLoading(false);
         setRetrievedCases(true);
       })
@@ -186,13 +187,21 @@ export const CaseAssignment = () => {
           <h2 data-testid="case-list-subtitle">{subTitle}</h2>
           {unassignedCaseList.length > 0 && (
             <div className="usa-table-container--scrollable" tabIndex={0}>
-              <table className="case-list usa-table usa-table--striped">
+              <table
+                className="case-list usa-table usa-table--striped"
+                data-testid="unassigned-table"
+              >
                 <caption>Unassigned Cases</caption>
                 <thead>
                   <tr className="case-headings">
                     <th scope="col" role="columnheader">
                       Case Number
                     </th>
+                    {chapterTwelveEnabled && (
+                      <th scope="col" role="columnheader" data-testid="chapter-table-header">
+                        Chapter
+                      </th>
+                    )}
                     <th scope="col" role="columnheader">
                       Case Title (Debtor)
                     </th>
@@ -246,6 +255,12 @@ export const CaseAssignment = () => {
                               {getCaseNumber(theCase.caseId)}
                             </a>
                           </td>
+                          {chapterTwelveEnabled && (
+                            <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
+                              <span className="mobile-title">Chapter:</span>
+                              {theCase.chapter}
+                            </td>
+                          )}
                           <td className="case-title-column">
                             <span className="mobile-title">Case Title (Debtor):</span>
                             {theCase.caseTitle}
@@ -288,6 +303,11 @@ export const CaseAssignment = () => {
                     <th scope="col" role="columnheader">
                       Case Number
                     </th>
+                    {chapterTwelveEnabled && (
+                      <th scope="col" role="columnheader" data-testid="chapter-table-header">
+                        Chapter
+                      </th>
+                    )}
                     <th scope="col" role="columnheader">
                       Case Title (Debtor)
                     </th>
@@ -346,6 +366,12 @@ export const CaseAssignment = () => {
                               {getCaseNumber(theCase.caseId)}
                             </a>
                           </td>
+                          {chapterTwelveEnabled && (
+                            <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
+                              <span className="mobile-title">Chapter:</span>
+                              {theCase.chapter}
+                            </td>
+                          )}
                           <td className="case-title-column">
                             <span className="mobile-title">Case Title (Debtor):</span>
                             {theCase.caseTitle}
