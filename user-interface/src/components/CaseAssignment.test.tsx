@@ -6,6 +6,7 @@ import { store } from '../store/store';
 import Chapter15MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData } from '../type-declarations/api';
 import { vi } from 'vitest';
+import * as FeatureFlags from '../hooks/UseFeatureFlags';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)
@@ -19,9 +20,6 @@ const sleep = (milliseconds: number) =>
 describe('CaseAssignment Component Tests', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_PA11Y', 'true');
-  });
-
-  beforeAll(() => {
     vi.mock('../models/attorneys-api', () => {
       return {
         default: {
@@ -65,7 +63,6 @@ describe('CaseAssignment Component Tests', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
-
   /*
   // test that Loading... is displayed while we wait for the api to return data
   test('/cases renders "Loading..." while its fetching content from API', async () => {
@@ -612,4 +609,42 @@ describe('CaseAssignment Component Tests', () => {
     expect(passedExpects).toEqual(4);
   }, 10000);
   ***/
+
+  describe('Feature flag chapter-twelve-enabled', () => {
+    test('should display appropriate text when true', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': true });
+
+      render(
+        <BrowserRouter>
+          <Provider store={store}>
+            <CaseAssignment />
+          </Provider>
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const screenTitle = screen.getByTestId('case-list-heading');
+        expect(screenTitle).toBeInTheDocument();
+        expect(screenTitle.innerHTML).toEqual('Bankruptcy Cases');
+      });
+    });
+
+    test('should display appropriate text when false', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': false });
+
+      render(
+        <BrowserRouter>
+          <Provider store={store}>
+            <CaseAssignment />
+          </Provider>
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const screenTitle = screen.getByTestId('case-list-heading');
+        expect(screenTitle).toBeInTheDocument();
+        expect(screenTitle.innerHTML).toEqual('Chapter 15 Bankruptcy Cases');
+      });
+    });
+  });
 });
