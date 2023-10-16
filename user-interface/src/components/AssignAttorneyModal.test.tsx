@@ -7,6 +7,7 @@ import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
 import Api from '../models/api';
 import { Attorney } from '../type-declarations/attorneys';
 import { ModalRefType } from './uswds/modal/modal-refs';
+import * as FeatureFlags from '../hooks/UseFeatureFlags';
 
 describe('Test Assign Attorney Modal Component', () => {
   let susan: Attorney;
@@ -166,5 +167,102 @@ describe('Test Assign Attorney Modal Component', () => {
         role: 'TrialAttorney',
       }),
     );
+  });
+
+  describe('Feature flag chapter-twelve-enabled', () => {
+    const bCase: Chapter15Type = {
+      caseId: '123',
+      caseTitle: 'Test Case',
+      dateFiled: '01/01/2024',
+    };
+    const modalRef = React.createRef<ModalRefType>();
+    const modalId = 'some-modal-id';
+    const caseLoadLabelTestId = 'case-load-label';
+    const caseLoadTableHeaderTestId = 'case-load-table-header';
+
+    test('should display appropriate text when true', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': true });
+
+      render(
+        <React.StrictMode>
+          <BrowserRouter>
+            <>
+              <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
+                Open Modal
+              </ToggleModalButton>
+              <AssignAttorneyModal
+                ref={modalRef}
+                attorneyList={attorneyList}
+                bCase={bCase}
+                modalId={modalId}
+                openerId="opener-123"
+                callBack={() => {
+                  return;
+                }}
+              ></AssignAttorneyModal>
+            </>
+          </BrowserRouter>
+        </React.StrictMode>,
+      );
+      const button = screen.getByTestId('toggle-modal-button');
+      const modal = screen.getByTestId(`modal-${modalId}`);
+
+      act(() => {
+        fireEvent.click(button);
+      });
+
+      const expectedLabel = 'Case Load';
+
+      expect(modal).toHaveClass('is-visible');
+      const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
+      expect(caseLoadLabel).toBeInTheDocument();
+      expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+
+      const caseLoadTableLabel = screen.getByTestId(caseLoadTableHeaderTestId);
+      expect(caseLoadTableLabel).toBeInTheDocument();
+      expect(caseLoadTableLabel.innerHTML).toEqual(expectedLabel);
+    });
+
+    test('should display appropriate text when false', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': false });
+      render(
+        <React.StrictMode>
+          <BrowserRouter>
+            <>
+              <ToggleModalButton toggleAction={'open'} modalId={modalId} modalRef={modalRef}>
+                Open Modal
+              </ToggleModalButton>
+              <AssignAttorneyModal
+                ref={modalRef}
+                attorneyList={attorneyList}
+                bCase={bCase}
+                modalId={modalId}
+                openerId="opener-123"
+                callBack={() => {
+                  return;
+                }}
+              ></AssignAttorneyModal>
+            </>
+          </BrowserRouter>
+        </React.StrictMode>,
+      );
+      const button = screen.getByTestId('toggle-modal-button');
+      const modal = screen.getByTestId(`modal-${modalId}`);
+
+      act(() => {
+        fireEvent.click(button);
+      });
+
+      const expectedLabel = 'Chapter 15 Cases';
+
+      expect(modal).toHaveClass('is-visible');
+      const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
+      expect(caseLoadLabel).toBeInTheDocument();
+      expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+
+      const caseLoadTableLabel = screen.getByTestId(caseLoadTableHeaderTestId);
+      expect(caseLoadTableLabel).toBeInTheDocument();
+      expect(caseLoadTableLabel.innerHTML).toEqual(expectedLabel);
+    });
   });
 });

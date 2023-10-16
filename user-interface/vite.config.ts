@@ -17,6 +17,7 @@ export default defineConfig({
       },
     },
   },
+  assetsInclude: ['node_modules/@uswds/uswds/dist/img'],
   plugins: [
     react(),
     checker({

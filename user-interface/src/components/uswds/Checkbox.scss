@@ -1,6 +1,0 @@
-.usa-checkbox__input:checked+[class*=__label]::before,
-.usa-checkbox__input:checked:disabled+[class*=__label]::before,
-.usa-checkbox__input:checked[aria-disabled=true]+[class*=__label]::before {
-  background-image: url(/node_modules/@uswds/uswds/dist/img/correct8.svg), linear-gradient(transparent, transparent);
-  background-repeat: no-repeat;
-}
