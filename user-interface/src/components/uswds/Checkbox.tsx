@@ -1,4 +1,3 @@
-import './Checkbox.scss';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 
 export interface CheckboxProps {
