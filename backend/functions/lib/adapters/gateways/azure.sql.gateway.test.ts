@@ -4,14 +4,19 @@ import { getProperty } from '../../testing/mock-data';
 import * as dataUtils from '../utils/database';
 import * as db from './azure.sql.gateway';
 import * as mssql from 'mssql';
-const context = require('azure-function-context-mock');
+const functionContext = require('azure-function-context-mock');
 
 const table = 'generic-test-data';
-const appContext = applicationContextCreator(context);
 
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
 describe('Azure MSSQL database gateway tests', () => {
+  let appContext;
+
+  beforeEach(async () => {
+    appContext = await applicationContextCreator(functionContext);
+  });
+
   test('Should return all records when fetching all records on a given table', async () => {
     const list = await getProperty(table, 'list');
 

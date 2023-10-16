@@ -6,12 +6,13 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 const context = require('azure-function-context-mock');
 
 const table = 'generic-test-data';
-const appContext = applicationContextCreator(context);
 
 describe('Local in-memory database gateway tests', () => {
+  let appContext;
   let list: object[];
 
   beforeEach(async () => {
+    appContext = await applicationContextCreator(context);
     list = await getProperty(table, 'list');
   });
 

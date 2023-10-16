@@ -4,8 +4,7 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import { randomUUID } from 'crypto';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 
-const context = require('azure-function-context-mock');
-const appContext = applicationContextCreator(context);
+const functionContext = require('azure-function-context-mock');
 
 describe('Test case assignment cosmosdb repository tests', () => {
   const perryMason = 'Perry Mason';
@@ -13,7 +12,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   const clairHuxtable = 'Clair Huxtable';
   const trialAttorneyRole = 'TrialAttorney';
   let repository: CaseAssignmentCosmosDbRepository;
-  beforeEach(() => {
+  beforeEach(async () => {
+    const appContext = await applicationContextCreator(functionContext);
     repository = new CaseAssignmentCosmosDbRepository(appContext, true);
   });
 

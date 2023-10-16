@@ -3,12 +3,17 @@ import { Context } from '@azure/functions';
 import log from './logger.service';
 import { applicationContextCreator } from '../utils/application-context-creator';
 
-const appContext = applicationContextCreator(context);
-const mockLog = jest.spyOn(appContext, 'log');
-
 describe('Basic logger service tests', () => {
-  test('logMessage() should throw an error if context doesnt contain a log method.', () => {
-    const mockContext = applicationContextCreator({ foo: 'bar' } as unknown as Context);
+  let appContext;
+  let mockLog;
+
+  beforeEach(async () => {
+    appContext = await applicationContextCreator(context);
+    mockLog = jest.spyOn(appContext, 'log');
+  });
+
+  test('logMessage() should throw an error if context doesnt contain a log method.', async () => {
+    const mockContext = await applicationContextCreator({ foo: 'bar' } as unknown as Context);
     try {
       log.info(mockContext, 'FOO-MODULE_NAME', 'test message');
     } catch (e) {
