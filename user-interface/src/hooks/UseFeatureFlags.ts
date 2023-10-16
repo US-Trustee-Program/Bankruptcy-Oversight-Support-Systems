@@ -20,6 +20,7 @@ export default function useFeatureFlags(): FeatureFlagSet {
   if (!config.useExternalProvider) return defaultFeatureFlags;
 
   const featureFlags = useFlags();
+  console.log(featureFlags);
   return !featureFlags || Object.keys(featureFlags).length === 0
     ? defaultFeatureFlags
     : featureFlags;

@@ -4,7 +4,6 @@ import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignme
 import { ApplicationContext } from '../adapters/types/basic';
 import { AttorneyAssignmentResponseInterface } from '../adapters/types/case.assignment';
 import log from '../adapters/services/logger.service';
-import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { AssignmentError } from './assignment.exception';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
@@ -31,7 +30,7 @@ export class CaseAssignment {
     try {
       return await this.assignmentRepository.createAssignment(caseAssignment);
     } catch (exception) {
-      log.error(applicationContextCreator(context), MODULE_NAME, exception.message);
+      log.error(context, MODULE_NAME, exception.message);
       throw exception;
     }
   }

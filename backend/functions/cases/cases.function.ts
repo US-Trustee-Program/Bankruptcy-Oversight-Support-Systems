@@ -21,7 +21,8 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   casesRequest: HttpRequest,
 ): Promise<void> {
-  const casesController = new CasesController(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext);
+  const casesController = new CasesController(applicationContext);
   let caseChapter = '';
 
   try {
@@ -45,7 +46,7 @@ const httpTrigger: AzureFunction = async function (
     if (!(error instanceof CamsError)) {
       error = new UnknownError(MODULE_NAME, { originalError });
     }
-    log.camsError(applicationContextCreator(functionContext), error);
+    log.camsError(applicationContext, error);
     functionContext.res = httpError(error);
   }
 };

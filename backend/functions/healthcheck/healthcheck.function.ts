@@ -14,7 +14,7 @@ const httpTrigger: AzureFunction = async function (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   req: HttpRequest,
 ): Promise<void> {
-  const applicationContext = applicationContextCreator(context);
+  const applicationContext = await applicationContextCreator(context);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
   log.debug(applicationContext, MODULE_NAME, 'Health check endpoint invoked');
