@@ -17,5 +17,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/case-assignments/case.assignment.function.js"
+  "scriptFile": "../dist/backend/functions/case-assignments/case.assignment.function.js"
 }

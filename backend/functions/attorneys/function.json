@@ -16,5 +16,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/attorneys/attorneys.function.js"
+  "scriptFile": "../dist/backend/functions/attorneys/attorneys.function.js"
 }

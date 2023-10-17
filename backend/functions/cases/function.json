@@ -16,5 +16,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/cases/cases.function.js"
+  "scriptFile": "../dist/backend/functions/cases/cases.function.js"
 }
