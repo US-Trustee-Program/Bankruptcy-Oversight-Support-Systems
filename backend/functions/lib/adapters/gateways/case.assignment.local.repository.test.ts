@@ -4,9 +4,9 @@ import { CaseAssignmentLocalRepository } from './case.assignment.local.repositor
 import { applicationContextCreator } from '../utils/application-context-creator';
 const context = require('azure-function-context-mock');
 
-const appContext = applicationContextCreator(context);
 describe('Case Assignment Repository Tests', () => {
   test('Should persist case assignment', async () => {
+    const appContext = await applicationContextCreator(context);
     const caseId = '123';
     const testCaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseId,

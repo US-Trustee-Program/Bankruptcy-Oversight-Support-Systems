@@ -1,10 +1,16 @@
-const context = require('azure-function-context-mock');
+const functionContext = require('azure-function-context-mock');
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { AttorneyLocalGateway } from './attorneys.local.inmemory.gateway';
 import * as testingMockData from '../../testing/mock-data';
 import * as localInmemoryGateway from './local.inmemory.gateway';
 
 describe('Local in-memory database gateway tests specific to attorneys list', () => {
+  let appContext;
+
+  beforeEach(async () => {
+    appContext = await applicationContextCreator(functionContext);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -16,10 +22,8 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
 
     const gateway = new AttorneyLocalGateway();
 
-    const mockContext = applicationContextCreator(context);
-
     try {
-      await gateway.getAttorneys(mockContext, { officeId: 'no-op' });
+      await gateway.getAttorneys(appContext, { officeId: 'no-op' });
     } catch (e) {
       expect(e).toEqual(Error('Attorney mock data does not contain a valid attorneyList'));
     }
@@ -30,13 +34,12 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
 
     const runQuerySpy = jest.spyOn(localInmemoryGateway, 'runQuery');
     const gateway = new AttorneyLocalGateway();
-    const mockContext = applicationContextCreator(context);
 
     jest.mock('../../testing/mock-data/index', () => ({
       getProperty: jest.fn(() => ({ attorneyList: [{ foo: 'foo' }] })),
     }));
 
-    await gateway.getAttorneys(mockContext, { officeId });
+    await gateway.getAttorneys(appContext, { officeId });
 
     expect(runQuerySpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -51,13 +54,12 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
 
     const runQuerySpy = jest.spyOn(localInmemoryGateway, 'runQuery');
     const gateway = new AttorneyLocalGateway();
-    const mockContext = applicationContextCreator(context);
 
     jest.mock('../../testing/mock-data/index', () => ({
       getProperty: jest.fn(() => ({ attorneyList: [{ foo: 'foo' }] })),
     }));
 
-    await gateway.getAttorneys(mockContext, { officeId });
+    await gateway.getAttorneys(appContext, { officeId });
 
     expect(runQuerySpy).not.toHaveBeenCalledWith(
       expect.anything(),
@@ -69,7 +71,6 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
 
   it('Should return a failed status and an error message when runQuery returns a failed query', async () => {
     const gateway = new AttorneyLocalGateway();
-    const mockContext = applicationContextCreator(context);
 
     jest.spyOn(localInmemoryGateway, 'runQuery').mockResolvedValue({
       success: false,
@@ -81,7 +82,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       getProperty: jest.fn(() => ({ attorneyList: [{ foo: 'foo' }] })),
     }));
 
-    const result = await gateway.getAttorneys(mockContext, { officeId: '' });
+    const result = await gateway.getAttorneys(appContext, { officeId: '' });
 
     expect(result).toEqual({
       success: false,
@@ -93,7 +94,6 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
 
   it('Should return a set of 4 results when all is well', async () => {
     const gateway = new AttorneyLocalGateway();
-    const mockContext = applicationContextCreator(context);
 
     const mockList = [{ foo: '1' }, { foo: '2' }, { foo: '3' }];
     jest.spyOn(localInmemoryGateway, 'runQuery').mockResolvedValue({
@@ -102,7 +102,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       results: mockList,
     });
 
-    const result = await gateway.getAttorneys(mockContext, { officeId: '' });
+    const result = await gateway.getAttorneys(appContext, { officeId: '' });
 
     expect(result).toEqual({
       success: true,
@@ -114,7 +114,6 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
 
   it('Should return a set of 4 results when all is well and no options parameter was supplied', async () => {
     const gateway = new AttorneyLocalGateway();
-    const mockContext = applicationContextCreator(context);
 
     const mockList = [{ foo: '1' }, { foo: '2' }, { foo: '3' }];
     jest.spyOn(localInmemoryGateway, 'runQuery').mockResolvedValue({
@@ -123,7 +122,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       results: mockList,
     });
 
-    const result = await gateway.getAttorneys(mockContext);
+    const result = await gateway.getAttorneys(appContext);
 
     expect(result).toEqual({
       success: true,
