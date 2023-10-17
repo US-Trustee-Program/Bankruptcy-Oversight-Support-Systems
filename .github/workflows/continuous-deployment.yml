@@ -245,10 +245,6 @@ jobs:
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           npm run build --if-present
 
-      - name: Execute Tests
-        run: |
-          CI=true npm run test
-
       - name: Execute Coverage
         run: |
           CI=true npm run coverage
@@ -280,10 +276,6 @@ jobs:
         run: |
           npm ci
           npm run build
-
-      - name: Execute Tests
-        run: |
-          npm run test
 
       - name: Execute Coverage
         run: |
