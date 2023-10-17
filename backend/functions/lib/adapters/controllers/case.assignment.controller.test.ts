@@ -1,14 +1,15 @@
 import { CaseAssignmentController } from './case.assignment.controller';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
-
-const context = require('azure-function-context-mock');
+import { applicationContextCreator } from '../utils/application-context-creator';
+const functionContext = require('azure-function-context-mock');
 
 describe('Chapter 15 Case Assignment Creation Tests', () => {
   const env = process.env;
   const trialAttorneyRole = 'TrialAttorney';
-
-  beforeEach(() => {
+  let appContext;
+  beforeEach(async () => {
+    appContext = await applicationContextCreator(functionContext);
     process.env = {
       ...env,
       DATABASE_MOCK: 'true',
@@ -23,7 +24,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
-    const assignmentController = new CaseAssignmentController(context);
+    const assignmentController = new CaseAssignmentController(appContext);
     try {
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
@@ -42,7 +43,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    const assignmentController = new CaseAssignmentController(context);
+    const assignmentController = new CaseAssignmentController(appContext);
 
     try {
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
@@ -68,7 +69,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    const assignmentController = new CaseAssignmentController(context);
+    const assignmentController = new CaseAssignmentController(appContext);
 
     await assignmentController.createTrialAttorneyAssignments(testCaseAssignment1);
 
@@ -86,7 +87,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
-    const assignmentController = new CaseAssignmentController(context);
+    const assignmentController = new CaseAssignmentController(appContext);
     try {
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
@@ -106,7 +107,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
-    const assignmentController = new CaseAssignmentController(context);
+    const assignmentController = new CaseAssignmentController(appContext);
     try {
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);

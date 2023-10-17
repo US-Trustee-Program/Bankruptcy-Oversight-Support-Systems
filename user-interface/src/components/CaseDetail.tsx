@@ -7,7 +7,11 @@ import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declar
 import { getCaseNumber } from '../utils/formatCaseNumber';
 import Icon from './uswds/Icon';
 
-export const CaseDetail = () => {
+interface CaseDetailProps {
+  caseDetail?: CaseDetailType;
+}
+
+export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
@@ -23,7 +27,9 @@ export const CaseDetail = () => {
   };
 
   useEffect(() => {
-    if (!isLoading) {
+    if (props.caseDetail) {
+      setCaseDetail(props.caseDetail);
+    } else if (!isLoading) {
       fetchCaseDetail();
     }
   }, [caseDetail !== undefined]);
@@ -59,6 +65,9 @@ export const CaseDetail = () => {
             <h2>
               <span className="case-number" title="Case Number">
                 {getCaseNumber(caseDetail.caseId)}
+              </span>
+              <span className="case-chapter" title="Case Chapter" data-testid="case-chapter">
+                Chapter {caseDetail.chapter}
               </span>
             </h2>
 

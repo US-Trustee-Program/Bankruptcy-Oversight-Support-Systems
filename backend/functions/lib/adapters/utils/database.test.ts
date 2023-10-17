@@ -1,9 +1,7 @@
 import { executeQuery } from '../utils/database';
 import { QueryResults, IDbConfig } from '../types/database';
-const context = require('azure-function-context-mock');
+const functionContext = require('azure-function-context-mock');
 import { applicationContextCreator } from '../utils/application-context-creator';
-
-const appContext = applicationContextCreator(context);
 
 type sqlConnect = {
   request: () => void;
@@ -40,6 +38,7 @@ jest.mock('mssql', () => {
 
 describe('Tests database', () => {
   test('should get appropriate results', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     // setup test
     // execute method under test
     const context = appContext;

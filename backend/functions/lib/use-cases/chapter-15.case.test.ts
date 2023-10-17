@@ -8,9 +8,7 @@ import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 
-const context = require('azure-function-context-mock');
-
-const appContext = applicationContextCreator(context);
+const functionContext = require('azure-function-context-mock');
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
@@ -47,7 +45,9 @@ jest.mock('./case.assignment', () => {
 });
 
 describe('Chapter 15 case list tests', () => {
-  beforeEach(() => {
+  let appContext;
+  beforeEach(async () => {
+    appContext = await applicationContextCreator(functionContext);
     process.env = {
       STARTING_MONTH: '-6',
       DATABASE_MOCK: 'true',
@@ -62,12 +62,14 @@ describe('Chapter 15 case list tests', () => {
         caseTitle: 'Flo Esterly and Neas Van Sampson',
         dateFiled: '2005-05-04',
         assignments: [],
+        chapter: '15',
       },
       {
         caseId: '001-06-1122',
         caseTitle: 'Jennifer Millhouse',
         dateFiled: '2006-03-27',
         assignments: [],
+        chapter: '15',
       },
     ];
     const mockChapterList: CaseListDbResult = {
@@ -249,6 +251,7 @@ describe('Chapter 15 case list tests', () => {
 
 describe('Chapter 15 case detail tests', () => {
   test('Should return a properly formatted case when a case number is supplied', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const caseId = caseIdWithAssignments;
     const dateFiled = '2018-11-16';
     const dateClosed = '2019-06-21';
@@ -261,6 +264,7 @@ describe('Chapter 15 case detail tests', () => {
       assignments: [],
       dxtrId: '12345',
       courtId: '0208',
+      chapter: '15',
     };
 
     const chapter15CaseList = new Chapter15CaseList();

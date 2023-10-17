@@ -22,7 +22,8 @@ const httpTrigger: AzureFunction = async function (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   attorneysRequest: HttpRequest,
 ): Promise<void> {
-  const attorneysController = new AttorneysController(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext);
+  const attorneysController = new AttorneysController(applicationContext);
   let officeId = '';
 
   if (attorneysRequest.query.office_id) officeId = attorneysRequest.query.office_id;
@@ -37,7 +38,7 @@ const httpTrigger: AzureFunction = async function (
     if (!(error instanceof CamsError)) {
       error = new UnknownError(MODULE_NAME, { originalError });
     }
-    log.camsError(applicationContextCreator(functionContext), error);
+    log.camsError(applicationContext, error);
     functionContext.res = httpError(error);
   }
 };

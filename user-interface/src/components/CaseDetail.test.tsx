@@ -1,70 +1,31 @@
-import { describe, vi } from 'vitest';
-import { render, waitFor, screen, waitForElementToBeRemoved } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { store } from '../store/store';
+import { describe } from 'vitest';
+import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail } from './CaseDetail';
 import { getCaseNumber } from '../utils/formatCaseNumber';
-
-const sleep = (milliseconds: number) =>
-  new Promise((callback) => setTimeout(callback, milliseconds));
+import { CaseDetailType } from '../type-declarations/chapter-15';
+import { BrowserRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
 const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
+
 describe('Case Detail screen tests', () => {
-  beforeEach(() => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
-    vi.mock('../models/chapter15-mock.api.cases.ts', () => {
-      return {
-        default: {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          get: async (path: string, options: object) => {
-            await sleep(1000);
-            return {
-              message: '',
-              count: 1,
-              body: {
-                caseDetails: {
-                  caseId: caseId,
-                  caseTitle: 'The Beach Boys',
-                  dateFiled: '01-04-1962',
-                  closedDate: '01-08-1963',
-                  dismissedDate: '01-08-1964',
-                  assignments: [brianWilsonName, carlWilsonName],
-                },
-              },
-            };
-          },
-        },
-      };
-    });
-  });
-
   test('should display case title, case number, dates, and assignees for the case', async () => {
-    vi.mock('react-router-dom', async () => {
-      const actual = (await vi.importActual('react-router-dom')) as object;
-      return {
-        ...actual,
-        useParams: () => {
-          return {
-            caseId,
-          };
-        },
-      };
-    });
-
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [brianWilsonName, carlWilsonName],
+    };
     render(
       <BrowserRouter>
-        <Provider store={store}>
-          <CaseDetail />
-        </Provider>
+        <CaseDetail caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
-    await waitForElementToBeRemoved(screen.getByTestId('loading-indicator')).then(() => {
-      sleep(100);
-    });
 
     await waitFor(
       async () => {
@@ -82,6 +43,9 @@ describe('Case Detail screen tests', () => {
         const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
         expect(dismissedDate.innerHTML).toEqual('01-08-1964');
 
+        const chapter = screen.getByTestId('case-chapter');
+        expect(chapter.innerHTML).toEqual('Chapter 15');
+
         const assigneeMap = new Map<string, string>();
         const assigneeElements = document.querySelectorAll(
           '.assigned-staff-list .individual-assignee',
@@ -98,8 +62,28 @@ describe('Case Detail screen tests', () => {
       },
       { timeout: 5000 },
     );
+  }, 20000);
 
-    vi.unstubAllEnvs();
-    vi.clearAllMocks();
+  test('should not display case dismissed date if not supplied in api response', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      assignments: [brianWilsonName, carlWilsonName],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        expect(queryByTestId(document.body, 'case-detail-dismissed-date')).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   }, 20000);
 });

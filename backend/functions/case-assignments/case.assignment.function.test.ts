@@ -5,12 +5,10 @@ import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 
-const context = require('azure-function-context-mock');
+const functionContext = require('azure-function-context-mock');
 
-const appContext = applicationContextCreator(context);
 describe('Case Assignment Function Tests', () => {
   const env = process.env;
-
   beforeEach(() => {
     process.env = {
       ...env,
@@ -19,6 +17,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -40,6 +39,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -62,6 +62,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -84,6 +85,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -105,6 +107,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a caseId is invalid format', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -125,6 +128,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a attorneyList is empty or not passed in the request', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -145,6 +149,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -168,6 +173,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -191,7 +197,8 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+    const appContext = await applicationContextCreator(functionContext);
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
     jest
       .spyOn(Object.getPrototypeOf(assignmentController), 'createTrialAttorneyAssignments')
       .mockImplementation(() => {
@@ -209,27 +216,28 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
     expect(httpErrorSpy).toHaveBeenCalled();
-    expect(context.res.statusCode).toEqual(500);
-    expect(context.res.body.error).toEqual('Unknown error');
+    expect(appContext.res.statusCode).toEqual(500);
+    expect(appContext.res.body.error).toEqual('Unknown error');
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
+    const appContext = await applicationContextCreator(functionContext);
     const caseId = '001-67-89012';
     const request = {
       method: 'POST',
       query: {},
       body: { caseId: caseId, attorneyList: ['Jane Doe'], role: 'TrialAttorney' },
     };
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
     const createAssignmentRequestSpy = jest.spyOn(
       Object.getPrototypeOf(assignmentController),
       'createTrialAttorneyAssignments',
     );
-    await httpTrigger(context, request);
+    await httpTrigger(appContext, request);
 
     expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
   });

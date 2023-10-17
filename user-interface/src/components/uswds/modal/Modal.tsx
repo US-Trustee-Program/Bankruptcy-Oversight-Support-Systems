@@ -4,6 +4,7 @@ import useGlobalKeyDown from '../../../hooks/UseGlobalKeyDown';
 import { UswdsButtonStyle } from '../Button';
 import useComponent from '../../../hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
+import sprite from '@uswds/uswds/img/sprite.svg';
 
 export interface ModalProps {
   modalId: string;
@@ -22,6 +23,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
+  const closeIcon = `${sprite}#close`;
 
   let wrapperData = {};
   if (props.openerId) {
@@ -149,7 +151,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 data-testid={`modal-x-button-${props.modalId}`}
               >
                 <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
-                  <use xlinkHref="../node_modules/@uswds/uswds/dist/img/sprite.svg#close"></use>
+                  <use xlinkHref={closeIcon}></use>
                 </svg>
               </button>
             )}

@@ -6,6 +6,7 @@ import { store } from '../store/store';
 import Chapter15MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData } from '../type-declarations/api';
 import { vi } from 'vitest';
+import * as FeatureFlags from '../hooks/UseFeatureFlags';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)
@@ -19,9 +20,6 @@ const sleep = (milliseconds: number) =>
 describe('CaseAssignment Component Tests', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_PA11Y', 'true');
-  });
-
-  beforeAll(() => {
     vi.mock('../models/attorneys-api', () => {
       return {
         default: {
@@ -65,7 +63,6 @@ describe('CaseAssignment Component Tests', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
-
   /*
   // test that Loading... is displayed while we wait for the api to return data
   test('/cases renders "Loading..." while its fetching content from API', async () => {
@@ -221,27 +218,37 @@ describe('CaseAssignment Component Tests', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .mockImplementation((_path: string): Promise<ResponseData> => {
         return Promise.resolve({
-          message: 'not found',
-          count: 0,
+          message: '',
+          count: 4,
           body: {
             caseList: [
               {
                 caseId: '081-23-44463',
+                chapter: '12',
                 caseTitle: 'Flo Esterly and Neas Van Sampson',
                 dateFiled: '2023-05-04',
                 assignments: ['Sara', 'Bob'],
               },
               {
                 caseId: '081-23-44462',
+                chapter: '15',
                 caseTitle: 'Bridget Maldonado',
                 dateFiled: '2023-04-14',
                 assignments: [],
               },
               {
                 caseId: '081-23-44461',
+                chapter: '15',
                 caseTitle: 'Talia Torres and Tylor Stevenson',
                 dateFiled: '2023-04-04',
                 assignments: ['Joe', 'Sam'],
+              },
+              {
+                caseId: '081-23-44460',
+                chapter: '12',
+                caseTitle: 'Foo Bar',
+                dateFiled: '2023-04-14',
+                assignments: [],
               },
             ],
           },
@@ -259,7 +266,7 @@ describe('CaseAssignment Component Tests', () => {
     await waitFor(() => {
       const unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
       const unassignedData = unassignedTableBody[0].querySelectorAll('tr');
-      expect(unassignedData).toHaveLength(1);
+      expect(unassignedData).toHaveLength(2);
       const assignedTableBody = screen.getAllByTestId('assigned-table-body');
       const assignedData = assignedTableBody[0].querySelectorAll('tr');
       expect(assignedData).toHaveLength(2);
@@ -612,4 +619,95 @@ describe('CaseAssignment Component Tests', () => {
     expect(passedExpects).toEqual(4);
   }, 10000);
   ***/
+
+  describe('Feature flag chapter-twelve-enabled', () => {
+    test('should display appropriate text when true', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': true });
+
+      render(
+        <BrowserRouter>
+          <Provider store={store}>
+            <CaseAssignment />
+          </Provider>
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const screenTitle = screen.getByTestId('case-list-heading');
+        expect(screenTitle).toBeInTheDocument();
+        expect(screenTitle.innerHTML).toEqual('Bankruptcy Cases');
+      });
+    });
+
+    test('should display appropriate text when false', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': false });
+
+      render(
+        <BrowserRouter>
+          <Provider store={store}>
+            <CaseAssignment />
+          </Provider>
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const screenTitle = screen.getByTestId('case-list-heading');
+        expect(screenTitle).toBeInTheDocument();
+        expect(screenTitle.innerHTML).toEqual('Chapter 15 Bankruptcy Cases');
+      });
+    });
+
+    test('should contain chapter column when true', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': true });
+
+      render(
+        <BrowserRouter>
+          <Provider store={store}>
+            <CaseAssignment />
+          </Provider>
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const tableHeaders = screen.getAllByTestId('chapter-table-header');
+        for (const e of tableHeaders) {
+          expect(e).toBeInTheDocument();
+          expect(e.innerHTML).toEqual('Chapter');
+        }
+
+        const unassignedTableData = screen.getByTestId('081-23-44460-chapter');
+        expect(unassignedTableData).toBeInTheDocument();
+        expect(unassignedTableData.innerHTML).toContain('12');
+
+        const assignedTableData = screen.getByTestId('081-23-44461-chapter');
+        expect(assignedTableData).toBeInTheDocument();
+        expect(assignedTableData.innerHTML).toContain('15');
+      });
+    });
+
+    test('should not contain chapter column when false', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': false });
+
+      render(
+        <BrowserRouter>
+          <Provider store={store}>
+            <CaseAssignment />
+          </Provider>
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const unassignedTable = screen.getByTestId('unassigned-table');
+        expect(unassignedTable).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('chapter-table-header')).not.toBeInTheDocument();
+
+      const unassignedTableData = screen.queryByTestId('081-23-44460-chapter');
+      expect(unassignedTableData).not.toBeInTheDocument();
+
+      const assignedTableData = screen.queryByTestId('081-23-44461-chapter');
+      expect(assignedTableData).not.toBeInTheDocument();
+    });
+  });
 });

@@ -23,7 +23,7 @@ describe('Test attorneys use-case', () => {
       getAttorneys: async (context: ApplicationContext, fields: { officeId: string }) => mockResult,
     };
 
-    const mockContext = applicationContextCreator(context);
+    const mockContext = await applicationContextCreator(context);
     const caseList = new AttorneysList(gateway);
     const results = await caseList.getAttorneyList(mockContext, {});
 
