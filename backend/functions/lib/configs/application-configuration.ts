@@ -10,6 +10,7 @@ export class ApplicationConfiguration implements AppConfig {
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly cosmosConfig: CosmosConfig;
+  public readonly featureFlagKey: string;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -18,6 +19,7 @@ export class ApplicationConfiguration implements AppConfig {
     this.acmsDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE);
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.cosmosConfig = this.getCosmosConfig();
+    this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
   }
 
   private getAppServerConfig(): ServerType {

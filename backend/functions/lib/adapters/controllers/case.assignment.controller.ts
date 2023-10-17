@@ -1,6 +1,4 @@
 import { ApplicationContext } from '../types/basic';
-import { Context } from '@azure/functions';
-import { applicationContextCreator } from '../utils/application-context-creator';
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
@@ -17,10 +15,10 @@ const VALID_CASEID_PATTERN = RegExp('^\\d{3}-\\d{2}-\\d{5}$');
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345.';
 
 export class CaseAssignmentController {
-  private readonly applicationContext: ApplicationContext;
+  private readonly context: ApplicationContext;
 
-  constructor(context: Context) {
-    this.applicationContext = applicationContextCreator(context);
+  constructor(context: ApplicationContext) {
+    this.context = context;
   }
 
   public async createTrialAttorneyAssignments(params: {
@@ -41,13 +39,10 @@ export class CaseAssignmentController {
         );
         listOfAssignments.push(assignment);
       });
-      const assignmentUseCase = new CaseAssignment(this.applicationContext);
-      return assignmentUseCase.createTrialAttorneyAssignments(
-        this.applicationContext,
-        listOfAssignments,
-      );
+      const assignmentUseCase = new CaseAssignment(this.context);
+      return assignmentUseCase.createTrialAttorneyAssignments(this.context, listOfAssignments);
     } catch (exception) {
-      log.error(this.applicationContext, MODULE_NAME, exception.message);
+      log.error(this.context, MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
         throw exception;
       }
