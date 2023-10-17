@@ -1,5 +1,6 @@
 import { useFlags } from 'launchdarkly-react-client-sdk';
 import config from '../configuration/featureFlagConfiguration';
+import { default as defaultFeatureFlags } from '../../featureFlags.json';
 
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 
@@ -12,12 +13,8 @@ interface FeatureFlagSet {
   [key: string]: boolean | string | number;
 }
 
-const defaultFeatureFlags: FeatureFlagSet = {
-  'chapter-twelve-enabled': false,
-};
-
 export default function useFeatureFlags(): FeatureFlagSet {
-  if (!config.useExternalProvider) return defaultFeatureFlags;
+  if (!config.clientId) return defaultFeatureFlags;
 
   const featureFlags = useFlags();
   console.log(featureFlags);
