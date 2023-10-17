@@ -282,12 +282,10 @@ jobs:
           npm run build
 
       - name: Execute Tests
-        if: ${{ vars.ENVIRONMENT != 'Main-Gov' && github.event_name != 'pull_request' }}
         run: |
           npm run test
 
       - name: Execute Coverage
-        if: ${{ vars.ENVIRONMENT == 'Main-Gov' || (github.event_name == 'pull_request' && github.base_ref == 'main') }}
         run: |
           npm run coverage
 
