@@ -1,10 +1,10 @@
 import * as ld from '@launchdarkly/node-server-sdk';
 import { ApplicationConfiguration } from '../../configs/application-configuration';
+import * as defaultFeatureFlags from '../../../feature-flags.json';
 
 export async function getFeatureFlags(config: ApplicationConfiguration) {
-  if (!config.featureFlagKey) {
-    return {};
-  }
+  if (!config.featureFlagKey) return defaultFeatureFlags;
+
   const client = ld.init(config.featureFlagKey, {
     baseUri: 'https://clientsdk.launchdarkly.us',
     streamUri: 'https://clientstream.launchdarkly.us',

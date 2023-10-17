@@ -15,13 +15,31 @@ const MODULENAME = 'CASES-DXTR-GATEWAY';
 
 const MANHATTAN_GROUP_DESIGNATOR = 'NY';
 
+function sqlSelectList(top: string, chapter: string) {
+  // THIS SETS US UP FOR SQL INJECTION IF WE EVER ACCEPT top OR chapter FROM USER INPUT.
+  return `
+    select TOP ${top}
+    CS_DIV+'-'+CASE_ID as caseId,
+    CS_SHORT_TITLE as caseTitle,
+    CS_CHAPTER as chapter,
+    FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
+    FROM [dbo].[AO_CS]
+    WHERE CS_CHAPTER = '${chapter}'
+    AND GRP_DES = @groupDesignator
+    AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)
+  `;
+}
+function sqlUnion(query1: string, query2: string) {
+  return `${query1} UNION ALL ${query2}`;
+}
+
 export default class CasesDxtrGateway implements CasesInterface {
   async getChapter15Cases(
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<Chapter15CaseInterface[]> {
     const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
-    const rowsToReturn = doChapter12Enable ? 10 : 20;
+    const rowsToReturn = doChapter12Enable ? '10' : '20';
 
     const input: DbTableFieldSpec[] = [];
     const date = new Date();
@@ -42,31 +60,9 @@ export default class CasesDxtrGateway implements CasesInterface {
       type: mssql.Char,
       value: MANHATTAN_GROUP_DESIGNATOR,
     });
-    let query = `
-      select TOP @top
-      CS_DIV+'-'+CASE_ID as caseId,
-      CS_SHORT_TITLE as caseTitle,
-      CS_CHAPTER as chapter,
-      FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
-      FROM [dbo].[AO_CS]
-      WHERE CS_CHAPTER = '15'
-      AND GRP_DES = @groupDesignator
-      AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)
-    `;
-    if (doChapter12Enable) {
-      query += `
-      UNION ALL
-      select TOP @top
-      CS_DIV+'-'+CASE_ID as caseId,
-      CS_SHORT_TITLE as caseTitle,
-      CS_CHAPTER as chapter,
-      FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
-      FROM [dbo].[AO_CS]
-      WHERE CS_CHAPTER = '12'
-      AND GRP_DES = @groupDesignator
-      AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)
-    `;
-    }
+    const query = doChapter12Enable
+      ? sqlUnion(sqlSelectList(rowsToReturn, '15'), sqlSelectList(rowsToReturn, '12'))
+      : sqlSelectList(rowsToReturn, '15');
 
     const queryResult: QueryResults = await executeQuery(
       context,
