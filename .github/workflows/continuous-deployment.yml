@@ -129,7 +129,12 @@ jobs:
           cache-dependency-path: user-interface/package-lock.json
 
       - name: Install Node dependencies
-        run: npm ci && npm install -g pa11y-ci
+        run: |
+          pushd ../common
+          npm ci
+          popd
+
+          npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
         run: ../ops/helper-scripts/accessibility-test.sh
@@ -221,7 +226,7 @@ jobs:
         working-directory: user-interface
 
     runs-on: ubuntu-latest
-    needs: [build-info, security-sca-scan-frontend, security-sast-scan]
+    needs: [build-info]
     environment: ${{ needs.build-info.outputs.environment }}
 
     steps:
@@ -236,6 +241,10 @@ jobs:
 
       - name: Execute Build
         run: |
+          pushd ../common
+          npm ci
+          popd
+
           npm ci
           export CAMS_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"
           export CAMS_SERVER_PORT=${{ vars.CAMS_SERVER_PORT }}
@@ -266,7 +275,7 @@ jobs:
         working-directory: backend/functions
 
     runs-on: ubuntu-latest
-    needs: [build-info, security-sca-scan-backend, security-sast-scan]
+    needs: [build-info]
     environment: ${{ needs.build-info.outputs.environment }}
 
     steps:
@@ -292,7 +301,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-info, build-frontend, build-service, accessibility-test]
+    needs: [build-info, build-frontend, build-service, accessibility-test, security-sast-scan, security-sca-scan-frontend, security-sca-scan-backend]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
