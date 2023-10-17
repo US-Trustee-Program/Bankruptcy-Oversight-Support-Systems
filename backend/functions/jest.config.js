@@ -4,6 +4,12 @@ module.exports = {
   testEnvironment: 'node',
   clearMocks: true,
   collectCoverageFrom: ['**/*.{js,ts}'],
+  coverageThreshold: {
+    global: {
+      lines: 90,
+      branches: 75,
+    },
+  },
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '.dependency-cruiser.js',
