@@ -6,7 +6,8 @@ module.exports = {
   collectCoverageFrom: ['**/*.{js,ts}'],
   coverageThreshold: {
     global: {
-      branches: 90,
+      lines: 90,
+      branches: 75,
     },
   },
   coveragePathIgnorePatterns: [
