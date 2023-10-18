@@ -1,8 +1,8 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
-import useGlobalKeyDown from '../../../hooks/UseGlobalKeyDown';
-import { UswdsButtonStyle } from '../Button';
-import useComponent from '../../../hooks/UseComponent';
+import useGlobalKeyDown from '@/hooks/UseGlobalKeyDown';
+import { UswdsButtonStyle } from '@/components/uswds/Button';
+import useComponent from '@/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
 import sprite from '@uswds/uswds/img/sprite.svg';
 

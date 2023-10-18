@@ -1,6 +1,6 @@
 import { useFlags } from 'launchdarkly-react-client-sdk';
-import config from '../configuration/featureFlagConfiguration';
-import { defaultFeatureFlags, FeatureFlagSet } from '../../../common/src/feature-flags';
+import config from '@/configuration/featureFlagConfiguration';
+import { defaultFeatureFlags, FeatureFlagSet } from '@common/feature-flags';
 
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 
