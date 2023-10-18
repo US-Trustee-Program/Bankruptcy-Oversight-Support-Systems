@@ -2,12 +2,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import AssignAttorneyModal from './AssignAttorneyModal';
 import React from 'react';
-import { Chapter15Type } from '../type-declarations/chapter-15';
+import { Chapter15Type } from '@/type-declarations/chapter-15';
 import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
-import Api from '../models/api';
-import { Attorney } from '../type-declarations/attorneys';
+import Api from '@/models/api';
+import { Attorney } from '@/type-declarations/attorneys';
 import { ModalRefType } from './uswds/modal/modal-refs';
-import * as FeatureFlags from '../hooks/UseFeatureFlags';
+import * as FeatureFlags from '@/hooks/UseFeatureFlags';
 
 describe('Test Assign Attorney Modal Component', () => {
   let susan: Attorney;

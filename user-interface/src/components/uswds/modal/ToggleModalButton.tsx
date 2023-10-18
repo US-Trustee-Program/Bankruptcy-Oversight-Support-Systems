@@ -1,5 +1,5 @@
 import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from '../Button';
-import { ObjectKeyVal } from '../../../type-declarations/basic';
+import { ObjectKeyVal } from '@/type-declarations/basic';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { ModalRefType, ToggleModalButtonRef } from './modal-refs';
 

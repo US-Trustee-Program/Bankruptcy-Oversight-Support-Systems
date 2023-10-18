@@ -36,7 +36,8 @@ export default defineConfig({
   envPrefix: 'CAMS_',
   resolve: {
     alias: {
-      '~': path.resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, './src'),
+      '@common': path.resolve(__dirname, '../common/src'),
     },
   },
   test: {
