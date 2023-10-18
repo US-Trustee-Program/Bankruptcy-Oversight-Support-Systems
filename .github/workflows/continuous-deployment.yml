@@ -141,8 +141,6 @@ jobs:
 
   security-sast-scan:
     runs-on: ubuntu-latest
-    needs: [build-info]
-    environment: ${{ needs.build-info.outputs.environment }}
 
     steps:
       - uses: actions/checkout@v3
@@ -153,13 +151,12 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Download baseline file
         run: |
           az storage blob download \
-          --account-name ${{ secrets.az_stor_veracode_name }} \
-          --account-key ${{ secrets.az_stor_veracode_key }} \
+          --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
+          --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
           -c baseline \
           -n results-latest.json \
           -f ./results-latest.json
@@ -181,8 +178,8 @@ jobs:
       - name: Upload to storage account
         if: always()
         run: |
-          az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
-          az storage blob upload --account-name ${{ secrets.az_stor_veracode_name }} --account-key ${{ secrets.az_stor_veracode_key }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
 
   security-sca-scan-frontend:
     runs-on: ubuntu-latest
