@@ -1,4 +1,5 @@
-@use 'uswds-core' with ($theme-font-path: './styles/fonts',
+@use 'uswds-core' with (
+  $theme-font-path: '/assets/fonts',
   $theme-image-path: './styles/img'
 );
 @use 'uswds';
