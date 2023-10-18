@@ -23,8 +23,15 @@
     "types": [
       "vite/client",
       "vitest/globals"
-    ]
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@common/*": ["./../common/src/*"],
+    }
   },
+  "references": [
+    { "path": "../common"}
+  ],
   "include": [
     "src",
     "vite.config.ts"
