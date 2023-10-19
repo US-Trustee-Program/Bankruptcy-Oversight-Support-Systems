@@ -8,7 +8,7 @@ export interface IconProps {
 }
 
 export default function Icon(props: IconProps) {
-  const link = `/styles/img/sprite.svg#${props.name}`;
+  const link = `/assets/styles/img/sprite.svg#${props.name}`;
   const isFocusable = props.focusable ? 'true' : 'false';
 
   return (

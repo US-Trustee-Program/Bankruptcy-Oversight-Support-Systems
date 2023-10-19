@@ -29,7 +29,7 @@ export default defineConfig({
         },
         {
           src: './node_modules/@uswds/uswds/dist/img/*',
-          dest: 'styles/img',
+          dest: 'assets/styles/img',
         },
       ],
     }),

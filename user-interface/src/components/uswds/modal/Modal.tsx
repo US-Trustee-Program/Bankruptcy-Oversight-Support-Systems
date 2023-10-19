@@ -22,7 +22,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
-  const closeIcon = `/styles/img/sprite.svg#close`;
+  const closeIcon = `/assets/styles/img/sprite.svg#close`;
 
   let wrapperData = {};
   if (props.openerId) {
