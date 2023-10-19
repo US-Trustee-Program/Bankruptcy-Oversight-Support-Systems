@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import viteTsconfigPaths from 'vite-tsconfig-paths';
 import envCompatible from 'vite-plugin-env-compatible';
 import checker from 'vite-plugin-checker';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import svgr from 'vite-plugin-svgr';
 import eslint from 'vite-plugin-eslint';
@@ -20,6 +21,18 @@ export default defineConfig({
   assetsInclude: ['node_modules/@uswds/uswds/dist/img'],
   plugins: [
     react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: './node_modules/@uswds/uswds/dist/fonts/*',
+          dest: 'assets/fonts',
+        },
+        {
+          src: './node_modules/@uswds/uswds/dist/img/*',
+          dest: 'assets/styles/img',
+        },
+      ],
+    }),
     checker({
       overlay: { initialIsOpen: false },
       typescript: true,

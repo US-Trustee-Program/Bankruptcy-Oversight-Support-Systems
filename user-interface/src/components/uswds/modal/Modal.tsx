@@ -4,7 +4,6 @@ import useGlobalKeyDown from '@/hooks/UseGlobalKeyDown';
 import { UswdsButtonStyle } from '@/components/uswds/Button';
 import useComponent from '@/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
-import sprite from '@uswds/uswds/img/sprite.svg';
 
 export interface ModalProps {
   modalId: string;
@@ -23,7 +22,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
-  const closeIcon = `${sprite}#close`;
+  const closeIcon = `/assets/styles/img/sprite.svg#close`;
 
   let wrapperData = {};
   if (props.openerId) {
