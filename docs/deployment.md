@@ -14,6 +14,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | CAMS_SERVER_PORT | Variable | --- | Required for frontend build step. |
 | CAMS_SERVER_PROTOCOL | Variable | --- | Required for frontend build step. |
 | CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING | Secret | --- | Optional for log ingestion to Azure Log Analytics. |
+| CAMS_FEATURE_FLAG_CLIENT_ID | Secret | --- | Optional client id to enable LaunchDarkly
 | --- | --- | --- | --- |
 | **Azure** | | | |
 | AZURE_SUBSCRIPTION | Secret | --- | Azure Subscription ID |
@@ -53,6 +54,8 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_STOR_VERACODE_NAME | Secrets | Yes | Azure Storage account name for veracode scans |
 | AZ_STOR_VERACODE_KEY | Secrets | Yes | Access key for Azure Storage account |
 | --- | --- | --- | --- |
+| **LaunchDarkly** | | | |
+| FEATURE_FLAG_SDK_KEY | Secrets | --- | Optional SDK key to enable LaunchDarkly client |
 | **Azure Log Anlaytics** | | | |
 | AZ_ANALYTICS_WORKSPACE_ID | Secrets | --- | Azure resource id of Log Analytics. |
 | --- | --- | --- | --- |
