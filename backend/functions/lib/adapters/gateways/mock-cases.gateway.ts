@@ -2,6 +2,7 @@ import { CasesInterface } from '../../use-cases/cases.interface';
 import { Chapter15CaseInterface } from '../types/cases';
 import { Context } from '@azure/functions';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
+import { ApplicationContext } from '../types/basic';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
@@ -108,5 +109,13 @@ export class MockCasesGateway implements CasesInterface {
       },
     );
     this.chapter15CaseList.push(...newCases);
+  }
+
+  async getAllCases(
+    context: ApplicationContext,
+    options: { startingMonth?: number },
+  ): Promise<Chapter15CaseInterface[]> {
+    console.debug('getAllCases invoked', context, options);
+    throw new Error('Not yet implemented');
   }
 }

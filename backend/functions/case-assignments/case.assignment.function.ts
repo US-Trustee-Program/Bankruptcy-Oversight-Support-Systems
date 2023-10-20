@@ -12,9 +12,9 @@ const httpTrigger: AzureFunction = async function (
   applicationContext: ApplicationContext,
   request: HttpRequest,
 ): Promise<void> {
-  const caseId = request.body && request.body.caseId;
-  const listOfAttorneyNames = request.body && request.body.attorneyList;
-  const role = request.body && request.body.role;
+  const caseId = request?.body.caseId;
+  const listOfAttorneyNames = request?.body.attorneyList;
+  const role = request?.body.role;
 
   try {
     await handlePostMethod(applicationContext, caseId, listOfAttorneyNames, role);

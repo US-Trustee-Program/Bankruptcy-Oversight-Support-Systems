@@ -8,4 +8,9 @@ export interface CasesInterface {
   ): Promise<Chapter15CaseInterface[]>;
 
   getChapter15Case(context: ApplicationContext, caseId: string): Promise<Chapter15CaseInterface>;
+
+  getAllCases(
+    context: ApplicationContext,
+    options: { startingMonth?: number },
+  ): Promise<Chapter15CaseInterface[]>;
 }

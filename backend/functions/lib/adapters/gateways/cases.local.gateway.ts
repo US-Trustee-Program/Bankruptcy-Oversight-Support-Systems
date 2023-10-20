@@ -52,7 +52,14 @@ export class CasesLocalGateway implements CasesInterface {
       const message = (err as Error).message;
       return Promise.reject(message);
     }
-    console.log(caseDetail);
     return caseDetail;
+  }
+
+  async getAllCases(
+    context: ApplicationContext,
+    options: { startingMonth?: number },
+  ): Promise<Chapter15CaseInterface[]> {
+    console.debug('getAllCases invoked', context, options);
+    throw new Error('Not yet implemented');
   }
 }

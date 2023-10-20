@@ -80,7 +80,49 @@ export default class CasesDxtrGateway implements CasesInterface {
       throw Error(queryResult.message);
     }
   }
+  async getAllCases(
+    context: ApplicationContext,
+    options: { startingMonth?: number },
+  ): Promise<Chapter15CaseInterface[]> {
+    const rowsToReturn = '10';
 
+    const input: DbTableFieldSpec[] = [];
+    const date = new Date();
+    date.setMonth(date.getMonth() + (options.startingMonth || -6));
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
+    input.push({
+      name: 'top',
+      type: mssql.Int,
+      value: rowsToReturn,
+    });
+    input.push({
+      name: 'dateFiledFrom',
+      type: mssql.Date,
+      value: dateFiledFrom,
+    });
+    input.push({
+      name: 'groupDesignator',
+      type: mssql.Char,
+      value: MANHATTAN_GROUP_DESIGNATOR,
+    });
+    const query = sqlUnion(sqlSelectList(rowsToReturn, '15'), sqlSelectList(rowsToReturn, '12'));
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    if (queryResult.success) {
+      log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (queryResult.results as mssql.IResult<any>).recordset;
+    } else {
+      throw Error(queryResult.message);
+    }
+  }
   async getChapter15Case(
     context: ApplicationContext,
     caseId: string,

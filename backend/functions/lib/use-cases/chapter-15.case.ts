@@ -21,6 +21,7 @@ export class Chapter15CaseList {
   }
 
   async getChapter15CaseList(context: ApplicationContext): Promise<CaseListDbResult> {
+    //TODO Ticket Number CAMS_193: refactor this to getCaseList
     try {
       let startingMonth = parseInt(process.env.STARTING_MONTH);
       if (startingMonth > 0) {
@@ -56,7 +57,45 @@ export class Chapter15CaseList {
     }
   }
 
+  async getAllCases(context: ApplicationContext): Promise<CaseListDbResult> {
+    //TODO Ticket Number CAMS_193: refactor this to getCaseList
+    try {
+      let startingMonth = parseInt(process.env.STARTING_MONTH);
+      if (startingMonth > 0) {
+        startingMonth = 0 - startingMonth;
+      }
+      const caseAssignment = new CaseAssignment(context);
+      const cases = await this.casesGateway.getAllCases(context, {
+        startingMonth: startingMonth || undefined,
+      });
+
+      for (const c of cases) {
+        c.assignments = await this.getCaseAssigneeNames(caseAssignment, c);
+      }
+
+      return {
+        success: true,
+        message: '',
+        count: cases?.length,
+        body: {
+          caseList: cases as ObjectKeyVal[],
+        },
+      };
+    } catch (e) {
+      const message = (e as Error).message;
+      return {
+        success: false,
+        message: message || 'Unknown Error received while retrieving cases',
+        count: 0,
+        body: {
+          caseList: [],
+        },
+      };
+    }
+  }
+
   public async getChapter15CaseDetail(
+    //TODO Ticket Number CAMS-193: could refactor this to getCaseDetail
     context: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
