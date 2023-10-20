@@ -28,8 +28,8 @@ export class CasesController {
     return this.courtCaseManagement.getCaseDetail(this.context, requestQueryFilters.caseId);
   }
 
-  public async getAllCases() {
+  public async getCases() {
     log.info(this.context, MODULE_NAME, 'Getting all cases');
-    return await this.courtCaseManagement.getAllCases(this.context);
+    return await this.courtCaseManagement.getCases(this.context);
   }
 }

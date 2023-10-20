@@ -55,11 +55,11 @@ export class CasesLocalGateway implements CasesInterface {
     return caseDetail;
   }
 
-  async getAllCases(
+  async getCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {
-    console.debug('getAllCases invoked', context, options);
+    console.debug('getCases invoked', context, options);
     throw new Error('Not yet implemented');
   }
 }

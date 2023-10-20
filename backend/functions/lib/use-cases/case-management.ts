@@ -21,7 +21,6 @@ export class CourtCaseManagement {
   }
 
   async getChapter15CaseList(context: ApplicationContext): Promise<CaseListDbResult> {
-    //TODO Ticket Number CAMS_193: refactor this to getCaseList
     try {
       let startingMonth = parseInt(process.env.STARTING_MONTH);
       if (startingMonth > 0) {
@@ -57,15 +56,14 @@ export class CourtCaseManagement {
     }
   }
 
-  async getAllCases(context: ApplicationContext): Promise<CaseListDbResult> {
-    //TODO Ticket Number CAMS_193: refactor this to getCaseList
+  async getCases(context: ApplicationContext): Promise<CaseListDbResult> {
     try {
       let startingMonth = parseInt(process.env.STARTING_MONTH);
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
       const caseAssignment = new CaseAssignment(context);
-      const cases = await this.casesGateway.getAllCases(context, {
+      const cases = await this.casesGateway.getCases(context, {
         startingMonth: startingMonth || undefined,
       });
 
