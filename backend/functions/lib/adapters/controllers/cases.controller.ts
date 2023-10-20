@@ -14,7 +14,7 @@ export class CasesController {
 
   public async getCaseList(requestQueryFilters: { caseChapter: string }) {
     log.info(this.context, MODULE_NAME, 'Getting case list.');
-    if (requestQueryFilters.caseChapter == '15' || requestQueryFilters.caseChapter == '12') {
+    if (requestQueryFilters.caseChapter == '15') {
       const chapter15CaseList = new Chapter15CaseList();
       return await chapter15CaseList.getChapter15CaseList(this.context);
     } else {
