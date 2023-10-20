@@ -6,6 +6,7 @@ import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
+import { CaseDetailsDbResult, CaseListDbResult } from '../lib/adapters/types/cases';
 
 dotenv.config();
 
@@ -16,16 +17,6 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
 }
 
 const MODULE_NAME = 'CASES-FUNCTION';
-
-/*
-  CAMS-193
-
-  Expect to handle the following:
-  - api/cases                    # Get all cases
-  DONE - api/cases?chapter=15    # Get cases by chapter
-  - api/cases?chapter=12         # Get cases by chapter
-  DONE - api/cases/081-06-98043  # Get a case detail
-*/
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
@@ -40,23 +31,24 @@ const httpTrigger: AzureFunction = async function (
   const bankruptcyChapterNumber = casesRequest?.query?.chapter || casesRequest?.body?.chapter || '';
 
   try {
+    let responseBody: CaseDetailsDbResult | CaseListDbResult;
+
     if (caseId) {
       // return case details
-      const caseDetails = await casesController.getCaseDetails({
+      responseBody = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
-      functionContext.res = httpSuccess(caseDetails);
     } else if (bankruptcyChapterNumber) {
       // return cases by chapter
-      const caseList = await casesController.getCaseList({
+      responseBody = await casesController.getCaseList({
         caseChapter: bankruptcyChapterNumber,
       });
-      functionContext.res = httpSuccess(caseList);
     } else {
-      // return list of cases (no type filter)
-      const caseList = await casesController.getAllCases();
-      functionContext.res = httpSuccess(caseList);
+      // return list of all chapter cases
+      responseBody = await casesController.getAllCases();
     }
+
+    functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
     let error = originalError;
     if (!(error instanceof CamsError)) {
