@@ -32,7 +32,6 @@ export const CaseAssignment = () => {
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
   const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [bCase, setBCase] = useState<Chapter15Type>();
   const [modalOpenerId, setModalOpenerId] = useState<string>('');
   const [assignmentAlert, setAssignmentAlert] = useState<{
@@ -41,7 +40,8 @@ export const CaseAssignment = () => {
   }>({ message: '', type: UswdsAlertStyle.Success });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
   const [inTableTransferMode, setInTableTransferMode] = useState<string>('');
-  const [retrievedCases, setRetrievedCases] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  let isFetching = false;
 
   // temporarily hard code a chapter, until we provide a way for the user to select one
   const chapter = '15';
@@ -60,8 +60,8 @@ export const CaseAssignment = () => {
 
   // TODO: figure out how we want to get cases and assignments
   const fetchCases = async () => {
-    setIsLoading(true);
-    api
+    isFetching = true;
+    await api
       .list('/cases', {
         chapter,
       })
@@ -87,11 +87,30 @@ export const CaseAssignment = () => {
 
         setUnassignedCaseList(sortedNonAssignedList || []);
         setAssignedCaseList(sortedAssignedList || []);
+
+        isFetching = false;
         setIsLoading(false);
-        setRetrievedCases(true);
       })
       .catch((reason) => {
-        setRetrievedCases(false);
+        isFetching = false;
+        setIsLoading(false);
+        console.error((reason as Error).message);
+      });
+  };
+
+  const fetchAttorneys = () => {
+    AttorneysApi.getAttorneys()
+      .then((response) => {
+        const attorneys = response.map((atty) => {
+          const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
+          if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
+          if (atty.generation !== undefined) attorney.generation = atty.generation;
+          if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
+          return attorney;
+        });
+        setAttorneyList(attorneys);
+      })
+      .catch((reason) => {
         console.error((reason as Error).message);
       });
   };
@@ -143,24 +162,10 @@ export const CaseAssignment = () => {
 
   // Fetch all cases from CAMS API
   useEffect(() => {
-    if (!isLoading) {
-      fetchCases();
-    }
-  }, [retrievedCases, chapter]);
-
-  // Fetch list of Attorney Names from CAMS API for display in the Create Assignment Modal
-  useEffect(() => {
-    AttorneysApi.getAttorneys().then((response) => {
-      const attorneys = response.map((atty) => {
-        const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
-        if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
-        if (atty.generation !== undefined) attorney.generation = atty.generation;
-        if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
-        return attorney;
-      });
-      setAttorneyList(attorneys);
-    });
-  }, [attorneyList.length > 0]);
+    if (isFetching) return;
+    fetchCases();
+    fetchAttorneys();
+  }, []);
 
   if (isLoading) {
     return (
