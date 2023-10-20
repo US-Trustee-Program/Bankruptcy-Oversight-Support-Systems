@@ -9,7 +9,7 @@ import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 
-export class Chapter15CaseList {
+export class CourtCaseManagement {
   casesGateway: CasesInterface;
 
   constructor(casesGateway?: CasesInterface) {
