@@ -38,31 +38,23 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<Chapter15CaseInterface[]> {
-    const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
-    const rowsToReturn = doChapter12Enable ? '10' : '20';
-
     const input: DbTableFieldSpec[] = [];
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
     input.push({
-      name: 'top',
-      type: mssql.Int,
-      value: rowsToReturn,
-    });
-    input.push({
       name: 'dateFiledFrom',
       type: mssql.Date,
       value: dateFiledFrom,
     });
-    input.push({
-      name: 'groupDesignator',
-      type: mssql.Char,
-      value: MANHATTAN_GROUP_DESIGNATOR,
-    });
-    const query = doChapter12Enable
-      ? sqlUnion(sqlSelectList(rowsToReturn, '15'), sqlSelectList(rowsToReturn, '12'))
-      : sqlSelectList(rowsToReturn, '15');
+    const query = `select TOP 20
+        CS_DIV+'-'+CASE_ID as caseId,
+        CS_SHORT_TITLE as caseTitle,
+        FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
+        FROM [dbo].[AO_CS]
+        WHERE CS_CHAPTER = '15'
+        AND GRP_DES = '${MANHATTAN_GROUP_DESIGNATOR}'
+        AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)`;
 
     const queryResult: QueryResults = await executeQuery(
       context,
