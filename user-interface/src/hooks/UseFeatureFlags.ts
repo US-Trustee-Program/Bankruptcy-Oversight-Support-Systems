@@ -8,7 +8,6 @@ export default function useFeatureFlags(): FeatureFlagSet {
   if (!config.clientId) return defaultFeatureFlags;
 
   const featureFlags = useFlags();
-  console.log(featureFlags);
   return !featureFlags || Object.keys(featureFlags).length === 0
     ? defaultFeatureFlags
     : featureFlags;
