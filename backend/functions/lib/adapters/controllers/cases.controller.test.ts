@@ -49,7 +49,7 @@ jest.mock('../../use-cases/case-management', () => {
         getChapter15CaseList: () => {
           return Promise.resolve(expectedListResult);
         },
-        getAllCases: () => {
+        getCases: () => {
           return Promise.resolve(expectedListResult);
         },
       };
@@ -78,10 +78,10 @@ describe('cases controller test', () => {
     expect(actual.message).toEqual('Invalid Chapter value provided');
   });
 
-  test('Should return all case data when getAllCases called ', async () => {
+  test('Should return all case data when getCases called ', async () => {
     const controller = new CasesController(context);
 
-    const actual = await controller.getAllCases();
+    const actual = await controller.getCases();
     expect(actual).toEqual(expectedListResult);
   });
 });

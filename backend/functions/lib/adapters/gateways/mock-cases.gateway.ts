@@ -111,11 +111,11 @@ export class MockCasesGateway implements CasesInterface {
     this.chapter15CaseList.push(...newCases);
   }
 
-  async getAllCases(
+  async getCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {
-    console.debug('getAllCases invoked', context, options);
+    console.debug('getCases invoked', context, options);
     throw new Error('Not yet implemented');
   }
 }

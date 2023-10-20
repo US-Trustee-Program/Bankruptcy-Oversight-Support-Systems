@@ -45,7 +45,7 @@ const httpTrigger: AzureFunction = async function (
       });
     } else {
       // return list of all chapter cases
-      responseBody = await casesController.getAllCases();
+      responseBody = await casesController.getCases();
     }
 
     functionContext.res = httpSuccess(responseBody);

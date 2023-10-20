@@ -70,7 +70,7 @@ describe('Test DXTR Gateway', () => {
     );
     expect(actualResult).not.toEqual(cases);
   });
-  test('should call getAllCases and return expected results', async () => {
+  test('should call getCases and return expected results', async () => {
     const cases = [
       {
         caseId: 'case-one',
@@ -102,7 +102,7 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getAllCases(appContext, {});
+    const actualResult = await testCasesDxtrGateway.getCases(appContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
@@ -336,7 +336,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getAllCases(appContext, {});
+      await testCasesDxtrGateway.getCases(appContext, {});
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).toContain("CS_CHAPTER = '12'");
     });

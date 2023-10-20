@@ -72,7 +72,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       throw Error(queryResult.message);
     }
   }
-  async getAllCases(
+  async getCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {

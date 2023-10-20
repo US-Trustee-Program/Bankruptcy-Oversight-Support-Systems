@@ -9,7 +9,7 @@ export interface CasesInterface {
 
   getChapter15Case(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface>;
 
-  getAllCases(
+  getCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]>;
