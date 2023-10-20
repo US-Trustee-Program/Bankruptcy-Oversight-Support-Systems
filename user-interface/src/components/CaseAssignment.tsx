@@ -87,13 +87,12 @@ export const CaseAssignment = () => {
 
         setUnassignedCaseList(sortedNonAssignedList || []);
         setAssignedCaseList(sortedAssignedList || []);
-        console.log(unassignedCaseList);
         setIsLoading(false);
         setRetrievedCases(true);
       })
       .catch((reason) => {
         setRetrievedCases(false);
-        console.log((reason as Error).message);
+        console.error((reason as Error).message);
       });
   };
 
