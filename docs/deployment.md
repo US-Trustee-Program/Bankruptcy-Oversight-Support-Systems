@@ -34,7 +34,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_SQL_CONN_STR | Secret | --- | --- |
 | AZ_SQL_SERVER_NAME | Secret | --- | --- |
 | AZ_MSSQL_HOST | Secret | --- | --- |
-| AZ_MSSQL_DATABASE | Secret | --- | ACMS database name |
+| ~~AZ_MSSQL_DATABASE~~ | ~~Secret~~ | --- | ~~ACMS database name~~ |
 | AZ_MSSQL_DATABASE_DXTR | Secret | --- | DXTR database name |
 | AZ_MSSQL_USER | Secret | --- | --- |
 | AZ_MSSQL_PASS | Secret | --- | --- |
