@@ -39,9 +39,9 @@ const expectedDetailResult = {
   },
 };
 
-jest.mock('../../use-cases/chapter-15.case', () => {
+jest.mock('../../use-cases/case-management', () => {
   return {
-    Chapter15CaseList: jest.fn().mockImplementation(() => {
+    CourtCaseManagement: jest.fn().mockImplementation(() => {
       return {
         getCaseDetail: () => {
           return Promise.resolve(expectedDetailResult);
