@@ -99,9 +99,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }));
 
   useEffect(() => {
-    console.log('Outside If');
     if (isVisible && modalShellRef.current) {
-      console.log('Inside If for UseEffect');
       setKeyboardAccessible(-1);
       modalShellRef.current.focus();
     }
