@@ -7,16 +7,17 @@ const MODULE_NAME = 'CASES-CONTROLLER';
 
 export class CasesController {
   private readonly context: ApplicationContext;
+  private readonly courtCaseManagement: CourtCaseManagement;
 
   constructor(context: ApplicationContext) {
     this.context = context;
+    this.courtCaseManagement = new CourtCaseManagement();
   }
 
   public async getCaseList(requestQueryFilters: { caseChapter: string }) {
     log.info(this.context, MODULE_NAME, 'Getting case list.');
     if (requestQueryFilters.caseChapter == '15') {
-      const chapter15CaseList = new CourtCaseManagement();
-      return await chapter15CaseList.getChapter15CaseList(this.context);
+      return await this.courtCaseManagement.getChapter15CaseList(this.context);
     } else {
       const invalidChapterCaseList = new InvalidChapterCaseList();
       return invalidChapterCaseList.returnInvalidChapterResponse();
@@ -24,13 +25,11 @@ export class CasesController {
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
-    const chapter15CaseDetail = new CourtCaseManagement();
-    return chapter15CaseDetail.getCaseDetail(this.context, requestQueryFilters.caseId);
+    return this.courtCaseManagement.getCaseDetail(this.context, requestQueryFilters.caseId);
   }
 
   public async getAllCases() {
     log.info(this.context, MODULE_NAME, 'Getting all cases');
-    const chapter15CaseList = new CourtCaseManagement();
-    return await chapter15CaseList.getAllCases(this.context);
+    return await this.courtCaseManagement.getAllCases(this.context);
   }
 }
