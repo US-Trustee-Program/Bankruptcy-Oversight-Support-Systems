@@ -17,28 +17,44 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
 
 const MODULE_NAME = 'CASES-FUNCTION';
 
+/*
+  CAMS-193
+
+  Expect to handle the following:
+  - api/cases                    # Get all cases
+  DONE - api/cases?chapter=15    # Get cases by chapter
+  - api/cases?chapter=12         # Get cases by chapter
+  DONE - api/cases/081-06-98043  # Get a case detail
+*/
+
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   casesRequest: HttpRequest,
 ): Promise<void> {
+  // Setup dependencies
   const applicationContext = await applicationContextCreator(functionContext);
   const casesController = new CasesController(applicationContext);
-  let caseChapter = '';
+
+  // Process request message
+  const caseId = casesRequest?.params?.caseId;
+  const bankruptcyChapterNumber = casesRequest?.query?.chapter || casesRequest?.body?.chapter || '';
 
   try {
-    if (casesRequest.params?.caseId) {
+    if (caseId) {
+      // return case details
       const caseDetails = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
       functionContext.res = httpSuccess(caseDetails);
-    } else {
-      if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
-      else if (casesRequest.body && casesRequest.body.chapter)
-        caseChapter = casesRequest.body.chapter;
-
+    } else if (bankruptcyChapterNumber) {
+      // return cases by chapter
       const caseList = await casesController.getCaseList({
-        caseChapter: caseChapter,
+        caseChapter: bankruptcyChapterNumber,
       });
+      functionContext.res = httpSuccess(caseList);
+    } else {
+      // return list of cases (no type filter)
+      const caseList = await casesController.getAllCases();
       functionContext.res = httpSuccess(caseList);
     }
   } catch (originalError) {

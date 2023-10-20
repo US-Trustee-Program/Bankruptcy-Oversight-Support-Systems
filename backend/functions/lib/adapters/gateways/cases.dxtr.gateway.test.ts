@@ -70,6 +70,56 @@ describe('Test DXTR Gateway', () => {
     );
     expect(actualResult).not.toEqual(cases);
   });
+  test('should call getAllCases and return expected results', async () => {
+    const cases = [
+      {
+        caseId: 'case-one',
+        caseTitle: 'Debtor One',
+        dateFiled: '2018-11-16T00:00:00.000Z',
+      },
+      {
+        caseId: 'case-two',
+        caseTitle: 'Debtor Two',
+        dateFiled: '2019-04-18T00:00:00.000Z',
+      },
+      {
+        caseId: 'case-three',
+        caseTitle: 'Debtor Three',
+        dateFiled: '2019-04-18T00:00:00.000Z',
+      },
+      {
+        caseId: 'case-four',
+        caseTitle: 'Debtor Four',
+        dateFiled: '2018-10-16T00:00:00.000Z',
+      },
+    ];
+    const mockResults: QueryResults = {
+      success: true,
+      results: cases,
+      message: '',
+    };
+    querySpy.mockImplementation(async () => {
+      return Promise.resolve(mockResults);
+    });
+    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+    const actualResult = await testCasesDxtrGateway.getAllCases(appContext, {});
+    const date = new Date();
+    date.setMonth(date.getMonth() - 6);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
+    const expectedDateInput = {
+      name: 'dateFiledFrom',
+      type: mssql.Date,
+      value: dateFiledFrom,
+    };
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      appContext.config.dxtrDbConfig,
+      expect.anything(),
+      expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
+    );
+    expect(actualResult).not.toEqual(cases);
+    console.log(actualResult);
+  });
 
   test('should call executeQuery with the right date when a startingMonth option is passed', async () => {
     const cases = [

@@ -14,7 +14,7 @@ export class CasesController {
 
   public async getCaseList(requestQueryFilters: { caseChapter: string }) {
     log.info(this.context, MODULE_NAME, 'Getting case list.');
-    if (requestQueryFilters.caseChapter == '15') {
+    if (requestQueryFilters.caseChapter == '15' || requestQueryFilters.caseChapter == '12') {
       const chapter15CaseList = new Chapter15CaseList();
       return await chapter15CaseList.getChapter15CaseList(this.context);
     } else {
@@ -26,5 +26,11 @@ export class CasesController {
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
     const chapter15CaseDetail = new Chapter15CaseList();
     return chapter15CaseDetail.getChapter15CaseDetail(this.context, requestQueryFilters.caseId);
+  }
+
+  public async getAllCases() {
+    log.info(this.context, MODULE_NAME, 'Getting all cases');
+    const chapter15CaseList = new Chapter15CaseList();
+    return await chapter15CaseList.getAllCases(this.context);
   }
 }

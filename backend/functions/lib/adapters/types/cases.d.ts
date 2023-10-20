@@ -22,6 +22,7 @@ export interface CaseDetailsDbResult {
 }
 
 export interface Chapter15CaseInterface extends ObjectKeyVal {
+  //TODO CAMS-193: Renme to CaseInterface
   caseId: string;
   chapter: string;
   caseTitle: string;

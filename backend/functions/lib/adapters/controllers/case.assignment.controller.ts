@@ -11,7 +11,7 @@ import { CamsError } from '../../common-errors/cams-error';
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
   'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.';
-const VALID_CASEID_PATTERN = RegExp('^\\d{3}-\\d{2}-\\d{5}$');
+const VALID_CASEID_PATTERN = RegExp(/^\d{3}-\d{2}-\d{5}$/);
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345.';
 
 export class CaseAssignmentController {
