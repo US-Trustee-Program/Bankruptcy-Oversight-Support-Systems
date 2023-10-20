@@ -2,7 +2,7 @@ import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import {
   CaseDetailsDbResult,
   CaseListDbResult,
-  Chapter15CaseInterface,
+  CaseDetailInterface,
 } from '../adapters/types/cases';
 import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
@@ -112,7 +112,7 @@ export class Chapter15CaseList {
     };
   }
 
-  private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: Chapter15CaseInterface) {
+  private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: CaseDetailInterface) {
     const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
       c.caseId,
     );

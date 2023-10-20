@@ -1,12 +1,12 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { Chapter15CaseInterface } from '../types/cases';
+import { CaseDetailInterface } from '../types/cases';
 import { Context } from '@azure/functions';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
-  private chapter15CaseList: Chapter15CaseInterface[] = [];
+  private chapter15CaseList: CaseDetailInterface[] = [];
 
   constructor() {
     this.setUpChapter15TestCaseList();
@@ -16,7 +16,7 @@ export class MockCasesGateway implements CasesInterface {
   async getChapter15Cases(
     context: Context,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     if (options.startingMonth != undefined) {
       this.startingMonth = options.startingMonth;
     }
@@ -30,7 +30,7 @@ export class MockCasesGateway implements CasesInterface {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getChapter15Case(context: Context, caseId: string): Promise<Chapter15CaseInterface> {
+  async getChapter15Case(context: Context, caseId: string): Promise<CaseDetailInterface> {
     // const bCase = this.chapter15CaseList.filter((aCase) => )
     throw new Error('not implemented');
   }
@@ -42,7 +42,7 @@ export class MockCasesGateway implements CasesInterface {
 
   private setUpChapter15TestCaseList() {
     //Add Cases older than 6 months
-    const oldCases: Chapter15CaseInterface[] = [];
+    const oldCases: CaseDetailInterface[] = [];
     const today = new Date();
 
     oldCases.push(
@@ -77,7 +77,7 @@ export class MockCasesGateway implements CasesInterface {
     this.chapter15CaseList.push(...oldCases);
 
     // Add Cases newer than 6 months
-    const newCases: Chapter15CaseInterface[] = [];
+    const newCases: CaseDetailInterface[] = [];
 
     newCases.push(
       {
@@ -114,7 +114,7 @@ export class MockCasesGateway implements CasesInterface {
   async getAllCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     console.debug('getAllCases invoked', context, options);
     throw new Error('Not yet implemented');
   }

@@ -1,6 +1,6 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { Chapter15CaseInterface, DxtrTransactionRecord } from '../types/cases';
+import { CaseDetailInterface, DxtrTransactionRecord } from '../types/cases';
 import {
   getDate,
   getMonthDayYearStringFromDate,
@@ -37,7 +37,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   async getChapter15Cases(
     context: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     const input: DbTableFieldSpec[] = [];
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
@@ -75,7 +75,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   async getAllCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     const rowsToReturn = '10';
 
     const input: DbTableFieldSpec[] = [];
@@ -118,7 +118,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   async getChapter15Case(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Chapter15CaseInterface> {
+  ): Promise<CaseDetailInterface> {
     const courtDiv = caseId.slice(0, 3);
     const dxtrCaseId = caseId.slice(4);
 
@@ -144,7 +144,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     courtDiv: string,
     dxtrCaseId: string,
-  ): Promise<Chapter15CaseInterface> {
+  ): Promise<CaseDetailInterface> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -180,7 +180,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
 
-      return (queryResult.results as mssql.IResult<Chapter15CaseInterface>).recordset[0];
+      return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
     } else {
       throw Error(queryResult.message);
     }
