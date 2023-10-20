@@ -6,6 +6,7 @@ export interface CheckboxProps {
   value: string;
   checked: boolean;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
+  onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
   className?: string;
 }
 
@@ -28,6 +29,12 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     setIsChecked(!isChecked);
   };
 
+  const focusHandler = (ev: React.FocusEvent<HTMLElement>) => {
+    if (props.onFocus) {
+      props.onFocus(ev);
+    }
+  };
+
   function setChecked(value: boolean) {
     setIsChecked(value);
   }
@@ -45,6 +52,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         value={props.value}
         checked={isChecked}
         onChange={checkHandler}
+        onFocus={focusHandler}
       />
       {props.label && (
         <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>

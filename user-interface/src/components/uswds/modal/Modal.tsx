@@ -41,6 +41,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     if (!props.forceAction) {
       if (e.key === 'Escape') {
         close(e);
+      } else if (e.key === 'Tab') {
+        //tabbed to button to accept or close modal when tabbed all the way through modal
+        return;
       }
     }
   };
@@ -96,11 +99,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }));
 
   useEffect(() => {
-    if (modalShellRef.current) {
+    console.log('Outside If');
+    if (isVisible && modalShellRef.current) {
+      console.log('Inside If for UseEffect');
       setKeyboardAccessible(-1);
       modalShellRef.current.focus();
     }
-  }, []);
+  }, [isVisible]);
 
   return (
     <div

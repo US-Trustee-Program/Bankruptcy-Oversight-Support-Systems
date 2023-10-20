@@ -36,6 +36,7 @@ function AssignAttorneyModalComponent(
 ) {
   const flags = useFeatureFlags();
   const modalRef = useRef<ModalRefType>(null);
+  const tableContainer = useRef<HTMLTableSectionElement | null>(null);
   const modalHeading = (
     <>
       Choose Trial Attorney to assign to: {props.bCase?.caseTitle},{' '}
@@ -151,6 +152,25 @@ function AssignAttorneyModalComponent(
     setInitialDocumentBodyStyle('');
   }
 
+  const handleFocus = (event: React.FocusEvent<HTMLElement>) => {
+    if (tableContainer.current && event.target instanceof HTMLInputElement) {
+      // Get the position of the focused input element
+      const inputRect = event.target.getBoundingClientRect();
+      const divRect = tableContainer.current.getBoundingClientRect();
+
+      // Check if the input element is below the visible area
+      if (inputRect.bottom > divRect.bottom + tableContainer.current.scrollTop) {
+        // Scroll the div to bring the input element into view
+        tableContainer.current.scrollTop += inputRect.bottom - divRect.bottom + 10;
+      } else if (inputRect.top < divRect.top + tableContainer.current.scrollTop) {
+        // Check if the input element is above the visible area
+        // Scroll the div to bring the input element into view
+        //tableContainer.current.scrollTop -= divRect.top - inputRect.top;
+        tableContainer.current.scrollTop -= inputRect.top;
+      }
+    }
+  };
+
   return (
     <Modal
       ref={modalRef}
@@ -168,7 +188,7 @@ function AssignAttorneyModalComponent(
               {caseLoadLabel}
             </label>
           </div>
-          <div className="usa-table-container--scrollable" tabIndex={0}>
+          <div className="usa-table-container--scrollable" tabIndex={0} ref={tableContainer}>
             <table className="attorney-list">
               <thead>
                 <tr>
@@ -188,6 +208,7 @@ function AssignAttorneyModalComponent(
                           <Checkbox
                             id={`${idx}-checkbox`}
                             value={`${name}`}
+                            onFocus={handleFocus}
                             onChange={(event) => updateCheckList(event, name)}
                             checked={checkListValues.includes(name)}
                             className="attorney-list-checkbox"
