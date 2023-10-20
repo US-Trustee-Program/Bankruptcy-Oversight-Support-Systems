@@ -87,24 +87,31 @@ export const CaseAssignment = () => {
 
         setUnassignedCaseList(sortedNonAssignedList || []);
         setAssignedCaseList(sortedAssignedList || []);
+
         isFetching = false;
         setIsLoading(false);
-
-        AttorneysApi.getAttorneys().then((response) => {
-          const attorneys = response.map((atty) => {
-            const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
-            if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
-            if (atty.generation !== undefined) attorney.generation = atty.generation;
-            if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
-            return attorney;
-          });
-          setAttorneyList(attorneys);
-        });
       })
       .catch((reason) => {
         isFetching = false;
         setIsLoading(false);
-        console.log((reason as Error).message);
+        console.error((reason as Error).message);
+      });
+  };
+
+  const fetchAttorneys = () => {
+    AttorneysApi.getAttorneys()
+      .then((response) => {
+        const attorneys = response.map((atty) => {
+          const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
+          if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
+          if (atty.generation !== undefined) attorney.generation = atty.generation;
+          if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
+          return attorney;
+        });
+        setAttorneyList(attorneys);
+      })
+      .catch((reason) => {
+        console.error((reason as Error).message);
       });
   };
 
@@ -157,6 +164,7 @@ export const CaseAssignment = () => {
   useEffect(() => {
     if (isFetching) return;
     fetchCases();
+    fetchAttorneys();
   }, []);
 
   if (isLoading) {
