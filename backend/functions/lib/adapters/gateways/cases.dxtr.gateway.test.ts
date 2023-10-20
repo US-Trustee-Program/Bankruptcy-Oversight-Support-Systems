@@ -336,7 +336,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+      await testCasesDxtrGateway.getAllCases(appContext, {});
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).toContain("CS_CHAPTER = '12'");
     });
