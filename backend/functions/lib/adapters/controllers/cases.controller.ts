@@ -25,7 +25,7 @@ export class CasesController {
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
     const chapter15CaseDetail = new Chapter15CaseList();
-    return chapter15CaseDetail.getChapter15CaseDetail(this.context, requestQueryFilters.caseId);
+    return chapter15CaseDetail.getCaseDetail(this.context, requestQueryFilters.caseId);
   }
 
   public async getAllCases() {

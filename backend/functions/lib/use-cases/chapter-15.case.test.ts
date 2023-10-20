@@ -272,7 +272,7 @@ describe('Chapter 15 case detail tests', () => {
       return Promise.resolve(caseDetail);
     });
 
-    const actualCaseDetail = await chapter15CaseList.getChapter15CaseDetail(appContext, caseId);
+    const actualCaseDetail = await chapter15CaseList.getCaseDetail(appContext, caseId);
 
     expect(actualCaseDetail.body.caseDetails.caseId).toEqual(caseId);
     expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);
