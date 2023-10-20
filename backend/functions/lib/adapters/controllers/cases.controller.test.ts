@@ -43,7 +43,7 @@ jest.mock('../../use-cases/chapter-15.case', () => {
   return {
     Chapter15CaseList: jest.fn().mockImplementation(() => {
       return {
-        getChapter15CaseDetail: () => {
+        getCaseDetail: () => {
           return Promise.resolve(expectedDetailResult);
         },
         getChapter15CaseList: () => {

@@ -94,8 +94,7 @@ export class Chapter15CaseList {
     }
   }
 
-  public async getChapter15CaseDetail(
-    //TODO Ticket Number CAMS-193: could refactor this to getCaseDetail
+  public async getCaseDetail(
     context: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
