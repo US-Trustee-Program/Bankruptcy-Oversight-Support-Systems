@@ -17,12 +17,11 @@ export interface CaseDetailsDbResult {
   success: boolean;
   message: string;
   body: {
-    caseDetails: Chapter15CaseInterface;
+    caseDetails: CaseDetailInterface;
   };
 }
 
-export interface Chapter15CaseInterface extends ObjectKeyVal {
-  //TODO CAMS-193: Renme to CaseInterface
+export interface CaseDetailInterface extends ObjectKeyVal {
   caseId: string;
   chapter: string;
   caseTitle: string;

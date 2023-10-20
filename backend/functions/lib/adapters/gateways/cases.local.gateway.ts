@@ -1,6 +1,6 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { Chapter15CaseInterface } from '../types/cases';
+import { CaseDetailInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
 import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
@@ -14,9 +14,9 @@ export class CasesLocalGateway implements CasesInterface {
     options: {
       startingMonth?: number;
     },
-  ): Promise<Chapter15CaseInterface[]> => {
+  ): Promise<CaseDetailInterface[]> => {
     const gatewayHelper = new GatewayHelper();
-    let cases: Chapter15CaseInterface[];
+    let cases: CaseDetailInterface[];
 
     try {
       cases = gatewayHelper.chapter15MockExtract();
@@ -35,7 +35,7 @@ export class CasesLocalGateway implements CasesInterface {
   async getChapter15Case(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Chapter15CaseInterface> {
+  ): Promise<CaseDetailInterface> {
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
 
@@ -58,7 +58,7 @@ export class CasesLocalGateway implements CasesInterface {
   async getAllCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     console.debug('getAllCases invoked', context, options);
     throw new Error('Not yet implemented');
   }

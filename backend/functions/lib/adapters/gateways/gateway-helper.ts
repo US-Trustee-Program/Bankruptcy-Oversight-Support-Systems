@@ -1,8 +1,8 @@
 import * as fs from 'fs';
-import { Chapter15CaseInterface } from '../types/cases';
+import { CaseDetailInterface } from '../types/cases';
 
 export class GatewayHelper {
-  chapter15MockExtract(): Chapter15CaseInterface[] {
+  chapter15MockExtract(): CaseDetailInterface[] {
     const filename = './lib/testing/mock-data/chapter-15-cases.mock.json';
 
     try {

@@ -4,7 +4,7 @@ import * as database from '../utils/database';
 import { QueryResults } from '../types/database';
 import * as mssql from 'mssql';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
-import { Chapter15CaseInterface } from '../types/cases';
+import { CaseDetailInterface } from '../types/cases';
 import * as featureFlags from '../utils/feature-flag';
 
 const context = require('azure-function-context-mock');
@@ -235,7 +235,7 @@ describe('Test DXTR Gateway', () => {
     const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
 
     const closedDate = '10-31-2023';
-    const expected: Chapter15CaseInterface = {
+    const expected: CaseDetailInterface = {
       ...cases[0],
       closedDate,
     };
