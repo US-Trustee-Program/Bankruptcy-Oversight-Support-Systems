@@ -41,9 +41,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     if (!props.forceAction) {
       if (e.key === 'Escape') {
         close(e);
-      } else if (e.key === 'Tab') {
-        //tabbed to button to accept or close modal when tabbed all the way through modal
-        return;
       }
     }
   };
