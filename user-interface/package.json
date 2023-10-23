@@ -69,9 +69,7 @@
     ]
   },
   "overrides": {
-    "semver": "^7.5.4",
-    "tr46": "^4.1.1",
-    "locate-path": "^6.0.0"
+    "semver": "^7.5.4"
   },
   "scripts": {
     "start": "vite",
