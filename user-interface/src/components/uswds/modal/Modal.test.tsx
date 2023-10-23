@@ -179,6 +179,18 @@ describe('Test Modal component', () => {
 
     expect(submitButtonOnClick).toHaveBeenCalled();
   });
+
+  test('should focus modal when modal is first opened', async () => {
+    const button = screen.getByTestId('toggle-modal-button-open-test');
+    const modalContent = screen.getByTestId(`modal-content-${modalId}`);
+
+    act(() => {
+      fireEvent.click(button);
+    });
+
+    expect(onOpenModal).toHaveBeenCalled();
+    expect(modalContent).toHaveFocus();
+  });
 });
 
 describe('Test Modal component with force action', () => {

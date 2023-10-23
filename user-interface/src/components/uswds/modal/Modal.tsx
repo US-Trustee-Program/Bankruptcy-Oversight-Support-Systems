@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import useGlobalKeyDown from '@/hooks/UseGlobalKeyDown';
 import { UswdsButtonStyle } from '@/components/uswds/Button';
@@ -22,7 +22,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
+  const [keyboardAccessible, setKeyboardAccessible] = useState<number>(-1);
   const closeIcon = `/assets/styles/img/sprite.svg#close`;
+  const modalShellRef = useRef<HTMLInputElement | null>(null);
 
   let wrapperData = {};
   if (props.openerId) {
@@ -83,11 +85,22 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     show();
   }
 
+  function hideModal() {
+    setKeyboardAccessible(100000);
+  }
+
   useImperativeHandle(ref, () => ({
-    hide,
+    hide: hideModal,
     show: showModal,
     buttons: submitCancelButtonGroupRef,
   }));
+
+  useEffect(() => {
+    if (isVisible && modalShellRef.current) {
+      setKeyboardAccessible(-1);
+      modalShellRef.current.focus();
+    }
+  }, [isVisible]);
 
   return (
     <div
@@ -108,7 +121,14 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           outsideClick(e, props.modalId + '-overlay')
         }
       >
-        <div className={modalClassNames} id={props.modalId} {...data}>
+        <div
+          className={modalClassNames}
+          id={props.modalId}
+          {...data}
+          tabIndex={keyboardAccessible}
+          ref={modalShellRef}
+          data-testid={`modal-content-${props.modalId}`}
+        >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
               <h2 className="usa-modal__heading" id={props.modalId + '-heading'}>
