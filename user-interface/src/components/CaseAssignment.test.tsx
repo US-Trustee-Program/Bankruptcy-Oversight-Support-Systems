@@ -1,8 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { Provider } from 'react-redux';
 import { CaseAssignment } from './CaseAssignment';
-import { store } from '../store/store';
 import Chapter15MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData } from '../type-declarations/api';
 import { vi } from 'vitest';
@@ -80,9 +78,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
           <CaseAssignment />
-        </Provider>
       </BrowserRouter>,
     );
 
@@ -98,9 +94,7 @@ describe('CaseAssignment Component Tests', () => {
   test('Case Assignment should display Region and Office of the AUST who logs in', async () => {
     render(
       <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
+        <CaseAssignment />
       </BrowserRouter>,
     );
 
@@ -147,9 +141,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
+        <CaseAssignment />
       </BrowserRouter>,
     );
 
@@ -200,9 +192,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
+        <CaseAssignment />
       </BrowserRouter>,
     );
 
@@ -257,9 +247,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
-          <CaseAssignment />
-        </Provider>
+        <CaseAssignment />
       </BrowserRouter>,
     );
 
@@ -296,9 +284,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
           <CaseAssignment />
-        </Provider>
       </BrowserRouter>,
     );
 
@@ -401,9 +387,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
           <CaseAssignment />
-        </Provider>
       </BrowserRouter>,
     );
 
@@ -558,9 +542,7 @@ describe('CaseAssignment Component Tests', () => {
 
     render(
       <BrowserRouter>
-        <Provider store={store}>
           <CaseAssignment />
-        </Provider>
       </BrowserRouter>,
     );
 
@@ -626,9 +608,7 @@ describe('CaseAssignment Component Tests', () => {
 
       render(
         <BrowserRouter>
-          <Provider store={store}>
-            <CaseAssignment />
-          </Provider>
+          <CaseAssignment />
         </BrowserRouter>,
       );
 
@@ -644,9 +624,7 @@ describe('CaseAssignment Component Tests', () => {
 
       render(
         <BrowserRouter>
-          <Provider store={store}>
-            <CaseAssignment />
-          </Provider>
+          <CaseAssignment />
         </BrowserRouter>,
       );
 
@@ -662,9 +640,7 @@ describe('CaseAssignment Component Tests', () => {
 
       render(
         <BrowserRouter>
-          <Provider store={store}>
-            <CaseAssignment />
-          </Provider>
+          <CaseAssignment />
         </BrowserRouter>,
       );
 
@@ -690,9 +666,7 @@ describe('CaseAssignment Component Tests', () => {
 
       render(
         <BrowserRouter>
-          <Provider store={store}>
-            <CaseAssignment />
-          </Provider>
+          <CaseAssignment />
         </BrowserRouter>,
       );
 
