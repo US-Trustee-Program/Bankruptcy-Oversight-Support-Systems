@@ -14,6 +14,12 @@ describe('Test Assign Attorney Modal Component', () => {
   let mark: Attorney;
   let shara: Attorney;
   let brian: Attorney;
+  let joe: Attorney;
+  let bob: Attorney;
+  let frank: Attorney;
+  let sally: Attorney;
+  let may: Attorney;
+  let mobnext: Attorney;
   let attorneyList: Attorney[] = [];
 
   beforeEach(() => {
@@ -21,7 +27,13 @@ describe('Test Assign Attorney Modal Component', () => {
     mark = new Attorney('Mark', 'Bruh', 'Manhattan');
     shara = new Attorney('Shara', 'Cornell', 'Manhattan');
     brian = new Attorney('Brian', 'Masumoto', 'Manhattan', { middleName: 'S' });
-    attorneyList = [susan, mark, shara, brian];
+    joe = new Attorney('Joe', 'Cornell', 'Manhattan');
+    bob = new Attorney('Bob', 'Cornell', 'Manhattan');
+    frank = new Attorney('Frank', 'Cornell', 'Manhattan');
+    sally = new Attorney('Sally', 'Cornell', 'Manhattan');
+    may = new Attorney('May', 'Cornell', 'Manhattan');
+    mobnext = new Attorney('Mobnext', 'Cornell', 'Manhattan');
+    attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mobnext];
   });
 
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {

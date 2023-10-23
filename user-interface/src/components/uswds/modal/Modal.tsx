@@ -130,6 +130,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           {...data}
           tabIndex={keyboardAccessible}
           ref={modalShellRef}
+          data-testid={`modal-content-${props.modalId}`}
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">

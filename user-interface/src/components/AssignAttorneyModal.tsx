@@ -198,7 +198,7 @@ function AssignAttorneyModalComponent(
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-testid="case-load-table-body">
                 {props.attorneyList.length > 0 &&
                   props.attorneyList.map((attorney: Attorney, idx: number) => {
                     const name = attorney.getFullName();
