@@ -1,9 +1,7 @@
 import { httpGet, httpPost } from '@/utils/http.adapter';
 
 describe('http adapter tests', () => {
-  const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => {
-    vi.fn();
-  });
+  const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response());
 
   afterEach(() => {
     vi.clearAllMocks();
