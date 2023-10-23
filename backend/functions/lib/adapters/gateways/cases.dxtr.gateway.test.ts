@@ -118,7 +118,6 @@ describe('Test DXTR Gateway', () => {
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
     expect(actualResult).not.toEqual(cases);
-    console.log(actualResult);
   });
 
   test('should call executeQuery with the right date when a startingMonth option is passed', async () => {
