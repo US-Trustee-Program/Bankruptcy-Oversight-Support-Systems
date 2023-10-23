@@ -175,7 +175,7 @@ jobs:
           -jf results.json \
           -fjf filtered_results.json \
           --file cams.zip \
-          --app-id ${{ secrets.VERACODE_APP_ID }}
+          --app_id ${{ secrets.VERACODE_APP_ID }}
 
       - name: Upload to storage account
         if: always()
