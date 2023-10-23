@@ -160,7 +160,8 @@ jobs:
           --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
           -c baseline \
           -n results-latest.json \
-          -f ./results-latest.json
+          -f ./results-latest.json \
+          --app-id ${{ secrets.VERACODE_APP_ID }}
 
       - name: pipeline-scan
         id: pipeline-scan
