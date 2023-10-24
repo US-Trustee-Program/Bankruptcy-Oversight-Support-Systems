@@ -77,7 +77,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       ev.key == 'Tab' &&
       ev.shiftKey &&
       isVisible &&
-      (ev.target as Element).classList.contains('usa-table-container--scrollable')
+      (ev.target as Element).id === `${props.modalId}-description`
     ) {
       ev.preventDefault();
       const button = document.querySelector('.usa-button.usa-modal__close');
@@ -164,7 +164,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 {props.heading}
               </h2>
               <div className="usa-prose">
-                <section id={props.modalId + '-description'}>{props.content}</section>
+                <section id={props.modalId + '-description'} tabIndex={0}>
+                  {props.content}
+                </section>
               </div>
               <div className="usa-modal__footer">
                 <SubmitCancelButtonGroup
