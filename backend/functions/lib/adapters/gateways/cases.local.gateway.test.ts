@@ -8,7 +8,7 @@ describe('CasesLocalGateway tests', () => {
     const casesLocalGateway = new CasesLocalGateway();
     const startDate = new Date(2015, 1, 1);
     const startingMonth = 0 - calculateDifferenceInMonths(new Date(), startDate);
-    const cases = await casesLocalGateway.getChapter15Cases(context, { startingMonth });
+    const cases = await casesLocalGateway.getCases(context, { startingMonth });
     expect(cases).toBeTruthy();
     expect(cases).not.toEqual([]);
   });

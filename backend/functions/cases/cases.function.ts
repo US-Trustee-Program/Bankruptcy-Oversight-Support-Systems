@@ -28,7 +28,6 @@ const httpTrigger: AzureFunction = async function (
 
   // Process request message
   const caseId = casesRequest?.params?.caseId;
-  const bankruptcyChapterNumber = casesRequest?.query?.chapter || casesRequest?.body?.chapter || '';
 
   try {
     let responseBody: CaseDetailsDbResult | CaseListDbResult;
@@ -37,11 +36,6 @@ const httpTrigger: AzureFunction = async function (
       // return case details
       responseBody = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
-      });
-    } else if (bankruptcyChapterNumber) {
-      // return cases by chapter
-      responseBody = await casesController.getCaseList({
-        caseChapter: bankruptcyChapterNumber,
       });
     } else {
       // return list of all chapter cases

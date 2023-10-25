@@ -1,20 +1,19 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { CaseDetailInterface } from '../types/cases';
-import { Context } from '@azure/functions';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
-  private chapter15CaseList: CaseDetailInterface[] = [];
+  private caseList: CaseDetailInterface[] = [];
 
   constructor() {
-    this.setUpChapter15TestCaseList();
+    this.setUpTestCaseList();
     this.startingMonth = -6;
   }
 
-  async getChapter15Cases(
-    context: Context,
+  async getCases(
+    context: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {
     if (options.startingMonth != undefined) {
@@ -22,16 +21,16 @@ export class MockCasesGateway implements CasesInterface {
     }
     const startDate = this.subtractMonths(new Date());
 
-    const filteredCases = this.chapter15CaseList.filter(
-      (chapter15case) => chapter15case.dateFiled.toString() >= startDate.toISOString(),
+    const filteredCases = this.caseList.filter(
+      (bCase) => bCase.dateFiled.toString() >= startDate.toISOString(),
     );
 
     return Promise.resolve(filteredCases);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getChapter15Case(context: Context, caseId: string): Promise<CaseDetailInterface> {
-    // const bCase = this.chapter15CaseList.filter((aCase) => )
+  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
+    // const bCase = this.caseList.filter((aCase) => )
     throw new Error('not implemented');
   }
 
@@ -40,7 +39,7 @@ export class MockCasesGateway implements CasesInterface {
     return date;
   }
 
-  private setUpChapter15TestCaseList() {
+  private setUpTestCaseList() {
     //Add Cases older than 6 months
     const oldCases: CaseDetailInterface[] = [];
     const today = new Date();
@@ -74,7 +73,7 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
     );
-    this.chapter15CaseList.push(...oldCases);
+    this.caseList.push(...oldCases);
 
     // Add Cases newer than 6 months
     const newCases: CaseDetailInterface[] = [];
@@ -108,14 +107,6 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
     );
-    this.chapter15CaseList.push(...newCases);
-  }
-
-  async getCases(
-    context: ApplicationContext,
-    options: { startingMonth?: number },
-  ): Promise<CaseDetailInterface[]> {
-    console.debug('getCases invoked', context, options);
-    throw new Error('Not yet implemented');
+    this.caseList.push(...newCases);
   }
 }

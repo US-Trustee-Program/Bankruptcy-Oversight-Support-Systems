@@ -53,7 +53,7 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+    const actualResult = await testCasesDxtrGateway.getCases(appContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
@@ -138,7 +138,7 @@ describe('Test DXTR Gateway', () => {
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const startingMonth = -12;
-    await testCasesDxtrGateway.getChapter15Cases(appContext, {
+    await testCasesDxtrGateway.getCases(appContext, {
       startingMonth,
     });
     const date = new Date();
@@ -171,14 +171,14 @@ describe('Test DXTR Gateway', () => {
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
     try {
-      await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+      await testCasesDxtrGateway.getCases(appContext, {});
       expect(true).toBeFalsy();
     } catch (e) {
       expect((e as Error).message).toEqual(errorMessage);
     }
   });
 
-  test('should return a single chapter 15 case when supplied a caseId', async () => {
+  test('should return a single case when supplied a caseId', async () => {
     const caseId = 'case-one';
     const cases = [
       {
@@ -231,7 +231,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
+    const actualResult = await testCasesDxtrGateway.getCaseDetail(appContext, caseId);
 
     const closedDate = '10-31-2023';
     const expected: CaseDetailInterface = {
@@ -306,7 +306,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    await testCasesDxtrGateway.getChapter15Case(appContext, '23-12345');
+    await testCasesDxtrGateway.getCaseDetail(appContext, '23-12345');
     expect(querySpy.mock.calls[0][2]).toBe(query);
   });
   describe('Feature flag chapter-twelve-enabled', () => {
@@ -364,7 +364,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+      await testCasesDxtrGateway.getCases(appContext, {});
       expect(querySpy.mock.calls[0][2]).not.toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).not.toContain("CS_CHAPTER = '12'");
     });

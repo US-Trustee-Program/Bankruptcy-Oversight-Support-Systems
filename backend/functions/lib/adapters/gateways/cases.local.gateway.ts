@@ -8,7 +8,7 @@ import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
 const MODULE_NAME = 'CASES-LOCAL-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
-  getChapter15Cases = async (
+  getCases = async (
     context: ApplicationContext,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options: {
@@ -19,8 +19,8 @@ export class CasesLocalGateway implements CasesInterface {
     let cases: CaseDetailInterface[];
 
     try {
-      cases = gatewayHelper.chapter15MockExtract();
-      cases.map((bCase) => {
+      cases = gatewayHelper.getAllCasesMockExtract();
+      cases.forEach((bCase) => {
         bCase.dateFiled = convertYearMonthDayToMonthDayYear(bCase.dateFiled);
       });
     } catch (err) {
@@ -32,15 +32,12 @@ export class CasesLocalGateway implements CasesInterface {
     return cases;
   };
 
-  async getChapter15Case(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseDetailInterface> {
+  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
 
     try {
-      const cases = gatewayHelper.chapter15MockExtract();
+      const cases = gatewayHelper.getAllCasesMockExtract();
       caseDetail = cases.find((bCase) => {
         return bCase.caseId === caseId;
       });
@@ -53,13 +50,5 @@ export class CasesLocalGateway implements CasesInterface {
       return Promise.reject(message);
     }
     return caseDetail;
-  }
-
-  async getCases(
-    context: ApplicationContext,
-    options: { startingMonth?: number },
-  ): Promise<CaseDetailInterface[]> {
-    console.debug('getCases invoked', context, options);
-    throw new Error('Not yet implemented');
   }
 }

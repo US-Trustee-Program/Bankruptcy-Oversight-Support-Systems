@@ -9,7 +9,7 @@ import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 
-export class CourtCaseManagement {
+export class CaseManagement {
   casesGateway: CasesInterface;
 
   constructor(casesGateway?: CasesInterface) {
@@ -17,42 +17,6 @@ export class CourtCaseManagement {
       this.casesGateway = getCasesGateway();
     } else {
       this.casesGateway = casesGateway;
-    }
-  }
-
-  async getChapter15CaseList(context: ApplicationContext): Promise<CaseListDbResult> {
-    try {
-      let startingMonth = parseInt(process.env.STARTING_MONTH);
-      if (startingMonth > 0) {
-        startingMonth = 0 - startingMonth;
-      }
-      const caseAssignment = new CaseAssignment(context);
-      const cases = await this.casesGateway.getChapter15Cases(context, {
-        startingMonth: startingMonth || undefined,
-      });
-
-      for (const c of cases) {
-        c.assignments = await this.getCaseAssigneeNames(caseAssignment, c);
-      }
-
-      return {
-        success: true,
-        message: '',
-        count: cases?.length,
-        body: {
-          caseList: cases as ObjectKeyVal[],
-        },
-      };
-    } catch (e) {
-      const message = (e as Error).message;
-      return {
-        success: false,
-        message: message || 'Unknown Error received while retrieving cases',
-        count: 0,
-        body: {
-          caseList: [],
-        },
-      };
     }
   }
 
@@ -96,7 +60,7 @@ export class CourtCaseManagement {
     context: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
-    const caseDetails = await this.casesGateway.getChapter15Case(context, caseId);
+    const caseDetails = await this.casesGateway.getCaseDetail(context, caseId);
     const caseAssignment = new CaseAssignment(context);
     caseDetails.assignments = await this.getCaseAssigneeNames(caseAssignment, caseDetails);
 
