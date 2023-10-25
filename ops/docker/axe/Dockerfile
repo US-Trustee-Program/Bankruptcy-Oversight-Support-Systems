@@ -1,17 +1,12 @@
 FROM node:20-slim
 
 RUN apt update && apt upgrade -y
-RUN apt install -y wget unzip libglib2.0-0 libsm6 libxrender1 libxext6 libnss3 libgtk2.0-0 libgconf-2-4
-RUN npm install -g selenium-webdriver
+RUN apt install -y wget unzip chromium-driver chromium
 RUN npm install -g @axe-core/cli
+RUN npm install -g selenium-webdriver
 
-WORKDIR /tmp
-# CMD wget https://msedgedriver.azureedge.net/118.0.2088.57/edgedriver_linux64.zip
+WORKDIR /repo
 
-CMD wget http://chromedriver.storage.googleapis.com/2.0/chromedriver_linux64.zip
-CMD unzip ./chromedriver_linux64.zip
-CMD mv ./chromedriver_linux64/chromedriver /usr/bin
-
-# WORKDIR /repo
+# axe https://www.google.com --chromedriver-path /usr/bin/chromedriver --chrome-options="no-sandbox,disable-setuid-sandbox,disable-dev-shm-usage"
 
 # Mount host volume (pointing to repository) by using -v option to /repo
