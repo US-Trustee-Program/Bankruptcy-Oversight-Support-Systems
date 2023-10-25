@@ -73,12 +73,10 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   };
 
   const modalShellKeyDown = (ev: React.KeyboardEvent<HTMLDivElement>) => {
-    if (
-      ev.key == 'Tab' &&
-      ev.shiftKey &&
-      isVisible &&
-      (ev.target as Element).id === `${props.modalId}-description`
-    ) {
+    const elementEquivalency =
+      (ev.target as Element).id === `${props.modalId}-description` ||
+      (ev.target as Element).id === `${props.modalId}`;
+    if (ev.key == 'Tab' && ev.shiftKey && isVisible && elementEquivalency) {
       ev.preventDefault();
       const button = document.querySelector('.usa-button.usa-modal__close');
       if (button) {
@@ -86,7 +84,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       }
     }
   };
-
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton.onClick) {
       props.actionButtonGroup.submitButton.onClick(e);
