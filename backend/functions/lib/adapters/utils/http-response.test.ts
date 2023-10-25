@@ -23,4 +23,12 @@ describe('Tests out http responses', () => {
     expect(actualResult.headers).toHaveProperty('Content-Type', 'application/json');
     expect(actualResult.headers).toHaveProperty('Last-Modified');
   });
+  test('Should return properly formatted http success response when no body is provided', () => {
+    const actualResult = httpSuccess();
+
+    expect(actualResult.statusCode).toEqual(200);
+    expect(actualResult.body).toEqual({});
+    expect(actualResult.headers).toHaveProperty('Content-Type', 'application/json');
+    expect(actualResult.headers).toHaveProperty('Last-Modified');
+  });
 });

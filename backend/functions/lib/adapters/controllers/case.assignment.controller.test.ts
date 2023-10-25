@@ -4,7 +4,7 @@ import { AssignmentError } from '../../use-cases/assignment.exception';
 import { applicationContextCreator } from '../utils/application-context-creator';
 const functionContext = require('azure-function-context-mock');
 
-describe('Chapter 15 Case Assignment Creation Tests', () => {
+describe('Case Assignment Creation Tests', () => {
   const env = process.env;
   const trialAttorneyRole = 'TrialAttorney';
   let appContext;
@@ -16,7 +16,7 @@ describe('Chapter 15 Case Assignment Creation Tests', () => {
     };
   });
 
-  test('A chapter 15 case is assigned to an attorney when requested', async () => {
+  test('A case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = {
       caseId: '001-18-12345',
       listOfAttorneyNames: ['Jane'],

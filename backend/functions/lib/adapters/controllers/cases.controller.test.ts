@@ -41,13 +41,10 @@ const expectedDetailResult = {
 
 jest.mock('../../use-cases/case-management', () => {
   return {
-    CourtCaseManagement: jest.fn().mockImplementation(() => {
+    CaseManagement: jest.fn().mockImplementation(() => {
       return {
         getCaseDetail: () => {
           return Promise.resolve(expectedDetailResult);
-        },
-        getChapter15CaseList: () => {
-          return Promise.resolve(expectedListResult);
         },
         getCases: () => {
           return Promise.resolve(expectedListResult);
@@ -58,24 +55,11 @@ jest.mock('../../use-cases/case-management', () => {
 });
 
 describe('cases controller test', () => {
-  test('Should get list of chapter 15 cases', async () => {
-    const controller = new CasesController(context);
-    const actual = await controller.getCaseList({ caseChapter: '15' });
-    expect(actual).toEqual(expectedListResult);
-  });
-
-  test('Should get case details of chapter 15 case using caseId', async () => {
+  test('Should get case details of case using caseId', async () => {
     const controller = new CasesController(context);
 
     const actual1 = await controller.getCaseDetails({ caseId: caseId1 });
     expect(actual1).toEqual(expectedDetailResult);
-  });
-
-  test('Should get invalid response when querying invalid case chapter number', async () => {
-    const controller = new CasesController(context);
-
-    const actual = await controller.getCaseList({ caseChapter: '999' });
-    expect(actual.message).toEqual('Invalid Chapter value provided');
   });
 
   test('Should return all case data when getCases called ', async () => {
