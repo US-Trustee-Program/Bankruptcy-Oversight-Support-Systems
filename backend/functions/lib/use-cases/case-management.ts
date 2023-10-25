@@ -2,14 +2,14 @@ import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
 import {
   CaseDetailsDbResult,
   CaseListDbResult,
-  Chapter15CaseInterface,
+  CaseDetailInterface,
 } from '../adapters/types/cases';
 import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 
-export class Chapter15CaseList {
+export class CaseManagement {
   casesGateway: CasesInterface;
 
   constructor(casesGateway?: CasesInterface) {
@@ -20,14 +20,14 @@ export class Chapter15CaseList {
     }
   }
 
-  async getChapter15CaseList(context: ApplicationContext): Promise<CaseListDbResult> {
+  async getCases(context: ApplicationContext): Promise<CaseListDbResult> {
     try {
       let startingMonth = parseInt(process.env.STARTING_MONTH);
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
       const caseAssignment = new CaseAssignment(context);
-      const cases = await this.casesGateway.getChapter15Cases(context, {
+      const cases = await this.casesGateway.getCases(context, {
         startingMonth: startingMonth || undefined,
       });
 
@@ -56,11 +56,11 @@ export class Chapter15CaseList {
     }
   }
 
-  public async getChapter15CaseDetail(
+  public async getCaseDetail(
     context: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
-    const caseDetails = await this.casesGateway.getChapter15Case(context, caseId);
+    const caseDetails = await this.casesGateway.getCaseDetail(context, caseId);
     const caseAssignment = new CaseAssignment(context);
     caseDetails.assignments = await this.getCaseAssigneeNames(caseAssignment, caseDetails);
 
@@ -73,7 +73,7 @@ export class Chapter15CaseList {
     };
   }
 
-  private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: Chapter15CaseInterface) {
+  private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: CaseDetailInterface) {
     const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
       c.caseId,
     );

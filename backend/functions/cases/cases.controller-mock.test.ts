@@ -10,13 +10,11 @@ jest.mock('../lib/adapters/controllers/cases.controller', () => {
   return {
     CasesController: jest.fn().mockImplementation(() => {
       return {
-        getCaseList: (query: { caseChapter?: string }) => {
-          if (query.caseChapter === '') {
-            throw new Error('Test error');
-          }
-          if (query.caseChapter === 'error') {
-            throw new CamsError('fake-module');
-          }
+        getCases: () => {
+          throw new Error('Test error');
+        },
+        getCaseDetails: () => {
+          throw new CamsError('Case Details Error');
         },
       };
     }),
@@ -24,13 +22,11 @@ jest.mock('../lib/adapters/controllers/cases.controller', () => {
 });
 
 describe('Mocking CasesController to get error handling', () => {
-  //const MockedCasesController = jest.mocked(CasesController);
-
   beforeEach(() => {
     clearAllMocks();
   });
 
-  test('error should be properly handled if casesController.getCaseList() throws an error', async () => {
+  test('error should be properly handled if casesController.getCases() throws an error', async () => {
     const request = {
       query: {},
     };
@@ -43,9 +39,10 @@ describe('Mocking CasesController to get error handling', () => {
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
+  //TODO rethink how to trigger a CAMS error for this test
   test('should call httpError if a CamsError is caught', async () => {
     const request = {
-      query: { chapter: 'error' },
+      params: { caseId: '00000' },
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');

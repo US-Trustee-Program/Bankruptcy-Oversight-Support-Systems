@@ -1,6 +1,6 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { Chapter15CaseInterface, DxtrTransactionRecord } from '../types/cases';
+import { CaseDetailInterface, DxtrTransactionRecord } from '../types/cases';
 import {
   getDate,
   getMonthDayYearStringFromDate,
@@ -34,10 +34,32 @@ function sqlUnion(query1: string, query2: string) {
 }
 
 export default class CasesDxtrGateway implements CasesInterface {
-  async getChapter15Cases(
+  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
+    const courtDiv = caseId.slice(0, 3);
+    const dxtrCaseId = caseId.slice(4);
+
+    const bCase = await this.queryCases(context, courtDiv, dxtrCaseId);
+
+    const { closedDates, dismissedDates } = await this.queryTransactions(
+      context,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
+    if (closedDates.length > 0) {
+      bCase.closedDate = getMonthDayYearStringFromDate(closedDates[0]);
+    }
+
+    if (dismissedDates.length > 0) {
+      bCase.dismissedDate = getMonthDayYearStringFromDate(closedDates[0]);
+    }
+
+    return bCase;
+  }
+
+  async getCases(
     context: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
     const rowsToReturn = doChapter12Enable ? '10' : '20';
 
@@ -81,36 +103,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
-  async getChapter15Case(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Chapter15CaseInterface> {
-    const courtDiv = caseId.slice(0, 3);
-    const dxtrCaseId = caseId.slice(4);
-
-    const bCase = await this.queryCases(context, courtDiv, dxtrCaseId);
-
-    const { closedDates, dismissedDates } = await this.queryTransactions(
-      context,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-    if (closedDates.length > 0) {
-      bCase.closedDate = getMonthDayYearStringFromDate(closedDates[0]);
-    }
-
-    if (dismissedDates.length > 0) {
-      bCase.dismissedDate = getMonthDayYearStringFromDate(closedDates[0]);
-    }
-
-    return bCase;
-  }
-
   private async queryCases(
     context: ApplicationContext,
     courtDiv: string,
     dxtrCaseId: string,
-  ): Promise<Chapter15CaseInterface> {
+  ): Promise<CaseDetailInterface> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -146,7 +143,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
 
-      return (queryResult.results as mssql.IResult<Chapter15CaseInterface>).recordset[0];
+      return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
     } else {
       throw Error(queryResult.message);
     }

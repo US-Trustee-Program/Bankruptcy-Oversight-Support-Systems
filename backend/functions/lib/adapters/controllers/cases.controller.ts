@@ -1,30 +1,24 @@
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
-import { Chapter15CaseList } from '../../use-cases/chapter-15.case';
-import InvalidChapterCaseList from '../../use-cases/invalid-chapter.case-list';
+import { CaseManagement } from '../../use-cases/case-management';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
 export class CasesController {
   private readonly context: ApplicationContext;
+  private readonly caseManagement: CaseManagement;
 
   constructor(context: ApplicationContext) {
     this.context = context;
-  }
-
-  public async getCaseList(requestQueryFilters: { caseChapter: string }) {
-    log.info(this.context, MODULE_NAME, 'Getting case list.');
-    if (requestQueryFilters.caseChapter == '15') {
-      const chapter15CaseList = new Chapter15CaseList();
-      return await chapter15CaseList.getChapter15CaseList(this.context);
-    } else {
-      const invalidChapterCaseList = new InvalidChapterCaseList();
-      return invalidChapterCaseList.returnInvalidChapterResponse();
-    }
+    this.caseManagement = new CaseManagement();
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
-    const chapter15CaseDetail = new Chapter15CaseList();
-    return chapter15CaseDetail.getChapter15CaseDetail(this.context, requestQueryFilters.caseId);
+    return this.caseManagement.getCaseDetail(this.context, requestQueryFilters.caseId);
+  }
+
+  public async getCases() {
+    log.info(this.context, MODULE_NAME, 'Getting all cases');
+    return await this.caseManagement.getCases(this.context);
   }
 }
