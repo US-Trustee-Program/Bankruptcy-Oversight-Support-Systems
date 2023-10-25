@@ -37,24 +37,53 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     data['data-force-action'] = true;
   }
 
-  const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = (ev: KeyboardEvent) => {
     if (!props.forceAction) {
-      if (e.key === 'Escape') {
-        close(e);
+      if (ev.key === 'Escape') {
+        close(ev);
       }
     }
   };
 
   useGlobalKeyDown(handleKeyDown, { forceAction: !!props.forceAction });
 
-  const close = (e: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
+  const close = (ev: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
+    closeModal();
+    ev.preventDefault();
+  };
+
+  function closeModal() {
     hide();
     if (props.onClose) {
       props.onClose();
     }
-    e.preventDefault();
+    setKeyboardAccessible(100000);
+  }
+
+  const handleTab = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (
+      ev.key == 'Tab' &&
+      !ev.shiftKey &&
+      isVisible &&
+      (ev.target as Element).classList.contains('usa-modal__close')
+    ) {
+      ev.preventDefault();
+      modalShellRef?.current?.focus();
+    }
   };
 
+  const handleShiftTab = (ev: React.KeyboardEvent<HTMLDivElement>) => {
+    const elementEquivalency =
+      (ev.target as Element).id === `${props.modalId}-description` ||
+      (ev.target as Element).id === `${props.modalId}`;
+    if (ev.key == 'Tab' && ev.shiftKey && isVisible && elementEquivalency) {
+      ev.preventDefault();
+      const button = document.querySelector('.usa-button.usa-modal__close');
+      if (button) {
+        (button as HTMLElement).focus();
+      }
+    }
+  };
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton.onClick) {
       props.actionButtonGroup.submitButton.onClick(e);
@@ -85,12 +114,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     show();
   }
 
-  function hideModal() {
-    setKeyboardAccessible(100000);
-  }
-
   useImperativeHandle(ref, () => ({
-    hide: hideModal,
+    hide: closeModal,
     show: showModal,
     buttons: submitCancelButtonGroupRef,
   }));
@@ -127,6 +152,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           {...data}
           tabIndex={keyboardAccessible}
           ref={modalShellRef}
+          onKeyDown={handleShiftTab}
           data-testid={`modal-content-${props.modalId}`}
         >
           <div className="usa-modal__content">
@@ -135,7 +161,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 {props.heading}
               </h2>
               <div className="usa-prose">
-                <section id={props.modalId + '-description'}>{props.content}</section>
+                <section id={props.modalId + '-description'} tabIndex={0}>
+                  {props.content}
+                </section>
               </div>
               <div className="usa-modal__footer">
                 <SubmitCancelButtonGroup
@@ -168,6 +196,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 data-close-modal
                 onClick={close}
                 data-testid={`modal-x-button-${props.modalId}`}
+                onKeyDown={handleTab}
               >
                 <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
                   <use xlinkHref={closeIcon}></use>

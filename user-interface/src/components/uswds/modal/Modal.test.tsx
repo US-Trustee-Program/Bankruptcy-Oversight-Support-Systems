@@ -6,7 +6,7 @@ import Modal from './Modal';
 import { ModalRefType } from './modal-refs';
 
 describe('Test Modal component', () => {
-  const modalId = 'assign-attorney-modal';
+  const modalId = 'test-modal';
   const onOpenModal = vi.fn();
   const closeModal = vi.fn();
   const submitButtonOnClick = vi.fn();
@@ -194,7 +194,7 @@ describe('Test Modal component', () => {
 });
 
 describe('Test Modal component with force action', () => {
-  const modalId = 'assign-attorney-modal';
+  const modalId = 'test-modal';
   beforeEach(() => {
     const modalRef = React.createRef<ModalRefType>();
     const actionButtonGroup = {

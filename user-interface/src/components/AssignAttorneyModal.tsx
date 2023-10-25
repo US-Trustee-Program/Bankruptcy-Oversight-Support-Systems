@@ -188,7 +188,7 @@ function AssignAttorneyModalComponent(
               {caseLoadLabel}
             </label>
           </div>
-          <div className="usa-table-container--scrollable" tabIndex={0} ref={tableContainer}>
+          <div className="usa-table-container--scrollable" ref={tableContainer}>
             <table className="attorney-list">
               <thead>
                 <tr>
