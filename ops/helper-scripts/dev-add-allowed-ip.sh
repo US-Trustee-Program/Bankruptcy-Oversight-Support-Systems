@@ -50,7 +50,7 @@ if [[ -z "${app_rg}" || -z "${stack_name}" || -z "${priority}" ]]; then
 fi
 
 if [[ -z "${ip}" ]]; then
-    agentIp=$(curl -s https://api.ipify.org)
+    agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
 else
     agentIp=${ip}
 fi
