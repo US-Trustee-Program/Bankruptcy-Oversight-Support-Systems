@@ -60,7 +60,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     setKeyboardAccessible(100000);
   }
 
-  const closeButtonKeyDown = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleTab = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
     if (
       ev.key == 'Tab' &&
       !ev.shiftKey &&
@@ -72,7 +72,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   };
 
-  const modalShellKeyDown = (ev: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleShiftTab = (ev: React.KeyboardEvent<HTMLDivElement>) => {
     const elementEquivalency =
       (ev.target as Element).id === `${props.modalId}-description` ||
       (ev.target as Element).id === `${props.modalId}`;
@@ -152,7 +152,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           {...data}
           tabIndex={keyboardAccessible}
           ref={modalShellRef}
-          onKeyDown={modalShellKeyDown}
+          onKeyDown={handleShiftTab}
           data-testid={`modal-content-${props.modalId}`}
         >
           <div className="usa-modal__content">
@@ -196,7 +196,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 data-close-modal
                 onClick={close}
                 data-testid={`modal-x-button-${props.modalId}`}
-                onKeyDown={closeButtonKeyDown}
+                onKeyDown={handleTab}
               >
                 <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
                   <use xlinkHref={closeIcon}></use>
