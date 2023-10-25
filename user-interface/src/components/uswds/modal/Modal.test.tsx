@@ -43,7 +43,7 @@ describe('Test Modal component', () => {
               modalId={modalId}
               ref={modalRef}
               heading={'Test Heading'}
-              content={<button data-testid="test-content-button">Test Content</button>}
+              content={'Test Content'}
               actionButtonGroup={actionButtonGroup}
               onClose={closeModal}
               onOpen={onOpenModal}
@@ -191,30 +191,6 @@ describe('Test Modal component', () => {
     expect(onOpenModal).toHaveBeenCalled();
     expect(modalContent).toHaveFocus();
   });
-
-  /*
-  test('should focus on modal shell when tabbing past close button (in upper right of modal)', async () => {
-    const openButton = screen.getByTestId('toggle-modal-button-open-test');
-    const modalContent = screen.getByTestId(`modal-content-${modalId}`);
-    const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
-    const testContentButton = screen.getByTestId('test-content-button');
-
-    act(() => {
-      fireEvent.click(openButton);
-    });
-
-    expect(onOpenModal).toHaveBeenCalled();
-    expect(modalContent).toHaveFocus();
-
-    act(() => {
-      fireEvent.click(testContentButton);
-    });
-    expect(testContentButton).toHaveFocus();
-
-    fireEvent.keyDown(closeButton, { key: 'Tab', code: 'Tab', charCode: 9 });
-    expect(modalContent).toHaveFocus();
-  });
-*/
 });
 
 describe('Test Modal component with force action', () => {
