@@ -77,7 +77,7 @@ if [ ! -f "$artifact_path" ]; then
 fi
 
 # allow build agent access to execute deployment
-agentIp=$(curl -s https://api.ipify.org)
+agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
 az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true 1>/dev/null
 
 # Construct and execute deployment command
