@@ -194,8 +194,7 @@ jobs:
           -bf results-latest.json \
           -jf results.json \
           -fjf filtered_results.json \
-          --file cams.zip \
-          --app_id ${{ secrets.VERACODE_APP_ID }}
+          --file cams.zip
 
       - name: Upload to storage account
         if: always()
