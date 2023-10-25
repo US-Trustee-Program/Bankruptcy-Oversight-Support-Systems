@@ -1,36 +1,36 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { Chapter15CaseInterface } from '../types/cases';
-import { Context } from '@azure/functions';
+import { CaseDetailInterface } from '../types/cases';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
+import { ApplicationContext } from '../types/basic';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
-  private chapter15CaseList: Chapter15CaseInterface[] = [];
+  private caseList: CaseDetailInterface[] = [];
 
   constructor() {
-    this.setUpChapter15TestCaseList();
+    this.setUpTestCaseList();
     this.startingMonth = -6;
   }
 
-  async getChapter15Cases(
-    context: Context,
+  async getCases(
+    context: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<Chapter15CaseInterface[]> {
+  ): Promise<CaseDetailInterface[]> {
     if (options.startingMonth != undefined) {
       this.startingMonth = options.startingMonth;
     }
     const startDate = this.subtractMonths(new Date());
 
-    const filteredCases = this.chapter15CaseList.filter(
-      (chapter15case) => chapter15case.dateFiled.toString() >= startDate.toISOString(),
+    const filteredCases = this.caseList.filter(
+      (bCase) => bCase.dateFiled.toString() >= startDate.toISOString(),
     );
 
     return Promise.resolve(filteredCases);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getChapter15Case(context: Context, caseId: string): Promise<Chapter15CaseInterface> {
-    // const bCase = this.chapter15CaseList.filter((aCase) => )
+  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
+    // const bCase = this.caseList.filter((aCase) => )
     throw new Error('not implemented');
   }
 
@@ -39,9 +39,9 @@ export class MockCasesGateway implements CasesInterface {
     return date;
   }
 
-  private setUpChapter15TestCaseList() {
+  private setUpTestCaseList() {
     //Add Cases older than 6 months
-    const oldCases: Chapter15CaseInterface[] = [];
+    const oldCases: CaseDetailInterface[] = [];
     const today = new Date();
 
     oldCases.push(
@@ -73,10 +73,10 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
     );
-    this.chapter15CaseList.push(...oldCases);
+    this.caseList.push(...oldCases);
 
     // Add Cases newer than 6 months
-    const newCases: Chapter15CaseInterface[] = [];
+    const newCases: CaseDetailInterface[] = [];
 
     newCases.push(
       {
@@ -107,6 +107,6 @@ export class MockCasesGateway implements CasesInterface {
         assignments: [],
       },
     );
-    this.chapter15CaseList.push(...newCases);
+    this.caseList.push(...newCases);
   }
 }

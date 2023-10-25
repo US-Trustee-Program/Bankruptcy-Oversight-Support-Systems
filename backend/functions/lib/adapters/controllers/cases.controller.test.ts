@@ -39,14 +39,14 @@ const expectedDetailResult = {
   },
 };
 
-jest.mock('../../use-cases/chapter-15.case', () => {
+jest.mock('../../use-cases/case-management', () => {
   return {
-    Chapter15CaseList: jest.fn().mockImplementation(() => {
+    CaseManagement: jest.fn().mockImplementation(() => {
       return {
-        getChapter15CaseDetail: () => {
+        getCaseDetail: () => {
           return Promise.resolve(expectedDetailResult);
         },
-        getChapter15CaseList: () => {
+        getCases: () => {
           return Promise.resolve(expectedListResult);
         },
       };
@@ -55,16 +55,17 @@ jest.mock('../../use-cases/chapter-15.case', () => {
 });
 
 describe('cases controller test', () => {
-  test('Should get list of chapter 15 cases', async () => {
-    const controller = new CasesController(context);
-    const actual = await controller.getCaseList({ caseChapter: '15' });
-    expect(actual).toEqual(expectedListResult);
-  });
-
-  test('Should get case details of chapter 15 case using caseId', async () => {
+  test('Should get case details of case using caseId', async () => {
     const controller = new CasesController(context);
 
     const actual1 = await controller.getCaseDetails({ caseId: caseId1 });
     expect(actual1).toEqual(expectedDetailResult);
+  });
+
+  test('Should return all case data when getCases called ', async () => {
+    const controller = new CasesController(context);
+
+    const actual = await controller.getCases();
+    expect(actual).toEqual(expectedListResult);
   });
 });

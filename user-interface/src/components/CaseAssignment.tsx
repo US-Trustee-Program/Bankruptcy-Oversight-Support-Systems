@@ -43,9 +43,6 @@ export const CaseAssignment = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
-  // temporarily hard code a chapter, until we provide a way for the user to select one
-  const chapter = '15';
-
   function sortMethod(a: object, b: object): number {
     const recordA: Chapter15Node = a as Chapter15Node;
     const recordB: Chapter15Node = b as Chapter15Node;
@@ -62,9 +59,7 @@ export const CaseAssignment = () => {
   const fetchCases = async () => {
     isFetching = true;
     await api
-      .list('/cases', {
-        chapter,
-      })
+      .list('/cases')
       .then((res) => {
         const assignmentList: Chapter15Node[] = [];
         const nonAssignmentList: Chapter15Node[] = [];

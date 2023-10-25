@@ -6,6 +6,7 @@ import log from '../lib/adapters/services/logger.service';
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
+import { CaseDetailsDbResult, CaseListDbResult } from '../lib/adapters/types/cases';
 
 dotenv.config();
 
@@ -21,26 +22,27 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   casesRequest: HttpRequest,
 ): Promise<void> {
+  // Setup dependencies
   const applicationContext = await applicationContextCreator(functionContext);
   const casesController = new CasesController(applicationContext);
-  let caseChapter = '';
+
+  // Process request message
+  const caseId = casesRequest?.params?.caseId;
 
   try {
-    if (casesRequest.params?.caseId) {
-      const caseDetails = await casesController.getCaseDetails({
+    let responseBody: CaseDetailsDbResult | CaseListDbResult;
+
+    if (caseId) {
+      // return case details
+      responseBody = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
-      functionContext.res = httpSuccess(caseDetails);
     } else {
-      if (casesRequest.query?.chapter) caseChapter = casesRequest.query.chapter;
-      else if (casesRequest.body && casesRequest.body.chapter)
-        caseChapter = casesRequest.body.chapter;
-
-      const caseList = await casesController.getCaseList({
-        caseChapter: caseChapter,
-      });
-      functionContext.res = httpSuccess(caseList);
+      // return list of all chapter cases
+      responseBody = await casesController.getCases();
     }
+
+    functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
     let error = originalError;
     if (!(error instanceof CamsError)) {

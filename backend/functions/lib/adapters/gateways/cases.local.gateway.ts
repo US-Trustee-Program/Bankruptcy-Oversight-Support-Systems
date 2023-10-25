@@ -1,6 +1,6 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { Chapter15CaseInterface } from '../types/cases';
+import { CaseDetailInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
 import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
@@ -8,19 +8,19 @@ import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
 const MODULE_NAME = 'CASES-LOCAL-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
-  getChapter15Cases = async (
+  getCases = async (
     context: ApplicationContext,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options: {
       startingMonth?: number;
     },
-  ): Promise<Chapter15CaseInterface[]> => {
+  ): Promise<CaseDetailInterface[]> => {
     const gatewayHelper = new GatewayHelper();
-    let cases: Chapter15CaseInterface[];
+    let cases: CaseDetailInterface[];
 
     try {
-      cases = gatewayHelper.chapter15MockExtract();
-      cases.map((bCase) => {
+      cases = gatewayHelper.getAllCasesMockExtract();
+      cases.forEach((bCase) => {
         bCase.dateFiled = convertYearMonthDayToMonthDayYear(bCase.dateFiled);
       });
     } catch (err) {
@@ -32,15 +32,12 @@ export class CasesLocalGateway implements CasesInterface {
     return cases;
   };
 
-  async getChapter15Case(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Chapter15CaseInterface> {
+  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
 
     try {
-      const cases = gatewayHelper.chapter15MockExtract();
+      const cases = gatewayHelper.getAllCasesMockExtract();
       caseDetail = cases.find((bCase) => {
         return bCase.caseId === caseId;
       });
@@ -52,7 +49,6 @@ export class CasesLocalGateway implements CasesInterface {
       const message = (err as Error).message;
       return Promise.reject(message);
     }
-    console.log(caseDetail);
     return caseDetail;
   }
 }

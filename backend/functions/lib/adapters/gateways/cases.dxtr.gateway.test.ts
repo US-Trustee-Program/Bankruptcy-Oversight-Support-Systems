@@ -4,7 +4,7 @@ import * as database from '../utils/database';
 import { QueryResults } from '../types/database';
 import * as mssql from 'mssql';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
-import { Chapter15CaseInterface } from '../types/cases';
+import { CaseDetailInterface } from '../types/cases';
 import * as featureFlags from '../utils/feature-flag';
 
 const context = require('azure-function-context-mock');
@@ -53,7 +53,56 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+    const actualResult = await testCasesDxtrGateway.getCases(appContext, {});
+    const date = new Date();
+    date.setMonth(date.getMonth() - 6);
+    const dateFiledFrom = getYearMonthDayStringFromDate(date);
+    const expectedDateInput = {
+      name: 'dateFiledFrom',
+      type: mssql.Date,
+      value: dateFiledFrom,
+    };
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      appContext.config.dxtrDbConfig,
+      expect.anything(),
+      expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
+    );
+    expect(actualResult).not.toEqual(cases);
+  });
+  test('should call getCases and return expected results', async () => {
+    const cases = [
+      {
+        caseId: 'case-one',
+        caseTitle: 'Debtor One',
+        dateFiled: '2018-11-16T00:00:00.000Z',
+      },
+      {
+        caseId: 'case-two',
+        caseTitle: 'Debtor Two',
+        dateFiled: '2019-04-18T00:00:00.000Z',
+      },
+      {
+        caseId: 'case-three',
+        caseTitle: 'Debtor Three',
+        dateFiled: '2019-04-18T00:00:00.000Z',
+      },
+      {
+        caseId: 'case-four',
+        caseTitle: 'Debtor Four',
+        dateFiled: '2018-10-16T00:00:00.000Z',
+      },
+    ];
+    const mockResults: QueryResults = {
+      success: true,
+      results: cases,
+      message: '',
+    };
+    querySpy.mockImplementation(async () => {
+      return Promise.resolve(mockResults);
+    });
+    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+    const actualResult = await testCasesDxtrGateway.getCases(appContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
@@ -89,7 +138,7 @@ describe('Test DXTR Gateway', () => {
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const startingMonth = -12;
-    await testCasesDxtrGateway.getChapter15Cases(appContext, {
+    await testCasesDxtrGateway.getCases(appContext, {
       startingMonth,
     });
     const date = new Date();
@@ -122,14 +171,14 @@ describe('Test DXTR Gateway', () => {
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
     try {
-      await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+      await testCasesDxtrGateway.getCases(appContext, {});
       expect(true).toBeFalsy();
     } catch (e) {
       expect((e as Error).message).toEqual(errorMessage);
     }
   });
 
-  test('should return a single chapter 15 case when supplied a caseId', async () => {
+  test('should return a single case when supplied a caseId', async () => {
     const caseId = 'case-one';
     const cases = [
       {
@@ -182,10 +231,10 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getChapter15Case(appContext, caseId);
+    const actualResult = await testCasesDxtrGateway.getCaseDetail(appContext, caseId);
 
     const closedDate = '10-31-2023';
-    const expected: Chapter15CaseInterface = {
+    const expected: CaseDetailInterface = {
       ...cases[0],
       closedDate,
     };
@@ -257,7 +306,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    await testCasesDxtrGateway.getChapter15Case(appContext, '23-12345');
+    await testCasesDxtrGateway.getCaseDetail(appContext, '23-12345');
     expect(querySpy.mock.calls[0][2]).toBe(query);
   });
   describe('Feature flag chapter-twelve-enabled', () => {
@@ -286,7 +335,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+      await testCasesDxtrGateway.getCases(appContext, {});
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).toContain("CS_CHAPTER = '12'");
     });
@@ -315,7 +364,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getChapter15Cases(appContext, {});
+      await testCasesDxtrGateway.getCases(appContext, {});
       expect(querySpy.mock.calls[0][2]).not.toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).not.toContain("CS_CHAPTER = '12'");
     });

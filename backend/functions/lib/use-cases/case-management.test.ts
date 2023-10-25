@@ -1,5 +1,5 @@
-import { CaseListDbResult, Chapter15CaseInterface } from '../adapters/types/cases';
-import { Chapter15CaseList } from './chapter-15.case';
+import { CaseListDbResult, CaseDetailInterface } from '../adapters/types/cases';
+import { CaseManagement } from './case-management';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
@@ -44,7 +44,7 @@ jest.mock('./case.assignment', () => {
   };
 });
 
-describe('Chapter 15 case list tests', () => {
+describe('Case list tests', () => {
   let appContext;
   beforeEach(async () => {
     appContext = await applicationContextCreator(functionContext);
@@ -54,9 +54,9 @@ describe('Chapter 15 case list tests', () => {
     };
   });
 
-  test('Calling getChapter15CaseList should return valid chapter 15 data', async () => {
-    const chapter15CaseList = new Chapter15CaseList();
-    const caseList: Chapter15CaseInterface[] = [
+  test('Calling getCases should return valid data', async () => {
+    const chapterCaseList = new CaseManagement();
+    const caseList: CaseDetailInterface[] = [
       {
         caseId: '001-04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
@@ -81,24 +81,24 @@ describe('Chapter 15 case list tests', () => {
       },
     };
 
-    jest.spyOn(chapter15CaseList.casesGateway, 'getChapter15Cases').mockImplementation(async () => {
+    jest.spyOn(chapterCaseList.casesGateway, 'getCases').mockImplementation(async () => {
       return caseList;
     });
 
-    const results = await chapter15CaseList.getChapter15CaseList(appContext);
+    const results = await chapterCaseList.getCases(appContext);
 
     expect(results).toStrictEqual(mockChapterList);
   });
 
-  test('Calling getChapter15CaseList without a starting month filter should return valid chapter 15 data for the last 6 months of default', async () => {
+  test('Calling getCases without a starting month filter should return valid data for the last 6 months of default', async () => {
     const today = new Date();
     const expectedStartDate = getYearMonthDayStringFromDate(
       new Date(today.getFullYear(), today.getMonth() - 6, today.getDate()),
     );
 
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
-    const actual = await chapter15CaseList.getChapter15CaseList(appContext);
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const actual = await chapterCaseList.getCases(appContext);
     function checkDate(aCase) {
       const verify = aCase.dateFiled >= expectedStartDate;
       return verify;
@@ -110,8 +110,8 @@ describe('Chapter 15 case list tests', () => {
 
   test('should return results with expected assignments', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
-    const cases = await chapter15CaseList.getChapter15CaseList(appContext);
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const cases = await chapterCaseList.getCases(appContext);
     const caseWithAssignments = cases.body.caseList.filter((theCase) => {
       return theCase.caseId === caseIdWithAssignments;
     })[0];
@@ -136,20 +136,20 @@ describe('Chapter 15 case list tests', () => {
     expect(count).toEqual(2);
   });
 
-  test('should throw error and return specific error message received when error is thrown in casesGateway.getChapter15Cases', async () => {
+  test('should throw error and return specific error message received when error is thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
-      async getChapter15Cases(
+      async getCases(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         context,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<Chapter15CaseInterface[]> {
+      ): Promise<CaseDetailInterface[]> {
         throw Error('some random error');
       }
     }
     const mockCasesGateway: CasesInterface = new MockCasesGatewayWithError();
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
-    expect(await chapter15CaseList.getChapter15CaseList(appContext)).toEqual({
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    expect(await chapterCaseList.getCases(appContext)).toEqual({
       body: { caseList: [] },
       count: 0,
       message: 'some random error',
@@ -157,20 +157,20 @@ describe('Chapter 15 case list tests', () => {
     });
   });
 
-  test('should throw error with default message and return Unknown Error received when unknown error is thrown in casesGateway.getChapter15Cases', async () => {
+  test('should throw error with default message and return Unknown Error received when unknown error is thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
-      async getChapter15Cases(
+      async getCases(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         context,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<Chapter15CaseInterface[]> {
+      ): Promise<CaseDetailInterface[]> {
         throw Error('');
       }
     }
     const mockCasesGateway: CasesInterface = new MockCasesGatewayWithError();
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
-    expect(await chapter15CaseList.getChapter15CaseList(appContext)).toEqual({
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    expect(await chapterCaseList.getCases(appContext)).toEqual({
       body: { caseList: [] },
       count: 0,
       message: 'Unknown Error received while retrieving cases',
@@ -178,78 +178,78 @@ describe('Chapter 15 case list tests', () => {
     });
   });
 
-  test('should call getChapter15Cases with undefined if STARTING_MONTH exists as a string that is not a number', async () => {
+  test('should call getCases with undefined if STARTING_MONTH exists as a string that is not a number', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getChapter15Cases');
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
 
     process.env = {
       ...process.env,
       STARTING_MONTH: 'not a number',
     };
-    await chapter15CaseList.getChapter15CaseList(appContext);
+    await chapterCaseList.getCases(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: undefined });
   });
 
-  test('should call getChapter15Cases with the same starting number if STARTING_MONTH is negative', async () => {
+  test('should call getCases with the same starting number if STARTING_MONTH is negative', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getChapter15Cases');
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
 
     process.env = {
       ...process.env,
       STARTING_MONTH: '-70',
     };
-    await chapter15CaseList.getChapter15CaseList(appContext);
+    await chapterCaseList.getCases(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: -70 });
   });
 
-  test('should negate STARTING_MONTH if getChapter15Cases is called with a positive number', async () => {
+  test('should negate STARTING_MONTH if getCases is called with a positive number', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getChapter15Cases');
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
 
     process.env = {
       ...process.env,
       STARTING_MONTH: '70',
     };
-    await chapter15CaseList.getChapter15CaseList(appContext);
+    await chapterCaseList.getCases(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: -70 });
   });
 
-  test('should call getChapter15Cases with undefined if STARTING_MONTH is undefined', async () => {
+  test('should call getCases with undefined if STARTING_MONTH is undefined', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getChapter15Cases');
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
 
     process.env = {
       ...process.env,
       STARTING_MONTH: undefined,
     };
-    await chapter15CaseList.getChapter15CaseList(appContext);
+    await chapterCaseList.getCases(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: undefined });
   });
 
-  test('should call getChapter15Cases with undefined if STARTING_MONTH is null', async () => {
+  test('should call getCases with undefined if STARTING_MONTH is null', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getChapter15Cases');
-    const chapter15CaseList: Chapter15CaseList = new Chapter15CaseList(mockCasesGateway);
+    const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
+    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
 
     process.env = {
       ...process.env,
       STARTING_MONTH: null,
     };
-    await chapter15CaseList.getChapter15CaseList(appContext);
+    await chapterCaseList.getCases(appContext);
 
     expect(casesGatewaySpy).toHaveBeenCalledWith(appContext, { startingMonth: undefined });
   });
 });
 
-describe('Chapter 15 case detail tests', () => {
+describe('Case detail tests', () => {
   test('Should return a properly formatted case when a case number is supplied', async () => {
     const appContext = await applicationContextCreator(functionContext);
     const caseId = caseIdWithAssignments;
@@ -267,12 +267,12 @@ describe('Chapter 15 case detail tests', () => {
       chapter: '15',
     };
 
-    const chapter15CaseList = new Chapter15CaseList();
-    jest.spyOn(chapter15CaseList.casesGateway, 'getChapter15Case').mockImplementation(async () => {
+    const chapterCaseList = new CaseManagement();
+    jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
       return Promise.resolve(caseDetail);
     });
 
-    const actualCaseDetail = await chapter15CaseList.getChapter15CaseDetail(appContext, caseId);
+    const actualCaseDetail = await chapterCaseList.getCaseDetail(appContext, caseId);
 
     expect(actualCaseDetail.body.caseDetails.caseId).toEqual(caseId);
     expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);

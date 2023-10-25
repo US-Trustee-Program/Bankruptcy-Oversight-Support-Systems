@@ -2,6 +2,7 @@
   {
     "caseId": "081-11-06541",
     "caseTitle": "Crawford, Turner and Garrett",
+    "chapter": "15",
     "dateFiled": "2011-05-20",
     "dateClosed": "2011-06-21",
     "assignments": []
@@ -9,6 +10,7 @@
   {
     "caseId": "081-14-03544",
     "caseTitle": "Ali-Cruz",
+    "chapter": "15",
     "dateFiled": "2014-04-23",
     "dateClosed": "",
     "assignments": []
@@ -16,6 +18,7 @@
   {
     "caseId": "081-18-00235",
     "caseTitle": "Daniels LLC",
+    "chapter": "15",
     "dateFiled": "2018-11-16",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -23,6 +26,7 @@
   {
     "caseId": "081-15-42623",
     "caseTitle": "Gonzalez, Clark and Kelley",
+    "chapter": "15",
     "dateFiled": "2015-05-18",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -30,6 +34,7 @@
   {
     "caseId": "081-06-00235",
     "caseTitle": "Washington-Walton",
+    "chapter": "15",
     "dateFiled": "2006-05-10",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -37,6 +42,7 @@
   {
     "caseId": "081-06-00243",
     "caseTitle": "Wilson-Sheppard",
+    "chapter": "15",
     "dateFiled": "2006-05-12",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -44,6 +50,7 @@
   {
     "caseId": "081-10-00351",
     "caseTitle": "Taylor Inc",
+    "chapter": "15",
     "dateFiled": "2010-02-16",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -51,6 +58,7 @@
   {
     "caseId": "081-15-39572",
     "caseTitle": "Holmes, Koch and Knight",
+    "chapter": "15",
     "dateFiled": "2015-10-16",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -58,6 +66,7 @@
   {
     "caseId": "081-19-02355",
     "caseTitle": "Allen-Sandoval",
+    "chapter": "15",
     "dateFiled": "2019-04-18",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -65,6 +74,7 @@
   {
     "caseId": "081-19-02365",
     "caseTitle": "Valentine, Miller and Beck",
+    "chapter": "15",
     "dateFiled": "2019-04-18",
     "dateClosed": "2019-06-21",
     "assignments": []
@@ -72,6 +82,7 @@
   {
     "caseId": "081-22-23587",
     "caseTitle": "Mccarthy Group",
+    "chapter": "15",
     "dateFiled": "2022-10-31",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -79,6 +90,7 @@
   {
     "caseId": "081-22-52349",
     "caseTitle": "Soto-Hayes",
+    "chapter": "15",
     "dateFiled": "2022-10-31",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -86,6 +98,7 @@
   {
     "caseId": "081-22-24534",
     "caseTitle": "Bailey, Schroeder and Mccarty",
+    "chapter": "15",
     "dateFiled": "2022-10-31",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -93,6 +106,7 @@
   {
     "caseId": "081-22-23495",
     "caseTitle": "Malone-Moore",
+    "chapter": "15",
     "dateFiled": "2022-10-31",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -100,6 +114,7 @@
   {
     "caseId": "081-22-54238",
     "caseTitle": "Vance Ltd",
+    "chapter": "15",
     "dateFiled": "2022-10-31",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -107,6 +122,7 @@
   {
     "caseId": "081-22-23754",
     "caseTitle": "Ayala-Carson",
+    "chapter": "15",
     "dateFiled": "2022-10-31",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -114,6 +130,7 @@
   {
     "caseId": "081-06-07235",
     "caseTitle": "Banks-Jones",
+    "chapter": "15",
     "dateFiled": "2006-06-07",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -121,6 +138,7 @@
   {
     "caseId": "081-08-24976",
     "caseTitle": "Price, Jones and Mullen",
+    "chapter": "15",
     "dateFiled": "2006-06-08",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -128,6 +146,7 @@
   {
     "caseId": "081-08-00325",
     "caseTitle": "Sanchez Group",
+    "chapter": "15",
     "dateFiled": "2008-10-06",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -135,6 +154,7 @@
   {
     "caseId": "081-08-92476",
     "caseTitle": "Smith PLC",
+    "chapter": "15",
     "dateFiled": "2008-12-09",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -142,6 +162,7 @@
   {
     "caseId": "081-09-07235",
     "caseTitle": "Nelson Group",
+    "chapter": "15",
     "dateFiled": "2009-02-27",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -149,6 +170,7 @@
   {
     "caseId": "081-09-00024",
     "caseTitle": "Anderson-Wong",
+    "chapter": "15",
     "dateFiled": "2009-03-11",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -156,6 +178,7 @@
   {
     "caseId": "081-09-03752",
     "caseTitle": "Mays, Ross and Taylor",
+    "chapter": "15",
     "dateFiled": "2009-10-09",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -163,6 +186,7 @@
   {
     "caseId": "081-10-03275",
     "caseTitle": "May-Rogers",
+    "chapter": "15",
     "dateFiled": "2010-07-20",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -170,6 +194,7 @@
   {
     "caseId": "081-11-04762",
     "caseTitle": "Watkins-Kelly",
+    "chapter": "15",
     "dateFiled": "2011-06-30",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -177,6 +202,7 @@
   {
     "caseId": "081-11-07426",
     "caseTitle": "Williams, Lopez and Valencia",
+    "chapter": "15",
     "dateFiled": "2011-06-30",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -184,6 +210,7 @@
   {
     "caseId": "081-15-39275",
     "caseTitle": "Hardin PLC",
+    "chapter": "15",
     "dateFiled": "2015-07-10",
     "dateClosed": "2023-06-21",
     "assignments": []
@@ -191,6 +218,7 @@
   {
     "caseId": "081-18-03752",
     "caseTitle": "Mcgrath-Johnson",
+    "chapter": "15",
     "dateFiled": "2018-01-29",
     "dateClosed": "2023-06-21",
     "assignments": []
