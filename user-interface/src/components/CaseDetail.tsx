@@ -11,6 +11,15 @@ interface CaseDetailProps {
   caseDetail?: CaseDetailType;
 }
 
+function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
+  if (reOpenDate) {
+    if (closedDate && reOpenDate > closedDate) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -82,15 +91,29 @@ export const CaseDetail = (props: CaseDetailProps) => {
                         {caseDetail.dateFiled}
                       </span>
                     </li>
-                    <li>
-                      <span className="case-detail-item-name">Closed by court:</span>
-                      <span
-                        data-testid="case-detail-closed-date"
-                        className="case-detail-item-value"
-                      >
-                        {caseDetail.closedDate}
-                      </span>
-                    </li>
+                    {caseDetail.reopenedDate &&
+                      showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate) && (
+                        <li>
+                          <span className="case-detail-item-name">Reopened by court:</span>
+                          <span
+                            data-testid="case-detail-reopened-date"
+                            className="case-detail-item-value"
+                          >
+                            {caseDetail.reopenedDate}
+                          </span>
+                        </li>
+                      )}
+                    {!showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate) && (
+                      <li>
+                        <span className="case-detail-item-name">Closed by court:</span>
+                        <span
+                          data-testid="case-detail-closed-date"
+                          className="case-detail-item-value"
+                        >
+                          {caseDetail.closedDate}
+                        </span>
+                      </li>
+                    )}
                     {caseDetail.dismissedDate && (
                       <li>
                         <span className="case-detail-item-name">Dismissed by court:</span>

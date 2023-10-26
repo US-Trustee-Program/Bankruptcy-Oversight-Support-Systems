@@ -1,3 +1,4 @@
+import { CamsError } from '../../common-errors/cams-error';
 import {
   getDate,
   calculateDifferenceInMonths,
@@ -23,6 +24,7 @@ describe('date-helper tests', () => {
       expect(actual.message).toEqual(
         'month cannot be greater than 12 and dayOfMonth cannot be greater than 31',
       );
+      expect(actual instanceof CamsError).toBe(true);
     });
 
     test('should throw error for dayOfMonth of 32', async () => {
@@ -35,6 +37,7 @@ describe('date-helper tests', () => {
       expect(actual.message).toEqual(
         'month cannot be greater than 12 and dayOfMonth cannot be greater than 31',
       );
+      expect(actual instanceof CamsError).toBe(true);
     });
 
     test('should throw error for month of 0', async () => {
