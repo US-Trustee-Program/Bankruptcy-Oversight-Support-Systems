@@ -13,8 +13,9 @@ interface CaseDetailType {
   chapter: string;
   caseTitle: string;
   dateFiled: string;
-  closedDate: string;
+  closedDate?: string;
   dismissedDate?: string;
+  reopenedDate?: string;
   assignments: string[];
 }
 

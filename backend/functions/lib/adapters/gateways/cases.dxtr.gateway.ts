@@ -40,7 +40,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const bCase = await this.queryCases(context, courtDiv, dxtrCaseId);
 
-    const { closedDates, dismissedDates } = await this.queryTransactions(
+    const { closedDates, dismissedDates, reopenedDates } = await this.queryTransactions(
       context,
       bCase.dxtrId,
       bCase.courtId,
@@ -50,7 +50,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
 
     if (dismissedDates.length > 0) {
-      bCase.dismissedDate = getMonthDayYearStringFromDate(closedDates[0]);
+      bCase.dismissedDate = getMonthDayYearStringFromDate(dismissedDates[0]);
+    }
+
+    if (reopenedDates.length > 0) {
+      bCase.reopenedDate = getMonthDayYearStringFromDate(reopenedDates[0]);
     }
 
     return bCase;
@@ -153,7 +157,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<{ closedDates: Date[]; dismissedDates: Date[] }> {
+  ): Promise<{ closedDates: Date[]; dismissedDates: Date[]; reopenedDates: Date[] }> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -184,13 +188,21 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: dismissedByCourtTxCode,
     });
 
+    const reopenedDate = 'OCO';
+
+    input.push({
+      name: 'reopenedDate',
+      type: mssql.VarChar,
+      value: reopenedDate,
+    });
+
     const query = `select
       REC as txRecord,
       TX_CODE as txCode
       FROM [dbo].[AO_TX]
       WHERE CS_CASEID = @dxtrId
       AND COURT_ID = @courtId
-      AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode)`;
+      AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @reopenedDate)`;
 
     const queryResult: QueryResults = await executeQuery(
       context,
@@ -201,6 +213,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const closedDates: Date[] = [];
     const dismissedDates: Date[] = [];
+    const reopenedDates: Date[] = [];
 
     function parseTransactionDate(record: DxtrTransactionRecord): Date {
       const transactionYearStart = 19;
@@ -237,8 +250,10 @@ export default class CasesDxtrGateway implements CasesInterface {
 
         if (record.txCode === closedByCourtTxCode) {
           closedDates.push(transactionDate);
-        } else {
+        } else if (record.txCode === dismissedByCourtTxCode) {
           dismissedDates.push(transactionDate);
+        } else {
+          reopenedDates.push(transactionDate);
         }
       });
 
@@ -252,7 +267,12 @@ export default class CasesDxtrGateway implements CasesInterface {
         return b.valueOf() - a.valueOf();
       });
 
-      return { closedDates, dismissedDates };
+      reopenedDates.sort((a: Date, b: Date) => {
+        // sort in order of newest to oldest
+        return b.valueOf() - a.valueOf();
+      });
+
+      return { closedDates, dismissedDates, reopenedDates };
     } else {
       throw Error(queryResult.message);
     }
