@@ -85,44 +85,27 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 <h3>Dates</h3>
                 <div className="date-list">
                   <ul className="usa-list usa-list--unstyled">
-                    <li>
+                    <li data-testid="case-detail-filed-date">
                       <span className="case-detail-item-name">Filed:</span>
-                      <span data-testid="case-detail-filed-date" className="case-detail-item-value">
-                        {caseDetail.dateFiled}
-                      </span>
+                      <span className="case-detail-item-value">{caseDetail.dateFiled}</span>
                     </li>
                     {caseDetail.reopenedDate &&
                       showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate) && (
-                        <li>
+                        <li data-testid="case-detail-reopened-date">
                           <span className="case-detail-item-name">Reopened by court:</span>
-                          <span
-                            data-testid="case-detail-reopened-date"
-                            className="case-detail-item-value"
-                          >
-                            {caseDetail.reopenedDate}
-                          </span>
+                          <span className="case-detail-item-value">{caseDetail.reopenedDate}</span>
                         </li>
                       )}
                     {!showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate) && (
-                      <li>
+                      <li data-testid="case-detail-closed-date">
                         <span className="case-detail-item-name">Closed by court:</span>
-                        <span
-                          data-testid="case-detail-closed-date"
-                          className="case-detail-item-value"
-                        >
-                          {caseDetail.closedDate}
-                        </span>
+                        <span className="case-detail-item-value">{caseDetail.closedDate}</span>
                       </li>
                     )}
                     {caseDetail.dismissedDate && (
-                      <li>
+                      <li data-testid="case-detail-dismissed-date">
                         <span className="case-detail-item-name">Dismissed by court:</span>
-                        <span
-                          data-testid="case-detail-dismissed-date"
-                          className="case-detail-item-value"
-                        >
-                          {caseDetail.dismissedDate}
-                        </span>
+                        <span className="case-detail-item-value">{caseDetail.dismissedDate}</span>
                       </li>
                     )}
                   </ul>
