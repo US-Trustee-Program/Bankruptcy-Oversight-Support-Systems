@@ -36,3 +36,11 @@ jobs:
           ls -la
           rm test.txt
         working-directory: temp
+
+      - name: Try to break the action
+        run:
+          ls -la
+          cd temp
+          touch test.txt
+          echo "I want to add some content to the file. It should be enough content that some editors might
+          force a hard wrap and not include the requisite shell command to make the call a multi-line call." >> test.txt
