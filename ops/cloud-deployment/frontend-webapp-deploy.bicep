@@ -279,6 +279,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
       }
     ]
     linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
+    minTlsCipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
     appCommandLine: appCommandLine
   }
 }
