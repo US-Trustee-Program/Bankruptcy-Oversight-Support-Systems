@@ -190,7 +190,7 @@ export function createReopenedCases() {
     dateTerm: '2023-10-01',
   });
 
-  // Example of a case with multiple closures and reopen transactions ending with a CLOSURE.
+  // Example of a case with multiple closures and reopen transactions ending with a REOPEN.
   bCases.push({
     csCaseId: '449865',
     caseId: '23-07045',
