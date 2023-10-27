@@ -90,7 +90,7 @@ export function buildRec(
   const pad = ' '.repeat(metaPaddedLength);
   const paddedMeta = (meta + pad).slice(0, metaPaddedLength - 1);
   const comp = date.split('-');
-  const formatedDate = comp[1] + comp[2] + comp[0].slice(2);
+  const formatedDate = comp[0].slice(2) + comp[1] + comp[2];
   return `${type}00000${div}${year}${caseId}${code}${formatedDate}${chapter}000000        [${chapter}] ${formatedDate} ${paddedMeta}`;
 }
 
