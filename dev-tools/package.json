@@ -2,9 +2,8 @@
   "name": "dev-tools",
   "version": "1.0.0",
   "description": "Custom tools used to aid development.",
-  "main": "index.js",
   "scripts": {
-    "test-data": "ts-node test-data/index.ts > dist/test-data.sql",
+    "test-data": "mkdir -p data; ts-node test-data/index.ts > data/test-data.sql",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
