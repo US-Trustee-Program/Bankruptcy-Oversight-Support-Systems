@@ -10,6 +10,7 @@ import { executeQuery } from '../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../types/database';
 import * as mssql from 'mssql';
 import log from '../services/logger.service';
+import { getFullName } from '../utils/name-helper';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -38,7 +39,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const courtDiv = caseId.slice(0, 3);
     const dxtrCaseId = caseId.slice(4);
 
-    const bCase = await this.queryCases(context, courtDiv, dxtrCaseId);
+    const bCase = await this.queryCase(context, courtDiv, dxtrCaseId);
 
     const { closedDates, dismissedDates, reopenedDates } = await this.queryTransactions(
       context,
@@ -107,7 +108,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
-  private async queryCases(
+  private async queryCase(
     context: ApplicationContext,
     courtDiv: string,
     dxtrCaseId: string,
@@ -132,7 +133,10 @@ export default class CasesDxtrGateway implements CasesInterface {
         FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
         CS_CASEID as dxtrId,
         CS_CHAPTER as chapter,
-        COURT_ID as courtId
+        COURT_ID as courtId,
+        JD_FIRST_NAME as judgeFirstName,
+        JD_MIDDLE_NAME as judgeMiddleName,
+        JD_LAST_NAME as judgeLastName
         FROM [dbo].[AO_CS]
         WHERE CASE_ID = @dxtrCaseId
         AND CS_DIV = @courtDiv`;
@@ -147,7 +151,13 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
 
-      return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
+      const result = (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
+      result.judgeName = getFullName({
+        firstName: result.judgeFirstName,
+        middleName: result.judgeMiddleName,
+        lastName: result.judgeLastName,
+      });
+      return result;
     } else {
       throw Error(queryResult.message);
     }

@@ -253,13 +253,16 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
-    const query = `select
+    const expectedQuery = `select
         CS_DIV+'-'+CASE_ID as caseId,
         CS_SHORT_TITLE as caseTitle,
         FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
         CS_CASEID as dxtrId,
         CS_CHAPTER as chapter,
-        COURT_ID as courtId
+        COURT_ID as courtId,
+        JD_FIRST_NAME as judgeFirstName,
+        JD_MIDDLE_NAME as judgeMiddleName,
+        JD_LAST_NAME as judgeLastName
         FROM [dbo].[AO_CS]
         WHERE CASE_ID = @dxtrCaseId
         AND CS_DIV = @courtDiv`;
@@ -317,7 +320,7 @@ describe('Test DXTR Gateway', () => {
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     await testCasesDxtrGateway.getCaseDetail(appContext, '23-12345');
-    expect(querySpy.mock.calls[0][2]).toBe(query);
+    expect(querySpy.mock.calls[0][2]).toBe(expectedQuery);
   });
   describe('Feature flag chapter-twelve-enabled', () => {
     test('should return a chapter column in the result set when true.', async () => {

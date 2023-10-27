@@ -1,6 +1,7 @@
 import { ObjectKeyVal } from './basic';
+import { Person } from '../utils/name-helper';
 
-export class Attorney {
+export class Attorney implements Person {
   firstName: string;
   middleName: string;
   lastName: string;
@@ -22,19 +23,6 @@ export class Attorney {
         }
       });
     }
-  }
-
-  getFullName(fullMiddle = false) {
-    let full = this.firstName;
-    if (this.middleName) {
-      const middle = fullMiddle ? ' ' + this.middleName : ' ' + this.middleName.slice(0, 1);
-      full += middle;
-    }
-    full += ' ' + this.lastName;
-    if (this.generation) {
-      full += ' ' + this.generation;
-    }
-    return full;
   }
 
   getAsObjectKeyVal(): ObjectKeyVal {
