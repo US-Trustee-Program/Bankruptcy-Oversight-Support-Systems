@@ -208,8 +208,12 @@ describe('Test DXTR Gateway', () => {
         txCode: 'CBC',
       },
       {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz',
         txCode: 'CDC',
+      },
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
+        txCode: 'OCO',
       },
     ];
 
@@ -234,12 +238,18 @@ describe('Test DXTR Gateway', () => {
     const actualResult = await testCasesDxtrGateway.getCaseDetail(appContext, caseId);
 
     const closedDate = '10-31-2023';
-    const expected: CaseDetailInterface = {
+    const dismissedDate = '11-15-2023';
+    const reopenedDate = '12-31-2023';
+    const expectedClose: CaseDetailInterface = {
       ...cases[0],
       closedDate,
+      dismissedDate,
+      reopenedDate,
     };
-    expect(actualResult).toStrictEqual(expected);
+    expect(actualResult).toStrictEqual(expectedClose);
     expect(actualResult.closedDate).toEqual(closedDate);
+    expect(actualResult.dismissedDate).toEqual(dismissedDate);
+    expect(actualResult.reopenedDate).toEqual(reopenedDate);
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {

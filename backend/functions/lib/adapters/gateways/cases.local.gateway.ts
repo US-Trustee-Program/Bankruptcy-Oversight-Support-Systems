@@ -3,7 +3,7 @@ import { ApplicationContext } from '../types/basic';
 import { CaseDetailInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
-import { convertYearMonthDayToMonthDayYear } from '../utils/date-helper';
+import { getMonthDayYearStringFromDate } from '../utils/date-helper';
 
 const MODULE_NAME = 'CASES-LOCAL-GATEWAY';
 
@@ -21,7 +21,7 @@ export class CasesLocalGateway implements CasesInterface {
     try {
       cases = gatewayHelper.getAllCasesMockExtract();
       cases.forEach((bCase) => {
-        bCase.dateFiled = convertYearMonthDayToMonthDayYear(bCase.dateFiled);
+        bCase.dateFiled = getMonthDayYearStringFromDate(new Date(bCase.dateFiled));
       });
     } catch (err) {
       log.error(context, MODULE_NAME, 'Failed to read mock cases.', err);
@@ -42,8 +42,10 @@ export class CasesLocalGateway implements CasesInterface {
         return bCase.caseId === caseId;
       });
 
-      caseDetail.dateFiled = convertYearMonthDayToMonthDayYear(caseDetail.dateFiled);
-      caseDetail.dateClosed = convertYearMonthDayToMonthDayYear(caseDetail.dateClosed);
+      caseDetail.dateFiled = getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled));
+      caseDetail.dateClosed = getMonthDayYearStringFromDate(new Date(caseDetail.dateClosed));
+      caseDetail.dismissedDate = getMonthDayYearStringFromDate(new Date(caseDetail.dismissedDate));
+      caseDetail.reopenedDate = getMonthDayYearStringFromDate(new Date(caseDetail.reopenedDate));
     } catch (err) {
       log.error(context, MODULE_NAME, `Failed to read mock case detail for ${caseId}.`, err);
       const message = (err as Error).message;

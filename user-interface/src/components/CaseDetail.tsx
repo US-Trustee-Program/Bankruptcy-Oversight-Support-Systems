@@ -11,6 +11,15 @@ interface CaseDetailProps {
   caseDetail?: CaseDetailType;
 }
 
+function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
+  if (reOpenDate) {
+    if (closedDate && reOpenDate > closedDate) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -76,30 +85,27 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 <h3>Dates</h3>
                 <div className="date-list">
                   <ul className="usa-list usa-list--unstyled">
-                    <li>
+                    <li data-testid="case-detail-filed-date">
                       <span className="case-detail-item-name">Filed:</span>
-                      <span data-testid="case-detail-filed-date" className="case-detail-item-value">
-                        {caseDetail.dateFiled}
-                      </span>
+                      <span className="case-detail-item-value">{caseDetail.dateFiled}</span>
                     </li>
-                    <li>
-                      <span className="case-detail-item-name">Closed by court:</span>
-                      <span
-                        data-testid="case-detail-closed-date"
-                        className="case-detail-item-value"
-                      >
-                        {caseDetail.closedDate}
-                      </span>
-                    </li>
+                    {caseDetail.reopenedDate &&
+                      showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate) && (
+                        <li data-testid="case-detail-reopened-date">
+                          <span className="case-detail-item-name">Reopened by court:</span>
+                          <span className="case-detail-item-value">{caseDetail.reopenedDate}</span>
+                        </li>
+                      )}
+                    {!showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate) && (
+                      <li data-testid="case-detail-closed-date">
+                        <span className="case-detail-item-name">Closed by court:</span>
+                        <span className="case-detail-item-value">{caseDetail.closedDate}</span>
+                      </li>
+                    )}
                     {caseDetail.dismissedDate && (
-                      <li>
+                      <li data-testid="case-detail-dismissed-date">
                         <span className="case-detail-item-name">Dismissed by court:</span>
-                        <span
-                          data-testid="case-detail-dismissed-date"
-                          className="case-detail-item-value"
-                        >
-                          {caseDetail.dismissedDate}
-                        </span>
+                        <span className="case-detail-item-value">{caseDetail.dismissedDate}</span>
                       </li>
                     )}
                   </ul>
@@ -109,7 +115,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 <h3>Assigned Staff</h3>
                 <div className="assigned-staff-list">
                   <ul className="usa-list usa-list--unstyled">
-                    {caseDetail.assignments.length > 0 &&
+                    {caseDetail.assignments?.length > 0 &&
                       (caseDetail.assignments as Array<string>)?.map(
                         (staff: string, idx: number) => {
                           return (
@@ -121,7 +127,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           );
                         },
                       )}
-                    {caseDetail.assignments.length == 0 && (
+                    {caseDetail.assignments?.length == 0 && (
                       <span className="unassigned-placeholder">(unassigned)</span>
                     )}
                   </ul>
