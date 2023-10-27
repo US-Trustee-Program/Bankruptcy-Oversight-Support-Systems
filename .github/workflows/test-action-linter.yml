@@ -44,3 +44,7 @@ jobs:
           touch test.txt
           echo "I want to add some content to the file. It should be enough content that some editors might
           force a hard wrap and not include the requisite shell command to make the call a multi-line call." >> test.txt
+
+      - name: Validate previous step
+        run: cat test.txt
+        working-directory: temp
