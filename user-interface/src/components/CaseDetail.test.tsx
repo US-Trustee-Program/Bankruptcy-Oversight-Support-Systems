@@ -11,6 +11,14 @@ const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
 
 describe('Case Detail screen tests', () => {
+  const env = process.env;
+  beforeAll(() => {
+    process.env = {
+      ...env,
+      CAMS_PA11Y: 'true',
+    };
+  });
+
   test('should display case title, case number, dates, and assignees for the case', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
@@ -152,4 +160,32 @@ describe('Case Detail screen tests', () => {
       { timeout: 1000 },
     );
   });
+
+  test('should display (unassigned) when no assingment exist for case', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const title = screen.getByTestId('case-detail-heading');
+        expect(title.innerHTML).toEqual('The Beach Boys');
+
+        const unassignedElement = document.querySelector('.unassigned-placeholder');
+        expect(unassignedElement).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
 });

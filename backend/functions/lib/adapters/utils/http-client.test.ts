@@ -68,4 +68,49 @@ describe('Tests out the http calls', () => {
     expect(response.ok).toEqual(true);
     expect(response.data).toEqual({ responsejson: 'testdata' });
   });
+
+  test('should reject when httpPost does not return response.ok', async () => {
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        json: jest.fn().mockImplementation(async () => {
+          return JSON.parse('{ "responsejson":"testdata" }');
+        }),
+      } as unknown as Response),
+    );
+
+    const data = {
+      url: 'urlString',
+      body: {},
+      headers: { mimeType: 'application/json' },
+    };
+
+    try {
+      await httpPost(data);
+    } catch (e) {
+      expect(e).toMatchObject({ ok: false });
+    }
+  });
+
+  test('should reject when httpGet does not return response.ok', async () => {
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        json: jest.fn().mockImplementation(async () => {
+          return JSON.parse('{ "responsejson":"testdata" }');
+        }),
+      } as unknown as Response),
+    );
+
+    const data = {
+      url: 'urlString',
+      headers: { mimeType: 'application/json' },
+    };
+
+    try {
+      await httpGet(data);
+    } catch (e) {
+      expect(e).toEqual({ ok: false });
+    }
+  });
 });

@@ -28,16 +28,10 @@ function SubmitCancelButtonGroupComponent(
 ) {
   const toggleSubmitButtonRef = useRef<ToggleModalButtonRef>(null);
 
-  const classes = ['usa-button-group'];
-  if (className) {
-    className.split(' ').forEach((cls) => {
-      classes.push(cls);
-    });
-  }
+  const classes = `usa-button-group ${className ?? ''}`;
 
   function disableSubmitButton(state: boolean) {
     toggleSubmitButtonRef.current?.disableButton(state);
-    //submitButton.disabled = state;
   }
 
   useImperativeHandle(ref, () => ({
@@ -46,7 +40,7 @@ function SubmitCancelButtonGroupComponent(
 
   return (
     <>
-      <ul className={classes.join(' ')}>
+      <ul className={classes}>
         <li className="usa-button-group__item">
           <ToggleModalButton
             ref={toggleSubmitButtonRef}
