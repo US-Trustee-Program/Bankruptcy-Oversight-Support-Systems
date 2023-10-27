@@ -133,6 +133,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
                   </ul>
                 </div>
               </div>
+              <div className="judge-information padding-bottom-4 case-card">
+                <h3>Judge</h3>
+                <span className="case-detail-judge-name" data-testid="case-detail-judge-name">
+                  {caseDetail.judgeName}
+                </span>
+              </div>
             </div>
           </div>
         )}
