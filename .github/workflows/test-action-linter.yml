@@ -1,7 +1,6 @@
 name: Test Action Linter
 
 on: push
-
 jobs:
   one:
     runs-on: ubuntu-latest
@@ -16,3 +15,24 @@ jobs:
              echo "Git SHA: ${{ github.sha }}"
           echo "Hello \
              World"
+  two:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create directory
+        id: create-dir
+        run: mkdir temp
+
+      - name: Create a file with some content
+        id: create-file
+        run: |
+          cd temp
+          touch test.txt
+          echo "Hello World!" >> test.txt
+          cat test.txt
+
+      - name: See contents of temp directory and then delete it
+        run: |
+          cat test.txt
+          ls -la
+          rm test.txt
+        working-directory: temp
