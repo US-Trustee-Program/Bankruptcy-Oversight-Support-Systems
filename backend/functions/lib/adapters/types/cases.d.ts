@@ -28,6 +28,7 @@ export interface CaseDetailInterface extends ObjectKeyVal {
   dateFiled: string;
   closedDate?: string;
   dismissedDate?: string;
+  reopenedDate?: string;
   dxtrId?: string;
   courtId?: string;
   assignments?: string[];

@@ -1,8 +1,8 @@
+import { CamsError } from '../../common-errors/cams-error';
 import {
   getDate,
   calculateDifferenceInMonths,
   getYearMonthDayStringFromDate,
-  convertYearMonthDayToMonthDayYear,
   getMonthDayYearStringFromDate,
 } from './date-helper';
 
@@ -23,6 +23,7 @@ describe('date-helper tests', () => {
       expect(actual.message).toEqual(
         'month cannot be greater than 12 and dayOfMonth cannot be greater than 31',
       );
+      expect(actual instanceof CamsError).toBe(true);
     });
 
     test('should throw error for dayOfMonth of 32', async () => {
@@ -35,6 +36,7 @@ describe('date-helper tests', () => {
       expect(actual.message).toEqual(
         'month cannot be greater than 12 and dayOfMonth cannot be greater than 31',
       );
+      expect(actual instanceof CamsError).toBe(true);
     });
 
     test('should throw error for month of 0', async () => {
@@ -162,7 +164,7 @@ describe('date-helper tests', () => {
       expect(monthsDifference).toEqual(24);
     });
 
-    test('should return 60 (a)', async () => {
+    test('should return 60 (few days after 60 months)', async () => {
       const monthsDifference = calculateDifferenceInMonths(
         getDate(2023, 7, 19),
         getDate(2018, 7, 14),
@@ -171,13 +173,22 @@ describe('date-helper tests', () => {
       expect(monthsDifference).toEqual(60);
     });
 
-    test('should return 60 (b)', async () => {
+    test('should return 60 (few before 61 months)', async () => {
       const monthsDifference = calculateDifferenceInMonths(
         getDate(2023, 7, 18),
         getDate(2018, 6, 30),
       );
 
       expect(monthsDifference).toEqual(60);
+    });
+
+    test('should return 0', async () => {
+      const monthsDifference = calculateDifferenceInMonths(
+        getDate(2023, 7, 18),
+        getDate(2023, 7, 30),
+      );
+
+      expect(monthsDifference).toEqual(0);
     });
   });
 
@@ -192,12 +203,6 @@ describe('date-helper tests', () => {
 
     test('should properly handle date later than Dec 31, 9999', async () => {
       expect(getYearMonthDayStringFromDate(new Date(10000, 0, 1))).toEqual('+010000-01-01');
-    });
-  });
-
-  describe('convertYearMonthDayToMonthDayYear tests', () => {
-    test('should convert 2023-12-31 to 12-31-2023', async () => {
-      expect(convertYearMonthDayToMonthDayYear('2023-12-31')).toEqual('12-31-2023');
     });
   });
 

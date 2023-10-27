@@ -11,6 +11,14 @@ const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
 
 describe('Case Detail screen tests', () => {
+  const env = process.env;
+  beforeAll(() => {
+    process.env = {
+      ...env,
+      CAMS_PA11Y: 'true',
+    };
+  });
+
   test('should display case title, case number, dates, and assignees for the case', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
@@ -35,13 +43,16 @@ describe('Case Detail screen tests', () => {
         expect(caseNumber?.innerHTML).toEqual(getCaseNumber(caseId));
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
-        expect(dateFiled.innerHTML).toEqual('01-04-1962');
+        expect(dateFiled).toHaveTextContent('Filed');
+        expect(dateFiled).toHaveTextContent('01-04-1962');
 
         const closedDate = screen.getByTestId('case-detail-closed-date');
-        expect(closedDate.innerHTML).toEqual('01-08-1963');
+        expect(closedDate).toHaveTextContent('Closed by court');
+        expect(closedDate).toHaveTextContent('01-08-1963');
 
         const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
-        expect(dismissedDate.innerHTML).toEqual('01-08-1964');
+        expect(dismissedDate).toHaveTextContent('Dismissed by court');
+        expect(dismissedDate).toHaveTextContent('01-08-1964');
 
         const chapter = screen.getByTestId('case-chapter');
         expect(chapter.innerHTML).toEqual('Chapter 15');
@@ -81,7 +92,98 @@ describe('Case Detail screen tests', () => {
 
     await waitFor(
       async () => {
-        expect(queryByTestId(document.body, 'case-detail-dismissed-date')).not.toBeInTheDocument();
+        const dismissedDate = queryByTestId(document.body, 'case-detail-dismissed-date');
+        expect(dismissedDate).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
+
+  test('should not display closed by court date if reopened date is supplied and is later than CBC date', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      reopenedDate: '04-15-1969',
+      assignments: [brianWilsonName, carlWilsonName],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const closedDateSection = queryByTestId(document.body, 'case-detail-closed-date');
+        const reopenedDateSection = queryByTestId(document.body, 'case-detail-reopened-date');
+
+        expect(closedDateSection).not.toBeInTheDocument();
+
+        expect(reopenedDateSection).toBeInTheDocument();
+        expect(reopenedDateSection).toHaveTextContent('Reopened by court');
+        expect(reopenedDateSection).toHaveTextContent(testCaseDetail.reopenedDate as string);
+      },
+      { timeout: 1000 },
+    );
+  });
+
+  test('should not display reopened date if closed by court date is later than reopened date', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      reopenedDate: '04-15-1969',
+      closedDate: '08-08-1970',
+      assignments: [brianWilsonName, carlWilsonName],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const closedDateSection = queryByTestId(document.body, 'case-detail-closed-date');
+        const reopenedDateSection = queryByTestId(document.body, 'case-detail-reopened-date');
+
+        expect(reopenedDateSection).not.toBeInTheDocument();
+
+        expect(closedDateSection).toBeInTheDocument();
+        expect(closedDateSection).toHaveTextContent('Closed by court');
+        expect(closedDateSection).toHaveTextContent(testCaseDetail.closedDate as string);
+      },
+      { timeout: 1000 },
+    );
+  });
+
+  test('should display (unassigned) when no assingment exist for case', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const title = screen.getByTestId('case-detail-heading');
+        expect(title.innerHTML).toEqual('The Beach Boys');
+
+        const unassignedElement = document.querySelector('.unassigned-placeholder');
+        expect(unassignedElement).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
