@@ -45,12 +45,13 @@ export function getYearMonthDayStringFromDate(date: Date) {
   return date.toISOString().split('T')[0];
 }
 
-export function convertYearMonthDayToMonthDayYear(date: string) {
-  const parts = date.split('-');
-
-  return parts.length > 1 ? `${parts[1]}-${parts[2]}-${parts[0]}` : '';
+export function getMonthDayYearStringFromDate(date: Date) {
+  const monthString = padDateElement(date.getMonth() + 1);
+  const dateString = padDateElement(date.getDate());
+  return `${monthString}-${dateString}-${date.getFullYear()}`;
 }
 
-export function getMonthDayYearStringFromDate(date: Date) {
-  return convertYearMonthDayToMonthDayYear(getYearMonthDayStringFromDate(date));
+function padDateElement(value: number) {
+  if (value < 10) return '0' + value;
+  return value.toString();
 }

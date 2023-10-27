@@ -115,7 +115,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 <h3>Assigned Staff</h3>
                 <div className="assigned-staff-list">
                   <ul className="usa-list usa-list--unstyled">
-                    {caseDetail.assignments.length > 0 &&
+                    {caseDetail.assignments?.length > 0 &&
                       (caseDetail.assignments as Array<string>)?.map(
                         (staff: string, idx: number) => {
                           return (
@@ -127,7 +127,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           );
                         },
                       )}
-                    {caseDetail.assignments.length == 0 && (
+                    {caseDetail.assignments?.length == 0 && (
                       <span className="unassigned-placeholder">(unassigned)</span>
                     )}
                   </ul>
