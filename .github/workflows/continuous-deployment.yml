@@ -10,6 +10,7 @@ on:
       - "**/*.md"
     branches-ignore:
       - "mob/**"
+      - "CAMS-139-add-actions-linter"
   workflow_dispatch:
     inputs:
       deployBranch:
@@ -198,7 +199,7 @@ jobs:
 
       - name: Upload to storage account
         if: always()
-        run: |
+        run:
           az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
           az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
 
