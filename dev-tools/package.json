@@ -1,0 +1,24 @@
+{
+  "name": "dev-tools",
+  "version": "1.0.0",
+  "description": "Custom tools used to aid development.",
+  "main": "index.js",
+  "scripts": {
+    "test-data": "ts-node test-data/index.ts > dist/test-data.sql",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^20.8.9",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "eslint": "^8.52.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-n": "^16.2.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "eslint-plugin-promise": "^6.1.1",
+    "ts-node": "^10.9.1"
+  }
+}
