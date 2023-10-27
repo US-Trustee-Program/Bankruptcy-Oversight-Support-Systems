@@ -13,7 +13,7 @@ interface CaseDetailType {
   chapter: string;
   caseTitle: string;
   dateFiled: string;
-  judgeName: string;
+  judgeName?: string;
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;

@@ -136,7 +136,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <div className="judge-information padding-bottom-4 case-card">
                 <h3>Judge</h3>
                 <span className="case-detail-judge-name" data-testid="case-detail-judge-name">
-                  {caseDetail.judgeName}
+                  {caseDetail.judgeName || 'No judge assigned'}
                 </span>
               </div>
             </div>

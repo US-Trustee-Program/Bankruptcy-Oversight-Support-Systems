@@ -79,6 +79,31 @@ describe('Case Detail screen tests', () => {
     );
   }, 20000);
 
+  test('should show "No judge assigned" when a judge name is unavailable.', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [brianWilsonName, carlWilsonName],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const judgeName = screen.getByTestId('case-detail-judge-name');
+        expect(judgeName).toHaveTextContent('No judge assigned');
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
+
   test('should not display case dismissed date if not supplied in api response', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
