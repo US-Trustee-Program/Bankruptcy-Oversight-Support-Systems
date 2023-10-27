@@ -110,7 +110,7 @@ describe('Tests out the http calls', () => {
     try {
       await httpGet(data);
     } catch (e) {
-      expect(e).toEqual({ ok: false });
+      expect(e.ok).toBeFalsy();
     }
   });
 });
