@@ -10,6 +10,8 @@ param planName string
 ])
 param planType string = 'P1v2'
 
+var premiumPlans = [ 'P1v2' ]
+var isPremiumPlanType = contains(premiumPlans, planType)
 var planTypeToSkuMap = {
   P1v2: {
     name: 'P1v2'
@@ -71,6 +73,9 @@ var linuxFxVersionMap = {
 @description('Filename for nginx server config and must be placed in public folder. Needed for deploying user-interface code when nginx is used.')
 param nginxConfigFilename string = 'nginx.conf'
 var appCommandLine = 'cp /home/site/wwwroot/${nginxConfigFilename} /etc/nginx/sites-enabled/default; service nginx restart'
+
+@description('The prefered minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
+param preferedMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
@@ -244,44 +249,43 @@ var ipSecurityRestrictionsRules = concat([ {
 resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: webapp
   name: 'web'
-  properties: {
-    appSettings: applicationSettings
-    numberOfWorkers: 1
-    alwaysOn: true
-    http20Enabled: true
-    minimumElasticInstanceCount: 0
-    publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: ipSecurityRestrictionsRules
-    ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
-    scmIpSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictionsUseMain: false
-    defaultDocuments: [
-      'index.html'
-    ]
-    httpLoggingEnabled: true
-    logsDirectorySizeLimit: 100
-    use32BitWorkerProcess: true
-    managedPipelineMode: 'Integrated'
-    virtualApplications: [
-      {
-        virtualPath: '/'
-        physicalPath: 'site\\wwwroot'
-        preloadEnabled: true
-      }
-    ]
-    linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
-    minTlsCipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
-    appCommandLine: appCommandLine
-  }
+  properties: union({
+      appSettings: applicationSettings
+      numberOfWorkers: 1
+      alwaysOn: true
+      http20Enabled: true
+      minimumElasticInstanceCount: 0
+      publicNetworkAccess: 'Enabled'
+      ipSecurityRestrictions: ipSecurityRestrictionsRules
+      ipSecurityRestrictionsDefaultAction: 'Deny'
+      scmIpSecurityRestrictions: [
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
+        }
+      ]
+      scmIpSecurityRestrictionsDefaultAction: 'Deny'
+      scmIpSecurityRestrictionsUseMain: false
+      defaultDocuments: [
+        'index.html'
+      ]
+      httpLoggingEnabled: true
+      logsDirectorySizeLimit: 100
+      use32BitWorkerProcess: true
+      managedPipelineMode: 'Integrated'
+      virtualApplications: [
+        {
+          virtualPath: '/'
+          physicalPath: 'site\\wwwroot'
+          preloadEnabled: true
+        }
+      ]
+      linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
+      appCommandLine: appCommandLine
+    }, isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {})
 }
 
 output webappName string = webapp.name
