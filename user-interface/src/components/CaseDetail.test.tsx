@@ -19,7 +19,8 @@ describe('Case Detail screen tests', () => {
       CAMS_PA11Y: 'true',
     };
   });
-  test('should display case title, case number, dates, assignees, and judge name for the case', async () => {
+
+  test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
@@ -29,6 +30,7 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
+      debtorName: 'Roger Rabbit',
     };
     render(
       <BrowserRouter>
@@ -74,6 +76,9 @@ describe('Case Detail screen tests', () => {
 
         const judgeName = screen.getByTestId('case-detail-judge-name');
         expect(judgeName).toHaveTextContent(rickBHartName);
+
+        const debtorName = screen.getByTestId('case-detail-debtor-name');
+        expect(debtorName).toHaveTextContent(testCaseDetail.debtorName);
       },
       { timeout: 5000 },
     );
@@ -88,6 +93,7 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
+      debtorName: 'Roger Rabbit',
     };
     render(
       <BrowserRouter>
@@ -113,6 +119,7 @@ describe('Case Detail screen tests', () => {
       judgeName: rickBHartName,
       closedDate: '01-08-1963',
       assignments: [brianWilsonName, carlWilsonName],
+      debtorName: 'Roger Rabbit',
     };
     render(
       <BrowserRouter>
@@ -139,6 +146,7 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
       assignments: [brianWilsonName, carlWilsonName],
+      debtorName: 'Roger Rabbit',
     };
     render(
       <BrowserRouter>
@@ -171,6 +179,7 @@ describe('Case Detail screen tests', () => {
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
       assignments: [brianWilsonName, carlWilsonName],
+      debtorName: 'Roger Rabbit',
     };
     render(
       <BrowserRouter>
@@ -203,6 +212,7 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [],
+      debtorName: 'Roger Rabbit',
     };
     render(
       <BrowserRouter>
