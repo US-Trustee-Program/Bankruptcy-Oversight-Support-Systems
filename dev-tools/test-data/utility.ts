@@ -29,7 +29,7 @@ export function toSqlInsertStatement(
   record: Array<any>,
 ): string {
   return `
-  INSERT INTO ${tableName}(${columnNames.join(COMMA_SEPARATOR)})
+  INSERT INTO ${tableName} (${columnNames.join(COMMA_SEPARATOR)})
   VALUES(${sqlEscape(record).join(COMMA_SEPARATOR)});
   `;
 }

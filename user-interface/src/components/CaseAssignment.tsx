@@ -1,15 +1,15 @@
 import './CaseAssignment.scss';
 import { useState, useEffect, useRef } from 'react';
 import Api from '../models/api';
-import { Chapter15Type, Chapter15CaseListResponseData } from '../type-declarations/chapter-15';
+import { Chapter15Type, Chapter15CaseListResponseData } from '@/type-declarations/chapter-15';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
 import { ModalRefType } from './uswds/modal/modal-refs';
 import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
 import AttorneysApi from '../models/attorneys-api';
-import { Attorney } from '../type-declarations/attorneys';
-import { getCaseNumber } from '../utils/formatCaseNumber';
+import { Attorney } from '@/type-declarations/attorneys';
+import { getCaseNumber } from '@/utils/formatCaseNumber';
 import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
 
 const modalId = 'assign-attorney-modal';

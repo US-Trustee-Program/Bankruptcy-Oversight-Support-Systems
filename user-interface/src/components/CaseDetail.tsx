@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
-import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
-import { getCaseNumber } from '../utils/formatCaseNumber';
+import { CaseDetailType, Chapter15CaseDetailsResponseData } from '@/type-declarations/chapter-15';
+import { getCaseNumber } from '@/utils/formatCaseNumber';
 import Icon from './uswds/Icon';
 
 interface CaseDetailProps {
@@ -132,6 +132,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
                     )}
                   </ul>
                 </div>
+              </div>
+              <div className="judge-information padding-bottom-4 case-card">
+                <h3>Judge</h3>
+                <span className="case-detail-judge-name" data-testid="case-detail-judge-name">
+                  {caseDetail.judgeName || 'No judge assigned'}
+                </span>
               </div>
             </div>
           </div>

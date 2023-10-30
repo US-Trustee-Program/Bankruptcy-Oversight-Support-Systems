@@ -72,6 +72,7 @@
     "semver": "^7.5.4"
   },
   "scripts": {
+    "clean": "rm -rf build & rm -rf node_modules",
     "start": "vite",
     "start:pa11y": "export CAMS_PA11Y=true && tsc && vite build && vite preview --port 3000",
     "build": "tsc -b && vite build",

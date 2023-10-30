@@ -70,7 +70,55 @@ go
 */
 
 export const AO_CS_TableName = 'AO_CS';
-export const AO_CS_InsertableColumnNames: ColumnNames = [];
+export const AO_CS_InsertableColumnNames: ColumnNames = [
+  'CS_CASEID',
+  'COURT_ID',
+  'CS_CASE_NUMBER',
+  'CS_DIV',
+  'GRP_DES',
+  'CASE_ID',
+  'CS_SHORT_TITLE',
+  'CS_CLOSED',
+  'CS_CHAPTER',
+  'CS_JOINT',
+  'CS_TYPE',
+  'CS_FEE_STATUS',
+  'CS_PREV_CHAPTER',
+  'CS_VOL_INVOL',
+  'CS_DATE_FILED',
+  'CS_DATE_CONVERT',
+  'CS_REOPEN_CODE',
+  'CS_DATE_REOPEN',
+  'CS_DATE_TERM',
+  'CS_DATE_DISCHARGE',
+  'CS_DATE_DISMISS',
+  'BK_ASSET_NOTICE',
+  'CS_COUNTY',
+  'CF_VALUE',
+  'CS_DISP_METHOD',
+  'JD_LAST_NAME',
+  'JD_MIDDLE_NAME',
+  'JD_FIRST_NAME',
+  'LAST_DATE_ENTER',
+  'JD_EVENT',
+  'CASE_NUMBER_EVENT',
+  'DATE_FILED_EVENT',
+  'CS_DISP_JT_METHOD',
+  'BK_NATURE_business_event',
+  'BK_SMALL_BUS_EVENT',
+  'BK_AGR_LIQ_DEBT_TWO_MIL_EVENT',
+  'BK_PREPACKAGED_EVENT',
+  'BK_PRIOR_FILING_EVENT',
+  'PP_EVENT',
+  'sfi_event',
+  'sfc_event',
+  'ST6_event',
+  'ST6_WD_event',
+  'cs_subchapter',
+  'cs_subchapter_event',
+  'SPV_event',
+  'SPN_event',
+];
 export const AO_CS_ColumnNames: ColumnNames = [...AO_CS_InsertableColumnNames];
 
 export interface AO_CS_RecordProps {
@@ -97,7 +145,7 @@ export interface AO_CS_RecordProps {
   CS_DATE_DISMISS?: string;
   BK_ASSET_NOTICE?: string;
   CS_COUNTY: string;
-  CF_VALUE: string;
+  CF_VALUE?: string;
   CS_DISP_METHOD: string;
   JD_LAST_NAME?: string;
   JD_MIDDLE_NAME?: string;
@@ -147,7 +195,7 @@ export class AO_CS_Record implements TableRecordHelper {
   CS_DATE_DISMISS?: string;
   BK_ASSET_NOTICE?: string;
   CS_COUNTY: string = '';
-  CF_VALUE: string = '';
+  CF_VALUE?: string = '';
   CS_DISP_METHOD: string = '';
   JD_LAST_NAME?: string;
   JD_MIDDLE_NAME?: string;
