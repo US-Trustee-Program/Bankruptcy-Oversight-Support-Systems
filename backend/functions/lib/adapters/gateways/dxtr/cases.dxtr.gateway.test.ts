@@ -70,6 +70,7 @@ describe('Test DXTR Gateway', () => {
     );
     expect(actualResult).not.toEqual(cases);
   });
+
   test('should call getCases and return expected results', async () => {
     const cases = [
       {
@@ -253,19 +254,7 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
-    const expectedQuery = `select
-        CS_DIV+'-'+CASE_ID as caseId,
-        CS_SHORT_TITLE as caseTitle,
-        FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
-        CS_CASEID as dxtrId,
-        CS_CHAPTER as chapter,
-        COURT_ID as courtId,
-        CONCAT(JD_FIRST_NAME, ' ', JD_MIDDLE_NAME, ' ', JD_LAST_NAME) as judgeName
-        FROM [dbo].[AO_CS]
-        WHERE CASE_ID = @dxtrCaseId
-        AND CS_DIV = @courtDiv`;
-
-    const caseId = 'case-one';
+    const caseId = '081-23-12345';
     const cases = [
       {
         caseId: caseId,
@@ -317,9 +306,15 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    await testCasesDxtrGateway.getCaseDetail(appContext, '23-12345');
-    expect(querySpy.mock.calls[0][2]).toBe(expectedQuery);
+    await testCasesDxtrGateway.getCaseDetail(appContext, '081-23-12345');
+    expect(querySpy.mock.calls[0][3]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'dxtrCaseId', value: '23-12345' }),
+        expect.objectContaining({ name: 'courtDiv', value: '081' }),
+      ]),
+    );
   });
+
   describe('Feature flag chapter-twelve-enabled', () => {
     test('should return a chapter column in the result set when true.', async () => {
       const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
@@ -350,6 +345,7 @@ describe('Test DXTR Gateway', () => {
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).toContain("CS_CHAPTER = '12'");
     });
+
     test('should not return a chapter column in the result set when false.', async () => {
       const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
       featureFlagSpy.mockImplementation(async () => {
