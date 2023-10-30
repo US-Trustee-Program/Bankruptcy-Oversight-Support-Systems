@@ -32,9 +32,6 @@ export interface CaseDetailInterface extends ObjectKeyVal {
   dxtrId?: string;
   courtId?: string;
   assignments?: string[];
-  judgeFirstName?: string;
-  judgeMiddleName?: string;
-  judgeLastName?: string;
   judgeName?: string;
 }
 

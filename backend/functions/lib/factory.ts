@@ -5,7 +5,7 @@ import { CasesInterface } from './use-cases/cases.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
-import CasesDxtrGateway from './adapters/gateways/cases.dxtr.gateway';
+import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { CosmosConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';

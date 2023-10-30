@@ -1,16 +1,15 @@
-import { CasesInterface } from '../../use-cases/cases.interface';
-import { ApplicationContext } from '../types/basic';
-import { CaseDetailInterface, DxtrTransactionRecord } from '../types/cases';
+import { CasesInterface } from '../../../use-cases/cases.interface';
+import { ApplicationContext } from '../../types/basic';
+import { CaseDetailInterface, DxtrTransactionRecord } from '../../types/cases';
 import {
   getDate,
   getMonthDayYearStringFromDate,
   getYearMonthDayStringFromDate,
-} from '../utils/date-helper';
-import { executeQuery } from '../utils/database';
-import { DbTableFieldSpec, QueryResults } from '../types/database';
+} from '../../utils/date-helper';
+import { executeQuery } from '../../utils/database';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
-import log from '../services/logger.service';
-import { getFullName } from '../utils/name-helper';
+import log from '../../services/logger.service';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -127,16 +126,14 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: dxtrCaseId,
     });
 
-    const query = `select
+    const CASE_DETAIL_QUERY = `select
         CS_DIV+'-'+CASE_ID as caseId,
         CS_SHORT_TITLE as caseTitle,
         FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
         CS_CASEID as dxtrId,
         CS_CHAPTER as chapter,
         COURT_ID as courtId,
-        JD_FIRST_NAME as judgeFirstName,
-        JD_MIDDLE_NAME as judgeMiddleName,
-        JD_LAST_NAME as judgeLastName
+        CONCAT(JD_FIRST_NAME, ' ', JD_MIDDLE_NAME, ' ', JD_LAST_NAME) as judgeName
         FROM [dbo].[AO_CS]
         WHERE CASE_ID = @dxtrCaseId
         AND CS_DIV = @courtDiv`;
@@ -144,20 +141,14 @@ export default class CasesDxtrGateway implements CasesInterface {
     const queryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
-      query,
+      CASE_DETAIL_QUERY,
       input,
     );
 
     if (queryResult.success) {
       log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
 
-      const result = (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
-      result.judgeName = getFullName({
-        firstName: result.judgeFirstName,
-        middleName: result.judgeMiddleName,
-        lastName: result.judgeLastName,
-      });
-      return result;
+      return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
     } else {
       throw Error(queryResult.message);
     }

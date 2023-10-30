@@ -1,11 +1,11 @@
 import CasesDxtrGateway from './cases.dxtr.gateway';
-import { applicationContextCreator } from '../utils/application-context-creator';
-import * as database from '../utils/database';
-import { QueryResults } from '../types/database';
+import { applicationContextCreator } from '../../utils/application-context-creator';
+import * as database from '../../utils/database';
+import { QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
-import { getYearMonthDayStringFromDate } from '../utils/date-helper';
-import { CaseDetailInterface } from '../types/cases';
-import * as featureFlags from '../utils/feature-flag';
+import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
+import { CaseDetailInterface } from '../../types/cases';
+import * as featureFlags from '../../utils/feature-flag';
 
 const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
@@ -260,9 +260,7 @@ describe('Test DXTR Gateway', () => {
         CS_CASEID as dxtrId,
         CS_CHAPTER as chapter,
         COURT_ID as courtId,
-        JD_FIRST_NAME as judgeFirstName,
-        JD_MIDDLE_NAME as judgeMiddleName,
-        JD_LAST_NAME as judgeLastName
+        CONCAT(JD_FIRST_NAME, ' ', JD_MIDDLE_NAME, ' ', JD_LAST_NAME) as judgeName
         FROM [dbo].[AO_CS]
         WHERE CASE_ID = @dxtrCaseId
         AND CS_DIV = @courtDiv`;

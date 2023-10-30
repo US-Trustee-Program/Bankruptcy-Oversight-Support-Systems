@@ -4,7 +4,7 @@ import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
 import { CaseAssignment } from './case.assignment';
 import { Attorney } from '../adapters/types/attorney.class';
-import { getFullName } from '../adapters/utils/name-helper';
+import { getFullName } from '../../../../common/src/name-helper';
 
 export default class AttorneysList {
   gateway: AttorneyGatewayInterface;
