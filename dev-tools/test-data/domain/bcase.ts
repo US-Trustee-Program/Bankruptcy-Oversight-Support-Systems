@@ -12,10 +12,10 @@ export interface BCase {
   div: string;
   group: string;
   courtId: string;
-  judge: Judge;
+  judge?: Judge;
   reopenCode: string;
   transactions: Array<BCaseTransaction>;
-  cfValue: string;
+  cfValue?: string;
   dateFiled: string;
   dateConvert?: string;
   dateReopen?: string;
@@ -65,9 +65,9 @@ export function toDbRecords(bCase: BCase | Array<BCase>): DatabaseRecords {
         CS_COUNTY: _case.county,
         CF_VALUE: _case.cfValue,
         CS_DISP_METHOD: 'Discharge Not Applicable',
-        JD_LAST_NAME: _case.judge.lastName,
-        JD_MIDDLE_NAME: _case.judge.middleName,
-        JD_FIRST_NAME: _case.judge.firstName,
+        JD_LAST_NAME: _case.judge?.lastName,
+        JD_MIDDLE_NAME: _case.judge?.middleName,
+        JD_FIRST_NAME: _case.judge?.firstName,
       }),
     );
     _case.transactions?.forEach((txn, idx) => {

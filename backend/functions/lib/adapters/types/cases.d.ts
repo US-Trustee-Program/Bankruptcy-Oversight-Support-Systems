@@ -32,6 +32,7 @@ export interface CaseDetailInterface extends ObjectKeyVal {
   dxtrId?: string;
   courtId?: string;
   assignments?: string[];
+  judgeName?: string;
 }
 
 export interface DxtrTransactionRecord {

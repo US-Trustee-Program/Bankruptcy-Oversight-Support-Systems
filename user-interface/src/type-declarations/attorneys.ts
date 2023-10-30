@@ -32,17 +32,4 @@ export class Attorney extends AttorneyInfo {
   ) {
     super(first, last, office, optionals);
   }
-
-  getFullName(fullMiddle = false) {
-    let full = this.firstName;
-    if (this.middleName) {
-      const middle = fullMiddle ? ' ' + this.middleName : ' ' + this.middleName.slice(0, 1);
-      full += middle;
-    }
-    full += ' ' + this.lastName;
-    if (this.generation) {
-      full += ' ' + this.generation;
-    }
-    return full;
-  }
 }

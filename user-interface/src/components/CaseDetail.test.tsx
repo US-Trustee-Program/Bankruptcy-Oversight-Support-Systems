@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail } from './CaseDetail';
-import { getCaseNumber } from '../utils/formatCaseNumber';
-import { CaseDetailType } from '../type-declarations/chapter-15';
+import { getCaseNumber } from '@/utils/formatCaseNumber';
+import { CaseDetailType } from '@/type-declarations/chapter-15';
 import { BrowserRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
@@ -10,6 +10,7 @@ const brianWilsonName = 'Brian Wilson';
 const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
 
+const rickBHartName = 'Rick B Hart';
 describe('Case Detail screen tests', () => {
   const env = process.env;
   beforeAll(() => {
@@ -18,13 +19,13 @@ describe('Case Detail screen tests', () => {
       CAMS_PA11Y: 'true',
     };
   });
-
-  test('should display case title, case number, dates, and assignees for the case', async () => {
+  test('should display case title, case number, dates, assignees, and judge name for the case', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
@@ -70,6 +71,34 @@ describe('Case Detail screen tests', () => {
         });
         expect(assigneeMap.get(`${brianWilsonName}`)).toEqual(trialAttorneyRole);
         expect(assigneeMap.get(`${carlWilsonName}`)).toEqual(trialAttorneyRole);
+
+        const judgeName = screen.getByTestId('case-detail-judge-name');
+        expect(judgeName).toHaveTextContent(rickBHartName);
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
+
+  test('should show "No judge assigned" when a judge name is unavailable.', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [brianWilsonName, carlWilsonName],
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const judgeName = screen.getByTestId('case-detail-judge-name');
+        expect(judgeName).toHaveTextContent('No judge assigned');
       },
       { timeout: 5000 },
     );
@@ -81,6 +110,7 @@ describe('Case Detail screen tests', () => {
       chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
       closedDate: '01-08-1963',
       assignments: [brianWilsonName, carlWilsonName],
     };
@@ -105,6 +135,7 @@ describe('Case Detail screen tests', () => {
       chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
       assignments: [brianWilsonName, carlWilsonName],
@@ -136,6 +167,7 @@ describe('Case Detail screen tests', () => {
       chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
       assignments: [brianWilsonName, carlWilsonName],
@@ -167,6 +199,7 @@ describe('Case Detail screen tests', () => {
       chapter: '15',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [],
