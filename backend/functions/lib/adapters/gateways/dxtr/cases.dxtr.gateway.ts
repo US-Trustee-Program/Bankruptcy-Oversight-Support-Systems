@@ -133,7 +133,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         CS_CASEID as dxtrId,
         CS_CHAPTER as chapter,
         COURT_ID as courtId,
-        CONCAT(JD_FIRST_NAME, ' ', JD_MIDDLE_NAME, ' ', JD_LAST_NAME) as judgeName
+        TRIM(CONCAT(JD_FIRST_NAME, ' ', JD_MIDDLE_NAME, ' ', JD_LAST_NAME)) as judgeName
         FROM [dbo].[AO_CS]
         WHERE CASE_ID = @dxtrCaseId
         AND CS_DIV = @courtDiv`;
