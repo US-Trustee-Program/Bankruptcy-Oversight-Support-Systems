@@ -10,7 +10,6 @@ on:
       - "**/*.md"
     branches-ignore:
       - "mob/**"
-      - "CAMS-139-add-actions-linter"
   workflow_dispatch:
     inputs:
       deployBranch:
