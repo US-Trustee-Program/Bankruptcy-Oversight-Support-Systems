@@ -1,15 +1,16 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
 import Modal from './uswds/modal/Modal';
-import { Chapter15Type } from '../type-declarations/chapter-15';
+import { Chapter15Type } from '@/type-declarations/chapter-15';
 import React from 'react';
 import Checkbox, { CheckboxRef } from './uswds/Checkbox';
-import { ResponseData } from '../type-declarations/api';
-import { Attorney, AttorneyInfo } from '../type-declarations/attorneys';
+import { ResponseData } from '@/type-declarations/api';
+import { Attorney, AttorneyInfo } from '@/type-declarations/attorneys';
 import Api from '../models/api';
 import { ModalRefType } from './uswds/modal/modal-refs';
-import { getCaseNumber } from '../utils/formatCaseNumber';
+import { getCaseNumber } from '@/utils/formatCaseNumber';
 import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
+import { getFullName } from '@common/name-helper';
 
 export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
@@ -99,9 +100,9 @@ function AssignAttorneyModalComponent(
 
     // call callback from parent with IDs and names of attorneys, and case id.
     finalAttorneyList = props.attorneyList
-      .filter((attorney) => checkListValues.includes(attorney.getFullName()))
+      .filter((attorney) => checkListValues.includes(getFullName(attorney)))
       .map((atty) => {
-        return atty.getFullName();
+        return getFullName(atty);
       });
 
     setCheckListValues([]);
@@ -201,7 +202,7 @@ function AssignAttorneyModalComponent(
               <tbody data-testid="case-load-table-body">
                 {props.attorneyList.length > 0 &&
                   props.attorneyList.map((attorney: Attorney, idx: number) => {
-                    const name = attorney.getFullName();
+                    const name = getFullName(attorney);
                     return (
                       <tr key={idx}>
                         <td className="assign-attorney-checkbox-column">
