@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+  },
+  "files": [],
+  "references": [
+    { "path": "./common/tsconfig.ref.json" },
+    { "path": "./backend/functions/tsconfig.ref.json" },
+    { "path": "./user-interface/tsconfig.ref.json" },
+  ],
+}

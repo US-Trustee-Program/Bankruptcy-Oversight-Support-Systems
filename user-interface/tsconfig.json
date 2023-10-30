@@ -25,13 +25,9 @@
       "vitest/globals"
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@common/*": ["./../common/src/*"],
+      "@/*": ["./src/*"]
     }
   },
-  "references": [
-    { "path": "../common"}
-  ],
   "include": [
     "src",
     "vite.config.ts"

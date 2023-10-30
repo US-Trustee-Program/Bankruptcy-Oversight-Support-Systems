@@ -1,0 +1,23 @@
+{
+  "name": "boss",
+  "version": "1.0.0",
+  "description": "## [United States Trustee Program](https://www.justice.gov/ust)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "workspaces": [
+    "common",
+    "backend/functions",
+    "user-interface"
+  ],
+  "dependencies": {
+    "typescript": "^5.2.2"
+  }
+}

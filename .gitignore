@@ -65,3 +65,9 @@ hs_err_pid*
 
 # Temporary Mermaid Files
 architecture/structurizr-*
+
+# Node
+node_modules
+
+# TypeScript
+**/*.tsbuildinfo

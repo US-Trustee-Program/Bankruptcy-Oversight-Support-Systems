@@ -7,8 +7,8 @@
     "strict": false,
     "resolveJsonModule": true,
   },
-  "references": [{ "path": "../../common"}],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist"
   ],
 }

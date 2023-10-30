@@ -1,14 +1,12 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "NodeNext",
     "target": "es6",
     "outDir": "dist",
     "rootDir": "src",
     "sourceMap": true,
     "strict": false,
-    "resolveJsonModule": true,
     "declaration": true,
-    "composite": true
   },
   "exclude": [
     "node_modules",

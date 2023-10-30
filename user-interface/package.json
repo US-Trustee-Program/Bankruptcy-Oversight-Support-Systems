@@ -1,11 +1,11 @@
 {
-  "name": "cams",
+  "name": "@cams/user-interface",
   "version": "0.1.0",
   "private": true,
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System - Graphical Frontend User Interface",
   "dependencies": {
-    "@cams/common": "file:../common/dist",
+    "@cams/common": "*",
     "@microsoft/applicationinsights-react-js": "^17.0.2",
     "@microsoft/applicationinsights-web": "^3.0.3",
     "@reduxjs/toolkit": "^1.9.7",
@@ -86,5 +86,8 @@
     "pa11y:ci": "pa11y-ci",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' public src | dot -T svg > ../docs/architecture/dependency-cruiser/user-interface/dependency-graph_${current_time}.svg",
     "dependency-cruiser-ci": "npx depcruise --output-type err-long public src"
-  }
+  },
+  "main": ".dependency-cruiser.js",
+  "keywords": [],
+  "author": ""
 }

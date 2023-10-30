@@ -277,8 +277,9 @@ jobs:
 
       - name: Execute Build
         run: |
-          pushd ../common
+          pushd ../
           npm ci
+          npm run build --workspace common
           popd
 
           npm ci
@@ -319,6 +320,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Execute Build
         run: |
+          pushd ../
+          npm ci
+          npm run build --workspace common
+          popd
           npm ci
           npm run build
 

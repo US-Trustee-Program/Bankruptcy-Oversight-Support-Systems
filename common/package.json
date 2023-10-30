@@ -1,11 +1,19 @@
 {
-  "name": "common",
+  "name": "@cams/common",
   "version": "1.0.0",
   "description": "CAMS common package",
-  "main": "index.js",
+  "type": "module",
+  "exports": {
+    "./*": "./dist/*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": ["dist/*"]
+    }
+  },
   "scripts": {
-    "clean": "rm -rf ./dist & rm -rf ./node_modules & rm tsconfig.tsbuildinfo",
-    "build": "npx tsc",
+    "clean": "rm -rf ./dist & rm -rf ./node_modules",
+    "build": "tsc --build tsconfig.build.json",
     "test": "jest -c jest.config.js",
     "coverage": "jest --coverage",
     "lint": "eslint .",
@@ -29,5 +37,6 @@
     "prettier": "^3.0.3",
     "ts-jest": "^29.1.1",
     "typescript": "^5.2.2"
-  }
+  },
+  "keywords": []
 }
