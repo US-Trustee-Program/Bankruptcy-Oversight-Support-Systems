@@ -21,6 +21,16 @@ export function noJudgeAssignedCases() {
     courtId,
     reopenCode,
     transactions: [],
+    parties: [
+      {
+        role: 'DB',
+        lastName: 'John & Co',
+        middleName: '',
+        firstName: '',
+        taxId: '00-1134567',
+        address1: '123 Main St',
+      },
+    ],
     dateFiled: '2023-02-15',
   });
 

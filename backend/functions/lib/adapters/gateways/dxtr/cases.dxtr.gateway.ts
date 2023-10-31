@@ -1,6 +1,6 @@
 import { CasesInterface } from '../../../use-cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
-import { CaseDetailInterface, DxtrTransactionRecord } from '../../types/cases';
+import { CaseDetailInterface, DxtrPartyRecord, DxtrTransactionRecord } from '../../types/cases';
 import {
   getDate,
   getMonthDayYearStringFromDate,
@@ -10,6 +10,7 @@ import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import log from '../../services/logger.service';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -57,6 +58,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       bCase.reopenedDate = getMonthDayYearStringFromDate(reopenedDates[0]);
     }
 
+    bCase.debtorName = await this.queryParties(context, bCase.dxtrId, bCase.courtId);
+
     return bCase;
   }
 
@@ -101,9 +104,11 @@ export default class CasesDxtrGateway implements CasesInterface {
       log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (queryResult.results as mssql.IResult<any>).recordset;
+      const results = (queryResult.results as mssql.IResult<any>).recordset;
+      console.log(results);
+      return results;
     } else {
-      throw Error(queryResult.message);
+      throw new CamsError(MODULENAME, { message: queryResult.message });
     }
   }
 
@@ -150,7 +155,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
       return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
     } else {
-      throw Error(queryResult.message);
+      throw new CamsError(MODULENAME, { message: queryResult.message });
     }
   }
 
@@ -275,7 +280,69 @@ export default class CasesDxtrGateway implements CasesInterface {
 
       return { closedDates, dismissedDates, reopenedDates };
     } else {
-      throw Error(queryResult.message);
+      throw new CamsError(MODULENAME, { message: queryResult.message });
+    }
+  }
+
+  private async queryParties(
+    context: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+  ): Promise<string> {
+    const debtorPartyCode = 'db';
+    const input: DbTableFieldSpec[] = [];
+    let partyName = '';
+
+    input.push({
+      name: 'dxtrId',
+      type: mssql.VarChar,
+      value: dxtrId,
+    });
+
+    input.push({
+      name: 'courtId',
+      type: mssql.VarChar,
+      value: courtId,
+    });
+
+    input.push({
+      name: 'debtorPartyCode',
+      type: mssql.VarChar,
+      value: debtorPartyCode,
+    });
+
+    const query = `SELECT
+        TRIM(CONCAT(
+          PY_FIRST_NAME,
+          ' ',
+          PY_MIDDLE_NAME,
+          ' ',
+          PY_LAST_NAME,
+          ' ',
+          PY_GENERATION
+        )) as partyName
+      FROM [dbo].[AO_PY]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @debtorPartyCode
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    if (queryResult.success) {
+      log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
+      (queryResult.results as mssql.IResult<DxtrPartyRecord>).recordset.forEach((record) => {
+        partyName = record.partyName;
+      });
+      return Promise.resolve(partyName);
+    } else {
+      throw new CamsError(MODULENAME, { message: queryResult.message });
     }
   }
 }
