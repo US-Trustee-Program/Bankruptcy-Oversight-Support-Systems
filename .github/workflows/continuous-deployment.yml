@@ -130,8 +130,9 @@ jobs:
 
       - name: Install Node dependencies
         run: |
-          pushd ../common
+          pushd ../
           npm ci
+          npm run build --workspace common
           popd
 
           npm ci && npm install -g pa11y-ci

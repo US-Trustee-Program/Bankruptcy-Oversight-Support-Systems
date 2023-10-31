@@ -8,7 +8,7 @@ import Api from '@/models/api';
 import { Attorney } from '@/type-declarations/attorneys';
 import { ModalRefType } from './uswds/modal/modal-refs';
 import * as FeatureFlags from '@/hooks/UseFeatureFlags';
-import { getFullName } from '@common/name-helper';
+import { getFullName } from '@cams/common/name-helper';
 
 describe('Test Assign Attorney Modal Component', () => {
   let susan: Attorney;

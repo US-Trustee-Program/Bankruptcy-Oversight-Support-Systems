@@ -10,7 +10,7 @@ import Api from '../models/api';
 import { ModalRefType } from './uswds/modal/modal-refs';
 import { getCaseNumber } from '@/utils/formatCaseNumber';
 import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
-import { getFullName } from '@common/name-helper';
+import { getFullName } from '@cams/common/name-helper';
 
 export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
