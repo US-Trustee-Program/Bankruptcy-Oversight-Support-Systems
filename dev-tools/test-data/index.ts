@@ -8,7 +8,7 @@ import { noJudgeAssignedCases } from './fixtures/noJudgeAssignedCases';
 import { caseParties } from './fixtures/caseParties';
 import { toAoPyInsertStatements } from './tables/AO_PY';
 
-const csCaseIds: string[] = [];
+let csCaseIds: string[] = [];
 
 // Add fixture functions to this list to include them in the generated SQL.
 const fixturesToCreate = [createReopenedCases, noJudgeAssignedCases];
@@ -17,7 +17,7 @@ const fixturesToCreate = [createReopenedCases, noJudgeAssignedCases];
 const dbRecordBundles: DatabaseRecords[] = [];
 fixturesToCreate.forEach((fixtureFn) => {
   const data = fixtureFn();
-  csCaseIds.concat(data.csCaseIds);
+  csCaseIds = csCaseIds.concat(data.csCaseIds);
   dbRecordBundles.push(data.caseRecords);
 });
 

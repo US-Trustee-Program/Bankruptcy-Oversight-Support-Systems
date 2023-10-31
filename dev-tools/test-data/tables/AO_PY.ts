@@ -1,7 +1,7 @@
 import { ColumnNames, TableRecordHelper } from '../types';
 import { toSqlInsertStatements } from '../utility';
 
-export const AO_PY_TableName = 'AO_CS';
+export const AO_PY_TableName = 'AO_PY';
 export const AO_PY_InsertableColumnNames: ColumnNames = [
   'CS_CASEID',
   'COURT_ID',

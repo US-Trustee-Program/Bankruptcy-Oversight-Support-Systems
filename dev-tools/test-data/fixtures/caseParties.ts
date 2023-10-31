@@ -28,7 +28,7 @@ function partyGenerator(csCaseId: string): AO_PY_RecordProps {
     PY_ADDRESS3: '',
     PY_CITY: faker.location.city(),
     PY_STATE: 'NY',
-    PY_ZIP: faker.location.zipCode({ state: 'NY' }),
+    PY_ZIP: faker.location.zipCode(),
     PY_COUNTRY: 'USA',
     PY_PHONENO: faker.phone.number(),
     PY_FAX_PHONE: faker.phone.number(),
