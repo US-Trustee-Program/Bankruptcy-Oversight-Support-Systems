@@ -39,3 +39,7 @@ export interface DxtrTransactionRecord {
   txRecord: string;
   txCode: string;
 }
+
+export interface DxtrPartyRecord {
+  partyName: string;
+}

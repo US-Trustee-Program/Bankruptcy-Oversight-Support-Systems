@@ -6,6 +6,7 @@ import * as mssql from 'mssql';
 import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
 import { CaseDetailInterface } from '../../types/cases';
 import * as featureFlags from '../../utils/feature-flag';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
@@ -46,7 +47,9 @@ describe('Test DXTR Gateway', () => {
     ];
     const mockResults: QueryResults = {
       success: true,
-      results: cases,
+      results: {
+        recordset: cases,
+      },
       message: '',
     };
     querySpy.mockImplementation(async () => {
@@ -68,7 +71,7 @@ describe('Test DXTR Gateway', () => {
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
-    expect(actualResult).not.toEqual(cases);
+    expect(actualResult).toEqual(cases);
   });
 
   test('should call getCases and return expected results', async () => {
@@ -96,7 +99,9 @@ describe('Test DXTR Gateway', () => {
     ];
     const mockResults: QueryResults = {
       success: true,
-      results: cases,
+      results: {
+        recordset: cases,
+      },
       message: '',
     };
     querySpy.mockImplementation(async () => {
@@ -118,7 +123,7 @@ describe('Test DXTR Gateway', () => {
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
-    expect(actualResult).not.toEqual(cases);
+    expect(actualResult).toEqual(cases);
   });
 
   test('should call executeQuery with the right date when a startingMonth option is passed', async () => {
@@ -131,7 +136,9 @@ describe('Test DXTR Gateway', () => {
     ];
     const mockResults: QueryResults = {
       success: true,
-      results: cases,
+      results: {
+        recordset: cases,
+      },
       message: '',
     };
     querySpy.mockImplementation(async () => {
@@ -159,6 +166,7 @@ describe('Test DXTR Gateway', () => {
     );
   });
 
+  // TODO: this may really only be verifying that we throw when the getCases function gets an error
   test('should throw error when executeQuery returns success=false', async () => {
     const errorMessage = 'There was some fake error.';
     const mockResults: QueryResults = {
@@ -175,7 +183,7 @@ describe('Test DXTR Gateway', () => {
       await testCasesDxtrGateway.getCases(appContext, {});
       expect(true).toBeFalsy();
     } catch (e) {
-      expect((e as Error).message).toEqual(errorMessage);
+      expect((e as CamsError).message).toEqual(errorMessage);
     }
   });
 
@@ -226,6 +234,14 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const mockQueryParties: QueryResults = {
+      success: true,
+      results: {
+        recordset: [{ partyName: 'John Q. Smith' }],
+      },
+      message: '',
+    };
+
     querySpy.mockImplementationOnce(async () => {
       console.log('Inside MockImplementation Once: ', mockCaseResults);
       return Promise.resolve(mockCaseResults);
@@ -233,6 +249,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryParties);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
@@ -251,6 +271,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
+    expect(actualResult.debtorName).toEqual('John Q. Smith');
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -297,12 +318,24 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const mockQueryParties: QueryResults = {
+      success: true,
+      results: {
+        recordset: [{ partyName: 'John Q. Smith' }],
+      },
+      message: '',
+    };
+
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryParties);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
