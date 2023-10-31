@@ -104,9 +104,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const results = (queryResult.results as mssql.IResult<any>).recordset;
-      console.log(results);
-      return results;
+      return (queryResult.results as mssql.IResult<any>).recordset;
     } else {
       throw new CamsError(MODULENAME, { message: queryResult.message });
     }
