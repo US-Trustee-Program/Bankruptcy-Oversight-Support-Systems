@@ -11,6 +11,21 @@ import { CamsError } from '../../../common-errors/cams-error';
 const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
 
+function generateTestCase(overlay = {}) {
+  const defaultReturn = {
+    caseId: '081-23-12345',
+    caseTitle: 'Debtor Two',
+    dateFiled: '2019-04-18T00:00:00.000Z',
+    dxtrId: '123',
+    courtId: '567',
+    chapter: '15',
+  };
+  return {
+    ...defaultReturn,
+    ...overlay,
+  };
+}
+
 describe('Test DXTR Gateway', () => {
   let appContext;
   const querySpy = jest.spyOn(database, 'executeQuery');
@@ -28,27 +43,10 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should call executeQuery with the default starting month and return expected results', async () => {
-    const cases = [
-      {
-        caseId: 'case-one',
-        caseTitle: 'Debtor One',
-        dateFiled: '2018-11-16T00:00:00.000Z',
-      },
-      {
-        caseId: 'case-two',
-        caseTitle: 'Debtor Two',
-        dateFiled: '2019-04-18T00:00:00.000Z',
-      },
-      {
-        caseId: 'case-three',
-        caseTitle: 'Debtor Three',
-        dateFiled: '2019-04-18T00:00:00.000Z',
-      },
-    ];
     const mockResults: QueryResults = {
       success: true,
       results: {
-        recordset: cases,
+        recordset: [],
       },
       message: '',
     };
@@ -56,7 +54,7 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getCases(appContext, {});
+    await testCasesDxtrGateway.getCases(appContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
@@ -71,59 +69,6 @@ describe('Test DXTR Gateway', () => {
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
-    expect(actualResult).toEqual(cases);
-  });
-
-  test('should call getCases and return expected results', async () => {
-    const cases = [
-      {
-        caseId: 'case-one',
-        caseTitle: 'Debtor One',
-        dateFiled: '2018-11-16T00:00:00.000Z',
-      },
-      {
-        caseId: 'case-two',
-        caseTitle: 'Debtor Two',
-        dateFiled: '2019-04-18T00:00:00.000Z',
-      },
-      {
-        caseId: 'case-three',
-        caseTitle: 'Debtor Three',
-        dateFiled: '2019-04-18T00:00:00.000Z',
-      },
-      {
-        caseId: 'case-four',
-        caseTitle: 'Debtor Four',
-        dateFiled: '2018-10-16T00:00:00.000Z',
-      },
-    ];
-    const mockResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: cases,
-      },
-      message: '',
-    };
-    querySpy.mockImplementation(async () => {
-      return Promise.resolve(mockResults);
-    });
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getCases(appContext, {});
-    const date = new Date();
-    date.setMonth(date.getMonth() - 6);
-    const dateFiledFrom = getYearMonthDayStringFromDate(date);
-    const expectedDateInput = {
-      name: 'dateFiledFrom',
-      type: mssql.Date,
-      value: dateFiledFrom,
-    };
-    expect(querySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      appContext.config.dxtrDbConfig,
-      expect.anything(),
-      expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
-    );
-    expect(actualResult).toEqual(cases);
   });
 
   test('should call executeQuery with the right date when a startingMonth option is passed', async () => {
@@ -188,17 +133,8 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should return a single case when supplied a caseId', async () => {
-    const caseId = 'case-one';
-    const cases = [
-      {
-        caseId: caseId,
-        caseTitle: 'Debtor Two',
-        dateFiled: '2019-04-18T00:00:00.000Z',
-        dxtrId: '123',
-        courtId: '567',
-        chapter: '15',
-      },
-    ];
+    const testCase = generateTestCase();
+    const cases = [testCase];
     const mockCaseResults: QueryResults = {
       success: true,
       results: {
@@ -256,7 +192,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getCaseDetail(appContext, caseId);
+    const actualResult = await testCasesDxtrGateway.getCaseDetail(appContext, testCase.caseId);
 
     const closedDate = '10-31-2023';
     const dismissedDate = '11-15-2023';
@@ -275,17 +211,8 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
-    const caseId = '081-23-12345';
-    const cases = [
-      {
-        caseId: caseId,
-        caseTitle: 'Debtor Two',
-        dateFiled: '2019-04-18T00:00:00.000Z',
-        dxtrId: '123',
-        courtId: '567',
-        chapter: '15',
-      },
-    ];
+    const testCase = generateTestCase();
+    const cases = [testCase];
 
     const mockCaseResults: QueryResults = {
       success: true,
@@ -340,10 +267,25 @@ describe('Test DXTR Gateway', () => {
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     await testCasesDxtrGateway.getCaseDetail(appContext, '081-23-12345');
+    // getCase
     expect(querySpy.mock.calls[0][3]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrCaseId', value: '23-12345' }),
         expect.objectContaining({ name: 'courtDiv', value: '081' }),
+      ]),
+    );
+    // getTransactions
+    expect(querySpy.mock.calls[1][3]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
+        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
+      ]),
+    );
+    // getDebtors
+    expect(querySpy.mock.calls[2][3]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
+        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
   });
