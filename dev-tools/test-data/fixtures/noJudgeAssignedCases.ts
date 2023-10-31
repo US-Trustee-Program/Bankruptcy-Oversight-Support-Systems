@@ -3,6 +3,8 @@ import { BCase, toDbRecords } from '../domain/bcase';
 export function noJudgeAssignedCases() {
   const bCases: Array<BCase> = [];
 
+  const csCaseIds: string[] = [];
+
   const chapter = '15';
   const county = 'NEW YORK-NY';
   const courtId = '0208';
@@ -24,5 +26,12 @@ export function noJudgeAssignedCases() {
     dateFiled: '2023-02-15',
   });
 
-  return toDbRecords(bCases);
+  bCases.forEach((theCase) => {
+    csCaseIds.push(theCase.csCaseId);
+  });
+
+  return {
+    csCaseIds,
+    caseRecords: toDbRecords(bCases),
+  };
 }

@@ -19,5 +19,8 @@
     "eslint-plugin-prettier": "^5.0.1",
     "eslint-plugin-promise": "^6.1.1",
     "ts-node": "^10.9.1"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.2.0"
   }
 }

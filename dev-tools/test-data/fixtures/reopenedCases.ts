@@ -3,6 +3,8 @@ import { BCase, Judge, toDbRecords } from '../domain/bcase';
 export function createReopenedCases() {
   const bCases: Array<BCase> = [];
 
+  const csCaseIds: string[] = [];
+
   const chapter = '15';
   const county = 'NEW YORK-NY';
   const courtId = '0208';
@@ -238,5 +240,12 @@ export function createReopenedCases() {
     dateDismiss: '2023-11-01',
   });
 
-  return toDbRecords(bCases);
+  bCases.forEach((theCase) => {
+    csCaseIds.push(theCase.csCaseId);
+  });
+
+  return {
+    csCaseIds,
+    caseRecords: toDbRecords(bCases),
+  };
 }
