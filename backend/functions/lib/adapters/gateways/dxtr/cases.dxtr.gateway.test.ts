@@ -111,7 +111,7 @@ describe('Test DXTR Gateway', () => {
     );
   });
 
-  // TODO: this may really only be verifying that we throw when the getCases function gets an error
+  // TODO: Find a way to cover the different scenarios where executeQuery throws an error
   test('should throw error when executeQuery returns success=false', async () => {
     const errorMessage = 'There was some fake error.';
     const mockResults: QueryResults = {
