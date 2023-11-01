@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Custom tools used to aid development.",
   "scripts": {
+    "delete-cosmos-records": "ts-node delete-cosmos-records/index.ts",
     "test-data": "mkdir -p data; ts-node test-data/index.ts > data/test-data.sql",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -10,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@azure/cosmos": "^4.0.0",
+    "@azure/identity": "^3.3.2",
     "@types/node": "^20.8.9",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "eslint": "^8.52.0",
