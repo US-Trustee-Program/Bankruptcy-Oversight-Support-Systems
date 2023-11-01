@@ -1,11 +1,11 @@
-import { toAoTxInsertStatements } from './tables/AO_TX';
-import { toAoCsInsertStatements } from './tables/AO_CS';
-import { toAoPyInsertStatements } from './tables/AO_PY';
-import { DatabaseRecords } from './tables/common';
+import { toAoTxInsertStatements } from '../tables/AO_TX';
+import { toAoCsInsertStatements } from '../tables/AO_CS';
+import { toAoPyInsertStatements } from '../tables/AO_PY';
+import { DatabaseRecords } from '../tables/common';
 
 // Import fixtures to generate.
-import { createReopenedCases } from './fixtures/reopenedCases';
-import { noJudgeAssignedCases } from './fixtures/noJudgeAssignedCases';
+import { createReopenedCases } from '../fixtures/reopenedCases';
+import { noJudgeAssignedCases } from '../fixtures/noJudgeAssignedCases';
 
 // Add fixture functions to this list to include them in the generated SQL.
 const fixturesToCreate = [createReopenedCases, noJudgeAssignedCases];
