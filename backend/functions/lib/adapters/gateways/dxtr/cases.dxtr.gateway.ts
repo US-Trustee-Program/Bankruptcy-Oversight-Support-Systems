@@ -11,6 +11,7 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import log from '../../services/logger.service';
 import { CamsError } from '../../../common-errors/cams-error';
+import { handleQueryResult } from '../gateway-helper';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -289,7 +290,6 @@ export default class CasesDxtrGateway implements CasesInterface {
   ): Promise<string> {
     const debtorPartyCode = 'db';
     const input: DbTableFieldSpec[] = [];
-    let partyName = '';
 
     input.push({
       name: 'dxtrId',
@@ -333,14 +333,17 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    if (queryResult.success) {
-      log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
-      (queryResult.results as mssql.IResult<DxtrPartyRecord>).recordset.forEach((record) => {
-        partyName = record.partyName;
-      });
-      return Promise.resolve(partyName);
-    } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
-    }
+    return Promise.resolve(
+      handleQueryResult<string>(context, queryResult, MODULENAME, this.partyQueryCallback),
+    );
+  }
+
+  private partyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+    let partyName = '';
+    log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
+    (queryResult.results as mssql.IResult<DxtrPartyRecord>).recordset.forEach((record) => {
+      partyName = record.partyName;
+    });
+    return partyName;
   }
 }
