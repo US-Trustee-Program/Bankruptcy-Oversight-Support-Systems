@@ -139,6 +139,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
                   {caseDetail.judgeName || 'No judge assigned'}
                 </span>
               </div>
+              <div className="debtor-information padding-bottom-4 case-card">
+                <h3>Debtor</h3>
+                <span className="debtor-name" data-testid="case-detail-debtor-name">
+                  {caseDetail.debtorName}
+                </span>
+              </div>
             </div>
           </div>
         )}

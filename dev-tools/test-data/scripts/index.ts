@@ -1,9 +1,10 @@
 import { toAoTxInsertStatements } from './tables/AO_TX';
 import { toAoCsInsertStatements } from './tables/AO_CS';
+import { toAoPyInsertStatements } from './tables/AO_PY';
+import { DatabaseRecords } from './tables/common';
 
 // Import fixtures to generate.
 import { createReopenedCases } from './fixtures/reopenedCases';
-import { DatabaseRecords } from './tables/common';
 import { noJudgeAssignedCases } from './fixtures/noJudgeAssignedCases';
 
 // Add fixture functions to this list to include them in the generated SQL.
@@ -21,6 +22,9 @@ dbRecordBundles.forEach((dbRecordBundle) => {
     console.log(statement.trim());
   });
   toAoTxInsertStatements(dbRecordBundle.AO_TX).forEach((statement) => {
+    console.log(statement.trim());
+  });
+  toAoPyInsertStatements(dbRecordBundle.AO_PY).forEach((statement) => {
     console.log(statement.trim());
   });
 });
