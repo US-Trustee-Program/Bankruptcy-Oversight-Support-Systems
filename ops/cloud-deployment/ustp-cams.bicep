@@ -42,6 +42,8 @@ param apiPlanType string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
+param azHostSuffix string = '.net'
+
 @secure()
 param databaseConnectionString string = ''
 param sqlServerName string = ''
@@ -116,6 +118,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     createAlerts: createAlerts
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
+    targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix}'
   }
 }
 
