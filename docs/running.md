@@ -80,6 +80,8 @@ This will serve the functions app on port 7071.
 
 #### <a id="backend-prerequisites"></a>Prerequisites
 
+##### .env File
+
 You will need to have a file named `.env` placed in the `backend/functions` directory. The contents
 of that file must be:
 
@@ -108,9 +110,19 @@ STARTING_MONTH={number of months previous to today to use as a starting month (d
 !> If you do not have access to the admin password, ask an `owner` of the SQL Server resource in
 Azure for the value
 
+##### Cosmos Database
+
+To interact with the Cosmos database from your local machine you will need to set up
+access separately. One way to do this is by setting up
+[role based access](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac).
+
+##### Azure Functions Core
+
 You will need to have the
 [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cmacos%2Ccsharp%2Cportal%2Cbash#install-the-azure-functions-core-tools)
 installed.
+
+##### Local Settings File
 
 You will need to have a file named local.settings.json placed in the `functions/node` directory. The
 contents of that file must be:
