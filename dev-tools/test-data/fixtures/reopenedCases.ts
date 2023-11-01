@@ -30,6 +30,14 @@ export function createReopenedCases() {
       { code: 'CBC', date: '2022-07-27', meta: 'Case Closed' },
       { code: 'OCO', date: '2022-08-27', meta: '41 Order Granting' },
     ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Smith & Co',
+        taxId: '12-1234567',
+        address1: '',
+      },
+    ],
     cfValue: 'JtAdm, CLOSED',
     dateFiled: '2022-02-15',
     dateReopen: '2022-08-27',
@@ -50,6 +58,14 @@ export function createReopenedCases() {
     transactions: [
       { code: 'CBC', date: '2022-04-27', meta: 'Case Closed' },
       { code: 'OCO', date: '2022-06-14', meta: '41 Order Granting' },
+    ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Johnson Corporation',
+        taxId: '00-1234567',
+        address1: '123 Main St',
+      },
     ],
     cfValue: 'JtAdm, CLOSED',
     dateFiled: '2022-02-15',
@@ -72,6 +88,14 @@ export function createReopenedCases() {
       { code: 'CBC', date: '2022-03-27', meta: 'Case Closed' },
       { code: 'OCO', date: '2022-06-14', meta: '41 Order Granting' },
     ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Brown Enterprises',
+        taxId: '00-1134567',
+        address1: '123 Main St',
+      },
+    ],
     cfValue: 'JtAdm, CLOSED',
     dateFiled: '2022-06-20',
     dateReopen: '2022-06-14',
@@ -92,6 +116,14 @@ export function createReopenedCases() {
     transactions: [
       { code: 'CBC', date: '2022-09-27', meta: 'Case Closed' },
       { code: 'OCO', date: '2022-11-03', meta: '41 Order Granting' },
+    ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Davis Ltd',
+        taxId: '45-9876543',
+        address1: '123 Main St',
+      },
     ],
     cfValue: 'MDisCs, CLOSED, Lead',
     dateFiled: '2022-10-04',
@@ -114,6 +146,14 @@ export function createReopenedCases() {
       { code: 'CBC', date: '2022-01-27', meta: 'Case Closed' },
       { code: 'OCO', date: '2022-11-30', meta: '41 Order Granting' },
     ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Wilson & Sons',
+        taxId: '23-4567890',
+        address1: '123 Main St',
+      },
+    ],
     cfValue: 'PENAP, CLOSED',
     dateFiled: '2022-10-11',
     dateReopen: '2022-11-30',
@@ -134,6 +174,15 @@ export function createReopenedCases() {
     transactions: [
       { code: 'CBC', date: '2022-08-20', meta: 'Case Closed' },
       { code: 'OCO', date: '2022-12-31', meta: '41 Order Granting' },
+    ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Anderson',
+        firstName: 'Emily',
+        ssn: '001-23-4567',
+        address1: '123 Main St',
+      },
     ],
     cfValue: 'JtAdm, CGM1, CLOSED',
     dateFiled: '2022-10-18',
@@ -160,6 +209,15 @@ export function createReopenedCases() {
       { code: 'OCO', date: '2023-03-13', meta: '41 Order Granting' },
       { code: 'CDC', date: '2023-11-01', meta: 'Case Dismissed' },
     ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Wilson',
+        firstName: 'Benjamin',
+        ssn: '123-45-6789',
+        address1: '123 Main St',
+      },
+    ],
     cfValue: 'FeeDueAP, PENAP, Lead, Mediation',
     dateFiled: '2022-12-19',
     dateReopen: '2023-03-13',
@@ -183,6 +241,15 @@ export function createReopenedCases() {
       { code: 'CBC', date: '2023-01-25', meta: 'Case Closed' },
       { code: 'OCO', date: '2023-09-14', meta: '41 Order Granting' },
       { code: 'CBC', date: '2023-10-01', meta: 'Case Closed' },
+    ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Martin',
+        firstName: 'Sophia',
+        ssn: '987-65-4321',
+        address1: '123 Main St',
+      },
     ],
     cfValue: 'CLOSED',
     dateFiled: '2023-04-06',
@@ -208,6 +275,15 @@ export function createReopenedCases() {
       { code: 'CBC', date: '2023-09-09', meta: 'Case Closed' },
       { code: 'OCO', date: '2023-10-04', meta: '41 Order Granting' },
     ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Johnson',
+        firstName: 'Ethan',
+        taxId: '00-1134567',
+        address1: '123 Main St',
+      },
+    ],
     cfValue: 'CLOSED',
     dateFiled: '2023-06-28',
     dateReopen: '2023-10-04',
@@ -230,6 +306,14 @@ export function createReopenedCases() {
       { code: 'CBC', date: '2023-06-01', meta: 'Case Closed' },
       { code: 'OCO', date: '2023-10-23', meta: '41 Order Granting' },
       { code: 'CDC', date: '2023-11-01', meta: 'Case Dismissed' },
+    ],
+    parties: [
+      {
+        role: 'db',
+        lastName: 'Davis',
+        firstName: 'Olivia',
+        address1: '123 Main St',
+      },
     ],
     cfValue: 'CLOSED',
     dateFiled: '2023-07-17',
