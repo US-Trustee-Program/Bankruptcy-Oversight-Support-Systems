@@ -6,7 +6,9 @@ import { ColumnNames, TableRecordHelper } from './types';
  * @param message a message to use in a thrown Error
  */
 export function assert(condition: boolean, message: string = 'Assertion failed.') {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 const COMMA_SEPARATOR = ', ';

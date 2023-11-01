@@ -139,6 +139,7 @@ export function toDbRecords(bCase: BCase | Array<BCase>): DatabaseRecords {
         NAME_EVENT: party.nameEvent,
         ADDRESS_EVENT: party.addressEvent,
       });
+      record.validate();
       dbRecords.AO_PY.push(record);
     });
   });
