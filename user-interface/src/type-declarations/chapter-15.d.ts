@@ -18,6 +18,7 @@ interface CaseDetailType {
   dismissedDate?: string;
   reopenedDate?: string;
   assignments: string[];
+  debtorName: string;
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {
