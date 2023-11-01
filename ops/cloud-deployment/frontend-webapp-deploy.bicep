@@ -72,7 +72,7 @@ var linuxFxVersionMap = {
 
 @description('Filename for nginx server config and must be placed in public folder. Needed for deploying user-interface code when nginx is used.')
 param nginxConfigFilename string = 'nginx.conf'
-var appCommandLine = 'cp /home/site/wwwroot/${nginxConfigFilename} /etc/nginx/sites-enabled/default; service nginx restart'
+var appCommandLine = 'cp /home/site/wwwroot/${nginxConfigFilename} /etc/nginx/sites-enabled/default; echo $(envsubst < c/etc/nginx/sites-enabled/default) > /etc/nginx/sites-enabled/default;service nginx restart'
 
 @description('The prefered minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
 param preferedMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
@@ -116,6 +116,10 @@ param createAlerts bool
 /*
   Subnet creation in target virtual network
 */
+
+@description('Target backend API server host. Used to set Content-Security-Policy')
+param targetApiServerHost string
+
 module webappSubnet './subnet/network-subnet.bicep' = {
   name: '${webappName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
@@ -220,7 +224,12 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
 }
-var applicationSettings = concat([],
+var applicationSettings = concat([
+    {
+      name: 'CSP_API_SERVER_HOST'
+      value: targetApiServerHost
+    }
+  ],
   deployAppInsights ? [
     {
       name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
