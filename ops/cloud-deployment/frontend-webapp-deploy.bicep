@@ -72,7 +72,7 @@ var linuxFxVersionMap = {
 
 @description('Filename for nginx server config and must be placed in public folder. Needed for deploying user-interface code when nginx is used.')
 param nginxConfigFilename string = 'nginx.conf'
-var appCommandLine = 'rm /etc/nginx/sites-enabled/default;export uri=\'$uri\';envsubst < /home/site/wwwroot/${nginxConfigFilename} > /etc/nginx/sites-enabled/default;service nginx restart'
+var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/wwwroot/${nginxConfigFilename} > /etc/nginx/sites-enabled/default;service nginx restart'
 
 @description('The prefered minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
 param preferedMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
@@ -228,6 +228,10 @@ var applicationSettings = concat([
     {
       name: 'CSP_API_SERVER_HOST'
       value: targetApiServerHost
+    }
+    {
+      name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
+      value: '$uri'
     }
   ],
   deployAppInsights ? [
