@@ -120,6 +120,10 @@ param createAlerts bool
 @description('Target backend API server host. Used to set Content-Security-Policy')
 param targetApiServerHost string
 
+@description('USTP Issue Collector hash. Used to set Content-Security-Policy')
+@secure()
+param ustpIssueCollectorHash string
+
 module webappSubnet './subnet/network-subnet.bicep' = {
   name: '${webappName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
@@ -228,6 +232,10 @@ var applicationSettings = concat([
     {
       name: 'CSP_API_SERVER_HOST'
       value: targetApiServerHost
+    }
+    {
+      name: 'CSP_USTP_ISSUE_COLLECTOR_HASH'
+      value: ustpIssueCollectorHash
     }
     {
       name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
