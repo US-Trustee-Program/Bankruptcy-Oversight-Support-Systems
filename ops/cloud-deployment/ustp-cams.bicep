@@ -69,6 +69,11 @@ param analyticsResourceGroupName string
 
 @description('Action Group Name for alerts')
 param actionGroupName string
+
+@description('USTP Issue Collector hash. Used to set Content-Security-Policy')
+@secure()
+param ustpIssueCollectorHash string
+
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
   name: '${actionGroupName}-action-group-module'
   scope: resourceGroup(analyticsResourceGroupName)
@@ -119,6 +124,7 @@ module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
     targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix}'
+    ustpIssueCollectorHash: ustpIssueCollectorHash
   }
 }
 
