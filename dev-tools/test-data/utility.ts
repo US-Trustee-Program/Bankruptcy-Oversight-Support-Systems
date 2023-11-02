@@ -14,13 +14,18 @@ export function assert(condition: boolean, message: string = 'Assertion failed.'
 const COMMA_SEPARATOR = ', ';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sqlEscapeValue(value: any): string {
+  if (typeof value === 'string') return `'${value.replace("'", "''")}'`;
+  if (typeof value === 'number') return `${value}`;
+  if (!value) return 'NULL';
+  console.log('No case for: value', value, 'typeof', typeof value);
+  return value;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sqlEscape(record: Array<any>) {
   return record.map((column) => {
-    if (typeof column === 'string') return `'${column}'`;
-    if (typeof column === 'number') return `${column}`;
-    if (!column) return 'NULL';
-    console.log('No case for: value', column, 'typeof', typeof column);
-    return column;
+    return sqlEscapeValue(column);
   });
 }
 
@@ -43,5 +48,53 @@ export function toSqlInsertStatements(
 ): string[] {
   return records.map((record) => {
     return toSqlInsertStatement(tableName, columnNames, record.toInsertableArray());
+  });
+}
+
+export function toSqlUpdateStatement(
+  tableName: string,
+  columnNames: ColumnNames,
+  predicateColumns: string[],
+  omitColumnsNames: string[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  record: Array<any>,
+): string {
+  const predicateColumnIndexes = predicateColumns.reduce((acc, value) => {
+    const idx = columnNames.findIndex((element) => element === value);
+    if (idx >= 0) acc.push(idx);
+    return acc;
+  }, [] as number[]);
+  const assignments = record
+    .reduce((acc, value, idx) => {
+      if (predicateColumnIndexes.includes(idx)) return acc;
+      if (omitColumnsNames.findIndex((element) => element === columnNames[idx]) !== -1) return acc;
+      acc.push(`${columnNames[idx]}=${sqlEscapeValue(value)}`);
+      return acc;
+    }, [])
+    .join(', ');
+  const predicate = predicateColumns
+    .map((columnName, idx) => {
+      const position = columnNames.findIndex((element) => element === columnName);
+      return `${predicateColumns[idx]}=${sqlEscapeValue(record[position])}`;
+    })
+    .join(' AND ');
+  return `UPDATE ${tableName} SET ${assignments} WHERE ${predicate}`;
+}
+
+export function toSqlUpdateStatements(
+  tableName: string,
+  columnNames: ColumnNames,
+  predicateColumns: string[],
+  omitColumnsNames: string[],
+  records: Array<TableRecordHelper>,
+): string[] {
+  return records.map((record) => {
+    return toSqlUpdateStatement(
+      tableName,
+      columnNames,
+      predicateColumns,
+      omitColumnsNames,
+      record.toInsertableArray(),
+    );
   });
 }
