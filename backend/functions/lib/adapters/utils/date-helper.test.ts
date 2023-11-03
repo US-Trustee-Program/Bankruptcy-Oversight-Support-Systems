@@ -4,6 +4,7 @@ import {
   calculateDifferenceInMonths,
   getYearMonthDayStringFromDate,
   getMonthDayYearStringFromDate,
+  sortDates,
 } from './date-helper';
 
 describe('date-helper tests', () => {
@@ -209,6 +210,34 @@ describe('date-helper tests', () => {
   describe('getMonthDayYearStringFromDate tests', () => {
     test('should convert Jan 1, 2023 to 01-01-2023', async () => {
       expect(getMonthDayYearStringFromDate(new Date(2023, 0, 1))).toEqual('01-01-2023');
+    });
+  });
+
+  describe('sortDates tests', () => {
+    test('should properly sort dates in chronological order', async () => {
+      const date1 = getDate(2000, 3, 27);
+      const date2 = getDate(1995, 3, 30);
+      const date3 = getDate(2040, 1, 14);
+      const dates = [date1, date2, date3];
+      const sorted = [date2, date1, date3];
+
+      sortDates(dates, 'chronological');
+      expect(dates).toEqual(sorted);
+    });
+
+    test('should properly sort dates in reverse chronological order', async () => {
+      const date1 = getDate(2000, 3, 27);
+      const date2 = getDate(1995, 3, 30);
+      const date3 = getDate(2040, 1, 14);
+      const datesWithParameter = [date1, date2, date3];
+      const datesWithDefault = [date1, date2, date3];
+      const sorted = [date3, date1, date2];
+
+      sortDates(datesWithParameter, 'reverse');
+      expect(datesWithParameter).toEqual(sorted);
+
+      sortDates(datesWithDefault);
+      expect(datesWithDefault).toEqual(sorted);
     });
   });
 });

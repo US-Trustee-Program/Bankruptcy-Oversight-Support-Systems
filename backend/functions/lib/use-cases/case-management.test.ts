@@ -254,13 +254,13 @@ describe('Case detail tests', () => {
     const appContext = await applicationContextCreator(functionContext);
     const caseId = caseIdWithAssignments;
     const dateFiled = '2018-11-16';
-    const dateClosed = '2019-06-21';
+    const closedDate = '2019-06-21';
     const assignments = [attorneyJaneSmith, attorneyJoeNobel];
     const caseDetail = {
       caseId: caseId,
       caseTitle: 'Daniels LLC',
       dateFiled,
-      dateClosed,
+      closedDate,
       assignments: [],
       dxtrId: '12345',
       courtId: '0208',
@@ -276,7 +276,7 @@ describe('Case detail tests', () => {
 
     expect(actualCaseDetail.body.caseDetails.caseId).toEqual(caseId);
     expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);
-    expect(actualCaseDetail.body.caseDetails.dateClosed).toEqual(dateClosed);
+    expect(actualCaseDetail.body.caseDetails.closedDate).toEqual(closedDate);
     expect(actualCaseDetail.body.caseDetails.assignments).toEqual(assignments);
   });
 });

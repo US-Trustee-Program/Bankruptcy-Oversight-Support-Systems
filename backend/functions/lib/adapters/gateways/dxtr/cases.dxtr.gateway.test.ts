@@ -173,7 +173,15 @@ describe('Test DXTR Gateway', () => {
     const mockQueryParties: QueryResults = {
       success: true,
       results: {
-        recordset: [{ partyName: 'John Q. Smith' }],
+        recordset: [
+          {
+            name: 'John Q. Smith',
+            address1: '123 Main St',
+            address2: 'Apt 17',
+            address3: '',
+            address4: 'Queens NY 12345 USA',
+          },
+        ],
       },
       message: '',
     };
@@ -207,7 +215,13 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
-    expect(actualResult.debtorName).toEqual('John Q. Smith');
+    expect(actualResult.debtor).toEqual({
+      name: 'John Q. Smith',
+      address1: '123 Main St',
+      address2: 'Apt 17',
+      address3: '',
+      address4: 'Queens NY 12345 USA',
+    });
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -349,6 +363,54 @@ describe('Test DXTR Gateway', () => {
       await testCasesDxtrGateway.getCases(appContext, {});
       expect(querySpy.mock.calls[0][2]).not.toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).not.toContain("CS_CHAPTER = '12'");
+    });
+  });
+
+  describe('partyQueryCallback', () => {
+    test('should return null when no results are returned', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const party = await testCasesDxtrGateway.partyQueryCallback(appContext, queryResult);
+
+      expect(party).toBeNull();
+    });
+
+    test('should return expected address fields', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              name: 'John Q. Smith',
+              address1: '123 Main St',
+              address2: 'Apt 17',
+              address3: '',
+              address4: 'Queens NY 12345 USA',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const party = await testCasesDxtrGateway.partyQueryCallback(appContext, queryResult);
+      //store object as constant
+      expect(party).toEqual({
+        name: 'John Q. Smith',
+        address1: '123 Main St',
+        address2: 'Apt 17',
+        address3: '',
+        address4: 'Queens NY 12345 USA',
+      });
     });
   });
 });
