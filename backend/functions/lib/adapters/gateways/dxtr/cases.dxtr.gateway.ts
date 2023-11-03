@@ -2,8 +2,7 @@ import { CasesInterface } from '../../../use-cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import {
   CaseDetailInterface,
-  Debtor,
-  DxtrPartyRecord,
+  Party,
   DxtrTransactionRecord,
   TransactionDates,
 } from '../../types/cases';
@@ -230,7 +229,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<Debtor> {
+  ): Promise<Party> {
     const debtorPartyCode = 'db';
     const input: DbTableFieldSpec[] = [];
 
@@ -251,8 +250,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       type: mssql.VarChar,
       value: debtorPartyCode,
     });
-
-    //update query to include address
 
     const query = `SELECT
         TRIM(CONCAT(
@@ -291,15 +288,15 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return Promise.resolve(
-      handleQueryResult<DxtrPartyRecord>(context, queryResult, MODULENAME, this.partyQueryCallback),
+      handleQueryResult<Party>(context, queryResult, MODULENAME, this.partyQueryCallback),
     );
   }
 
   partyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
-    let debtor: Debtor;
+    let debtor: Party;
     log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
 
-    (queryResult.results as mssql.IResult<DxtrPartyRecord>).recordset.forEach((record) => {
+    (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
       debtor = { name: record.name };
       debtor.address1 = record.address1;
       debtor.address2 = record.address2;
@@ -342,7 +339,6 @@ export default class CasesDxtrGateway implements CasesInterface {
   casesQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
     log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (queryResult.results as mssql.IResult<CaseDetailInterface[]>).recordset;
   }
 }

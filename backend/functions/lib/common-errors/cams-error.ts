@@ -4,7 +4,6 @@ export interface CamsErrorOptions {
   status?: number;
   message?: string;
   originalError?: Error;
-  // TODO: I'm a bit concerned about data being an object. Maybe it should be a string?
   data?: object;
 }
 

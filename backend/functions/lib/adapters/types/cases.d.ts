@@ -1,4 +1,3 @@
-// TODO: make this implement the IRecordSet<any> interface
 export interface CaseListRecordSet {
   caseList: CaseDetailInterface[];
   initialized?: boolean;
@@ -19,7 +18,7 @@ export interface CaseDetailsDbResult {
   };
 }
 
-export interface Debtor {
+export interface Party {
   name: string;
   address1?: string;
   address2?: string;
@@ -39,20 +38,12 @@ export interface CaseDetailInterface {
   courtId?: string;
   assignments?: string[];
   judgeName?: string;
-  debtor?: Debtor;
+  debtor?: Party;
 }
 
 export interface DxtrTransactionRecord {
   txRecord: string;
   txCode: string;
-}
-
-export interface DxtrPartyRecord {
-  name: string;
-  address1?: string;
-  address2?: string;
-  address3?: string;
-  address4?: string;
 }
 
 export interface TransactionDates {

@@ -116,7 +116,7 @@ describe('Case Detail screen tests', () => {
   ];
 
   test.each(testCases)(
-    'should display debtor address with missing address2 and address3 for the case',
+    'should display debtor address with various address lines present/absent',
     async (
       address1: MaybeString,
       address2: MaybeString,
@@ -165,48 +165,6 @@ describe('Case Detail screen tests', () => {
     },
     20000,
   );
-
-  test('should display debtor address with missing address3 for the case', async () => {
-    const testCaseDetail: CaseDetailType = {
-      caseId: caseId,
-      chapter: '15',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: [brianWilsonName, carlWilsonName],
-      debtor: {
-        name: 'Roger Rabbit',
-        address1: '123 Rabbithole Lane',
-        address2: 'Apt 117',
-        address3: undefined,
-        address4: 'Ciudad Obregón GR 25443, MX',
-      },
-    };
-    render(
-      <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
-      </BrowserRouter>,
-    );
-
-    await waitFor(
-      async () => {
-        const debtorAddress1 = screen.getByTestId('case-detail-debtor-address1');
-        expect(debtorAddress1.innerHTML).toEqual(testCaseDetail.debtor.address1);
-
-        const debtorAddress2 = screen.getByTestId('case-detail-debtor-address2');
-        expect(debtorAddress2.innerHTML).toEqual(testCaseDetail.debtor.address2);
-
-        const debtorAddress3 = screen.queryByTestId('case-detail-debtor-address3');
-        expect(debtorAddress3).not.toBeInTheDocument();
-
-        const debtorAddress4 = screen.getByTestId('case-detail-debtor-address4');
-        expect(debtorAddress4.innerHTML).toEqual(testCaseDetail.debtor.address4);
-      },
-      { timeout: 5000 },
-    );
-  }, 20000);
 
   test('should show "No judge assigned" when a judge name is unavailable.', async () => {
     const testCaseDetail: CaseDetailType = {
