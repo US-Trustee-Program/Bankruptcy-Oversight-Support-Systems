@@ -17,6 +17,7 @@ import * as mssql from 'mssql';
 import log from '../../services/logger.service';
 import { handleQueryResult } from '../gateway-helper';
 import { parseTransactionDate } from './dxtr.gateway.helper';
+import { removeExtraSpaces } from '../../utils/string-helper';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -273,7 +274,7 @@ export default class CasesDxtrGateway implements CasesInterface {
           ' ',
           PY_COUNTRY
         )) as address4,
-        PY_TAXID as taxid,
+        PY_TAXID as taxId,
         PY_SSN as ssn
       FROM [dbo].[AO_PY]
       WHERE
@@ -299,12 +300,12 @@ export default class CasesDxtrGateway implements CasesInterface {
     log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
-      debtor = { name: record.name };
+      debtor = { name: removeExtraSpaces(record.name) };
       debtor.address1 = record.address1;
       debtor.address2 = record.address2;
       debtor.address3 = record.address3;
-      debtor.address4 = record.address4?.replace(new RegExp(/\s+/), ' ');
-      debtor.taxid = record.taxid;
+      debtor.address4 = removeExtraSpaces(record.address4);
+      debtor.taxId = record.taxId;
       debtor.ssn = record.ssn;
     });
     return debtor || null;

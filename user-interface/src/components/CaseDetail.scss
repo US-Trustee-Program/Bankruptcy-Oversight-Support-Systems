@@ -24,9 +24,9 @@
             .unassigned-placeholder {
               padding-left: 0.5rem;
             }
-            .case-detail-item-name {
-              padding-right: 0.5rem;
-            }
+          }
+          .case-detail-item-name {
+            padding-right: 0.5rem;
           }
         }
       }
@@ -37,10 +37,7 @@
           }
         }
       }
-      .case-detail-judge-name {
-        padding-left: 0.5rem;
-      }
-      .debtor-information > div {
+      .case-card > div {
         padding-left: 0.5rem;
       }
     }
