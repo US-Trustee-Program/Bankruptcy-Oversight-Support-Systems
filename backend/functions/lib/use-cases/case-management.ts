@@ -1,4 +1,4 @@
-import { ApplicationContext, ObjectKeyVal } from '../adapters/types/basic';
+import { ApplicationContext } from '../adapters/types/basic';
 import {
   CaseDetailsDbResult,
   CaseListDbResult,
@@ -40,7 +40,7 @@ export class CaseManagement {
         message: '',
         count: cases?.length,
         body: {
-          caseList: cases as ObjectKeyVal[],
+          caseList: cases as CaseDetailInterface[],
         },
       };
     } catch (e) {

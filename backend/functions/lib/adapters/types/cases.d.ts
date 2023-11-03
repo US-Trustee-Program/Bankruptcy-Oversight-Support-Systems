@@ -1,8 +1,5 @@
-import { ObjectKeyVal } from './basic';
-
-// TODO: make this implement the IRecordSet<any> interface
 export interface CaseListRecordSet {
-  caseList: ObjectKeyVal[];
+  caseList: CaseDetailInterface[];
   initialized?: boolean;
 }
 
@@ -21,7 +18,15 @@ export interface CaseDetailsDbResult {
   };
 }
 
-export interface CaseDetailInterface extends ObjectKeyVal {
+export interface Party {
+  name: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  address4?: string;
+}
+
+export interface CaseDetailInterface {
   caseId: string;
   chapter: string;
   caseTitle: string;
@@ -33,6 +38,7 @@ export interface CaseDetailInterface extends ObjectKeyVal {
   courtId?: string;
   assignments?: string[];
   judgeName?: string;
+  debtor?: Party;
 }
 
 export interface DxtrTransactionRecord {
@@ -40,6 +46,8 @@ export interface DxtrTransactionRecord {
   txCode: string;
 }
 
-export interface DxtrPartyRecord {
-  partyName: string;
+export interface TransactionDates {
+  closedDates?: Date[];
+  dismissedDates?: Date[];
+  reopenedDates?: Date[];
 }

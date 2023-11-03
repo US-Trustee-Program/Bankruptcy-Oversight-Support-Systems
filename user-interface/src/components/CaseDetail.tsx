@@ -141,9 +141,19 @@ export const CaseDetail = (props: CaseDetailProps) => {
               </div>
               <div className="debtor-information padding-bottom-4 case-card">
                 <h3>Debtor</h3>
-                <span className="debtor-name" data-testid="case-detail-debtor-name">
-                  {caseDetail.debtorName}
-                </span>
+                <div data-testid="case-detail-debtor-name">{caseDetail.debtor.name}</div>
+                {caseDetail.debtor.address1 && (
+                  <div data-testid="case-detail-debtor-address1">{caseDetail.debtor.address1}</div>
+                )}
+                {caseDetail.debtor.address2 && (
+                  <div data-testid="case-detail-debtor-address2">{caseDetail.debtor.address2}</div>
+                )}
+                {caseDetail.debtor.address3 && (
+                  <div data-testid="case-detail-debtor-address3">{caseDetail.debtor.address3}</div>
+                )}
+                {caseDetail.debtor.address4 && (
+                  <div data-testid="case-detail-debtor-address4">{caseDetail.debtor.address4}</div>
+                )}
               </div>
             </div>
           </div>
