@@ -170,18 +170,20 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const expectedParty = {
+      name: 'John Q. Smith',
+      address1: '123 Main St',
+      address2: 'Apt 17',
+      address3: '',
+      address4: 'Queens NY 12345 USA',
+      ssn: '123-45-6789',
+      taxId: '12-3456789',
+    };
+
     const mockQueryParties: QueryResults = {
       success: true,
       results: {
-        recordset: [
-          {
-            name: 'John Q. Smith',
-            address1: '123 Main St',
-            address2: 'Apt 17',
-            address3: '',
-            address4: 'Queens NY 12345 USA',
-          },
-        ],
+        recordset: [expectedParty],
       },
       message: '',
     };
@@ -215,13 +217,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
-    expect(actualResult.debtor).toEqual({
-      name: 'John Q. Smith',
-      address1: '123 Main St',
-      address2: 'Apt 17',
-      address3: '',
-      address4: 'Queens NY 12345 USA',
-    });
+    expect(actualResult.debtor).toEqual(expectedParty);
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -383,6 +379,28 @@ describe('Test DXTR Gateway', () => {
       expect(party).toBeNull();
     });
 
+    test('should return expected debtor name', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              name: 'John   Q.   Smith',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const party = await testCasesDxtrGateway.partyQueryCallback(appContext, queryResult);
+      //store object as constant
+      expect(party).toEqual({
+        name: 'John Q. Smith',
+      });
+    });
+
     test('should return expected address fields', async () => {
       const queryResult: QueryResults = {
         success: true,
@@ -393,7 +411,7 @@ describe('Test DXTR Gateway', () => {
               address1: '123 Main St',
               address2: 'Apt 17',
               address3: '',
-              address4: 'Queens NY 12345 USA',
+              address4: 'Queens NY     12345 USA',
             },
           ],
         },

@@ -105,7 +105,7 @@ describe('Case Detail screen tests', () => {
     );
   }, 20000);
 
-  const testCases = [
+  const debtorAddressTestCases = [
     [undefined, undefined, undefined, undefined],
     ['123 Rabbithole Lane', 'Unit 321', undefined, 'Ciudad Obregón GR 25443, MX'],
     ['123 Rabbithole Lane', undefined, 'Unit 456', 'Ciudad Obregón GR 25443, MX'],
@@ -115,7 +115,7 @@ describe('Case Detail screen tests', () => {
     ['123 Rabbithole Lane', undefined, undefined, undefined],
   ];
 
-  test.each(testCases)(
+  test.each(debtorAddressTestCases)(
     'should display debtor address with various address lines present/absent',
     async (
       address1: MaybeString,
@@ -157,6 +157,64 @@ describe('Case Detail screen tests', () => {
             } else {
               const element = screen.queryByTestId(testId);
               expect(element).not.toBeInTheDocument();
+            }
+          });
+        },
+        { timeout: 5000 },
+      );
+    },
+    20000,
+  );
+
+  const debtorTaxIdTestCases = [
+    [undefined, undefined],
+    ['888-76-5438', undefined],
+    [undefined, '34-8765438'],
+    ['888-76-5438', '34-8765438'],
+  ];
+
+  test.each(debtorTaxIdTestCases)(
+    'should display debtor tax ID information with various IDs lines present/absent',
+    async (ssn: MaybeString, taxId: MaybeString) => {
+      const testCaseDetail: CaseDetailType = {
+        caseId: caseId,
+        chapter: '15',
+        caseTitle: 'The Beach Boys',
+        dateFiled: '01-04-1962',
+        judgeName: rickBHartName,
+        closedDate: '01-08-1963',
+        dismissedDate: '01-08-1964',
+        assignments: [brianWilsonName, carlWilsonName],
+        debtor: {
+          name: 'Roger Rabbit',
+          ssn,
+          taxId,
+        },
+      };
+      render(
+        <BrowserRouter>
+          <CaseDetail caseDetail={testCaseDetail} />
+        </BrowserRouter>,
+      );
+
+      const taxIdIsPresent = !!ssn || !!taxId;
+      await waitFor(
+        async () => {
+          const properties: Array<keyof Debtor> = ['taxId', 'ssn'];
+          properties.forEach((property) => {
+            const testId = `case-detail-debtor-${property}`;
+            if (testCaseDetail.debtor[property]) {
+              const element = screen.getByTestId(testId);
+              expect(element.innerHTML).toContain(testCaseDetail.debtor[property]);
+            } else {
+              const element = screen.queryByTestId(testId);
+              expect(element).not.toBeInTheDocument();
+            }
+            const noTaxIdsElement = screen.queryByTestId('case-detail-debtor-no-taxids');
+            if (taxIdIsPresent) {
+              expect(noTaxIdsElement).not.toBeInTheDocument();
+            } else {
+              expect(noTaxIdsElement).toHaveTextContent('No tax identification is available.');
             }
           });
         },
@@ -292,7 +350,7 @@ describe('Case Detail screen tests', () => {
     );
   });
 
-  test('should display (unassigned) when no assingment exist for case', async () => {
+  test('should display (unassigned) when no assignment exist for case', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
