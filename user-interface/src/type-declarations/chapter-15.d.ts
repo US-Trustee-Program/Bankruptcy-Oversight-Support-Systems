@@ -8,6 +8,14 @@ export interface Chapter15Type {
   assignments?: string[];
 }
 
+export interface Debtor {
+  name: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  address4?: string;
+}
+
 interface CaseDetailType {
   caseId: string;
   chapter: string;
@@ -18,7 +26,7 @@ interface CaseDetailType {
   dismissedDate?: string;
   reopenedDate?: string;
   assignments: string[];
-  debtorName: string;
+  debtor: Debtor;
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {

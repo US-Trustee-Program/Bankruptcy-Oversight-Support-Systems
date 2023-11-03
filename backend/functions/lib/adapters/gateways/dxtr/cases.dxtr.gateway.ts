@@ -1,21 +1,29 @@
 import { CasesInterface } from '../../../use-cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
-import { CaseDetailInterface, DxtrPartyRecord, DxtrTransactionRecord } from '../../types/cases';
 import {
-  getDate,
+  CaseDetailInterface,
+  Party,
+  DxtrTransactionRecord,
+  TransactionDates,
+} from '../../types/cases';
+import {
   getMonthDayYearStringFromDate,
   getYearMonthDayStringFromDate,
+  sortDates,
 } from '../../utils/date-helper';
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import log from '../../services/logger.service';
-import { CamsError } from '../../../common-errors/cams-error';
 import { handleQueryResult } from '../gateway-helper';
+import { parseTransactionDate } from './dxtr.gateway.helper';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
 const MANHATTAN_GROUP_DESIGNATOR = 'NY';
+const closedByCourtTxCode = 'CBC';
+const dismissedByCourtTxCode = 'CDC';
+const reopenedDate = 'OCO';
 
 function sqlSelectList(top: string, chapter: string) {
   // THIS SETS US UP FOR SQL INJECTION IF WE EVER ACCEPT top OR chapter FROM USER INPUT.
@@ -42,24 +50,20 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const bCase = await this.queryCase(context, courtDiv, dxtrCaseId);
 
-    const { closedDates, dismissedDates, reopenedDates } = await this.queryTransactions(
-      context,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-    if (closedDates.length > 0) {
-      bCase.closedDate = getMonthDayYearStringFromDate(closedDates[0]);
+    const transactionDates = await this.queryTransactions(context, bCase.dxtrId, bCase.courtId);
+    if (transactionDates.closedDates.length > 0) {
+      bCase.closedDate = getMonthDayYearStringFromDate(transactionDates.closedDates[0]);
     }
 
-    if (dismissedDates.length > 0) {
-      bCase.dismissedDate = getMonthDayYearStringFromDate(dismissedDates[0]);
+    if (transactionDates.dismissedDates.length > 0) {
+      bCase.dismissedDate = getMonthDayYearStringFromDate(transactionDates.dismissedDates[0]);
     }
 
-    if (reopenedDates.length > 0) {
-      bCase.reopenedDate = getMonthDayYearStringFromDate(reopenedDates[0]);
+    if (transactionDates.reopenedDates.length > 0) {
+      bCase.reopenedDate = getMonthDayYearStringFromDate(transactionDates.reopenedDates[0]);
     }
 
-    bCase.debtorName = await this.queryParties(context, bCase.dxtrId, bCase.courtId);
+    bCase.debtor = await this.queryParties(context, bCase.dxtrId, bCase.courtId);
 
     return bCase;
   }
@@ -101,14 +105,14 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    if (queryResult.success) {
-      log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (queryResult.results as mssql.IResult<any>).recordset;
-    } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
-    }
+    return Promise.resolve(
+      handleQueryResult<CaseDetailInterface[]>(
+        context,
+        queryResult,
+        MODULENAME,
+        this.casesQueryCallback,
+      ),
+    );
   }
 
   private async queryCase(
@@ -149,20 +153,21 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    if (queryResult.success) {
-      log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
-
-      return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
-    } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
-    }
+    return Promise.resolve(
+      handleQueryResult<CaseDetailInterface>(
+        context,
+        queryResult,
+        MODULENAME,
+        this.caseDetailsQueryCallback,
+      ),
+    );
   }
 
   private async queryTransactions(
     context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<{ closedDates: Date[]; dismissedDates: Date[]; reopenedDates: Date[] }> {
+  ): Promise<TransactionDates> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -177,23 +182,17 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: courtId,
     });
 
-    const closedByCourtTxCode = 'CBC';
-
     input.push({
       name: 'closedByCourtTxCode',
       type: mssql.VarChar,
       value: closedByCourtTxCode,
     });
 
-    const dismissedByCourtTxCode = 'CDC';
-
     input.push({
       name: 'dismissedByCourtTxCode',
       type: mssql.VarChar,
       value: dismissedByCourtTxCode,
     });
-
-    const reopenedDate = 'OCO';
 
     input.push({
       name: 'reopenedDate',
@@ -216,78 +215,21 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    const closedDates: Date[] = [];
-    const dismissedDates: Date[] = [];
-    const reopenedDates: Date[] = [];
-
-    function parseTransactionDate(record: DxtrTransactionRecord): Date {
-      const transactionYearStart = 19;
-      const transactionDateYear = record.txRecord.slice(
-        transactionYearStart,
-        transactionYearStart + 2,
-      );
-
-      const transactionMonthStart = 21;
-      const transactionDateMonth = record.txRecord.slice(
-        transactionMonthStart,
-        transactionMonthStart + 2,
-      );
-
-      const transactionDayStart = 23;
-      const transactionDateDay = record.txRecord.slice(
-        transactionDayStart,
-        transactionDayStart + 2,
-      );
-
-      // `new Date()` uses a base year of 1900, so we add 2000 to the 2-digit year
-      const baseYear = 2000;
-      return getDate(
-        parseInt(transactionDateYear) + baseYear,
-        parseInt(transactionDateMonth),
-        parseInt(transactionDateDay),
-      );
-    }
-
-    if (queryResult.success) {
-      log.debug(context, MODULENAME, `Transaction results received from DXTR:`, queryResult);
-      (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
-        const transactionDate = parseTransactionDate(record);
-
-        if (record.txCode === closedByCourtTxCode) {
-          closedDates.push(transactionDate);
-        } else if (record.txCode === dismissedByCourtTxCode) {
-          dismissedDates.push(transactionDate);
-        } else {
-          reopenedDates.push(transactionDate);
-        }
-      });
-
-      closedDates.sort((a: Date, b: Date) => {
-        // sort in order of newest to oldest
-        return b.valueOf() - a.valueOf();
-      });
-
-      dismissedDates.sort((a: Date, b: Date) => {
-        // sort in order of newest to oldest
-        return b.valueOf() - a.valueOf();
-      });
-
-      reopenedDates.sort((a: Date, b: Date) => {
-        // sort in order of newest to oldest
-        return b.valueOf() - a.valueOf();
-      });
-
-      return { closedDates, dismissedDates, reopenedDates };
-    } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
-    }
+    return Promise.resolve(
+      handleQueryResult<TransactionDates>(
+        context,
+        queryResult,
+        MODULENAME,
+        this.transactionQueryCallback,
+      ),
+    );
   }
 
   private async queryParties(
     context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<string> {
+  ): Promise<Party> {
     const debtorPartyCode = 'db';
     const input: DbTableFieldSpec[] = [];
 
@@ -318,7 +260,19 @@ export default class CasesDxtrGateway implements CasesInterface {
           PY_LAST_NAME,
           ' ',
           PY_GENERATION
-        )) as partyName
+        )) as name,
+        PY_ADDRESS1 as address1,
+        PY_ADDRESS2 as address2,
+        PY_ADDRESS3 as address3,
+        TRIM(CONCAT(
+          PY_CITY,
+          ' ',
+          PY_STATE,
+          ' ',
+          PY_ZIP,
+          ' ',
+          PY_COUNTRY
+        )) as address4
       FROM [dbo].[AO_PY]
       WHERE
         CS_CASEID = @dxtrId AND
@@ -334,16 +288,57 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return Promise.resolve(
-      handleQueryResult<string>(context, queryResult, MODULENAME, this.partyQueryCallback),
+      handleQueryResult<Party>(context, queryResult, MODULENAME, this.partyQueryCallback),
     );
   }
 
-  private partyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
-    let partyName = '';
+  partyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+    let debtor: Party;
     log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
-    (queryResult.results as mssql.IResult<DxtrPartyRecord>).recordset.forEach((record) => {
-      partyName = record.partyName;
+
+    (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
+      debtor = { name: record.name };
+      debtor.address1 = record.address1;
+      debtor.address2 = record.address2;
+      debtor.address3 = record.address3;
+      debtor.address4 = record.address4?.replace(new RegExp(/\s+/), ' ');
     });
-    return partyName;
+    return debtor || null;
+  }
+
+  transactionQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+    const closedDates: Date[] = [];
+    const dismissedDates: Date[] = [];
+    const reopenedDates: Date[] = [];
+    log.debug(context, MODULENAME, `Transaction results received from DXTR:`, queryResult);
+    (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
+      const transactionDate = parseTransactionDate(record);
+
+      if (record.txCode === closedByCourtTxCode) {
+        closedDates.push(transactionDate);
+      } else if (record.txCode === dismissedByCourtTxCode) {
+        dismissedDates.push(transactionDate);
+      } else {
+        reopenedDates.push(transactionDate);
+      }
+    });
+
+    sortDates(closedDates);
+    sortDates(dismissedDates);
+    sortDates(reopenedDates);
+
+    return { closedDates, dismissedDates, reopenedDates } as TransactionDates;
+  }
+
+  caseDetailsQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+    log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
+
+    return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
+  }
+
+  casesQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+    log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
+
+    return (queryResult.results as mssql.IResult<CaseDetailInterface[]>).recordset;
   }
 }

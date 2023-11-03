@@ -55,3 +55,13 @@ function padDateElement(value: number) {
   if (value < 10) return '0' + value;
   return value.toString();
 }
+
+export function sortDates(dates: Date[], order: 'chronological' | 'reverse' = 'reverse') {
+  dates.sort((a: Date, b: Date) => {
+    if (order === 'chronological') {
+      return a.valueOf() - b.valueOf();
+    } else {
+      return b.valueOf() - a.valueOf();
+    }
+  });
+}
