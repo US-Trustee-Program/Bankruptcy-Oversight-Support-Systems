@@ -24,6 +24,8 @@ export interface Party {
   address2?: string;
   address3?: string;
   address4?: string;
+  taxid?: string;
+  ssn?: string;
 }
 
 export interface CaseDetailInterface {

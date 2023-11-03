@@ -14,8 +14,9 @@ export interface Debtor {
   address2?: string;
   address3?: string;
   address4?: string;
+  taxid?: string;
+  ssn?: string;
 }
-
 interface CaseDetailType {
   caseId: string;
   chapter: string;

@@ -1,0 +1,16 @@
+{
+  "name": "cams",
+  "version": "0.1.0",
+  "private": true,
+  "license": "CC0 v1.0",
+  "description": "Bankruptcy Oversight Support System - Parent Project",
+  "scripts": {
+    "start:backend": "cd backend/functions && npm run start",
+    "start:frontend": "cd user-interface && npm run start",
+    "build": "npm run build:common && npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend/functions && npm run build",
+    "build:frontend": "cd user-interface && npm run build",
+    "build:common": "cd common && npm run build"
+  }
+}
+

@@ -272,7 +272,9 @@ export default class CasesDxtrGateway implements CasesInterface {
           PY_ZIP,
           ' ',
           PY_COUNTRY
-        )) as address4
+        )) as address4,
+        PY_TAXID as taxid,
+        PY_SSN as ssn
       FROM [dbo].[AO_PY]
       WHERE
         CS_CASEID = @dxtrId AND
@@ -302,6 +304,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       debtor.address2 = record.address2;
       debtor.address3 = record.address3;
       debtor.address4 = record.address4?.replace(new RegExp(/\s+/), ' ');
+      debtor.taxid = record.taxid;
+      debtor.ssn = record.ssn;
     });
     return debtor || null;
   }
