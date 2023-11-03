@@ -2,7 +2,7 @@ import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail } from './CaseDetail';
 import { getCaseNumber } from '@/utils/formatCaseNumber';
-import { CaseDetailType } from '@/type-declarations/chapter-15';
+import { CaseDetailType, Debtor } from '@/type-declarations/chapter-15';
 import { BrowserRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
@@ -13,6 +13,9 @@ const trialAttorneyRole = 'Trial Attorney';
 const rickBHartName = 'Rick B Hart';
 describe('Case Detail screen tests', () => {
   const env = process.env;
+
+  type MaybeString = string | undefined;
+
   beforeAll(() => {
     process.env = {
       ...env,
@@ -30,7 +33,13 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
-      debtorName: 'Roger Rabbit',
+      debtor: {
+        name: 'Roger Rabbit',
+        address1: '123 Rabbithole Lane',
+        address2: 'Apt 117',
+        address3: 'Suite C',
+        address4: 'Ciudad Obregón GR 25443, MX',
+      },
     };
     render(
       <BrowserRouter>
@@ -78,7 +87,122 @@ describe('Case Detail screen tests', () => {
         expect(judgeName).toHaveTextContent(rickBHartName);
 
         const debtorName = screen.getByTestId('case-detail-debtor-name');
-        expect(debtorName).toHaveTextContent(testCaseDetail.debtorName);
+        expect(debtorName).toHaveTextContent(testCaseDetail.debtor.name);
+
+        const properties: Array<keyof Debtor> = ['address1', 'address2', 'address3', 'address4'];
+        properties.forEach((property) => {
+          const testId = `case-detail-debtor-${property}`;
+          if (testCaseDetail.debtor[property]) {
+            const element = screen.getByTestId(testId);
+            expect(element.innerHTML).toEqual(testCaseDetail.debtor[property]);
+          } else {
+            const element = screen.queryByTestId(testId);
+            expect(element).not.toBeInTheDocument();
+          }
+        });
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
+
+  const testCases = [
+    [undefined, undefined, undefined, undefined],
+    ['123 Rabbithole Lane', 'Unit 321', undefined, 'Ciudad Obregón GR 25443, MX'],
+    ['123 Rabbithole Lane', undefined, 'Unit 456', 'Ciudad Obregón GR 25443, MX'],
+    ['123 Rabbithole Lane', undefined, undefined, 'Ciudad Obregón GR 25443, MX'],
+    ['123 Rabbithole Lane', 'Unit', '111', 'Ciudad Obregón GR 25443, MX'],
+    ['123 Rabbithole Lane', 'Ciudad Obregón GR 25443, MX', undefined, undefined],
+    ['123 Rabbithole Lane', undefined, undefined, undefined],
+  ];
+
+  test.each(testCases)(
+    'should display debtor address with missing address2 and address3 for the case',
+    async (
+      address1: MaybeString,
+      address2: MaybeString,
+      address3: MaybeString,
+      address4: MaybeString,
+    ) => {
+      const testCaseDetail: CaseDetailType = {
+        caseId: caseId,
+        chapter: '15',
+        caseTitle: 'The Beach Boys',
+        dateFiled: '01-04-1962',
+        judgeName: rickBHartName,
+        closedDate: '01-08-1963',
+        dismissedDate: '01-08-1964',
+        assignments: [brianWilsonName, carlWilsonName],
+        debtor: {
+          name: 'Roger Rabbit',
+          address1,
+          address2,
+          address3,
+          address4,
+        },
+      };
+      render(
+        <BrowserRouter>
+          <CaseDetail caseDetail={testCaseDetail} />
+        </BrowserRouter>,
+      );
+
+      await waitFor(
+        async () => {
+          const properties: Array<keyof Debtor> = ['address1', 'address2', 'address3', 'address4'];
+          properties.forEach((property) => {
+            const testId = `case-detail-debtor-${property}`;
+            if (testCaseDetail.debtor[property]) {
+              const element = screen.getByTestId(testId);
+              expect(element.innerHTML).toEqual(testCaseDetail.debtor[property]);
+            } else {
+              const element = screen.queryByTestId(testId);
+              expect(element).not.toBeInTheDocument();
+            }
+          });
+        },
+        { timeout: 5000 },
+      );
+    },
+    20000,
+  );
+
+  test('should display debtor address with missing address3 for the case', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [brianWilsonName, carlWilsonName],
+      debtor: {
+        name: 'Roger Rabbit',
+        address1: '123 Rabbithole Lane',
+        address2: 'Apt 117',
+        address3: undefined,
+        address4: 'Ciudad Obregón GR 25443, MX',
+      },
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const debtorAddress1 = screen.getByTestId('case-detail-debtor-address1');
+        expect(debtorAddress1.innerHTML).toEqual(testCaseDetail.debtor.address1);
+
+        const debtorAddress2 = screen.getByTestId('case-detail-debtor-address2');
+        expect(debtorAddress2.innerHTML).toEqual(testCaseDetail.debtor.address2);
+
+        const debtorAddress3 = screen.queryByTestId('case-detail-debtor-address3');
+        expect(debtorAddress3).not.toBeInTheDocument();
+
+        const debtorAddress4 = screen.getByTestId('case-detail-debtor-address4');
+        expect(debtorAddress4.innerHTML).toEqual(testCaseDetail.debtor.address4);
       },
       { timeout: 5000 },
     );
@@ -93,7 +217,9 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
-      debtorName: 'Roger Rabbit',
+      debtor: {
+        name: 'Roger Rabbit',
+      },
     };
     render(
       <BrowserRouter>
@@ -119,7 +245,9 @@ describe('Case Detail screen tests', () => {
       judgeName: rickBHartName,
       closedDate: '01-08-1963',
       assignments: [brianWilsonName, carlWilsonName],
-      debtorName: 'Roger Rabbit',
+      debtor: {
+        name: 'Roger Rabbit',
+      },
     };
     render(
       <BrowserRouter>
@@ -146,7 +274,9 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
       assignments: [brianWilsonName, carlWilsonName],
-      debtorName: 'Roger Rabbit',
+      debtor: {
+        name: 'Roger Rabbit',
+      },
     };
     render(
       <BrowserRouter>
@@ -179,7 +309,9 @@ describe('Case Detail screen tests', () => {
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
       assignments: [brianWilsonName, carlWilsonName],
-      debtorName: 'Roger Rabbit',
+      debtor: {
+        name: 'Roger Rabbit',
+      },
     };
     render(
       <BrowserRouter>
@@ -212,7 +344,9 @@ describe('Case Detail screen tests', () => {
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [],
-      debtorName: 'Roger Rabbit',
+      debtor: {
+        name: 'Roger Rabbit',
+      },
     };
     render(
       <BrowserRouter>
