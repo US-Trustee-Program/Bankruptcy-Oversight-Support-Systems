@@ -56,6 +56,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | --- | --- | --- | --- |
 | **LaunchDarkly** | | | |
 | FEATURE_FLAG_SDK_KEY | Secrets | --- | Optional SDK key to enable LaunchDarkly client |
+| --- | --- | --- | --- |
 | **Azure Log Anlaytics** | | | |
 | AZ_ANALYTICS_WORKSPACE_ID | Secrets | --- | Azure resource id of Log Analytics. |
 | --- | --- | --- | --- |
@@ -64,3 +65,4 @@ Note required environment variables and secrets defined in build tool for pipeli
 | --- | --- | --- | --- |
 | **Application** | --- | --- | --- |
 | STARTING_MONTH | Variable | --- | Used by application for filtering cases by date range. |
+| USTP_ISSUE_COLLECTOR_HASH | Secrets | --- | USTP Only parameter used for CSP policy |
