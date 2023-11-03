@@ -3,6 +3,7 @@
 - [Home](/)
 - [< Back](/architecture/)
 - [API Technology](/architecture/decision-records/ApiTechnology.md)
+- [Application Context](/architecture/decision-records/ApplicationContext.md)
 - [Azure Resource Manager](/architecture/decision-records/AzureResourceManager.md)
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
 - [Deployment](/architecture/decision-records/Deployment.md)
