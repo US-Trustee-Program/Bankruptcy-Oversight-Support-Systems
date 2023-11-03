@@ -14,6 +14,8 @@ export interface Debtor {
   address2?: string;
   address3?: string;
   address4?: string;
+  taxId?: string;
+  ssn?: string;
 }
 
 interface CaseDetailType {
@@ -39,8 +41,4 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
     caseDetails: CaseDetailType;
   };
-}
-export interface StaffType {
-  name: string;
-  type: string;
 }
