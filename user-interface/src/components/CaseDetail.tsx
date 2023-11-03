@@ -135,24 +135,81 @@ export const CaseDetail = (props: CaseDetailProps) => {
               </div>
               <div className="judge-information padding-bottom-4 case-card">
                 <h3>Judge</h3>
-                <span className="case-detail-judge-name" data-testid="case-detail-judge-name">
+                <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
                   {caseDetail.judgeName || 'No judge assigned'}
-                </span>
+                </div>
               </div>
               <div className="debtor-information padding-bottom-4 case-card">
                 <h3>Debtor</h3>
-                <div data-testid="case-detail-debtor-name">{caseDetail.debtor.name}</div>
-                {caseDetail.debtor.address1 && (
-                  <div data-testid="case-detail-debtor-address1">{caseDetail.debtor.address1}</div>
+                <div
+                  className="padding-bottom-1"
+                  data-testid="case-detail-debtor-name"
+                  aria-label="debtor name"
+                >
+                  {caseDetail.debtor.name}
+                </div>
+                <div>
+                  {caseDetail.debtor.address1 && (
+                    <div
+                      data-testid="case-detail-debtor-address1"
+                      aria-label="debtor address line 1"
+                    >
+                      {caseDetail.debtor.address1}
+                    </div>
+                  )}
+                  {caseDetail.debtor.address2 && (
+                    <div
+                      data-testid="case-detail-debtor-address2"
+                      aria-label="debtor address line 2"
+                    >
+                      {caseDetail.debtor.address2}
+                    </div>
+                  )}
+                  {caseDetail.debtor.address3 && (
+                    <div
+                      data-testid="case-detail-debtor-address3"
+                      aria-label="debtor address line 3"
+                    >
+                      {caseDetail.debtor.address3}
+                    </div>
+                  )}
+                  {caseDetail.debtor.address4 && (
+                    <div
+                      data-testid="case-detail-debtor-address4"
+                      aria-label="debtor city, state, zip, country"
+                    >
+                      {caseDetail.debtor.address4}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="additional-debtor-information padding-bottom-4 case-card">
+                <h3>Additional Debtor Info</h3>
+                {caseDetail.debtor.taxId && (
+                  <div
+                    data-testid="case-detail-debtor-taxId"
+                    aria-label="debtor employer identification number"
+                  >
+                    <span className="case-detail-item-name">EIN:</span>
+                    <span className="case-detail-item-value">{caseDetail.debtor.taxId}</span>
+                  </div>
                 )}
-                {caseDetail.debtor.address2 && (
-                  <div data-testid="case-detail-debtor-address2">{caseDetail.debtor.address2}</div>
+                {caseDetail.debtor.ssn && (
+                  <div
+                    data-testid="case-detail-debtor-ssn"
+                    aria-label="debtor social security number"
+                  >
+                    <span className="case-detail-item-name">SSN/ITIN:</span>
+                    <span className="case-detail-item-value">{caseDetail.debtor.ssn}</span>
+                  </div>
                 )}
-                {caseDetail.debtor.address3 && (
-                  <div data-testid="case-detail-debtor-address3">{caseDetail.debtor.address3}</div>
-                )}
-                {caseDetail.debtor.address4 && (
-                  <div data-testid="case-detail-debtor-address4">{caseDetail.debtor.address4}</div>
+                {!caseDetail.debtor.taxId && !caseDetail.debtor.ssn && (
+                  <div
+                    data-testid="case-detail-debtor-no-taxids"
+                    aria-label="debtor tax identification"
+                  >
+                    No tax identification is available.
+                  </div>
                 )}
               </div>
             </div>
