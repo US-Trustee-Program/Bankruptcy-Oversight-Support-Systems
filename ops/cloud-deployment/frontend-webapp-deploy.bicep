@@ -120,9 +120,9 @@ param createAlerts bool
 @description('Target backend API server host. Used to set Content-Security-Policy')
 param targetApiServerHost string
 
-@description('USTP Issue Collector hash. Used to set Content-Security-Policy')
+@description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy')
 @secure()
-param ustpIssueCollectorHash string
+param ustpIssueCollectorHash string = ''
 
 module webappSubnet './subnet/network-subnet.bicep' = {
   name: '${webappName}-subnet-module'
