@@ -1,5 +1,5 @@
 import { ColumnNames, TableRecordHelper } from '../types';
-import { assert, toSqlInsertStatements } from '../utility';
+import { assert, toSqlInsertStatements, toSqlUpdateStatements } from '../utility';
 
 /*
 
@@ -185,4 +185,17 @@ export class AO_PY_Record implements AO_PY_RecordProps, TableRecordHelper {
 
 export function toAoPyInsertStatements(records: Array<AO_PY_Record>): string[] {
   return toSqlInsertStatements(AO_PY_TableName, AO_PY_InsertableColumnNames, records);
+}
+
+export function toAoPyUpdateStatements(
+  records: Array<AO_PY_Record>,
+  omitColumnsNames: Array<string> = [],
+): Array<string> {
+  return toSqlUpdateStatements(
+    AO_PY_TableName,
+    AO_PY_ColumnNames,
+    ['CS_CASEID', 'PY_ROLE'],
+    omitColumnsNames,
+    records,
+  );
 }
