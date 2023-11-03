@@ -54,6 +54,28 @@ To run the script:
 ts-node test-data/scripts/caseParties.ts < input_file
 ```
 
+### Update Case Party Addresses
+
+The updateCasePartyAddresses.ts script generates SQL statements to update case party addresses in the AO_PY table.
+
+updateCasePartyAddresses.ts takes input from a file piped into it on stdin.
+File format for input is in the form of CS Case Id, Court Id and role separated by comma, per line.
+
+Example input file format:
+
+```csv
+12345,0208,db
+23456,0208,db
+34578,0210,db
+```
+
+To run the script:
+
+```sh
+# Assumes the CSV input is in the `data` directory with file name `input_file.csv`.
+cat data/input_file.csv | ts-node test-data/scripts/updateCasePartyAddresses.ts > data/update.sql
+```
+
 ## Domain Models
 
 See existing scripts in the `test-data/domain` directory for examples.
