@@ -17,6 +17,7 @@ export interface Debtor {
   taxId?: string;
   ssn?: string;
 }
+
 interface CaseDetailType {
   caseId: string;
   chapter: string;
@@ -40,8 +41,4 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
     caseDetails: CaseDetailType;
   };
-}
-export interface StaffType {
-  name: string;
-  type: string;
 }
