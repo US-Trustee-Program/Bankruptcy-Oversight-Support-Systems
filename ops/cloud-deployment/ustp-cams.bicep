@@ -70,9 +70,9 @@ param analyticsResourceGroupName string
 @description('Action Group Name for alerts')
 param actionGroupName string
 
-@description('USTP Issue Collector hash. Used to set Content-Security-Policy')
+@description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy')
 @secure()
-param ustpIssueCollectorHash string
+param ustpIssueCollectorHash string = ''
 
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
   name: '${actionGroupName}-action-group-module'
