@@ -173,12 +173,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
                       {caseDetail.debtor.address3}
                     </div>
                   )}
-                  {caseDetail.debtor.address4 && (
+                  {caseDetail.debtor.cityStateZipCountry && (
                     <div
-                      data-testid="case-detail-debtor-address4"
+                      data-testid="case-detail-debtor-cityStateZipCountry"
                       aria-label="debtor city, state, zip, country"
                     >
-                      {caseDetail.debtor.address4}
+                      {caseDetail.debtor.cityStateZipCountry}
                     </div>
                   )}
                 </div>

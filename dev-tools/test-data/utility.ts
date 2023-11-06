@@ -1,3 +1,4 @@
+import { Faker, fakerEN_GB, fakerEN_US, fakerES_MX } from '@faker-js/faker';
 import { ColumnNames, TableRecordHelper } from './types';
 
 /**
@@ -97,4 +98,28 @@ export function toSqlUpdateStatements(
       record.toInsertableArray(),
     );
   });
+}
+
+export function randomTruth() {
+  return randomInt(2) > 0;
+}
+
+export function randomInt(range: number) {
+  return Math.floor(Math.random() * range);
+}
+
+export function getFakerLocale(): Faker {
+  const locales = [
+    { faker: fakerEN_US, countryCode: 'US', countryName: 'United States' },
+    { faker: fakerEN_GB, countryCode: 'UK', countryName: 'United Kingdom' },
+    { faker: fakerES_MX, countryCode: 'MX', countryName: 'Mexico' },
+  ];
+  const { faker, countryCode, countryName } = locales[randomInt(locales.length)];
+  faker.location.countryCode = () => {
+    return countryCode;
+  };
+  faker.location.country = () => {
+    return countryName;
+  };
+  return faker;
 }

@@ -175,7 +175,7 @@ describe('Test DXTR Gateway', () => {
       address1: '123 Main St',
       address2: 'Apt 17',
       address3: '',
-      address4: 'Queens NY 12345 USA',
+      cityStateZipCountry: 'Queens NY 12345 USA',
       ssn: '123-45-6789',
       taxId: '12-3456789',
     };
@@ -184,6 +184,21 @@ describe('Test DXTR Gateway', () => {
       success: true,
       results: {
         recordset: [expectedParty],
+      },
+      message: '',
+    };
+
+    const expectedDebtorAttorney = {
+      name: 'James Brown Esq.',
+      address1: '456 South St',
+      cityStateZipCountry: 'Queens NY 12345 USA',
+      phone: '101-345-8765',
+    };
+
+    const mockQueryDebtorAttorney: QueryResults = {
+      success: true,
+      results: {
+        recordset: [expectedDebtorAttorney],
       },
       message: '',
     };
@@ -199,6 +214,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryParties);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryDebtorAttorney);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
@@ -218,6 +237,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
     expect(actualResult.debtor).toEqual(expectedParty);
+    expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -263,6 +283,21 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const expectedDebtorAttorney = {
+      name: 'James Brown Esq.',
+      address1: '456 South St',
+      cityStateZipCountry: 'Queens NY 12345 USA',
+      phone: '101-345-8765',
+    };
+
+    const mockQueryDebtorAttorney: QueryResults = {
+      success: true,
+      results: {
+        recordset: [expectedDebtorAttorney],
+      },
+      message: '',
+    };
+
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
     });
@@ -273,6 +308,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryParties);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryDebtorAttorney);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
@@ -293,6 +332,13 @@ describe('Test DXTR Gateway', () => {
     );
     // getDebtors
     expect(querySpy.mock.calls[2][3]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
+        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
+      ]),
+    );
+    // getDebtorAttorneys
+    expect(querySpy.mock.calls[3][3]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
@@ -411,7 +457,7 @@ describe('Test DXTR Gateway', () => {
               address1: '123 Main St',
               address2: 'Apt 17',
               address3: '',
-              address4: 'Queens NY     12345 USA',
+              cityStateZipCountry: 'Queens NY     12345 USA',
             },
           ],
         },
@@ -427,7 +473,87 @@ describe('Test DXTR Gateway', () => {
         address1: '123 Main St',
         address2: 'Apt 17',
         address3: '',
-        address4: 'Queens NY 12345 USA',
+        cityStateZipCountry: 'Queens NY 12345 USA',
+      });
+    });
+  });
+
+  describe('debtorAttorneyQueryCallback', () => {
+    test('should return null when no results are returned', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
+        appContext,
+        queryResult,
+      );
+
+      expect(attorney).toBeNull();
+    });
+
+    test('should return expected attorney name', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              name: 'John   Q.   Smith',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
+        appContext,
+        queryResult,
+      );
+
+      expect(attorney).toEqual({
+        name: 'John Q. Smith',
+      });
+    });
+
+    test('should return expected attorney fields', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              name: 'John Q. Smith',
+              address1: '123 Main St',
+              address2: 'Apt 17',
+              address3: '',
+              cityStateZipCountry: 'Queens NY     12345 USA',
+              phone: '9876543210',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+      const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
+        appContext,
+        queryResult,
+      );
+
+      expect(attorney).toEqual({
+        name: 'John Q. Smith',
+        address1: '123 Main St',
+        address2: 'Apt 17',
+        address3: '',
+        cityStateZipCountry: 'Queens NY 12345 USA',
+        phone: '9876543210',
       });
     });
   });
