@@ -1,35 +1,12 @@
 import { AO_PY_Record, AO_PY_RecordProps, toAoPyUpdateStatements } from '../tables/AO_PY';
-import { Faker, fakerEN_GB, fakerEN_US, fakerES_MX } from '@faker-js/faker';
 import readline from 'node:readline';
+import { getFakerLocale, randomTruth } from '../utility';
 
 interface partyGeneratorProps {
   csCaseId: string;
   courtId: string;
   role: string;
   chapter?: string;
-}
-
-function getFakerLocale(): Faker {
-  const locales = [
-    { faker: fakerEN_US, countryCode: 'US', countryName: 'United States' },
-    { faker: fakerEN_GB, countryCode: 'UK', countryName: 'United Kingdom' },
-    { faker: fakerES_MX, countryCode: 'MX', countryName: 'Mexico' },
-  ];
-  const { faker, countryCode, countryName } = locales[randomInt(locales.length)];
-  faker.location.countryCode = () => {
-    return countryCode;
-  };
-  faker.location.country = () => {
-    return countryName;
-  };
-  return faker;
-}
-
-function randomTruth() {
-  return randomInt(2) > 0;
-}
-function randomInt(range: number) {
-  return Math.floor(Math.random() * range);
 }
 
 function partyGenerator(props: partyGeneratorProps): AO_PY_RecordProps {

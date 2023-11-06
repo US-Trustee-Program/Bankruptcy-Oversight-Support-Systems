@@ -38,7 +38,7 @@ describe('Case Detail screen tests', () => {
         address1: '123 Rabbithole Lane',
         address2: 'Apt 117',
         address3: 'Suite C',
-        address4: 'Ciudad Obregón GR 25443, MX',
+        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
       },
     };
     render(
@@ -89,7 +89,12 @@ describe('Case Detail screen tests', () => {
         const debtorName = screen.getByTestId('case-detail-debtor-name');
         expect(debtorName).toHaveTextContent(testCaseDetail.debtor.name);
 
-        const properties: Array<keyof Debtor> = ['address1', 'address2', 'address3', 'address4'];
+        const properties: Array<keyof Debtor> = [
+          'address1',
+          'address2',
+          'address3',
+          'cityStateZipCountry',
+        ];
         properties.forEach((property) => {
           const testId = `case-detail-debtor-${property}`;
           if (testCaseDetail.debtor[property]) {
@@ -121,7 +126,7 @@ describe('Case Detail screen tests', () => {
       address1: MaybeString,
       address2: MaybeString,
       address3: MaybeString,
-      address4: MaybeString,
+      cityStateZipCountry: MaybeString,
     ) => {
       const testCaseDetail: CaseDetailType = {
         caseId: caseId,
@@ -137,7 +142,7 @@ describe('Case Detail screen tests', () => {
           address1,
           address2,
           address3,
-          address4,
+          cityStateZipCountry,
         },
       };
       render(
@@ -148,7 +153,12 @@ describe('Case Detail screen tests', () => {
 
       await waitFor(
         async () => {
-          const properties: Array<keyof Debtor> = ['address1', 'address2', 'address3', 'address4'];
+          const properties: Array<keyof Debtor> = [
+            'address1',
+            'address2',
+            'address3',
+            'cityStateZipCountry',
+          ];
           properties.forEach((property) => {
             const testId = `case-detail-debtor-${property}`;
             if (testCaseDetail.debtor[property]) {

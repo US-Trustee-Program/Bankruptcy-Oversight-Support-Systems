@@ -23,11 +23,18 @@ export interface Party {
   address1?: string;
   address2?: string;
   address3?: string;
-  address4?: string;
+  cityStateZipCountry?: string;
   taxId?: string;
   ssn?: string;
 }
-
+export interface DebtorAttorney {
+  name: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  cityStateZipCountry?: string;
+  phone?: string;
+}
 export interface CaseDetailInterface {
   caseId: string;
   chapter: string;
@@ -41,6 +48,7 @@ export interface CaseDetailInterface {
   assignments?: string[];
   judgeName?: string;
   debtor?: Party;
+  debtorAttorney?: DebtorAttorney;
 }
 
 export interface DxtrTransactionRecord {
