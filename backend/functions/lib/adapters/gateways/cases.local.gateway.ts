@@ -41,11 +41,14 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail = cases.find((bCase) => {
         return bCase.caseId === caseId;
       });
+      const debtorAttorneys = gatewayHelper.getAllDebtorAttorneysMockExtract();
 
+      console.log(debtorAttorneys);
       caseDetail.dateFiled = getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled));
       caseDetail.dateClosed = getMonthDayYearStringFromDate(new Date(caseDetail.dateClosed));
       caseDetail.dismissedDate = getMonthDayYearStringFromDate(new Date(caseDetail.dismissedDate));
       caseDetail.reopenedDate = getMonthDayYearStringFromDate(new Date(caseDetail.reopenedDate));
+      caseDetail.debtorAttorney = debtorAttorneys.get(caseDetail.caseId);
     } catch (err) {
       log.error(context, MODULE_NAME, `Failed to read mock case detail for ${caseId}.`, err);
       const message = (err as Error).message;
