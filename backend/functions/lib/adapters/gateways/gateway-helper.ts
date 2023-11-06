@@ -1,8 +1,9 @@
 import * as fs from 'fs';
-import { CaseDetailInterface } from '../types/cases';
+import { CaseDetailInterface, DebtorAttorney } from '../types/cases';
 import { QueryResults } from '../types/database';
 import { ApplicationContext } from '../types/basic';
 import { CamsError } from '../../common-errors/cams-error';
+import { ATTORNEYS } from '../../testing/mock-data/debtor-attorneys.mock';
 
 export class GatewayHelper {
   getAllCasesMockExtract(): CaseDetailInterface[] {
@@ -14,6 +15,10 @@ export class GatewayHelper {
     } catch (err) {
       throw Error(err);
     }
+  }
+
+  getAllDebtorAttorneysMockExtract(): Map<string, DebtorAttorney> {
+    return ATTORNEYS;
   }
 }
 
