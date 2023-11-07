@@ -10,7 +10,7 @@ export class CasesController {
 
   constructor(context: ApplicationContext) {
     this.context = context;
-    this.caseManagement = new CaseManagement();
+    this.caseManagement = new CaseManagement(this.context);
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {

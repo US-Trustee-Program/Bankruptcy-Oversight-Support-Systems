@@ -12,9 +12,9 @@ import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignme
 export class CaseManagement {
   casesGateway: CasesInterface;
 
-  constructor(casesGateway?: CasesInterface) {
+  constructor(context: ApplicationContext, casesGateway?: CasesInterface) {
     if (!casesGateway) {
-      this.casesGateway = getCasesGateway();
+      this.casesGateway = getCasesGateway(context);
     } else {
       this.casesGateway = casesGateway;
     }

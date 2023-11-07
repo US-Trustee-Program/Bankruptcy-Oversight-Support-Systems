@@ -9,10 +9,10 @@ export async function applicationContextCreator(
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
 
-  return {
+  const appContext = {
     ...functionContext,
     config,
-    caseAssignmentRepository: undefined,
     featureFlags,
-  };
+  } as ApplicationContext;
+  return appContext;
 }
