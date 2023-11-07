@@ -19,7 +19,7 @@ export default class HealthcheckCosmosDb {
   constructor(applicationContext: ApplicationContext) {
     try {
       this.ctx = applicationContext;
-      this.cosmosDbClient = getCosmosDbClient();
+      this.cosmosDbClient = getCosmosDbClient(this.ctx);
     } catch (e) {
       log.error(this.ctx, MODULE_NAME, `${e.name}: ${e.message}`);
     }

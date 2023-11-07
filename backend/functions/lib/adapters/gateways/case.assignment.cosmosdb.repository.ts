@@ -18,8 +18,8 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   private cosmosConfig: CosmosConfig;
 
   constructor(context: ApplicationContext, testClient = false) {
-    this.cosmosDbClient = getCosmosDbClient(testClient);
-    this.cosmosConfig = getCosmosConfig();
+    this.cosmosDbClient = getCosmosDbClient(context, testClient);
+    this.cosmosConfig = getCosmosConfig(context);
     this.appContext = context;
   }
 
