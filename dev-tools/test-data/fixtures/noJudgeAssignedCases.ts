@@ -1,4 +1,4 @@
-import { BCase, toDbRecords } from '../domain/bcase';
+import { BCase } from '../domain/bcase';
 
 export function noJudgeAssignedCases() {
   const bCases: Array<BCase> = [];
@@ -11,7 +11,7 @@ export function noJudgeAssignedCases() {
   const reopenCode = '1';
 
   bCases.push({
-    csCaseId: '317345',
+    dxtrId: '317345',
     caseId: '23-66228',
     shortTitle: 'John & Co',
     chapter,
@@ -21,18 +21,17 @@ export function noJudgeAssignedCases() {
     courtId,
     reopenCode,
     transactions: [],
-    parties: [
-      {
-        role: 'DB',
-        lastName: 'John & Co',
-        middleName: '',
-        firstName: '',
-        taxId: '00-1134567',
-        address1: '123 Main St',
-      },
-    ],
+    debtor: {
+      role: 'DB',
+      lastName: 'John & Co',
+      middleName: '',
+      firstName: '',
+      taxId: '00-1134567',
+      address1: '123 Main St',
+    },
     dateFiled: '2023-02-15',
+    debtorAttorney: { lastName: 'PLACEHOLDER' },
   });
 
-  return toDbRecords(bCases);
+  return bCases;
 }

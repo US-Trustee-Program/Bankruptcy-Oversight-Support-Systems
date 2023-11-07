@@ -16,7 +16,7 @@ export function createReopenedCases() {
   };
 
   bCases.push({
-    csCaseId: '317344',
+    dxtrId: '317344',
     caseId: '22-66227',
     shortTitle: 'Smith & Co',
     chapter,
@@ -45,7 +45,7 @@ export function createReopenedCases() {
   });
 
   bCases.push({
-    csCaseId: '962282',
+    dxtrId: '962282',
     caseId: '22-75228',
     shortTitle: 'Johnson Corporation',
     chapter,
@@ -74,7 +74,7 @@ export function createReopenedCases() {
   });
 
   bCases.push({
-    csCaseId: '639825',
+    dxtrId: '639825',
     caseId: '22-29929',
     shortTitle: 'Brown Enterprises',
     chapter,
@@ -103,7 +103,7 @@ export function createReopenedCases() {
   });
 
   bCases.push({
-    csCaseId: '507386',
+    dxtrId: '507386',
     caseId: '22-77102',
     shortTitle: 'Davis Ltd',
     chapter,
@@ -132,7 +132,7 @@ export function createReopenedCases() {
   });
 
   bCases.push({
-    csCaseId: '182201',
+    dxtrId: '182201',
     caseId: '22-82448',
     shortTitle: 'Wilson & Sons',
     chapter,
@@ -161,7 +161,7 @@ export function createReopenedCases() {
   });
 
   bCases.push({
-    csCaseId: '146860',
+    dxtrId: '146860',
     caseId: '22-06498',
     shortTitle: 'Emily Anderson',
     chapter,
@@ -192,7 +192,7 @@ export function createReopenedCases() {
 
   // Example of a case with multiple closure and reopen transactions ending with a DISMISSAL.
   bCases.push({
-    csCaseId: '506663',
+    dxtrId: '506663',
     caseId: '22-86620',
     shortTitle: 'Benjamin Wilson',
     chapter,
@@ -227,7 +227,7 @@ export function createReopenedCases() {
 
   // Example of a reopened case followed by a CLOSURE.
   bCases.push({
-    csCaseId: '882356',
+    dxtrId: '882356',
     caseId: '23-70851',
     shortTitle: 'Sophia Martin',
     chapter,
@@ -259,7 +259,7 @@ export function createReopenedCases() {
 
   // Example of a case with multiple closures and reopen transactions ending with a REOPEN.
   bCases.push({
-    csCaseId: '449865',
+    dxtrId: '449865',
     caseId: '23-07045',
     shortTitle: 'Ethan Johnson',
     chapter,
@@ -292,7 +292,7 @@ export function createReopenedCases() {
 
   // Example of a reopened case followed by a DISMISSAL.
   bCases.push({
-    csCaseId: '129204',
+    dxtrId: '129204',
     caseId: '23-16111',
     shortTitle: 'Olivia Davis',
     chapter,

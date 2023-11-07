@@ -6,7 +6,7 @@
 npm run test-data
 ```
 
-SQL statements are written to `data/test-data.sql`.
+SQL statements are written to `data/test-data.json`.
 
 ## Fixtures
 

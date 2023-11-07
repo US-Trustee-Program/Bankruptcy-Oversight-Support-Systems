@@ -123,3 +123,28 @@ export function getFakerLocale(): Faker {
   };
   return faker;
 }
+
+export function removeExtraSpaces(s: string | undefined): string | undefined {
+  if (s) {
+    return s
+      .trim()
+      .split(/[\s,\t,\n]+/g)
+      .join(' ');
+  }
+
+  return undefined;
+}
+
+export function concatenateName(
+  props: { firstName?: string; lastName?: string; middleName?: string; generation?: string } = {},
+) {
+  return removeExtraSpaces(
+    [props.firstName, props.middleName, props.lastName, props.generation].join(' '),
+  );
+}
+
+export function concatenateCityStateZipCountry(
+  props: { city?: string; state?: string; zip?: string; country?: string } = {},
+) {
+  return removeExtraSpaces([props.city, props.state, props.zip, props.country].join(' '));
+}

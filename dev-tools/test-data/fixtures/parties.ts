@@ -5,6 +5,8 @@ interface CaseMeta {
   CS_SHORT_TITLE: string;
 }
 
+// TODO: Probably can nix this script since we will generate complete cases with embedded paries.
+
 export function createParties() {
   // The caseIds array should contain the CS_CASEID and CS_SHORT_TITLE for the records
   // you are adding parties for.

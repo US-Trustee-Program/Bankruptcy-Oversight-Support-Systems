@@ -3,14 +3,14 @@ import readline from 'node:readline';
 import { AO_AT_Record, AO_AT_RecordProps, toAoAtInsertStatements } from '../tables/AO_AT';
 import { randomTruth } from '../utility';
 
-interface partyGeneratorProps {
+interface attorneyGeneratorProps {
   csCaseId: string;
   courtId: string;
   role?: string;
   chapter?: string;
 }
 
-function partyGenerator(props: partyGeneratorProps): AO_AT_RecordProps {
+function attorneyGenerator(props: attorneyGeneratorProps): AO_AT_RecordProps {
   if (!props.chapter) props.chapter = '15';
   return {
     CS_CASEID: props.csCaseId,
@@ -41,7 +41,7 @@ async function main() {
 
   for await (const line of rl) {
     const [csCaseId, courtId] = line.split(',');
-    caseParties.push(new AO_AT_Record(partyGenerator({ csCaseId, courtId })));
+    caseParties.push(new AO_AT_Record(attorneyGenerator({ csCaseId, courtId })));
   }
 
   toAoAtInsertStatements(caseParties).forEach((statement) => {

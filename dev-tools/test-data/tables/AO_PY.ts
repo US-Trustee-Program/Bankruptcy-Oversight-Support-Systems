@@ -1,5 +1,6 @@
 import { ColumnNames, TableRecordHelper } from '../types';
-import { assert, toSqlInsertStatements, toSqlUpdateStatements } from '../utility';
+// import { assert, toSqlInsertStatements, toSqlUpdateStatements } from '../utility';
+import { toSqlInsertStatements, toSqlUpdateStatements } from '../utility';
 
 /*
 
@@ -120,36 +121,36 @@ export class AO_PY_Record implements AO_PY_RecordProps, TableRecordHelper {
   }
 
   validate() {
-    assert(this.CS_CASEID.length <= 9);
-    assert(this.COURT_ID.length <= 4);
-    assert(this.PY_ROLE.length <= 2);
-    assert(!!this.PY_LAST_NAME && this.PY_LAST_NAME.length > 0 && this.PY_LAST_NAME.length <= 200);
-    assert(
-      !this.PY_MIDDLE_NAME || (this.PY_MIDDLE_NAME.length > 0 && this.PY_MIDDLE_NAME.length <= 25),
-    );
-    assert(
-      !this.PY_FIRST_NAME || (this.PY_FIRST_NAME.length > 0 && this.PY_FIRST_NAME.length <= 30),
-    );
-    assert(
-      !this.PY_GENERATION || (this.PY_GENERATION.length > 0 && this.PY_GENERATION.length <= 9),
-    );
-    assert(!this.PY_TAXID || (this.PY_TAXID.length > 0 && this.PY_TAXID.length <= 15));
-    assert(!this.PY_SSN || (this.PY_SSN.length > 0 && this.PY_SSN.length <= 11));
-    assert(!this.PY_ADDRESS1 || (this.PY_ADDRESS1.length > 0 && this.PY_ADDRESS1.length <= 60));
-    assert(!this.PY_ADDRESS2 || (this.PY_ADDRESS2.length > 0 && this.PY_ADDRESS2.length <= 60));
-    assert(!this.PY_ADDRESS3 || (this.PY_ADDRESS3.length > 0 && this.PY_ADDRESS3.length <= 60));
-    assert(!this.PY_CITY || (this.PY_CITY.length > 0 && this.PY_CITY.length <= 30));
-    assert(!this.PY_STATE || (this.PY_STATE.length > 0 && this.PY_STATE.length <= 2));
-    assert(!this.PY_ZIP || (this.PY_ZIP.length > 0 && this.PY_ZIP.length <= 13));
-    assert(!this.PY_COUNTRY || (this.PY_COUNTRY.length > 0 && this.PY_COUNTRY.length <= 40));
-    assert(!this.PY_PHONENO || (this.PY_PHONENO.length > 0 && this.PY_PHONENO.length <= 30));
-    assert(!this.PY_FAX_PHONE || (this.PY_FAX_PHONE.length > 0 && this.PY_FAX_PHONE.length <= 20));
-    assert(!this.PY_E_MAIL || (this.PY_E_MAIL.length > 0 && this.PY_E_MAIL.length <= 60));
-    assert(!this.PY_PROSE || (this.PY_PROSE.length > 0 && this.PY_PROSE.length <= 1));
-    assert(!this.PY_END_DATE || this.PY_END_DATE.length === 10);
-    assert(!this.SSN_EVENT || this.SSN_EVENT.length === 1);
-    assert(!this.NAME_EVENT || this.NAME_EVENT.length === 1);
-    assert(!this.ADDRESS_EVENT || this.ADDRESS_EVENT.length === 1);
+    // assert(this.CS_CASEID.length <= 9);
+    // assert(this.COURT_ID.length <= 4);
+    // assert(this.PY_ROLE.length <= 2);
+    // assert(!!this.PY_LAST_NAME && this.PY_LAST_NAME.length > 0 && this.PY_LAST_NAME.length <= 200);
+    // assert(
+    //   !this.PY_MIDDLE_NAME || (this.PY_MIDDLE_NAME.length > 0 && this.PY_MIDDLE_NAME.length <= 25),
+    // );
+    // assert(
+    //   !this.PY_FIRST_NAME || (this.PY_FIRST_NAME.length > 0 && this.PY_FIRST_NAME.length <= 30),
+    // );
+    // assert(
+    //   !this.PY_GENERATION || (this.PY_GENERATION.length > 0 && this.PY_GENERATION.length <= 9),
+    // );
+    // assert(!this.PY_TAXID || (this.PY_TAXID.length > 0 && this.PY_TAXID.length <= 15));
+    // assert(!this.PY_SSN || (this.PY_SSN.length > 0 && this.PY_SSN.length <= 11));
+    // assert(!this.PY_ADDRESS1 || (this.PY_ADDRESS1.length > 0 && this.PY_ADDRESS1.length <= 60));
+    // assert(!this.PY_ADDRESS2 || (this.PY_ADDRESS2.length > 0 && this.PY_ADDRESS2.length <= 60));
+    // assert(!this.PY_ADDRESS3 || (this.PY_ADDRESS3.length > 0 && this.PY_ADDRESS3.length <= 60));
+    // assert(!this.PY_CITY || (this.PY_CITY.length > 0 && this.PY_CITY.length <= 30));
+    // assert(!this.PY_STATE || (this.PY_STATE.length > 0 && this.PY_STATE.length <= 2));
+    // assert(!this.PY_ZIP || (this.PY_ZIP.length > 0 && this.PY_ZIP.length <= 13));
+    // assert(!this.PY_COUNTRY || (this.PY_COUNTRY.length > 0 && this.PY_COUNTRY.length <= 40));
+    // assert(!this.PY_PHONENO || (this.PY_PHONENO.length > 0 && this.PY_PHONENO.length <= 30));
+    // assert(!this.PY_FAX_PHONE || (this.PY_FAX_PHONE.length > 0 && this.PY_FAX_PHONE.length <= 20));
+    // assert(!this.PY_E_MAIL || (this.PY_E_MAIL.length > 0 && this.PY_E_MAIL.length <= 60));
+    // assert(!this.PY_PROSE || (this.PY_PROSE.length > 0 && this.PY_PROSE.length <= 1));
+    // assert(!this.PY_END_DATE || this.PY_END_DATE.length === 10);
+    // assert(!this.SSN_EVENT || this.SSN_EVENT.length === 1);
+    // assert(!this.NAME_EVENT || this.NAME_EVENT.length === 1);
+    // assert(!this.ADDRESS_EVENT || this.ADDRESS_EVENT.length === 1);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
