@@ -22,7 +22,6 @@ const httpTrigger: AzureFunction = async function (
     await handlePostMethod(applicationContext, caseId, listOfAttorneyNames, role);
     context.res = applicationContext.res;
   } catch (originalError) {
-    log.error(applicationContext, 'assignment-function', originalError.message, originalError);
     let error = originalError;
     if (!(error instanceof CamsError)) {
       error = new UnknownError(MODULE_NAME, { originalError });
