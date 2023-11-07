@@ -6,7 +6,7 @@ import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 const MODULE_NAME = 'DATABASE-UTILITY';
 
 export async function executeQuery(
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   databaseConfig: IDbConfig,
   query: string,
   input?: DbTableFieldSpec[],
@@ -31,13 +31,13 @@ export async function executeQuery(
       success: true,
     };
 
-    log.info(context, MODULE_NAME, 'Closing connection.');
+    log.info(applicationContext, MODULE_NAME, 'Closing connection.');
 
     sqlConnection.close();
 
     return queryResult;
   } catch (error) {
-    log.error(context, MODULE_NAME, (error as Error).message, error);
+    log.error(applicationContext, MODULE_NAME, (error as Error).message, error);
 
     const queryResult: QueryResults = {
       results: {},

@@ -8,17 +8,17 @@ const MODULE_NAME = 'LOCAL-ASSIGNMENT-REPOSITORY';
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
   private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
   private nextUnusedId = 1;
-  private appContext: ApplicationContext;
+  private applicationContext: ApplicationContext;
 
-  constructor(context: ApplicationContext) {
-    this.appContext = context;
+  constructor(applicationContext: ApplicationContext) {
+    this.applicationContext = applicationContext;
   }
 
   public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
     const assignmentId = this.nextUnusedId;
     caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
-    log.info(this.appContext, MODULE_NAME, caseAssignment.name);
+    log.info(this.applicationContext, MODULE_NAME, caseAssignment.name);
     ++this.nextUnusedId;
     return assignmentId.toString();
   }

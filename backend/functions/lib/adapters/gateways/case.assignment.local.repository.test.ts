@@ -6,7 +6,7 @@ const context = require('azure-function-context-mock');
 
 describe('Case Assignment Repository Tests', () => {
   test('Should persist case assignment', async () => {
-    const appContext = await applicationContextCreator(context);
+    const applicationContext = await applicationContextCreator(context);
     const caseId = '123';
     const testCaseAttorneyAssignment = new CaseAttorneyAssignment(
       caseId,
@@ -14,7 +14,7 @@ describe('Case Assignment Repository Tests', () => {
       'TrialAttorney',
     );
     const testCaseAssignmentLocalRepository: CaseAssignmentRepositoryInterface =
-      new CaseAssignmentLocalRepository(appContext);
+      new CaseAssignmentLocalRepository(applicationContext);
 
     await testCaseAssignmentLocalRepository.createAssignment(testCaseAttorneyAssignment);
     const actual = await testCaseAssignmentLocalRepository.findAssignmentsByCaseId(caseId);

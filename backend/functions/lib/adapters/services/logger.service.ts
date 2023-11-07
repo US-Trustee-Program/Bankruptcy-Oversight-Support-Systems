@@ -7,7 +7,7 @@ export default class log {
   }
 
   private static logMessage(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     logType: string,
     moduleName: string,
     message: string,
@@ -16,50 +16,53 @@ export default class log {
     const logString = `[${logType.toUpperCase()}] [${moduleName}] ${message} ${
       undefined != data ? JSON.stringify(data) : ''
     }`;
-    if (Object.prototype.hasOwnProperty.call(context, 'log') && typeof context.log === 'function') {
-      context.log(log.sanitize(logString.trim()));
+    if (
+      Object.prototype.hasOwnProperty.call(applicationContext, 'log') &&
+      typeof applicationContext.log === 'function'
+    ) {
+      applicationContext.log(log.sanitize(logString.trim()));
     } else {
       throw new Error('Context does not contain a log function');
     }
   }
 
   public static info(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'info', moduleName, message, data);
+    log.logMessage(applicationContext, 'info', moduleName, message, data);
   }
 
   public static warn(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'warn', moduleName, message, data);
+    log.logMessage(applicationContext, 'warn', moduleName, message, data);
   }
 
   public static error(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'error', moduleName, message, data);
+    log.logMessage(applicationContext, 'error', moduleName, message, data);
   }
 
   public static debug(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     moduleName: string,
     message: string,
     data?: unknown,
   ) {
-    log.logMessage(context, 'debug', moduleName, message, data);
+    log.logMessage(applicationContext, 'debug', moduleName, message, data);
   }
 
-  public static camsError(context: ApplicationContext, camsError: CamsError) {
-    log.logMessage(context, 'error', camsError.module, camsError.message, camsError);
+  public static camsError(applicationContext: ApplicationContext, camsError: CamsError) {
+    log.logMessage(applicationContext, 'error', camsError.module, camsError.message, camsError);
   }
 }

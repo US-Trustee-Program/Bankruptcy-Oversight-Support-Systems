@@ -3,7 +3,7 @@ import { AttorneyListDbResult } from '../adapters/types/attorneys';
 
 export interface AttorneyGatewayInterface {
   getAttorneys(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     attorneyOptions: { officeId?: string },
   ): Promise<AttorneyListDbResult>;
 }

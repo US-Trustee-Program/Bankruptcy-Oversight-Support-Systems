@@ -13,15 +13,15 @@ export default class HealthcheckCosmosDb {
 
   private CONTAINER_NAME = 'healthcheck'; // NOTE: Expect a container named 'healthcheck' with one item
 
-  private readonly ctx: ApplicationContext;
+  private readonly applicationContext: ApplicationContext;
   private readonly cosmosDbClient;
 
   constructor(applicationContext: ApplicationContext) {
     try {
-      this.ctx = applicationContext;
-      this.cosmosDbClient = getCosmosDbClient(this.ctx);
+      this.applicationContext = applicationContext;
+      this.cosmosDbClient = getCosmosDbClient(this.applicationContext);
     } catch (e) {
-      log.error(this.ctx, MODULE_NAME, `${e.name}: ${e.message}`);
+      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
     }
   }
 
@@ -35,7 +35,7 @@ export default class HealthcheckCosmosDb {
         .fetchAll();
       return results.length > 0;
     } catch (e) {
-      log.error(this.ctx, MODULE_NAME, `${e.name}: ${e.message}`);
+      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
@@ -47,10 +47,10 @@ export default class HealthcheckCosmosDb {
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
         .items.create({});
-      log.debug(this.ctx, MODULE_NAME, `New item created ${item.id}`);
+      log.debug(this.applicationContext, MODULE_NAME, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.ctx, MODULE_NAME, `${e.name}: ${e.message}`);
+      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
@@ -66,7 +66,7 @@ export default class HealthcheckCosmosDb {
 
       if (results.length > 0) {
         for (const item of results) {
-          log.debug(this.ctx, MODULE_NAME, `Invoking delete on item ${item.id}`);
+          log.debug(this.applicationContext, MODULE_NAME, `Invoking delete on item ${item.id}`);
 
           await this.cosmosDbClient
             .database(this.databaseName)
@@ -77,7 +77,7 @@ export default class HealthcheckCosmosDb {
       }
       return true;
     } catch (e) {
-      log.error(this.ctx, MODULE_NAME, `${e.name}: ${e.message}`);
+      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }

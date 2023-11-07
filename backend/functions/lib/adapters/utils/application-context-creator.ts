@@ -9,10 +9,9 @@ export async function applicationContextCreator(
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
 
-  const appContext = {
+  return {
     ...functionContext,
     config,
     featureFlags,
   } as ApplicationContext;
-  return appContext;
 }

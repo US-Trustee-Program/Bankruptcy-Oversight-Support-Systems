@@ -10,34 +10,36 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
 const httpTrigger: AzureFunction = async function (
-  context: Context,
+  functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
   const caseId = request?.body.caseId;
   const listOfAttorneyNames = request?.body.attorneyList;
   const role = request?.body.role;
 
-  const applicationContext = await applicationContextCreator(context);
+  const applicationContext = await applicationContextCreator(functionContext);
   try {
     await handlePostMethod(applicationContext, caseId, listOfAttorneyNames, role);
-    context.res = applicationContext.res;
+    functionContext.res = applicationContext.res;
   } catch (originalError) {
     let error = originalError;
     if (!(error instanceof CamsError)) {
       error = new UnknownError(MODULE_NAME, { originalError });
     }
     log.camsError(applicationContext, error);
-    context.res = httpError(error);
+    functionContext.res = httpError(error);
   }
 };
 
 async function handlePostMethod(
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   caseId: string,
   listOfAttorneyNames: string[],
   role,
 ) {
-  const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+  const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
+    applicationContext,
+  );
 
   const trialAttorneyAssignmentResponse =
     await caseAssignmentController.createTrialAttorneyAssignments({
@@ -46,7 +48,7 @@ async function handlePostMethod(
       role,
     });
 
-  context.res = httpSuccess(trialAttorneyAssignmentResponse);
+  applicationContext.res = httpSuccess(trialAttorneyAssignmentResponse);
 }
 
 export default httpTrigger;

@@ -12,7 +12,7 @@ const table = 'attorneys';
 
 class AttorneyLocalGateway implements AttorneyGatewayInterface {
   public async getAttorneys(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     attorneyOptions: { officeId: string } = { officeId: '' },
   ): Promise<AttorneyListDbResult> {
     const input = [];
@@ -26,7 +26,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     }
 
     if (attorneyOptions.officeId.length > 0) {
-      log.info(context, MODULE_NAME, `${attorneyOptions.officeId}`);
+      log.info(applicationContext, MODULE_NAME, `${attorneyOptions.officeId}`);
       input.push({
         name: 'officeId',
         value: attorneyOptions.officeId,
@@ -34,7 +34,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     }
 
     const queryResult: QueryResults = await runQuery(
-      context,
+      applicationContext,
       'attorneys',
       attorneyListRecords.attorneyList,
       input,
@@ -42,7 +42,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     let results: AttorneyListDbResult;
 
     if (queryResult.success) {
-      log.info(context, MODULE_NAME, 'Attorney List DB query successful');
+      log.info(applicationContext, MODULE_NAME, 'Attorney List DB query successful');
       const body: AttorneyListRecordSet = { attorneyList: [] };
       body.attorneyList = queryResult.results as [];
       const rowsAffected = (queryResult.results as Array<object>).length;
@@ -53,7 +53,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
         body,
       };
     } else {
-      log.warn(context, MODULE_NAME, 'Attorney List DB query unsuccessful');
+      log.warn(applicationContext, MODULE_NAME, 'Attorney List DB query unsuccessful');
       results = {
         success: false,
         message: queryResult.message,
