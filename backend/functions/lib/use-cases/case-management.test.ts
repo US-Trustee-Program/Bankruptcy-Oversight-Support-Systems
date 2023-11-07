@@ -55,7 +55,7 @@ describe('Case list tests', () => {
   });
 
   test('Calling getCases should return valid data', async () => {
-    const chapterCaseList = new CaseManagement();
+    const chapterCaseList = new CaseManagement(appContext);
     const caseList: CaseDetailInterface[] = [
       {
         caseId: '001-04-44449',
@@ -97,7 +97,7 @@ describe('Case list tests', () => {
     );
 
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
     const actual = await chapterCaseList.getCases(appContext);
     function checkDate(aCase) {
       const verify = aCase.dateFiled >= expectedStartDate;
@@ -110,7 +110,7 @@ describe('Case list tests', () => {
 
   test('should return results with expected assignments', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
     const cases = await chapterCaseList.getCases(appContext);
     const caseWithAssignments = cases.body.caseList.filter((theCase) => {
       return theCase.caseId === caseIdWithAssignments;
@@ -148,7 +148,7 @@ describe('Case list tests', () => {
       }
     }
     const mockCasesGateway: CasesInterface = new MockCasesGatewayWithError();
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
     expect(await chapterCaseList.getCases(appContext)).toEqual({
       body: { caseList: [] },
       count: 0,
@@ -169,7 +169,7 @@ describe('Case list tests', () => {
       }
     }
     const mockCasesGateway: CasesInterface = new MockCasesGatewayWithError();
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
     expect(await chapterCaseList.getCases(appContext)).toEqual({
       body: { caseList: [] },
       count: 0,
@@ -181,7 +181,7 @@ describe('Case list tests', () => {
   test('should call getCases with undefined if STARTING_MONTH exists as a string that is not a number', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
     const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
 
     process.env = {
       ...process.env,
@@ -195,7 +195,7 @@ describe('Case list tests', () => {
   test('should call getCases with the same starting number if STARTING_MONTH is negative', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
     const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
 
     process.env = {
       ...process.env,
@@ -209,7 +209,7 @@ describe('Case list tests', () => {
   test('should negate STARTING_MONTH if getCases is called with a positive number', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
     const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
 
     process.env = {
       ...process.env,
@@ -223,7 +223,7 @@ describe('Case list tests', () => {
   test('should call getCases with undefined if STARTING_MONTH is undefined', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
     const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
 
     process.env = {
       ...process.env,
@@ -237,7 +237,7 @@ describe('Case list tests', () => {
   test('should call getCases with undefined if STARTING_MONTH is null', async () => {
     const mockCasesGateway: CasesInterface = new MockCasesGateway();
     const casesGatewaySpy = jest.spyOn(mockCasesGateway, 'getCases');
-    const chapterCaseList: CaseManagement = new CaseManagement(mockCasesGateway);
+    const chapterCaseList: CaseManagement = new CaseManagement(appContext, mockCasesGateway);
 
     process.env = {
       ...process.env,
@@ -267,7 +267,7 @@ describe('Case detail tests', () => {
       chapter: '15',
     };
 
-    const chapterCaseList = new CaseManagement();
+    const chapterCaseList = new CaseManagement(appContext);
     jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
       return Promise.resolve(caseDetail);
     });

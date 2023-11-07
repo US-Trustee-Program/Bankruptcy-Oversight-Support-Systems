@@ -1,21 +1,23 @@
-import { AzureFunction, HttpRequest } from '@azure/functions';
+import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import log from '../lib/adapters/services/logger.service';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
+import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
 const httpTrigger: AzureFunction = async function (
-  applicationContext: ApplicationContext,
+  context: Context,
   request: HttpRequest,
 ): Promise<void> {
   const caseId = request?.body.caseId;
   const listOfAttorneyNames = request?.body.attorneyList;
   const role = request?.body.role;
 
+  const applicationContext = await applicationContextCreator(context);
   try {
     await handlePostMethod(applicationContext, caseId, listOfAttorneyNames, role);
   } catch (originalError) {
