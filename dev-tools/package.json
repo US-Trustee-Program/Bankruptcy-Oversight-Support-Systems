@@ -4,8 +4,8 @@
   "description": "Custom tools used to aid development.",
   "scripts": {
     "delete-cosmos-records": "ts-node delete-cosmos-records/index.ts",
-    "test-data:sql": "mkdir -p data; ts-node test-data/scripts/testDataSql.ts > data/test-data.sql",
-    "test-data:json": "mkdir -p data; ts-node test-data/scripts/testDataJson.ts > data/test-data.json",
+    "test-data:sql": "mkdir -p data; ts-node test-data/index.ts sql > data/test-data.sql",
+    "test-data:json": "mkdir -p data; ts-node test-data/index.ts json > data/test-data.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
