@@ -1,7 +1,6 @@
 import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { Context } from '@azure/functions';
 import { IDbConfig } from './database';
-import { CaseAssignmentCosmosDbRepository } from '../gateways/case.assignment.cosmosdb.repository';
 
 export interface AppConfig {
   dbMock: boolean;
@@ -12,7 +11,6 @@ export interface AppConfig {
 
 export interface ApplicationContext extends Context {
   config: ApplicationConfiguration;
-  caseAssignmentRepository: CaseAssignmentCosmosDbRepository;
   featureFlags: FeatureFlagSet;
 }
 

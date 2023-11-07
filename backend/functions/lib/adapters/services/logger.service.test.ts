@@ -14,11 +14,10 @@ describe('Basic logger service tests', () => {
 
   test('logMessage() should throw an error if context doesnt contain a log method.', async () => {
     const mockContext = await applicationContextCreator({ foo: 'bar' } as unknown as Context);
-    try {
+
+    expect(() => {
       log.info(mockContext, 'FOO-MODULE_NAME', 'test message');
-    } catch (e) {
-      expect(e).toEqual(Error('Context does not contain a log function'));
-    }
+    }).toThrow(new Error('Context does not contain a log function'));
   });
 
   test('Info log should set context.log to the expected string', async () => {
