@@ -2,7 +2,7 @@ import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail } from './CaseDetail';
 import { getCaseNumber } from '@/utils/formatCaseNumber';
-import { CaseDetailType, Debtor } from '@/type-declarations/chapter-15';
+import { CaseDetailType, Debtor, DebtorAttorney } from '@/type-declarations/chapter-15';
 import { BrowserRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
@@ -11,6 +11,14 @@ const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
 
 const rickBHartName = 'Rick B Hart';
+
+const debtorAttorney: DebtorAttorney = {
+  name: 'Jane Doe',
+  address1: '123 Rabbithole Lane',
+  cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+  phone: '234-123-1234',
+};
+
 describe('Case Detail screen tests', () => {
   const env = process.env;
 
@@ -40,6 +48,7 @@ describe('Case Detail screen tests', () => {
         address3: 'Suite C',
         cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
       },
+      debtorAttorney,
     };
     render(
       <BrowserRouter>
@@ -144,6 +153,7 @@ describe('Case Detail screen tests', () => {
           address3,
           cityStateZipCountry,
         },
+        debtorAttorney,
       };
       render(
         <BrowserRouter>
@@ -200,6 +210,7 @@ describe('Case Detail screen tests', () => {
           ssn,
           taxId,
         },
+        debtorAttorney,
       };
       render(
         <BrowserRouter>
@@ -246,6 +257,7 @@ describe('Case Detail screen tests', () => {
       debtor: {
         name: 'Roger Rabbit',
       },
+      debtorAttorney,
     };
     render(
       <BrowserRouter>
@@ -274,6 +286,7 @@ describe('Case Detail screen tests', () => {
       debtor: {
         name: 'Roger Rabbit',
       },
+      debtorAttorney,
     };
     render(
       <BrowserRouter>
@@ -303,6 +316,7 @@ describe('Case Detail screen tests', () => {
       debtor: {
         name: 'Roger Rabbit',
       },
+      debtorAttorney,
     };
     render(
       <BrowserRouter>
@@ -338,6 +352,7 @@ describe('Case Detail screen tests', () => {
       debtor: {
         name: 'Roger Rabbit',
       },
+      debtorAttorney,
     };
     render(
       <BrowserRouter>
@@ -373,6 +388,7 @@ describe('Case Detail screen tests', () => {
       debtor: {
         name: 'Roger Rabbit',
       },
+      debtorAttorney,
     };
     render(
       <BrowserRouter>
@@ -391,4 +407,83 @@ describe('Case Detail screen tests', () => {
       { timeout: 5000 },
     );
   }, 20000);
+
+  const debtorCounselTestCases = [
+    [undefined, undefined, undefined, undefined, undefined],
+    ['123 Rabbithole Lane', undefined, undefined, undefined, undefined],
+    [undefined, 'Unit', undefined, undefined, undefined],
+    [undefined, undefined, '111', undefined, undefined],
+    [undefined, undefined, undefined, 'New York NY 10001 US', undefined],
+    [undefined, undefined, undefined, undefined, '23+12345678'],
+    ['123 Rabbithole Lane', 'Unit', '111', 'New York NY 10001 US', '23+12345678'],
+  ];
+
+  test.each(debtorCounselTestCases)(
+    'should show debtor attorney/counsel information',
+    async (
+      address1: MaybeString,
+      address2: MaybeString,
+      address3: MaybeString,
+      cityStateZipCountry: MaybeString,
+      phone: MaybeString,
+    ) => {
+      const expectedAttorney: DebtorAttorney = {
+        name: rickBHartName,
+        address1,
+        address2,
+        address3,
+        cityStateZipCountry,
+        phone,
+      };
+      const testCaseDetail: CaseDetailType = {
+        caseId: caseId,
+        chapter: '15',
+        caseTitle: 'The Beach Boys',
+        dateFiled: '01-04-1962',
+        closedDate: '01-08-1963',
+        dismissedDate: '01-08-1964',
+        assignments: [brianWilsonName, carlWilsonName],
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney: expectedAttorney,
+      };
+      render(
+        <BrowserRouter>
+          <CaseDetail caseDetail={testCaseDetail} />
+        </BrowserRouter>,
+      );
+
+      await waitFor(
+        async () => {
+          const debtorCounselName = screen.queryByTestId('case-detail-debtor-counsel-name');
+          expect(debtorCounselName).toBeInTheDocument();
+          if (expectedAttorney?.address1) {
+            const address1 = screen.queryByTestId('case-detail-debtor-counsel-address1');
+            expect(address1).toBeInTheDocument();
+          }
+          if (expectedAttorney?.address2) {
+            const address2 = screen.queryByTestId('case-detail-debtor-counsel-address2');
+            expect(address2).toBeInTheDocument();
+          }
+          if (expectedAttorney?.address3) {
+            const address3 = screen.queryByTestId('case-detail-debtor-counsel-address3');
+            expect(address3).toBeInTheDocument();
+          }
+          if (expectedAttorney?.cityStateZipCountry) {
+            const cityStateZipCountry = screen.queryByTestId(
+              'case-detail-debtor-counsel-cityStateZipCountry',
+            );
+            expect(cityStateZipCountry).toBeInTheDocument();
+          }
+          if (expectedAttorney?.phone) {
+            const phone = screen.queryByTestId('case-detail-debtor-counsel-phone');
+            expect(phone).toBeInTheDocument();
+          }
+        },
+        { timeout: 5000 },
+      );
+    },
+    20000,
+  );
 });

@@ -183,6 +183,62 @@ export const CaseDetail = (props: CaseDetailProps) => {
                   )}
                 </div>
               </div>
+              <div className="debtor-counsel-information padding-bottom-4 case-card">
+                <h3>Debtor Counsel</h3>
+                {caseDetail.debtorAttorney && (
+                  <>
+                    <div
+                      className="padding-bottom-1"
+                      data-testid="case-detail-debtor-counsel-name"
+                      aria-label="debtor counsel name"
+                    >
+                      {caseDetail.debtorAttorney.name}
+                    </div>
+                    <div>
+                      {caseDetail.debtorAttorney.address1 && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-address1"
+                          aria-label="debtor counsel address line 1"
+                        >
+                          {caseDetail.debtorAttorney.address1}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.address2 && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-address2"
+                          aria-label="debtor counsel address line 2"
+                        >
+                          {caseDetail.debtorAttorney.address2}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.address3 && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-address3"
+                          aria-label="debtor counsel address line 3"
+                        >
+                          {caseDetail.debtorAttorney.address3}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.cityStateZipCountry && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-cityStateZipCountry"
+                          aria-label="debtor counsel city, state, zip, country"
+                        >
+                          {caseDetail.debtorAttorney.cityStateZipCountry}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.phone && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-phone"
+                          aria-label="debtor counsel phone"
+                        >
+                          {caseDetail.debtorAttorney.phone}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
               <div className="additional-debtor-information padding-bottom-4 case-card">
                 <h3>Additional Debtor Info</h3>
                 {caseDetail.debtor.taxId && (
