@@ -48,10 +48,26 @@ export default class Chapter15MockApi extends Api {
 
   static caseDetails = {
     caseId: '101-23-12345',
-    caseTitle: 'The Beach Boys',
-    dateFiled: '01-04-1962',
-    dateClosed: '01-08-1963',
+    chapter: '15',
+    caseTitle: 'Débora Arden Coronado Nazario III',
+    dateFiled: '02-15-2023',
+    judgeName: 'Meyer Steven',
     assignments: ['Brian Wilson', 'Carl Wilson', 'Dennis Wilson', 'Mike Love', 'Al Jardine'],
+    debtor: {
+      name: 'Débora Arden Coronado Nazario III',
+      address1: 'Huerta Cedro 3',
+      address2: 'Edificio 9',
+      cityStateZipCountry: 'Miramar DG 30849 Mexico',
+      ssn: '010-10-1010',
+      taxId: '12-1234567',
+    },
+    debtorAttorney: {
+      name: 'Julio César Kyle Contreras de Caballero Mtro.',
+      address1: 'Pasaje Martín Salcido 4929',
+      address2: 'Puerta 248',
+      cityStateZipCountry: 'Irapuato HG 82513 Mexico',
+      phone: '5992-349-234',
+    },
   };
 
   public static async list(path: string): Promise<ResponseData> {

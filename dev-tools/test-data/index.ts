@@ -3,7 +3,7 @@ import { toAoAtInsertStatements } from './tables/AO_AT';
 import { toAoCsInsertStatements } from './tables/AO_CS';
 import { toAoPyInsertStatements } from './tables/AO_PY';
 import { toAoTxInsertStatements } from './tables/AO_TX';
-import { BCase, DebtorAttorney, Judge, toDbRecords } from './domain/bcase';
+import { BCase, BCaseTransaction, DebtorAttorney, Judge, toDbRecords } from './domain/bcase';
 import { CaseDetailInterface } from './cases';
 import { concatenateCityStateZipCountry, concatenateName } from './utility';
 
@@ -11,6 +11,7 @@ import { createChapter15Cases } from './fixtures/chapter15Cases';
 import { createNoJudgeAssignedCases } from './fixtures/noJudgeAssignedCases';
 import { CreateCaseOptions, createAttorney } from './fixtures/lib/common';
 import { createReopenedCases } from './fixtures/reopenedCases';
+import { TxCode } from './types';
 
 const validFormats = ['json', 'sql'];
 const format = process.argv[2];
@@ -41,11 +42,19 @@ bCases.push(
 // Output the cases in the specified format.
 if (format === 'json') {
   const mappedCases = bCases.map((bCase) => {
+    const closedDate = pickTop(bCase.transactions, 'CBC');
+    const dismissedDate = pickTop(bCase.transactions, 'CDC');
+    const reopenedDate = pickTop(bCase.transactions, 'OCO');
+
     const mappedCase: CaseDetailInterface = {
       caseId: bCase.div + '-' + bCase.caseId,
       chapter: bCase.chapter,
       caseTitle: bCase.shortTitle,
+      closedDate: closedDate?.date,
+      reopenedDate: reopenedDate?.date,
+      dismissedDate: dismissedDate?.date,
       dateFiled: bCase.dateFiled,
+      judgeName: concatenateName(bCase.judge),
     };
     const debtor = bCase.debtor;
     mappedCase.debtor = {
@@ -95,4 +104,8 @@ if (format === 'json') {
   toAoTxInsertStatements(dbRecordBundle.AO_TX).forEach((statement) => {
     console.log(statement.trim());
   });
+}
+
+function pickTop(list: Array<BCaseTransaction>, code: TxCode) {
+  return list.filter((i) => i.code === code).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
 }

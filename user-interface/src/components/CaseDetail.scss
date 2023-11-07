@@ -18,9 +18,6 @@
       .case-card-list {
         .case-card {
           ul.usa-list {
-            li {
-              padding-left: 0.5rem;
-            }
             .unassigned-placeholder {
               padding-left: 0.5rem;
             }
@@ -36,9 +33,6 @@
             padding: 0 0.5rem;
           }
         }
-      }
-      .case-card > div {
-        padding-left: 0.5rem;
       }
     }
   }
