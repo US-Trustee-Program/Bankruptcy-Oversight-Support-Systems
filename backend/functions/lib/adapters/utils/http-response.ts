@@ -7,6 +7,8 @@ const commonHeaders = {
 };
 
 export function httpSuccess(body: object = {}): ApiResponse {
+  console.log('httpSuccess', body);
+  console.log(typeof body);
   return {
     headers: commonHeaders,
     statusCode: 200,
