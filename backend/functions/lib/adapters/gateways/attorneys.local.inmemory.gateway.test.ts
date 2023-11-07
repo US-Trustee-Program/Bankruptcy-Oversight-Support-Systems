@@ -5,10 +5,10 @@ import * as testingMockData from '../../testing/mock-data';
 import * as localInmemoryGateway from './local.inmemory.gateway';
 
 describe('Local in-memory database gateway tests specific to attorneys list', () => {
-  let appContext;
+  let applicationContext;
 
   beforeEach(async () => {
-    appContext = await applicationContextCreator(functionContext);
+    applicationContext = await applicationContextCreator(functionContext);
   });
 
   afterEach(() => {
@@ -23,7 +23,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
     const gateway = new AttorneyLocalGateway();
 
     try {
-      await gateway.getAttorneys(appContext, { officeId: 'no-op' });
+      await gateway.getAttorneys(applicationContext, { officeId: 'no-op' });
     } catch (e) {
       expect(e).toEqual(Error('Attorney mock data does not contain a valid attorneyList'));
     }
@@ -39,7 +39,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       getProperty: jest.fn(() => ({ attorneyList: [{ foo: 'foo' }] })),
     }));
 
-    await gateway.getAttorneys(appContext, { officeId });
+    await gateway.getAttorneys(applicationContext, { officeId });
 
     expect(runQuerySpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -59,7 +59,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       getProperty: jest.fn(() => ({ attorneyList: [{ foo: 'foo' }] })),
     }));
 
-    await gateway.getAttorneys(appContext, { officeId });
+    await gateway.getAttorneys(applicationContext, { officeId });
 
     expect(runQuerySpy).not.toHaveBeenCalledWith(
       expect.anything(),
@@ -82,7 +82,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       getProperty: jest.fn(() => ({ attorneyList: [{ foo: 'foo' }] })),
     }));
 
-    const result = await gateway.getAttorneys(appContext, { officeId: '' });
+    const result = await gateway.getAttorneys(applicationContext, { officeId: '' });
 
     expect(result).toEqual({
       success: false,
@@ -102,7 +102,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       results: mockList,
     });
 
-    const result = await gateway.getAttorneys(appContext, { officeId: '' });
+    const result = await gateway.getAttorneys(applicationContext, { officeId: '' });
 
     expect(result).toEqual({
       success: true,
@@ -122,7 +122,7 @@ describe('Local in-memory database gateway tests specific to attorneys list', ()
       results: mockList,
     });
 
-    const result = await gateway.getAttorneys(appContext);
+    const result = await gateway.getAttorneys(applicationContext);
 
     expect(result).toEqual({
       success: true,

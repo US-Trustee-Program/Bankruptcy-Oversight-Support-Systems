@@ -6,9 +6,9 @@ const functionContext = require('azure-function-context-mock');
 describe('Case Assignment Creation Tests', () => {
   const env = process.env;
   const trialAttorneyRole = 'TrialAttorney';
-  let appContext;
+  let applicationContext;
   beforeEach(async () => {
-    appContext = await applicationContextCreator(functionContext);
+    applicationContext = await applicationContextCreator(functionContext);
     process.env = {
       ...env,
       DATABASE_MOCK: 'true',
@@ -25,7 +25,7 @@ describe('Case Assignment Creation Tests', () => {
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
-    const assignmentController = new CaseAssignmentController(appContext);
+    const assignmentController = new CaseAssignmentController(applicationContext);
     try {
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
@@ -46,7 +46,7 @@ describe('Case Assignment Creation Tests', () => {
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
-    const assignmentController = new CaseAssignmentController(appContext);
+    const assignmentController = new CaseAssignmentController(applicationContext);
     try {
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
@@ -66,7 +66,7 @@ describe('Case Assignment Creation Tests', () => {
     };
 
     let assignmentResponse: AttorneyAssignmentResponseInterface;
-    const assignmentController = new CaseAssignmentController(appContext);
+    const assignmentController = new CaseAssignmentController(applicationContext);
     try {
       assignmentResponse =
         await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);

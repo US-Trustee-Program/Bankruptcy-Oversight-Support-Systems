@@ -14,8 +14,8 @@ export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
 };
 
-export const getCasesGateway = (context: ApplicationContext): CasesInterface => {
-  if (context.config.get('dbMock')) {
+export const getCasesGateway = (applicationContext: ApplicationContext): CasesInterface => {
+  if (applicationContext.config.get('dbMock')) {
     return new CasesLocalGateway();
   } else {
     return new CasesDxtrGateway();
@@ -23,22 +23,24 @@ export const getCasesGateway = (context: ApplicationContext): CasesInterface => 
 };
 
 export const getAssignmentRepository = (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
 ): CaseAssignmentRepositoryInterface => {
-  if (context.config.get('dbMock')) {
-    return new CaseAssignmentCosmosDbRepository(context, true);
+  if (applicationContext.config.get('dbMock')) {
+    return new CaseAssignmentCosmosDbRepository(applicationContext, true);
   } else {
-    return new CaseAssignmentCosmosDbRepository(context);
+    return new CaseAssignmentCosmosDbRepository(applicationContext);
   }
 };
 
 export const getCosmosDbClient = (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   testClient: boolean = false,
 ): CosmosClientHumble | FakeCosmosClientHumble => {
-  return testClient ? new FakeCosmosClientHumble() : new CosmosClientHumble(context.config);
+  return testClient
+    ? new FakeCosmosClientHumble()
+    : new CosmosClientHumble(applicationContext.config);
 };
 
-export const getCosmosConfig = (context: ApplicationContext): CosmosConfig => {
-  return context.config.get('cosmosConfig');
+export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
+  return applicationContext.config.get('cosmosConfig');
 };

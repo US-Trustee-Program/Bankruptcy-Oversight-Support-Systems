@@ -11,10 +11,10 @@ const table = 'generic-test-data';
 const runQueryMock = jest.spyOn(dataUtils, 'executeQuery');
 
 describe('Azure MSSQL database gateway tests', () => {
-  let appContext;
+  let applicationContext;
 
   beforeEach(async () => {
-    appContext = await applicationContextCreator(functionContext);
+    applicationContext = await applicationContextCreator(functionContext);
   });
 
   test('Should return all records when fetching all records on a given table', async () => {
@@ -47,7 +47,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: list,
     };
 
-    const results = await db.getAll(appContext, table);
+    const results = await db.getAll(applicationContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -82,7 +82,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: list[5],
     };
 
-    const results = await db.getRecord(appContext, table, 6);
+    const results = await db.getRecord(applicationContext, table, 6);
 
     expect(results).toEqual(mockResults);
   });
@@ -103,7 +103,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: {},
     };
 
-    const results = await db.getAll(appContext, table);
+    const results = await db.getAll(applicationContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -124,7 +124,7 @@ describe('Azure MSSQL database gateway tests', () => {
       body: {},
     };
 
-    const results = await db.getRecord(appContext, table, 6);
+    const results = await db.getRecord(applicationContext, table, 6);
 
     expect(results).toEqual(mockResults);
   });

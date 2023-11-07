@@ -6,17 +6,17 @@ import { AttorneyListDbResult } from '../types/attorneys';
 const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
 
 export class AttorneysController {
-  private readonly context: ApplicationContext;
+  private readonly applicationContext: ApplicationContext;
 
-  constructor(context: ApplicationContext) {
-    this.context = context;
+  constructor(applicationContext: ApplicationContext) {
+    this.applicationContext = applicationContext;
   }
 
   public async getAttorneyList(requestQueryFilters: {
     officeId?: string;
   }): Promise<AttorneyListDbResult> {
-    log.info(this.context, MODULE_NAME, 'Getting Attorneys list.');
+    log.info(this.applicationContext, MODULE_NAME, 'Getting Attorneys list.');
     const attorneysList = new AttorneysList();
-    return await attorneysList.getAttorneyList(this.context, requestQueryFilters);
+    return await attorneysList.getAttorneyList(this.applicationContext, requestQueryFilters);
   }
 }

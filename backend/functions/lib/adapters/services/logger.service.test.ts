@@ -4,12 +4,12 @@ import log from './logger.service';
 import { applicationContextCreator } from '../utils/application-context-creator';
 
 describe('Basic logger service tests', () => {
-  let appContext;
+  let applicationContext;
   let mockLog;
 
   beforeEach(async () => {
-    appContext = await applicationContextCreator(context);
-    mockLog = jest.spyOn(appContext, 'log');
+    applicationContext = await applicationContextCreator(context);
+    mockLog = jest.spyOn(applicationContext, 'log');
   });
 
   test('logMessage() should throw an error if context doesnt contain a log method.', async () => {
@@ -21,22 +21,22 @@ describe('Basic logger service tests', () => {
   });
 
   test('Info log should set context.log to the expected string', async () => {
-    log.info(appContext, 'FOO-MODULE_NAME', 'test message');
+    log.info(applicationContext, 'FOO-MODULE_NAME', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[INFO] [FOO-MODULE_NAME] test message');
   });
 
   test('Warning log should set context.log to the expected string', async () => {
-    log.warn(appContext, 'FOO-MODULE_NAME', 'test message');
+    log.warn(applicationContext, 'FOO-MODULE_NAME', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[WARN] [FOO-MODULE_NAME] test message');
   });
 
   test('Error log should set context.log to the expected string', async () => {
-    log.error(appContext, 'FOO-MODULE_NAME', 'test message');
+    log.error(applicationContext, 'FOO-MODULE_NAME', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[ERROR] [FOO-MODULE_NAME] test message');
   });
 
   test('Debug log should set context.log to the expected string', async () => {
-    log.debug(appContext, 'FOO-MODULE_NAME', 'test message');
+    log.debug(applicationContext, 'FOO-MODULE_NAME', 'test message');
     expect(mockLog).toHaveBeenCalledWith('[DEBUG] [FOO-MODULE_NAME] test message');
   });
 
@@ -45,7 +45,7 @@ describe('Basic logger service tests', () => {
       property: 'value',
     };
 
-    log.info(appContext, 'FOO-MODULE_NAME', 'test message', testObj);
+    log.info(applicationContext, 'FOO-MODULE_NAME', 'test message', testObj);
     expect(mockLog).toHaveBeenCalledWith(
       `[INFO] [FOO-MODULE_NAME] test message ${JSON.stringify(testObj)}`,
     );

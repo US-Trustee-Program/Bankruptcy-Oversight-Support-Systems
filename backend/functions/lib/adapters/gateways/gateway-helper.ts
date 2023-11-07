@@ -18,13 +18,13 @@ export class GatewayHelper {
 }
 
 export function handleQueryResult<T>(
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   queryResult: QueryResults,
   moduleName: string,
-  callback: (context: ApplicationContext, queryResult: QueryResults) => T,
+  callback: (appContext: ApplicationContext, queryResult: QueryResults) => T,
 ): T {
   if (queryResult.success) {
-    return callback(context, queryResult);
+    return callback(applicationContext, queryResult);
   } else {
     throw new CamsError(moduleName, { message: queryResult.message });
   }

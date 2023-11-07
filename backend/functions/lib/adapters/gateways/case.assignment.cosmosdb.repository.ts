@@ -12,15 +12,15 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
   private cosmosDbClient;
-  private appContext: ApplicationContext;
+  private applicationContext: ApplicationContext;
 
   private containerName = 'assignments';
   private cosmosConfig: CosmosConfig;
 
-  constructor(context: ApplicationContext, testClient = false) {
-    this.cosmosDbClient = getCosmosDbClient(context, testClient);
-    this.cosmosConfig = getCosmosConfig(context);
-    this.appContext = context;
+  constructor(applicationContext: ApplicationContext, testClient = false) {
+    this.cosmosDbClient = getCosmosDbClient(applicationContext, testClient);
+    this.cosmosConfig = getCosmosConfig(applicationContext);
+    this.applicationContext = applicationContext;
   }
 
   async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
@@ -30,10 +30,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
-      log.debug(this.appContext, MODULE_NAME, `New item created ${item.id}`);
+      log.debug(this.applicationContext, MODULE_NAME, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new ForbiddenError(MODULE_NAME, { originalError: e });
       } else throw new UnknownError(MODULE_NAME, { originalError: e });
@@ -80,7 +80,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results;
     } catch (e) {
-      log.error(this.appContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',

@@ -17,7 +17,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -33,13 +33,13 @@ describe('Case Assignment Function Tests', () => {
       message: 'Trial attorney assignments created.',
       count: 1,
     };
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
-    expect(appContext.res.body.body.length).toEqual(1);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expect.objectContaining(expectedResponse));
+    expect(applicationContext.res.body.body.length).toEqual(1);
   });
 
   test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -56,13 +56,13 @@ describe('Case Assignment Function Tests', () => {
       count: 2,
     };
 
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
-    expect(appContext.res.body.body.length).toEqual(2);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expect.objectContaining(expectedResponse));
+    expect(applicationContext.res.body.body.length).toEqual(2);
   });
 
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -79,13 +79,13 @@ describe('Case Assignment Function Tests', () => {
       count: 1,
     };
 
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
-    expect(appContext.res.body.body.length).toEqual(1);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expect.objectContaining(expectedResponse));
+    expect(applicationContext.res.body.body.length).toEqual(1);
   });
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -99,15 +99,15 @@ describe('Case Assignment Function Tests', () => {
     const expectedResponse = { error: 'Required parameter(s) caseId is/are absent.' };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
-    expect(appContext.res.statusCode).toEqual(400);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expectedResponse);
+    expect(applicationContext.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a caseId is invalid format', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -120,15 +120,15 @@ describe('Case Assignment Function Tests', () => {
     const expectedResponse = { error: 'caseId must be formatted like 01-12345.' };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
-    expect(appContext.res.statusCode).toEqual(400);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expectedResponse);
+    expect(applicationContext.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a attorneyList is empty or not passed in the request', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -141,15 +141,15 @@ describe('Case Assignment Function Tests', () => {
     const expectedResponse = { error: 'Required parameter(s) attorneyList is/are absent.' };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
-    expect(appContext.res.statusCode).toEqual(400);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expectedResponse);
+    expect(applicationContext.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -165,15 +165,15 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
-    expect(appContext.res.statusCode).toEqual(400);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expectedResponse);
+    expect(applicationContext.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const request = {
       method: 'POST',
       query: {},
@@ -189,16 +189,18 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(appContext, request);
-    expect(appContext.res.body).toEqual(expectedResponse);
-    expect(appContext.res.statusCode).toEqual(400);
+    await httpTrigger(applicationContext, request);
+    expect(applicationContext.res.body).toEqual(expectedResponse);
+    expect(applicationContext.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
-    const appContext = await applicationContextCreator(functionContext);
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
+    const applicationContext = await applicationContextCreator(functionContext);
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(
+      applicationContext,
+    );
     jest
       .spyOn(Object.getPrototypeOf(assignmentController), 'createTrialAttorneyAssignments')
       .mockImplementation(() => {
@@ -216,28 +218,30 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(appContext, request);
+    await httpTrigger(applicationContext, request);
 
     expect(httpErrorSpy).toHaveBeenCalled();
-    expect(appContext.res.statusCode).toEqual(500);
-    expect(appContext.res.body.error).toEqual('Unknown error');
+    expect(applicationContext.res.statusCode).toEqual(500);
+    expect(applicationContext.res.body.error).toEqual('Unknown error');
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     const caseId = '001-67-89012';
     const request = {
       method: 'POST',
       query: {},
       body: { caseId: caseId, attorneyList: ['Jane Doe'], role: 'TrialAttorney' },
     };
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(
+      applicationContext,
+    );
     const createAssignmentRequestSpy = jest.spyOn(
       Object.getPrototypeOf(assignmentController),
       'createTrialAttorneyAssignments',
     );
-    await httpTrigger(appContext, request);
+    await httpTrigger(applicationContext, request);
 
     expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
   });
