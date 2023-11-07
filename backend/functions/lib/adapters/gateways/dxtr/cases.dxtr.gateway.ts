@@ -47,13 +47,20 @@ function sqlUnion(query1: string, query2: string) {
 }
 
 export default class CasesDxtrGateway implements CasesInterface {
-  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
+  async getCaseDetail(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface> {
     const courtDiv = caseId.slice(0, 3);
     const dxtrCaseId = caseId.slice(4);
 
-    const bCase = await this.queryCase(context, courtDiv, dxtrCaseId);
+    const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
 
-    const transactionDates = await this.queryTransactions(context, bCase.dxtrId, bCase.courtId);
+    const transactionDates = await this.queryTransactions(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
     if (transactionDates.closedDates.length > 0) {
       bCase.closedDate = getMonthDayYearStringFromDate(transactionDates.closedDates[0]);
     }
@@ -66,17 +73,21 @@ export default class CasesDxtrGateway implements CasesInterface {
       bCase.reopenedDate = getMonthDayYearStringFromDate(transactionDates.reopenedDates[0]);
     }
 
-    bCase.debtor = await this.queryParties(context, bCase.dxtrId, bCase.courtId);
-    bCase.debtorAttorney = await this.queryDebtorAttorney(context, bCase.dxtrId, bCase.courtId);
+    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
+    bCase.debtorAttorney = await this.queryDebtorAttorney(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
 
     return bCase;
   }
 
   async getCases(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {
-    const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
+    const doChapter12Enable = applicationContext.featureFlags['chapter-twelve-enabled'];
     const rowsToReturn = doChapter12Enable ? '10' : '20';
 
     const input: DbTableFieldSpec[] = [];
@@ -103,15 +114,15 @@ export default class CasesDxtrGateway implements CasesInterface {
       : sqlSelectList(rowsToReturn, '15');
 
     const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
       query,
       input,
     );
 
     return Promise.resolve(
       handleQueryResult<CaseDetailInterface[]>(
-        context,
+        applicationContext,
         queryResult,
         MODULENAME,
         this.casesQueryCallback,
@@ -120,7 +131,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   private async queryCase(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     courtDiv: string,
     dxtrCaseId: string,
   ): Promise<CaseDetailInterface> {
@@ -151,15 +162,15 @@ export default class CasesDxtrGateway implements CasesInterface {
         AND CS_DIV = @courtDiv`;
 
     const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
       CASE_DETAIL_QUERY,
       input,
     );
 
     return Promise.resolve(
       handleQueryResult<CaseDetailInterface>(
-        context,
+        applicationContext,
         queryResult,
         MODULENAME,
         this.caseDetailsQueryCallback,
@@ -168,7 +179,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   private async queryTransactions(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
   ): Promise<TransactionDates> {
@@ -213,15 +224,15 @@ export default class CasesDxtrGateway implements CasesInterface {
       AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @reopenedDate)`;
 
     const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
       query,
       input,
     );
 
     return Promise.resolve(
       handleQueryResult<TransactionDates>(
-        context,
+        applicationContext,
         queryResult,
         MODULENAME,
         this.transactionQueryCallback,
@@ -230,7 +241,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   private async queryParties(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
   ): Promise<Party> {
@@ -287,14 +298,19 @@ export default class CasesDxtrGateway implements CasesInterface {
     `;
 
     const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
       query,
       input,
     );
 
     return Promise.resolve(
-      handleQueryResult<Party>(context, queryResult, MODULENAME, this.partyQueryCallback),
+      handleQueryResult<Party>(
+        applicationContext,
+        queryResult,
+        MODULENAME,
+        this.partyQueryCallback,
+      ),
     );
   }
   private async queryDebtorAttorney(
@@ -378,9 +394,9 @@ export default class CasesDxtrGateway implements CasesInterface {
     return debtorAttorney || null;
   }
 
-  partyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+  partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     let debtor: Party;
-    log.debug(context, MODULENAME, `Party results received from DXTR:`, queryResult);
+    log.debug(applicationContext, MODULENAME, `Party results received from DXTR:`, queryResult);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
       debtor = { name: removeExtraSpaces(record.name) };
@@ -394,11 +410,16 @@ export default class CasesDxtrGateway implements CasesInterface {
     return debtor || null;
   }
 
-  transactionQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+  transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     const closedDates: Date[] = [];
     const dismissedDates: Date[] = [];
     const reopenedDates: Date[] = [];
-    log.debug(context, MODULENAME, `Transaction results received from DXTR:`, queryResult);
+    log.debug(
+      applicationContext,
+      MODULENAME,
+      `Transaction results received from DXTR:`,
+      queryResult,
+    );
     (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
       const transactionDate = parseTransactionDate(record);
 
@@ -418,14 +439,14 @@ export default class CasesDxtrGateway implements CasesInterface {
     return { closedDates, dismissedDates, reopenedDates } as TransactionDates;
   }
 
-  caseDetailsQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
-    log.debug(context, MODULENAME, `Case results received from DXTR:`, queryResult);
+  caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    log.debug(applicationContext, MODULENAME, `Case results received from DXTR:`, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
   }
 
-  casesQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
-    log.debug(context, MODULENAME, `Results received from DXTR `, queryResult);
+  casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    log.debug(applicationContext, MODULENAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseDetailInterface[]>).recordset;
   }

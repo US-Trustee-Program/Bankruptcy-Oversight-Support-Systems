@@ -1,4 +1,3 @@
-import { ApplicationConfiguration } from './configs/application-configuration';
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
 import { CasesInterface } from './use-cases/cases.interface';
@@ -15,10 +14,8 @@ export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
 };
 
-export const getCasesGateway = (): CasesInterface => {
-  const config: ApplicationConfiguration = new ApplicationConfiguration();
-
-  if (config.get('dbMock')) {
+export const getCasesGateway = (applicationContext: ApplicationContext): CasesInterface => {
+  if (applicationContext.config.get('dbMock')) {
     return new CasesLocalGateway();
   } else {
     return new CasesDxtrGateway();
@@ -26,30 +23,24 @@ export const getCasesGateway = (): CasesInterface => {
 };
 
 export const getAssignmentRepository = (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
 ): CaseAssignmentRepositoryInterface => {
-  const config: ApplicationConfiguration = new ApplicationConfiguration();
-  if (config.get('dbMock')) {
-    if (context.caseAssignmentRepository) {
-      return context.caseAssignmentRepository;
-    } else {
-      context.caseAssignmentRepository = new CaseAssignmentCosmosDbRepository(context, true);
-      return context.caseAssignmentRepository;
-    }
+  if (applicationContext.config.get('dbMock')) {
+    return new CaseAssignmentCosmosDbRepository(applicationContext, true);
   } else {
-    return new CaseAssignmentCosmosDbRepository(context);
+    return new CaseAssignmentCosmosDbRepository(applicationContext);
   }
 };
 
 export const getCosmosDbClient = (
+  applicationContext: ApplicationContext,
   testClient: boolean = false,
 ): CosmosClientHumble | FakeCosmosClientHumble => {
-  // TODO: evaluate whether this should be a singleton
-  const config: ApplicationConfiguration = new ApplicationConfiguration();
-  return testClient ? new FakeCosmosClientHumble() : new CosmosClientHumble(config);
+  return testClient
+    ? new FakeCosmosClientHumble()
+    : new CosmosClientHumble(applicationContext.config);
 };
 
-export const getCosmosConfig = (): CosmosConfig => {
-  const config: ApplicationConfiguration = new ApplicationConfiguration();
-  return config.get('cosmosConfig');
+export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
+  return applicationContext.config.get('cosmosConfig');
 };

@@ -27,15 +27,15 @@ function generateTestCase(overlay = {}) {
 }
 
 describe('Test DXTR Gateway', () => {
-  let appContext;
+  let applicationContext;
   const querySpy = jest.spyOn(database, 'executeQuery');
   beforeEach(async () => {
     const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
       return {};
     });
-    appContext = await applicationContextCreator(context);
-    appContext.config.dxtrDbConfig.database = dxtrDatabaseName;
+    applicationContext = await applicationContextCreator(context);
+    applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
     querySpy.mockImplementation(jest.fn());
   });
   afterEach(() => {
@@ -54,7 +54,7 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockResults);
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    await testCasesDxtrGateway.getCases(appContext, {});
+    await testCasesDxtrGateway.getCases(applicationContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
@@ -65,7 +65,7 @@ describe('Test DXTR Gateway', () => {
     };
     expect(querySpy).toHaveBeenCalledWith(
       expect.anything(),
-      appContext.config.dxtrDbConfig,
+      applicationContext.config.dxtrDbConfig,
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
@@ -91,7 +91,7 @@ describe('Test DXTR Gateway', () => {
     });
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const startingMonth = -12;
-    await testCasesDxtrGateway.getCases(appContext, {
+    await testCasesDxtrGateway.getCases(applicationContext, {
       startingMonth,
     });
     const date = new Date();
@@ -105,7 +105,7 @@ describe('Test DXTR Gateway', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       expect.anything(),
-      appContext.config.dxtrDbConfig,
+      applicationContext.config.dxtrDbConfig,
       expect.anything(),
       expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
     );
@@ -125,7 +125,7 @@ describe('Test DXTR Gateway', () => {
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
     try {
-      await testCasesDxtrGateway.getCases(appContext, {});
+      await testCasesDxtrGateway.getCases(applicationContext, {});
       expect(true).toBeFalsy();
     } catch (e) {
       expect((e as CamsError).message).toEqual(errorMessage);
@@ -221,7 +221,10 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    const actualResult = await testCasesDxtrGateway.getCaseDetail(appContext, testCase.caseId);
+    const actualResult = await testCasesDxtrGateway.getCaseDetail(
+      applicationContext,
+      testCase.caseId,
+    );
 
     const closedDate = '10-31-2023';
     const dismissedDate = '11-15-2023';
@@ -315,7 +318,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-    await testCasesDxtrGateway.getCaseDetail(appContext, '081-23-12345');
+    await testCasesDxtrGateway.getCaseDetail(applicationContext, '081-23-12345');
     // getCase
     expect(querySpy.mock.calls[0][3]).toEqual(
       expect.arrayContaining([
@@ -352,7 +355,7 @@ describe('Test DXTR Gateway', () => {
       featureFlagSpy.mockImplementation(async () => {
         return { 'chapter-twelve-enabled': true };
       });
-      appContext = await applicationContextCreator(context);
+      applicationContext = await applicationContextCreator(context);
 
       const cases = [
         {
@@ -372,7 +375,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getCases(appContext, {});
+      await testCasesDxtrGateway.getCases(applicationContext, {});
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).toContain("CS_CHAPTER = '12'");
     });
@@ -382,7 +385,7 @@ describe('Test DXTR Gateway', () => {
       featureFlagSpy.mockImplementation(async () => {
         return { 'chapter-twelve-enabled': false };
       });
-      appContext = await applicationContextCreator(context);
+      applicationContext = await applicationContextCreator(context);
 
       const cases = [
         {
@@ -402,7 +405,7 @@ describe('Test DXTR Gateway', () => {
       });
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      await testCasesDxtrGateway.getCases(appContext, {});
+      await testCasesDxtrGateway.getCases(applicationContext, {});
       expect(querySpy.mock.calls[0][2]).not.toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).not.toContain("CS_CHAPTER = '12'");
     });
@@ -420,7 +423,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const party = await testCasesDxtrGateway.partyQueryCallback(appContext, queryResult);
+      const party = await testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
 
       expect(party).toBeNull();
     });
@@ -440,7 +443,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const party = await testCasesDxtrGateway.partyQueryCallback(appContext, queryResult);
+      const party = await testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
@@ -466,7 +469,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const party = await testCasesDxtrGateway.partyQueryCallback(appContext, queryResult);
+      const party = await testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
