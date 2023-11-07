@@ -20,6 +20,7 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = await applicationContextCreator(context);
   try {
     await handlePostMethod(applicationContext, caseId, listOfAttorneyNames, role);
+    context.res = applicationContext.res;
   } catch (originalError) {
     log.error(applicationContext, 'assignment-function', originalError.message, originalError);
     let error = originalError;
@@ -45,11 +46,8 @@ async function handlePostMethod(
       listOfAttorneyNames,
       role,
     });
-  log.info(context, 'assignment-function', 'Hello!!!!!!', trialAttorneyAssignmentResponse);
-  const response = httpSuccess(trialAttorneyAssignmentResponse);
-  console.log('response!!!!!!!!!!!', response);
-  context.res = response;
-  log.info(context, 'assignment-function', 'context contents', context.res);
+
+  context.res = httpSuccess(trialAttorneyAssignmentResponse);
 }
 
 export default httpTrigger;
