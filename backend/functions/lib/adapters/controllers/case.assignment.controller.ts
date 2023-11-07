@@ -42,7 +42,6 @@ export class CaseAssignmentController {
       const assignmentUseCase = new CaseAssignment(this.context);
       return assignmentUseCase.createTrialAttorneyAssignments(this.context, listOfAssignments);
     } catch (exception) {
-      console.log('why?????????????????', exception);
       log.error(this.context, MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
         throw exception;
