@@ -9,7 +9,7 @@ const MODULE_NAME = 'CASES-LOCAL-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
   getCases = async (
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options: {
       startingMonth?: number;
@@ -24,7 +24,7 @@ export class CasesLocalGateway implements CasesInterface {
         bCase.dateFiled = getMonthDayYearStringFromDate(new Date(bCase.dateFiled));
       });
     } catch (err) {
-      log.error(context, MODULE_NAME, 'Failed to read mock cases.', err);
+      log.error(applicationContext, MODULE_NAME, 'Failed to read mock cases.', err);
       const message = (err as Error).message;
       return Promise.reject(message);
     }
@@ -32,7 +32,10 @@ export class CasesLocalGateway implements CasesInterface {
     return cases;
   };
 
-  async getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface> {
+  async getCaseDetail(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface> {
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
 
@@ -47,7 +50,12 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail.dismissedDate = getMonthDayYearStringFromDate(new Date(caseDetail.dismissedDate));
       caseDetail.reopenedDate = getMonthDayYearStringFromDate(new Date(caseDetail.reopenedDate));
     } catch (err) {
-      log.error(context, MODULE_NAME, `Failed to read mock case detail for ${caseId}.`, err);
+      log.error(
+        applicationContext,
+        MODULE_NAME,
+        `Failed to read mock case detail for ${caseId}.`,
+        err,
+      );
       const message = (err as Error).message;
       return Promise.reject(message);
     }

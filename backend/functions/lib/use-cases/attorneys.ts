@@ -18,11 +18,11 @@ export default class AttorneysList {
   }
 
   async getAttorneyList(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     fields: { officeId?: string },
   ): Promise<AttorneyListDbResult> {
-    const assignmentsUseCase = new CaseAssignment(context);
-    const attorneys = await this.gateway.getAttorneys(context, fields);
+    const assignmentsUseCase = new CaseAssignment(applicationContext);
+    const attorneys = await this.gateway.getAttorneys(applicationContext, fields);
 
     const attorneysWithCaseLoad = [];
 
