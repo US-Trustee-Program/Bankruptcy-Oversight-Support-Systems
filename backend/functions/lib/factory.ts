@@ -15,8 +15,6 @@ export const getAttorneyGateway = (): AttorneyGatewayInterface => {
 };
 
 export const getCasesGateway = (context: ApplicationContext): CasesInterface => {
-  // const config: ApplicationConfiguration = new ApplicationConfiguration();
-
   if (context.config.get('dbMock')) {
     return new CasesLocalGateway();
   } else {
@@ -27,7 +25,6 @@ export const getCasesGateway = (context: ApplicationContext): CasesInterface => 
 export const getAssignmentRepository = (
   context: ApplicationContext,
 ): CaseAssignmentRepositoryInterface => {
-  // const config: ApplicationConfiguration = new ApplicationConfiguration();
   if (context.config.get('dbMock')) {
     return new CaseAssignmentCosmosDbRepository(context, true);
   } else {
@@ -39,12 +36,9 @@ export const getCosmosDbClient = (
   context: ApplicationContext,
   testClient: boolean = false,
 ): CosmosClientHumble | FakeCosmosClientHumble => {
-  // TODO: evaluate whether this should be a singleton
-  // const config: ApplicationConfiguration = new ApplicationConfiguration();
   return testClient ? new FakeCosmosClientHumble() : new CosmosClientHumble(context.config);
 };
 
 export const getCosmosConfig = (context: ApplicationContext): CosmosConfig => {
-  // const config: ApplicationConfiguration = new ApplicationConfiguration();
   return context.config.get('cosmosConfig');
 };
