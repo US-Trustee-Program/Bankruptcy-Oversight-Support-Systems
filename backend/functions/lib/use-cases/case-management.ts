@@ -12,22 +12,22 @@ import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignme
 export class CaseManagement {
   casesGateway: CasesInterface;
 
-  constructor(casesGateway?: CasesInterface) {
+  constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
     if (!casesGateway) {
-      this.casesGateway = getCasesGateway();
+      this.casesGateway = getCasesGateway(applicationContext);
     } else {
       this.casesGateway = casesGateway;
     }
   }
 
-  async getCases(context: ApplicationContext): Promise<CaseListDbResult> {
+  async getCases(applicationContext: ApplicationContext): Promise<CaseListDbResult> {
     try {
       let startingMonth = parseInt(process.env.STARTING_MONTH);
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const caseAssignment = new CaseAssignment(context);
-      const cases = await this.casesGateway.getCases(context, {
+      const caseAssignment = new CaseAssignment(applicationContext);
+      const cases = await this.casesGateway.getCases(applicationContext, {
         startingMonth: startingMonth || undefined,
       });
 
@@ -57,11 +57,11 @@ export class CaseManagement {
   }
 
   public async getCaseDetail(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
-    const caseDetails = await this.casesGateway.getCaseDetail(context, caseId);
-    const caseAssignment = new CaseAssignment(context);
+    const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
+    const caseAssignment = new CaseAssignment(applicationContext);
     caseDetails.assignments = await this.getCaseAssigneeNames(caseAssignment, caseDetails);
 
     return {

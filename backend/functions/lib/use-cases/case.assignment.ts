@@ -13,39 +13,39 @@ export class CaseAssignment {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
 
   constructor(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     assignmentRepository?: CaseAssignmentRepositoryInterface,
   ) {
     if (!assignmentRepository) {
-      this.assignmentRepository = getAssignmentRepository(context);
+      this.assignmentRepository = getAssignmentRepository(applicationContext);
     } else {
       this.assignmentRepository = assignmentRepository;
     }
   }
 
   public async createAssignment(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     caseAssignment: CaseAttorneyAssignment,
   ): Promise<string> {
     try {
       return await this.assignmentRepository.createAssignment(caseAssignment);
     } catch (exception) {
-      log.error(context, MODULE_NAME, exception.message);
+      log.error(applicationContext, MODULE_NAME, exception.message);
       throw exception;
     }
   }
 
   public async createTrialAttorneyAssignments(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     listOfAssignments: CaseAttorneyAssignment[],
   ): Promise<AttorneyAssignmentResponseInterface> {
-    const isValid = await this.isCreateValid(context, listOfAssignments);
+    const isValid = await this.isCreateValid(applicationContext, listOfAssignments);
     if (!isValid) {
       throw new AssignmentError(MODULE_NAME, { message: EXISTING_ASSIGNMENT_FOUND });
     } else {
       const listOfAssignmentIdsCreated: string[] = [];
       for (const assignment of listOfAssignments) {
-        const assignmentId = await this.createAssignment(context, assignment);
+        const assignmentId = await this.createAssignment(applicationContext, assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }
@@ -60,7 +60,7 @@ export class CaseAssignment {
   }
 
   public async isCreateValid(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     newAssignments: CaseAttorneyAssignment[],
   ): Promise<boolean> {
     const caseId = newAssignments[0].caseId;

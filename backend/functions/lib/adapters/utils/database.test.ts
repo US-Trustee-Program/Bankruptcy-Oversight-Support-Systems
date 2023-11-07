@@ -38,10 +38,10 @@ jest.mock('mssql', () => {
 
 describe('Tests database', () => {
   test('should get appropriate results', async () => {
-    const appContext = await applicationContextCreator(functionContext);
+    const applicationContext = await applicationContextCreator(functionContext);
     // setup test
     // execute method under test
-    const context = appContext;
+    const context = applicationContext;
     const config = { server: 'foo' } as IDbConfig;
     const query = 'SELECT * FROM foo WHERE data = @param1 AND name=@param2';
     const input = [
