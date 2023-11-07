@@ -8,11 +8,11 @@ const context = require('azure-function-context-mock');
 const table = 'generic-test-data';
 
 describe('Local in-memory database gateway tests', () => {
-  let appContext;
+  let applicationContext;
   let list: object[];
 
   beforeEach(async () => {
-    appContext = await applicationContextCreator(context);
+    applicationContext = await applicationContextCreator(context);
     list = await getProperty(table, 'list');
   });
 
@@ -28,7 +28,7 @@ describe('Local in-memory database gateway tests', () => {
       body: list,
     };
 
-    const results = await db.getAll(appContext, table);
+    const results = await db.getAll(applicationContext, table);
 
     expect(results).toEqual(mockResults);
   });
@@ -43,7 +43,7 @@ describe('Local in-memory database gateway tests', () => {
       body: list,
     };
 
-    const results = await db.getRecord(appContext, table, 7);
+    const results = await db.getRecord(applicationContext, table, 7);
 
     expect(results).toEqual(mockResults);
   });
@@ -71,8 +71,8 @@ describe('Local in-memory database gateway tests', () => {
       body: list,
     };
 
-    await db.createRecord(appContext, table, fields);
-    const results = await db.getAll(appContext, table);
+    await db.createRecord(applicationContext, table, fields);
+    const results = await db.getAll(applicationContext, table);
 
     expect(results).toEqual(mockResults);
 
@@ -113,8 +113,8 @@ describe('Local in-memory database gateway tests', () => {
       },
     };
 
-    const updateResults = await db.updateRecord(appContext, table, 7, fields);
-    const fullList = await db.getAll(appContext, table);
+    const updateResults = await db.updateRecord(applicationContext, table, 7, fields);
+    const fullList = await db.getAll(applicationContext, table);
 
     expect(updateResults).toEqual(mockUpdateResults);
     expect(fullList.count).toEqual(list.length);
@@ -131,8 +131,8 @@ describe('Local in-memory database gateway tests', () => {
       body: newList,
     };
 
-    await db.deleteRecord(appContext, table, 7);
-    const results = await db.getAll(appContext, table);
+    await db.deleteRecord(applicationContext, table, 7);
+    const results = await db.getAll(applicationContext, table);
 
     expect(results).toEqual(mockResults);
   });

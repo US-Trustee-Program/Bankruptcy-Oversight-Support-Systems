@@ -10,11 +10,11 @@ import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 const MODULE_NAME = 'HEALTHCHECK';
 
 const httpTrigger: AzureFunction = async function (
-  context: Context,
+  functionContext: Context,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   req: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(context);
+  const applicationContext = await applicationContextCreator(functionContext);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
 
   log.debug(applicationContext, MODULE_NAME, 'Health check endpoint invoked');
@@ -34,7 +34,7 @@ const httpTrigger: AzureFunction = async function (
   // Add boolean flag for any other checks here
   const allCheckPassed = checkCosmosDbWrite && checkCosmosDbRead && checkCosmosDbDelete;
 
-  context.res = allCheckPassed
+  functionContext.res = allCheckPassed
     ? httpSuccess({ status: 'OK' })
     : httpError(
         new CamsError(MODULE_NAME, {

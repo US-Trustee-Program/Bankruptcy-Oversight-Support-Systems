@@ -6,12 +6,12 @@ import { getProperty, mockData } from '../../testing/mock-data';
 const MODULE_NAME = 'LOCAL-INMEMORY-DATA-MODULE';
 
 const runQuery = async (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   tableName: string,
   mockData: ObjectKeyVal[],
   input: { name: string; value: string }[],
 ): Promise<QueryResults> => {
-  log.info(context, MODULE_NAME, `Mocking query for ${tableName}`, input);
+  log.info(applicationContext, MODULE_NAME, `Mocking query for ${tableName}`, input);
 
   const queryResult = mockData.filter((obj: object) => {
     let result = true;
@@ -47,10 +47,10 @@ const runQuery = async (
   };
 };
 
-const getAll = async (context: ApplicationContext, table: string): Promise<DbResult> => {
+const getAll = async (applicationContext: ApplicationContext, table: string): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
 
-  log.info(context, MODULE_NAME, `Get all from ${table}`);
+  log.info(applicationContext, MODULE_NAME, `Get all from ${table}`);
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     list = mockData[table];
@@ -70,14 +70,14 @@ const getAll = async (context: ApplicationContext, table: string): Promise<DbRes
 };
 
 const getRecord = async (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   table: string,
   id: number,
 ): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
   let record: ObjectKeyVal = {};
 
-  log.info(context, MODULE_NAME, `Fetch record ${id} from ${table}`);
+  log.info(applicationContext, MODULE_NAME, `Fetch record ${id} from ${table}`);
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     list = mockData[table];
@@ -98,17 +98,17 @@ const getRecord = async (
     success: true,
   };
 
-  log.info(context, MODULE_NAME, `record from ${table} found`, results);
+  log.info(applicationContext, MODULE_NAME, `record from ${table} found`, results);
 
   return results;
 };
 
 const createRecord = async (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   table: string,
   fields: RecordObj[],
 ): Promise<DbResult> => {
-  log.info(context, MODULE_NAME, `Create record for ${table}`, fields);
+  log.info(applicationContext, MODULE_NAME, `Create record for ${table}`, fields);
 
   const newRecord: ObjectKeyVal = {};
 
@@ -150,27 +150,27 @@ const createRecord = async (
 };
 
 const updateRecord = async (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   table: string,
   id: number,
   fields: RecordObj[],
 ): Promise<DbResult> => {
-  log.info(context, MODULE_NAME, `Update record for ${table}`, fields);
+  log.info(applicationContext, MODULE_NAME, `Update record for ${table}`, fields);
 
   const newRecord: ObjectKeyVal = {};
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     for (let i = 0; i < mockData[table].length; i++) {
-      log.info(context, MODULE_NAME, `Searching for ${id}`);
+      log.info(applicationContext, MODULE_NAME, `Searching for ${id}`);
       const oldRecord = mockData[table][i];
       if (oldRecord[`${table}_id`] == id) {
-        log.info(context, MODULE_NAME, 'record found', oldRecord);
+        log.info(applicationContext, MODULE_NAME, 'record found', oldRecord);
         newRecord[`${table}_id`] = id;
         fields.map((field) => {
           newRecord[field.fieldName] = field.fieldValue as string;
         });
 
-        log.info(context, MODULE_NAME, `New record: `, newRecord);
+        log.info(applicationContext, MODULE_NAME, `New record: `, newRecord);
         mockData[table][i] = newRecord;
       }
     }
@@ -191,11 +191,11 @@ const updateRecord = async (
 };
 
 const deleteRecord = async (
-  context: ApplicationContext,
+  applicationContext: ApplicationContext,
   table: string,
   id: number,
 ): Promise<DbResult> => {
-  log.info(context, MODULE_NAME, `Delete record ${id} for ${table}`);
+  log.info(applicationContext, MODULE_NAME, `Delete record ${id} for ${table}`);
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     const data = mockData[table].filter((rec) => rec[`${table}_id`] != id);

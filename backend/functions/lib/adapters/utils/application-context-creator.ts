@@ -12,7 +12,6 @@ export async function applicationContextCreator(
   return {
     ...functionContext,
     config,
-    caseAssignmentRepository: undefined,
     featureFlags,
-  };
+  } as ApplicationContext;
 }

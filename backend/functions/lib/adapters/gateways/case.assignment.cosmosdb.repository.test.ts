@@ -13,8 +13,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   const trialAttorneyRole = 'TrialAttorney';
   let repository: CaseAssignmentCosmosDbRepository;
   beforeEach(async () => {
-    const appContext = await applicationContextCreator(functionContext);
-    repository = new CaseAssignmentCosmosDbRepository(appContext, true);
+    const applicationContext = await applicationContextCreator(functionContext);
+    repository = new CaseAssignmentCosmosDbRepository(applicationContext, true);
   });
 
   test('should create two assignments and find both of them', async () => {

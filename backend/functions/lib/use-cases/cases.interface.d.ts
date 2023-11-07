@@ -2,10 +2,13 @@ import { CaseDetailInterface } from '../adapters/types/cases';
 import { ApplicationContext } from '../adapters/types/basic';
 
 export interface CasesInterface {
-  getCaseDetail(context: ApplicationContext, caseId: string): Promise<CaseDetailInterface>;
+  getCaseDetail(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface>;
 
   getCases(
-    context: ApplicationContext,
+    applicationContext: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]>;
 }
