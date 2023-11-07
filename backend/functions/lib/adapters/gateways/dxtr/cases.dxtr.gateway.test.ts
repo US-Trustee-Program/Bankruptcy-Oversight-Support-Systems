@@ -494,7 +494,7 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
-        appContext,
+        applicationContext,
         queryResult,
       );
 
@@ -517,7 +517,7 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
-        appContext,
+        applicationContext,
         queryResult,
       );
 
@@ -546,7 +546,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
       const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
-        appContext,
+        applicationContext,
         queryResult,
       );
 
