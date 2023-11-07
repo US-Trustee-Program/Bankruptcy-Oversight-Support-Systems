@@ -34,6 +34,7 @@ describe('Case Assignment Function Tests', () => {
       count: 1,
     };
     await httpTrigger(appContext, request);
+    console.log(appContext.res);
     expect(appContext.res.body).toEqual(expect.objectContaining(expectedResponse));
     expect(appContext.res.body.body.length).toEqual(1);
   });

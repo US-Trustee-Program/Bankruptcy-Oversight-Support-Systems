@@ -82,6 +82,7 @@ describe('Standard case list tests without class mocks', () => {
 
     await httpTrigger(context, request);
 
+    console.log(context.res);
     expect(expectedResponseBody).toEqual(context.res.body);
   });
 });

@@ -46,7 +46,9 @@ async function handlePostMethod(
       role,
     });
   log.info(context, 'assignment-function', 'Hello!!!!!!', trialAttorneyAssignmentResponse);
-  context.res = httpSuccess(trialAttorneyAssignmentResponse);
+  const response = httpSuccess(trialAttorneyAssignmentResponse);
+  console.log('response!!!!!!!!!!!', response);
+  context.res = response;
   log.info(context, 'assignment-function', 'context contents', context.res);
 }
 
