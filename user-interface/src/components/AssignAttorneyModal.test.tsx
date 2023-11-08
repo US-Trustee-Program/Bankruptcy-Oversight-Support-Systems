@@ -59,7 +59,6 @@ describe('Test Assign Attorney Modal Component', () => {
               attorneyList={attorneyList}
               bCase={bCase}
               modalId={modalId}
-              openerId="opener-123"
               callBack={callback}
             ></AssignAttorneyModal>
           </>
@@ -139,7 +138,6 @@ describe('Test Assign Attorney Modal Component', () => {
               attorneyList={attorneyList}
               bCase={bCase}
               modalId={modalId}
-              openerId="opener-123"
               callBack={callback}
             ></AssignAttorneyModal>
           </>
@@ -208,7 +206,6 @@ describe('Test Assign Attorney Modal Component', () => {
                 attorneyList={attorneyList}
                 bCase={bCase}
                 modalId={modalId}
-                openerId="opener-123"
                 callBack={() => {
                   return;
                 }}
@@ -250,7 +247,6 @@ describe('Test Assign Attorney Modal Component', () => {
                 attorneyList={attorneyList}
                 bCase={bCase}
                 modalId={modalId}
-                openerId="opener-123"
                 callBack={() => {
                   return;
                 }}

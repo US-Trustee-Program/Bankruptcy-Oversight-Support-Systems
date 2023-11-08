@@ -33,7 +33,6 @@ export const CaseAssignment = () => {
   const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
   const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
   const [bCase, setBCase] = useState<Chapter15Type>();
-  const [modalOpenerId, setModalOpenerId] = useState<string>('');
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
     type: UswdsAlertStyle;
@@ -110,9 +109,8 @@ export const CaseAssignment = () => {
       });
   };
 
-  const onOpenModal = (theCase: Chapter15Type, openerId: string) => {
+  const onOpenModal = (theCase: Chapter15Type) => {
     setBCase(theCase);
-    setModalOpenerId(openerId); // do we need this?
     return theCase;
   };
 
@@ -139,8 +137,6 @@ export const CaseAssignment = () => {
         tempAssignedCaseList.push(bCase as object);
         tempAssignedCaseList.sort(sortMethod);
         setAssignedCaseList(tempAssignedCaseList);
-
-        setAttorneyList([]);
 
         const alertMessage = `${selectedAttorneyList
           .map((attorney) => attorney)
@@ -280,7 +276,7 @@ export const CaseAssignment = () => {
                               toggleAction="open"
                               modalId={`${modalId}`}
                               modalRef={modalRef}
-                              onClick={() => onOpenModal(theCase, `assign-attorney-btn-${idx}`)}
+                              onClick={() => onOpenModal(theCase)}
                             >
                               Assign
                             </ToggleModalButton>
@@ -407,7 +403,6 @@ export const CaseAssignment = () => {
             attorneyList={attorneyList}
             bCase={bCase}
             modalId={`${modalId}`}
-            openerId={modalOpenerId}
             callBack={updateCase}
           ></AssignAttorneyModal>
         )}
