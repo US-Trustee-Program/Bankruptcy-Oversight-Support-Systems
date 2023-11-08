@@ -62,7 +62,6 @@ export const CaseAssignment = () => {
     await api
       .list('/cases')
       .then((res) => {
-        console.log('The response is:', res);
         const assignmentList: Chapter15Node[] = [];
         const nonAssignmentList: Chapter15Node[] = [];
 
