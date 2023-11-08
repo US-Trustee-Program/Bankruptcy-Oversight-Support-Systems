@@ -8,7 +8,9 @@ import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
-import log from '../adapters/services/logger.service';
+import { UnknownError } from '../common-errors/unknown-error';
+import { CamsError } from '../common-errors/cams-error';
+import { AssignmentError } from './assignment.exception';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -46,16 +48,17 @@ export class CaseManagement {
           caseList: cases as CaseDetailInterface[],
         },
       };
-    } catch (e) {
-      const message = (e as Error).message;
-      return {
-        success: false,
-        message: message || 'Unknown Error received while retrieving cases',
-        count: 0,
-        body: {
-          caseList: [],
-        },
-      };
+    } catch (originalError) {
+      if (!(originalError instanceof CamsError)) {
+        throw new UnknownError(MODULE_NAME, {
+          message:
+            'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+          originalError,
+          status: 500,
+        });
+      } else {
+        throw originalError;
+      }
     }
   }
 
@@ -94,8 +97,12 @@ export class CaseManagement {
       });
       return assigneeNames;
     } catch (e) {
-      log.error(applicationContext, MODULE_NAME, 'Unable to retrieve case assignments.', e);
-      return [];
+      throw new AssignmentError(MODULE_NAME, {
+        message:
+          'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+        originalError: e,
+        status: 500,
+      });
     }
   }
 }

@@ -36,7 +36,8 @@ export const CaseAssignment = () => {
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
     type: UswdsAlertStyle;
-  }>({ message: '', type: UswdsAlertStyle.Success });
+    timeOut: number;
+  }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
   const [inTableTransferMode, setInTableTransferMode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -60,6 +61,7 @@ export const CaseAssignment = () => {
     await api
       .list('/cases')
       .then((res) => {
+        console.log('The response is:', res);
         const assignmentList: Chapter15Node[] = [];
         const nonAssignmentList: Chapter15Node[] = [];
 
@@ -88,6 +90,12 @@ export const CaseAssignment = () => {
       .catch((reason) => {
         isFetching = false;
         setIsLoading(false);
+        setAssignmentAlert({
+          message: reason.message,
+          type: UswdsAlertStyle.Error,
+          timeOut: 0,
+        });
+        alertRef.current?.show();
         console.error((reason as Error).message);
       });
   };
@@ -116,7 +124,11 @@ export const CaseAssignment = () => {
 
   function updateCase({ bCase, selectedAttorneyList, status, apiResult }: CallBackProps) {
     if (status === 'error') {
-      setAssignmentAlert({ message: (apiResult as Error).message, type: UswdsAlertStyle.Error });
+      setAssignmentAlert({
+        message: (apiResult as Error).message,
+        type: UswdsAlertStyle.Error,
+        timeOut: 8,
+      });
       alertRef.current?.show();
     } else if (selectedAttorneyList.length > 0) {
       if (bCase) {
@@ -141,7 +153,7 @@ export const CaseAssignment = () => {
         const alertMessage = `${selectedAttorneyList
           .map((attorney) => attorney)
           .join(', ')} assigned to case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}`;
-        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success });
+        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
         alertRef.current?.show();
 
         setTimeout(() => {
@@ -158,255 +170,252 @@ export const CaseAssignment = () => {
     fetchAttorneys();
   }, []);
 
-  if (isLoading) {
-    return (
+  return (
+    <>
       <div className="case-assignment case-list">
+        <Alert
+          message={assignmentAlert.message}
+          type={assignmentAlert.type}
+          role="status"
+          slim={true}
+          ref={alertRef}
+          timeout={assignmentAlert.timeOut}
+        />
         <h1 data-testid="case-list-heading">{screenTitle}</h1>
         <h2 data-testid="case-list-subtitle">{subTitle}</h2>
-        <p data-testid="loading-indicator">Loading...</p>
-      </div>
-    );
-  } else {
-    return (
-      <>
-        <div className="case-assignment case-list">
-          <Alert
-            message={assignmentAlert.message}
-            type={assignmentAlert.type}
-            role="status"
-            slim={true}
-            ref={alertRef}
-            timeout={8}
-          />
-          <h1 data-testid="case-list-heading">{screenTitle}</h1>
-          <h2 data-testid="case-list-subtitle">{subTitle}</h2>
-          {unassignedCaseList.length > 0 && (
-            <div className="usa-table-container--scrollable" tabIndex={0}>
-              <table
-                className="case-list usa-table usa-table--striped"
-                data-testid="unassigned-table"
-              >
-                <caption>Unassigned Cases</caption>
-                <thead>
-                  <tr className="case-headings">
-                    <th scope="col" role="columnheader">
-                      Case Number
-                    </th>
-                    {chapterTwelveEnabled && (
-                      <th scope="col" role="columnheader" data-testid="chapter-table-header">
-                        Chapter
+        {isLoading && <p data-testid="loading-indicator">Loading...</p>}
+        {!isLoading && (
+          <>
+            {unassignedCaseList.length > 0 && (
+              <div className="usa-table-container--scrollable" tabIndex={0}>
+                <table
+                  className="case-list usa-table usa-table--striped"
+                  data-testid="unassigned-table"
+                >
+                  <caption>Unassigned Cases</caption>
+                  <thead>
+                    <tr className="case-headings">
+                      <th scope="col" role="columnheader">
+                        Case Number
                       </th>
-                    )}
-                    <th scope="col" role="columnheader">
-                      Case Title (Debtor)
-                    </th>
-                    <th
-                      data-sortable
-                      scope="col"
-                      role="columnheader"
-                      aria-sort="descending"
-                      aria-label="Filing Date, sortable column, currently sorted descending"
-                    >
-                      Filing Date
-                      <button
-                        tabIndex={0}
-                        className="usa-table__header__button"
-                        title="Click to sort by Filing Date in ascending order."
-                        disabled={true}
+                      {chapterTwelveEnabled && (
+                        <th scope="col" role="columnheader" data-testid="chapter-table-header">
+                          Chapter
+                        </th>
+                      )}
+                      <th scope="col" role="columnheader">
+                        Case Title (Debtor)
+                      </th>
+                      <th
+                        data-sortable
+                        scope="col"
+                        role="columnheader"
+                        aria-sort="descending"
+                        aria-label="Filing Date, sortable column, currently sorted descending"
                       >
-                        <svg
-                          className="usa-icon"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
+                        Filing Date
+                        <button
+                          tabIndex={0}
+                          className="usa-table__header__button"
+                          title="Click to sort by Filing Date in ascending order."
+                          disabled={true}
                         >
-                          <g className="descending" fill="transparent">
-                            <path d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"></path>
-                          </g>
-                          <g className="ascending" fill="transparent">
-                            <path
-                              transform="rotate(180, 12, 12)"
-                              d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"
-                            ></path>
-                          </g>
-                          <g className="unsorted" fill="transparent">
-                            <polygon points="15.17 15 13 17.17 13 6.83 15.17 9 16.58 7.59 12 3 7.41 7.59 8.83 9 11 6.83 11 17.17 8.83 15 7.42 16.41 12 21 16.59 16.41 15.17 15"></polygon>
-                          </g>
-                        </svg>
-                      </button>
-                    </th>
-                    <th scope="col" role="columnheader">
-                      Assign Attorney
-                    </th>
-                  </tr>
-                </thead>
-                <tbody data-testid="unassigned-table-body">
-                  {(unassignedCaseList as Array<Chapter15Node>).map(
-                    (theCase: Chapter15Node, idx: number) => {
-                      return (
-                        <tr key={idx}>
-                          <td className="case-number">
-                            <span className="mobile-title">Case Number:</span>
-                            <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
-                              {getCaseNumber(theCase.caseId)}
-                            </a>
-                          </td>
-                          {chapterTwelveEnabled && (
-                            <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
-                              <span className="mobile-title">Chapter:</span>
-                              {theCase.chapter}
-                            </td>
-                          )}
-                          <td className="case-title-column">
-                            <span className="mobile-title">Case Title (Debtor):</span>
-                            {theCase.caseTitle}
-                          </td>
-                          <td
-                            className="filing-date"
-                            data-sort-value={theCase.sortableDateFiled}
-                            data-sort-active={true}
+                          <svg
+                            className="usa-icon"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
                           >
-                            <span className="mobile-title">Filing Date:</span>
-                            {theCase.dateFiled}
-                          </td>
-                          <td data-testid={`attorney-list-${idx}`} className="attorney-list">
-                            <span className="mobile-title">Assigned Attorney:</span>
-                            <ToggleModalButton
-                              className="case-assignment-modal-toggle"
-                              buttonIndex={`${idx}`}
-                              toggleAction="open"
-                              modalId={`${modalId}`}
-                              modalRef={modalRef}
-                              onClick={() => onOpenModal(theCase)}
+                            <g className="descending" fill="transparent">
+                              <path d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"></path>
+                            </g>
+                            <g className="ascending" fill="transparent">
+                              <path
+                                transform="rotate(180, 12, 12)"
+                                d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"
+                              ></path>
+                            </g>
+                            <g className="unsorted" fill="transparent">
+                              <polygon points="15.17 15 13 17.17 13 6.83 15.17 9 16.58 7.59 12 3 7.41 7.59 8.83 9 11 6.83 11 17.17 8.83 15 7.42 16.41 12 21 16.59 16.41 15.17 15"></polygon>
+                            </g>
+                          </svg>
+                        </button>
+                      </th>
+                      <th scope="col" role="columnheader">
+                        Assign Attorney
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody data-testid="unassigned-table-body">
+                    {(unassignedCaseList as Array<Chapter15Node>).map(
+                      (theCase: Chapter15Node, idx: number) => {
+                        return (
+                          <>
+                            <tr key={idx}>
+                              <td className="case-number">
+                                <span className="mobile-title">Case Number:</span>
+                                <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                                  {getCaseNumber(theCase.caseId)}
+                                </a>
+                              </td>
+                              {chapterTwelveEnabled && (
+                                <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
+                                  <span className="mobile-title">Chapter:</span>
+                                  {theCase.chapter}
+                                </td>
+                              )}
+                              <td className="case-title-column">
+                                <span className="mobile-title">Case Title (Debtor):</span>
+                                {theCase.caseTitle}
+                              </td>
+                              <td
+                                className="filing-date"
+                                data-sort-value={theCase.sortableDateFiled}
+                                data-sort-active={true}
+                              >
+                                <span className="mobile-title">Filing Date:</span>
+                                {theCase.dateFiled}
+                              </td>
+                              <td data-testid={`attorney-list-${idx}`} className="attorney-list">
+                                <span className="mobile-title">Assigned Attorney:</span>
+                                <ToggleModalButton
+                                  className="case-assignment-modal-toggle"
+                                  buttonIndex={`${idx}`}
+                                  toggleAction="open"
+                                  modalId={`${modalId}`}
+                                  modalRef={modalRef}
+                                  onClick={() => onOpenModal(theCase)}
+                                >
+                                  Assign
+                                </ToggleModalButton>
+                              </td>
+                            </tr>
+                          </>
+                        );
+                      },
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {assignedCaseList.length > 0 && (
+              <div className="usa-table-container--scrollable" tabIndex={0}>
+                <table className="case-list usa-table usa-table--striped">
+                  <caption>Assigned Cases</caption>
+                  <thead>
+                    <tr className="case-headings">
+                      <th scope="col" role="columnheader">
+                        Case Number
+                      </th>
+                      {chapterTwelveEnabled && (
+                        <th scope="col" role="columnheader" data-testid="chapter-table-header">
+                          Chapter
+                        </th>
+                      )}
+                      <th scope="col" role="columnheader">
+                        Case Title (Debtor)
+                      </th>
+                      <th
+                        data-sortable
+                        scope="col"
+                        role="columnheader"
+                        aria-sort="descending"
+                        aria-label="Filing Date, sortable column, currently sorted descending"
+                      >
+                        Filing Date
+                        <button
+                          tabIndex={0}
+                          className="usa-table__header__button"
+                          title="Click to sort by Filing Date in ascending order."
+                          disabled={true}
+                        >
+                          <svg
+                            className="usa-icon"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                          >
+                            <g className="descending" fill="transparent">
+                              <path d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"></path>
+                            </g>
+                            <g className="ascending" fill="transparent">
+                              <path
+                                transform="rotate(180, 12, 12)"
+                                d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"
+                              ></path>
+                            </g>
+                            <g className="unsorted" fill="transparent">
+                              <polygon points="15.17 15 13 17.17 13 6.83 15.17 9 16.58 7.59 12 3 7.41 7.59 8.83 9 11 6.83 11 17.17 8.83 15 7.42 16.41 12 21 16.59 16.41 15.17 15"></polygon>
+                            </g>
+                          </svg>
+                        </button>
+                      </th>
+                      <th scope="col" role="columnheader">
+                        Assigned Attorney
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody data-testid="assigned-table-body">
+                    {(assignedCaseList as Array<Chapter15Node>).map(
+                      (theCase: Chapter15Node, idx: number) => {
+                        return (
+                          <tr
+                            key={idx}
+                            className={
+                              theCase.caseId === inTableTransferMode ? 'in-table-transfer-mode' : ''
+                            }
+                          >
+                            <td className="case-number">
+                              <span className="mobile-title">Case Number:</span>
+                              <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                                {getCaseNumber(theCase.caseId)}
+                              </a>
+                            </td>
+                            {chapterTwelveEnabled && (
+                              <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
+                                <span className="mobile-title">Chapter:</span>
+                                {theCase.chapter}
+                              </td>
+                            )}
+                            <td className="case-title-column">
+                              <span className="mobile-title">Case Title (Debtor):</span>
+                              {theCase.caseTitle}
+                            </td>
+                            <td
+                              className="filing-date"
+                              data-sort-value={theCase.sortableDateFiled}
+                              data-sort-active={true}
                             >
-                              Assign
-                            </ToggleModalButton>
-                          </td>
-                        </tr>
-                      );
-                    },
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {assignedCaseList.length > 0 && (
-            <div className="usa-table-container--scrollable" tabIndex={0}>
-              <table className="case-list usa-table usa-table--striped">
-                <caption>Assigned Cases</caption>
-                <thead>
-                  <tr className="case-headings">
-                    <th scope="col" role="columnheader">
-                      Case Number
-                    </th>
-                    {chapterTwelveEnabled && (
-                      <th scope="col" role="columnheader" data-testid="chapter-table-header">
-                        Chapter
-                      </th>
-                    )}
-                    <th scope="col" role="columnheader">
-                      Case Title (Debtor)
-                    </th>
-                    <th
-                      data-sortable
-                      scope="col"
-                      role="columnheader"
-                      aria-sort="descending"
-                      aria-label="Filing Date, sortable column, currently sorted descending"
-                    >
-                      Filing Date
-                      <button
-                        tabIndex={0}
-                        className="usa-table__header__button"
-                        title="Click to sort by Filing Date in ascending order."
-                        disabled={true}
-                      >
-                        <svg
-                          className="usa-icon"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                        >
-                          <g className="descending" fill="transparent">
-                            <path d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"></path>
-                          </g>
-                          <g className="ascending" fill="transparent">
-                            <path
-                              transform="rotate(180, 12, 12)"
-                              d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"
-                            ></path>
-                          </g>
-                          <g className="unsorted" fill="transparent">
-                            <polygon points="15.17 15 13 17.17 13 6.83 15.17 9 16.58 7.59 12 3 7.41 7.59 8.83 9 11 6.83 11 17.17 8.83 15 7.42 16.41 12 21 16.59 16.41 15.17 15"></polygon>
-                          </g>
-                        </svg>
-                      </button>
-                    </th>
-                    <th scope="col" role="columnheader">
-                      Assigned Attorney
-                    </th>
-                  </tr>
-                </thead>
-                <tbody data-testid="assigned-table-body">
-                  {(assignedCaseList as Array<Chapter15Node>).map(
-                    (theCase: Chapter15Node, idx: number) => {
-                      return (
-                        <tr
-                          key={idx}
-                          className={
-                            theCase.caseId === inTableTransferMode ? 'in-table-transfer-mode' : ''
-                          }
-                        >
-                          <td className="case-number">
-                            <span className="mobile-title">Case Number:</span>
-                            <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
-                              {getCaseNumber(theCase.caseId)}
-                            </a>
-                          </td>
-                          {chapterTwelveEnabled && (
-                            <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
-                              <span className="mobile-title">Chapter:</span>
-                              {theCase.chapter}
+                              <span className="mobile-title">Filing Date:</span>
+                              {theCase.dateFiled}
                             </td>
-                          )}
-                          <td className="case-title-column">
-                            <span className="mobile-title">Case Title (Debtor):</span>
-                            {theCase.caseTitle}
-                          </td>
-                          <td
-                            className="filing-date"
-                            data-sort-value={theCase.sortableDateFiled}
-                            data-sort-active={true}
-                          >
-                            <span className="mobile-title">Filing Date:</span>
-                            {theCase.dateFiled}
-                          </td>
-                          <td data-testid={`attorney-list-${idx}`} className="attorney-list">
-                            <span className="mobile-title">Assigned Attorney:</span>
-                            {theCase.assignments?.map((attorney, key: number) => (
-                              <div key={key}>
-                                {attorney}
-                                <br />
-                              </div>
-                            ))}
-                          </td>
-                        </tr>
-                      );
-                    },
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-        {attorneyList.length > 0 && (
-          <AssignAttorneyModal
-            ref={modalRef}
-            attorneyList={attorneyList}
-            bCase={bCase}
-            modalId={`${modalId}`}
-            callBack={updateCase}
-          ></AssignAttorneyModal>
+                            <td data-testid={`attorney-list-${idx}`} className="attorney-list">
+                              <span className="mobile-title">Assigned Attorney:</span>
+                              {theCase.assignments?.map((attorney, key: number) => (
+                                <div key={key}>
+                                  {attorney}
+                                  <br />
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        );
+                      },
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
-      </>
-    );
-  }
+      </div>
+      {attorneyList.length > 0 && (
+        <AssignAttorneyModal
+          ref={modalRef}
+          attorneyList={attorneyList}
+          bCase={bCase}
+          modalId={`${modalId}`}
+          callBack={updateCase}
+        ></AssignAttorneyModal>
+      )}
+    </>
+  );
 };
