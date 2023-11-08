@@ -16,7 +16,6 @@ export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
   bCase: Chapter15Type | undefined;
   modalId: string;
-  openerId: string;
   callBack: (props: CallBackProps) => void;
 }
 
@@ -82,11 +81,10 @@ function AssignAttorneyModalComponent(
     let localCheckListValues = checkListValues;
     if (ev.target.checked && !checkListValues.includes(name)) {
       localCheckListValues.push(name);
-      modalRef.current?.buttons?.current?.disableSubmitButton(false);
     } else if (!ev.target.checked && checkListValues.includes(name)) {
       localCheckListValues = checkListValues.filter((theName) => theName !== name);
-      modalRef.current?.buttons?.current?.disableSubmitButton(localCheckListValues.length === 0);
     }
+    modalRef.current?.buttons?.current?.disableSubmitButton(localCheckListValues.length === 0);
     setCheckListValues(localCheckListValues);
   }
 
@@ -106,7 +104,7 @@ function AssignAttorneyModalComponent(
       });
 
     setCheckListValues([]);
-
+    modalRef.current?.buttons?.current?.disableSubmitButton(true);
     // send attorney IDs to API
     await Api.post('/case-assignments', {
       caseId: props.bCase?.caseId,
@@ -137,7 +135,6 @@ function AssignAttorneyModalComponent(
 
   function onOpen() {
     freezeBackground();
-
     checkboxListRefs.forEach((cbox) => {
       cbox.current?.setChecked(false);
     });
@@ -171,13 +168,11 @@ function AssignAttorneyModalComponent(
       }
     }
   };
-
   return (
     <Modal
       ref={modalRef}
       modalId={props.modalId}
       className="assign-attorney-modal"
-      openerId={props.openerId}
       onOpen={onOpen}
       onClose={cancelModal}
       heading={modalHeading}
