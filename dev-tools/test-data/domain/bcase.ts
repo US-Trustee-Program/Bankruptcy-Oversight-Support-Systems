@@ -3,9 +3,10 @@ import { AO_TX_Record, buildRecFromTxRecord } from '../tables/AO_TX';
 import { DatabaseRecords, emptyDatabaseRecords } from '../tables/common';
 import { Chapter, TxCode } from '../types';
 import { AO_PY_Record } from '../tables/AO_PY';
+import { AO_AT_Record } from '../tables/AO_AT';
 
 export interface BCase {
-  csCaseId: string;
+  dxtrId: string;
   caseId: string;
   chapter: Chapter;
   shortTitle: string;
@@ -16,7 +17,8 @@ export interface BCase {
   judge?: Judge;
   reopenCode: string;
   transactions: Array<BCaseTransaction>;
-  parties: Array<BCaseParty>;
+  debtor: BCaseParty;
+  debtorAttorney: DebtorAttorney;
   cfValue?: string;
   dateFiled: string;
   dateConvert?: string;
@@ -58,6 +60,21 @@ export interface BCaseParty {
   addressEvent?: string;
 }
 
+export interface DebtorAttorney {
+  lastName: string;
+  middleName?: string;
+  firstName?: string;
+  generation?: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  phone?: string;
+}
+
 export interface Judge {
   lastName: string;
   firstName: string;
@@ -70,7 +87,7 @@ export function toDbRecords(bCase: BCase | Array<BCase>): DatabaseRecords {
   caseList.forEach((_case) => {
     dbRecords.AO_CS.push(
       new AO_CS_Record({
-        CS_CASEID: _case.csCaseId,
+        CS_CASEID: _case.dxtrId,
         COURT_ID: _case.courtId,
         CS_CASE_NUMBER: _case.caseId.split('-')[1],
         CS_DIV: _case.div,
@@ -99,7 +116,7 @@ export function toDbRecords(bCase: BCase | Array<BCase>): DatabaseRecords {
     );
     _case.transactions?.forEach((txn, idx) => {
       const record = new AO_TX_Record({
-        CS_CASEID: _case.csCaseId,
+        CS_CASEID: _case.dxtrId,
         COURT_ID: _case.courtId,
         DE_SEQNO: idx,
         CASE_ID: _case.caseId,
@@ -112,36 +129,55 @@ export function toDbRecords(bCase: BCase | Array<BCase>): DatabaseRecords {
       record.validate();
       dbRecords.AO_TX.push(record);
     });
-    _case.parties?.forEach((party) => {
-      const record = new AO_PY_Record({
-        CS_CASEID: _case.csCaseId,
-        COURT_ID: _case.courtId,
-        PY_ROLE: party.role,
-        PY_LAST_NAME: party.lastName,
-        PY_MIDDLE_NAME: party.middleName,
-        PY_FIRST_NAME: party.firstName,
-        PY_GENERATION: party.generation,
-        PY_TAXID: party.taxId,
-        PY_SSN: party.ssn,
-        PY_ADDRESS1: party.address1,
-        PY_ADDRESS2: party.address2,
-        PY_ADDRESS3: party.address3,
-        PY_CITY: party.city,
-        PY_STATE: party.state,
-        PY_ZIP: party.zip,
-        PY_COUNTRY: party.country,
-        PY_PHONENO: party.phone,
-        PY_FAX_PHONE: party.fax,
-        PY_E_MAIL: party.email,
-        PY_PROSE: party.prose,
-        PY_END_DATE: party.endDate,
-        SSN_EVENT: party.ssnEvent,
-        NAME_EVENT: party.nameEvent,
-        ADDRESS_EVENT: party.addressEvent,
-      });
-      record.validate();
-      dbRecords.AO_PY.push(record);
+
+    const partyRecord = new AO_PY_Record({
+      CS_CASEID: _case.dxtrId,
+      COURT_ID: _case.courtId,
+      PY_ROLE: _case.debtor.role,
+      PY_LAST_NAME: _case.debtor.lastName,
+      PY_MIDDLE_NAME: _case.debtor.middleName,
+      PY_FIRST_NAME: _case.debtor.firstName,
+      PY_GENERATION: _case.debtor.generation,
+      PY_TAXID: _case.debtor.taxId,
+      PY_SSN: _case.debtor.ssn,
+      PY_ADDRESS1: _case.debtor.address1,
+      PY_ADDRESS2: _case.debtor.address2,
+      PY_ADDRESS3: _case.debtor.address3,
+      PY_CITY: _case.debtor.city,
+      PY_STATE: _case.debtor.state,
+      PY_ZIP: _case.debtor.zip,
+      PY_COUNTRY: _case.debtor.country,
+      PY_PHONENO: _case.debtor.phone,
+      PY_FAX_PHONE: _case.debtor.fax,
+      PY_E_MAIL: _case.debtor.email,
+      PY_PROSE: _case.debtor.prose,
+      PY_END_DATE: _case.debtor.endDate,
+      SSN_EVENT: _case.debtor.ssnEvent,
+      NAME_EVENT: _case.debtor.nameEvent,
+      ADDRESS_EVENT: _case.debtor.addressEvent,
     });
+    partyRecord.validate();
+    dbRecords.AO_PY.push(partyRecord);
+
+    const debtorAttorneyRecord = new AO_AT_Record({
+      CS_CASEID: _case.dxtrId,
+      COURT_ID: _case.courtId,
+      PY_ROLE: _case.debtor.role,
+      AT_LAST_NAME: _case.debtorAttorney.lastName,
+      AT_MIDDLE_NAME: _case.debtorAttorney.middleName,
+      AT_FIRST_NAME: _case.debtorAttorney.firstName,
+      AT_GENERATION: _case.debtorAttorney.generation,
+      AT_ADDRESS1: _case.debtorAttorney.address1,
+      AT_ADDRESS2: _case.debtorAttorney.address2,
+      AT_ADDRESS3: _case.debtorAttorney.address3,
+      AT_CITY: _case.debtorAttorney.city,
+      AT_STATE: _case.debtorAttorney.state,
+      AT_ZIP: _case.debtorAttorney.zip,
+      AT_COUNTRY: _case.debtorAttorney.country,
+      AT_PHONENO: _case.debtorAttorney.phone,
+    });
+    debtorAttorneyRecord.validate();
+    dbRecords.AO_AT.push(debtorAttorneyRecord);
   });
   return dbRecords;
 }

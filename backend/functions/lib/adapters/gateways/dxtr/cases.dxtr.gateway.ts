@@ -5,6 +5,7 @@ import {
   Party,
   DxtrTransactionRecord,
   TransactionDates,
+  DebtorAttorney,
 } from '../../types/cases';
 import {
   getMonthDayYearStringFromDate,
@@ -72,6 +73,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
 
     bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
+    bCase.debtorAttorney = await this.queryDebtorAttorney(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
 
     return bCase;
   }
@@ -280,7 +286,7 @@ export default class CasesDxtrGateway implements CasesInterface {
           PY_ZIP,
           ' ',
           PY_COUNTRY
-        )) as address4,
+        )) as cityStateZipCountry,
         PY_TAXID as taxId,
         PY_SSN as ssn
       FROM [dbo].[AO_PY]
@@ -306,6 +312,86 @@ export default class CasesDxtrGateway implements CasesInterface {
       ),
     );
   }
+  private async queryDebtorAttorney(
+    context: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+  ): Promise<DebtorAttorney> {
+    const input: DbTableFieldSpec[] = [];
+
+    input.push({
+      name: 'dxtrId',
+      type: mssql.VarChar,
+      value: dxtrId,
+    });
+
+    input.push({
+      name: 'courtId',
+      type: mssql.VarChar,
+      value: courtId,
+    });
+
+    const query = `SELECT
+        TRIM(CONCAT(
+          AT_FIRST_NAME,
+          ' ',
+          AT_MIDDLE_NAME,
+          ' ',
+          AT_LAST_NAME,
+          ' ',
+          AT_GENERATION
+        )) as name,
+        AT_ADDRESS1 as address1,
+        AT_ADDRESS2 as address2,
+        AT_ADDRESS3 as address3,
+        TRIM(CONCAT(
+          AT_CITY,
+          ' ',
+          AT_STATE,
+          ' ',
+          AT_ZIP,
+          ' ',
+          AT_COUNTRY
+        )) as cityStateZipCountry,
+        AT_PHONENO as phone
+      FROM [dbo].[AO_AT]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = 'db'
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    return Promise.resolve(
+      handleQueryResult<DebtorAttorney>(
+        context,
+        queryResult,
+        MODULENAME,
+        this.debtorAttorneyQueryCallback,
+      ),
+    );
+  }
+
+  debtorAttorneyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+    let debtorAttorney: DebtorAttorney;
+    log.debug(context, MODULENAME, `Debtor attorney results received from DXTR:`, queryResult);
+
+    (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
+      debtorAttorney = { name: removeExtraSpaces(record.name) };
+      debtorAttorney.address1 = record.address1;
+      debtorAttorney.address2 = record.address2;
+      debtorAttorney.address3 = record.address3;
+      debtorAttorney.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
+      debtorAttorney.phone = record.phone;
+    });
+    return debtorAttorney || null;
+  }
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     let debtor: Party;
@@ -316,7 +402,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       debtor.address1 = record.address1;
       debtor.address2 = record.address2;
       debtor.address3 = record.address3;
-      debtor.address4 = removeExtraSpaces(record.address4);
+      debtor.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
       debtor.taxId = record.taxId;
       debtor.ssn = record.ssn;
     });
