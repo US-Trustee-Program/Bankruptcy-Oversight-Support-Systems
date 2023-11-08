@@ -27,7 +27,6 @@ const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDate = 'OCO';
 
-//TODO: Add data call to AO_AT to get debtor attorney information
 function sqlSelectList(top: string, chapter: string) {
   // THIS SETS US UP FOR SQL INJECTION IF WE EVER ACCEPT top OR chapter FROM USER INPUT.
   return `
