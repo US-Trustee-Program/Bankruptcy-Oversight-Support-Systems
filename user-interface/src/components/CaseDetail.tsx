@@ -19,6 +19,7 @@ function showReopenDate(reOpenDate: string | undefined, closedDate: string | und
   }
   return false;
 }
+const informationUnavailable = 'Information is not available at this time.';
 
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
@@ -135,9 +136,16 @@ export const CaseDetail = (props: CaseDetailProps) => {
               </div>
               <div className="judge-information padding-bottom-4 case-card">
                 <h3>Judge</h3>
-                <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
-                  {caseDetail.judgeName || 'No judge assigned'}
-                </div>
+                {caseDetail.judgeName && (
+                  <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
+                    {caseDetail.judgeName}
+                  </div>
+                )}
+                {!caseDetail.judgeName && (
+                  <div className="case-detail-judge-name" data-testid="case-detail-no-judge-name">
+                    {informationUnavailable}
+                  </div>
+                )}
               </div>
               <div className="debtor-information padding-bottom-4 case-card">
                 <h3>Debtor</h3>
@@ -173,15 +181,76 @@ export const CaseDetail = (props: CaseDetailProps) => {
                       {caseDetail.debtor.address3}
                     </div>
                   )}
-                  {caseDetail.debtor.address4 && (
+                  {caseDetail.debtor.cityStateZipCountry && (
                     <div
-                      data-testid="case-detail-debtor-address4"
+                      data-testid="case-detail-debtor-cityStateZipCountry"
                       aria-label="debtor city, state, zip, country"
                     >
-                      {caseDetail.debtor.address4}
+                      {caseDetail.debtor.cityStateZipCountry}
                     </div>
                   )}
                 </div>
+              </div>
+              <div className="debtor-counsel-information padding-bottom-4 case-card">
+                <h3>Debtor Counsel</h3>
+                {caseDetail.debtorAttorney && (
+                  <>
+                    <div
+                      className="padding-bottom-1"
+                      data-testid="case-detail-debtor-counsel-name"
+                      aria-label="debtor counsel name"
+                    >
+                      {caseDetail.debtorAttorney.name}
+                    </div>
+                    <div>
+                      {caseDetail.debtorAttorney.address1 && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-address1"
+                          aria-label="debtor counsel address line 1"
+                        >
+                          {caseDetail.debtorAttorney.address1}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.address2 && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-address2"
+                          aria-label="debtor counsel address line 2"
+                        >
+                          {caseDetail.debtorAttorney.address2}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.address3 && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-address3"
+                          aria-label="debtor counsel address line 3"
+                        >
+                          {caseDetail.debtorAttorney.address3}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.cityStateZipCountry && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-cityStateZipCountry"
+                          aria-label="debtor counsel city, state, zip, country"
+                        >
+                          {caseDetail.debtorAttorney.cityStateZipCountry}
+                        </div>
+                      )}
+                      {caseDetail.debtorAttorney.phone && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-phone"
+                          aria-label="debtor counsel phone"
+                        >
+                          {caseDetail.debtorAttorney.phone}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                {!caseDetail.debtorAttorney && (
+                  <div data-testid="case-detail-no-debtor-attorney" aria-label="debtor attorney">
+                    {informationUnavailable}
+                  </div>
+                )}
               </div>
               <div className="additional-debtor-information padding-bottom-4 case-card">
                 <h3>Additional Debtor Info</h3>
@@ -208,7 +277,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                     data-testid="case-detail-debtor-no-taxids"
                     aria-label="debtor tax identification"
                   >
-                    No tax identification is available.
+                    {informationUnavailable}
                   </div>
                 )}
               </div>

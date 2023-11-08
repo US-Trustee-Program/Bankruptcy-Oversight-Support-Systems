@@ -44,11 +44,24 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail = cases.find((bCase) => {
         return bCase.caseId === caseId;
       });
+      const debtors = gatewayHelper.getAllDebtorsMockExtract();
+      const debtorAttorneys = gatewayHelper.getAllDebtorAttorneysMockExtract();
 
-      caseDetail.dateFiled = getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled));
-      caseDetail.dateClosed = getMonthDayYearStringFromDate(new Date(caseDetail.dateClosed));
-      caseDetail.dismissedDate = getMonthDayYearStringFromDate(new Date(caseDetail.dismissedDate));
-      caseDetail.reopenedDate = getMonthDayYearStringFromDate(new Date(caseDetail.reopenedDate));
+      caseDetail.dateFiled = caseDetail.dateFiled
+        ? getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled))
+        : undefined;
+      caseDetail.dateClosed = caseDetail.dateClosed
+        ? getMonthDayYearStringFromDate(new Date(caseDetail.dateClosed))
+        : undefined;
+      caseDetail.dismissedDate = caseDetail.dismissedDate
+        ? getMonthDayYearStringFromDate(new Date(caseDetail.dismissedDate))
+        : undefined;
+      caseDetail.reopenedDate = caseDetail.reopenedDate
+        ? getMonthDayYearStringFromDate(new Date(caseDetail.reopenedDate))
+        : undefined;
+      caseDetail.debtor = debtors.get(caseDetail.caseId);
+      caseDetail.debtorAttorney = debtorAttorneys.get(caseDetail.caseId);
+      caseDetail.judgeName = 'Bob Seger';
     } catch (err) {
       log.error(
         applicationContext,
