@@ -3,10 +3,12 @@
 ## Generate SQL
 
 ```sh
-npm run test-data
+npm run test-data: [sql | json]
 ```
 
-SQL statements are written to `data/test-data.json`.
+SQL statements are written to `data/test-data.sql` when `test-data:sql` is run.
+
+JSON objects are written to `data/test-data.json` when `test-data:json` is run.
 
 ## Fixtures
 
@@ -37,8 +39,8 @@ The Scripts folder contains stand-alone scripts that generate sql output.
 The caseParties.ts script generates SQL statements for inserting case parties, such as debtors into
 the AO_PY table.
 
-caseParties.ts takes input from a file piped into it on stdin.
-File format for input is in the form of CS Case Id and Court Id separated by comma, per line.
+caseParties.ts takes input from a file piped into it on stdin. File format for input is in the form
+of CS Case Id and Court Id separated by comma, per line.
 
 Example input file format:
 
@@ -56,10 +58,11 @@ ts-node test-data/scripts/caseParties.ts < input_file
 
 ### Update Case Party Addresses
 
-The updateCasePartyAddresses.ts script generates SQL statements to update case party addresses in the AO_PY table.
+The updateCasePartyAddresses.ts script generates SQL statements to update case party addresses in
+the AO_PY table.
 
-updateCasePartyAddresses.ts takes input from a file piped into it on stdin.
-File format for input is in the form of CS Case Id, Court Id and role separated by comma, per line.
+updateCasePartyAddresses.ts takes input from a file piped into it on stdin. File format for input is
+in the form of CS Case Id, Court Id and role separated by comma, per line.
 
 Example input file format:
 
