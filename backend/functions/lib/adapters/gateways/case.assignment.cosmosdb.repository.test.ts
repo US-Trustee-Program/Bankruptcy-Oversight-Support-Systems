@@ -101,7 +101,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
-      'Request is Forbidden',
+      'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
     );
   });
 
