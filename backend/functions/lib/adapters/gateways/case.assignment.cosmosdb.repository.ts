@@ -35,8 +35,16 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     } catch (e) {
       log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
-        throw new ForbiddenError(MODULE_NAME, { originalError: e });
-      } else throw new UnknownError(MODULE_NAME, { originalError: e });
+        throw new ForbiddenError(MODULE_NAME, {
+          message: 'Unable to create assignment.',
+          originalError: e,
+        });
+      } else {
+        throw new UnknownError(MODULE_NAME, {
+          message: 'Unable to create assignment.',
+          originalError: e,
+        });
+      }
     }
   }
 
