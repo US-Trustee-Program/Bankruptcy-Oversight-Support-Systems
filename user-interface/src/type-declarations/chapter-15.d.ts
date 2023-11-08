@@ -25,6 +25,7 @@ export interface DebtorAttorney {
   address3?: string;
   cityStateZipCountry?: string;
   phone?: string;
+  email?: string;
 }
 interface CaseDetailType {
   caseId: string;
