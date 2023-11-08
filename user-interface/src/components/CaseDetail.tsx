@@ -19,6 +19,7 @@ function showReopenDate(reOpenDate: string | undefined, closedDate: string | und
   }
   return false;
 }
+const informationUnavailable = 'Information is not available at this time.';
 
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
@@ -135,9 +136,16 @@ export const CaseDetail = (props: CaseDetailProps) => {
               </div>
               <div className="judge-information padding-bottom-4 case-card">
                 <h3>Judge</h3>
-                <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
-                  {caseDetail.judgeName || 'No judge assigned'}
-                </div>
+                {caseDetail.judgeName && (
+                  <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
+                    {caseDetail.judgeName}
+                  </div>
+                )}
+                {!caseDetail.judgeName && (
+                  <div className="case-detail-judge-name" data-testid="case-detail-no-judge-name">
+                    {informationUnavailable}
+                  </div>
+                )}
               </div>
               <div className="debtor-information padding-bottom-4 case-card">
                 <h3>Debtor</h3>
@@ -238,6 +246,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
                     </div>
                   </>
                 )}
+                {!caseDetail.debtorAttorney && (
+                  <div data-testid="case-detail-no-debtor-attorney" aria-label="debtor attorney">
+                    {informationUnavailable}
+                  </div>
+                )}
               </div>
               <div className="additional-debtor-information padding-bottom-4 case-card">
                 <h3>Additional Debtor Info</h3>
@@ -264,7 +277,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                     data-testid="case-detail-debtor-no-taxids"
                     aria-label="debtor tax identification"
                   >
-                    No tax identification is available.
+                    {informationUnavailable}
                   </div>
                 )}
               </div>
