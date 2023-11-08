@@ -33,6 +33,7 @@ export const CaseAssignment = () => {
   const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
   const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
   const [bCase, setBCase] = useState<Chapter15Type>();
+  const [caseListLoadError, setCaseListLoadError] = useState(false);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
     type: UswdsAlertStyle;
@@ -96,6 +97,7 @@ export const CaseAssignment = () => {
           timeOut: 0,
         });
         alertRef.current?.show();
+        setCaseListLoadError(true);
         console.error((reason as Error).message);
       });
   };
@@ -184,6 +186,12 @@ export const CaseAssignment = () => {
         <h1 data-testid="case-list-heading">{screenTitle}</h1>
         <h2 data-testid="case-list-subtitle">{subTitle}</h2>
         {isLoading && <p data-testid="loading-indicator">Loading...</p>}
+        {caseListLoadError && (
+          <div>
+            We are having trouble reviewing case information at this time. Please refresh your
+            browser.
+          </div>
+        )}
         {!isLoading && (
           <>
             {unassignedCaseList.length > 0 && (
