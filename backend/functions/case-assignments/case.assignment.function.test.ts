@@ -96,7 +96,7 @@ describe('Case Assignment Function Tests', () => {
       },
     };
 
-    const expectedResponse = { error: 'Required parameter(s) caseId is/are absent.' };
+    const expectedResponse = { message: 'Required parameter(s) caseId is/are absent.' };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(applicationContext, request);
@@ -117,7 +117,7 @@ describe('Case Assignment Function Tests', () => {
         role: 'TrialAttorney',
       },
     };
-    const expectedResponse = { error: 'caseId must be formatted like 01-12345.' };
+    const expectedResponse = { message: 'caseId must be formatted like 01-12345.' };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(applicationContext, request);
@@ -138,7 +138,7 @@ describe('Case Assignment Function Tests', () => {
         role: 'TrialAttorney',
       },
     };
-    const expectedResponse = { error: 'Required parameter(s) attorneyList is/are absent.' };
+    const expectedResponse = { message: 'Required parameter(s) attorneyList is/are absent.' };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(applicationContext, request);
@@ -160,7 +160,7 @@ describe('Case Assignment Function Tests', () => {
       },
     };
     const expectedResponse = {
-      error:
+      message:
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
     };
 
@@ -184,7 +184,7 @@ describe('Case Assignment Function Tests', () => {
       },
     };
     const expectedResponse = {
-      error:
+      message:
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
     };
 
@@ -222,7 +222,7 @@ describe('Case Assignment Function Tests', () => {
 
     expect(httpErrorSpy).toHaveBeenCalled();
     expect(applicationContext.res.statusCode).toEqual(500);
-    expect(applicationContext.res.body.error).toEqual('Unknown error');
+    expect(applicationContext.res.body.message).toEqual('Unknown error');
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 

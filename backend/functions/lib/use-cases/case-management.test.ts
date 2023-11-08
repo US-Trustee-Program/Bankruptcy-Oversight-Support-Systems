@@ -7,6 +7,8 @@ import { getYearMonthDayStringFromDate } from '../adapters/utils/date-helper';
 import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+import { UnknownError } from '../common-errors/unknown-error';
+import { CamsError } from '../common-errors/cams-error';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -158,15 +160,18 @@ describe('Case list tests', () => {
       applicationContext,
       mockCasesGateway,
     );
-    expect(await chapterCaseList.getCases(applicationContext)).toEqual({
-      body: { caseList: [] },
-      count: 0,
-      message: 'some random error',
-      success: false,
-    });
+    try {
+      await chapterCaseList.getCases(applicationContext);
+      expect(1).toBe(0);
+    } catch (e) {
+      expect(e.message).toEqual(
+        'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+      );
+      expect(e).toBeInstanceOf(UnknownError);
+    }
   });
 
-  test('should throw error with default message and return Unknown Error received when unknown error is thrown in casesGateway.getCases', async () => {
+  test('should throw error with given message and return it when thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
       async getCases(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -174,7 +179,7 @@ describe('Case list tests', () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
       ): Promise<CaseDetailInterface[]> {
-        throw Error('');
+        throw new CamsError('SOME_MODULE', { message: 'some error message' });
       }
     }
     const mockCasesGateway: CasesInterface = new MockCasesGatewayWithError();
@@ -182,12 +187,13 @@ describe('Case list tests', () => {
       applicationContext,
       mockCasesGateway,
     );
-    expect(await chapterCaseList.getCases(applicationContext)).toEqual({
-      body: { caseList: [] },
-      count: 0,
-      message: 'Unknown Error received while retrieving cases',
-      success: false,
-    });
+    try {
+      await chapterCaseList.getCases(applicationContext);
+      expect(1).toBe(0);
+    } catch (e) {
+      expect(e.message).toEqual('some error message');
+      expect(e).not.toBeInstanceOf(UnknownError);
+    }
   });
 
   test('should call getCases with undefined if STARTING_MONTH exists as a string that is not a number', async () => {

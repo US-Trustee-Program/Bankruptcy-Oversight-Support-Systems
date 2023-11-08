@@ -28,7 +28,7 @@ export default class Api {
       if (response.ok) {
         return data;
       } else {
-        return Promise.reject(new Error(data));
+        return Promise.reject(new Error(data.message));
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
@@ -49,9 +49,7 @@ export default class Api {
         if (response.status >= 500) {
           return Promise.reject(new Error(data.message));
         }
-        return Promise.reject(
-          new Error(`404 Error - Not Found ${data?.toString()} - Response was not OK`),
-        );
+        return Promise.reject(new Error(`${response.status} Error - ${path} - ${data.message}`));
       }
     } catch (e) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
@@ -69,9 +67,10 @@ export default class Api {
       if (response.ok) {
         return data;
       } else {
-        return Promise.reject(
-          new Error(`404 Error - Not Found ${data?.toString()} - Response was not OK`),
-        );
+        if (response.status >= 500) {
+          return Promise.reject(new Error(data.message));
+        }
+        return Promise.reject(new Error(`${response.status} Error - ${path} - ${data.message}`));
       }
     } catch (e) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));

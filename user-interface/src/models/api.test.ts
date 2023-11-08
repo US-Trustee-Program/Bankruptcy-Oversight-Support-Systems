@@ -28,14 +28,69 @@ describe('Specific tests for the API model', () => {
     expect(mockHttpPost).toHaveBeenCalled();
   });
 
-  test('should return error message when response is not ok', () => {
+  test('should return error message when "post" response is not ok', () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
-      json: () => Promise.resolve({ error: 'mock post' }),
+      json: () => Promise.resolve({ message: 'mock post' }),
       ok: false,
     }));
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
     expect(Api.post('/some/path', {})).rejects.toThrow('mock post');
+  });
+
+  test('should return 500 error message when "list" response is not ok and retuns 500', () => {
+    const mockHttpGet = vi.fn().mockImplementation(() => ({
+      json: () => Promise.resolve({ status: 500, message: 'mock list 500' }),
+      status: 500,
+      ok: false,
+    }));
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.list('/some/path', {})).rejects.toThrow('mock list 500');
+  });
+
+  test('should return 400 error message when "list" response is not ok and status is not 500', () => {
+    const mockHttpGet = vi.fn().mockImplementation(() => ({
+      json: () => Promise.resolve({ message: 'mock list 400' }),
+      status: 400,
+      ok: false,
+    }));
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.list('/some/path', {})).rejects.toThrow('400 Error - /some/path - mock list 400');
+  });
+
+  test('should return 500 error message when "get" response is 500', () => {
+    const mockHttpGet = vi.fn().mockImplementation(() => ({
+      json: () => Promise.resolve({ status: 500, message: 'mock get 500' }),
+      status: 500,
+      ok: false,
+    }));
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.get('/some/path', {})).rejects.toThrow('mock get 500');
+  });
+
+  test('should return 400 error message when "get" response is not 500', () => {
+    const mockHttpGet = vi.fn().mockImplementation(() => ({
+      json: () => Promise.resolve({ message: 'mock get 400' }),
+      status: 400,
+      ok: false,
+    }));
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.get('/some/path', {})).rejects.toThrow('400 Error - /some/path - mock get 400');
+  });
+
+  test('should return expected result when "get" response is ok', () => {
+    const mockHttpGet = vi.fn().mockImplementation(() => ({
+      json: () => Promise.resolve({ message: 'mock get ok' }),
+      status: 200,
+      ok: false,
+    }));
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.get('/some/path', {})).rejects.toThrow('mock get ok');
   });
 
   test('should return data when response is Ok', () => {
@@ -55,18 +110,6 @@ describe('Specific tests for the API model', () => {
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
     expect(Api.list('/some/path', {})).rejects.toThrow('500 Error - Server Error bad request');
-  });
-
-  test('call to Get with invalid parameters should return with a 404', () => {
-    const mockHttpGet = vi.fn().mockImplementation(() => ({
-      json: () => 'mock get',
-      ok: false,
-    }));
-    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
-
-    expect(Api.list('/some/path', {})).rejects.toThrow(
-      '404 Error - Not Found mock get - Response was not OK',
-    );
   });
 
   test('call to Get with valid parameters should return with an OK', () => {
