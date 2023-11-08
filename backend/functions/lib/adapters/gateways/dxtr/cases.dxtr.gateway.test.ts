@@ -538,6 +538,7 @@ describe('Test DXTR Gateway', () => {
               address3: '',
               cityStateZipCountry: 'Queens NY     12345 USA',
               phone: '9876543210',
+              email: 'someone@email.com',
             },
           ],
         },
@@ -557,6 +558,7 @@ describe('Test DXTR Gateway', () => {
         address3: '',
         cityStateZipCountry: 'Queens NY 12345 USA',
         phone: '9876543210',
+        email: 'someone@email.com',
       });
     });
   });

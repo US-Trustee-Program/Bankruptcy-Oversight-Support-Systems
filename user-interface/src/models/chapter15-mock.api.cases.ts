@@ -67,6 +67,7 @@ export default class Chapter15MockApi extends Api {
       address2: 'Puerta 248',
       cityStateZipCountry: 'Irapuato HG 82513 Mexico',
       phone: '5992-349-234',
+      email: 'testemail@email.com',
     },
   };
 

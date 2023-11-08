@@ -124,7 +124,7 @@ installed.
 
 ##### Local Settings File
 
-You will need to have a file named local.settings.json placed in the `functions/node` directory. The
+You will need to have a file named local.settings.json placed in the `backend/functions` directory. The
 contents of that file must be:
 
 ```

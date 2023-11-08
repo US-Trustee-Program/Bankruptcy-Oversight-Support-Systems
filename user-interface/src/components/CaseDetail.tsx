@@ -243,6 +243,18 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           {caseDetail.debtorAttorney.phone}
                         </div>
                       )}
+                      {caseDetail.debtorAttorney.email && (
+                        <div
+                          data-testid="case-detail-debtor-counsel-email"
+                          aria-label="debtor counsel email"
+                        >
+                          <a
+                            href={`mailto:${caseDetail.debtorAttorney.email}?subject=${caseDetail.caseId} - ${caseDetail.caseTitle}`}
+                          >
+                            {caseDetail.debtorAttorney.email}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

@@ -437,13 +437,21 @@ describe('Case Detail screen tests', () => {
   }, 20000);
 
   const debtorCounselTestCases = [
-    [undefined, undefined, undefined, undefined, undefined],
-    ['123 Rabbithole Lane', undefined, undefined, undefined, undefined],
-    [undefined, 'Unit', undefined, undefined, undefined],
-    [undefined, undefined, '111', undefined, undefined],
-    [undefined, undefined, undefined, 'New York NY 10001 US', undefined],
-    [undefined, undefined, undefined, undefined, '23+12345678'],
-    ['123 Rabbithole Lane', 'Unit', '111', 'New York NY 10001 US', '23+12345678'],
+    [undefined, undefined, undefined, undefined, undefined, undefined],
+    ['123 Rabbithole Lane', undefined, undefined, undefined, undefined, undefined],
+    [undefined, 'Unit', undefined, undefined, undefined, undefined],
+    [undefined, undefined, '111', undefined, undefined, undefined],
+    [undefined, undefined, undefined, 'New York NY 10001 US', undefined, undefined],
+    [undefined, undefined, undefined, undefined, '23+12345678', undefined],
+    [undefined, undefined, undefined, undefined, undefined, 'attorney@example.com'],
+    [
+      '123 Rabbithole Lane',
+      'Unit',
+      '111',
+      'New York NY 10001 US',
+      '23+12345678',
+      'attorney@example.com',
+    ],
   ];
 
   test.each(debtorCounselTestCases)(
@@ -454,6 +462,7 @@ describe('Case Detail screen tests', () => {
       address3: MaybeString,
       cityStateZipCountry: MaybeString,
       phone: MaybeString,
+      email: MaybeString,
     ) => {
       const expectedAttorney: DebtorAttorney = {
         name: rickBHartName,
@@ -462,6 +471,7 @@ describe('Case Detail screen tests', () => {
         address3,
         cityStateZipCountry,
         phone,
+        email,
       };
       const testCaseDetail: CaseDetailType = {
         caseId: caseId,
@@ -476,6 +486,7 @@ describe('Case Detail screen tests', () => {
         },
         debtorAttorney: expectedAttorney,
       };
+      const expectedLink = `mailto:${expectedAttorney.email}?subject=${testCaseDetail.caseId} - ${testCaseDetail.caseTitle}`;
       render(
         <BrowserRouter>
           <CaseDetail caseDetail={testCaseDetail} />
@@ -507,6 +518,12 @@ describe('Case Detail screen tests', () => {
           if (expectedAttorney?.phone) {
             const phone = screen.queryByTestId('case-detail-debtor-counsel-phone');
             expect(phone).toBeInTheDocument();
+          }
+          if (expectedAttorney?.email) {
+            const email = screen.queryByTestId('case-detail-debtor-counsel-email');
+            expect(email).toBeInTheDocument();
+            const link = email?.children[0].getAttribute('href');
+            expect(link).toEqual(expectedLink);
           }
         },
         { timeout: 5000 },
