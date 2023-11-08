@@ -11,7 +11,7 @@ const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
 
 const rickBHartName = 'Rick B Hart';
-
+const informationUnavailable = 'Information is not available at this time.';
 const debtorAttorney: DebtorAttorney = {
   name: 'Jane Doe',
   address1: '123 Rabbithole Lane',
@@ -235,7 +235,7 @@ describe('Case Detail screen tests', () => {
             if (taxIdIsPresent) {
               expect(noTaxIdsElement).not.toBeInTheDocument();
             } else {
-              expect(noTaxIdsElement).toHaveTextContent('No tax identification is available.');
+              expect(noTaxIdsElement).toHaveTextContent(informationUnavailable);
             }
           });
         },
@@ -267,8 +267,36 @@ describe('Case Detail screen tests', () => {
 
     await waitFor(
       async () => {
-        const judgeName = screen.getByTestId('case-detail-judge-name');
-        expect(judgeName).toHaveTextContent('No judge assigned');
+        const judgeName = screen.getByTestId('case-detail-no-judge-name');
+        expect(judgeName).toHaveTextContent(informationUnavailable);
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
+  test('should show "Information is not available at this time." when a debtor attorney is unavailable.', async () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: caseId,
+      chapter: '15',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [brianWilsonName, carlWilsonName],
+      judgeName: 'Honorable Jason Smith',
+      debtor: {
+        name: 'Roger Rabbit',
+      },
+    };
+    render(
+      <BrowserRouter>
+        <CaseDetail caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(
+      async () => {
+        const element = screen.getByTestId('case-detail-no-debtor-attorney');
+        expect(element).toHaveTextContent(informationUnavailable);
       },
       { timeout: 5000 },
     );
