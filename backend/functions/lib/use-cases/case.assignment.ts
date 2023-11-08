@@ -64,8 +64,10 @@ export class CaseAssignment {
       return existingAssignments.length === 0;
     } catch (e) {
       throw new AssignmentError(MODULE_NAME, {
-        message: 'Unable to determine whether assignments already exist.',
+        message:
+          'Unable to determine whether assignments already exist. Please try again later. If the problem persists, please contact USTP support.',
         originalError: e,
+        status: 500,
       });
     }
   }
