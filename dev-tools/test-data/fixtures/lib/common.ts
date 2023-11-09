@@ -2,6 +2,8 @@ import { Faker, fakerEN_GB, fakerEN_US, fakerES_MX } from '@faker-js/faker';
 import { concatenateName, randomInt, randomTruth } from '../../utility';
 import { BCase, BCaseParty, DebtorAttorney, Judge } from '../../domain/bcase';
 import { Chapter } from '../../types';
+import { Court } from '../../domain/court';
+import { courts } from '../courts';
 
 const DEFAULT_CHAPTER: Chapter = '15';
 
@@ -34,6 +36,7 @@ export interface CreateCaseOptions {
   judges?: Array<Judge>;
   attorneys?: Array<DebtorAttorney>;
   isCompany?: boolean;
+  courts?: Array<Court>;
 }
 
 export function createCases(caseCount: number, options: CreateCaseOptions): Array<BCase> {
@@ -46,10 +49,11 @@ export function createCases(caseCount: number, options: CreateCaseOptions): Arra
 
 export function createCase(options: CreateCaseOptions = {}): BCase {
   // TODO: Make these options / externalize them.
-  const county = 'NEW YORK-NY';
-  const courtId = '0208';
-  const group = 'NY';
-  const div = '081';
+  const court = courts[0];
+  const county = court.county;
+  const courtId = court.id;
+  const group = court.group.id;
+  const div = court.div;
   const reopenCode = '1';
 
   const isCompany = options.isCompany === undefined ? randomTruth() : options.isCompany;

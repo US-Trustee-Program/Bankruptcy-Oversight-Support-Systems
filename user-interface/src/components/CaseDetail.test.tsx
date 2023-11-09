@@ -35,6 +35,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      regionId: '02',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
@@ -78,6 +79,9 @@ describe('Case Detail screen tests', () => {
         const chapter = screen.getByTestId('case-chapter');
         expect(chapter.innerHTML).toEqual('Chapter 15');
 
+        const region = screen.getByTestId('case-detail-region-id');
+        expect(region.innerHTML).toEqual('Region 2');
+
         const assigneeMap = new Map<string, string>();
         const assigneeElements = document.querySelectorAll(
           '.assigned-staff-list .individual-assignee',
@@ -118,6 +122,46 @@ describe('Case Detail screen tests', () => {
       { timeout: 5000 },
     );
   }, 20000);
+
+  const regionTestCases = [
+    ['02', 'Region 2'],
+    ['10', 'Region 10'],
+  ];
+
+  test.each(regionTestCases)(
+    'should display the reformatted region ID',
+    async (regionId: MaybeString, expectedRegionId: string) => {
+      const testCaseDetail: CaseDetailType = {
+        caseId: caseId,
+        chapter: '15',
+        regionId,
+        caseTitle: 'The Beach Boys',
+        dateFiled: '01-04-1962',
+        judgeName: rickBHartName,
+        closedDate: '01-08-1963',
+        dismissedDate: '01-08-1964',
+        assignments: [brianWilsonName, carlWilsonName],
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+      render(
+        <BrowserRouter>
+          <CaseDetail caseDetail={testCaseDetail} />
+        </BrowserRouter>,
+      );
+
+      await waitFor(
+        async () => {
+          const region = screen.getByTestId('case-detail-region-id');
+          expect(region.innerHTML).toEqual(expectedRegionId);
+        },
+        { timeout: 5000 },
+      );
+    },
+    20000,
+  );
 
   const debtorAddressTestCases = [
     [undefined, undefined, undefined, undefined],
@@ -486,7 +530,9 @@ describe('Case Detail screen tests', () => {
         },
         debtorAttorney: expectedAttorney,
       };
-      const expectedLink = `mailto:${expectedAttorney.email}?subject=${testCaseDetail.caseId} - ${testCaseDetail.caseTitle}`;
+      const expectedLink = `mailto:${expectedAttorney.email}?subject=${getCaseNumber(
+        testCaseDetail.caseId,
+      )} - ${testCaseDetail.caseTitle}`;
       render(
         <BrowserRouter>
           <CaseDetail caseDetail={testCaseDetail} />
