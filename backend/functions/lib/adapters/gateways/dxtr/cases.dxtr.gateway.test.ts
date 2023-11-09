@@ -21,6 +21,7 @@ function generateTestCase(overlay = {}) {
     chapter: '15',
     regionId: '02',
     courtDivision: '081',
+    courtName: 'Fancy Court Name',
   };
   return {
     ...defaultReturn,
@@ -240,6 +241,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult).toStrictEqual(expectedClose);
     expect(actualResult.regionId).toEqual(testCase.regionId);
     expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
+    expect(actualResult.courtName).toEqual(testCase.courtName);
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
     expect(actualResult.reopenedDate).toEqual(reopenedDate);

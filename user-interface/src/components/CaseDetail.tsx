@@ -76,6 +76,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <span className="case-number" title="Case Number">
                 {getCaseNumber(caseDetail.caseId)}
               </span>
+              <span className="court-name" title="Court Name" data-testid="court-name">
+                {caseDetail.courtName}
+              </span>
               <span className="case-chapter" title="Case Chapter" data-testid="case-chapter">
                 Chapter {caseDetail.chapter}
               </span>
