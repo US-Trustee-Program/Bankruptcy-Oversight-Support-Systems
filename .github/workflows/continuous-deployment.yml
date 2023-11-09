@@ -182,10 +182,8 @@ jobs:
       - name: Pull axe Docker image
         run: docker pull ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe:latest
 
-      - name: Run Test
-        run: |
-          CAMS_PA11Y="true" npm run start
-          docker run axe http://localhost:7071 --tags section508,wcag22aa,best-practice --exit
+      - name: Run Axe Test
+        run: ../ops/helper-scripts/axe-accessibility-test.sh
 
   sast-scan-and-upload:
     runs-on: ubuntu-latest
