@@ -116,7 +116,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 <h3>Assigned Staff</h3>
                 <div className="assigned-staff-list">
                   {caseDetail.regionId && (
-                    <div className="case-detail-region-id" data-testid="case-detail-region-id">
+                    <div
+                      className="case-detail-region-id"
+                      data-testid="case-detail-region-id"
+                      aria-label="assigned region"
+                    >
                       Region {caseDetail.regionId.replace(/^0*/, '')}
                     </div>
                   )}
