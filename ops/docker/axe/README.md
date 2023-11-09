@@ -30,11 +30,26 @@ Here is a list of supported [tags](https://github.com/dequelabs/axe-core/blob/5d
 
 ### If running in CI pipeline, use the following to fail build on error
 
-## Other notes
-
 ```bash
 docker run axe ${targetURL} --exit
 ```
+
+### Produce json output file
+
+```bash
+docker run -v .:/home/node/tmp axe ${targetURL} --save /home/node/tmp/test.json
+```
+
+## Other notes
+
+- Todos
+  - [ ] Setup a docker registry in Azure
+  - [ ] Create adhoc GHA workflow to build Docker containers and publish to registry
+  - [ ] Update current CI pipeline to run docker image for accessibility testing
+    - [ ] Findings should break build
+- Maybes. Nice to have or should plan for.
+  - [ ] Approach to handle multiple url targets
+  - [ ] Consider using typescript to drive axe-core instead of cli approach
 
 ## References to useful links
 
