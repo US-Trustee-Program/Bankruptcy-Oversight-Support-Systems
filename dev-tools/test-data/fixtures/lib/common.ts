@@ -2,6 +2,7 @@ import { Faker, fakerEN_GB, fakerEN_US, fakerES_MX } from '@faker-js/faker';
 import { concatenateName, randomInt, randomTruth } from '../../utility';
 import { BCase, BCaseParty, DebtorAttorney, Judge } from '../../domain/bcase';
 import { Chapter } from '../../types';
+import { Court } from '../../domain/court';
 
 const DEFAULT_CHAPTER: Chapter = '15';
 
@@ -34,6 +35,7 @@ export interface CreateCaseOptions {
   judges?: Array<Judge>;
   attorneys?: Array<DebtorAttorney>;
   isCompany?: boolean;
+  courts?: Array<Court>;
 }
 
 export function createCases(caseCount: number, options: CreateCaseOptions): Array<BCase> {
