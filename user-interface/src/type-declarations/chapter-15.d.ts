@@ -31,6 +31,7 @@ interface CaseDetailType {
   caseId: string;
   chapter: string;
   caseTitle: string;
+  officeName: string;
   dateFiled: string;
   judgeName?: string;
   closedDate?: string;
