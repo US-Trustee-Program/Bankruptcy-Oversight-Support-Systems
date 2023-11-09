@@ -36,6 +36,7 @@ interface CaseDetailType {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
+  regionId?: string;
   assignments: string[];
   debtor: Debtor;
   debtorAttorney?: DebtorAttorney;

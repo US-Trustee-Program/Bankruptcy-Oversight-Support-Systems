@@ -149,16 +149,18 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
 
     const CASE_DETAIL_QUERY = `select
-        CS_DIV+'-'+CASE_ID as caseId,
-        CS_SHORT_TITLE as caseTitle,
-        FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
-        CS_CASEID as dxtrId,
-        CS_CHAPTER as chapter,
-        COURT_ID as courtId,
-        TRIM(CONCAT(JD_FIRST_NAME, ' ', JD_MIDDLE_NAME, ' ', JD_LAST_NAME)) as judgeName
-        FROM [dbo].[AO_CS]
-        WHERE CASE_ID = @dxtrCaseId
-        AND CS_DIV = @courtDiv`;
+        cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+        cs.CS_SHORT_TITLE as caseTitle,
+        FORMAT(cs.CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
+        cs.CS_CASEID as dxtrId,
+        cs.CS_CHAPTER as chapter,
+        cs.COURT_ID as courtId,
+        TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
+        grp_des.REGION_ID as regionId
+        FROM [dbo].[AO_CS] AS cs
+        JOIN [dbo].[AO_GRP_DES] AS grp_des ON cs.GRP_DES = grp_des.GRP_DES
+        WHERE cs.CASE_ID = @dxtrCaseId
+        AND cs.CS_DIV = @courtDiv`;
 
     const queryResult: QueryResults = await executeQuery(
       applicationContext,

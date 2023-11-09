@@ -19,6 +19,7 @@ function generateTestCase(overlay = {}) {
     dxtrId: '123',
     courtId: '567',
     chapter: '15',
+    regionId: '02',
   };
   return {
     ...defaultReturn,
