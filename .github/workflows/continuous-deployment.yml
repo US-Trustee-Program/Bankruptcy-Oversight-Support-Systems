@@ -157,6 +157,8 @@ jobs:
       - name: Get source code
         uses: actions/checkout@v3
 
+      - name: Install chrome
+        uses: browser-actions/setup-chrome@v1
       - name: Use Node.js 18.17.1
         uses: actions/setup-node@v3
         with:
