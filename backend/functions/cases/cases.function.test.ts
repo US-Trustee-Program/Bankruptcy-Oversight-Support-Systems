@@ -35,7 +35,7 @@ describe('Mocking CasesController to get error handling', () => {
     await httpTrigger(context, request);
 
     expect(context.res.statusCode).toEqual(INTERNAL_SERVER_ERROR);
-    expect(context.res.body.error).toEqual('Unknown error');
+    expect(context.res.body.message).toEqual('Unknown error');
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
@@ -49,7 +49,7 @@ describe('Mocking CasesController to get error handling', () => {
     await httpTrigger(context, request);
 
     expect(context.res.statusCode).toEqual(INTERNAL_SERVER_ERROR);
-    expect(context.res.body.error).toEqual('Unknown CAMS Error');
+    expect(context.res.body.message).toEqual('Unknown CAMS Error');
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(CamsError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
