@@ -172,6 +172,13 @@ jobs:
 
           npm ci
 
+      - name: ACR Login
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.AZ_ACR_LOGIN_SERVER }}
+          username: ${{ secrets.AZ_ACR_USERNAME }}
+          password: ${{ secrets.AZ_ACR_PASSWORD }}
+
       - name: Pull axe Docker image
         run: docker pull ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe:latest
 
