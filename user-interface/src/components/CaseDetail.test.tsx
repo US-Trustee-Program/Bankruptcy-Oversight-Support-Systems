@@ -36,6 +36,7 @@ describe('Case Detail screen tests', () => {
       caseId: caseId,
       chapter: '15',
       regionId: '02',
+      officeName: 'New York',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
@@ -80,7 +81,7 @@ describe('Case Detail screen tests', () => {
         expect(chapter.innerHTML).toEqual('Chapter 15');
 
         const region = screen.getByTestId('case-detail-region-id');
-        expect(region.innerHTML).toEqual('Region 2');
+        expect(region.innerHTML).toEqual('Region 2 - New York Office');
 
         const assigneeMap = new Map<string, string>();
         const assigneeElements = document.querySelectorAll(
@@ -124,17 +125,18 @@ describe('Case Detail screen tests', () => {
   }, 20000);
 
   const regionTestCases = [
-    ['02', 'Region 2'],
-    ['10', 'Region 10'],
+    ['02', 'New York', 'Region 2 - New York Office'],
+    ['10', 'Indianapolis', 'Region 10 - Indianapolis Office'],
   ];
 
   test.each(regionTestCases)(
     'should display the reformatted region ID',
-    async (regionId: MaybeString, expectedRegionId: string) => {
+    async (regionId: string, officeName: string, expectedRegionId: string) => {
       const testCaseDetail: CaseDetailType = {
         caseId: caseId,
         chapter: '15',
         regionId,
+        officeName,
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
@@ -184,6 +186,7 @@ describe('Case Detail screen tests', () => {
       const testCaseDetail: CaseDetailType = {
         caseId: caseId,
         chapter: '15',
+        officeName: 'Redondo Beach',
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
@@ -243,6 +246,7 @@ describe('Case Detail screen tests', () => {
       const testCaseDetail: CaseDetailType = {
         caseId: caseId,
         chapter: '15',
+        officeName: 'Redondo Beach',
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
@@ -293,6 +297,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      officeName: 'Redondo Beach',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
@@ -321,6 +326,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      officeName: 'Redondo Beach',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
@@ -350,6 +356,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      officeName: 'Redondo Beach',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
@@ -379,6 +386,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      officeName: 'Redondo Beach',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
@@ -415,6 +423,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      officeName: 'Redondo Beach',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
@@ -451,6 +460,7 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
+      officeName: 'Redondo Beach',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
@@ -520,6 +530,7 @@ describe('Case Detail screen tests', () => {
       const testCaseDetail: CaseDetailType = {
         caseId: caseId,
         chapter: '15',
+        officeName: 'Redondo Beach',
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         closedDate: '01-08-1963',

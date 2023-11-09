@@ -11,6 +11,7 @@ import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignme
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
+import { getOffice } from '../adapters/gateways/offices.gateway';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -73,6 +74,8 @@ export class CaseManagement {
       caseAssignment,
       caseDetails,
     );
+
+    caseDetails.officeName = getOffice(caseDetails.courtDivision);
 
     return {
       success: true,

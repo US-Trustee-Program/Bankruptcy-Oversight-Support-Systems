@@ -119,9 +119,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
                     <div
                       className="case-detail-region-id"
                       data-testid="case-detail-region-id"
-                      aria-label="assigned region"
+                      aria-label="assigned region and office"
                     >
-                      Region {caseDetail.regionId.replace(/^0*/, '')}
+                      Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName}{' '}
+                      Office
                     </div>
                   )}
                   <ul className="usa-list usa-list--unstyled">
