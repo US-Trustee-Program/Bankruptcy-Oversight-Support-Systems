@@ -30,3 +30,9 @@ jobs:
             version=${{ github.sha }}
           tags: ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe:${{ github.sha }}
           file: ./ops/docker/axe/Dockerfile
+      - name: Build & Push with latest tag
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe
+          file: ./ops/docker/axe/Dockerfile
