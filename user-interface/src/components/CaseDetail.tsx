@@ -115,6 +115,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <div className="assigned-staff-information padding-bottom-4 case-card">
                 <h3>Assigned Staff</h3>
                 <div className="assigned-staff-list">
+                  {caseDetail.regionId && (
+                    <div className="case-detail-region-id" data-testid="case-detail-region-id">
+                      Region {caseDetail.regionId.replace(/^0*/, '')}
+                    </div>
+                  )}
                   <ul className="usa-list usa-list--unstyled">
                     {caseDetail.assignments?.length > 0 &&
                       (caseDetail.assignments as Array<string>)?.map(
@@ -192,7 +197,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 </div>
               </div>
               <div className="debtor-counsel-information padding-bottom-4 case-card">
-                <h3>Debtor Counsel</h3>
+                <h3>Debtor&apos;s Counsel</h3>
                 {caseDetail.debtorAttorney && (
                   <>
                     <div
@@ -249,7 +254,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           aria-label="debtor counsel email"
                         >
                           <a
-                            href={`mailto:${caseDetail.debtorAttorney.email}?subject=${caseDetail.caseId} - ${caseDetail.caseTitle}`}
+                            href={`mailto:${
+                              caseDetail.debtorAttorney.email
+                            }?subject=${getCaseNumber(caseDetail.caseId)} - ${
+                              caseDetail.caseTitle
+                            }`}
                           >
                             {caseDetail.debtorAttorney.email}
                           </a>
