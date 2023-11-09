@@ -139,6 +139,47 @@ jobs:
       - name: Run pa11y Test
         run: ../ops/helper-scripts/accessibility-test.sh
 
+  axe-accessibility-test:
+    #running instance of our app
+    # wd is user interface
+    # still checkout source code
+    # build and run app locally
+    # pull container with axe from registry
+    # run command to scan (axe cli command)
+
+    defaults:
+      run:
+        working-directory: user-interface
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js 18.17.1
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.17.1
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
+
+      - name: Install Node dependencies
+        run: |
+          pushd ../common
+          npm ci
+          popd
+
+          npm ci
+
+      - name: Pull axe Docker image
+        run: docker pull ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe:latest
+
+      - name: Run Test
+        run: |
+          CAMS_PA11Y="true" npm run start
+          docker run axe http://localhost:7071 --tags section508,wcag22aa,best-practice --exit
+
   sast-scan-and-upload:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -152,12 +193,12 @@ jobs:
       - name: Veracode Upload And Scan
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'CAMS'
+          appname: "CAMS"
           createprofile: false
-          filepath: 'cams.zip'
-          vid: '${{ secrets.VERACODE_API_ID }}'
-          vkey: '${{ secrets.VERACODE_API_KEY }}'
-          criticality: 'Medium'
+          filepath: "cams.zip"
+          vid: "${{ secrets.VERACODE_API_ID }}"
+          vkey: "${{ secrets.VERACODE_API_KEY }}"
+          criticality: "Medium"
 
   security-sast-scan:
     runs-on: ubuntu-latest
@@ -338,7 +379,17 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-info, build-frontend, build-service, accessibility-test, security-sast-scan, security-sca-scan-frontend, security-sca-scan-backend, security-sca-scan-common]
+    needs:
+      [
+        build-info,
+        build-frontend,
+        build-service,
+        accessibility-test,
+        security-sast-scan,
+        security-sca-scan-frontend,
+        security-sca-scan-backend,
+        security-sca-scan-common,
+      ]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:

@@ -1,0 +1,32 @@
+name: axe-core Docker Build
+
+concurrency: ${{ github.ref }}-${{ github.workflow }}
+
+on:
+  push:
+    paths:
+      - "ops/docker/axe/**"
+      - ".github/workflows/accessibility-docker-build.yml"
+    branches-ignore:
+      - "mob/**"
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: ACR Login
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.AZ_ACR_LOGIN_SERVER }}
+          username: ${{ secrets.AZ_ACR_USERNAME }}
+          password: ${{ secrets.AZ_ACR_PASSWORD }}
+      - name: Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          build-args: |
+            version=${{ github.sha }}
+          tags: ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe:${{ github.sha }}
+          file: ./ops/docker/axe/Dockerfile
