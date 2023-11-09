@@ -47,6 +47,7 @@ export interface CaseDetailInterface {
   reopenedDate?: string;
   dxtrId?: string;
   courtId?: string;
+  courtName?: string;
   regionId?: string;
   officeName?: string;
   assignments?: string[];

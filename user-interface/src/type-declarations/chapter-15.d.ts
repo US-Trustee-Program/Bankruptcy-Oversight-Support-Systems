@@ -34,6 +34,7 @@ interface CaseDetailType {
   officeName: string;
   dateFiled: string;
   judgeName?: string;
+  courtName?: string;
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;

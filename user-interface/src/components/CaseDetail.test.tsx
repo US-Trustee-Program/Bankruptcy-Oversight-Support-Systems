@@ -40,6 +40,7 @@ describe('Case Detail screen tests', () => {
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
+      courtName: 'Court of Law',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
@@ -62,6 +63,7 @@ describe('Case Detail screen tests', () => {
       async () => {
         const title = screen.getByTestId('case-detail-heading');
         expect(title.innerHTML).toEqual('The Beach Boys');
+
         const caseNumber = document.querySelector('.case-number');
         expect(caseNumber?.innerHTML).toEqual(getCaseNumber(caseId));
 
@@ -79,6 +81,9 @@ describe('Case Detail screen tests', () => {
 
         const chapter = screen.getByTestId('case-chapter');
         expect(chapter.innerHTML).toEqual('Chapter 15');
+
+        const courtName = screen.getByTestId('court-name');
+        expect(courtName.innerHTML).toEqual('Court of Law');
 
         const region = screen.getByTestId('case-detail-region-id');
         expect(region.innerHTML).toEqual('Region 2 - New York Office');
