@@ -238,6 +238,7 @@ describe('Test DXTR Gateway', () => {
       reopenedDate,
     };
     expect(actualResult).toStrictEqual(expectedClose);
+    expect(actualResult.regionId).toEqual(testCase.regionId);
     expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
