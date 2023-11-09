@@ -137,7 +137,7 @@ jobs:
           npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
-        run: ../ops/helper-scripts/accessibility-test.sh
+        run: ../ops/helper-scripts/accessibility-test.sh ${{ secrets.AZ_ACR_LOGIN_SERVER }}
 
   axe-accessibility-test:
     #running instance of our app
