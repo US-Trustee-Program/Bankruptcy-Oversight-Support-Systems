@@ -137,7 +137,7 @@ jobs:
           npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
-        run: ../ops/helper-scripts/accessibility-test.sh ${{ secrets.AZ_ACR_LOGIN_SERVER }}
+        run: ../ops/helper-scripts/accessibility-test.sh
 
   axe-accessibility-test:
     #running instance of our app
@@ -183,7 +183,7 @@ jobs:
         run: docker pull ${{ secrets.AZ_ACR_LOGIN_SERVER }}/axe:latest
 
       - name: Run Axe Test
-        run: ../ops/helper-scripts/axe-accessibility-test.sh
+        run: ../ops/helper-scripts/axe-accessibility-test.sh ${{ secrets.AZ_ACR_LOGIN_SERVER }}
 
   sast-scan-and-upload:
     runs-on: ubuntu-latest
