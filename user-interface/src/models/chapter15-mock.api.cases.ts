@@ -1,5 +1,5 @@
 import { ResponseData } from '../type-declarations/api';
-import { Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
+import { CaseDetailType, Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 import Api from './api';
 
 export default class Chapter15MockApi extends Api {
@@ -46,10 +46,11 @@ export default class Chapter15MockApi extends Api {
     },
   ];
 
-  static caseDetails = {
+  static caseDetails: CaseDetailType = {
     caseId: '101-23-12345',
     chapter: '15',
     regionId: '02',
+    officeName: 'New York',
     caseTitle: 'Débora Arden Coronado Nazario III',
     dateFiled: '02-15-2023',
     judgeName: 'Meyer Steven',
