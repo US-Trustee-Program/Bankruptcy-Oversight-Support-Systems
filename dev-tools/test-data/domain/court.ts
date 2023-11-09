@@ -13,6 +13,8 @@ export interface Group {
 export interface Court {
   id: string;
   group: Group;
+  county: string;
+  div: string;
 }
 
 export function toDbRecords(input: Court | Array<Court>): DatabaseRecords {
