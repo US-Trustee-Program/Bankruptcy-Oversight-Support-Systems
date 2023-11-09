@@ -10,6 +10,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Los Angeles, CA 90001, USA',
       phone: '555-555-5555',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -21,6 +22,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'New York, NY 10002, USA',
       phone: '555-123-4567',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -32,6 +34,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Chicago, IL 60601, USA',
       phone: '555-987-6543',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -43,6 +46,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'San Francisco, CA 94101, USA',
       phone: '555-111-2222',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -54,6 +58,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Houston, TX 77001, USA',
       phone: '555-888-9999',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -65,6 +70,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Miami, FL 33101, USA',
       phone: '555-333-7777',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -76,6 +82,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Boston, MA 02101, USA',
       phone: '555-444-5555',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -87,6 +94,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Seattle, WA 98101, USA',
       phone: '555-555-1111',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -98,6 +106,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Denver, CO 80201, USA',
       phone: '555-666-7777',
+      email: 'testemail@email.com',
     },
   ],
   [
@@ -109,6 +118,7 @@ export const ATTORNEYS = new Map<string, DebtorAttorney>([
       address3: '',
       cityStateZipCountry: 'Phoenix, AZ 85001, USA',
       phone: '555-777-8888',
+      email: 'testemail@email.com',
     },
   ],
 ]);

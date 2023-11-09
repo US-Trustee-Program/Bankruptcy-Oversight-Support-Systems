@@ -353,7 +353,8 @@ export default class CasesDxtrGateway implements CasesInterface {
           ' ',
           AT_COUNTRY
         )) as cityStateZipCountry,
-        AT_PHONENO as phone
+        AT_PHONENO as phone,
+        AT_E_MAIL as email
       FROM [dbo].[AO_AT]
       WHERE
         CS_CASEID = @dxtrId AND
@@ -389,6 +390,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       debtorAttorney.address3 = record.address3;
       debtorAttorney.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
       debtorAttorney.phone = record.phone;
+      debtorAttorney.email = record.email;
     });
     return debtorAttorney || null;
   }
