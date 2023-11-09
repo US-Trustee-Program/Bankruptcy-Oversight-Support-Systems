@@ -8,6 +8,11 @@ import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignment } from './case.assignment';
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { UnknownError } from '../common-errors/unknown-error';
+import { CamsError } from '../common-errors/cams-error';
+import { AssignmentError } from './assignment.exception';
+
+const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
 export class CaseManagement {
   casesGateway: CasesInterface;
@@ -32,7 +37,7 @@ export class CaseManagement {
       });
 
       for (const c of cases) {
-        c.assignments = await this.getCaseAssigneeNames(caseAssignment, c);
+        c.assignments = await this.getCaseAssigneeNames(applicationContext, caseAssignment, c);
       }
 
       return {
@@ -43,16 +48,17 @@ export class CaseManagement {
           caseList: cases as CaseDetailInterface[],
         },
       };
-    } catch (e) {
-      const message = (e as Error).message;
-      return {
-        success: false,
-        message: message || 'Unknown Error received while retrieving cases',
-        count: 0,
-        body: {
-          caseList: [],
-        },
-      };
+    } catch (originalError) {
+      if (!(originalError instanceof CamsError)) {
+        throw new UnknownError(MODULE_NAME, {
+          message:
+            'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+          originalError,
+          status: 500,
+        });
+      } else {
+        throw originalError;
+      }
     }
   }
 
@@ -62,7 +68,11 @@ export class CaseManagement {
   ): Promise<CaseDetailsDbResult> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
     const caseAssignment = new CaseAssignment(applicationContext);
-    caseDetails.assignments = await this.getCaseAssigneeNames(caseAssignment, caseDetails);
+    caseDetails.assignments = await this.getCaseAssigneeNames(
+      applicationContext,
+      caseAssignment,
+      caseDetails,
+    );
 
     return {
       success: true,
@@ -73,13 +83,26 @@ export class CaseManagement {
     };
   }
 
-  private async getCaseAssigneeNames(caseAssignment: CaseAssignment, c: CaseDetailInterface) {
-    const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
-      c.caseId,
-    );
-    const assigneeNames = assignments.map((a) => {
-      return a.name;
-    });
-    return assigneeNames;
+  private async getCaseAssigneeNames(
+    applicationContext: ApplicationContext,
+    caseAssignment: CaseAssignment,
+    c: CaseDetailInterface,
+  ) {
+    try {
+      const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
+        c.caseId,
+      );
+      const assigneeNames = assignments.map((a) => {
+        return a.name;
+      });
+      return assigneeNames;
+    } catch (e) {
+      throw new AssignmentError(MODULE_NAME, {
+        message:
+          'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+        originalError: e,
+        status: 500,
+      });
+    }
   }
 }

@@ -25,7 +25,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
 
   async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
     try {
-      // Check write access
       const { item } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
@@ -35,8 +34,20 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     } catch (e) {
       log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
-        throw new ForbiddenError(MODULE_NAME, { originalError: e });
-      } else throw new UnknownError(MODULE_NAME, { originalError: e });
+        throw new ForbiddenError(MODULE_NAME, {
+          message:
+            'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
+          originalError: e,
+          status: 500,
+        });
+      } else {
+        throw new UnknownError(MODULE_NAME, {
+          message:
+            'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
+          originalError: e,
+          status: 500,
+        });
+      }
     }
   }
 

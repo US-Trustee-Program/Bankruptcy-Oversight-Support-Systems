@@ -23,33 +23,31 @@ export class CaseAssignment {
     }
   }
 
-  public async createAssignment(
-    applicationContext: ApplicationContext,
-    caseAssignment: CaseAttorneyAssignment,
-  ): Promise<string> {
-    try {
-      return await this.assignmentRepository.createAssignment(caseAssignment);
-    } catch (exception) {
-      log.error(applicationContext, MODULE_NAME, exception.message);
-      throw exception;
-    }
+  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
+    return await this.assignmentRepository.createAssignment(caseAssignment);
   }
 
   public async createTrialAttorneyAssignments(
     applicationContext: ApplicationContext,
     listOfAssignments: CaseAttorneyAssignment[],
   ): Promise<AttorneyAssignmentResponseInterface> {
-    const isValid = await this.isCreateValid(applicationContext, listOfAssignments);
+    const isValid = await this.isCreateValid(listOfAssignments);
     if (!isValid) {
       throw new AssignmentError(MODULE_NAME, { message: EXISTING_ASSIGNMENT_FOUND });
     } else {
       const listOfAssignmentIdsCreated: string[] = [];
       for (const assignment of listOfAssignments) {
-        const assignmentId = await this.createAssignment(applicationContext, assignment);
+        const assignmentId = await this.createAssignment(assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }
 
+      log.info(
+        applicationContext,
+        MODULE_NAME,
+        `Created ${listOfAssignmentIdsCreated.length} assignments for case number ${listOfAssignments[0].caseId}.`,
+        listOfAssignmentIdsCreated,
+      );
       return {
         success: true,
         message: 'Trial attorney assignments created.',
@@ -59,13 +57,19 @@ export class CaseAssignment {
     }
   }
 
-  public async isCreateValid(
-    applicationContext: ApplicationContext,
-    newAssignments: CaseAttorneyAssignment[],
-  ): Promise<boolean> {
+  public async isCreateValid(newAssignments: CaseAttorneyAssignment[]): Promise<boolean> {
     const caseId = newAssignments[0].caseId;
-    const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
-    return existingAssignments.length === 0;
+    try {
+      const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
+      return existingAssignments.length === 0;
+    } catch (e) {
+      throw new AssignmentError(MODULE_NAME, {
+        message:
+          'Unable to determine whether assignments already exist. Please try again later. If the problem persists, please contact USTP support.',
+        originalError: e,
+        status: 500,
+      });
+    }
   }
 
   public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {

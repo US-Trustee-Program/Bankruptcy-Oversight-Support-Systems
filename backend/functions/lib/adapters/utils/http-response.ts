@@ -19,7 +19,7 @@ export function httpError(error: CamsError): ApiResponse {
     headers: commonHeaders,
     statusCode: error.status,
     body: {
-      error: error.message,
+      message: error.message,
     },
   };
 }
