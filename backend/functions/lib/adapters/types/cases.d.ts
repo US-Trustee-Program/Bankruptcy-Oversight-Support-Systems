@@ -38,6 +38,7 @@ export interface DebtorAttorney {
 }
 export interface CaseDetailInterface {
   caseId: string;
+  courtDivision: string;
   chapter: string;
   caseTitle: string;
   dateFiled: string;
@@ -47,6 +48,7 @@ export interface CaseDetailInterface {
   dxtrId?: string;
   courtId?: string;
   regionId?: string;
+  officeName?: string;
   assignments?: string[];
   judgeName?: string;
   debtor?: Party;

@@ -65,6 +65,8 @@ describe('Case list tests', () => {
         dateFiled: '2005-05-04',
         assignments: [],
         chapter: '15',
+        courtDivision: '081',
+        officeName: 'New York',
       },
       {
         caseId: '001-06-1122',
@@ -72,6 +74,8 @@ describe('Case list tests', () => {
         dateFiled: '2006-03-27',
         assignments: [],
         chapter: '15',
+        courtDivision: '081',
+        officeName: 'New York',
       },
     ];
     const mockChapterList: CaseListDbResult = {
@@ -298,6 +302,7 @@ describe('Case detail tests', () => {
       dxtrId: '12345',
       courtId: '0208',
       chapter: '15',
+      courtDivision: '081',
     };
 
     const chapterCaseList = new CaseManagement(applicationContext);
