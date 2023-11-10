@@ -7,6 +7,7 @@
     "courtDivisionName": "Manhattan",
     "caseTitle": "Crawford, Turner and Garrett",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2011-05-20T11:59:00.0000000",
     "dateClosed": "2011-06-21T11:59:00.0000000",
     "assignments": []
@@ -19,6 +20,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Ali-Cruz",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2014-04-23T11:59:00.0000000",
     "dateClosed": "",
     "assignments": []
@@ -31,6 +33,7 @@
     "courtDivisionName": "Manhattan",
     "caseTitle": "Daniels LLC",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2018-11-16T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -43,6 +46,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Gonzalez, Clark and Kelley",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2015-05-18T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -55,6 +59,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Wilson-Sheppard",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2006-05-12T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -67,6 +72,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Taylor Inc",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2010-02-16T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -79,6 +85,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Holmes, Koch and Knight",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2015-10-16T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -91,6 +98,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Allen-Sandoval",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2019-04-18T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -103,6 +111,7 @@
     "courtName": "Some Court Name",
     "caseTitle": "Valentine, Miller and Beck",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2019-04-18T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -115,6 +124,7 @@
     "courtDivisionName": "Manhattan",
     "caseTitle": "Mccarthy Group",
     "chapter": "15",
+    "debtorTypeLabel": "Corporate Business",
     "dateFiled": "2022-10-31T11:59:00.0000000",
     "dateClosed": "2023-06-21T11:59:00.0000000",
     "assignments": []
