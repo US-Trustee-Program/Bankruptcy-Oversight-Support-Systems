@@ -257,6 +257,9 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
   location: location
   kind: 'functionapp,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: servicePlan.id
     enabled: true
@@ -299,9 +302,6 @@ var ipSecurityRestrictionsRules = concat([ {
 resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
-  identity: {
-    type: 'SystemAssigned'
-  }
   properties: {
     cors: {
       allowedOrigins: corsAllowOrigins
