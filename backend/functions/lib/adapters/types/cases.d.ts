@@ -55,6 +55,7 @@ export interface CaseDetailInterface {
   judgeName?: string;
   debtor?: Party;
   debtorAttorney?: DebtorAttorney;
+  debtorTypeLabel?: string;
 }
 
 export interface DxtrTransactionRecord {
