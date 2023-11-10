@@ -32,7 +32,7 @@ on:
 jobs:
   build-info:
     runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Test-KV-Config' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
       stackName: ${{ steps.build-info.outputs.stackName }}
@@ -152,12 +152,12 @@ jobs:
       - name: Veracode Upload And Scan
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'CAMS'
+          appname: "CAMS"
           createprofile: false
-          filepath: 'cams.zip'
-          vid: '${{ secrets.VERACODE_API_ID }}'
-          vkey: '${{ secrets.VERACODE_API_KEY }}'
-          criticality: 'Medium'
+          filepath: "cams.zip"
+          vid: "${{ secrets.VERACODE_API_ID }}"
+          vkey: "${{ secrets.VERACODE_API_KEY }}"
+          criticality: "Medium"
 
   security-sast-scan:
     runs-on: ubuntu-latest
@@ -338,7 +338,17 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-info, build-frontend, build-service, accessibility-test, security-sast-scan, security-sca-scan-frontend, security-sca-scan-backend, security-sca-scan-common]
+    needs:
+      [
+        build-info,
+        build-frontend,
+        build-service,
+        accessibility-test,
+        security-sast-scan,
+        security-sca-scan-frontend,
+        security-sca-scan-backend,
+        security-sca-scan-common,
+      ]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
