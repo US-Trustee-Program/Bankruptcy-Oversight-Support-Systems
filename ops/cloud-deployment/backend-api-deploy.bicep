@@ -299,6 +299,9 @@ var ipSecurityRestrictionsRules = concat([ {
 resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     cors: {
       allowedOrigins: corsAllowOrigins
@@ -324,6 +327,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: applicationSettings
+    keyVaultReferenceIdentity: 'SystemAssigned'
   }
 }
 
