@@ -30,3 +30,24 @@ export function parseTransactionDate(record: DxtrTransactionRecord): Date {
     parseInt(transactionDateDay),
   );
 }
+
+const debtorTypeMap = {
+  CB: 'Corporate Business',
+  FD: 'Foreign Debtor',
+  IB: 'Individual Business',
+  IC: 'Individual Consumer',
+  JC: 'Joint Consumer',
+  MU: 'Municipality',
+  PB: 'Partnership Business',
+};
+
+// Examples:
+// 1081201013220-10132            15JC
+// 1081231056523-10565            15IB00-0000000
+export function parseDebtorType(record: DxtrTransactionRecord): string {
+  const debtorTypeMatch = record.txRecord.match(/\d{13}-\d{5}\s+\d{2}\w{2}/);
+  if (!debtorTypeMatch) return undefined;
+
+  const debtorType = debtorTypeMatch[0].slice(-2);
+  return debtorTypeMap[debtorType] ?? undefined;
+}

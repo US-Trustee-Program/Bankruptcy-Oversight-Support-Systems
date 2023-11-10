@@ -23,6 +23,7 @@ function generateTestCase(overlay = {}) {
     courtDivision: '081',
     courtName: 'Fancy Court Name',
     courtDivisionName: 'Manhattan',
+    debtorTypeLabel: 'Corporate Business',
   };
   return {
     ...defaultReturn,
@@ -199,6 +200,8 @@ describe('Test DXTR Gateway', () => {
       phone: '101-345-8765',
     };
 
+    const expectedDebtorTypeLabel = 'Corporate Business';
+
     const mockQueryDebtorAttorney: QueryResults = {
       success: true,
       results: {
@@ -249,6 +252,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
     expect(actualResult.debtor).toEqual(expectedParty);
     expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
+    expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {

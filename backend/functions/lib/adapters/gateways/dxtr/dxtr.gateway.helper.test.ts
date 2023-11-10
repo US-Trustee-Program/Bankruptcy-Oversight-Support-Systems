@@ -1,5 +1,6 @@
-import { parseTransactionDate } from './dxtr.gateway.helper';
+import { parseDebtorType, parseTransactionDate } from './dxtr.gateway.helper';
 import { CamsError } from '../../../common-errors/cams-error';
+import { DxtrTransactionRecord } from '../../types/cases';
 
 describe('DXTR Gateway Helper Tests', () => {
   describe('parseTransactionDate tests', () => {
@@ -28,6 +29,19 @@ describe('DXTR Gateway Helper Tests', () => {
           message: 'The transaction contains non-numeric characters in the date string.',
         }),
       );
+    });
+  });
+  describe('parseDebtorType tests', () => {
+    // 1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN
+    // 1081231056523-10565            15IB00-0000000
+    test('should return string Corporate Business', () => {
+      const transactionRecord: DxtrTransactionRecord = {
+        txCode: '---',
+        txRecord:
+          '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+      };
+
+      expect(parseDebtorType(transactionRecord)).toEqual('Corporate Business');
     });
   });
 });
