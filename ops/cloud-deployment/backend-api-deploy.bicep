@@ -254,13 +254,13 @@ module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (create
 /*
   Default user identity for backend
 */
-// module functionAppIdentity 'identity/managed-identity.bicep' = {
-//   name: '${functionName}-default-identity-module'
-//   params: {
-//     location: location
-//     managedIdentityName: 'id-${functionName}'
-//   }
-// }
+module functionAppIdentity 'identity/managed-identity.bicep' = {
+  name: '${functionName}-default-identity-module'
+  params: {
+    location: location
+    managedIdentityName: 'id-${functionName}'
+  }
+}
 
 /*
   Create functionapp
@@ -271,9 +271,9 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned, UserAssigned'
-    // userAssignedIdentities: {
-    //   '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-${functionName}' : {}
-    // }
+    userAssignedIdentities: {
+      '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-${functionName}' : {}
+    }
   }
   properties: {
     serverFarmId: servicePlan.id
@@ -281,6 +281,9 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: subnet.outputs.subnetId
   }
+  dependsOn: [
+    functionAppIdentity
+  ]
 }
 
 var applicationSettings = concat([
