@@ -51,6 +51,7 @@ export default class Chapter15MockApi extends Api {
     chapter: '15',
     regionId: '02',
     officeName: 'New York',
+    courtName: 'Southern District of New York',
     caseTitle: 'Débora Arden Coronado Nazario III',
     dateFiled: '02-15-2023',
     judgeName: 'Meyer Steven',
