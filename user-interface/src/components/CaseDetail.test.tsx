@@ -41,6 +41,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
       courtName: 'Court of Law',
+      courtDivisionName: 'Manhattan',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
@@ -82,8 +83,8 @@ describe('Case Detail screen tests', () => {
         const chapter = screen.getByTestId('case-chapter');
         expect(chapter.innerHTML).toEqual('Chapter 15');
 
-        const courtName = screen.getByTestId('court-name');
-        expect(courtName.innerHTML).toEqual('Court of Law');
+        const courtName = screen.getByTestId('court-name-and-district');
+        expect(courtName.innerHTML).toEqual('Court of Law - Manhattan');
 
         const region = screen.getByTestId('case-detail-region-id');
         expect(region.innerHTML).toEqual('Region 2 - New York Office');
