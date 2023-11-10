@@ -1,0 +1,292 @@
+COURT_ID,OFFICE_CODE,OFFICE_NAME
+0090,1,"Washington, D.C."
+0100,1,Bangor
+0100,2,Portland
+0101,1,Boston
+0101,3,Springfield
+0101,4,Worcester
+0102,1,Concord
+0103,1,Providence
+0104,2,Ponce
+0104,3,Old San Juan
+0205,2,Hartford
+0205,3,New Haven
+0205,5,Bridgeport
+0206,1,Albany
+0206,5,Syracuse
+0206,6,Utica
+0207,0,Islip
+0207,1,Brooklyn
+0207,8,Central Islip
+0208,1,Manhattan
+0208,4,Poughkeepsie
+0208,7,White Plains
+0209,1,Buffalo
+0209,2,Rochester
+0210,2,Burlington
+0210,5,Rutland
+0311,1,Delaware
+0312,1,Camden
+0312,2,Newark
+0312,3,Trenton
+0313,1,X
+0313,2,Philadelphia
+0313,3,XXX
+0313,4,Reading
+0314,1,Harrisburg
+0314,4,Williamsport
+0314,5,Wilkes-Barre
+0315,1,Erie
+0315,2,Pittsburgh
+0315,3,XXX
+0315,4,IV
+0315,7,Johnstown
+0391,1,St. Croix
+0391,3,St. Thomas
+0416,0,Greenbelt
+0416,1,Baltimore
+0420,2,Charleston
+0420,3,Columbia
+0420,6,Greenville
+0420,7,Spartanburg
+0422,1,Alexandria
+0422,2,Norfolk
+0422,3,Richmond
+0422,4,Newport News
+0423,5,Harrisonburg
+0423,6,Lynchburg
+0423,7,Roanoke
+0424,1,Clarksburg
+0424,2,Elkins
+0424,3,Martinsburg
+0424,5,Wheeling
+0425,1,Bluefield
+0425,2,Charleston
+0425,3,Huntington
+0425,4,(do not select) Parkersburg
+0425,5,Beckley
+0425,6,Parkersburg
+0536,1,Alexandria
+0536,2,Lake Charles
+0536,3,Monroe
+0536,4,Lafayette
+0536,5,Shreveport
+0537,1,Aberdeen
+0538,1,Gulfport-1 Divisional Office
+0538,3,Jackson-3 Divisional Office
+0538,6,Gulfport-6 Divisional Office
+0539,1,Abilene
+0539,2,Amarillo
+0539,3,Dallas
+0539,4,Ft. Worth
+0539,5,Lubbock
+0539,6,San Angelo
+0539,7,Wichita Falls
+053L,2,New Orleans
+053N,3,Baton Rouge
+053N,4,Opelousas
+0540,1,Beaumont
+0540,2,Marshall
+0540,3,Paris
+0540,4,Sherman
+0540,5,Texarkana
+0540,6,Tyler
+0540,9,Lufkin
+0541,1,Brownsville
+0541,2,Corpus Christi
+0541,3,Galveston
+0541,4,Houston
+0541,5,Laredo
+0541,6,Victoria
+0541,7,McAllen
+0542,1,Austin
+0542,3,El Paso
+0542,5,San Antonio
+0542,6,Waco
+0542,7,Midland
+0643,1,Ashland
+0643,2,Covington
+0643,3,Frankfort
+0643,5,Lexington
+0643,6,London
+0643,7,Pikeville
+0643,9,Test Division
+0644,1,Bowling Green
+0644,3,Louisville
+0644,4,Owensboro
+0644,5,Paducah
+0645,1,Bay City
+0645,2,Detroit
+0645,4,Flint
+0646,1,Grand Rapids
+0646,2,Marquette
+0647,1,Cleveland
+0647,3,Toledo
+0647,4,Youngstown
+0647,5,Akron
+0647,6,Canton
+0648,1,Cincinnati
+0648,2,Columbus
+0648,3,Dayton
+0649,1,Chattanooga
+0649,2,Greeneville
+0649,3,Knoxville
+0649,4,Winchester
+0649,5,Johnson City
+0650,1,Columbia
+0650,2,Cookeville
+0650,3,Nashville
+0651,1,Jackson
+0651,2,Memphis
+0752,1,Eastern Division
+0752,3,Western Division
+0753,1,Peoria
+0753,2,Urbana
+0753,3,Springfield
+0754,3,East St Louis
+0754,4,Benton
+0754,5,Alton
+0754,6,Effingham
+0755,1,Fort Wayne Division
+0755,2,Hammond Division
+0755,3,South Bend Division
+0755,4,Hammond Division at Lafayette
+0756,1,Indianapolis
+0756,2,Terre Haute
+0756,3,Evansville
+0756,4,New Albany
+0757,2,Milwaukee
+0758,1,Eau Claire
+0758,2,La Crosse
+0758,3,Madison
+0758,5,Wausau
+0758,6,Superior
+0860,1,Batesville
+0860,2,Delta Division
+0860,3,Northern Division
+0860,4,Central Division
+0860,5,Pine Bluff
+0861,1,El Dorado
+0861,2,Fort Smith
+0861,3,Harrison
+0861,4,Texarkana
+0861,5,Fayetteville
+0861,6,Hot Springs
+0862,1,Cedar Rapids
+0862,2,Dubuque
+0862,3,Fort Dodge
+0862,4,Mason City
+0862,5,Sioux City
+0862,6,Waterloo
+0863,1,Council Bluffs
+0863,3,Davenport
+0863,4,Des Moines
+0864,3,St Paul
+0864,4,Minneapolis
+0864,5,Duluth
+0864,6,Fergus Falls
+0865,1,Cape Girardeau
+0865,2,Hannibal
+0865,4,St. Louis
+0866,2,Jefferson City
+0866,3,Joplin
+0866,4,Kansas City
+0866,5,St. Joseph
+0866,6,Springfield
+0867,4,Lincoln Office
+0867,8,Omaha Office
+0868,3,Fargo
+0869,1,Northern (Aberdeen)
+0869,3,Central (Pierre)
+0869,4,Southern (Sioux Falls)
+0869,5,Western (Rapid City)
+097-,1,Juneau
+097-,2,Nome
+097-,3,Anchorage
+097-,4,Fairbanks
+097-,5,Ketchikan
+0970,0,Yuma
+0970,2,Phoenix
+0970,3,Prescott
+0970,4,Tucson
+0971,1,Santa Rosa
+0971,3,San Francisco
+0971,4,Oakland
+0971,5,San Jose
+0972,1,Fresno
+0972,2,Sacramento
+0972,9,Modesto
+0973,1,San Fernando Valley
+0973,2,Los Angeles
+0973,6,Riverside
+0973,8,Santa Ana
+0973,9,Santa Barbara
+0974,3,San Diego
+0975,1,Honolulu
+0976,1,Boise
+0976,2,Coeur dAlene
+0976,3,Moscow
+0976,4,Pocatello
+0976,8,Twin Falls
+0977,1,BIL
+0977,2,Butte
+0977,4,GTF
+0977,9,MSO
+0978,2,Las Vegas
+0978,3,Reno
+0979,3,Portland
+0979,6,Eugene
+0980,1,Spokane
+0980,2,Spokane/Yakima
+0981,2,Seattle
+0981,3,Tacoma
+0993,1,Hagatna
+0994,1,Northern Mariana Islands
+1082,1,Denver
+1083,2,Kansas City
+1083,5,Topeka
+1083,6,Wichita
+1084,1,Albuquerque
+1085,4,Tulsa
+1086,7,Muskogee
+1087,5,Oklahoma City
+1088,2,Salt Lake City
+1088,4,St. George
+1089,1,Casper
+1089,2,Cheyenne
+1111,0,Office 0 - AO-DC
+1111,1,Pleasantville
+1111,2,Dubuque
+1111,3,Office 3 - Baker
+1111,4,Hill
+1111,5,Office 5 - Elgin
+1111,6,Phoenix
+1111,9,Test Office 9
+1129,1,Gainesville
+1129,3,Pensacola
+1129,4,Tallahassee
+1129,5,Panama City
+113A,2,Ft. Myers
+113A,3,Jacksonville
+113A,6,Orlando
+113A,8,Tampa
+113A,9,Ft. Myers
+113C,0,Fort Lauderdale
+113C,1,Miami
+113C,9,West Palm Beach
+113E,1,Atlanta
+113E,2,Gainesville
+113E,3,Newnan
+113E,4,Rome
+113G,1,Albany
+113G,3,Athens
+113G,4,Columbus
+113G,5,Macon
+113G,6,Thomasville
+113G,7,Valdosta
+113J,1,Augusta
+113J,2,Brunswick
+113J,3,Dublin
+113J,4,Savannah
+113J,5,Waycross
+113J,6,Statesboro

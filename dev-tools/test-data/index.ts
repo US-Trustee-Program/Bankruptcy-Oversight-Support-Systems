@@ -3,7 +3,13 @@ import { toAoAtInsertStatements } from './tables/AO_AT';
 import { toAoCsInsertStatements } from './tables/AO_CS';
 import { toAoPyInsertStatements } from './tables/AO_PY';
 import { toAoTxInsertStatements } from './tables/AO_TX';
-import { BCase, BCaseTransaction, DebtorAttorney, Judge, toDbRecords } from './domain/bcase';
+import {
+  BCase,
+  BCaseTransactionTypeOrder,
+  DebtorAttorney,
+  Judge,
+  toDbRecords,
+} from './domain/bcase';
 import { CaseDetailInterface } from './cases';
 import { concatenateCityStateZipCountry, concatenateName } from './utility';
 
@@ -106,6 +112,6 @@ if (format === 'json') {
   });
 }
 
-function pickTop(list: Array<BCaseTransaction>, code: TxCode) {
+function pickTop(list: Array<BCaseTransactionTypeOrder>, code: TxCode) {
   return list.filter((i) => i.code === code).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
 }

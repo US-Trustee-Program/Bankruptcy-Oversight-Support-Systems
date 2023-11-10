@@ -1,6 +1,7 @@
 import { AO_PY_Record, AO_PY_RecordProps, toAoPyUpdateStatements } from '../tables/AO_PY';
 import readline from 'node:readline';
-import { getFakerLocale, randomTruth } from '../utility';
+import { randomTruth } from '../utility';
+import { getFakerLocale } from '../fixtures/lib/common';
 
 interface partyGeneratorProps {
   csCaseId: string;
