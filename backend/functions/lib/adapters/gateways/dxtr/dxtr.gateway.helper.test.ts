@@ -34,14 +34,55 @@ describe('DXTR Gateway Helper Tests', () => {
   describe('parseDebtorType tests', () => {
     // 1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN
     // 1081231056523-10565            15IB00-0000000
-    test('should return string Corporate Business', () => {
-      const transactionRecord: DxtrTransactionRecord = {
-        txCode: '---',
-        txRecord:
-          '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-      };
 
-      expect(parseDebtorType(transactionRecord)).toEqual('Corporate Business');
-    });
+    const type1TransactionRecToTest = [
+      [
+        '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+        'Corporate Business',
+      ],
+      [
+        '1081201013220-10132            15IB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+        'Individual Business',
+      ],
+      [
+        '1081201013220-10132            15IC               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+        'Individual Consumer',
+      ],
+    ];
+
+    test.each(type1TransactionRecToTest)(
+      'should return the expected debtor type name',
+      (txRecord: string, expected: string) => {
+        const transactionRecord: DxtrTransactionRecord = {
+          txCode: '1',
+          txRecord,
+        };
+
+        expect(parseDebtorType(transactionRecord)).toEqual(expected);
+      },
+    );
+
+    const negativeType1TransactionRecToTest = [
+      ['000000000000000000200117999992001179999920011799999200117VP000000'],
+      [
+        '1081201013220-10132            15AA               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+      ],
+    ];
+    test.each(negativeType1TransactionRecToTest)(
+      'should throw an error when a bad record is encountered',
+      (txRecord: string) => {
+        const transactionRecord: DxtrTransactionRecord = {
+          txCode: '1',
+          txRecord,
+        };
+        const expectedException = new CamsError('DEBTOR-TYPE-NAME-GATEWAY', {
+          message: 'Cannot find debtor type name by ID',
+        });
+
+        expect(() => {
+          parseDebtorType(transactionRecord);
+        }).toThrow(expectedException);
+      },
+    );
   });
 });

@@ -8,7 +8,7 @@ describe('Office gateway', () => {
   });
   test('should throw an error for an invalid ID', () => {
     const expectedException = new CamsError('OFFICES-GATEWAY', {
-      message: "Cannot find office by id 'AAA'.",
+      message: 'Cannot find office by ID',
       data: { id: 'AAA' },
     });
     expect(() => {

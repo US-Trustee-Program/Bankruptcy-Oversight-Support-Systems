@@ -277,7 +277,7 @@ const offices = new Map<string, string>([
 export function getOffice(id: string): string {
   if (offices.has(id)) return offices.get(id);
   throw new CamsError(MODULE_NAME, {
-    message: `Cannot find office by id '${id}'.`,
+    message: 'Cannot find office by ID',
     data: { id },
   });
 }
