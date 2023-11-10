@@ -281,9 +281,6 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: subnet.outputs.subnetId
   }
-  dependsOn: [
-    functionAppIdentity
-  ]
 }
 
 var applicationSettings = concat([
