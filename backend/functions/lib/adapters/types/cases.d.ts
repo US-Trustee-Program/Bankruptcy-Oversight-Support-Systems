@@ -50,6 +50,7 @@ export interface CaseDetailInterface {
   courtName?: string;
   regionId?: string;
   officeName?: string;
+  courtDivisionName?: string;
   assignments?: string[];
   judgeName?: string;
   debtor?: Party;

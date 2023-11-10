@@ -88,8 +88,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
             </div>
             <div className="grid-col-8">
               <h2>
-                <span className="court-name" title="Court Name" data-testid="court-name">
-                  {caseDetail.courtName}
+                <span
+                  className="court-name"
+                  title="Court Name and Distrct"
+                  data-testid="court-name-and-district"
+                >
+                  {caseDetail.courtName} - {caseDetail.courtDivisionName}
                 </span>
               </h2>
             </div>
