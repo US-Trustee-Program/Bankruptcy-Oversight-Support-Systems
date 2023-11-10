@@ -148,7 +148,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: dxtrCaseId,
     });
 
-    const CASE_DETAIL_QUERY = `select
+    const CASE_DETAIL_QUERY = `SELECT
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -157,11 +157,19 @@ export default class CasesDxtrGateway implements CasesInterface {
         cs.CS_CHAPTER as chapter,
         cs.COURT_ID as courtId,
         court.COURT_NAME as courtName,
+        office.OFFICE_NAME as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
         grp_des.REGION_ID as regionId
         FROM [dbo].[AO_CS] AS cs
-        JOIN [dbo].[AO_GRP_DES] AS grp_des ON cs.GRP_DES = grp_des.GRP_DES
-        JOIN [dbo].[AO_COURT] AS court ON cs.COURT_ID = court.COURT_ID
+        JOIN [dbo].[AO_GRP_DES] AS grp_des
+          ON cs.GRP_DES = grp_des.GRP_DES
+        JOIN [dbo].[AO_COURT] AS court
+          ON cs.COURT_ID = court.COURT_ID
+        JOIN [dbo].[AO_CS_DIV] AS cs_div
+          ON cs.CS_DIV = cs_div.CS_DIV
+        JOIN [dbo].[AO_OFFICE] AS office
+          ON cs.COURT_ID = office.COURT_ID
+          AND cs_div.OFFICE_CODE = office.OFFICE_CODE
         WHERE cs.CASE_ID = @dxtrCaseId
         AND cs.CS_DIV = @courtDiv`;
 
