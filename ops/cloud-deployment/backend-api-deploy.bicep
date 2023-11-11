@@ -261,6 +261,7 @@ module functionAppIdentity 'identity/managed-identity.bicep' = {
     managedIdentityName: 'id-${functionName}'
   }
 }
+var managedIdentity = '${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-${functionName}'
 
 /*
   Create functionapp
@@ -272,7 +273,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   identity: {
     type: 'SystemAssigned, UserAssigned'
     userAssignedIdentities: {
-      '${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-${functionName}' : {}
+      '${managedIdentity}' : {}
     }
   }
   properties: {
@@ -345,7 +346,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: applicationSettings
-    keyVaultReferenceIdentity: 'UserAssigned'
+    keyVaultReferenceIdentity: managedIdentity
   }
 }
 
