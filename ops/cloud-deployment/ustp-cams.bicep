@@ -74,6 +74,10 @@ param actionGroupName string
 @secure()
 param ustpIssueCollectorHash string = ''
 
+@description('Name of the managed identity with read access to the keyvault storing application configurations.')
+@secure()
+param idKeyvaultAppConfiguration string
+
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
   name: '${actionGroupName}-action-group-module'
   scope: resourceGroup(analyticsResourceGroupName)
@@ -165,6 +169,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     createAlerts: createAlerts
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
+    idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
   }
   dependsOn: [
     ustpWebapp
