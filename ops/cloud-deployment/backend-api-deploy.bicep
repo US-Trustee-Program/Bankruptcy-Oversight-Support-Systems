@@ -104,6 +104,16 @@ param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
+
+@description('Name of the managed identity with read access to the keyvault storing application configurations.')
+@secure()
+param idKeyvaultAppConfiguration string
+
+resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: idKeyvaultAppConfiguration
+  scope: resourceGroup(sqlServerResourceGroupName)
+}
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -252,18 +262,6 @@ module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (create
 }
 
 /*
-  Default user identity for backend
-*/
-module functionAppIdentity 'identity/managed-identity.bicep' = {
-  name: '${functionName}-default-identity-module'
-  params: {
-    location: location
-    managedIdentityName: 'id-${functionName}'
-  }
-}
-var managedIdentity = '${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-${functionName}'
-
-/*
   Create functionapp
 */
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
@@ -271,9 +269,9 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   location: location
   kind: 'functionapp,linux'
   identity: {
-    type: 'SystemAssigned, UserAssigned'
+    type: 'UserAssigned'
     userAssignedIdentities: {
-      '${managedIdentity}' : {}
+      '${appConfigIdentity.id}': {}
     }
   }
   properties: {
@@ -281,9 +279,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     enabled: true
     httpsOnly: true
     virtualNetworkSubnetId: subnet.outputs.subnetId
+    keyVaultReferenceIdentity: appConfigIdentity.id
   }
   dependsOn: [
-    functionAppIdentity
+    appConfigIdentity
   ]
 }
 
@@ -346,7 +345,6 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: applicationSettings
-    keyVaultReferenceIdentity: managedIdentity
   }
 }
 
