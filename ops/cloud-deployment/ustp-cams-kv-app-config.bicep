@@ -29,5 +29,6 @@ module appConfigKeyvault 'keyvault/keyvault.bicep' = {
   }
 }
 
+output appConfigIdentityId string = appConfigIdentity.outputs.id
 output appConfigIdentityClientId string = appConfigIdentity.outputs.clientId
 output appConfigIdentityPrincipalId string = appConfigIdentity.outputs.principalId
