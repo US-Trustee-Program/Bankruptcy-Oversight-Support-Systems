@@ -2,6 +2,7 @@ import { DxtrTransactionRecord } from '../../types/cases';
 import { getDate } from '../../utils/date-helper';
 import { CamsError } from '../../../common-errors/cams-error';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
+import { getPetitionLabel } from '../petition-gateway';
 
 const MODULE_NAME = 'DXTR-GATEWAY-HELPER';
 
@@ -40,4 +41,10 @@ export function parseDebtorType(record: DxtrTransactionRecord): string {
   const codeIndex = 33;
   const debtorType = record.txRecord.slice(codeIndex, codeIndex + codeLength);
   return getDebtorTypeLabel(debtorType);
+}
+
+export function parsePetitionType(record: DxtrTransactionRecord): string {
+  const petitionMatch = record.txRecord.match(/\d{13}-\d{5}\s+\d{2}\w{2}[\w-]*\s+\d{57}\w{2}/);
+  const petition = petitionMatch ? petitionMatch[0].slice(-2) : undefined;
+  return getPetitionLabel(petition);
 }
