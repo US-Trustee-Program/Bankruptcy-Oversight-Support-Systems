@@ -64,11 +64,12 @@ export function createCase(options: CreateCaseOptions = {}): BCase {
 
   const judge = options.judges ? options.judges[randomInt(options.judges.length)] : undefined;
 
+  const chapter = options.chapter || DEFAULT_CHAPTER;
   return {
     dxtrId: generateFakeDxtrId(),
     caseId: generateFakeCaseId(),
     shortTitle: isCompany ? debtor.lastName : concatenateName(debtor) || '',
-    chapter: options.chapter || DEFAULT_CHAPTER,
+    chapter,
     county,
     group,
     div,
@@ -76,6 +77,7 @@ export function createCase(options: CreateCaseOptions = {}): BCase {
     judge,
     reopenCode,
     transactions: [],
+    debtorType: isCompany ? 'CB' : chapter === '15' ? 'FD' : 'IC',
     debtor,
     debtorAttorney,
     dateFiled: '2023-02-15',

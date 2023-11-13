@@ -23,6 +23,7 @@ function generateTestCase(overlay = {}) {
     courtDivision: '081',
     courtName: 'Fancy Court Name',
     courtDivisionName: 'Manhattan',
+    debtorTypeLabel: 'Corporate Business',
   };
   return {
     ...defaultReturn,
@@ -199,6 +200,21 @@ describe('Test DXTR Gateway', () => {
       phone: '101-345-8765',
     };
 
+    const mockDebtorTypeTransactionResults = {
+      success: true,
+      results: {
+        recordset: [
+          {
+            txRecord:
+              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+            txCode: '1',
+          },
+        ],
+      },
+      message: '',
+    };
+    const expectedDebtorTypeLabel = 'Corporate Business';
+
     const mockQueryDebtorAttorney: QueryResults = {
       success: true,
       results: {
@@ -222,6 +238,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryDebtorAttorney);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
@@ -249,6 +269,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
     expect(actualResult.debtor).toEqual(expectedParty);
     expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
+    expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -309,6 +330,20 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const mockDebtorTypeTransactionResults = {
+      success: true,
+      results: {
+        recordset: [
+          {
+            txRecord:
+              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+            txCode: '1',
+          },
+        ],
+      },
+      message: '',
+    };
+
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
     });
@@ -323,6 +358,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryDebtorAttorney);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
@@ -350,6 +389,13 @@ describe('Test DXTR Gateway', () => {
     );
     // getDebtorAttorneys
     expect(querySpy.mock.calls[3][3]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
+        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
+      ]),
+    );
+    // getDebtorTypeLabel
+    expect(querySpy.mock.calls[4][3]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
