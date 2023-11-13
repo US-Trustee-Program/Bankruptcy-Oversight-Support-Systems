@@ -497,7 +497,6 @@ export default class CasesDxtrGateway implements CasesInterface {
 
   debtorAttorneyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
     let debtorAttorney: DebtorAttorney;
-    log.debug(context, MODULENAME, `Debtor attorney results received from DXTR:`, queryResult);
 
     (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
       debtorAttorney = { name: removeExtraSpaces(record.name) };
