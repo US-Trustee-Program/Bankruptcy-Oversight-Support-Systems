@@ -17,7 +17,7 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import log from '../../services/logger.service';
 import { handleQueryResult } from '../gateway-helper';
-import { parseTransactionDate } from './dxtr.gateway.helper';
+import { parseDebtorType, parseTransactionDate } from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
@@ -74,6 +74,12 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
     bCase.debtorAttorney = await this.queryDebtorAttorney(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
+
+    bCase.debtorTypeLabel = await this.queryDebtorTypeLabel(
       applicationContext,
       bCase.dxtrId,
       bCase.courtId,
@@ -233,6 +239,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       FROM [dbo].[AO_TX]
       WHERE CS_CASEID = @dxtrId
       AND COURT_ID = @courtId
+      AND TX_TYPE = 'O'
       AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @reopenedDate)`;
 
     const queryResult: QueryResults = await executeQuery(
@@ -248,6 +255,51 @@ export default class CasesDxtrGateway implements CasesInterface {
         queryResult,
         MODULENAME,
         this.transactionQueryCallback,
+      ),
+    );
+  }
+
+  private async queryDebtorTypeLabel(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+  ): Promise<string> {
+    const input: DbTableFieldSpec[] = [];
+
+    input.push({
+      name: 'dxtrId',
+      type: mssql.VarChar,
+      value: dxtrId,
+    });
+
+    input.push({
+      name: 'courtId',
+      type: mssql.VarChar,
+      value: courtId,
+    });
+
+    const query = `select
+      REC as txRecord,
+      TX_CODE as txCode
+      FROM [dbo].[AO_TX]
+      WHERE CS_CASEID = @dxtrId
+      AND COURT_ID = @courtId
+      AND TX_TYPE = '1'
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    return Promise.resolve(
+      handleQueryResult<string>(
+        applicationContext,
+        queryResult,
+        MODULENAME,
+        this.debtorTypeLabelCallback,
       ),
     );
   }
@@ -451,6 +503,18 @@ export default class CasesDxtrGateway implements CasesInterface {
     sortDates(reopenedDates);
 
     return { closedDates, dismissedDates, reopenedDates } as TransactionDates;
+  }
+
+  debtorTypeLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    log.debug(
+      applicationContext,
+      MODULENAME,
+      `Transaction results received from DXTR:`,
+      queryResult,
+    );
+    const debtorTypeRecord = (queryResult.results as mssql.IResult<DxtrTransactionRecord>)
+      .recordset[0];
+    return parseDebtorType(debtorTypeRecord);
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {

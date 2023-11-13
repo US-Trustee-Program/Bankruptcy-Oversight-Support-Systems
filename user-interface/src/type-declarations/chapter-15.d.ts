@@ -43,6 +43,7 @@ interface CaseDetailType {
   assignments: string[];
   debtor: Debtor;
   debtorAttorney?: DebtorAttorney;
+  debtorTypeLabel: string;
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {

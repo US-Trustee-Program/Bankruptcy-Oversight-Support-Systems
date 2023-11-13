@@ -188,12 +188,15 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 </div>
                 <div className="debtor-information padding-bottom-4 case-card">
                   <h3>Debtor</h3>
+                  <div data-testid="case-detail-debtor-name" aria-label="debtor name">
+                    {caseDetail.debtor.name}
+                  </div>
                   <div
                     className="padding-bottom-1"
-                    data-testid="case-detail-debtor-name"
-                    aria-label="debtor name"
+                    data-testid="case-detail-debtor-type"
+                    aria-label="debtor type"
                   >
-                    {caseDetail.debtor.name}
+                    {caseDetail.debtorTypeLabel}
                   </div>
                   <div>
                     {caseDetail.debtor.address1 && (

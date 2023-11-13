@@ -42,6 +42,7 @@ describe('Case Detail screen tests', () => {
       judgeName: rickBHartName,
       courtName: 'Court of Law',
       courtDivisionName: 'Manhattan',
+      debtorTypeLabel: 'Corporate Business',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
@@ -109,6 +110,9 @@ describe('Case Detail screen tests', () => {
         const debtorName = screen.getByTestId('case-detail-debtor-name');
         expect(debtorName).toHaveTextContent(testCaseDetail.debtor.name);
 
+        const debtorType = screen.getByTestId('case-detail-debtor-type');
+        expect(debtorType).toHaveTextContent(testCaseDetail.debtorTypeLabel);
+
         const properties: Array<keyof Debtor> = [
           'address1',
           'address2',
@@ -146,6 +150,7 @@ describe('Case Detail screen tests', () => {
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
+        debtorTypeLabel: 'Corporate Business',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
         assignments: [brianWilsonName, carlWilsonName],
@@ -196,6 +201,7 @@ describe('Case Detail screen tests', () => {
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
+        debtorTypeLabel: 'Corporate Business',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
         assignments: [brianWilsonName, carlWilsonName],
@@ -256,6 +262,7 @@ describe('Case Detail screen tests', () => {
         caseTitle: 'The Beach Boys',
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
+        debtorTypeLabel: 'Corporate Business',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
         assignments: [brianWilsonName, carlWilsonName],
@@ -307,6 +314,7 @@ describe('Case Detail screen tests', () => {
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
+      debtorTypeLabel: 'Corporate Business',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
       debtor: {
@@ -339,6 +347,7 @@ describe('Case Detail screen tests', () => {
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
       judgeName: 'Honorable Jason Smith',
+      debtorTypeLabel: 'Corporate Business',
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -366,6 +375,7 @@ describe('Case Detail screen tests', () => {
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
+      debtorTypeLabel: 'Corporate Business',
       closedDate: '01-08-1963',
       assignments: [brianWilsonName, carlWilsonName],
       debtor: {
@@ -396,6 +406,7 @@ describe('Case Detail screen tests', () => {
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
+      debtorTypeLabel: 'Corporate Business',
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
       assignments: [brianWilsonName, carlWilsonName],
@@ -433,6 +444,7 @@ describe('Case Detail screen tests', () => {
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
+      debtorTypeLabel: 'Corporate Business',
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
       assignments: [brianWilsonName, carlWilsonName],
@@ -470,6 +482,7 @@ describe('Case Detail screen tests', () => {
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
+      debtorTypeLabel: 'Corporate Business',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [],
@@ -538,6 +551,7 @@ describe('Case Detail screen tests', () => {
         chapter: '15',
         officeName: 'Redondo Beach',
         caseTitle: 'The Beach Boys',
+        debtorTypeLabel: 'Corporate Business',
         dateFiled: '01-04-1962',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',

@@ -1,4 +1,4 @@
-import { Chapter, ColumnNames, TableRecordHelper, TxCode, TxType } from '../types';
+import { Chapter, ColumnNames, DebtorType, TableRecordHelper, TxCode, TxType } from '../types';
 import { assert, toSqlInsertStatements } from '../utility';
 
 /*
@@ -94,6 +94,16 @@ export function buildRec(
   return `${type}00000${div}${year}${caseId}${code}${formatedDate}${chapter}000000        [${chapter}] ${formatedDate} ${paddedMeta}`;
 }
 
+export function buildRecType1(chapter: Chapter, debtorType: DebtorType): string {
+  // template: 'NNNNNNNNNNNNN-NNNNN            NNAANN-NNNNNNN     NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAANNNNNN                                 NNNNN';
+  return [
+    'NNNNNNNNNNNNN-NNNNN            ',
+    chapter,
+    debtorType,
+    'NN-NNNNNNN     NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAANNNNNN                                 NNNNN',
+  ].join('');
+}
+
 export function buildRecFromTxRecord(
   rec: AO_TX_Record,
   div: string,
@@ -101,16 +111,21 @@ export function buildRecFromTxRecord(
   meta: string,
 ): string {
   const caseIdParts = rec.CASE_ID.split('-');
-  return buildRec(
-    rec.TX_TYPE,
-    div,
-    caseIdParts[0],
-    caseIdParts[1],
-    rec.TX_CODE,
-    rec.TX_DATE,
-    chapter,
-    meta,
-  );
+  switch (rec.TX_TYPE) {
+    case 'O':
+      return buildRec(
+        rec.TX_TYPE,
+        div,
+        caseIdParts[0],
+        caseIdParts[1],
+        rec.TX_CODE,
+        rec.TX_DATE,
+        chapter,
+        meta,
+      );
+    default:
+      return '';
+  }
 }
 
 export interface AO_TX_RecordProps {

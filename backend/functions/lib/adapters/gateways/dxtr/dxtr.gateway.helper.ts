@@ -1,6 +1,7 @@
 import { DxtrTransactionRecord } from '../../types/cases';
 import { getDate } from '../../utils/date-helper';
 import { CamsError } from '../../../common-errors/cams-error';
+import { getDebtorTypeLabel } from '../debtor-type-gateway';
 
 const MODULE_NAME = 'DXTR-GATEWAY-HELPER';
 
@@ -29,4 +30,14 @@ export function parseTransactionDate(record: DxtrTransactionRecord): Date {
     parseInt(transactionDateMonth),
     parseInt(transactionDateDay),
   );
+}
+
+// Examples:
+// 1081201013220-10132            15JC
+// 1081231056523-10565            15IB00-0000000
+export function parseDebtorType(record: DxtrTransactionRecord): string {
+  const codeLength = 2;
+  const codeIndex = 33;
+  const debtorType = record.txRecord.slice(codeIndex, codeIndex + codeLength);
+  return getDebtorTypeLabel(debtorType);
 }

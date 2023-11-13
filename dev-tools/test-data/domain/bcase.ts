@@ -1,7 +1,7 @@
 import { AO_CS_Record } from '../tables/AO_CS';
-import { AO_TX_Record, buildRecFromTxRecord } from '../tables/AO_TX';
+import { AO_TX_Record, buildRecFromTxRecord, buildRecType1 } from '../tables/AO_TX';
 import { DatabaseRecords, emptyDatabaseRecords } from '../tables/common';
-import { Chapter, TxCode } from '../types';
+import { Chapter, DebtorType, TxCode } from '../types';
 import { AO_PY_Record } from '../tables/AO_PY';
 import { AO_AT_Record } from '../tables/AO_AT';
 
@@ -16,7 +16,8 @@ export interface BCase {
   courtId: string;
   judge?: Judge;
   reopenCode: string;
-  transactions: Array<BCaseTransaction>;
+  transactions: Array<BCaseTransactionTypeOrder>;
+  debtorType: DebtorType;
   debtor: BCaseParty;
   debtorAttorney: DebtorAttorney;
   cfValue?: string;
@@ -29,11 +30,21 @@ export interface BCase {
   dateLastEnter?: string;
 }
 
-export interface BCaseTransaction {
+export type BCaseTransactionTypeOrder = {
+  txType: 'O';
   code: TxCode;
   date: string;
   meta: string;
-}
+};
+
+export type BCaseTransactionType1 = {
+  txType: '1';
+  code: '1';
+  date: string;
+  debtorType: DebtorType;
+};
+
+export type BCaseTransaction = BCaseTransactionTypeOrder | BCaseTransactionType1;
 
 export interface BCaseParty {
   role: string;
@@ -114,18 +125,33 @@ export function toDbRecords(bCase: BCase | Array<BCase>): DatabaseRecords {
         JD_FIRST_NAME: _case.judge?.firstName,
       }),
     );
+    const type1Transaction = new AO_TX_Record({
+      CS_CASEID: _case.dxtrId,
+      COURT_ID: _case.courtId,
+      DE_SEQNO: 0,
+      CASE_ID: _case.caseId,
+      JOB_ID: 0,
+      TX_TYPE: '1',
+      TX_CODE: '1',
+      TX_DATE: _case.dateFiled,
+      REC: buildRecType1(_case.chapter, _case.debtorType),
+    });
+    dbRecords.AO_TX.push(type1Transaction);
     _case.transactions?.forEach((txn, idx) => {
+      const sequence = idx + 1; // Add one because the 0 element is the debtor type.
       const record = new AO_TX_Record({
         CS_CASEID: _case.dxtrId,
         COURT_ID: _case.courtId,
-        DE_SEQNO: idx,
+        DE_SEQNO: sequence,
         CASE_ID: _case.caseId,
-        JOB_ID: idx,
-        TX_TYPE: 'O',
+        JOB_ID: sequence,
+        TX_TYPE: txn.txType,
         TX_CODE: txn.code,
         TX_DATE: txn.date,
       });
-      record.REC = buildRecFromTxRecord(record, _case.div, _case.chapter, txn.meta);
+      if (txn.txType === 'O') {
+        record.REC = buildRecFromTxRecord(record, _case.div, _case.chapter, txn.meta);
+      }
       record.validate();
       dbRecords.AO_TX.push(record);
     });

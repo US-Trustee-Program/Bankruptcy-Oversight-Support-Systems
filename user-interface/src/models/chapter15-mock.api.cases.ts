@@ -73,6 +73,7 @@ export default class Chapter15MockApi extends Api {
       phone: '5992-349-234',
       email: 'testemail@email.com',
     },
+    debtorTypeLabel: 'Corporate Business',
   };
 
   public static async list(path: string): Promise<ResponseData> {

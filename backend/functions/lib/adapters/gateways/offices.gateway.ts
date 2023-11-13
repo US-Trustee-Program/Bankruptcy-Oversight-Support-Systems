@@ -1,5 +1,8 @@
 import { CamsError } from '../../common-errors/cams-error';
 
+// TODO: This lookup may need to be migrated to a database at some point in the future.
+// This is a domain concern that we have not decided on where is the most appropriate place to keep outside of the gateway directory.
+
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
 const offices = new Map<string, string>([
@@ -277,7 +280,7 @@ const offices = new Map<string, string>([
 export function getOffice(id: string): string {
   if (offices.has(id)) return offices.get(id);
   throw new CamsError(MODULE_NAME, {
-    message: `Cannot find office by id '${id}'.`,
+    message: 'Cannot find office by ID',
     data: { id },
   });
 }
