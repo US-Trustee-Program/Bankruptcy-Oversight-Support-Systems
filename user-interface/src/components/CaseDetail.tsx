@@ -47,38 +47,68 @@ export const CaseDetail = (props: CaseDetailProps) => {
   if (isLoading) {
     return (
       <div className="case-detail">
-        <Link className="back-button" to="/case-assignment">
-          <Icon name="arrow_back"></Icon>
-          Back to Case List
-        </Link>
-
-        <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
-        <h2>
-          <span className="case-number" title="Case Number">
-            {getCaseNumber(caseId)}
-          </span>
-        </h2>
-        <p data-testid="loading-indicator">Loading...</p>
+        <div className="grid-row">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <Link className="back-button" to="/case-assignment">
+              <Icon name="arrow_back"></Icon>
+              Back to Case List
+            </Link>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
+        <div className="grid-row">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
+        <div className="grid-row">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <h2>
+              <span className="case-number" title="Case Number">
+                {getCaseNumber(caseId)}
+              </span>
+            </h2>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
+        <div className="case-detail">
+          <div className="grid-row">
+            <div className="grid-col-1"></div>
+            <div className="grid-col-10">
+              <p data-testid="loading-indicator">Loading...</p>
+            </div>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
       </div>
     );
   } else {
     return (
       caseDetail && (
-        <div className="case-detail grid-container">
+        <div className="case-detail">
           <div className="grid-row">
-            <div className="grid-col-12">
+            <div className="grid-col-1"></div>
+            <div className="grid-col-10">
               <Link className="back-button" to="/case-assignment">
                 <Icon name="arrow_back"></Icon>
                 Back to Case List
               </Link>
             </div>
+            <div className="grid-col-1"></div>
           </div>
           <div className="grid-row">
-            <div className="grid-col-12">
+            <div className="grid-col-1"></div>
+            <div className="grid-col-10">
               <h1 data-testid="case-detail-heading">{caseDetail.caseTitle}</h1>
             </div>
+            <div className="grid-col-1"></div>
           </div>
           <div className="grid-row">
+            <div className="grid-col-1"></div>
             <div className="grid-col-2">
               <h2>
                 <span className="case-number" title="Case Number">
@@ -86,7 +116,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 </span>
               </h2>
             </div>
-            <div className="grid-col-8">
+            <div className="grid-col-6">
               <h2>
                 <span
                   className="court-name"
@@ -104,10 +134,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 </span>
               </h2>
             </div>
+            <div className="grid-col-1"></div>
           </div>
           <div className="grid-row">
+            <div className="grid-col-1"></div>
             <div className="grid-col-2"></div>
-            <div className="grid-col-8">
+            <div className="grid-col-6">
               <div className="case-card-list">
                 <div className="date-information padding-bottom-4 case-card">
                   <h3>Dates</h3>
@@ -345,6 +377,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
               </div>
             </div>
             <div className="grid-col-2"></div>
+            <div className="grid-col-1"></div>
           </div>
         </div>
       )
