@@ -44,6 +44,7 @@ interface CaseDetailType {
   debtor: Debtor;
   debtorAttorney?: DebtorAttorney;
   debtorTypeLabel: string;
+  petitionLabel: string;
 }
 
 export interface Chapter15CaseListResponseData extends ResponseData {

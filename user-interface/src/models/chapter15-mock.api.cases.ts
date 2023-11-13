@@ -74,6 +74,7 @@ export default class Chapter15MockApi extends Api {
       email: 'testemail@email.com',
     },
     debtorTypeLabel: 'Corporate Business',
+    petitionLabel: 'Voluntary Petition',
   };
 
   public static async list(path: string): Promise<ResponseData> {
