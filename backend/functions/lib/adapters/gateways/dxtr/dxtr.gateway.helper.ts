@@ -36,7 +36,8 @@ export function parseTransactionDate(record: DxtrTransactionRecord): Date {
 // 1081201013220-10132            15JC
 // 1081231056523-10565            15IB00-0000000
 export function parseDebtorType(record: DxtrTransactionRecord): string {
-  const debtorTypeMatch = record.txRecord.match(/\d{13}-\d{5}\s+\d{2}\w{2}/);
-  const debtorType = debtorTypeMatch ? debtorTypeMatch[0].slice(-2) : undefined;
+  const codeLength = 2;
+  const codeIndex = 33;
+  const debtorType = record.txRecord.slice(codeIndex, codeIndex + codeLength);
   return getDebtorTypeLabel(debtorType);
 }
