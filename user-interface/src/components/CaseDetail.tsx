@@ -191,12 +191,15 @@ export const CaseDetail = (props: CaseDetailProps) => {
                   <div data-testid="case-detail-debtor-name" aria-label="debtor name">
                     {caseDetail.debtor.name}
                   </div>
+                  <div data-testid="case-detail-debtor-type" aria-label="debtor type">
+                    {caseDetail.debtorTypeLabel}
+                  </div>
                   <div
                     className="padding-bottom-1"
-                    data-testid="case-detail-debtor-type"
-                    aria-label="debtor type"
+                    data-testid="case-detail-petition"
+                    aria-label="petition"
                   >
-                    {caseDetail.debtorTypeLabel}
+                    {caseDetail.petitionLabel}
                   </div>
                   <div>
                     {caseDetail.debtor.address1 && (

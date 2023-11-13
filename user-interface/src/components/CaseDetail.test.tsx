@@ -43,6 +43,7 @@ describe('Case Detail screen tests', () => {
       courtName: 'Court of Law',
       courtDivisionName: 'Manhattan',
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
@@ -113,6 +114,9 @@ describe('Case Detail screen tests', () => {
         const debtorType = screen.getByTestId('case-detail-debtor-type');
         expect(debtorType).toHaveTextContent(testCaseDetail.debtorTypeLabel);
 
+        const petition = screen.getByTestId('case-detail-petition');
+        expect(petition).toHaveTextContent(testCaseDetail.petitionLabel);
+
         const properties: Array<keyof Debtor> = [
           'address1',
           'address2',
@@ -151,6 +155,7 @@ describe('Case Detail screen tests', () => {
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
         debtorTypeLabel: 'Corporate Business',
+        petitionLabel: 'Voluntary Petition',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
         assignments: [brianWilsonName, carlWilsonName],
@@ -202,6 +207,7 @@ describe('Case Detail screen tests', () => {
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
         debtorTypeLabel: 'Corporate Business',
+        petitionLabel: 'Voluntary Petition',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
         assignments: [brianWilsonName, carlWilsonName],
@@ -263,6 +269,7 @@ describe('Case Detail screen tests', () => {
         dateFiled: '01-04-1962',
         judgeName: rickBHartName,
         debtorTypeLabel: 'Corporate Business',
+        petitionLabel: 'Voluntary Petition',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
         assignments: [brianWilsonName, carlWilsonName],
@@ -315,6 +322,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
       debtor: {
@@ -348,6 +356,7 @@ describe('Case Detail screen tests', () => {
       assignments: [brianWilsonName, carlWilsonName],
       judgeName: 'Honorable Jason Smith',
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -376,6 +385,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       closedDate: '01-08-1963',
       assignments: [brianWilsonName, carlWilsonName],
       debtor: {
@@ -407,6 +417,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
       assignments: [brianWilsonName, carlWilsonName],
@@ -445,6 +456,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
       assignments: [brianWilsonName, carlWilsonName],
@@ -483,6 +495,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
       debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [],
@@ -552,6 +565,7 @@ describe('Case Detail screen tests', () => {
         officeName: 'Redondo Beach',
         caseTitle: 'The Beach Boys',
         debtorTypeLabel: 'Corporate Business',
+        petitionLabel: 'Voluntary Petition',
         dateFiled: '01-04-1962',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
