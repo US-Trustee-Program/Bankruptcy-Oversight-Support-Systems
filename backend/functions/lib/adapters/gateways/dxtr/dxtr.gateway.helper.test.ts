@@ -1,4 +1,4 @@
-import { parseDebtorType, parseTransactionDate } from './dxtr.gateway.helper';
+import { parseDebtorType, parsePetitionType, parseTransactionDate } from './dxtr.gateway.helper';
 import { CamsError } from '../../../common-errors/cams-error';
 import { DxtrTransactionRecord } from '../../types/cases';
 
@@ -31,10 +31,8 @@ describe('DXTR Gateway Helper Tests', () => {
       );
     });
   });
-  describe('parseDebtorType tests', () => {
-    // 1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN
-    // 1081231056523-10565            15IB00-0000000
 
+  describe('parseDebtorType tests', () => {
     const type1TransactionRecToTest = [
       [
         '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
@@ -81,6 +79,62 @@ describe('DXTR Gateway Helper Tests', () => {
 
         expect(() => {
           parseDebtorType(transactionRecord);
+        }).toThrow(expectedException);
+      },
+    );
+  });
+
+  describe('parsePetitionType tests', () => {
+    const petitionsToTest = [
+      [
+        '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000IP000000                                 NNNNN',
+        'Involuntary Petition',
+      ],
+      [
+        '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000TI000000                                 NNNNN',
+        'Transferred Involuntary Petition',
+      ],
+      [
+        '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000TV000000                                 NNNNN',
+        'Transferred Voluntary Petition',
+      ],
+      [
+        '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000VP000000                                 NNNNN',
+        'Voluntary Petition',
+      ],
+    ];
+
+    test.each(petitionsToTest)(
+      'should return the expected petition label',
+      (txRecord: string, expected: string) => {
+        const transactionRecord: DxtrTransactionRecord = {
+          txCode: '1',
+          txRecord,
+        };
+
+        expect(parsePetitionType(transactionRecord)).toEqual(expected);
+      },
+    );
+
+    const negativePetitionRecToTest = [
+      ['000000000000000000000000000000000000000000000000000000000VP000000'],
+      [
+        '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000ZZ000000                                 NNNNN',
+      ],
+    ];
+    test.each(negativePetitionRecToTest)(
+      'should throw an error when a bad record is encountered',
+      (txRecord: string) => {
+        const transactionRecord: DxtrTransactionRecord = {
+          txCode: '1',
+          txRecord,
+        };
+        const expectedException = new CamsError('PETITION-NAME-GATEWAY', {
+          message: 'Cannot find petition label by ID',
+        });
+
+        expect(() => {
+          parsePetitionType(transactionRecord);
         }).toThrow(expectedException);
       },
     );
