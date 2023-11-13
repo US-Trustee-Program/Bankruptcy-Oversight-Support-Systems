@@ -240,6 +240,12 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockQueryDebtorAttorney);
     });
 
+    // First for the debtor type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
+    // Second time for the petition type.
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockDebtorTypeTransactionResults);
     });
@@ -360,6 +366,12 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockQueryDebtorAttorney);
     });
 
+    // First for the debtor type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
+    // Second time for the petition type.
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockDebtorTypeTransactionResults);
     });
