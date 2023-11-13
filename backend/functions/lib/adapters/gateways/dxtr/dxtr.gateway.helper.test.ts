@@ -33,9 +33,6 @@ describe('DXTR Gateway Helper Tests', () => {
   });
 
   describe('parseDebtorType tests', () => {
-    // 1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN
-    // 1081231056523-10565            15IB00-0000000
-
     const type1TransactionRecToTest = [
       [
         '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
