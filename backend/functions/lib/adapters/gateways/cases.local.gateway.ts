@@ -62,6 +62,12 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail.debtor = debtors.get(caseDetail.caseId);
       caseDetail.debtorAttorney = debtorAttorneys.get(caseDetail.caseId);
       caseDetail.judgeName = 'Bob Seger';
+      caseDetail.courtDivision = '081';
+      caseDetail.courtDivisionName = 'Manhattan';
+      caseDetail.courtName = 'Southern District of New York';
+      caseDetail.regionId = '02';
+      caseDetail.debtorTypeLabel = 'Corporate Debtor';
+      caseDetail.petitionLabel = 'Voluntary Petition';
     } catch (err) {
       log.error(
         applicationContext,
