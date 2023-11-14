@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "kvName": {
+      "value": "kv-ustp-cams-dev-bbd38a"
+    },
+    "kvResourceGroup": {
+      "value": "bankruptcy-oversight-support-systems"
+    },
+    "virtualNetworkName": {
+      "value": "vnet-ustp-cams-dev"
+    },
+    "privateEndpointSubnetName": {
+      "value": "snet-ustp-cams-dev-bbd38a-keyvault"
+    },
+    "privateEndpointSubnetPrefix": {
+      "value": "10.10.14.0/28"
+    },
+    "networkResourceGroup": {
+      "value": "rg-cams-network-dev-bbd38a"
+    }
+  }
+}

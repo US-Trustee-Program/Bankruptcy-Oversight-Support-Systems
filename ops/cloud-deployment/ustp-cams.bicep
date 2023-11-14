@@ -95,7 +95,7 @@ module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet)
   }
 }
 
-module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
+module ustpNetwork 'network/private-dns-zones.bicep' = if (deployNetwork) {
   name: '${appName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {

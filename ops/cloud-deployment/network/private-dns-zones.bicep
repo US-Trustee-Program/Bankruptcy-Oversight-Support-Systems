@@ -24,6 +24,7 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
 /*
   Private DNS Zone and linked virtual networks
 */
+
 resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateDnsZoneName
   location: 'global'
