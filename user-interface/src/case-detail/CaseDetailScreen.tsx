@@ -10,6 +10,7 @@ import {
 import CaseDetailHeader from './panels/CaseDetailHeader';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import CaseDetailContent from './panels/CaseDetailContent';
+import CaseDetailNavigation from './panels/CaseDetailNavigation';
 
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
@@ -50,7 +51,13 @@ export const CaseDetail = (props: CaseDetailProps) => {
     return (
       <div className="case-detail">
         <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
-        <LoadingIndicator />
+        <div className="grid-row grid-gap-lg">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <LoadingIndicator />
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
       </div>
     );
   } else {
@@ -58,10 +65,20 @@ export const CaseDetail = (props: CaseDetailProps) => {
       caseDetail && (
         <div className="case-detail">
           <CaseDetailHeader isLoading={false} caseId={caseDetail.caseId} caseDetail={caseDetail} />
-          <CaseDetailContent
-            caseDetail={caseDetail}
-            showReopenDate={showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate)}
-          />
+          <div className="grid-row grid-gap-lg">
+            <div className="grid-col-1"></div>
+            <div className="grid-col-2">
+              <CaseDetailNavigation />
+            </div>
+            <div className="grid-col-6">
+              <CaseDetailContent
+                caseDetail={caseDetail}
+                showReopenDate={showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate)}
+              />
+            </div>
+            <div className="grid-col-2"></div>
+            <div className="grid-col-1"></div>
+          </div>
         </div>
       )
     );

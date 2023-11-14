@@ -1,5 +1,5 @@
 import './Home.scss';
-import { CaseAssignment } from '../case-assignment/CaseAssignment';
+import { CaseAssignment } from '../case-assignment/CaseAssignmentScreen';
 
 function Home() {
   return (
