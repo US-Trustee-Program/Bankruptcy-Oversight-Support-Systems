@@ -5,11 +5,11 @@
     "stackName": {
       "value": "ustp-cams-dev"
     },
-    "kvName": {
-      "value": "kv-ustp-cams-dev"
-    },
     "kvResourceGroup": {
       "value": "bankruptcy-oversight-support-systems"
+    },
+    "kvName": {
+      "value": "kv-ustp-cams-dev"
     },
     "virtualNetworkName": {
       "value": "vnet-ustp-cams-dev"
@@ -24,7 +24,7 @@
       "value": "rg-cams-network-dev-bbd38a"
     },
     "deployNetworkConfig": {
-      "value": true
+      "value": false
     }
   }
 }
