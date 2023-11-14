@@ -1,4 +1,4 @@
-import { httpGet, httpPost } from '@/utils/http.adapter';
+import { httpGet, httpPost } from '@/lib/utils/http.adapter';
 
 describe('http adapter tests', () => {
   const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response());

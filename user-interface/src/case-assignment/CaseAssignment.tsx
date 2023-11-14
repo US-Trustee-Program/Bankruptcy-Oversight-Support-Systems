@@ -1,16 +1,16 @@
 import './CaseAssignment.scss';
 import { useState, useEffect, useRef } from 'react';
-import Api from '../models/api';
-import { Chapter15Type, Chapter15CaseListResponseData } from '@/type-declarations/chapter-15';
-import MockApi from '../models/chapter15-mock.api.cases';
-import { ToggleModalButton } from './uswds/modal/ToggleModalButton';
+import Api from '../lib/models/api';
+import { Chapter15Type, Chapter15CaseListResponseData } from '@/lib/type-declarations/chapter-15';
+import MockApi from '../lib/models/chapter15-mock.api.cases';
+import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
-import { ModalRefType } from './uswds/modal/modal-refs';
-import Alert, { AlertRefType, UswdsAlertStyle } from './uswds/Alert';
-import AttorneysApi from '../models/attorneys-api';
-import { Attorney } from '@/type-declarations/attorneys';
-import { getCaseNumber } from '@/utils/formatCaseNumber';
-import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
+import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
+import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
+import AttorneysApi from '../lib/models/attorneys-api';
+import { Attorney } from '@/lib/type-declarations/attorneys';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../lib/hooks/UseFeatureFlags';
 
 const modalId = 'assign-attorney-modal';
 
