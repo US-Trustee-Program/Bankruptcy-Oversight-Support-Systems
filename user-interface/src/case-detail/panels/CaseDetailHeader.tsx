@@ -12,33 +12,45 @@ export interface CaseDetailHeaderProps {
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   return (
     <>
-      <div className="grid-row">
-        <div className="grid-col-12">
+      <div className="grid-row grid-gap-lg">
+        <div className="grid-col-1"></div>
+        <div className="grid-col-10">
           <Link className="back-button" to="/case-assignment">
             <Icon name="arrow_back"></Icon>
             Back to Case List
           </Link>
         </div>
+        <div className="grid-col-1"></div>
       </div>
 
-      <div className="grid-row">
-        <div className="grid-col-12">
+      <div className="grid-row grid-gap-lg">
+        <div className="grid-col-1"></div>
+        <div className="grid-col-10">
           <h1 data-testid="case-detail-heading">
             {props.isLoading && <>Loading Case Details...</>}
             {!props.isLoading && props.caseDetail?.caseTitle}
           </h1>
         </div>
+        <div className="grid-col-1"></div>
       </div>
 
       {props.isLoading && (
-        <h2>
-          <span className="case-number" title="Case Number">
-            {getCaseNumber(props.caseId)}
-          </span>
-        </h2>
+        <div className="grid-row grid-gap-lg">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <h2>
+              <span className="case-number" title="Case Number">
+                {getCaseNumber(props.caseId)}
+              </span>
+            </h2>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
       )}
+
       {!props.isLoading && (
-        <div className="grid-row">
+        <div className="grid-row grid-gap-lg">
+          <div className="grid-col-1"></div>
           <div className="grid-col-2">
             <h2>
               <span className="case-number" title="Case Number">
@@ -46,7 +58,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               </span>
             </h2>
           </div>
-          <div className="grid-col-8">
+          <div className="grid-col-6">
             <h2>
               <span
                 className="court-name"
@@ -64,6 +76,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               </span>
             </h2>
           </div>
+          <div className="grid-col-1"></div>
         </div>
       )}
     </>

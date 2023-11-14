@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { CaseAssignment } from './CaseAssignment';
+import { CaseAssignment } from './CaseAssignmentScreen';
 import Chapter15MockApi from '../lib/models/chapter15-mock.api.cases';
 import { ResponseData } from '../lib/type-declarations/api';
 import { vi } from 'vitest';

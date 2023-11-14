@@ -2,7 +2,7 @@ import './App.scss';
 import { Routes, Route } from 'react-router-dom';
 import Home from './home/Home';
 import NotFound from './error/NotFound';
-import { CaseAssignment } from './case-assignment/CaseAssignment';
+import { CaseAssignment } from './case-assignment/CaseAssignmentScreen';
 import { CaseDetail } from './case-detail/CaseDetailScreen';
 import { HeaderNavBar } from './lib/components/HeaderNavBar';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
