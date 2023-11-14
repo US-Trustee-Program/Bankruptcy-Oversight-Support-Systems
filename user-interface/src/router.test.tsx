@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
-import * as HTTP from './utils/http.adapter';
+import * as HTTP from './lib/utils/http.adapter';
 import { vi } from 'vitest';
 
 const mockCaseList = {

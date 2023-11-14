@@ -1,10 +1,10 @@
 import './App.scss';
 import { Routes, Route } from 'react-router-dom';
-import Home from './components/Home';
-import NotFound from './components/NotFound';
-import { CaseAssignment } from './components/CaseAssignment';
-import { CaseDetail } from './components/CaseDetail';
-import { HeaderNavBar } from './components/HeaderNavBar';
+import Home from './home/Home';
+import NotFound from './error/NotFound';
+import { CaseAssignment } from './case-assignment/CaseAssignment';
+import { CaseDetail } from './case-detail/CaseDetailScreen';
+import { HeaderNavBar } from './lib/components/HeaderNavBar';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { reactPlugin } from './ApplicationInsightsService';
 import { useState } from 'react';

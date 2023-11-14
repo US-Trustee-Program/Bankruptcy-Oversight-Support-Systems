@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { CaseAssignment } from './CaseAssignment';
-import Chapter15MockApi from '../models/chapter15-mock.api.cases';
-import { ResponseData } from '../type-declarations/api';
+import Chapter15MockApi from '../lib/models/chapter15-mock.api.cases';
+import { ResponseData } from '../lib/type-declarations/api';
 import { vi } from 'vitest';
-import * as FeatureFlags from '../hooks/UseFeatureFlags';
+import * as FeatureFlags from '../lib/hooks/UseFeatureFlags';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)
