@@ -1,4 +1,4 @@
-@description('Application name will be use to name keyvault')
+@description('Application name will be use to name keyvault prepended by kv-')
 param stackName string
 
 param location string = resourceGroup().location
@@ -15,10 +15,10 @@ param virtualNetworkName string
 @description('Subnet name the private endpoint should exist within')
 param privateEndpointSubnetName string
 
-@description('Subnet prefix')
+@description('Subnet prefix for private endpoint')
 param privateEndpointSubnetPrefix string
 
-@description('Resource group the subnet resides within')
+@description('Resource group the network subnet will reside')
 param networkResourceGroup string
 
 module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {

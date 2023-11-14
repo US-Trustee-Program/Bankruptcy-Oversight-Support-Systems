@@ -15,10 +15,10 @@ param virtualNetworkName string
 @description('Subnet name the private endpoint should exist within')
 param privateEndpointSubnetName string
 
-@description('Subnet prefix')
+@description('Subnet prefix for private endpoint')
 param privateEndpointSubnetPrefix string
 
-@description('Resource group the subnet resides within')
+@description('Resource group the network subnet will reside')
 param networkResourceGroup string
 
 var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
