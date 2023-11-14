@@ -21,6 +21,9 @@ param privateEndpointSubnetPrefix string
 @description('Resource group the network subnet will reside')
 param networkResourceGroup string
 
+@description('Flag to indicate whether the network components should be deployed')
+param deployNetworkConfig bool
+
 module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
   name: '${stackName}-kv-app-config-module'
   params: {
@@ -30,8 +33,7 @@ module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
   }
 }
 
-module kvNetworkConfig './keyvault-app-config-setup/kv-app-config-network.bicep' = {
-  //TODO: Possibly add condition if we do not wish to create a network
+module kvNetworkConfig './keyvault-app-config-setup/kv-app-config-network.bicep' = if (deployNetworkConfig) {
   name: '${stackName}-kv-network-config-module'
   params: {
     location: location

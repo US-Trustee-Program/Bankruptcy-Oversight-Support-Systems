@@ -22,6 +22,9 @@
     },
     "networkResourceGroup": {
       "value": "rg-cams-network-dev-bbd38a"
+    },
+    "deployNetworkConfig": {
+      "value": true
     }
   }
 }
