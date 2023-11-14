@@ -9,6 +9,12 @@ param privateEndpointSubnetAddressPrefix string
 param privateDnsZoneName string
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
+@description('Group for private link service')
+@allowed([
+  'sites'
+  'vault'
+])
+param privateLinkGroup string
 
 /*
   Create subnet for private endpoint
@@ -35,7 +41,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
         properties: {
           privateLinkServiceId: privateLinkServiceId
           groupIds: [
-            'sites'
+            privateLinkGroup
           ]
           privateLinkServiceConnectionState: {
             status: 'Approved'

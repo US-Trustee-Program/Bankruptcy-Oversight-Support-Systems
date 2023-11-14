@@ -150,6 +150,7 @@ module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
+    privateLinkGroup: 'sites'
     stackName: webappName
     location: location
     virtualNetworkName: virtualNetworkName

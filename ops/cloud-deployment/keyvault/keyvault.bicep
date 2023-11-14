@@ -50,6 +50,11 @@ var roleIdMapping = {
   'Key Vault Secrets User': '4633458b-17de-408a-b874-0445c86b69e6'
 }
 
+param networkAcls object = {
+  defaultAction: 'Allow'
+  bypass: 'AzureServices'
+}
+
 resource kv 'Microsoft.KeyVault/vaults@2023-02-01' = {
   name: keyVaultName
   location: location
@@ -64,10 +69,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-02-01' = {
       name: skuName
       family: 'A'
     }
-    networkAcls: {
-      defaultAction: 'Allow'
-      bypass: 'AzureServices'
-    }
+    networkAcls: networkAcls
   }
 }
 
@@ -81,5 +83,6 @@ resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   }
 }
 
+output vaultId string = kv.id
 output vaultName string = kv.name
 output vaultUri string = kv.properties.vaultUri
