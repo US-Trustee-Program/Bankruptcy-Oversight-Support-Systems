@@ -115,21 +115,18 @@ if [[ -n ${identities} ]]; then
     done
 fi
 
+decorated_kv_settings=""
+# configure KeyVault Settings
+if [[ -n ${kv_settings} && -n ${kv_name} ]]; then
+    for skey in ${kv_settings}; do
+        # EXAMPLE :: MSSQL_HOST=@Microsoft.KeyVault(VaultName=vault-name;SecretName=secret-key)
+        modifiedskey=$(echo "$skey" | sed -r 's/[_]+/-/g')
+        decorated_kv_settings+="${skey}=@Microsoft.KeyVault(VaultName=${kv_name};SecretName=${modifiedskey}) "
+    done
+fi
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
-    az functionapp config appsettings set -g "$app_rg" -n "$app_name" --settings "${app_settings}" --query "[].name" --output tsv
-fi
-
-# configure KeyVault Settings
-if [[ -n ${kv_settings} && -z ${kv_name} ]]; then
-    decorated_kv_settings=""
-    for skey in ${kv_settings}; do
-        # EXAMPLE :: MSSQL_HOST=@Microsoft.KeyVault(VaultName=vault-name;SecretName=secret-key)
-        modifiedskey=$(echo "$skey" | sed -r 's/[_]]+/-/g')
-        decorated_kv_settings+="${skey}=@Microsoft.KeyVault(VaultName=${kv_name};SecretName=${modifiedskey})"
-    done
-
-    echo "Set KeyVault Settings for ${app_name}"
-    az functionapp config appsettings set -g "$app_rg" -n "$app_name" --settings "${decorated_kv_settings}" --query "[].name" --output tsv
+    # shellcheck disable=SC2086
+    az functionapp config appsettings set -g "$app_rg" -n "$app_name" --settings ${app_settings} ${decorated_kv_settings} --query "[].name" --output tsv
 fi
