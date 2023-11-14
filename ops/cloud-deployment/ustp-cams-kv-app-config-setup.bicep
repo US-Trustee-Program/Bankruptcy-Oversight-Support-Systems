@@ -25,7 +25,7 @@ param networkResourceGroup string
 param deployNetworkConfig bool
 
 module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
-  name: '${stackName}-kv-app-config-module'
+  name: '${stackName}-kv-app-config-setup-module'
   params: {
     location: location
     kvResourceGroup: kvResourceGroup
@@ -34,7 +34,7 @@ module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
 }
 
 module kvNetworkConfig './keyvault-app-config-setup/kv-app-config-network.bicep' = if (deployNetworkConfig) {
-  name: '${stackName}-kv-network-config-module'
+  name: '${stackName}-kv-network-config-setup-module'
   params: {
     location: location
     kvName: kvName
