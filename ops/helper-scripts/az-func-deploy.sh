@@ -13,12 +13,11 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 enable_debug=false
-while [[ $# > 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --settings=\"key1=value1 key2=value2\""
         exit 0
-        shift
         ;;
 
     -d | --debug)
@@ -38,6 +37,16 @@ while [[ $# > 0 ]]; do
 
     -s | --src)
         artifact_path="${2}"
+        shift 2
+        ;;
+
+    --kvName)
+        kv_name="${2}"
+        shift 2
+        ;;
+
+    --kvSettings)
+        kv_settings="${2}"
         shift 2
         ;;
 
@@ -67,7 +76,7 @@ ruleName="agent-${app_name:0:26}" # rule name has a 32 character limit
 
 function on_exit() {
     # always try to remove temporary access
-    az functionapp config access-restriction remove -g $app_rg -n $app_name --rule-name $ruleName --scm-site true 1>/dev/null
+    az functionapp config access-restriction remove -g "$app_rg" -n "$app_name" --rule-name "$ruleName" --scm-site true 1>/dev/null
 }
 trap on_exit EXIT
 
@@ -78,7 +87,7 @@ fi
 
 # allow build agent access to execute deployment
 agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
-az functionapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true 1>/dev/null
+az functionapp config access-restriction add -g "$app_rg" -n "$app_name" --rule-name "$ruleName" --action Allow --ip-address "$agentIp" --priority 232 --scm-site true 1>/dev/null
 
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g $app_rg -n $app_name --src $artifact_path"
@@ -93,14 +102,14 @@ if [[ -n ${identities} ]]; then
     # configure User identities given a Managed Identity principal id and resource group
     for identity in ${identities}; do
         # get Azure resource id of managed identity by principalId
-        azResourceId=$(az identity list -g $id_rg --query "[?principalId=='$identity'].id" -o tsv)
+        azResourceId=$(az identity list -g "$id_rg" --query "[?principalId=='$identity'].id" -o tsv)
 
         if [[ -z "${azResourceId}" ]]; then
             echo "Resource id not found. Invalid principalId."
         else
             echo "Assigning identity ${azResourceId/*\//} to ${app_name}"
             # assign service with specified identity
-            az functionapp identity assign -g $app_rg -n $app_name --identities $azResourceId
+            az functionapp identity assign -g "$app_rg" -n "$app_name" --identities "$azResourceId"
         fi
 
     done
@@ -109,5 +118,18 @@ fi
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
-    az functionapp config appsettings set -g $app_rg -n $app_name --settings ${app_settings} --query "[].name" --output tsv
+    az functionapp config appsettings set -g "$app_rg" -n "$app_name" --settings "${app_settings}" --query "[].name" --output tsv
+fi
+
+# configure KeyVault Settings
+if [[ -n ${kv_settings} && -z ${kv_name} ]]; then
+    decorated_kv_settings=""
+    for skey in ${kv_settings}; do
+        # EXAMPLE :: MSSQL_HOST=@Microsoft.KeyVault(VaultName=vault-name;SecretName=secret-key)
+        modifiedskey=$(echo "$skey" | sed -r 's/[_]]+/-/g')
+        decorated_kv_settings+="${skey}=@Microsoft.KeyVault(VaultName=${kv_name};SecretName=${modifiedskey})"
+    done
+
+    echo "Set KeyVault Settings for ${app_name}"
+    az functionapp config appsettings set -g "$app_rg" -n "$app_name" --settings "${decorated_kv_settings}" --query "[].name" --output tsv
 fi
