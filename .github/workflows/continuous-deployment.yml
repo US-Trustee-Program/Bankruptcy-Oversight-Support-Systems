@@ -479,18 +479,12 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
-          --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} \
-          MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} \
-          MSSQL_DATABASE_DXTR=${{ secrets.AZ_MSSQL_DATABASE_DXTR }} \
-          MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} \
-          MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} \
-          MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
-          MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
-          STARTING_MONTH=${{ vars.STARTING_MONTH }} \
+          --kvName ${{ secrets.AZ_KV_APP_CONFIGURATION }} \
+          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_USER MSSQL_PASS MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
+          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
           COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
-          FEATURE_FLAG_SDK_KEY=${{ secrets.LD_DEVELOPMENT_SDK_KEY }}" \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
