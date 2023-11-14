@@ -21,7 +21,7 @@ param kvNetworkAcls object = {
   virtualNetworkRules: []
 }
 
-module appConfigIdentity 'identity/managed-identity.bicep' = {
+module appConfigIdentity '../identity/managed-identity.bicep' = {
   name: '${stackName}-id-app-config-module'
   scope: resourceGroup(kvResourceGroup)
   params: {
@@ -30,7 +30,7 @@ module appConfigIdentity 'identity/managed-identity.bicep' = {
   }
 }
 
-module appConfigKeyvault 'keyvault/keyvault.bicep' = {
+module appConfigKeyvault '../keyvault/keyvault.bicep' = {
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(kvResourceGroup)
   params: {

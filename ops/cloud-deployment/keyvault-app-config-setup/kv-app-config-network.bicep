@@ -6,8 +6,8 @@ param location string = resourceGroup().location
 @description('Name of App Configuration Keyvault')
 param kvName string
 
-@description('Target resource group to provision App Configuration Keyvault')
-param kvResourceGroup string
+@description('Id of App Configuration Keyvault')
+param kvId string
 
 @description('Virtual Network Name')
 param virtualNetworkName string
@@ -23,12 +23,7 @@ param networkResourceGroup string
 
 var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
 
-resource appConfigKeyvault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
-  name: kvName
-  scope: resourceGroup(kvResourceGroup)
-}
-
-module ustpPrivateDnsZone './network/private-dns-zones.bicep' = {
+module ustpPrivateDnsZone '../network/private-dns-zones.bicep' = {
   name: '${kvName}-private-dns-zone-module'
   scope: resourceGroup(networkResourceGroup)
   params: {
@@ -38,7 +33,7 @@ module ustpPrivateDnsZone './network/private-dns-zones.bicep' = {
   }
 }
 
-module appConfigKeyvaultPrivateEndpoint 'subnet/network-subnet-private-endpoint.bicep' = {
+module appConfigKeyvaultPrivateEndpoint '../subnet/network-subnet-private-endpoint.bicep' = {
   name: '${kvName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
   params: {
@@ -46,7 +41,7 @@ module appConfigKeyvaultPrivateEndpoint 'subnet/network-subnet-private-endpoint.
     privateDnsZoneName: ustpPrivateDnsZone.outputs.privateDnsZoneName
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetPrefix
     privateEndpointSubnetName: privateEndpointSubnetName
-    privateLinkServiceId: appConfigKeyvault.id
+    privateLinkServiceId: kvId
     stackName: kvName
     virtualNetworkName: virtualNetworkName
     privateLinkGroup: 'vault'
