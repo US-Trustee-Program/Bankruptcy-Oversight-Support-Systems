@@ -31,6 +31,7 @@ module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
 }
 
 module kvNetworkConfig './keyvault-app-config-setup/kv-app-config-network.bicep' = {
+  //TODO: Possibly add condition if we do not wish to create a network
   name: '${stackName}-kv-network-config-module'
   params: {
     location: location
