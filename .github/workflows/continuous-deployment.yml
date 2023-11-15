@@ -152,12 +152,12 @@ jobs:
       - name: Veracode Upload And Scan
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'CAMS'
+          appname: "CAMS"
           createprofile: false
-          filepath: 'cams.zip'
-          vid: '${{ secrets.VERACODE_API_ID }}'
-          vkey: '${{ secrets.VERACODE_API_KEY }}'
-          criticality: 'Medium'
+          filepath: "cams.zip"
+          vid: "${{ secrets.VERACODE_API_ID }}"
+          vkey: "${{ secrets.VERACODE_API_KEY }}"
+          criticality: "Medium"
 
   security-sast-scan:
     runs-on: ubuntu-latest
@@ -338,7 +338,17 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-info, build-frontend, build-service, accessibility-test, security-sast-scan, security-sca-scan-frontend, security-sca-scan-backend, security-sca-scan-common]
+    needs:
+      [
+        build-info,
+        build-frontend,
+        build-service,
+        accessibility-test,
+        security-sast-scan,
+        security-sca-scan-frontend,
+        security-sca-scan-backend,
+        security-sca-scan-common,
+      ]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
@@ -384,7 +394,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/ustp-cams.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
           echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
@@ -469,18 +479,12 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
-          --settings "MSSQL_HOST=${{ secrets.AZ_MSSQL_HOST }} \
-          MSSQL_DATABASE=${{ secrets.AZ_MSSQL_DATABASE }} \
-          MSSQL_DATABASE_DXTR=${{ secrets.AZ_MSSQL_DATABASE_DXTR }} \
-          MSSQL_USER=${{ secrets.AZ_MSSQL_USER }} \
-          MSSQL_PASS=${{ secrets.AZ_MSSQL_PASS }} \
-          MSSQL_ENCRYPT=${{ secrets.AZ_MSSQL_ENCRYPT }} \
-          MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.AZ_MSSQL_TRUST_UNSIGNED_CERT }} \
-          STARTING_MONTH=${{ vars.STARTING_MONTH }} \
+          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
+          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_USER MSSQL_PASS MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
+          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
           COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
-          FEATURE_FLAG_SDK_KEY=${{ secrets.LD_DEVELOPMENT_SDK_KEY }}" \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
