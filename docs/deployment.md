@@ -55,7 +55,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_STOR_VERACODE_KEY                       | Secrets                | Yes              | Access key for Azure Storage account                                                                        |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **LaunchDarkly**                           |                        |                  |                                                                                                             |
-| FEATURE_FLAG_SDK_KEY                       | Secrets                | ---              | Optional SDK key to enable LaunchDarkly client                                                              |
+| ~~FEATURE_FLAG_SDK_KEY~~                   | ~~Secrets~~            | ---              | ~~Optional SDK key to enable LaunchDarkly~~ client                                                          |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure Log Anlaytics**                    |                        |                  |                                                                                                             |
 | AZ_ANALYTICS_WORKSPACE_ID                  | Secrets                | ---              | Azure resource id of Log Analytics.                                                                         |
