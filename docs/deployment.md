@@ -34,12 +34,12 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_SQL_CONN_STR                            | Secret                 | ---              | ---                                                                                                         |
 | AZ_SQL_SERVER_NAME                         | Secret                 | ---              | ---                                                                                                         |
 | AZ_MSSQL_HOST                              | Secret                 | ---              | ---                                                                                                         |
-| ~~AZ_MSSQL_DATABASE~~                      | ~~Secret~~             | ---              | ~~ACMS database name~~                                                                                      |
-| ~~AZ_MSSQL_DATABASE_DXTR ~~                | ~~Secret~~             | ---              | ~~DXTR database name~~                                                                                      |
-| ~~AZ_MSSQL_USER~~                          | ~~Secret~~             | ---              | ---                                                                                                         |
-| ~~AZ_MSSQL_PASS~~                          | ~~Secret~~             | ---              | ---                                                                                                         |
-| ~~AZ_MSSQL_ENCRYPT~~                       | ~~Secret~~             | ---              | ---                                                                                                         |
-| ~~AZ_MSSQL_TRUST_UNSIGNED_CERT~~           | ~~Secret~~             | ---              | ---                                                                                                         |
+| ~~AZ_MSSQL_DATABASE~~                      | ~~Secret~~             | ---              | ~~ACMS database name~~ added to KeyVault                                                                    |
+| ~~AZ_MSSQL_DATABASE_DXTR ~~                | ~~Secret~~             | ---              | ~~DXTR database name~~ added to KeyVault                                                                    |
+| ~~AZ_MSSQL_USER~~                          | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
+| ~~AZ_MSSQL_PASS~~                          | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
+| ~~AZ_MSSQL_ENCRYPT~~                       | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
+| ~~AZ_MSSQL_TRUST_UNSIGNED_CERT~~           | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure CosmosDb**                         | ---                    | ---              | ---                                                                                                         |
 | AZ_COSMOS_DATABASE_NAME                    | Secret                 | ---              | ---                                                                                                         |
@@ -55,7 +55,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_STOR_VERACODE_KEY                       | Secrets                | Yes              | Access key for Azure Storage account                                                                        |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **LaunchDarkly**                           |                        |                  |                                                                                                             |
-| ~~FEATURE_FLAG_SDK_KEY~~                   | ~~Secrets~~            | ---              | ~~Optional SDK key to enable LaunchDarkly~~ client                                                          |
+| ~~FEATURE_FLAG_SDK_KEY~~                   | ~~Secrets~~            | ---              | ~~Optional SDK key to enable LaunchDarkly~~ added to KeyVault                                               |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure Log Anlaytics**                    |                        |                  |                                                                                                             |
 | AZ_ANALYTICS_WORKSPACE_ID                  | Secrets                | ---              | Azure resource id of Log Analytics.                                                                         |
