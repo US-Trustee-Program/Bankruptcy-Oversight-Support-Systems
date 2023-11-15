@@ -17,7 +17,8 @@
       ],
       "timeout": 20000
     },
-    "http://localhost:3000/case-detail/101-23-44461"
+    "http://localhost:3000/case-detail/101-23-44461",
+    "http://localhost:3000/case-detail/101-23-44461/court-docket"
   ],
   "standard": "WCAG2AA"
 }
