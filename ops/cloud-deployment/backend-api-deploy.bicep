@@ -84,6 +84,9 @@ param databaseConnectionString string = ''
 @description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
+@description('Resource group name of the app config KeyVault')
+param kvAppConfigResourceGroupName string = ''
+
 @description('Database server name')
 param sqlServerName string = ''
 
@@ -111,7 +114,7 @@ param idKeyvaultAppConfiguration string
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
-  scope: resourceGroup(sqlServerResourceGroupName)
+  scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
 /*
