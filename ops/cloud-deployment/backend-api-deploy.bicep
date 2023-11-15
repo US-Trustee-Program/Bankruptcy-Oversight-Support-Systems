@@ -55,6 +55,8 @@ param privateEndpointSubnetAddressPrefix string
 @allowed([
   'java'
   'node'
+  'node18'
+  'node20'
 ])
 param functionsRuntime string
 
@@ -63,7 +65,15 @@ param functionsRuntime string
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
 var linuxFxVersionMap = {
   java: 'JAVA|17'
-  node: 'NODE|18'
+  node: 'NODE|20'   // default to latest LTS
+  node18: 'NODE|18'
+  node20: 'NODE|20'
+}
+var workerRuntimeMap = {
+  java: 'java'
+  node: 'node'
+  node18: 'node'
+  node20: 'node'
 }
 
 @description('Azure functions version')
@@ -276,7 +286,7 @@ var applicationSettings = concat([
     }
     {
       name: 'FUNCTIONS_WORKER_RUNTIME'
-      value: functionsRuntime
+      value: workerRuntimeMap['${functionsRuntime}']
     }
   ],
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
