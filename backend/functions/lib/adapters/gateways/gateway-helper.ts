@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as mssql from 'mssql';
 import { CaseDetailInterface, DebtorAttorney, Party } from '../types/cases';
 import { QueryResults } from '../types/database';
 import { ApplicationContext } from '../types/basic';
@@ -35,6 +36,14 @@ export function handleQueryResult<T>(
 ): T {
   if (queryResult.success) {
     return callback(applicationContext, queryResult);
+  } else {
+    throw new CamsError(moduleName, { message: queryResult.message });
+  }
+}
+
+export async function handleQueryResult2<T>(moduleName: string, queryResult: QueryResults) {
+  if (queryResult.success) {
+    return (queryResult.results as mssql.IResult<T>).recordset;
   } else {
     throw new CamsError(moduleName, { message: queryResult.message });
   }

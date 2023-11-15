@@ -1,6 +1,7 @@
 import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { Context } from '@azure/functions';
 import { IDbConfig } from './database';
+import { CamsError } from '../../common-errors/cams-error';
 
 export interface AppConfig {
   dbMock: boolean;
@@ -9,9 +10,19 @@ export interface AppConfig {
   server: ServerType;
 }
 
+export interface LoggerHelper {
+  debug: (moduleName: string, message: string, data?: unknown) => void;
+  info: (moduleName: string, message: string, data?: unknown) => void;
+  warn: (moduleName: string, message: string, data?: unknown) => void;
+  error: (moduleName: string, message: string, data?: unknown) => void;
+  camsError(erro: CamsError);
+}
+
+// TODO: By extending Context from Azure Functions we have allowed Azure to invade this codebase.
 export interface ApplicationContext extends Context {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
+  logger: LoggerHelper;
 }
 
 export interface ObjectKeyVal {

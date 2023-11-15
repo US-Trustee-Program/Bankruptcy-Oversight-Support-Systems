@@ -1,6 +1,7 @@
 export type CaseDocketEntry = {
   caseId: string;
-  docketNumber?: string;
+  sequenceNumber: number;
+  documentNumber?: string;
   dateEntered: string;
   dateFiled: string;
   type: string;

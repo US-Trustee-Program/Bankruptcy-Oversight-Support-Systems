@@ -3,7 +3,6 @@ import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
-import log from '../lib/adapters/services/logger.service';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
@@ -24,21 +23,18 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   const caseDocketController = new CaseDocketController(applicationContext);
-
-  // Process request message
   try {
     const responseBody = await caseDocketController.getCaseDocket({
       caseId: caseDocketRequest.params.caseId,
     });
-
     functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
-    let error = originalError;
-    if (!(error instanceof CamsError)) {
-      error = new UnknownError(MODULE_NAME, { originalError });
-    }
-    log.camsError(applicationContext, error);
-    functionContext.res = httpError(error);
+    const camsError =
+      originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    applicationContext.logger.camsError(camsError);
+    functionContext.res = httpError(camsError);
   }
 };
 
