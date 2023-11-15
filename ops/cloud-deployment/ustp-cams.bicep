@@ -67,6 +67,9 @@ param createAlerts bool = false
 @description('Resource Group name for analytics and monitoring')
 param analyticsResourceGroupName string
 
+@description('Resource group name of the app config KeyVault')
+param kvAppConfigResourceGroupName string
+
 @description('Action Group Name for alerts')
 param actionGroupName string
 
@@ -170,6 +173,7 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
   }
   dependsOn: [
     ustpWebapp
