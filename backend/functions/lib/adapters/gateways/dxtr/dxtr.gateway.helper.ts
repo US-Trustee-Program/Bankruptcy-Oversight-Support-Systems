@@ -50,3 +50,9 @@ export function parsePetitionType(record: DxtrTransactionRecord): string {
   const petition = record.txRecord.slice(codeIndex, codeIndex + codeLength);
   return getPetitionLabel(petition);
 }
+
+export function decomposeCaseId(caseId: string) {
+  const courtDiv = caseId.slice(0, 3);
+  const dxtrCaseId = caseId.slice(4);
+  return { courtDiv, dxtrCaseId };
+}

@@ -9,6 +9,7 @@ import { CosmosConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-humble';
+import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -43,4 +44,8 @@ export const getCosmosDbClient = (
 
 export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
   return applicationContext.config.get('cosmosConfig');
+};
+
+export const getCaseDocketUseCase = (applicationContext: ApplicationContext): CaseDocketUseCase => {
+  return new CaseDocketUseCase(applicationContext);
 };
