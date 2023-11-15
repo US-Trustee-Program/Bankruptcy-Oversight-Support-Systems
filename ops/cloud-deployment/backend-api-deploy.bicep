@@ -84,6 +84,9 @@ param databaseConnectionString string = ''
 @description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
+@description('Resource group name of the app config KeyVault')
+param kvAppConfigResourceGroupName string = ''
+
 @description('Database server name')
 param sqlServerName string = ''
 
@@ -104,6 +107,16 @@ param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
+
+@description('Name of the managed identity with read access to the keyvault storing application configurations.')
+@secure()
+param idKeyvaultAppConfiguration string
+
+resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: idKeyvaultAppConfiguration
+  scope: resourceGroup(kvAppConfigResourceGroupName)
+}
+
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -168,6 +181,7 @@ module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
+    privateLinkGroup: 'sites'
     stackName: functionName
     location: location
     virtualNetworkName: virtualNetworkName
@@ -250,6 +264,7 @@ module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (create
     actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
+
 /*
   Create functionapp
 */
@@ -257,12 +272,22 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
   location: location
   kind: 'functionapp,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${appConfigIdentity.id}': {}
+    }
+  }
   properties: {
     serverFarmId: servicePlan.id
     enabled: true
     httpsOnly: true
     virtualNetworkSubnetId: subnet.outputs.subnetId
+    keyVaultReferenceIdentity: appConfigIdentity.id
   }
+  dependsOn: [
+    appConfigIdentity
+  ]
 }
 
 var applicationSettings = concat([

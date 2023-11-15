@@ -65,3 +65,6 @@ hs_err_pid*
 
 # Temporary Mermaid Files
 architecture/structurizr-*
+
+# Bicep Params
+ops/cloud-deployment/params/*.parameters.json

@@ -67,12 +67,19 @@ param createAlerts bool = false
 @description('Resource Group name for analytics and monitoring')
 param analyticsResourceGroupName string
 
+@description('Resource group name of the app config KeyVault')
+param kvAppConfigResourceGroupName string
+
 @description('Action Group Name for alerts')
 param actionGroupName string
 
 @description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy')
 @secure()
 param ustpIssueCollectorHash string = ''
+
+@description('Name of the managed identity with read access to the keyvault storing application configurations.')
+@secure()
+param idKeyvaultAppConfiguration string
 
 module actionGroup './monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
   name: '${actionGroupName}-action-group-module'
@@ -91,7 +98,7 @@ module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet)
   }
 }
 
-module ustpNetwork './network-deploy.bicep' = if (deployNetwork) {
+module ustpNetwork 'network/private-dns-zones.bicep' = if (deployNetwork) {
   name: '${appName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -165,6 +172,8 @@ module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcPara
     createAlerts: createAlerts
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
+    idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
   }
   dependsOn: [
     ustpWebapp
