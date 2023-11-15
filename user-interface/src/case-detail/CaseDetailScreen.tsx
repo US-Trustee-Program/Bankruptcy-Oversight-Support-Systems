@@ -1,16 +1,17 @@
 import './CaseDetailScreen.scss';
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { Route, useParams, Outlet, Routes } from 'react-router-dom';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
   CaseDetailType,
   Chapter15CaseDetailsResponseData,
 } from '@/lib/type-declarations/chapter-15';
-import CaseDetailHeader from './panels/CaseDetailHeader';
-import LoadingIndicator from '@/lib/components/LoadingIndicator';
-import CaseDetailContent from './panels/CaseDetailContent';
-import CaseDetailNavigation from './panels/CaseDetailNavigation';
+const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
+const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
+const CaseDetailContent = lazy(() => import('./panels/CaseDetailContent'));
+const CaseDetailNavigation = lazy(() => import('./panels/CaseDetailNavigation'));
+const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
 
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
@@ -45,42 +46,63 @@ export const CaseDetail = (props: CaseDetailProps) => {
     } else if (!isLoading) {
       fetchCaseDetail();
     }
-  }, [caseDetail !== undefined]);
+  }, []);
+  //}, [caseDetail !== undefined]);
 
-  if (isLoading) {
-    return (
+  return (
+    <>
       <div className="case-detail">
-        <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
-        <div className="grid-row grid-gap-lg">
-          <div className="grid-col-1"></div>
-          <div className="grid-col-10">
-            <LoadingIndicator />
-          </div>
-          <div className="grid-col-1"></div>
-        </div>
+        {isLoading && (
+          <>
+            <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-10">
+                <LoadingIndicator />
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+          </>
+        )}
+        {!isLoading && caseDetail && (
+          <>
+            <CaseDetailHeader
+              isLoading={false}
+              caseId={caseDetail.caseId}
+              caseDetail={caseDetail}
+            />
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-2">
+                <CaseDetailNavigation caseId={caseDetail.caseId} />
+              </div>
+              <div className="grid-col-8">
+                <Suspense fallback={<LoadingIndicator />}>
+                  <Routes>
+                    <Route
+                      index
+                      element={
+                        <CaseDetailContent
+                          caseDetail={caseDetail}
+                          showReopenDate={showReopenDate(
+                            caseDetail?.reopenedDate,
+                            caseDetail?.closedDate,
+                          )}
+                        />
+                      }
+                    />
+                    <Route path="court-docket" element={<CaseDetailCourtDocket />} />
+                  </Routes>
+                </Suspense>
+                <Outlet />
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+          </>
+        )}
       </div>
-    );
-  } else {
-    return (
-      caseDetail && (
-        <div className="case-detail">
-          <CaseDetailHeader isLoading={false} caseId={caseDetail.caseId} caseDetail={caseDetail} />
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
-            <div className="grid-col-2">
-              <CaseDetailNavigation />
-            </div>
-            <div className="grid-col-6">
-              <CaseDetailContent
-                caseDetail={caseDetail}
-                showReopenDate={showReopenDate(caseDetail.reopenedDate, caseDetail.closedDate)}
-              />
-            </div>
-            <div className="grid-col-2"></div>
-            <div className="grid-col-1"></div>
-          </div>
-        </div>
-      )
-    );
-  }
+    </>
+  );
 };
+
+export default CaseDetail;
