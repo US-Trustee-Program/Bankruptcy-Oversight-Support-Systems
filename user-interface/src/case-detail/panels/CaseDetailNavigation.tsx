@@ -1,17 +1,35 @@
-//import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-export default function CaseDetailNavigation() {
+export interface CaseDetailNavigationProps {
+  caseId: string | undefined;
+}
+
+function checkCurrentNav(keyword: string): string {
+  const usaCurrent = 'usa-current';
+  const splitPath = location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
+
+  if (keyword.length == 0 && splitPath.length < 3) return usaCurrent;
+  else if (keyword.length > 0 && location.pathname.includes(keyword)) return usaCurrent;
+  else return '';
+}
+
+export default function CaseDetailNavigation({ caseId }: CaseDetailNavigationProps) {
   return (
     <>
       <nav aria-label="Side navigation">
         <ul className="usa-sidenav">
           <li className="usa-sidenav__item">
-            <a href="javascript:void(0);" className="usa-current">
+            <Link className={checkCurrentNav('')} to={`/case-detail/${caseId}/`}>
               Basic Information
-            </a>
+            </Link>
           </li>
           <li className="usa-sidenav__item">
-            <a href="javascript:void(0);">Court Docket</a>
+            <Link
+              className={checkCurrentNav('/court-docket')}
+              to={`/case-detail/${caseId}/court-docket`}
+            >
+              Court Docket
+            </Link>
           </li>
         </ul>
       </nav>

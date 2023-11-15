@@ -433,3 +433,5 @@ export const CaseAssignment = () => {
     </>
   );
 };
+
+export default CaseAssignment;

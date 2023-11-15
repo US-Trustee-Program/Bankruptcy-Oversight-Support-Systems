@@ -1,15 +1,17 @@
 import './App.scss';
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Home from './home/Home';
-import NotFound from './error/NotFound';
-import { CaseAssignment } from './case-assignment/CaseAssignmentScreen';
-import { CaseDetail } from './case-detail/CaseDetailScreen';
+const Home = lazy(() => import('@/home/Home'));
+const NotFound = lazy(() => import('@/error/NotFound'));
+const CaseAssignment = lazy(() => import('@/case-assignment/CaseAssignmentScreen'));
+const CaseDetail = lazy(() => import('@/case-detail/CaseDetailScreen'));
 import { HeaderNavBar } from './lib/components/HeaderNavBar';
-import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
-import { reactPlugin } from './ApplicationInsightsService';
+//import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
+//import { reactPlugin } from './ApplicationInsightsService';
 import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import featureFlags from './configuration/featureFlagConfiguration';
+const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
@@ -23,6 +25,20 @@ function App() {
   });
 
   return (
+    <div className={appClasses}>
+      <HeaderNavBar />
+      <div className="body">
+        <Suspense fallback={<LoadingIndicator />}>
+          <Routes>
+            <Route path="/" element={<Home />}></Route>
+            <Route path="/case-assignment" element={<CaseAssignment />}></Route>
+            <Route path="/case-detail/:caseId/*" element={<CaseDetail />}></Route>
+            <Route path="*" element={<NotFound />}></Route>
+          </Routes>
+        </Suspense>
+      </div>
+    </div>
+    /*
     <AppInsightsErrorBoundary
       onError={(e) => {
         console.log(e);
@@ -33,15 +49,18 @@ function App() {
       <div className={appClasses}>
         <HeaderNavBar />
         <div className="body">
-          <Routes>
-            <Route path="/" element={<Home />}></Route>
-            <Route path="/case-assignment" element={<CaseAssignment />}></Route>
-            <Route path="/case-detail/:caseId" element={<CaseDetail />}></Route>
-            <Route path="*" element={<NotFound />}></Route>
-          </Routes>
+          <Suspense fallback={<LoadingIndicator />}>
+            <Routes>
+              <Route path="/" element={<Home />}></Route>
+              <Route path="/case-assignment" element={<CaseAssignment />}></Route>
+              <Route path="/case-detail/:caseId/*" element={<CaseDetail />}></Route>
+              <Route path="*" element={<NotFound />}></Route>
+            </Routes>
+          </Suspense>
         </div>
       </div>
     </AppInsightsErrorBoundary>
+    */
   );
 }
 
