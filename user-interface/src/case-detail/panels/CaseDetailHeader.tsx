@@ -35,7 +35,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       </div>
 
       {props.isLoading && (
-        <div className="grid-row grid-gap-lg">
+        <div className="grid-row grid-gap-lg" data-testid="loading-h2">
           <div className="grid-col-1"></div>
           <div className="grid-col-10">
             <h2>
@@ -49,7 +49,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       )}
 
       {!props.isLoading && (
-        <div className="grid-row grid-gap-lg">
+        <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
           <div className="grid-col-1"></div>
           <div className="grid-col-2">
             <h2>
