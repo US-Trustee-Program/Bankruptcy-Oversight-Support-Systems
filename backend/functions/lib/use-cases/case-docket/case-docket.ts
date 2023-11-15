@@ -1,4 +1,4 @@
-import CaseDocketDxtrGateway from '../../adapters/gateways/dxtr/case-docket.dxtr.gateway';
+import { CaseDocketGateway } from '../../adapters/gateways/gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDocket } from './case-docket.model';
 
@@ -6,15 +6,15 @@ import { CaseDocket } from './case-docket.model';
 const MODULE_NAME = 'CASE-DOCKET-USE-CASE';
 
 export class CaseDocketUseCase {
-  applicationContext: ApplicationContext;
-  gateway: CaseDocketDxtrGateway;
+  private readonly context: ApplicationContext;
+  private readonly gateway: CaseDocketGateway;
 
-  constructor(applicationContext: ApplicationContext) {
-    this.applicationContext = applicationContext;
-    this.gateway = new CaseDocketDxtrGateway();
+  constructor(context: ApplicationContext, gateway: CaseDocketGateway) {
+    this.context = context;
+    this.gateway = gateway;
   }
 
   public async getCaseDocket(caseId: string): Promise<CaseDocket> {
-    return this.gateway.getCaseDocket(this.applicationContext, caseId);
+    return this.gateway.getCaseDocket(caseId);
   }
 }

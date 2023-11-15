@@ -628,27 +628,4 @@ describe('Test DXTR Gateway', () => {
       });
     });
   });
-
-  describe('docketQueryCallback', () => {
-    test('should return docket entries for an existing case id', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
-      const attorney = await testCasesDxtrGateway.docketQueryCallback(
-        applicationContext,
-        queryResult,
-      );
-
-      expect(attorney).toBeNull();
-    });
-    test('should return no docket entries for a case that has no docket', async () => {});
-    test('should raise and exception for an invalid case ID', async () => {});
-  });
 });

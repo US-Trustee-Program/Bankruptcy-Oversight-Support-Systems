@@ -1,18 +1,21 @@
 import * as mssql from 'mssql';
 
-import { CaseDocketInterface } from '../../../use-cases/cases.interface';
-import { ApplicationContext } from '../../types/basic';
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import log from '../../services/logger.service';
-import { handleQueryResult } from '../gateway-helper';
+import { handleQueryResult2 } from '../gateway-helper';
 import { decomposeCaseId } from './dxtr.gateway.helper';
 import { CaseDocket } from '../../../use-cases/case-docket/case-docket.model';
+import { ApplicationContext } from '../../types/basic';
+import { CaseDocketGateway } from '../gateways.types';
 
 const MODULENAME = 'CASE-DOCKET-DXTR-GATEWAY';
 
-export default class CaseDocketDxtrGateway implements CaseDocketInterface {
-  async getCaseDocket(applicationContext: ApplicationContext, caseId: string): Promise<CaseDocket> {
+export class DxtrCaseDocketGateway implements CaseDocketGateway {
+  private readonly context: ApplicationContext;
+  constructor(context: ApplicationContext) {
+    this.context = context;
+  }
+  async getCaseDocket(caseId: string): Promise<CaseDocket> {
     const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
 
     const input: DbTableFieldSpec[] = [];
@@ -30,6 +33,7 @@ export default class CaseDocketDxtrGateway implements CaseDocketInterface {
     const query = `
     SELECT
       C.CS_DIV+'-'+C.CASE_ID as caseId,
+      D.DE_SEQNO as sequenceNumber,
       D.DE_DOCUMENT_NUM as documentNumber,
       D.DE_DATE_ENTER as dateEntered,
       D.DE_DATE_FILED as dateFiled,
@@ -43,27 +47,13 @@ export default class CaseDocketDxtrGateway implements CaseDocketInterface {
     `;
 
     const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
+      this.context,
+      this.context.config.dxtrDbConfig,
       query,
       input,
     );
 
-    return Promise.resolve(
-      handleQueryResult<CaseDocket>(
-        applicationContext,
-        queryResult,
-        MODULENAME,
-        this.caseDocketQueryCallback,
-      ),
-    );
-  }
-  private caseDocketQueryCallback(
-    applicationContext: ApplicationContext,
-    queryResult: QueryResults,
-  ) {
-    log.debug(applicationContext, MODULENAME, `Results received from DXTR `, queryResult);
-
-    return (queryResult.results as mssql.IResult<CaseDocket>).recordset;
+    this.context.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
+    return handleQueryResult2<CaseDocket>(MODULENAME, queryResult);
   }
 }
