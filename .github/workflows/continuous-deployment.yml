@@ -121,10 +121,10 @@ jobs:
       - name: Get source code
         uses: actions/checkout@v3
 
-      - name: Use Node.js 18.17.1
+      - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 18.17.1
+          node-version: 20.9.0
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
 
@@ -268,10 +268,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Use Node.js 18.17.1
+      - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 18.17.1
+          node-version: 20.9.0
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
 
