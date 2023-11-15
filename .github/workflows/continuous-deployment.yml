@@ -32,7 +32,7 @@ on:
 jobs:
   build-info:
     runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Test-KV-Config' }}
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
     outputs:
       environment: ${{ vars.ENVIRONMENT }}
       stackName: ${{ steps.build-info.outputs.stackName }}
