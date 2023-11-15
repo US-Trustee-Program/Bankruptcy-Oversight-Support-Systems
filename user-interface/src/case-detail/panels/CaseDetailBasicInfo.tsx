@@ -3,12 +3,12 @@ import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 
 const informationUnavailable = 'Information is not available at this time.';
 
-export interface CaseDetailContentProps {
+export interface CaseDetailBasicInfoProps {
   caseDetail?: CaseDetailType;
   showReopenDate: boolean;
 }
 
-export default function CaseDetailContent(props: CaseDetailContentProps) {
+export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
   if (!props.caseDetail) {
     return <></>;
   } else {

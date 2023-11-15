@@ -59,8 +59,8 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
           isVisible === IsVisible.True
             ? 'usa-alert__visible'
             : isVisible === IsVisible.False
-              ? 'usa-alert__hidden'
-              : 'usa-alert__unset'
+            ? 'usa-alert__hidden'
+            : 'usa-alert__unset'
         }`}
         role={props.role}
         data-testid={`alert`}

@@ -5,16 +5,18 @@ import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
   CaseDetailType,
+  CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
 } from '@/lib/type-declarations/chapter-15';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
-const CaseDetailContent = lazy(() => import('./panels/CaseDetailContent'));
+const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
 const CaseDetailNavigation = lazy(() => import('./panels/CaseDetailNavigation'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
 
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
+  caseDocketEntries?: CaseDocketEntry[];
 }
 
 function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
@@ -29,25 +31,62 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  const [caseDetail, setCaseDetail] = useState<CaseDetailType>();
+  const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
+  const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
 
-  const fetchCaseDetail = async () => {
+  const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
     api.get(`/cases/${caseId}`, {}).then((data) => {
       const response = data as Chapter15CaseDetailsResponseData;
-      setCaseDetail(response.body?.caseDetails);
+      setCaseBasicInfo(response.body?.caseDetails);
       setIsLoading(false);
     });
   };
 
+  const fetchCaseDocketEntries = async () => {
+    const docketEntries = [
+      {
+        sequenceNumber: 2,
+        documentNumber: 2,
+        dateFiled: '05/07/2023',
+        summaryText: 'Add Judge',
+        fullText:
+          'Id articulus vesper conduco. Adiuvo usus solvo decipio suppono suspendo. Verbum voluptatem cruciamentum tabella aut amo copia caute. Amissio uredo sodalitas autus amaritudo defetiscor statua desino torrens conturbo. Cursus suppellex viridis asper vindico suus adulatio tertius careo. Deludo laudantium adversus ante. Earum tunc concedo terra ocer. Theca blanditiis absum decerno timidus dolorem aeternus delectus agnosco vester. Territo voluptate admoneo cotidie.',
+      },
+      {
+        sequenceNumber: 3,
+        documentNumber: 3,
+        dateFiled: '05/08/2023',
+        summaryText: 'Judge 2',
+        fullText:
+          'Id Adiuvo usus solvo decipio suppono suspendo. Verbum voluptatem cruciamentum tabella aut amo copia caute. Amissio uredo sodalitas autus amaritudo defetiscor statua desino torrens conturbo. Cursus suppellex viridis asper vindico suus adulatio tertius careo. Deludo laudantium adversus ante. Earum tunc concedo terra ocer. Theca blanditiis absum decerno timidus dolorem aeternus delectus agnosco vester. Territo voluptate admoneo cotidie.',
+      },
+      {
+        sequenceNumber: 4,
+        dateFiled: '06/07/2023',
+        summaryText: 'Judge 3',
+        fullText:
+          'Id articulus vesper conduco. Suppono suspendo. Verbum voluptatem cruciamentum tabella aut amo copia caute. Amissio uredo sodalitas autus amaritudo defetiscor statua desino torrens conturbo. Cursus suppellex viridis asper vindico suus adulatio tertius careo. Deludo laudantium adversus ante. Earum tunc concedo terra ocer. Theca blanditiis absum decerno timidus dolorem aeternus delectus agnosco vester. Territo voluptate admoneo cotidie.',
+      },
+    ];
+    setCaseDocketEntries(docketEntries);
+  };
+
   useEffect(() => {
     if (props.caseDetail) {
-      setCaseDetail(props.caseDetail);
+      setCaseBasicInfo(props.caseDetail);
     } else if (!isLoading) {
-      fetchCaseDetail();
+      fetchCaseBasicInfo();
     }
   }, []);
-  //}, [caseDetail !== undefined]);
+
+  useEffect(() => {
+    if (props.caseDocketEntries) {
+      setCaseDocketEntries(props.caseDocketEntries);
+    } else {
+      fetchCaseDocketEntries();
+    }
+  }, []);
 
   return (
     <>
@@ -64,17 +103,17 @@ export const CaseDetail = (props: CaseDetailProps) => {
             </div>
           </>
         )}
-        {!isLoading && caseDetail && (
+        {!isLoading && caseBasicInfo && (
           <>
             <CaseDetailHeader
               isLoading={false}
-              caseId={caseDetail.caseId}
-              caseDetail={caseDetail}
+              caseId={caseBasicInfo.caseId}
+              caseDetail={caseBasicInfo}
             />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseDetail.caseId} />
+                <CaseDetailNavigation caseId={caseId} />
               </div>
               <div className="grid-col-8">
                 <Suspense fallback={<LoadingIndicator />}>
@@ -82,16 +121,24 @@ export const CaseDetail = (props: CaseDetailProps) => {
                     <Route
                       index
                       element={
-                        <CaseDetailContent
-                          caseDetail={caseDetail}
+                        <CaseDetailBasicInfo
+                          caseDetail={caseBasicInfo}
                           showReopenDate={showReopenDate(
-                            caseDetail?.reopenedDate,
-                            caseDetail?.closedDate,
+                            caseBasicInfo?.reopenedDate,
+                            caseBasicInfo?.closedDate,
                           )}
                         />
                       }
                     />
-                    <Route path="court-docket" element={<CaseDetailCourtDocket />} />
+                    <Route
+                      path="court-docket"
+                      element={
+                        <CaseDetailCourtDocket
+                          caseId={caseBasicInfo.caseId}
+                          docketEntries={caseDocketEntries}
+                        />
+                      }
+                    />
                   </Routes>
                 </Suspense>
                 <Outlet />
