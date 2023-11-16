@@ -7,7 +7,7 @@ import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
 
 interface SuccessMonad {
   success: true;
-  data: unknown;
+  body: unknown;
 }
 
 interface ErrorMonad {
@@ -23,7 +23,7 @@ type GetCaseDocketRequest = {
 };
 
 type GetCaseDocketResponse = Monad & {
-  data: CaseDocket;
+  body: CaseDocket;
 };
 
 export class CaseDocketController {
@@ -37,7 +37,7 @@ export class CaseDocketController {
     const caseDocket = await this.useCase.getCaseDocket(request.caseId);
     return {
       success: true,
-      data: caseDocket,
+      body: caseDocket,
     };
   }
 }
