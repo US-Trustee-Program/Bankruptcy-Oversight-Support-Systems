@@ -55,7 +55,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                 data-testid={`docket-entry-${idx}`}
               >
                 <div
-                  className="grid-col-1 document-number-column"
+                  className="grid-col-1 document-number-column usa-tooltip"
                   data-testid={`docket-entry-${idx}-number`}
                   aria-label="document number"
                   title={`Document number ${docketEntry.documentNumber}`}
