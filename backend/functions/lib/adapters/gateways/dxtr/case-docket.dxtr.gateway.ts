@@ -32,12 +32,9 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
 
     const query = `
     SELECT
-      C.CS_DIV+'-'+C.CASE_ID as caseId,
       D.DE_SEQNO as sequenceNumber,
       D.DE_DOCUMENT_NUM as documentNumber,
-      D.DE_DATE_ENTER as dateEntered,
       D.DE_DATE_FILED as dateFiled,
-      D.DE_TYPE as type,
       D.DO_SUMMARY_TEXT as summaryText,
       D.DT_TEXT as fullText
     FROM AO_DE AS D
