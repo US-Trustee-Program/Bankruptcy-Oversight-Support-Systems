@@ -47,6 +47,13 @@ interface CaseDetailType {
   petitionLabel: string;
 }
 
+export interface CaseDocketEntry {
+  sequenceNumber: number;
+  documentNumber?: number;
+  dateFiled: string;
+  summaryText: string;
+  fullText: string;
+}
 export interface Chapter15CaseListResponseData extends ResponseData {
   body: {
     caseList: Array<object>;
