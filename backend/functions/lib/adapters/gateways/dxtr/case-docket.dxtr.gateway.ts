@@ -11,11 +11,7 @@ import { CaseDocketGateway } from '../gateways.types';
 const MODULENAME = 'CASE-DOCKET-DXTR-GATEWAY';
 
 export class DxtrCaseDocketGateway implements CaseDocketGateway {
-  private readonly context: ApplicationContext;
-  constructor(context: ApplicationContext) {
-    this.context = context;
-  }
-  async getCaseDocket(caseId: string): Promise<CaseDocket> {
+  async getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket> {
     const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
 
     const input: DbTableFieldSpec[] = [];
@@ -44,13 +40,13 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     `;
 
     const queryResult: QueryResults = await executeQuery(
-      this.context,
-      this.context.config.dxtrDbConfig,
+      context,
+      context.config.dxtrDbConfig,
       query,
       input,
     );
 
-    this.context.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
+    context.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
     return handleQueryResult2<CaseDocket>(MODULENAME, queryResult);
   }
 }

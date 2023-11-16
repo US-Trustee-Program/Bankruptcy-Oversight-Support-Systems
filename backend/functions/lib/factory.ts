@@ -52,6 +52,6 @@ export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosC
 export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
   const gateway = context.config.get('dbMock')
     ? new MockCaseDocketGateway()
-    : new DxtrCaseDocketGateway(context);
-  return new CaseDocketUseCase(context, gateway);
+    : new DxtrCaseDocketGateway();
+  return new CaseDocketUseCase(gateway);
 };

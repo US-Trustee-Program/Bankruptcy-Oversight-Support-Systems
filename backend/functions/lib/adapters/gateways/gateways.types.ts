@@ -1,5 +1,6 @@
 import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
+import { ApplicationContext } from '../types/basic';
 
 export interface CaseDocketGateway {
-  getCaseDocket(caseId: string): Promise<CaseDocket>;
+  getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
 }
