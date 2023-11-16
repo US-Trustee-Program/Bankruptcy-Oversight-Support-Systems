@@ -17,7 +17,7 @@ module.exports = {
     'dist/',
     'coverage/',
     'lib/adapters/types/',
-    'lib/testing/mock-data/',
+    'lib/testing/',
     'lib/cosmos-humble-objects/',
     'jest.*config.js',
   ],

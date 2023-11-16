@@ -33,8 +33,11 @@ export class CaseDocketController {
     this.useCase = getCaseDocketUseCase(applicationContext);
   }
 
-  public async getCaseDocket(request: GetCaseDocketRequest): Promise<GetCaseDocketResponse> {
-    const caseDocket = await this.useCase.getCaseDocket(request.caseId);
+  public async getCaseDocket(
+    context: ApplicationContext,
+    request: GetCaseDocketRequest,
+  ): Promise<GetCaseDocketResponse> {
+    const caseDocket = await this.useCase.getCaseDocket(context, request.caseId);
     return {
       success: true,
       body: caseDocket,
