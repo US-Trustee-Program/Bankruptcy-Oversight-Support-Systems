@@ -75,7 +75,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-10">
+              <div className="grid-col-2">
+                <CaseDetailNavigation caseId={caseId} />
+              </div>
+              <div className="grid-col-8">
                 <LoadingIndicator />
               </div>
               <div className="grid-col-1"></div>
