@@ -1,5 +1,5 @@
 import { httpGet, httpPost } from '../utils/http.adapter';
-import config from '../configuration/apiConfiguration';
+import config from '../../configuration/apiConfiguration';
 import { ResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 

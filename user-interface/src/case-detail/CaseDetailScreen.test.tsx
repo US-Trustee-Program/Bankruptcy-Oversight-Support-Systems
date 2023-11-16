@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import { CaseDetail } from './CaseDetail';
-import { getCaseNumber } from '@/utils/formatCaseNumber';
-import { CaseDetailType, Debtor, DebtorAttorney } from '@/type-declarations/chapter-15';
+import { CaseDetail } from './CaseDetailScreen';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { CaseDetailType, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
 import { BrowserRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';

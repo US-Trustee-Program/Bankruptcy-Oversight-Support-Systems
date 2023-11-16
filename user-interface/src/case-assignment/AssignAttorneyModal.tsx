@@ -1,15 +1,15 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
-import Modal from './uswds/modal/Modal';
-import { Chapter15Type } from '@/type-declarations/chapter-15';
+import Modal from '../lib/components/uswds/modal/Modal';
+import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import React from 'react';
-import Checkbox, { CheckboxRef } from './uswds/Checkbox';
-import { ResponseData } from '@/type-declarations/api';
-import { Attorney, AttorneyInfo } from '@/type-declarations/attorneys';
-import Api from '../models/api';
-import { ModalRefType } from './uswds/modal/modal-refs';
-import { getCaseNumber } from '@/utils/formatCaseNumber';
-import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../hooks/UseFeatureFlags';
+import Checkbox, { CheckboxRef } from '../lib/components/uswds/Checkbox';
+import { ResponseData } from '@/lib/type-declarations/api';
+import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
+import Api from '../lib/models/api';
+import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { getFullName } from '@common/name-helper';
 
 export interface AssignAttorneyModalProps {
