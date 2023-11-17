@@ -3,10 +3,10 @@ import { CamsError } from '../../common-errors/cams-error';
 const MODULE_NAME = 'PETITION-GATEWAY';
 
 const petitionLabelMap = new Map<string, string>([
-  ['IP', 'Involuntary Petition'],
-  ['TI', 'Transferred Involuntary Petition'],
-  ['TV', 'Transferred Voluntary Petition'],
-  ['VP', 'Voluntary Petition'],
+  ['IP', 'Involuntary'],
+  ['TI', 'Involuntary'],
+  ['TV', 'Voluntary'],
+  ['VP', 'Voluntary'],
 ]);
 
 export function getPetitionLabel(id: string | undefined): string {

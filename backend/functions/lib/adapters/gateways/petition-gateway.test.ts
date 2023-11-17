@@ -4,7 +4,7 @@ import { getPetitionLabel } from './petition-gateway';
 describe('Petition Type Label gateway', () => {
   test('should return the name of a known petition type by ID', () => {
     const debtorTypeName = getPetitionLabel('VP');
-    expect(debtorTypeName).toEqual('Voluntary Petition');
+    expect(debtorTypeName).toEqual('Voluntary');
   });
 
   test('should throw an error for an invalid ID', () => {

@@ -46,7 +46,7 @@ describe('court docket panel tests', () => {
     expect(docketEntry2).toBeInTheDocument();
 
     const docketEntry1Number = screen.getByTestId('docket-entry-0-number');
-    expect(docketEntry1Number.innerHTML).toEqual(docketEntries[0].documentNumber?.toString());
+    expect(docketEntry1Number.textContent).toEqual(docketEntries[0].documentNumber?.toString());
     const docketEntry1Header = screen.getByTestId('docket-entry-0-header');
     expect(docketEntry1Header.innerHTML).toEqual(
       docketEntries[0].dateFiled + ' - ' + docketEntries[0].summaryText,

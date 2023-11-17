@@ -8,7 +8,7 @@
     "caseTitle": "Crawford, Turner and Garrett",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2011-05-20T11:59:00.0000000",
     "dateClosed": "2011-06-21T11:59:00.0000000",
     "assignments": []
@@ -22,7 +22,7 @@
     "caseTitle": "Ali-Cruz",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2014-04-23T11:59:00.0000000",
     "dateClosed": "",
     "assignments": []
@@ -36,7 +36,7 @@
     "caseTitle": "Daniels LLC",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2018-11-16T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -50,7 +50,7 @@
     "caseTitle": "Gonzalez, Clark and Kelley",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2015-05-18T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -64,7 +64,7 @@
     "caseTitle": "Wilson-Sheppard",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2006-05-12T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -78,7 +78,7 @@
     "caseTitle": "Taylor Inc",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2010-02-16T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -92,7 +92,7 @@
     "caseTitle": "Holmes, Koch and Knight",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2015-10-16T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -106,7 +106,7 @@
     "caseTitle": "Allen-Sandoval",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2019-04-18T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -120,7 +120,7 @@
     "caseTitle": "Valentine, Miller and Beck",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2019-04-18T11:59:00.0000000",
     "dateClosed": "2019-06-21T11:59:00.0000000",
     "assignments": []
@@ -134,7 +134,7 @@
     "caseTitle": "Mccarthy Group",
     "chapter": "15",
     "debtorTypeLabel": "Corporate Business",
-    "petitionLabel": "Voluntary Petition",
+    "petitionLabel": "Voluntary",
     "dateFiled": "2022-10-31T11:59:00.0000000",
     "dateClosed": "2023-06-21T11:59:00.0000000",
     "assignments": []

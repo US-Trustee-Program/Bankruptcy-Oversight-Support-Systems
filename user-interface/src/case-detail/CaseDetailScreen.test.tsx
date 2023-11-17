@@ -43,7 +43,7 @@ describe('Case Detail screen tests', () => {
       courtName: 'Court of Law',
       courtDivisionName: 'Manhattan',
       debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary Petition',
+      petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
       assignments: [brianWilsonName, carlWilsonName],
@@ -83,7 +83,7 @@ describe('Case Detail screen tests', () => {
         expect(dismissedDate).toHaveTextContent('01-08-1964');
 
         const chapter = screen.getByTestId('case-chapter');
-        expect(chapter.innerHTML).toEqual('Chapter 15');
+        expect(chapter.textContent).toEqual('Voluntary Chapter 15');
 
         const courtName = screen.getByTestId('court-name-and-district');
         expect(courtName.innerHTML).toEqual('Court of Law - Manhattan');
@@ -113,9 +113,6 @@ describe('Case Detail screen tests', () => {
 
         const debtorType = screen.getByTestId('case-detail-debtor-type');
         expect(debtorType).toHaveTextContent(testCaseDetail.debtorTypeLabel);
-
-        const petition = screen.getByTestId('case-detail-petition');
-        expect(petition).toHaveTextContent(testCaseDetail.petitionLabel);
 
         const properties: Array<keyof Debtor> = [
           'address1',
