@@ -54,6 +54,12 @@ export interface CaseDocketEntry {
   summaryText: string;
   fullText: string;
 }
+export type CaseDocket = CaseDocketEntry[];
+
+export interface Chapter15CaseDocketResponseData extends ResponseData {
+  body: CaseDocket;
+}
+
 export interface Chapter15CaseListResponseData extends ResponseData {
   body: {
     caseList: Array<object>;

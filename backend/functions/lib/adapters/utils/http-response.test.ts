@@ -15,7 +15,7 @@ describe('Tests out http responses', () => {
   test('Should return properly formatted http error response', () => {
     const moduleName = 'TEST-MODULE';
     const camsError = new CamsError(moduleName, { message: 'Foo', status: INTERNAL_SERVER_ERROR });
-    const expectedBody = { message: camsError.message };
+    const expectedBody = { message: camsError.message, success: false };
     const actualResult = httpError(camsError);
 
     expect(actualResult.statusCode).toEqual(camsError.status);

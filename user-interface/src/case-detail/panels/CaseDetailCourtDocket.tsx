@@ -29,14 +29,28 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                 key={idx}
                 data-testid={`docket-entry-${idx}`}
               >
-                <div className="grid-col-1" data-testid={`docket-entry-${idx}-number`}>
+                <div
+                  className="grid-col-1 document-number-column"
+                  data-testid={`docket-entry-${idx}-number`}
+                  aria-label="document number"
+                  title={`Document number ${docketEntry.documentNumber}`}
+                >
                   {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
                 </div>
                 <div className="grid-col-11 docket-content">
-                  <div data-testid={`docket-entry-${idx}-header`}>
+                  <div
+                    className="docket-entry-header"
+                    aria-label="date filed and summary text for the docket entry"
+                    data-testid={`docket-entry-${idx}-header`}
+                  >
                     {docketEntry.dateFiled} - {docketEntry.summaryText}
                   </div>
-                  <div data-testid={`docket-entry-${idx}-text`}>{docketEntry.fullText}</div>
+                  <div
+                    data-testid={`docket-entry-${idx}-text`}
+                    aria-label="full text of docket entry"
+                  >
+                    {docketEntry.fullText}
+                  </div>
                 </div>
               </div>
             );
