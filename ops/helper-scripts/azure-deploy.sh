@@ -29,7 +29,7 @@ function validation_func() {
         exit 11
     fi
 
-    if [ ! -f ${deployment_file} ]; then
+    if [ ! -f "${deployment_file}" ]; then
         echo "Error: File (${deployment_file}) does not exist."
         exit 12
     fi
@@ -50,9 +50,10 @@ function validation_func() {
             ;;
         esac
     done
+    echo "Required parameters: ${appName} ${networkResourceGroupName} ${virtualNetworkName}"
 
     # Check that required params has been set
-    for r in ${requiredParams[@]}; do
+    for r in "${requiredParams[@]}"; do
         varOfVar=$r
         if [[ -z ${!varOfVar} ]]; then
             echo "Error: Missing parameter ($r)"
@@ -64,35 +65,35 @@ function validation_func() {
 function az_vnet_exists_func() {
     local rg=$1
     local vnetName=$2
-    local count=$(az network vnet list -g $rg --query "length([?name=='$vnetName'])" 2>/dev/null)
-    if [[ $count -eq 0 ]]; then
+    count=$(az network vnet list -g "${rg}" --query "length([?name=='${vnetName}'])" 2>/dev/null)
+    if [[ ${count} -eq 0 ]]; then
         exists=false
     else
         exists=true
     fi
-    echo $exists
+    echo ${exists}
 }
 
 function az_deploy_func() {
     local rg=$1
     local templateFile=$2
     local deploymentParameter=$3
-    echo "Deploying Azure resources via bicep template $templateFile"
-    if [[ $show_what_if ]]; then
-        az deployment group create -w -g $rg --template-file $templateFile --parameter $deploymentParameter
+    echo "Deploying Azure resources via bicep template ${templateFile}"
+    if [[ ${show_what_if} ]]; then
+        # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
+        az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter}
     fi
-    if [[ $? -eq 0 ]]; then
-        az deployment group create -g $rg --template-file $templateFile --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
-    fi
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
+    az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
 }
 
 show_what_if=false
-while [[ $# > 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo ""
-        echo "USAGE: azure-deploy.sh -sw -g ustp-app-rg -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
-        echo ""
+        printf ""
+        printf "USAGE: azure-deploy.sh -sw -g ustp-app-rg -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
+        printf ""
         shift
         ;;
 
@@ -125,11 +126,11 @@ while [[ $# > 0 ]]; do
     esac
 done
 
-validation_func $app_rg $deployment_file "$deployment_parameters"
+validation_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
 
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
-if [ "$(az_vnet_exists_func $networkResourceGroupName $virtualNetworkName)" != true ]; then
+if [ "$(az_vnet_exists_func "${networkResourceGroupName}" "${virtualNetworkName}")" != true ]; then
     deployment_parameters="${deployment_parameters} createVnet=true"
 fi
 
-az_deploy_func $app_rg $deployment_file "${deployment_parameters}"
+az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"

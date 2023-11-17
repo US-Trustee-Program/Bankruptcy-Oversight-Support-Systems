@@ -14,9 +14,14 @@ function printUsageFunc() {
 }
 
 function updateFunc() {
+    local resourceGroup=$1
+    local storageAccountName=$2
+    local containerName=$3
+    local baselineFilePath=$4
     local destFileName=results-latest.json
-    local key=$(az storage account keys list -g $1 -n $2 --query '[0].value' -o tsv)
-    az storage blob upload --account-name $2 --account-key $key -f $4 -c $3 -n $destFileName --overwrite
+    local key=""
+    key=$(az storage account keys list -g "${resourceGroup}" -n "${storageAccountName}" --query '[0].value' -o tsv)
+    az storage blob upload --account-name "${storageAccountName}" --account-key "$key" -f "${baselineFilePath}" -c "${containerName}" -n $destFileName --overwrite
 }
 
 if (($# != 4)); then
@@ -30,9 +35,9 @@ storageAccountName=$2
 containerName=$3
 baselineFilePath=$4
 
-if [ ! -f $baselineFilePath ]; then
+if [ ! -f "${baselineFilePath}" ]; then
     echo "Missing file at ${baselineFilePath}"
     exit 1
 fi
 
-updateFunc $resourceGroup $storageAccountName $containerName $baselineFilePath
+updateFunc "${resourceGroup}" "${storageAccountName}" "${containerName}" "${baselineFilePath}"

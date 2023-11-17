@@ -17,7 +17,7 @@ function error() {
     local msg=$1
     local code=$2
     echo "ERROR: ${msg}" >>/dev/stderr
-    exit ${code}
+    exit "${code}"
 }
 
 hash_id=$1 # Short hash id generated based on the branch name
@@ -28,8 +28,8 @@ echo "Begin clean up of Azure resources for ${hash_id}"
 # Check that resource groups exists
 app_rg="rg-cams-app-dev-${hash_id}"
 network_rg="rg-cams-network-dev-${hash_id}"
-rgAppExists=$(az group exists -n ${app_rg})
-rgNetExists=$(az group exists -n ${network_rg})
+rgAppExists=$(az group exists -n "${app_rg}")
+rgNetExists=$(az group exists -n "${network_rg}")
 if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" ]]; then
     if [[ "${ignore}" != "true" ]]; then
         error "Expected resource group missing." 11
@@ -40,21 +40,21 @@ fi
 if [[ "${rgAppExists}" == "true" ]]; then
     echo "Start disconnecting VNET integration"
     webapp="ustp-cams-dev-${hash_id}-webapp"
-    az webapp vnet-integration remove -g ${app_rg} -n ${webapp}
+    az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}"
     functionapp="ustp-cams-dev-${hash_id}-node-api"
-    az functionapp vnet-integration remove -g ${app_rg} -n ${functionapp}
+    az functionapp vnet-integration remove -g "${app_rg}" -n "${functionapp}"
     echo "Completed disconnecting VNET integration"
 fi
 
 # Delete by resource group
 if [[ "${rgAppExists}" == "true" ]]; then
     echo "Start deleting resource group ${app_rg}"
-    az group delete -n ${app_rg} --yes
+    az group delete -n "${app_rg}" --yes
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
     echo "Start deleting resource group ${network_rg}"
-    az group delete -n ${network_rg} --yes
+    az group delete -n "${network_rg}" --yes
 fi
 
 echo "Completed resource clean up operations."

@@ -24,12 +24,11 @@ bcp -v # check that utility is installed
 
 delimiter="|" # default delimiter is a pipe
 filepath=""
-while [[ $# > 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         echo 'USAGE: import-data.sh -S <server> -D <database> -T <table>  -u <user>  --delimiter "|" -f <filepathToCsv>'
         exit 0
-        shift
         ;;
 
     --delimiter)
@@ -80,7 +79,7 @@ if [[ "${delimiter}" == "|" ]]; then
     echo "Handle data file at ${filepath} as a pipe delimited file."
 elif [[ "${delimiter}" == "," ]]; then
     echo "Convert delimiter [${delimiter}] to pipes"
-    sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' <./${filepath} 1>${filepath}-tmp-1
+    sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' <./"${filepath}" 1>"${filepath}"-tmp-1
     targetFilepath=${filepath}-tmp-1
     delimiter="|"
 else
@@ -89,7 +88,7 @@ else
 fi
 
 # Clean up possible quotes right after/before pipe delimiter
-sed -Ee :1 -e 's/(\|{1}"{1})|("{1}\|{1})/|/;t1' <./${targetFilepath} 1>${filepath}-tmp-2
+sed -Ee :1 -e 's/(\|{1}"{1})|("{1}\|{1})/|/;t1' <./"${targetFilepath}" 1>"${filepath}"-tmp-2
 targetFilepath=${filepath}-tmp-2
 
 echo "Executing bcp command"
@@ -99,10 +98,10 @@ echo "Executing bcp command"
 #     -c \                                          # Perform bcp operation using a character type. See docs for more details.
 #     -t "|" \                                      # Choose a pipe (|) as the delimiter
 #     -r "0x0a"                                     # Specify row terminator in hexadecimall format
-bcp ${table} in ${targetFilepath} -S ${server} -d ${database} -U ${user} -e err-${database}-${table}.out -c -t "|" -r "0x0a"
+bcp "${table}" in "${targetFilepath}" -S "${server}" -d "${database}" -U "${user}" -e err-"${database}"-"${table}".out -c -t "|" -r "0x0a"
 echo "Completed exported command execution"
 
 echo "Cleaning up temporary files"
-rm ./${filepath}-tmp-*
+rm ./"${filepath}"-tmp-*
 
 echo "DONE"

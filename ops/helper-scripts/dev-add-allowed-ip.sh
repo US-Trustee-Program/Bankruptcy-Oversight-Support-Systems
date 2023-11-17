@@ -10,12 +10,12 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 ci=
 ip=
-while [[ $# > 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo ""
-        echo "Usage: dev-add-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -p <priority:int> --is-cicd <isCICD:bool> -ip <IP_Address>"
-        echo ""
+        printf ""
+        printf "Usage: dev-add-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -p <priority:int> --is-cicd <isCICD:bool> -ip <IP_Address>"
+        printf ""
         shift
         ;;
     -g | --resource-group)
@@ -45,7 +45,7 @@ while [[ $# > 0 ]]; do
 done
 
 if [[ -z "${app_rg}" || -z "${stack_name}" || -z "${priority}" ]]; then
-    echo "Error: Missing parameters. Usage: dev-add-allowed-ip.sh <resource_group_name:str> <stack_name:str> <priority:int>"
+    printf "Error: Missing parameters. Usage: dev-add-allowed-ip.sh <resource_group_name:str> <stack_name:str> <priority:int>"
     exit 1
 fi
 
@@ -63,8 +63,8 @@ fi
 
 ruleName=${ruleName:0:32} # trim up to 32 character limit
 echo "Attempting to add Ip allow rule (${ruleName})"
-az functionapp config access-restriction add -g $app_rg -n "${stack_name}-node-api" --rule-name $ruleName --action Allow --ip-address $agentIp --priority "${priority}1" 1>/dev/null
+az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
 
-az functionapp config access-restriction add -g $app_rg -n "${stack_name}-webapp" --rule-name $ruleName --action Allow --ip-address $agentIp --priority "${priority}2" 1>/dev/null
+az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
 
 echo "Done"
