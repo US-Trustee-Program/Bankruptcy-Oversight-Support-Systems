@@ -219,9 +219,6 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
             </div>
           )}
         </div>
-        <div className="additional-debtor-information padding-bottom-4 case-card">
-          <h3>Additional Debtor Info</h3>
-        </div>
       </div>
     );
   }
