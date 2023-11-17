@@ -19,7 +19,7 @@ temp_file=$(mktemp)
     head -n 1 ../../.git/hooks/pre-commit
     cat pre-commit-hook-content
     tail -n +3 ../../.git/hooks/pre-commit
-} >"$temp_file"
+} > "$temp_file"
 
 ## Move the modified contents back to the original file
 mv "$temp_file" ../../.git/hooks/pre-commit
