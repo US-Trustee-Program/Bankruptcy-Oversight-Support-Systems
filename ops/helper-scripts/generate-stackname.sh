@@ -5,25 +5,30 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-if [[ $1 == 'Main-Gov' ]]; then
-    echo $2
+environment=$1
+application_name=$2
+suffix=$3
+branchName=$4
+
+if [[ ${environment} == 'Main-Gov' ]]; then
+    echo "${application_name}"
     exit 0
 else
-    stackname=$2
+    stackname=${application_name}
 
-    if [[ -n $3 ]]; then
-        stackname="${stackname}$3"
+    if [[ -n ${suffix} ]]; then
+        stackname="${stackname}${suffix}"
     fi
 
-    if [[ -n $4 ]]; then
+    if [[ -n ${branchName} ]]; then
         if [[ $(uname) == "Darwin" ]]; then
-            hash=$(echo -n $4 | openssl sha256 | awk '{print $1}')
+            hash=$(echo -n "${branchName}" | openssl sha256 | awk '{print $1}')
         else
-            hash=$(echo -n $4 | openssl sha256 | awk '{print $2}')
+            hash=$(echo -n "${branchName}" | openssl sha256 | awk '{print $2}')
         fi
         short_hash=${hash:0:6}
-        stackname="${stackname}-$short_hash"
+        stackname="${stackname}-${short_hash}"
     fi
-    echo $stackname
+    echo "${stackname}"
     exit 0
 fi
