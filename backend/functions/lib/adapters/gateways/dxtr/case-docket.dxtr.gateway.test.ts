@@ -32,6 +32,7 @@ describe('Test case docket DXTR Gateway', () => {
         ]),
       );
     });
+
     test('should return a docket consisting of an array of docket entries', async () => {
       const mockResults: QueryResults = {
         success: true,
@@ -49,6 +50,7 @@ describe('Test case docket DXTR Gateway', () => {
       const response = await gateway.getCaseDocket(mockContext, mockCaseId);
       expect(response).toEqual(DOCKET);
     });
+
     test('should raise an exception when a case docket is not found', async () => {
       const mockResults: QueryResults = {
         success: true,
@@ -65,6 +67,7 @@ describe('Test case docket DXTR Gateway', () => {
       const mockCaseId = '000-00-00000';
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow('Not found');
     });
+
     test('should raise an exception when a database error is encountred', async () => {
       const expectedMessage = 'some db error has occurred';
       const mockResults: QueryResults = {
