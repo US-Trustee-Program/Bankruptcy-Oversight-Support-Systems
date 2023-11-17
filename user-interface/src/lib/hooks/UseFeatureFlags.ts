@@ -3,6 +3,7 @@ import config from '@/configuration/featureFlagConfiguration';
 import { defaultFeatureFlags, FeatureFlagSet } from '@common/feature-flags';
 
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
+export const DOCKET_SEARCH_ENABLED = 'docket-search-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   if (!config.clientId) return defaultFeatureFlags;
