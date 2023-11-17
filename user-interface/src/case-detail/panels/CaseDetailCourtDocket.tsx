@@ -1,7 +1,9 @@
+import IconInput from '@/lib/components/IconInput';
 import './CaseDetailCourtDocket.scss';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import { useEffect, useState } from 'react';
+import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 export interface CaseDetailCourtDocketProps {
   caseId: string | undefined;
@@ -11,6 +13,8 @@ export interface CaseDetailCourtDocketProps {
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries } = props;
   const [isLoading, setIsLoading] = useState(true);
+  const flags = useFeatureFlags();
+  const searchFeature = flags[DOCKET_SEARCH_ENABLED];
 
   useEffect(() => {
     setIsLoading(!docketEntries);
@@ -18,6 +22,27 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   return (
     <div id="case-detail-court-docket-panel">
+      {searchFeature && (
+        <form className="filter-and-search padding-y-4" role="search">
+          <div className="grid-row">
+            <div className="grid-col-12" data-testid="docket-entry-search">
+              <section aria-label="Small search component">
+                <div className="usa-search usa-search--small">
+                  <label className="" htmlFor="basic-search-field">
+                    Find in Docket
+                  </label>
+                  <IconInput
+                    className="search-icon"
+                    id="basic-search-field"
+                    name="basic-search"
+                    icon="search"
+                  />
+                </div>
+              </section>
+            </div>
+          </div>
+        </form>
+      )}
       {isLoading && <LoadingIndicator />}
       {!isLoading &&
         docketEntries &&

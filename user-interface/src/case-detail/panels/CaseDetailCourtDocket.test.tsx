@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
+import { vi } from 'vitest';
+import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 
 describe('court docket panel tests', () => {
   test('should render loading info when isLoading is true', () => {
@@ -56,5 +59,19 @@ describe('court docket panel tests', () => {
 
     const docketEntry2Number = screen.getByTestId('docket-entry-1-number');
     expect(docketEntry2Number.innerHTML).toEqual('');
+  });
+
+  test('should render docket search when the feature is turned on', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+    const docketEntries: CaseDocketEntry[] = [];
+
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+      </BrowserRouter>,
+    );
+
+    const searchInput = screen.queryByTestId('basic-search-field');
+    expect(searchInput).toBeInTheDocument();
   });
 });
