@@ -20,7 +20,7 @@ describe('Navigation tests', () => {
   test('should render component', () => {
     render(
       <BrowserRouter>
-        <CaseDetailNavigation caseId="12345" />
+        <CaseDetailNavigation caseId="12345" initialItem={NavState.BASIC_INFO} />
       </BrowserRouter>,
     );
 
