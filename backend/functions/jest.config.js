@@ -7,7 +7,7 @@ module.exports = {
   coverageThreshold: {
     global: {
       lines: 90,
-      branches: 80,
+      branches: 85,
     },
   },
   coveragePathIgnorePatterns: [
@@ -18,6 +18,7 @@ module.exports = {
     'dist/',
     'coverage/',
     'lib/adapters/types/',
+    'lib/adapters/gateways/cases.local.gateway.ts',
     'lib/testing/',
     'lib/cosmos-humble-objects/',
     'jest.*config.js',
