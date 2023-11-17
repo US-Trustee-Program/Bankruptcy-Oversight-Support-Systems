@@ -81,14 +81,14 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param idKeyvaultAppConfiguration string
 
-module actionGroup './monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
+module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
   name: '${actionGroupName}-action-group-module'
   scope: resourceGroup(analyticsResourceGroupName)
   params: {
     actionGroupName: actionGroupName
   }
 }
-module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet) {
+module targetVnet './lib/network/vnet.bicep' = if (deployVnet && createVnet) {
   name: '${appName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -98,7 +98,7 @@ module targetVnet './vnet/virtual-network.bicep' = if (deployVnet && createVnet)
   }
 }
 
-module ustpNetwork 'network/private-dns-zones.bicep' = if (deployNetwork) {
+module ustpNetwork './lib/network/private-dns-zones.bicep' = if (deployNetwork) {
   name: '${appName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -109,7 +109,7 @@ module ustpNetwork 'network/private-dns-zones.bicep' = if (deployNetwork) {
   }
 }
 
-module ustpWebapp './frontend-webapp-deploy.bicep' = if (deployWebapp) {
+module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
   name: '${appName}-webapp-module'
   scope: resourceGroup(webappResourceGroupName)
   params: {
@@ -147,7 +147,7 @@ var funcParams = [
     privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
   }
 ]
-module ustpFunctions './backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
+module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {

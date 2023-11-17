@@ -33,7 +33,7 @@ module ustpPrivateDnsZone '../network/private-dns-zones.bicep' = {
   }
 }
 
-module appConfigKeyvaultPrivateEndpoint '../subnet/network-subnet-private-endpoint.bicep' = {
+module appConfigKeyvaultPrivateEndpoint '../network/subnet-private-endpoint.bicep' = {
   name: '${kvName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
   params: {

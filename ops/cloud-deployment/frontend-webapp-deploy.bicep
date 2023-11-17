@@ -124,7 +124,7 @@ param targetApiServerHost string
 @secure()
 param ustpIssueCollectorHash string = ''
 
-module webappSubnet './subnet/network-subnet.bicep' = {
+module webappSubnet './lib/network/subnet.bicep' = {
   name: '${webappName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -146,7 +146,7 @@ module webappSubnet './subnet/network-subnet.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -161,7 +161,7 @@ module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
   }
 }
 
-module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) {
+module appInsights './lib/app-insights/app-insights.bicep' = if (deployAppInsights) {
   name: '${webappName}-application-insights-module'
   params: {
     location: location
@@ -172,7 +172,7 @@ module appInsights './app-insights/app-insights.bicep' = if (deployAppInsights) 
   }
 }
 
-module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
+module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${webappName}-healthcheck-alert-rule-module'
   params: {
     alertName: '${webappName}-health-check-alert'
@@ -188,7 +188,7 @@ module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (crea
 
   }
 }
-module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
+module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${webappName}-http-error-alert-rule-module'
   params: {
     alertName: '${webappName}-http-error-alert'
@@ -203,7 +203,7 @@ module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (create
     actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
-module diagnosticSettings 'app-insights/diagnostics-settings-webapp.bicep' = {
+module diagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep' = {
   name: '${webappName}-diagnostic-settings-module'
   params: {
     webappName: webappName

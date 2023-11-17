@@ -36,7 +36,7 @@ param actionGroupResourceGroupName string
 param createAlerts bool
 
 // CosmosDb
-module account './cosmos/cosmos-account.bicep' = {
+module account './lib/cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -47,7 +47,7 @@ module account './cosmos/cosmos-account.bicep' = {
   }
 }
 
-module database './cosmos/cosmos-database.bicep' = {
+module database './lib/cosmos/cosmos-database.bicep' = {
   name: '${accountName}-cosmos-database-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -59,7 +59,7 @@ module database './cosmos/cosmos-database.bicep' = {
   ]
 }
 
-module containers './cosmos/cosmos-containers.bicep' = {
+module containers './lib/cosmos/cosmos-containers.bicep' = {
   name: '${accountName}-cosmos-containers-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -73,7 +73,7 @@ module containers './cosmos/cosmos-containers.bicep' = {
 }
 
 // Role definition for read and write access
-module customReadWriteRole './cosmos/cosmos-custom-role.bicep' = {
+module customReadWriteRole './lib/cosmos/cosmos-custom-role.bicep' = {
   name: '${accountName}-cosmos-roles-module'
   params: {
     accountName: accountName
@@ -84,7 +84,7 @@ module customReadWriteRole './cosmos/cosmos-custom-role.bicep' = {
 }
 
 // Identity to access CosmosDb
-module cosmosDbUserManagedIdentity './identity/managed-identity.bicep' = {
+module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
   name: '${accountName}-cosmos-user-id-module'
   params: {
     location: location
@@ -96,7 +96,7 @@ module cosmosDbUserManagedIdentity './identity/managed-identity.bicep' = {
 }
 
 // Assign permissions (role) to Identity
-module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
+module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
   name: '${accountName}-cosmos-role-assignment-module'
   params: {
     accountName: accountName
@@ -110,7 +110,7 @@ module cosmosDbRoleAssignment './cosmos/cosmos-role-assignment.bicep' = {
   ]
 }
 
-module cosmosAvailabilityAlert './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts){
+module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts){
   name: '${accountName}-availability-alert-module'
   params: {
     alertName: '${accountName}-availability-alert'
@@ -127,7 +127,7 @@ module cosmosAvailabilityAlert './monitoring-alerts/metrics-alert-rule.bicep' = 
     actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
-module cosmosDiagnosticSetting './app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
+module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
   name: '${accountName}-cosmos-diagnostic-setting-module'
   scope: resourceGroup(resourceGroupName)
   params: {
