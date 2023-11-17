@@ -67,7 +67,7 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail.courtName = 'Southern District of New York';
       caseDetail.regionId = '02';
       caseDetail.debtorTypeLabel = 'Corporate Debtor';
-      caseDetail.petitionLabel = 'Voluntary Petition';
+      caseDetail.petitionLabel = 'Voluntary';
     } catch (err) {
       log.error(
         applicationContext,
