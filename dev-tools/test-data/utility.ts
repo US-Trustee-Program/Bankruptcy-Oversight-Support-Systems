@@ -131,3 +131,10 @@ export function concatenateCityStateZipCountry(
 ) {
   return removeExtraSpaces([props.city, props.state, props.zip, props.country].join(' '));
 }
+
+export function someDateAfterThisDate(thisDateString: string, days?: number): string {
+  const thisDate = new Date(Date.parse(thisDateString));
+  const daysToAdd = days || randomInt(1000);
+  const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
+  return someDate.toISOString().split('T')[0];
+}

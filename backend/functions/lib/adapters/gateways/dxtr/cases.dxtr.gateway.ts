@@ -17,7 +17,12 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import log from '../../services/logger.service';
 import { handleQueryResult } from '../gateway-helper';
-import { parseDebtorType, parsePetitionType, parseTransactionDate } from './dxtr.gateway.helper';
+import {
+  decomposeCaseId,
+  parseDebtorType,
+  parsePetitionType,
+  parseTransactionDate,
+} from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
@@ -50,8 +55,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailInterface> {
-    const courtDiv = caseId.slice(0, 3);
-    const dxtrCaseId = caseId.slice(4);
+    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
 
     const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
 
