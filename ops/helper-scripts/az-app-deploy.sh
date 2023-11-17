@@ -13,7 +13,7 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-while [[ $# > 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName"
@@ -41,29 +41,28 @@ while [[ $# > 0 ]]; do
     esac
 done
 
-if [ ! -f "$artifact_path" ]; then
-    echo "Error: missing build artifact $artifact_path"
+if [ ! -f "${artifact_path}" ]; then
+    echo "Error: missing build artifact ${artifact_path}"
     exit 10
 fi
-tar -xf $artifact_path
-if (($? != 0)); then
-    echo "Error: extracting build artifact $artifact_path"
+
+if ! tar -xf "${artifact_path}"; then
+    echo "Error: extracting build artifact ${artifact_path}"
     exit 11
 fi
 
 function on_exit() {
     # always try to remove temporary access
-    az webapp config access-restriction remove -g $app_rg -n $app_name --rule-name $ruleName --scm-site true 1>/dev/null
+    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
 }
 trap on_exit EXIT
 
 # allow build agent access to execute deployment
 agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
 ruleName="agent-${app_name:0:26}"
-az webapp config access-restriction add -g $app_rg -n $app_name --rule-name $ruleName --action Allow --ip-address $agentIp --priority 232 --scm-site true 1>/dev/null
+az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
 
-pushd build
-if (($? != 0)); then
+if ! pushd build; then
     echo "Error: unable to change working directory"
     exit 12
 fi
@@ -71,10 +70,10 @@ fi
 # Gives some extra time for prior management operation to complete before starting deployment
 sleep 15s
 
-az webapp up --html --os-type linux -n $app_name
+az webapp up --html --os-type linux -n "${app_name}"
 
 # Alternative workaround to set Azure app service container runtime
-az webapp config set -g $app_rg -n $app_name --linux-fx-version "PHP|8.2" 1>/dev/null
+az webapp config set -g "${app_rg}" -n "${app_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
 sleep 15s
 
 popd

@@ -28,7 +28,7 @@ function validation_func() {
         exit 11
     fi
 
-    if [ ! -f ${deployment_file} ]; then
+    if [ ! -f "${deployment_file}" ]; then
         echo "Error: File (${deployment_file}) does not exist."
         exit 12
     fi
@@ -40,7 +40,7 @@ function validation_func() {
 
     # Parse deployment_parameters and set required params as variables
     for p in $deployment_parameters; do
-        case "$p" in
+        case "${p}" in
         databaseResourceGroupName=*) databaseResourceGroupName=${p/*=/} ;;
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
         webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
@@ -51,40 +51,40 @@ function validation_func() {
     done
 
     # Check that required params has been set
-    for r in ${requiredParams[@]}; do
-        varOfVar=$r
+    for r in "${requiredParams[@]}"; do
+        varOfVar=${r}
         if [[ -z ${!varOfVar} ]]; then
-            echo "Error: Missing parameter ($r)"
+            echo "Error: Missing parameter (${r})"
             exit 14
         fi
     done
 }
 
 function az_rg_exists_func() {
-    echo $(az group exists -n $1)
+    rgExists=$(az group exists -n "$1")
+    echo "${rgExists}"
 }
 
 function az_deploy_func() {
     local location=$1
     local templateFile=$2
     local deploymentParameter=$3
-    echo "Deploying Azure Resource Groups via bicep template $2"
+    echo "Deploying Azure Resource Groups via bicep template ${templateFile}"
     if [[ $show_what_if ]]; then
-        az deployment sub create -w -l $location --template-file $templateFile --parameter $deploymentParameter
+        # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
+        az deployment sub create -w -l "${location}" --template-file "${templateFile}" --parameter ${deploymentParameter}
     fi
-    if [[ $? -eq 0 ]]; then
-        az deployment sub create -l $location --template-file $templateFile --parameter $deploymentParameter
-    fi
-
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
+    az deployment sub create -l "${location}" --template-file "${templateFile}" --parameter ${deploymentParameter}
 }
 
 show_what_if=false
-while [[ $# > 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo ""
-        echo "USAGE: azure-deploy-rg.sh -sw -l eastus -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
-        echo ""
+        printf ""
+        printf "USAGE: azure-deploy-rg.sh -sw -l eastus -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
+        printf ""
         shift
         ;;
 
@@ -116,19 +116,19 @@ while [[ $# > 0 ]]; do
     esac
 done
 
-validation_func $location $deployment_file "$deployment_parameters"
+validation_func "${location}" "${deployment_file}" "${deployment_parameters}"
 
 # include location to deployment parameters
-deployment_parameters="${deployment_parameters} location=$location"
+deployment_parameters="${deployment_parameters} location=${location}"
 
-if [ "$(az_rg_exists_func $databaseResourceGroupName)" != true ]; then
+if [ "$(az_rg_exists_func "${databaseResourceGroupName}")" != true ]; then
     deployment_parameters="${deployment_parameters} createDatabaseRG=true"
 fi
-if [ "$(az_rg_exists_func $networkResourceGroupName)" != true ]; then
+if [ "$(az_rg_exists_func "${networkResourceGroupName}")" != true ]; then
     deployment_parameters="${deployment_parameters} createNetworkRG=true"
 fi
-if [ "$(az_rg_exists_func $webappResourceGroupName)" != true ]; then
+if [ "$(az_rg_exists_func "${webappResourceGroupName}")" != true ]; then
     deployment_parameters="${deployment_parameters} createAppRG=true"
 fi
 
-az_deploy_func $location $deployment_file "${deployment_parameters}"
+az_deploy_func "${location}" "${deployment_file}" "${deployment_parameters}"

@@ -7,17 +7,19 @@ module.exports = {
   coverageThreshold: {
     global: {
       lines: 90,
-      branches: 80,
+      branches: 85,
     },
   },
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '.dependency-cruiser.js',
     '.*test.[jt]s',
+    'azure/app-insights.ts',
     'dist/',
     'coverage/',
     'lib/adapters/types/',
-    'lib/testing/mock-data/',
+    'lib/adapters/gateways/cases.local.gateway.ts',
+    'lib/testing/',
     'lib/cosmos-humble-objects/',
     'jest.*config.js',
   ],
