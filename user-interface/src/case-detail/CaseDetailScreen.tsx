@@ -115,7 +115,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <div className="grid-col-2">
                 <CaseDetailNavigation caseId={caseId} />
               </div>
-              <div className="grid-col-8">
+              <div className="grid-col-6">
                 <Suspense fallback={<LoadingIndicator />}>
                   <Routes>
                     <Route
@@ -143,6 +143,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 </Suspense>
                 <Outlet />
               </div>
+              <div className="grid-col-2"></div>
               <div className="grid-col-1"></div>
             </div>
           </>

@@ -88,19 +88,19 @@ describe('DXTR Gateway Helper Tests', () => {
     const petitionsToTest = [
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000IP000000                                 NNNNN',
-        'Involuntary Petition',
+        'Involuntary',
       ],
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000TI000000                                 NNNNN',
-        'Transferred Involuntary Petition',
+        'Involuntary',
       ],
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000TV000000                                 NNNNN',
-        'Transferred Voluntary Petition',
+        'Voluntary',
       ],
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000VP000000                                 NNNNN',
-        'Voluntary Petition',
+        'Voluntary',
       ],
     ];
 

@@ -11,7 +11,7 @@ export interface CaseDetailHeaderProps {
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   return (
-    <>
+    <div className="case-detail-header">
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
@@ -39,7 +39,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           <div className="grid-col-1"></div>
           <div className="grid-col-10">
             <h2>
-              <span className="case-number" title="Case Number">
+              <span className="case-number text-no-wrap" title="Case Number">
                 {getCaseNumber(props.caseId)}
               </span>
             </h2>
@@ -53,12 +53,12 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           <div className="grid-col-1"></div>
           <div className="grid-col-2">
             <h2>
-              <span className="case-number" title="Case Number">
+              <span className="case-number text-no-wrap" title="Case Number">
                 {getCaseNumber(props.caseId)}
               </span>
             </h2>
           </div>
-          <div className="grid-col-6">
+          <div className="grid-col-5">
             <h2>
               <span
                 className="court-name"
@@ -69,16 +69,17 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               </span>
             </h2>
           </div>
-          <div className="grid-col-2">
+          <div className="grid-col-3">
             <h2>
               <span className="case-chapter" title="Case Chapter" data-testid="case-chapter">
-                Chapter {props.caseDetail?.chapter}
+                {props.caseDetail?.petitionLabel}{' '}
+                <span className="text-no-wrap">Chapter {props.caseDetail?.chapter}</span>
               </span>
             </h2>
           </div>
           <div className="grid-col-1"></div>
         </div>
       )}
-    </>
+    </div>
   );
 }
