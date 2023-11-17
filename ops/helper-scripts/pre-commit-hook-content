@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # Check the branch name for compatibility with Jira tickets
 local_branch="$(git rev-parse --abbrev-ref HEAD)"
@@ -21,7 +22,7 @@ fi
 
 if [[ $branch_accepted == false ]]
 then
-    echo $message
+    echo "${message}"
     exit 1
 fi
 

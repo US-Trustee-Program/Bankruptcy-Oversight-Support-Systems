@@ -19,8 +19,8 @@ fi
 
 echo "Removing Ip allow rule by name (${rule_name})"
 
-az functionapp config access-restriction remove -g $app_rg -n "${stack_name}-node-api" --rule-name $rule_name 1>/dev/null
+az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${rule_name}" 1>/dev/null
 
-az functionapp config access-restriction remove -g $app_rg -n "${stack_name}-webapp" --rule-name $rule_name 1>/dev/null
+az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${rule_name}" 1>/dev/null
 
 echo "Done"
