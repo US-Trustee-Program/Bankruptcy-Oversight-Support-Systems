@@ -16,7 +16,7 @@ param actionGroupName string
 @description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
 
-module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bicep' = if (createSqlServerDiagnosticSetting && !empty(analyticsWorkspaceId)) {
+module sqlServerDiagnosticSettings './lib/app-insights/diagnostics-settings-sql.bicep' = if (createSqlServerDiagnosticSetting && !empty(analyticsWorkspaceId)) {
   name: '${databaseName}-sql-diagnostics-settings-module'
   params: {
     databaseName: databaseName
@@ -24,7 +24,7 @@ module sqlServerDiagnosticSettings './app-insights/diagnostics-settings-sql.bice
     analyticsWorkspaceId: analyticsWorkspaceId
   }
 }
-module sqlSpaceAlert './monitoring-alerts/metrics-alert-rule.bicep' = {
+module sqlSpaceAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = {
   name: '${databaseName}-low-space-alert-module'
   params: {
     alertName: '${databaseName}-low-space-alert'

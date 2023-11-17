@@ -19,7 +19,7 @@ param privateLinkGroup string
 /*
   Create subnet for private endpoint
 */
-module privateEndpointSubnet './network-subnet.bicep' = {
+module privateEndpointSubnet 'subnet.bicep' = {
   name: '${privateEndpointSubnetName}-module'
   params: {
     subnetAddressPrefix: privateEndpointSubnetAddressPrefix

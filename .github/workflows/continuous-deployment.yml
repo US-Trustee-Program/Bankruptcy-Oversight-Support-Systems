@@ -68,7 +68,7 @@ jobs:
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
 
           # Stack name used downstream to label build artifacts and Azure resources
-          stackName=$(ops/helper-scripts/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
+          stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
 
@@ -137,7 +137,7 @@ jobs:
           npm ci && npm install -g pa11y-ci
 
       - name: Run pa11y Test
-        run: ../ops/helper-scripts/accessibility-test.sh
+        run: ../ops/scripts/pipeline/accessibility-test.sh
 
   sast-scan-and-upload:
     runs-on: ubuntu-latest
@@ -382,7 +382,7 @@ jobs:
       - name: Create Azure resource groups
         id: azure-resource-group
         run: |
-          ./ops/helper-scripts/azure-deploy-rg.sh \
+          ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/subscription/ustp-cams-rg.bicep \
             --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }}' -l ${{ secrets.AZ_LOCATION }}
@@ -390,10 +390,10 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         run: |
-          ./ops/helper-scripts/azure-deploy.sh \
+          ./ops/scripts/pipeline/azure-deploy.sh \
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
-            --file ./ops/cloud-deployment/ustp-cams.bicep \
+            --file ./ops/cloud-deployment/main.bicep \
             --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=true webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=true apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
@@ -444,7 +444,7 @@ jobs:
 
       - name: Deploy to Azure WebApp
         run: |
-          ./ops/helper-scripts/az-app-deploy.sh \
+          ./ops/scripts/pipeline/az-app-deploy.sh \
           --src ./${{ needs.build-info.outputs.webappName }}.tar \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
@@ -475,7 +475,7 @@ jobs:
 
       - name: Deploy Azure Functions backend
         run: |
-          ./ops/helper-scripts/az-func-deploy.sh \
+          ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
@@ -511,7 +511,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: |
-          ops/helper-scripts/dev-add-allowed-ip.sh \
+          ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
@@ -538,7 +538,7 @@ jobs:
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/helper-scripts/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   enable-access:
     runs-on: ubuntu-latest

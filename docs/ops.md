@@ -4,7 +4,7 @@ Contents here contains supporting operational scripts and tools outside the scop
 
 ## /cloud-deployment
 
-Bicep files to provision resources in the Azure cloud environment with support for both commercial and US gov regions. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _ustp-cams.bicep_, to provision complete Azure resources.
+Bicep files to provision resources in the Azure cloud environment with support for both commercial and US gov regions. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _main.bicep_, to provision complete Azure resources.
 
 Note the following assumptions:
 
@@ -12,7 +12,11 @@ Note the following assumptions:
 - Prior to running the _ustp-cams.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to false
 - After running the _ustp-cams.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to **true**
 
-## /cloud-deployment/params
+### /cloud-deployment/lib
+
+Contains reusable templates for provisioning Azure resources used as modules in other bicep files.
+
+### /cloud-deployment/params
 
 _ustp-cams.parameters.json.sample_ provides all parameter values that can be set when deploying with the main bicep. Note that because the main bicep has some defaults, not all parameters are required to be defined in the json file.
 
@@ -20,9 +24,21 @@ _ustp-cams.parameters.json.sample_ provides all parameter values that can be set
 
 Database tool to import data from csv.
 
-## /helper-scripts
+## /scripts
 
 Shell scripts to execute instructions and Azure CLI commands to help automate deployment of application code. Also include adhoc scripts to assist operational and development tasks.
+
+### /scripts/pipeline
+
+Shell scripts executed in the CI/CD pipeline.
+
+### /scripts/utility
+
+Contain standalone helper scripts executed on local dev machines.
+
+## /git-setup
+
+Execute set-up-git-hooks.sh from root of repository to configure pre-commit hooks and leverage a commit template.
 
 # Tools
 

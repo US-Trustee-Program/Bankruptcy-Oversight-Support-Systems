@@ -32,6 +32,6 @@ jobs:
       - name: Install dependencies
         run: pip install veracode-api-signing
       - name: Execute DAST Prescan
-        run: ./ops/helper-scripts/veracode-prescan.py "${{ inputs.dast-profile-name || 'CAMS Flexion' }}"
+        run: ./ops/scripts/pipeline/veracode-prescan.py "${{ inputs.dast-profile-name || 'CAMS Flexion' }}"
       - name: Schedule DAST Scan
-        run: ./ops/helper-scripts/veracode-dast-scan.py "${{ inputs.dast-profile-name || 'CAMS Flexion' }}"
+        run: ./ops/scripts/pipeline/veracode-dast-scan.py "${{ inputs.dast-profile-name || 'CAMS Flexion' }}"
