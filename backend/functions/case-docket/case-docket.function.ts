@@ -10,8 +10,6 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-//const MODULE_NAME = 'CASE-DOCKET-FUNCTION';
-
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   caseDocketRequest: HttpRequest,

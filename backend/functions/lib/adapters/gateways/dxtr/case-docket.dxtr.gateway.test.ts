@@ -1,7 +1,4 @@
-import { Context } from '@azure/functions';
-import { ApplicationContext } from '../../types/basic';
 import { QueryResults } from '../../types/database';
-import { applicationContextCreator } from '../../utils/application-context-creator';
 import * as database from '../../utils/database';
 import { DxtrCaseDocketGateway } from './case-docket.dxtr.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -47,10 +44,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      // TODO: Use new create mock context function.
-      const mockContext: ApplicationContext = await applicationContextCreator(
-        {} as unknown as Context,
-      );
+      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const mockCaseId = NORMAL_CASE_ID;
       const response = await gateway.getCaseDocket(mockContext, mockCaseId);
       expect(response).toEqual(DOCKET);
@@ -67,10 +61,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      // TODO: Use new create mock context function.
-      const mockContext: ApplicationContext = await applicationContextCreator(
-        {} as unknown as Context,
-      );
+      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const mockCaseId = '000-00-00000';
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow('Not found');
     });
@@ -87,10 +78,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      // TODO: Use new create mock context function.
-      const mockContext: ApplicationContext = await applicationContextCreator(
-        {} as unknown as Context,
-      );
+      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const mockCaseId = '000-00-00000';
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(expectedMessage);
     });

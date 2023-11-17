@@ -14,7 +14,7 @@ module.exports = {
     '<rootDir>/node_modules/',
     '.dependency-cruiser.js',
     '.*test.[jt]s',
-    'azure/',
+    'azure/app-insights.ts',
     'dist/',
     'coverage/',
     'lib/adapters/types/',
