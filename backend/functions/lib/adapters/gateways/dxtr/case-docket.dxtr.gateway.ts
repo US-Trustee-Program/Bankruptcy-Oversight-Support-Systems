@@ -2,11 +2,12 @@ import * as mssql from 'mssql';
 
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import { handleQueryResult2 } from '../gateway-helper';
 import { decomposeCaseId } from './dxtr.gateway.helper';
 import { CaseDocket } from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../gateways.types';
+import { CamsError } from '../../../common-errors/cams-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULENAME = 'CASE-DOCKET-DXTR-GATEWAY';
 
@@ -46,7 +47,12 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       input,
     );
 
-    context.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
-    return handleQueryResult2<CaseDocket>(MODULENAME, queryResult);
+    if (queryResult.success) {
+      const recordset = (queryResult.results as mssql.IResult<CaseDocket>).recordset;
+      if (!recordset.length) throw new NotFoundError(MODULENAME, { data: { caseId } });
+      return recordset;
+    } else {
+      throw new CamsError(MODULENAME, { message: queryResult.message, data: { caseId } });
+    }
   }
 }
