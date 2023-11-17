@@ -1,6 +1,9 @@
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CaseDocket } from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../gateways.types';
+
+const MODULENAME = 'CASE-DOCKET-MOCK-GATEWAY';
 
 export const DOCKET: CaseDocket = [
   {
@@ -51,10 +54,13 @@ export const DOCKET: CaseDocket = [
       'Ustilo basium teneo abeo urbanus terminatio somniculosus sapiente tollo capto. Curatio curo abbas. Adulatio curo sufficio comminor conicio. Sed quia argentum campana admiratio. Ut odio admoveo adsidue confero ambulo urbanus tenus.',
   },
 ];
+
+export const NORMAL_CASE_ID = '111-11-11111';
+
 export class MockCaseDocketGateway implements CaseDocketGateway {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getCaseDocket(_context: ApplicationContext, _caseId: string): Promise<CaseDocket> {
-    //import docket test values
-    return Promise.resolve(DOCKET);
+  async getCaseDocket(_context: ApplicationContext, caseId: string): Promise<CaseDocket> {
+    if (caseId === NORMAL_CASE_ID) return Promise.resolve(DOCKET);
+    return Promise.reject(new NotFoundError(MODULENAME, { data: { caseId } }));
   }
 }

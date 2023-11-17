@@ -12,7 +12,7 @@ import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-h
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
-import { MockCaseDocketGateway } from './adapters/gateways/mock/case-docket.mock.gateway';
+import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
