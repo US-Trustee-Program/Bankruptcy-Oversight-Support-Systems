@@ -93,15 +93,28 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           <div data-testid="case-detail-debtor-name" aria-label="debtor name">
             {props.caseDetail.debtor.name}
           </div>
+          {props.caseDetail.debtor.taxId && (
+            <div
+              data-testid="case-detail-debtor-taxId"
+              aria-label="debtor employer identification number"
+            >
+              <span className="case-detail-item-name">EIN:</span>
+              <span className="case-detail-item-value">{props.caseDetail.debtor.taxId}</span>
+            </div>
+          )}
+          {props.caseDetail.debtor.ssn && (
+            <div data-testid="case-detail-debtor-ssn" aria-label="debtor social security number">
+              <span className="case-detail-item-name">SSN/ITIN:</span>
+              <span className="case-detail-item-value">{props.caseDetail.debtor.ssn}</span>
+            </div>
+          )}
+          {!props.caseDetail.debtor.taxId && !props.caseDetail.debtor.ssn && (
+            <div data-testid="case-detail-debtor-no-taxids" aria-label="debtor tax identification">
+              {informationUnavailable}
+            </div>
+          )}
           <div data-testid="case-detail-debtor-type" aria-label="debtor type">
             {props.caseDetail.debtorTypeLabel}
-          </div>
-          <div
-            className="padding-bottom-1"
-            data-testid="case-detail-petition"
-            aria-label="petition"
-          >
-            {props.caseDetail.petitionLabel}
           </div>
           <div>
             {props.caseDetail.debtor.address1 && (
@@ -202,29 +215,6 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           )}
           {!props.caseDetail.debtorAttorney && (
             <div data-testid="case-detail-no-debtor-attorney" aria-label="debtor attorney">
-              {informationUnavailable}
-            </div>
-          )}
-        </div>
-        <div className="additional-debtor-information padding-bottom-4 case-card">
-          <h3>Additional Debtor Info</h3>
-          {props.caseDetail.debtor.taxId && (
-            <div
-              data-testid="case-detail-debtor-taxId"
-              aria-label="debtor employer identification number"
-            >
-              <span className="case-detail-item-name">EIN:</span>
-              <span className="case-detail-item-value">{props.caseDetail.debtor.taxId}</span>
-            </div>
-          )}
-          {props.caseDetail.debtor.ssn && (
-            <div data-testid="case-detail-debtor-ssn" aria-label="debtor social security number">
-              <span className="case-detail-item-name">SSN/ITIN:</span>
-              <span className="case-detail-item-value">{props.caseDetail.debtor.ssn}</span>
-            </div>
-          )}
-          {!props.caseDetail.debtor.taxId && !props.caseDetail.debtor.ssn && (
-            <div data-testid="case-detail-debtor-no-taxids" aria-label="debtor tax identification">
               {informationUnavailable}
             </div>
           )}

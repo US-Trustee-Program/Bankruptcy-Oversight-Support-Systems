@@ -15,7 +15,7 @@ describe('Case Detail Header tests', () => {
     dateFiled: '01-04-1962',
     judgeName: 'Mr. Judge',
     debtorTypeLabel: 'Corporate Business',
-    petitionLabel: 'Voluntary Petition',
+    petitionLabel: 'Voluntary',
     closedDate: '01-08-1963',
     dismissedDate: '01-08-1964',
     assignments: ['sally', 'joe'],
@@ -59,8 +59,10 @@ describe('Case Detail Header tests', () => {
 
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
     const isFinishedH2 = screen.getByTestId('h2-with-case-info');
+    const caseChapter = screen.getByTestId('case-chapter');
 
     expect(isLoadingH1).toContainHTML('The Beach Boys');
     expect(isFinishedH2).toBeInTheDocument();
+    expect(caseChapter.textContent).toEqual('Voluntary Chapter 15');
   });
 });
