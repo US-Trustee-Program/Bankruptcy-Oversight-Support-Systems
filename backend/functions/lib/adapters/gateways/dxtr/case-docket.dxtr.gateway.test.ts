@@ -2,7 +2,8 @@ import { QueryResults } from '../../types/database';
 import * as database from '../../utils/database';
 import { DxtrCaseDocketGateway } from './case-docket.dxtr.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { DOCKET, NORMAL_CASE_ID } from './case-docket.mock.gateway';
+import { NORMAL_CASE_ID } from './case-docket.mock.gateway';
+import { CASE_DOCKET_ENTRIES } from '../../../testing/mock-data/case-docket-entries.mock';
 
 describe('Test case docket DXTR Gateway', () => {
   const querySpy = jest.spyOn(database, 'executeQuery');
@@ -12,7 +13,7 @@ describe('Test case docket DXTR Gateway', () => {
       const mockResults: QueryResults = {
         success: true,
         results: {
-          recordset: DOCKET,
+          recordset: CASE_DOCKET_ENTRIES,
         },
         message: '',
       };
@@ -37,7 +38,7 @@ describe('Test case docket DXTR Gateway', () => {
       const mockResults: QueryResults = {
         success: true,
         results: {
-          recordset: DOCKET,
+          recordset: CASE_DOCKET_ENTRIES,
         },
         message: '',
       };
@@ -48,7 +49,7 @@ describe('Test case docket DXTR Gateway', () => {
       const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const mockCaseId = NORMAL_CASE_ID;
       const response = await gateway.getCaseDocket(mockContext, mockCaseId);
-      expect(response).toEqual(DOCKET);
+      expect(response).toEqual(CASE_DOCKET_ENTRIES);
     });
 
     test('should raise an exception when a case docket is not found', async () => {
