@@ -14,11 +14,29 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   const { docketEntries } = props;
   const [isLoading, setIsLoading] = useState(true);
   const flags = useFeatureFlags();
+  const [visibleDocketEntries, setVisibleDocketEntries] = useState(docketEntries);
   const searchFeature = flags[DOCKET_SEARCH_ENABLED];
+
+  function search(ev: React.ChangeEvent<HTMLInputElement>) {
+    const searchString = ev.target.value.toLowerCase();
+    if (docketEntries) {
+      const filteredDocketEntries = docketEntries.filter((docketEntry) => {
+        return (
+          docketEntry.summaryText.toLowerCase().includes(searchString) ||
+          docketEntry.fullText.toLowerCase().includes(searchString)
+        );
+      });
+      setVisibleDocketEntries(filteredDocketEntries);
+    }
+  }
 
   useEffect(() => {
     setIsLoading(!docketEntries);
   }, [docketEntries]);
+
+  useEffect(() => {
+    console.log('this docket entries have change');
+  }, [visibleDocketEntries]);
 
   return (
     <div id="case-detail-court-docket-panel">
@@ -36,6 +54,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                     id="basic-search-field"
                     name="basic-search"
                     icon="search"
+                    onChange={search}
                   />
                 </div>
               </section>
@@ -45,8 +64,8 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
       )}
       {isLoading && <LoadingIndicator />}
       {!isLoading &&
-        docketEntries &&
-        (docketEntries as Array<CaseDocketEntry>)?.map(
+        visibleDocketEntries &&
+        (visibleDocketEntries as Array<CaseDocketEntry>)?.map(
           (docketEntry: CaseDocketEntry, idx: number) => {
             return (
               <div
