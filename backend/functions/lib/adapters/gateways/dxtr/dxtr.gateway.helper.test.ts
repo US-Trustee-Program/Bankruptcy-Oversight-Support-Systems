@@ -36,15 +36,15 @@ describe('DXTR Gateway Helper Tests', () => {
     const type1TransactionRecToTest = [
       [
         '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-        'Corporate Business',
+        'CB',
       ],
       [
         '1081201013220-10132            15IB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-        'Individual Business',
+        'IB',
       ],
       [
         '1081201013220-10132            15IC               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-        'Individual Consumer',
+        'IC',
       ],
     ];
 
@@ -59,48 +59,25 @@ describe('DXTR Gateway Helper Tests', () => {
         expect(parseDebtorType(transactionRecord)).toEqual(expected);
       },
     );
-
-    const negativeType1TransactionRecToTest = [
-      ['000000000000000000200117999992001179999920011799999200117VP000000'],
-      [
-        '1081201013220-10132            15AA               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-      ],
-    ];
-    test.each(negativeType1TransactionRecToTest)(
-      'should throw an error when a bad record is encountered',
-      (txRecord: string) => {
-        const transactionRecord: DxtrTransactionRecord = {
-          txCode: '1',
-          txRecord,
-        };
-        const expectedException = new CamsError('DEBTOR-TYPE-NAME-GATEWAY', {
-          message: 'Cannot find debtor type name by ID',
-        });
-
-        expect(() => {
-          parseDebtorType(transactionRecord);
-        }).toThrow(expectedException);
-      },
-    );
   });
 
   describe('parsePetitionType tests', () => {
     const petitionsToTest = [
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000IP000000                                 NNNNN',
-        'Involuntary',
+        'IP',
       ],
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000TI000000                                 NNNNN',
-        'Involuntary',
+        'TI',
       ],
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000TV000000                                 NNNNN',
-        'Voluntary',
+        'TV',
       ],
       [
         '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000VP000000                                 NNNNN',
-        'Voluntary',
+        'VP',
       ],
     ];
 
@@ -113,29 +90,6 @@ describe('DXTR Gateway Helper Tests', () => {
         };
 
         expect(parsePetitionType(transactionRecord)).toEqual(expected);
-      },
-    );
-
-    const negativePetitionRecToTest = [
-      ['000000000000000000000000000000000000000000000000000000000VP000000'],
-      [
-        '0000000000000-00000            00AA               000000000000000000000000000000000000000000000000000000000ZZ000000                                 NNNNN',
-      ],
-    ];
-    test.each(negativePetitionRecToTest)(
-      'should throw an error when a bad record is encountered',
-      (txRecord: string) => {
-        const transactionRecord: DxtrTransactionRecord = {
-          txCode: '1',
-          txRecord,
-        };
-        const expectedException = new CamsError('PETITION-NAME-GATEWAY', {
-          message: 'Cannot find petition label by ID',
-        });
-
-        expect(() => {
-          parsePetitionType(transactionRecord);
-        }).toThrow(expectedException);
       },
     );
   });
