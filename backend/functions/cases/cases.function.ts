@@ -41,10 +41,10 @@ const httpTrigger: AzureFunction = async function (
 
     functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
-    let error = originalError;
-    if (!(error instanceof CamsError)) {
-      error = new UnknownError(MODULE_NAME, { originalError });
-    }
+    const error =
+      originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
     log.camsError(applicationContext, error);
     functionContext.res = httpError(error);
   }
