@@ -1,7 +1,8 @@
-import { DOCKET, NORMAL_CASE_ID } from '../../adapters/gateways/dxtr/case-docket.mock.gateway';
+import { NORMAL_CASE_ID } from '../../adapters/gateways/dxtr/case-docket.mock.gateway';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseDocketController } from './case-docket.controller';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
+import { CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-entries.mock';
 
 describe('Test case-docket controller', () => {
   test('should return a case docket when getCaseDocket is called', async () => {
@@ -10,7 +11,7 @@ describe('Test case-docket controller', () => {
     const controller = new CaseDocketController(mockContext);
     const result = await controller.getCaseDocket(mockContext, { caseId });
     expect(result.success).toBeTruthy();
-    expect(result.body).toEqual(DOCKET);
+    expect(result.body).toEqual(CASE_DOCKET_ENTRIES);
   });
   test('should throw a NotFoundError when a docket is not found', async () => {
     const caseId = '000-00-00000'; // Induce a NotFoundError
