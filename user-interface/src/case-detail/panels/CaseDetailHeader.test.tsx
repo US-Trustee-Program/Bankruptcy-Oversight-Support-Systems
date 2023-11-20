@@ -63,6 +63,6 @@ describe('Case Detail Header tests', () => {
 
     expect(isLoadingH1).toContainHTML('The Beach Boys');
     expect(isFinishedH2).toBeInTheDocument();
-    expect(caseChapter.textContent).toEqual('Voluntary Chapter 15');
+    expect(caseChapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
   });
 });
