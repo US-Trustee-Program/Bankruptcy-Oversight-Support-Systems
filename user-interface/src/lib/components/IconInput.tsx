@@ -1,3 +1,4 @@
+import { ChangeEventHandler } from 'react';
 import './IconInput.scss';
 import Icon from './uswds/Icon';
 
@@ -8,7 +9,7 @@ export interface IconInputProps {
   name?: string;
   icon: string;
   position?: 'left' | 'right';
-  onChange?: () => void;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
 }
 
 export default function IconInput(props: IconInputProps) {
