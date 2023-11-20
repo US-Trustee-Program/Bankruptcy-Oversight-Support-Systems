@@ -4,6 +4,6 @@ COMMIT_SOURCE=$2
 
 if [ "$COMMIT_SOURCE" = "squash" ]; then
   temp_msg=$(mktemp)
-  cat "$(git config commit.template)" >> $temp_msg
-  mv "$temp_msg" "$COMMIT_MSG_FILE"
+  cat "$(git config commit.template)" >> "${temp_msg}"
+  mv "${temp_msg}" "${COMMIT_MSG_FILE}"
 fi

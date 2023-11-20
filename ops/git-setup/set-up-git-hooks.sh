@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# check current working directory
+if [ ! -f "./ops/git-setup/set-up-git-hooks.sh" ]; then
+    echo "Error: Incorrect working directory $(pwd) : Execute command from root of repository."
+    exit 10
+fi
+
 # pre-commit package
 pre-commit --version
 if ! pre-commit --version; then
@@ -8,7 +14,7 @@ if ! pre-commit --version; then
 fi
 pre-commit install
 
-pushd ops/helper-scripts || exit
+pushd ops/git-setup || exit
 
 # Insert the branch naming convention check
 ## Create a temporary file to hold the modified contents
@@ -26,7 +32,7 @@ mv "$temp_file" ../../.git/hooks/pre-commit
 chmod +x ../../.git/hooks/pre-commit
 
 # Set up prepare-commit-msg hook
-cp ../git-setup/prepare-commit-msg ../../.git/hooks/prepare-commit-msg
+cp ./prepare-commit-msg ../../.git/hooks/prepare-commit-msg
 chmod +x ../../.git/hooks/prepare-commit-msg
 
 popd || exit

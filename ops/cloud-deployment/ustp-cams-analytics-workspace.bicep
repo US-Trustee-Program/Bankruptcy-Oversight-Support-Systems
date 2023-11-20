@@ -4,7 +4,7 @@ param analyticsWorkspaceName string
 
 param enableLinkedStorageAccount bool = true
 
-module workspace './app-insights/analytics-workspace.bicep' = {
+module workspace './lib/app-insights/analytics-workspace.bicep' = {
   name: '${analyticsWorkspaceName}-workspace-module'
   params: {
     location: location
@@ -16,7 +16,7 @@ resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01
   name: analyticsWorkspaceName
 }
 
-module storage './storage/storage-account.bicep' = if (enableLinkedStorageAccount) {
+module storage './lib/storage/storage-account.bicep' = if (enableLinkedStorageAccount) {
   name: '${analyticsWorkspace.name}-storage-module'
   params: {
     location: location

@@ -27,9 +27,9 @@ We have created a script to set up git hooks to handle the following:
 1. verify that a branch name is appropriate
 1. use a common git commit template
 
-The script is located at `ops/helper-scripts/set-up-git-hooks.sh`.
+The script is located at `ops/git-setup/set-up-git-hooks.sh`.
 
-!> Please run this script by executing `sh ops/helper-scripts/set-up-git-hooks.sh` from the top directory of the repository.
+!> Please run this script by executing `sh ops/git-setup/set-up-git-hooks.sh` from the top directory of the repository.
 
 ## Accessibility
 

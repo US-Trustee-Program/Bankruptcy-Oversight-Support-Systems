@@ -1,6 +1,16 @@
 # Deployment
 
-## Pipeline Environment Variables
+## Infrastructure as Code
+
+Bicep files to provision resources in the Azure cloud environment with support for both commercial and US gov regions located in the ops/cloud-deployment folder. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _main.bicep_, to provision complete Azure resources.
+
+Note the following assumptions:
+
+- Account used to execute bicep code has the necessary permission to provision all resources.
+- Prior to running the _ustp-cams.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to false
+- After running the _ustp-cams.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to **true**
+
+## CICD Pipeline Runtime Variables
 
 Note required environment variables and secrets defined in build tool for pipeline execution in Flexion and **shared** with USTP.
 
@@ -34,12 +44,12 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_SQL_CONN_STR                            | Secret                 | ---              | ---                                                                                                         |
 | AZ_SQL_SERVER_NAME                         | Secret                 | ---              | ---                                                                                                         |
 | AZ_MSSQL_HOST                              | Secret                 | ---              | ---                                                                                                         |
-| ~~AZ_MSSQL_DATABASE~~                      | ~~Secret~~             | ---              | ~~ACMS database name~~ added to KeyVault                                                                    |
-| ~~AZ_MSSQL_DATABASE_DXTR ~~                | ~~Secret~~             | ---              | ~~DXTR database name~~ added to KeyVault                                                                    |
-| ~~AZ_MSSQL_USER~~                          | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
-| ~~AZ_MSSQL_PASS~~                          | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
-| ~~AZ_MSSQL_ENCRYPT~~                       | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
-| ~~AZ_MSSQL_TRUST_UNSIGNED_CERT~~           | ~~Secret~~             | ---              | added to KeyVault---                                                                                        |
+| ~~AZ_MSSQL_DATABASE~~                      | ~~Secret~~             | ---              | ~~ACMS database name~~ No longer needed                                                                     |
+| ~~AZ_MSSQL_DATABASE_DXTR~~                 | ~~Secret~~             | ---              | ~~DXTR database name~~ Moved to KeyVault                                                                    |
+| ~~AZ_MSSQL_USER~~                          | ~~Secret~~             | ---              | Moved to KeyVault                                                                                           |
+| ~~AZ_MSSQL_PASS~~                          | ~~Secret~~             | ---              | Moved to KeyVault                                                                                           |
+| ~~AZ_MSSQL_ENCRYPT~~                       | ~~Secret~~             | ---              | Moved to KeyVault                                                                                           |
+| ~~AZ_MSSQL_TRUST_UNSIGNED_CERT~~           | ~~Secret~~             | ---              | Moved to KeyVault                                                                                           |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure CosmosDb**                         | ---                    | ---              | ---                                                                                                         |
 | AZ_COSMOS_DATABASE_NAME                    | Secret                 | ---              | ---                                                                                                         |
@@ -55,7 +65,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_STOR_VERACODE_KEY                       | Secrets                | Yes              | Access key for Azure Storage account                                                                        |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **LaunchDarkly**                           |                        |                  |                                                                                                             |
-| ~~FEATURE_FLAG_SDK_KEY~~                   | ~~Secrets~~            | ---              | ~~Optional SDK key to enable LaunchDarkly~~ added to KeyVault                                               |
+| ~~FEATURE_FLAG_SDK_KEY~~                   | ~~Secrets~~            | ---              | ~~Optional SDK key to enable LaunchDarkly~~ Moved to KeyVault                                               |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure Log Anlaytics**                    |                        |                  |                                                                                                             |
 | AZ_ANALYTICS_WORKSPACE_ID                  | Secrets                | ---              | Azure resource id of Log Analytics.                                                                         |
@@ -66,7 +76,9 @@ Note required environment variables and secrets defined in build tool for pipeli
 | **Application**                            | ---                    | ---              | ---                                                                                                         |
 | STARTING_MONTH                             | Variable               | ---              | Used by application for filtering cases by date range.                                                      |
 | USTP_ISSUE_COLLECTOR_HASH                  | Secrets                | ---              | USTP Only parameter used for CSP policy                                                                     |
+| ---                                        | ---                    | ---              | ---                                                                                                         |
 | **KeyVault**                               | ---                    | ---              | ---                                                                                                         |
 | AZ_KV_APP_CONFIG_NAME                      | Secrets                | ---              | Specifies existing Application Configuration KeyVault                                                       |
 | AZ_KV_APP_CONFIG_MANAGED_ID                | Secrets                | ---              | Used by bicep to provide an existing managed identity access the Application Configuration KeyVault Secrets |
 | AZ_KV_APP_CONFIG_RG_NAME                   | Secrets                | ---              | Used by bicep to provide scope for the managed identity                                                     |
+| ---                                        | ---                    | ---              | ---                                                                                                         |

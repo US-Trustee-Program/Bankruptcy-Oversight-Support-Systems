@@ -24,7 +24,7 @@ param networkResourceGroup string
 @description('Flag to indicate whether the network components should be deployed')
 param deployNetworkConfig bool
 
-module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
+module kvAppConfig './lib/keyvault-app-config-setup/kv-app-config.bicep' = {
   name: '${stackName}-kv-app-config-setup-module'
   params: {
     location: location
@@ -33,7 +33,7 @@ module kvAppConfig './keyvault-app-config-setup/kv-app-config.bicep' = {
   }
 }
 
-module kvNetworkConfig './keyvault-app-config-setup/kv-app-config-network.bicep' = if (deployNetworkConfig) {
+module kvNetworkConfig './lib/keyvault-app-config-setup/kv-app-config-network.bicep' = if (deployNetworkConfig) {
   name: '${stackName}-kv-network-config-setup-module'
   params: {
     location: location

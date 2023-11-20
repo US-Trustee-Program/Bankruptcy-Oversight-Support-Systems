@@ -142,7 +142,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 /*
   Subnet creation in target virtual network
 */
-module subnet './subnet/network-subnet.bicep' = {
+module subnet './lib/network/subnet.bicep' = {
   name: '${functionName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -177,7 +177,7 @@ module subnet './subnet/network-subnet.bicep' = {
 /*
   Private endpoint creation in target virtual network.
 */
-module privateEndpoint './subnet/network-subnet-private-endpoint.bicep' = {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
@@ -212,7 +212,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
 }
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
-module appInsights './app-insights/app-insights.bicep' = if (createApplicationInsights) {
+module appInsights './lib/app-insights/app-insights.bicep' = if (createApplicationInsights) {
   name: '${functionName}-application-insights-module'
   params: {
     location: location
@@ -223,7 +223,7 @@ module appInsights './app-insights/app-insights.bicep' = if (createApplicationIn
   }
 }
 
-module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
+module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = {
   name: '${functionName}-diagnostic-settings-module'
   params: {
     functionAppName: functionName
@@ -234,7 +234,7 @@ module diagnosticSettings 'app-insights/diagnostics-settings-func.bicep' = {
     functionApp
   ]
 }
-module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
+module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${functionName}-healthcheck-alert-rule-module'
   params: {
     alertName: '${functionName}-health-check-alert'
@@ -249,7 +249,7 @@ module healthAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (crea
     actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
-module httpAlertRule './monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
+module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${functionName}-http-error-alert-rule-module'
   params: {
     alertName: '${functionName}-http-error-alert'
@@ -353,7 +353,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
 }
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
-module setSqlServerVnetRule './sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
   name: '${functionName}-sql-vnet-rule-module'
   params: {
