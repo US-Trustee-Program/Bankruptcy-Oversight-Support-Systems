@@ -82,32 +82,3 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_KV_APP_CONFIG_MANAGED_ID                | Secrets                | ---              | Used by bicep to provide an existing managed identity access the Application Configuration KeyVault Secrets |
 | AZ_KV_APP_CONFIG_RG_NAME                   | Secrets                | ---              | Used by bicep to provide scope for the managed identity                                                     |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
-
-## Scripts
-
-### Pipeline
-
-Shared scripts that execute in CI/CD pipeline on both the Flexion and USTP environment.
-
-### Adhoc helper scripts
-
-#### az-sql-import-data.sh
-
-The following are dependencies needed for running this script.
-
-##### bcp
-
-The bulk copy program utility (bcp) is used to import/export data from SQL Server tables. This project leverage bcp to import data into an existing table from a comma/pipe delimited file for test.
-
-##### Installation
-
-OS X installion requires homebrew
-
-```
-# brew untap microsoft/mssql-preview if you installed the preview version
-brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
-brew update
-brew install mssql-tools18
-```
-
-See [here](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) for additional documentation.
