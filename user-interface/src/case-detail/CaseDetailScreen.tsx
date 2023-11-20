@@ -1,13 +1,15 @@
 import './CaseDetailScreen.scss';
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { Route, useParams, Outlet, Routes } from 'react-router-dom';
+import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
   CaseDetailType,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
+  Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
+import { mapNavState } from './panels/CaseDetailNavigation';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -33,6 +35,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
+  const location = useLocation();
+
+  const navState = mapNavState(location.pathname);
 
   const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
@@ -44,32 +49,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
   };
 
   const fetchCaseDocketEntries = async () => {
-    const docketEntries = [
-      {
-        sequenceNumber: 2,
-        documentNumber: 2,
-        dateFiled: '05/07/2023',
-        summaryText: 'Add Judge',
-        fullText:
-          'Id articulus vesper conduco. Adiuvo usus solvo decipio suppono suspendo. Verbum voluptatem cruciamentum tabella aut amo copia caute. Amissio uredo sodalitas autus amaritudo defetiscor statua desino torrens conturbo. Cursus suppellex viridis asper vindico suus adulatio tertius careo. Deludo laudantium adversus ante. Earum tunc concedo terra ocer. Theca blanditiis absum decerno timidus dolorem aeternus delectus agnosco vester. Territo voluptate admoneo cotidie.',
-      },
-      {
-        sequenceNumber: 3,
-        documentNumber: 3,
-        dateFiled: '05/08/2023',
-        summaryText: 'Judge 2',
-        fullText:
-          'Id Adiuvo usus solvo decipio suppono suspendo. Verbum voluptatem cruciamentum tabella aut amo copia caute. Amissio uredo sodalitas autus amaritudo defetiscor statua desino torrens conturbo. Cursus suppellex viridis asper vindico suus adulatio tertius careo. Deludo laudantium adversus ante. Earum tunc concedo terra ocer. Theca blanditiis absum decerno timidus dolorem aeternus delectus agnosco vester. Territo voluptate admoneo cotidie.',
-      },
-      {
-        sequenceNumber: 4,
-        dateFiled: '06/07/2023',
-        summaryText: 'Judge 3',
-        fullText:
-          'Id articulus vesper conduco. Suppono suspendo. Verbum voluptatem cruciamentum tabella aut amo copia caute. Amissio uredo sodalitas autus amaritudo defetiscor statua desino torrens conturbo. Cursus suppellex viridis asper vindico suus adulatio tertius careo. Deludo laudantium adversus ante. Earum tunc concedo terra ocer. Theca blanditiis absum decerno timidus dolorem aeternus delectus agnosco vester. Territo voluptate admoneo cotidie.',
-      },
-    ];
-    setCaseDocketEntries(docketEntries);
+    api.get(`/cases/${caseId}/docket`, {}).then((data) => {
+      const response = data as Chapter15CaseDocketResponseData;
+      setCaseDocketEntries(response.body);
+    });
   };
 
   useEffect(() => {
@@ -96,7 +79,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-10">
+              <div className="grid-col-2">
+                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+              </div>
+              <div className="grid-col-8">
                 <LoadingIndicator />
               </div>
               <div className="grid-col-1"></div>
@@ -113,7 +99,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseId} />
+                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
               </div>
               <div className="grid-col-6">
                 <Suspense fallback={<LoadingIndicator />}>

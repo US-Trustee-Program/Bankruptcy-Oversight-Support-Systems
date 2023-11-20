@@ -1,8 +1,6 @@
 import { DxtrTransactionRecord } from '../../types/cases';
 import { getDate } from '../../utils/date-helper';
 import { CamsError } from '../../../common-errors/cams-error';
-import { getDebtorTypeLabel } from '../debtor-type-gateway';
-import { getPetitionLabel } from '../petition-gateway';
 
 const MODULE_NAME = 'DXTR-GATEWAY-HELPER';
 
@@ -39,14 +37,20 @@ export function parseTransactionDate(record: DxtrTransactionRecord): Date {
 export function parseDebtorType(record: DxtrTransactionRecord): string {
   const codeLength = 2;
   const codeIndex = 33;
-  const debtorType = record.txRecord.slice(codeIndex, codeIndex + codeLength);
-  return getDebtorTypeLabel(debtorType);
+  const debtorTypeKey = record.txRecord.slice(codeIndex, codeIndex + codeLength);
+  return debtorTypeKey;
 }
 
 // 1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411VP000000                                 NNNNN
 export function parsePetitionType(record: DxtrTransactionRecord): string {
   const codeLength = 2;
   const codeIndex = 107;
-  const petition = record.txRecord.slice(codeIndex, codeIndex + codeLength);
-  return getPetitionLabel(petition);
+  const petitionKey = record.txRecord.slice(codeIndex, codeIndex + codeLength);
+  return petitionKey;
+}
+
+export function decomposeCaseId(caseId: string) {
+  const courtDiv = caseId.slice(0, 3);
+  const dxtrCaseId = caseId.slice(4);
+  return { courtDiv, dxtrCaseId };
 }

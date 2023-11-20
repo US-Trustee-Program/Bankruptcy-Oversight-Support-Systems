@@ -72,7 +72,7 @@ export default defineConfig({
         'src/components/utils/http.adapter.ts',
       ],
       lines: 90,
-      branches: 80,
+      branches: 85,
     },
   },
   build: {
