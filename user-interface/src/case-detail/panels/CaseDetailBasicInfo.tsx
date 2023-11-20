@@ -1,7 +1,8 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 
-const informationUnavailable = 'Information is not available at this time.';
+const informationUnavailable = 'Information is not available.';
+const taxIdUnavailable = 'Tax ID information is not available.';
 
 export interface CaseDetailBasicInfoProps {
   caseDetail?: CaseDetailType;
@@ -90,57 +91,57 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
         </div>
         <div className="debtor-information padding-bottom-4 case-card">
           <h3>Debtor</h3>
-          <div data-testid="case-detail-debtor-name" aria-label="debtor name">
-            {props.caseDetail.debtor.name}
-          </div>
-          {props.caseDetail.debtor.taxId && (
-            <div
-              data-testid="case-detail-debtor-taxId"
-              aria-label="debtor employer identification number"
-            >
-              <span className="case-detail-item-name">EIN:</span>
-              <span className="case-detail-item-value">{props.caseDetail.debtor.taxId}</span>
-            </div>
-          )}
-          {props.caseDetail.debtor.ssn && (
-            <div data-testid="case-detail-debtor-ssn" aria-label="debtor social security number">
-              <span className="case-detail-item-name">SSN/ITIN:</span>
-              <span className="case-detail-item-value">{props.caseDetail.debtor.ssn}</span>
-            </div>
-          )}
-          {!props.caseDetail.debtor.taxId && !props.caseDetail.debtor.ssn && (
-            <div data-testid="case-detail-debtor-no-taxids" aria-label="debtor tax identification">
-              {informationUnavailable}
-            </div>
-          )}
-          <div data-testid="case-detail-debtor-type" aria-label="debtor type">
-            {props.caseDetail.debtorTypeLabel}
-          </div>
-          <div>
-            {props.caseDetail.debtor.address1 && (
-              <div data-testid="case-detail-debtor-address1" aria-label="debtor address line 1">
-                {props.caseDetail.debtor.address1}
-              </div>
-            )}
-            {props.caseDetail.debtor.address2 && (
-              <div data-testid="case-detail-debtor-address2" aria-label="debtor address line 2">
-                {props.caseDetail.debtor.address2}
-              </div>
-            )}
-            {props.caseDetail.debtor.address3 && (
-              <div data-testid="case-detail-debtor-address3" aria-label="debtor address line 3">
-                {props.caseDetail.debtor.address3}
-              </div>
-            )}
-            {props.caseDetail.debtor.cityStateZipCountry && (
-              <div
-                data-testid="case-detail-debtor-cityStateZipCountry"
-                aria-label="debtor city, state, zip, country"
+          <ul className="usa-list usa-list--unstyled">
+            <li data-testid="case-detail-debtor-name" aria-label="debtor name">
+              {props.caseDetail.debtor.name}
+            </li>
+            {props.caseDetail.debtor.taxId && (
+              <li
+                data-testid="case-detail-debtor-taxId"
+                aria-label="debtor employer identification number"
               >
-                {props.caseDetail.debtor.cityStateZipCountry}
-              </div>
+                <span className="case-detail-item-name">EIN:</span>
+                <span className="case-detail-item-value">{props.caseDetail.debtor.taxId}</span>
+              </li>
             )}
-          </div>
+            {props.caseDetail.debtor.ssn && (
+              <li data-testid="case-detail-debtor-ssn" aria-label="debtor social security number">
+                <span className="case-detail-item-name">SSN/ITIN:</span>
+                <span className="case-detail-item-value">{props.caseDetail.debtor.ssn}</span>
+              </li>
+            )}
+            {!props.caseDetail.debtor.taxId && !props.caseDetail.debtor.ssn && (
+              <li data-testid="case-detail-debtor-no-taxids" aria-label="debtor tax identification">
+                {taxIdUnavailable}
+              </li>
+            )}
+            <li data-testid="case-detail-debtor-type" aria-label="debtor type">
+              {props.caseDetail.debtorTypeLabel}
+            </li>
+          </ul>
+          {props.caseDetail.debtor.address1 && (
+            <div data-testid="case-detail-debtor-address1" aria-label="debtor address line 1">
+              {props.caseDetail.debtor.address1}
+            </div>
+          )}
+          {props.caseDetail.debtor.address2 && (
+            <div data-testid="case-detail-debtor-address2" aria-label="debtor address line 2">
+              {props.caseDetail.debtor.address2}
+            </div>
+          )}
+          {props.caseDetail.debtor.address3 && (
+            <div data-testid="case-detail-debtor-address3" aria-label="debtor address line 3">
+              {props.caseDetail.debtor.address3}
+            </div>
+          )}
+          {props.caseDetail.debtor.cityStateZipCountry && (
+            <div
+              data-testid="case-detail-debtor-cityStateZipCountry"
+              aria-label="debtor city, state, zip, country"
+            >
+              {props.caseDetail.debtor.cityStateZipCountry}
+            </div>
+          )}
         </div>
         <div className="debtor-counsel-information padding-bottom-4 case-card">
           <h3>Debtor&apos;s Counsel</h3>

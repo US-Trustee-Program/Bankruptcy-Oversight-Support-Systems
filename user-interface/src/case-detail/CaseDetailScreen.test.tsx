@@ -11,7 +11,9 @@ const carlWilsonName = 'Carl Wilson';
 const trialAttorneyRole = 'Trial Attorney';
 
 const rickBHartName = 'Rick B Hart';
-const informationUnavailable = 'Information is not available at this time.';
+
+const informationUnavailable = 'Information is not available.';
+const taxIdUnavailable = 'Tax ID information is not available.';
 const debtorAttorney: DebtorAttorney = {
   name: 'Jane Doe',
   address1: '123 Rabbithole Lane',
@@ -300,7 +302,7 @@ describe('Case Detail screen tests', () => {
             if (taxIdIsPresent) {
               expect(noTaxIdsElement).not.toBeInTheDocument();
             } else {
-              expect(noTaxIdsElement).toHaveTextContent(informationUnavailable);
+              expect(noTaxIdsElement).toHaveTextContent(taxIdUnavailable);
             }
           });
         },
@@ -341,7 +343,7 @@ describe('Case Detail screen tests', () => {
       { timeout: 5000 },
     );
   }, 20000);
-  test('should show "Information is not available at this time." when a debtor attorney is unavailable.', async () => {
+  test('should show "Information is not available." when a debtor attorney is unavailable.', async () => {
     const testCaseDetail: CaseDetailType = {
       caseId: caseId,
       chapter: '15',
