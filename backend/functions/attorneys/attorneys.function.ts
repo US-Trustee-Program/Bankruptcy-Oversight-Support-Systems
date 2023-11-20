@@ -31,10 +31,10 @@ const httpTrigger: AzureFunction = async function (
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
     functionContext.res = httpSuccess(attorneysList);
   } catch (originalError) {
-    let error = originalError;
-    if (!(error instanceof CamsError)) {
-      error = new UnknownError(MODULE_NAME, { originalError });
-    }
+    const error =
+      originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
     log.camsError(applicationContext, error);
     functionContext.res = httpError(error);
   }
