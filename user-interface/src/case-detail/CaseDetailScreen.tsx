@@ -80,7 +80,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseId} initialItem={navState} />
+                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
               </div>
               <div className="grid-col-8">
                 <LoadingIndicator />
@@ -99,7 +99,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseId} initialItem={navState} />
+                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
               </div>
               <div className="grid-col-6">
                 <Suspense fallback={<LoadingIndicator />}>

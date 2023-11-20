@@ -1,7 +1,6 @@
 # CAMS System Context
 
-```mermaid
-graph TB
+```mermaidgraph TB
   linkStyle default fill:#ffffff
 
   subgraph diagram [System Landscape]

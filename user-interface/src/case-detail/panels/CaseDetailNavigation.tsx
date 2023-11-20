@@ -13,7 +13,7 @@ export function mapNavState(path: string) {
 
 export interface CaseDetailNavigationProps {
   caseId: string | undefined;
-  initialItem: NavState;
+  initiallySelectedNavLink: NavState;
 }
 
 export enum NavState {
@@ -25,8 +25,11 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current' : '';
 }
 
-export default function CaseDetailNavigation({ caseId, initialItem }: CaseDetailNavigationProps) {
-  const [activeNav, setActiveNav] = useState<NavState>(initialItem);
+export default function CaseDetailNavigation({
+  caseId,
+  initiallySelectedNavLink,
+}: CaseDetailNavigationProps) {
+  const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
 
   return (
     <>

@@ -10,6 +10,9 @@ export interface CaseDetailHeaderProps {
 }
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
+  const courtInformation = `${props.caseDetail?.courtName} - ${props.caseDetail?.courtDivisionName}`;
+  // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
+  const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
   return (
     <div className="case-detail-header">
       <div className="grid-row grid-gap-lg">
@@ -60,12 +63,12 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               title="Court Name and Distrct"
               data-testid="court-name-and-district"
             >
-              {props.caseDetail?.courtName} - {props.caseDetail?.courtDivisionName}
+              {courtInformation}
             </h2>
           </div>
           <div className="grid-col-3">
             <h2 className="case-chapter" title="Case Chapter" data-testid="case-chapter">
-              {props.caseDetail?.petitionLabel} Chapter&nbsp;{props.caseDetail?.chapter}
+              {chapterInformation}
             </h2>
           </div>
           <div className="grid-col-1"></div>
