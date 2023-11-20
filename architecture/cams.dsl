@@ -15,6 +15,7 @@ workspace {
                 cases = component "Cases" "Cases API"
                 assign = component "Assignments" "Assignments API"
                 attorneys = component "Attorneys" "Attorneys API"
+                docket = component "Docket" "Case Docket Entries"
             }
             dxtrsql = container "DXTR DB" "DXTR SQL Database"
             cosmos = container "Cosmos DB" "NoSQL Database"
@@ -32,11 +33,12 @@ workspace {
         webapp -> nodeapi "Reads and writes case data and assignments"
         webapp -> cases "Reads and writes case data"
         webapp -> assign "Reads and writes case assignments"
+        webapp -> attorneys "Reads Manhattan attorneys"
+        webapp -> docket "Reads case docket entries"
         nodeapi -> cosmos "Reads and writes case assignments"
         cases -> dxtrsql "Gets case data"
         cases -> cosmos "Reads case assignments"
         assign -> cosmos "Reads and writes case assignments"
-        webapp -> attorneys "Reads Manhattan attorneys"
     }
 
     views {

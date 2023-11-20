@@ -17,8 +17,15 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import log from '../../services/logger.service';
 import { handleQueryResult } from '../gateway-helper';
-import { parseDebtorType, parsePetitionType, parseTransactionDate } from './dxtr.gateway.helper';
+import {
+  decomposeCaseId,
+  parseDebtorType,
+  parsePetitionType,
+  parseTransactionDate,
+} from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
+import { getDebtorTypeLabel } from '../debtor-type-gateway';
+import { getPetitionLabel } from '../petition-gateway';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -50,8 +57,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailInterface> {
-    const courtDiv = caseId.slice(0, 3);
-    const dxtrCaseId = caseId.slice(4);
+    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
 
     const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
 
@@ -562,9 +568,9 @@ export default class CasesDxtrGateway implements CasesInterface {
       `Transaction results received from DXTR:`,
       queryResult,
     );
-    const debtorTypeRecord = (queryResult.results as mssql.IResult<DxtrTransactionRecord>)
-      .recordset[0];
-    return parseDebtorType(debtorTypeRecord);
+    const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
+    const key = resultset.length ? parseDebtorType(resultset[0]) : 'UNKNOWN';
+    return getDebtorTypeLabel(key);
   }
 
   petitionLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
@@ -574,9 +580,9 @@ export default class CasesDxtrGateway implements CasesInterface {
       `Transaction results received from DXTR:`,
       queryResult,
     );
-    const petitionTypeRecord = (queryResult.results as mssql.IResult<DxtrTransactionRecord>)
-      .recordset[0];
-    return parsePetitionType(petitionTypeRecord);
+    const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
+    const key = resultset.length ? parsePetitionType(resultset[0]) : 'UNKNOWN';
+    return getPetitionLabel(key);
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {

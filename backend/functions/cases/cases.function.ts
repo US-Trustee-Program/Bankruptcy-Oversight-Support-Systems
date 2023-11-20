@@ -7,14 +7,11 @@ import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CaseDetailsDbResult, CaseListDbResult } from '../lib/adapters/types/cases';
+import { initializeApplicationInsights } from '../azure/app-insights';
 
 dotenv.config();
 
-// enable instrumentation for Azure Application Insights
-if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
-  const appInsights = require('applicationinsights');
-  appInsights.setup().start();
-}
+initializeApplicationInsights();
 
 const MODULE_NAME = 'CASES-FUNCTION';
 
@@ -44,10 +41,10 @@ const httpTrigger: AzureFunction = async function (
 
     functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
-    let error = originalError;
-    if (!(error instanceof CamsError)) {
-      error = new UnknownError(MODULE_NAME, { originalError });
-    }
+    const error =
+      originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
     log.camsError(applicationContext, error);
     functionContext.res = httpError(error);
   }

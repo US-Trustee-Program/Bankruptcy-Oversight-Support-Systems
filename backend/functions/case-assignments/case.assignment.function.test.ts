@@ -96,7 +96,10 @@ describe('Case Assignment Function Tests', () => {
       },
     };
 
-    const expectedResponse = { message: 'Required parameter(s) caseId is/are absent.' };
+    const expectedResponse = {
+      message: 'Required parameter(s) caseId is/are absent.',
+      success: false,
+    };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(applicationContext, request);
@@ -117,7 +120,7 @@ describe('Case Assignment Function Tests', () => {
         role: 'TrialAttorney',
       },
     };
-    const expectedResponse = { message: 'caseId must be formatted like 01-12345.' };
+    const expectedResponse = { message: 'caseId must be formatted like 01-12345.', success: false };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(applicationContext, request);
@@ -138,7 +141,10 @@ describe('Case Assignment Function Tests', () => {
         role: 'TrialAttorney',
       },
     };
-    const expectedResponse = { message: 'Required parameter(s) attorneyList is/are absent.' };
+    const expectedResponse = {
+      message: 'Required parameter(s) attorneyList is/are absent.',
+      success: false,
+    };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(applicationContext, request);
@@ -162,6 +168,7 @@ describe('Case Assignment Function Tests', () => {
     const expectedResponse = {
       message:
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
+      success: false,
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
@@ -186,6 +193,7 @@ describe('Case Assignment Function Tests', () => {
     const expectedResponse = {
       message:
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
+      success: false,
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');

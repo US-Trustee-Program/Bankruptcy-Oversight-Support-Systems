@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
+import { vi } from 'vitest';
+import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 
 describe('court docket panel tests', () => {
   test('should render loading info when isLoading is true', () => {
@@ -16,10 +19,11 @@ describe('court docket panel tests', () => {
   });
 
   test('should render docket entries when provided', () => {
+    const documentNumberOne = 1;
     const docketEntries = [
       {
         sequenceNumber: 2,
-        documentNumber: 1,
+        documentNumber: documentNumberOne,
         dateFiled: '2023-05-07T00:00:00.0000000',
         summaryText: 'Add Judge',
         fullText: 'Docket entry number 1.',
@@ -45,8 +49,8 @@ describe('court docket panel tests', () => {
     expect(docketEntry1).toBeInTheDocument();
     expect(docketEntry2).toBeInTheDocument();
 
-    const docketEntry1Number = screen.getByTestId('docket-entry-0-number');
-    expect(docketEntry1Number.textContent).toEqual(docketEntries[0].documentNumber?.toString());
+    const docketEntry1DocumentNumber = screen.getByTestId('docket-entry-0-number');
+    expect(docketEntry1DocumentNumber).toHaveTextContent(documentNumberOne.toString());
     const docketEntry1Header = screen.getByTestId('docket-entry-0-header');
     expect(docketEntry1Header.innerHTML).toEqual(
       docketEntries[0].dateFiled + ' - ' + docketEntries[0].summaryText,
@@ -54,7 +58,21 @@ describe('court docket panel tests', () => {
     const docketEntry1Text = screen.getByTestId('docket-entry-0-text');
     expect(docketEntry1Text.innerHTML).toEqual(docketEntries[0].fullText);
 
-    const docketEntry2Number = screen.getByTestId('docket-entry-1-number');
-    expect(docketEntry2Number.innerHTML).toEqual('');
+    const docketEntry2DocumentNumber = screen.getByTestId('docket-entry-1-number');
+    expect(docketEntry2DocumentNumber.innerHTML).toEqual('');
+  });
+
+  test('should render docket search when the feature is turned on', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+    const docketEntries: CaseDocketEntry[] = [];
+
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+      </BrowserRouter>,
+    );
+
+    const searchInput = screen.queryByTestId('basic-search-field');
+    expect(searchInput).toBeInTheDocument();
   });
 });
