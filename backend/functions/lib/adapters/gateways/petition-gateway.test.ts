@@ -1,4 +1,3 @@
-import { CamsError } from '../../common-errors/cams-error';
 import { getPetitionLabel } from './petition-gateway';
 
 describe('Petition Type Label gateway', () => {
@@ -7,13 +6,8 @@ describe('Petition Type Label gateway', () => {
     expect(debtorTypeName).toEqual('Voluntary');
   });
 
-  test('should throw an error for an invalid ID', () => {
-    const expectedException = new CamsError('PETITION-GATEWAY', {
-      message: 'Cannot find petition label by ID',
-      data: { id: 'ZZ' },
-    });
-    expect(() => {
-      getPetitionLabel('ZZ');
-    }).toThrow(expectedException);
+  test('should return an unknown label for an invalid ID', () => {
+    const debtorTypeName = getPetitionLabel('ZZ');
+    expect(debtorTypeName).toEqual('');
   });
 });
