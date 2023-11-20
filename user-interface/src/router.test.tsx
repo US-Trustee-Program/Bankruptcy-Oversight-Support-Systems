@@ -24,7 +24,7 @@ const mockAttorneysList = {
 };
 
 describe('App Router Tests', () => {
-  it('should route /case-assignment to CaseAssignment', async () => {
+  test('should route /case-assignment to CaseAssignment', async () => {
     vi.spyOn(HTTP, 'httpGet').mockImplementation(
       (data: { url: string; headers?: object }): Promise<Response> => {
         if (data.url.includes('/attorneys')) {
@@ -54,7 +54,7 @@ describe('App Router Tests', () => {
   });
   /**/
 
-  it('should render Not Found 404 page when an invalid URL is supplied', () => {
+  test('should render Not Found 404 page when an invalid URL is supplied', () => {
     const badRoute = '/some/bad/route';
 
     // use <MemoryRouter> when you want to manually control the history

@@ -3,7 +3,7 @@ import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -85,7 +85,7 @@ describe('Case Detail screen tests', () => {
         expect(dismissedDate).toHaveTextContent('01-08-1964');
 
         const chapter = screen.getByTestId('case-chapter');
-        expect(chapter.textContent).toEqual('Voluntary Chapter 15');
+        expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
 
         const courtName = screen.getByTestId('court-name-and-district');
         expect(courtName.innerHTML).toEqual('Court of Law - Manhattan');
@@ -620,5 +620,50 @@ describe('Case Detail screen tests', () => {
       );
     },
     20000,
+  );
+
+  const navRouteTestCases = [
+    ['case-detail/1234', 'basic-info-link'],
+    ['case-detail/1234/', 'basic-info-link'],
+    ['case-detail/1234/court-docket/', 'court-docket-link'],
+  ];
+
+  test.each(navRouteTestCases)(
+    'should highlight the correct nav link when loading the corresponding url directly in browser',
+    async (routePath: string, expectedLink: string) => {
+      const testCaseDetail: CaseDetailType = {
+        caseId: '080-01-12345',
+        chapter: '15',
+        officeName: 'Redondo Beach',
+        caseTitle: 'The Beach Boys',
+        dateFiled: '01-04-1962',
+        judgeName: 'some judge',
+        debtorTypeLabel: 'Corporate Business',
+        petitionLabel: 'Voluntary Petition',
+        closedDate: '01-08-1963',
+        dismissedDate: '01-08-1964',
+        assignments: [],
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney: {
+          name: 'Jane Doe',
+          address1: '123 Rabbithole Lane',
+          cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+          phone: '234-123-1234',
+        },
+      };
+
+      // use <MemoryRouter> when you want to manually control the history
+      render(
+        <MemoryRouter initialEntries={[routePath]}>
+          <CaseDetail caseDetail={testCaseDetail} />
+        </MemoryRouter>,
+      );
+
+      const caseDocketLink = screen.getByTestId(expectedLink);
+
+      expect(caseDocketLink).toHaveClass('usa-current');
+    },
   );
 });

@@ -10,6 +10,9 @@ export interface CaseDetailHeaderProps {
 }
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
+  const courtInformation = `${props.caseDetail?.courtName} - ${props.caseDetail?.courtDivisionName}`;
+  // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
+  const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
   return (
     <div className="case-detail-header">
       <div className="grid-row grid-gap-lg">
@@ -38,10 +41,8 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
         <div className="grid-row grid-gap-lg" data-testid="loading-h2">
           <div className="grid-col-1"></div>
           <div className="grid-col-10">
-            <h2>
-              <span className="case-number text-no-wrap" title="Case Number">
-                {getCaseNumber(props.caseId)}
-              </span>
+            <h2 className="case-number text-no-wrap" title="Case Number">
+              {getCaseNumber(props.caseId)}
             </h2>
           </div>
           <div className="grid-col-1"></div>
@@ -52,29 +53,22 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
         <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
           <div className="grid-col-1"></div>
           <div className="grid-col-2">
-            <h2>
-              <span className="case-number text-no-wrap" title="Case Number">
-                {getCaseNumber(props.caseId)}
-              </span>
+            <h2 className="case-number text-no-wrap" title="Case Number">
+              {getCaseNumber(props.caseId)}
             </h2>
           </div>
           <div className="grid-col-5">
-            <h2>
-              <span
-                className="court-name"
-                title="Court Name and Distrct"
-                data-testid="court-name-and-district"
-              >
-                {props.caseDetail?.courtName} - {props.caseDetail?.courtDivisionName}
-              </span>
+            <h2
+              className="court-name"
+              title="Court Name and Distrct"
+              data-testid="court-name-and-district"
+            >
+              {courtInformation}
             </h2>
           </div>
           <div className="grid-col-3">
-            <h2>
-              <span className="case-chapter" title="Case Chapter" data-testid="case-chapter">
-                {props.caseDetail?.petitionLabel}{' '}
-                <span className="text-no-wrap">Chapter {props.caseDetail?.chapter}</span>
-              </span>
+            <h2 className="case-chapter" title="Case Chapter" data-testid="case-chapter">
+              {chapterInformation}
             </h2>
           </div>
           <div className="grid-col-1"></div>
