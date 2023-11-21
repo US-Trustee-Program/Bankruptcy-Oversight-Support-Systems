@@ -8,6 +8,10 @@
     }
     .docket-content {
       line-height: 24px;
+      ::highlight(search-results) {
+        background-color: yellow;
+        color: black;
+      }
     }
     .document-number-column {
       text-align: right;
