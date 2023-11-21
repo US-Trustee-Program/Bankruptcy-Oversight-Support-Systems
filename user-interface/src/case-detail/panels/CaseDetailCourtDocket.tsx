@@ -75,19 +75,10 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
             });
           });
 
-        const flattenedRanges = ranges.flat();
-        console.log(
-          'searching for:',
-          `"${searchString}"`,
-          'number of filtered entries',
-          docketEntries?.filter(docketSearchFilter).length || 0,
-          'number of ranges',
-          flattenedRanges.length,
-        );
         // TypeScript does not ship experimental browser type definitions which are being used here.
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        const searchResultsHighlight = new Highlight(...flattenedRanges);
+        const searchResultsHighlight = new Highlight(...ranges.flat());
         browserApi.CSS.highlights.set('search-results', searchResultsHighlight);
       }
     } else {
