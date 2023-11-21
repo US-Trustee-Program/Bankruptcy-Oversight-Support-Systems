@@ -3,14 +3,62 @@ import IconInput from '@/lib/components/IconInput';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import windowExperimental = BrowserExperimental.WindowExperimental;
 import './CaseDetailCourtDocket.scss';
-import windowExperimental = BrowserExperimental.windowExperimental;
 
 export interface CaseDetailCourtDocketProps {
   caseId: string | undefined;
   docketEntries?: CaseDocketEntry[];
 }
+export function handleHighlight(innerSearchString: string) {
+  // See https://developer.mozilla.org/en-US/docs/Web/API/HighlightRegistry/clear#browser_compatibility
+  const browserApi = window as windowExperimental;
+  if (browserApi.CSS.highlights) {
+    if (!innerSearchString.length) {
+      browserApi.CSS.highlights.clear();
+      return;
+    }
 
+    const docketNode = document.getElementById('searchable-docket');
+    if (!docketNode) return;
+
+    const treeWalker = document.createTreeWalker(docketNode, NodeFilter.SHOW_TEXT);
+    const allTextNodes = [];
+    let currentNode = treeWalker.nextNode();
+    while (currentNode) {
+      allTextNodes.push(currentNode);
+      currentNode = treeWalker.nextNode();
+    }
+
+    const ranges = allTextNodes
+      .map((el) => {
+        return { el, text: el.textContent?.toLowerCase() || '' };
+      })
+      .map(({ text, el }) => {
+        const indices = [];
+        let startPos = 0;
+        while (startPos < text.length) {
+          const index = text.indexOf(innerSearchString, startPos);
+          if (index === -1) break;
+          indices.push(index);
+          startPos = index + innerSearchString.length;
+        }
+
+        return indices.map((index) => {
+          const range = new Range();
+          range.setStart(el, index);
+          range.setEnd(el, index + innerSearchString.length);
+          return range;
+        });
+      });
+
+    // TypeScript does not ship experimental browser type definitions which are being used here.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const searchResultsHighlight = new Highlight(...ranges.flat());
+    browserApi.CSS.highlights.set('search-results', searchResultsHighlight);
+  }
+}
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries } = props;
   // TODO: Replace use of useEffect for handling loading with useTransition
@@ -37,80 +85,31 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   }, [docketEntries]);
 
   useEffect(() => {
-    const browserApi = window as windowExperimental;
-    if (browserApi.CSS.highlights) {
-      if (!searchString.length) {
-        browserApi.CSS.highlights.clear();
-        return;
-      }
-      const docketNode = document.getElementById('searchable-docket');
-      if (docketNode) {
-        const treeWalker = document.createTreeWalker(docketNode, NodeFilter.SHOW_TEXT);
-        const allTextNodes = [];
-        let currentNode = treeWalker.nextNode();
-        while (currentNode) {
-          allTextNodes.push(currentNode);
-          currentNode = treeWalker.nextNode();
-        }
-
-        const ranges = allTextNodes
-          .map((el) => {
-            return { el, text: el.textContent?.toLowerCase() || '' };
-          })
-          .map(({ text, el }) => {
-            const indices = [];
-            let startPos = 0;
-            while (startPos < text.length) {
-              const index = text.indexOf(searchString, startPos);
-              if (index === -1) break;
-              indices.push(index);
-              startPos = index + searchString.length;
-            }
-
-            return indices.map((index) => {
-              const range = new Range();
-              range.setStart(el, index);
-              range.setEnd(el, index + searchString.length);
-              return range;
-            });
-          });
-
-        // TypeScript does not ship experimental browser type definitions which are being used here.
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const searchResultsHighlight = new Highlight(...ranges.flat());
-        browserApi.CSS.highlights.set('search-results', searchResultsHighlight);
-      }
-    } else {
-      // See https://developer.mozilla.org/en-US/docs/Web/API/HighlightRegistry/clear#browser_compatibility
-      console.log('Highlight API is not supported.');
-    }
+    handleHighlight(searchString);
   }, [searchString]);
 
   return (
     <div id="case-detail-court-docket-panel">
       {searchFeature && (
-        <form className="filter-and-search padding-y-4" role="search" autoComplete="false">
-          <div className="grid-row">
-            <div className="grid-col-12" data-testid="docket-entry-search">
-              <section aria-label="Small search component">
-                <div className="usa-search usa-search--small">
-                  <label className="" htmlFor="basic-search-field">
-                    Find in Docket
-                  </label>
-                  <IconInput
-                    className="search-icon"
-                    id="basic-search-field"
-                    name="basic-search"
-                    icon="search"
-                    autocomplete="off"
-                    onChange={search}
-                  />
-                </div>
-              </section>
-            </div>
+        <div className="filter-and-search padding-y-4 grid-row">
+          <div className="grid-col-12" data-testid="docket-entry-search">
+            <section aria-label="Small search component">
+              <div className="usa-search usa-search--small">
+                <label className="" htmlFor="basic-search-field">
+                  Find in Docket
+                </label>
+                <IconInput
+                  className="search-icon"
+                  id="basic-search-field"
+                  name="basic-search"
+                  icon="search"
+                  autocomplete="off"
+                  onChange={search}
+                />
+              </div>
+            </section>
           </div>
-        </form>
+        </div>
       )}
       <div id="searchable-docket" data-testid="searchable-docket">
         {isLoading && <LoadingIndicator />}

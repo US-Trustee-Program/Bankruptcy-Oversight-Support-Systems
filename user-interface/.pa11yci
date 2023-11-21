@@ -18,7 +18,14 @@
       "timeout": 20000
     },
     "http://localhost:3000/case-detail/101-23-44461",
-    "http://localhost:3000/case-detail/101-23-44461/court-docket"
+    {
+      "url": "http://localhost:3000/case-detail/101-23-44461/court-docket",
+      "actions": [
+        "wait for element [id='searchable-docket'] to be visible",
+        "set field #basic-search-field to Motion"
+      ],
+      "timeout": 20000
+    }
   ],
   "standard": "WCAG2AA"
 }

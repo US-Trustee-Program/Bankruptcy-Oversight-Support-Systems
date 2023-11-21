@@ -1,5 +1,5 @@
 declare module BrowserExperimental {
-  export interface windowExperimental extends window {
+  export interface WindowExperimental extends window {
     CSS: {
       highlights?: {
         set: (name: string, highlight: Highlight) => void;
