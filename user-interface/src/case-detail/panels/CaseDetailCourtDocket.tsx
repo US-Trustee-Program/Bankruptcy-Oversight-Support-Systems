@@ -3,62 +3,14 @@ import IconInput from '@/lib/components/IconInput';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import windowExperimental = BrowserExperimental.WindowExperimental;
 import './CaseDetailCourtDocket.scss';
+import { handleHighlight } from '@/lib/utils/highlight-api';
 
 export interface CaseDetailCourtDocketProps {
-  caseId: string | undefined;
+  caseId?: string;
   docketEntries?: CaseDocketEntry[];
 }
-export function handleHighlight(innerSearchString: string) {
-  // See https://developer.mozilla.org/en-US/docs/Web/API/HighlightRegistry/clear#browser_compatibility
-  const browserApi = window as windowExperimental;
-  if (browserApi.CSS.highlights) {
-    if (!innerSearchString.length) {
-      browserApi.CSS.highlights.clear();
-      return;
-    }
 
-    const docketNode = document.getElementById('searchable-docket');
-    if (!docketNode) return;
-
-    const treeWalker = document.createTreeWalker(docketNode, NodeFilter.SHOW_TEXT);
-    const allTextNodes = [];
-    let currentNode = treeWalker.nextNode();
-    while (currentNode) {
-      allTextNodes.push(currentNode);
-      currentNode = treeWalker.nextNode();
-    }
-
-    const ranges = allTextNodes
-      .map((el) => {
-        return { el, text: el.textContent?.toLowerCase() || '' };
-      })
-      .map(({ text, el }) => {
-        const indices = [];
-        let startPos = 0;
-        while (startPos < text.length) {
-          const index = text.indexOf(innerSearchString, startPos);
-          if (index === -1) break;
-          indices.push(index);
-          startPos = index + innerSearchString.length;
-        }
-
-        return indices.map((index) => {
-          const range = new Range();
-          range.setStart(el, index);
-          range.setEnd(el, index + innerSearchString.length);
-          return range;
-        });
-      });
-
-    // TypeScript does not ship experimental browser type definitions which are being used here.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const searchResultsHighlight = new Highlight(...ranges.flat());
-    browserApi.CSS.highlights.set('search-results', searchResultsHighlight);
-  }
-}
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries } = props;
   // TODO: Replace use of useEffect for handling loading with useTransition
@@ -77,7 +29,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   function search(ev: React.ChangeEvent<HTMLInputElement>) {
     const searchString = ev.target.value.toLowerCase();
-    setSearchString(searchString || '');
+    setSearchString(searchString);
   }
 
   useEffect(() => {
@@ -85,7 +37,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   }, [docketEntries]);
 
   useEffect(() => {
-    handleHighlight(searchString);
+    handleHighlight(window, document, 'searchable-docket', searchString);
   }, [searchString]);
 
   return (

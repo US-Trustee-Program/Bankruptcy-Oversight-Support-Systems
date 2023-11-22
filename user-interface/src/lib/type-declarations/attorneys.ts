@@ -16,9 +16,9 @@ export class AttorneyInfo {
     this.lastName = lastName;
     this.office = office;
     if (optionals) {
-      this.middleName = optionals.middleName || undefined;
-      this.generation = optionals.generation || undefined;
-      this.caseLoad = optionals.caseLoad || undefined;
+      this.middleName = optionals.middleName;
+      this.generation = optionals.generation;
+      this.caseLoad = optionals.caseLoad;
     }
   }
 }

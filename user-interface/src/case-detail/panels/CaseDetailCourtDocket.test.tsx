@@ -1,12 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-//import CaseDetailCourtDocket, { handleHighlight } from '@/case-detail/panels/CaseDetailCourtDocket';
-import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 import { vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
-//import WindowExperimental = BrowserExperimental.WindowExperimental;
-//import { createRoot } from 'react-dom/client';
 
 describe('court docket panel tests', () => {
   const docketEntries = [
@@ -119,51 +116,4 @@ describe('court docket panel tests', () => {
     const filteredDocket = screen.getByTestId(searchableDocketId);
     expect(filteredDocket.childElementCount).toEqual(1);
   });
-
-  /*
-  describe('CSS Highlight API integration', () => {
-    // TODO: Test normal. API exists and search term is provided and docket exists
-    // TODO: Test no API available
-    test('should clear highlights if no search term is passed', () => {
-      // SPY -> browserApi.CSS.highlights.clear()
-    });
-
-    test('should not add highlights if the searchable-docket node is not avaialble', () => {
-      // SPY -> browserApi.CSS.highlights.set('search-results', searchResultsHighlight)
-      // NOT CALLED.
-    });
-
-    // TODO: Test API available, has search term, but docket does not exist in DOM.
-    test('should add highlight to the hightlight API', () => {
-      // SPY -> browserApi.CSS.highlights.set('search-results', searchResultsHighlight)
-      const setMock = vi.fn();
-      const clearMock = vi.fn();
-
-      // TODO: Mock the browser highlight API on the window.
-      // The window variable is scoped globally and used by the handleHighlight function.
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const window: WindowExperimental = {
-        CSS: {
-          highlights: {
-            set: setMock,
-            clear: clearMock,
-          },
-        },
-      };
-      // vi.spyOn(setMock);
-      const caseId = '123-23-1234';
-
-      // The document variable is scoped globally and used by the handleHighlight function.
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const document: Document = new Document();
-      const root = document.createElement('div');
-      const reactRoot = createRoot(root);
-      reactRoot.render(CaseDetailCourtDocket({ caseId, docketEntries }));
-
-      const searchString = 'Docket ';
-      handleHighlight(searchString);
-      expect(setMock.mock.calls).toHaveBeenCalled();
-    });
-  });
-  */
 });
