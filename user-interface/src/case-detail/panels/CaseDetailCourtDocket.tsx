@@ -5,17 +5,21 @@ import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import './CaseDetailCourtDocket.scss';
 import { handleHighlight } from '@/lib/utils/highlight-api';
+import Icon from '@/lib/components/uswds/Icon';
 
 export interface CaseDetailCourtDocketProps {
   caseId?: string;
   docketEntries?: CaseDocketEntry[];
 }
 
+type SortDirection = 'Oldest' | 'Newest';
+
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries } = props;
   // TODO: Replace use of useEffect for handling loading with useTransition
   const [isLoading, setIsLoading] = useState(true);
   const [searchString, setSearchString] = useState('');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
 
   const flags = useFeatureFlags();
   const searchFeature = flags[DOCKET_SEARCH_ENABLED];
@@ -25,6 +29,18 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
       docketEntry.summaryText.toLowerCase().includes(searchString) ||
       docketEntry.fullText.toLowerCase().includes(searchString)
     );
+  }
+
+  function docketSorter(left: CaseDocketEntry, right: CaseDocketEntry) {
+    if (sortDirection === 'Newest') {
+      return left.sequenceNumber < right.sequenceNumber ? -1 : 1;
+    } else {
+      return left.sequenceNumber < right.sequenceNumber ? 1 : -1;
+    }
+  }
+
+  function toggleSort() {
+    setSortDirection(sortDirection === 'Newest' ? 'Oldest' : 'Newest');
   }
 
   function search(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -61,6 +77,24 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
               </div>
             </section>
           </div>
+          <div className="grid-col-12" data-testid="docket-entry-sort">
+            <section aria-label="Small sort component">
+              <div className="usa-sort usa-sort--small">
+                <button
+                  className="usa-button usa-button--outline sort-button"
+                  id="basic-sort-button"
+                  name="basic-sort"
+                  onClick={toggleSort}
+                >
+                  Sort ({sortDirection})
+                  <Icon
+                    className="sort-button-icon"
+                    name={sortDirection === 'Newest' ? 'arrow_downward' : 'arrow_upward'}
+                  />
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
       )}
       <div id="searchable-docket" data-testid="searchable-docket">
@@ -69,6 +103,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           docketEntries &&
           docketEntries
             .filter(docketSearchFilter)
+            .sort(docketSorter)
             .map((docketEntry: CaseDocketEntry, idx: number) => {
               return (
                 <div
