@@ -1,3 +1,4 @@
+import { ChangeEventHandler } from 'react';
 import './IconInput.scss';
 import Icon from './uswds/Icon';
 
@@ -7,8 +8,9 @@ export interface IconInputProps {
   type?: string;
   name?: string;
   icon: string;
+  autocomplete?: 'off';
   position?: 'left' | 'right';
-  onChange?: () => void;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
 }
 
 export default function IconInput(props: IconInputProps) {
@@ -19,6 +21,7 @@ export default function IconInput(props: IconInputProps) {
         id={props.id}
         type={props.type}
         name={props.name}
+        autoComplete={props.autocomplete}
         onChange={props.onChange}
         data-testid={props.id}
       />

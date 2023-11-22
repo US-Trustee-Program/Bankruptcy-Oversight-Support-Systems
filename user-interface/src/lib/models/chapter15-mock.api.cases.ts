@@ -157,9 +157,7 @@ export default class Chapter15MockApi extends Api {
       response = {
         message: '',
         count: 1,
-        body: {
-          caseDetails: Chapter15MockApi.caseDocketEntries,
-        },
+        body: Chapter15MockApi.caseDocketEntries,
       };
     } else if (path.match(/\/cases\/[\d-]+/)) {
       response = {

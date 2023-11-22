@@ -1,11 +1,27 @@
-import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 import { vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 
 describe('court docket panel tests', () => {
+  const docketEntries = [
+    {
+      sequenceNumber: 2,
+      documentNumber: 1,
+      dateFiled: '2023-05-07T00:00:00.0000000',
+      summaryText: 'Add Judge',
+      fullText: 'Docket entry number 1.',
+    },
+    {
+      sequenceNumber: 3,
+      dateFiled: '2023-05-07T00:00:00.0000000',
+      summaryText: 'Add Judge',
+      fullText: 'Docket entry number 2.',
+    },
+  ];
+
   test('should render loading info when isLoading is true', () => {
     render(
       <BrowserRouter>
@@ -20,21 +36,6 @@ describe('court docket panel tests', () => {
 
   test('should render docket entries when provided', () => {
     const documentNumberOne = 1;
-    const docketEntries = [
-      {
-        sequenceNumber: 2,
-        documentNumber: documentNumberOne,
-        dateFiled: '2023-05-07T00:00:00.0000000',
-        summaryText: 'Add Judge',
-        fullText: 'Docket entry number 1.',
-      },
-      {
-        sequenceNumber: 3,
-        dateFiled: '2023-05-07T00:00:00.0000000',
-        summaryText: 'Add Judge',
-        fullText: 'Docket entry number 2.',
-      },
-    ];
     render(
       <BrowserRouter>
         <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
@@ -74,5 +75,45 @@ describe('court docket panel tests', () => {
 
     const searchInput = screen.queryByTestId('basic-search-field');
     expect(searchInput).toBeInTheDocument();
+  });
+
+  test('should filter the list of docket entries per the search text', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+      </BrowserRouter>,
+    );
+
+    const searchableDocketId = 'searchable-docket';
+    const startingDocket = screen.getByTestId(searchableDocketId);
+    expect(startingDocket.childElementCount).toEqual(docketEntries.length);
+
+    const searchInput = screen.getByTestId('basic-search-field');
+    fireEvent.change(searchInput, { target: { value: 'number 2' } });
+
+    const filteredDocket = screen.getByTestId(searchableDocketId);
+    expect(filteredDocket.childElementCount).toEqual(1);
+  });
+
+  test('should highlight search text', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+      </BrowserRouter>,
+    );
+
+    const searchableDocketId = 'searchable-docket';
+    const startingDocket = screen.getByTestId(searchableDocketId);
+    expect(startingDocket.childElementCount).toEqual(docketEntries.length);
+
+    const searchInput = screen.getByTestId('basic-search-field');
+    fireEvent.change(searchInput, { target: { value: 'number 2' } });
+
+    const filteredDocket = screen.getByTestId(searchableDocketId);
+    expect(filteredDocket.childElementCount).toEqual(1);
   });
 });
