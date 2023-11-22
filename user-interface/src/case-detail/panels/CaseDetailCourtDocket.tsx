@@ -32,7 +32,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   }
 
   function docketSorter(left: CaseDocketEntry, right: CaseDocketEntry) {
-    const direction = sortDirection === 'Newest' ? -1 : 1;
+    const direction = sortDirection === 'Newest' ? 1 : -1;
     return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
   }
 
@@ -51,7 +51,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   useEffect(() => {
     handleHighlight(window, document, 'searchable-docket', searchString);
-  }, [searchString]);
+  }, [searchString, sortDirection]);
 
   return (
     <div id="case-detail-court-docket-panel">
@@ -74,7 +74,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
               </div>
             </section>
           </div>
-          <div className="grid-col-2" data-testid="docket-entry-sort">
+          <div className="grid-col-2">
             <section aria-label="Small sort component">
               <div className="usa-sort usa-sort--small">
                 <button
