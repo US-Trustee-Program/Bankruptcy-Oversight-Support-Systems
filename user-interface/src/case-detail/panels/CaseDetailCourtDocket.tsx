@@ -57,7 +57,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
     <div id="case-detail-court-docket-panel">
       {searchFeature && (
         <div className="filter-and-search padding-y-4 grid-row">
-          <div className="grid-col-10" data-testid="docket-entry-search">
+          <div className="grid-col-8" data-testid="docket-entry-search">
             <section aria-label="Small search component">
               <div className="usa-search usa-search--small">
                 <label className="" htmlFor="basic-search-field">
@@ -74,7 +74,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
               </div>
             </section>
           </div>
-          <div className="grid-col-2">
+          <div className="sort grid-col-4">
             <section aria-label="Small sort component">
               <div className="usa-sort usa-sort--small">
                 <button
