@@ -20,6 +20,12 @@ describe('court docket panel tests', () => {
       summaryText: 'Add Judge',
       fullText: 'Docket entry number 2.',
     },
+    {
+      sequenceNumber: 4,
+      dateFiled: '2023-07-07T00:00:00.0000000',
+      summaryText: 'Add Attorney',
+      fullText: 'Docket entry number 3.',
+    },
   ];
 
   test('should render loading info when isLoading is true', () => {
@@ -115,5 +121,39 @@ describe('court docket panel tests', () => {
 
     const filteredDocket = screen.getByTestId(searchableDocketId);
     expect(filteredDocket.childElementCount).toEqual(1);
+  });
+
+  test('should sort docket entries', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+      </BrowserRouter>,
+    );
+
+    const searchableDocketId = 'searchable-docket';
+    const sortButtonId = 'docket-entry-sort';
+    const expectedFirstDocketTest =
+      docketEntries[2].dateFiled + ' - ' + docketEntries[2].summaryText + docketEntries[2].fullText;
+
+    const expectedLastDocketTest =
+      docketEntries[0].documentNumber +
+      docketEntries[0].dateFiled +
+      ' - ' +
+      docketEntries[0].summaryText +
+      docketEntries[0].fullText;
+
+    const startingDocket = screen.getByTestId(searchableDocketId);
+    const sortButton = screen.getByTestId(sortButtonId);
+    expect(startingDocket.childElementCount).toEqual(docketEntries.length);
+    fireEvent.click(sortButton);
+    const docket = screen.getByTestId(searchableDocketId);
+
+    console.log(docket.children[0].textContent);
+    expect(docket.children[0].textContent).toBe(expectedFirstDocketTest);
+
+    fireEvent.click(sortButton);
+    expect(docket.children[0].textContent).toBe(expectedLastDocketTest);
   });
 });

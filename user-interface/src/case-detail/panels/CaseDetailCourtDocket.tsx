@@ -82,6 +82,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                   id="basic-sort-button"
                   name="basic-sort"
                   onClick={toggleSort}
+                  data-testid="docket-entry-sort"
                 >
                   <div>
                     Sort ({sortDirection})
