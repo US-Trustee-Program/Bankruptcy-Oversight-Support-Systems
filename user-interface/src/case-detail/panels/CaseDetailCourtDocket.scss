@@ -1,3 +1,5 @@
+@import '../../styles/abstracts/colors';
+
 #case-detail-court-docket-panel {
   .docket-entry {
     padding-bottom: 2rem;
@@ -8,6 +10,10 @@
     }
     .docket-content {
       line-height: 24px;
+      ::highlight(search-results) {
+        background-color: $yellow-20;
+        color: black;
+      }
     }
     .document-number-column {
       text-align: right;
