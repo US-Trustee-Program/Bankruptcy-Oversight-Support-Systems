@@ -32,11 +32,8 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   }
 
   function docketSorter(left: CaseDocketEntry, right: CaseDocketEntry) {
-    if (sortDirection === 'Newest') {
-      return left.sequenceNumber < right.sequenceNumber ? -1 : 1;
-    } else {
-      return left.sequenceNumber < right.sequenceNumber ? 1 : -1;
-    }
+    const direction = sortDirection === 'Newest' ? -1 : 1;
+    return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
   }
 
   function toggleSort() {
@@ -60,7 +57,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
     <div id="case-detail-court-docket-panel">
       {searchFeature && (
         <div className="filter-and-search padding-y-4 grid-row">
-          <div className="grid-col-12" data-testid="docket-entry-search">
+          <div className="grid-col-10" data-testid="docket-entry-search">
             <section aria-label="Small search component">
               <div className="usa-search usa-search--small">
                 <label className="" htmlFor="basic-search-field">
@@ -77,7 +74,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
               </div>
             </section>
           </div>
-          <div className="grid-col-12" data-testid="docket-entry-sort">
+          <div className="grid-col-2" data-testid="docket-entry-sort">
             <section aria-label="Small sort component">
               <div className="usa-sort usa-sort--small">
                 <button
@@ -86,11 +83,13 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                   name="basic-sort"
                   onClick={toggleSort}
                 >
-                  Sort ({sortDirection})
-                  <Icon
-                    className="sort-button-icon"
-                    name={sortDirection === 'Newest' ? 'arrow_downward' : 'arrow_upward'}
-                  />
+                  <div>
+                    Sort ({sortDirection})
+                    <Icon
+                      className="sort-button-icon"
+                      name={sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'}
+                    />
+                  </div>
                 </button>
               </div>
             </section>
