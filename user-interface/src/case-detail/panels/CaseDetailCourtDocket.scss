@@ -22,6 +22,12 @@
       font-weight: bold;
     }
   }
+  .sort {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-start;
+    text-align: end;
+  }
   .sort-button {
     overflow: hidden;
     width: 11rem;
@@ -32,4 +38,5 @@
     width: 2rem;
     vertical-align: middle;
   }
+
 }
