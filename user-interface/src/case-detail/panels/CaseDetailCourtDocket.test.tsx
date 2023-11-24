@@ -5,6 +5,10 @@ import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 
+function toTextContent(de: CaseDocketEntry) {
+  return de.documentNumber + de.dateFiled + ' - ' + de.summaryText + de.fullText;
+}
+
 describe('court docket panel tests', () => {
   const docketEntries = [
     {
@@ -20,7 +24,15 @@ describe('court docket panel tests', () => {
       summaryText: 'Add Judge',
       fullText: 'Docket entry number 2.',
     },
+    {
+      sequenceNumber: 4,
+      documentNumber: 2,
+      dateFiled: '2023-07-07T00:00:00.0000000',
+      summaryText: 'Add Attorney',
+      fullText: 'Docket entry number 3.',
+    },
   ];
+  const lastIndex = docketEntries.length - 1;
 
   test('should render loading info when isLoading is true', () => {
     render(
@@ -35,7 +47,7 @@ describe('court docket panel tests', () => {
   });
 
   test('should render docket entries when provided', () => {
-    const documentNumberOne = 1;
+    const documentNumberOne = docketEntries[lastIndex].documentNumber;
     render(
       <BrowserRouter>
         <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
@@ -51,13 +63,13 @@ describe('court docket panel tests', () => {
     expect(docketEntry2).toBeInTheDocument();
 
     const docketEntry1DocumentNumber = screen.getByTestId('docket-entry-0-number');
-    expect(docketEntry1DocumentNumber).toHaveTextContent(documentNumberOne.toString());
+    expect(docketEntry1DocumentNumber).toHaveTextContent(documentNumberOne?.toString() || '');
     const docketEntry1Header = screen.getByTestId('docket-entry-0-header');
     expect(docketEntry1Header.innerHTML).toEqual(
-      docketEntries[0].dateFiled + ' - ' + docketEntries[0].summaryText,
+      docketEntries[lastIndex].dateFiled + ' - ' + docketEntries[lastIndex].summaryText,
     );
     const docketEntry1Text = screen.getByTestId('docket-entry-0-text');
-    expect(docketEntry1Text.innerHTML).toEqual(docketEntries[0].fullText);
+    expect(docketEntry1Text.innerHTML).toEqual(docketEntries[lastIndex].fullText);
 
     const docketEntry2DocumentNumber = screen.getByTestId('docket-entry-1-number');
     expect(docketEntry2DocumentNumber.innerHTML).toEqual('');
@@ -115,5 +127,31 @@ describe('court docket panel tests', () => {
 
     const filteredDocket = screen.getByTestId(searchableDocketId);
     expect(filteredDocket.childElementCount).toEqual(1);
+  });
+
+  test('should sort docket entries', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+      </BrowserRouter>,
+    );
+
+    const searchableDocketId = 'searchable-docket';
+    const sortButtonId = 'docket-entry-sort';
+    const expectedFirstDocketTest = toTextContent(docketEntries[2]);
+    const expectedLastDocketTest = toTextContent(docketEntries[0]);
+
+    const startingDocket = screen.getByTestId(searchableDocketId);
+    const sortButton = screen.getByTestId(sortButtonId);
+    expect(startingDocket.childElementCount).toEqual(docketEntries.length);
+    fireEvent.click(sortButton);
+    const docket = screen.getByTestId(searchableDocketId);
+
+    expect(docket.children[0].textContent).toBe(expectedLastDocketTest);
+
+    fireEvent.click(sortButton);
+    expect(docket.children[0].textContent).toBe(expectedFirstDocketTest);
   });
 });
