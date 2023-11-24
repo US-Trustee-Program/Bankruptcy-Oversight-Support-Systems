@@ -32,8 +32,8 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       D.DE_SEQNO as sequenceNumber,
       D.DE_DOCUMENT_NUM as documentNumber,
       FORMAT(D.DE_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
-      D.DO_SUMMARY_TEXT as summaryText,
-      D.DT_TEXT as fullText
+      ISNULL(D.DO_SUMMARY_TEXT, 'SUMMARY NOT AVAILABLE') as summaryText,
+      ISNULL(D.DT_TEXT, 'TEXT NOT AVAILABLE') as fullText
     FROM AO_DE AS D
     JOIN AO_CS AS C ON C.CS_CASEID=D.CS_CASEID AND C.COURT_ID=D.COURT_ID
     WHERE C.CS_DIV=@courtDiv AND C.CASE_ID=@dxtrCaseId
