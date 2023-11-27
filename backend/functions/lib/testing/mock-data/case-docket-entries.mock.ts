@@ -21,6 +21,7 @@ export const CASE_DOCKET_ENTRIES: CaseDocket = [
     dateFiled: '2016-08-15T00:00:00.000Z',
     summaryText: 'Auto- docket of credit card',
     fullText: 'Textor combibo virtus eum stillicidium tabella tempus sub audax.',
+    documents: [{ sequenceNumber: 2, fileUri: 'http://google.com', fileSize: 100000 }],
   },
   {
     sequenceNumber: 3,
@@ -29,6 +30,7 @@ export const CASE_DOCKET_ENTRIES: CaseDocket = [
     summaryText: 'Case Association - Joint Administration',
     fullText:
       'Centum vis auctor cupiditate voluptatibus usus demoror valeo summopere. Demens fuga tumultus comes caput charisma. Clarus tardus approbo comes trepide dolores.\nComes enim velit provident quas votum vis tenax timidus eius. Vociferor sponte ipsam. Vinum cinis corporis delectatio.\nAufero timidus aggero deludo capio summisse ambitus blanditiis maxime. Acerbitas pecus occaecati comparo vado. Aveho autus eligendi illo quae praesentium soluta cupio.',
+    documents: [{ sequenceNumber: 3, fileUri: 'http://google.com', fileSize: 200000 }],
   },
   {
     sequenceNumber: 4,
@@ -37,6 +39,7 @@ export const CASE_DOCKET_ENTRIES: CaseDocket = [
     summaryText: 'Petition for Recognition of Foreign Proceeding',
     fullText:
       'Corpus truculenter astrum cui tamen tribuo. Sodalitas qui carcer alias vallum sponte. Addo conturbo utique.',
+    documents: [{ sequenceNumber: 3, fileUri: 'http://google.com', fileSize: 150000 }],
   },
   {
     sequenceNumber: 5,
@@ -45,5 +48,9 @@ export const CASE_DOCKET_ENTRIES: CaseDocket = [
     summaryText: 'Case Association - Joint Administration',
     fullText:
       'Ustilo basium teneo abeo urbanus terminatio somniculosus sapiente tollo capto. Curatio curo abbas. Adulatio curo sufficio comminor conicio. Sed quia argentum campana admiratio. Ut odio admoveo adsidue confero ambulo urbanus tenus.',
+    documents: [
+      { sequenceNumber: 5, fileUri: 'http://google.com', fileSize: 3000000 },
+      { sequenceNumber: 5, fileUri: 'http://google.com', fileSize: 1750000 },
+    ],
   },
 ];

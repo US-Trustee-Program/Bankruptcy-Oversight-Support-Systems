@@ -319,6 +319,7 @@ export const AO_DC_InsertableColumnNames: ColumnNames = [
   'COURT_ID',
   'DE_SEQNO',
   'DM_SEQ',
+  'PDF_SIZE',
 ];
 export const AO_DC_ColumnNames: ColumnNames = [...AO_DC_InsertableColumnNames];
 export interface AO_DC_RecordProps {
@@ -327,6 +328,7 @@ export interface AO_DC_RecordProps {
   COURT_ID?: string;
   DE_SEQNO?: number;
   DM_SEQ?: number;
+  PDF_SIZE?: number;
 }
 export class AO_DC_Record implements TableRecordHelper {
   FILE_NAME: string = '';
@@ -334,6 +336,7 @@ export class AO_DC_Record implements TableRecordHelper {
   COURT_ID?: string;
   DE_SEQNO?: number;
   DM_SEQ?: number;
+  PDF_SIZE?: number;
 
   constructor(props: AO_DC_RecordProps) {
     Object.assign(this, props);
@@ -343,9 +346,18 @@ export class AO_DC_Record implements TableRecordHelper {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
-    return [this.FILE_NAME, this.CS_CASEID, this.COURT_ID, this.DE_SEQNO, this.DM_SEQ];
+    return [
+      this.FILE_NAME,
+      this.CS_CASEID,
+      this.COURT_ID,
+      this.DE_SEQNO,
+      this.DM_SEQ,
+      this.PDF_SIZE,
+    ];
   }
 }
 export function toAoDcInsertStatements(records: Array<AO_DC_Record>): string[] {
   return toSqlInsertStatements(AO_DC_TableName, AO_DC_InsertableColumnNames, records);
 }
+
+export const AO_DE_CourtStatus = ['fa', 'na', 'pdf', 'unk'] as const;
