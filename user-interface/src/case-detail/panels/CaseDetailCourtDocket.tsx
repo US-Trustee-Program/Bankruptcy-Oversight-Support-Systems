@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import IconInput from '@/lib/components/IconInput';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
-import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
+import { CaseDocketEntry, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
 import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import './CaseDetailCourtDocket.scss';
 import { handleHighlight } from '@/lib/utils/highlight-api';
@@ -132,6 +132,20 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                       aria-label="full text of docket entry"
                     >
                       {docketEntry.fullText}
+                      {docketEntry.documents && (
+                        <ul className="usa-list usa-list--unstyled">
+                          {docketEntry.documents.map((linkInfo: CaseDocketEntryDocument) => {
+                            return (
+                              <li key={linkInfo.fileUri}>
+                                <a href={linkInfo.fileUri}>
+                                  View {linkInfo.fileLabel || linkInfo.fileUri} [{linkInfo.fileSize}{' '}
+                                  bytes]
+                                </a>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
                     </div>
                   </div>
                 </div>
