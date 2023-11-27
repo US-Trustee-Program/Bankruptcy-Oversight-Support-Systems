@@ -54,90 +54,92 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   }, [searchString, sortDirection]);
 
   return (
-    <div id="case-detail-court-docket-panel">
-      {searchFeature && (
-        <div className="filter-and-search padding-y-4 grid-row">
-          <div className="grid-col-8" data-testid="docket-entry-search">
-            <section aria-label="Small search component">
-              <div className="usa-search usa-search--small">
-                <label className="" htmlFor="basic-search-field">
-                  Find in Docket
-                </label>
-                <IconInput
-                  className="search-icon"
-                  id="basic-search-field"
-                  name="basic-search"
-                  icon="search"
-                  autocomplete="off"
-                  onChange={search}
-                />
-              </div>
-            </section>
-          </div>
-          <div className="sort grid-col-4">
-            <section aria-label="Small sort component">
-              <div className="usa-sort usa-sort--small">
-                <button
-                  className="usa-button usa-button--outline sort-button"
-                  id="basic-sort-button"
-                  name="basic-sort"
-                  onClick={toggleSort}
-                  data-testid="docket-entry-sort"
-                >
-                  <div>
-                    Sort ({sortDirection})
-                    <Icon
-                      className="sort-button-icon"
-                      name={sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'}
-                    />
-                  </div>
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
-      )}
-      <div id="searchable-docket" data-testid="searchable-docket">
-        {isLoading && <LoadingIndicator />}
-        {!isLoading &&
-          docketEntries &&
-          docketEntries
-            .filter(docketSearchFilter)
-            .sort(docketSorter)
-            .map((docketEntry: CaseDocketEntry, idx: number) => {
-              return (
-                <div
-                  className="grid-row grid-gap-lg docket-entry"
-                  key={idx}
-                  data-testid={`docket-entry-${idx}`}
-                >
-                  <div
-                    className="grid-col-1 document-number-column usa-tooltip"
-                    data-testid={`docket-entry-${idx}-number`}
-                    aria-label="document number"
-                    title={`Document number ${docketEntry.documentNumber}`}
-                  >
-                    {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
-                  </div>
-                  <div className="grid-col-11 docket-content">
-                    <div
-                      className="docket-entry-header"
-                      aria-label="date filed and summary text for the docket entry"
-                      data-testid={`docket-entry-${idx}-header`}
-                    >
-                      {docketEntry.dateFiled} - {docketEntry.summaryText}
-                    </div>
-                    <div
-                      data-testid={`docket-entry-${idx}-text`}
-                      aria-label="full text of docket entry"
-                    >
-                      {docketEntry.fullText}
-                    </div>
-                  </div>
+    <>
+      <div id="case-detail-court-docket-panel">
+        {searchFeature && (
+          <div className="filter-and-search padding-y-4 grid-row">
+            <div className="grid-col-8" data-testid="docket-entry-search">
+              <section aria-label="Small search component">
+                <div className="usa-search usa-search--small">
+                  <label className="" htmlFor="basic-search-field">
+                    Find in Docket
+                  </label>
+                  <IconInput
+                    className="search-icon"
+                    id="basic-search-field"
+                    name="basic-search"
+                    icon="search"
+                    autocomplete="off"
+                    onChange={search}
+                  />
                 </div>
-              );
-            })}
+              </section>
+            </div>
+            <div className="sort grid-col-4">
+              <section aria-label="Small sort component">
+                <div className="usa-sort usa-sort--small">
+                  <button
+                    className="usa-button usa-button--outline sort-button"
+                    id="basic-sort-button"
+                    name="basic-sort"
+                    onClick={toggleSort}
+                    data-testid="docket-entry-sort"
+                  >
+                    <div>
+                      Sort ({sortDirection})
+                      <Icon
+                        className="sort-button-icon"
+                        name={sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'}
+                      />
+                    </div>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
+        <div id="searchable-docket" data-testid="searchable-docket">
+          {isLoading && <LoadingIndicator />}
+          {!isLoading &&
+            docketEntries &&
+            docketEntries
+              .filter(docketSearchFilter)
+              .sort(docketSorter)
+              .map((docketEntry: CaseDocketEntry, idx: number) => {
+                return (
+                  <div
+                    className="grid-row grid-gap-lg docket-entry"
+                    key={idx}
+                    data-testid={`docket-entry-${idx}`}
+                  >
+                    <div
+                      className="grid-col-1 document-number-column usa-tooltip"
+                      data-testid={`docket-entry-${idx}-number`}
+                      aria-label="document number"
+                      title={`Document number ${docketEntry.documentNumber}`}
+                    >
+                      {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
+                    </div>
+                    <div className="grid-col-11 docket-content">
+                      <div
+                        className="docket-entry-header"
+                        aria-label="date filed and summary text for the docket entry"
+                        data-testid={`docket-entry-${idx}-header`}
+                      >
+                        {docketEntry.dateFiled} - {docketEntry.summaryText}
+                      </div>
+                      <div
+                        data-testid={`docket-entry-${idx}-text`}
+                        aria-label="full text of docket entry"
+                      >
+                        {docketEntry.fullText}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
