@@ -81,7 +81,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       SELECT
           DE.DE_SEQNO AS sequenceNumber,
           concat(PDF.PDF_WEB_PATH_LT, '/', DC.FILE_NAME) AS fileUri,
-          DC.PDF_SIZE as pdfSize
+          DC.PDF_SIZE as fileSize
       FROM AO_CS AS C
           JOIN AO_DE AS DE
             ON C.CS_CASEID = DE.CS_CASEID AND C.COURT_ID = DE.COURT_ID

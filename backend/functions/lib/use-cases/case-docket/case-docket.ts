@@ -14,6 +14,8 @@ export class CaseDocketUseCase {
     const documents = await this.gateway.getCaseDocketDocuments(context, caseId);
     documents.forEach((d) => {
       const key = d.sequenceNumber;
+      const nameParts = d.fileUri.split('-');
+      d.fileLabel = nameParts.slice(nameParts.length - 2).join('-');
       const list = documentMap.has(key) ? documentMap.get(key) : [];
       list.push(d);
       documentMap.set(key, list);
