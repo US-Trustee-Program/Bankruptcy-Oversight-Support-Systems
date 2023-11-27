@@ -36,6 +36,7 @@ const ButtonComponent = (
     className,
     disabled,
     onClick,
+    title,
     children,
   }: ButtonProps & JSX.IntrinsicElements['button'],
   ref: React.Ref<ButtonRef>,
@@ -63,6 +64,7 @@ const ButtonComponent = (
       data-testid="button"
       aria-disabled={isDisabled}
       disabled={isDisabled}
+      title={title}
     >
       {children}
     </button>
