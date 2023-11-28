@@ -1,16 +1,42 @@
 .case-detail-header {
-  .sub-headers {
-    position: relative;
-    top: auto;
-    background-color: transparent;
+  position: relative;
+  top: auto;
+  background-color: transparent;
+
+  .back-button {
+    display: inline-block;
+    padding-top: 2rem;
+    padding-bottom: 2.5rem;
+    svg {
+      margin-right: 0.5rem;
+      vertical-align: text-bottom;
+    }
   }
-  .sub-headers.fixed {
-    position: fixed;
-    width: 100%;
+}
+
+.case-detail-header.fixed {
+  position: fixed;
+  width: 100%;
+  margin: 0;
+  top: 0;
+  background-color: #fefefe;
+  border: 1px solid #f0f0f0;
+  z-index: 10;
+  box-shadow: 0px 1px 5px #ddd;
+  padding-bottom: 1rem;
+
+  a.back-button {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  h3 {
     margin: 0;
-    top: 0;
-    background-color: #fefefe;
-    border: 1px solid #f0f0f0;
-    z-index: 10;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+}
+
+.spacer-fixer {
+  margin-top: 125px;
 }

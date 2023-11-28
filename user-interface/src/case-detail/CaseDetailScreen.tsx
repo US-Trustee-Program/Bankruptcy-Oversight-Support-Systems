@@ -1,5 +1,5 @@
 import './CaseDetailScreen.scss';
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
@@ -10,6 +10,7 @@ import {
   Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import { mapNavState } from './panels/CaseDetailNavigation';
+import { CaseDetailNavigationRef } from './panels/CaseDetailNavigation.d';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -36,6 +37,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
+  const navRef = useRef<CaseDetailNavigationRef>(null);
   const location = useLocation();
 
   const navState = mapNavState(location.pathname);
@@ -77,11 +79,19 @@ export const CaseDetail = (props: CaseDetailProps) => {
       <div className="case-detail">
         {isLoading && (
           <>
-            <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
+            <CaseDetailHeader
+              isLoading={isLoading}
+              navigationRef={navRef as React.RefObject<CaseDetailNavigationRef>}
+              caseId={caseId}
+            />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+                <CaseDetailNavigation
+                  caseId={caseId}
+                  initiallySelectedNavLink={navState}
+                  ref={navRef}
+                />
               </div>
               <div className="grid-col-8">
                 <LoadingIndicator />
@@ -96,11 +106,16 @@ export const CaseDetail = (props: CaseDetailProps) => {
               isLoading={false}
               caseId={caseBasicInfo.caseId}
               caseDetail={caseBasicInfo}
+              navigationRef={navRef as React.RefObject<CaseDetailNavigationRef>}
             />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+                <CaseDetailNavigation
+                  caseId={caseId}
+                  initiallySelectedNavLink={navState}
+                  ref={navRef}
+                />
               </div>
               <div className="grid-col-6">
                 <Suspense fallback={<LoadingIndicator />}>
