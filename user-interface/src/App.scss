@@ -6,8 +6,20 @@
 @use 'styles/abstracts/colors';
 @use 'styles/abstracts/tables';
 
+body {
+  overflow-y: hidden;
+}
 .App {
+  position: absolute;
   padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  scroll-behavior: smooth;
 
   .body {
     padding: 0 0 50px 0;
