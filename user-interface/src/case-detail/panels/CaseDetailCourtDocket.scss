@@ -1,33 +1,25 @@
 @import '../../styles/abstracts/colors';
 
 #case-detail-court-docket-panel {
-  #searchable-docket {
-    overflow-y: auto;
-    overflow-x: hidden;
-    height: 100%;
-    width: 100%;
-    min-height: 150px;
+  .docket-entry {
+    padding-bottom: 2rem;
 
-    .docket-entry {
-      padding-bottom: 2rem;
-
-      h3 {
-        margin-top: 0;
-        margin-bottom: 0;
+    h3 {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+    .docket-content {
+      line-height: 24px;
+      ::highlight(search-results) {
+        background-color: $yellow-20;
+        color: black;
       }
-      .docket-content {
-        line-height: 24px;
-        ::highlight(search-results) {
-          background-color: $yellow-20;
-          color: black;
-        }
-        .docket-entry-header {
-          font-weight: bold;
-        }
-      }
-      .document-number-column {
-        text-align: right;
-      }
+    }
+    .document-number-column {
+      text-align: right;
+    }
+    .docket-entry-header {
+      font-weight: bold;
     }
   }
   .sort {
