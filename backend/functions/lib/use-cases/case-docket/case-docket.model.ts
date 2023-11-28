@@ -1,8 +1,8 @@
 export type CaseDocketEntryDocument = {
-  sequenceNumber: number;
   fileUri: string;
   fileSize: number;
-  fileLabel?: string;
+  fileLabel: string;
+  fileExt?: string;
 };
 
 export type CaseDocketEntry = {

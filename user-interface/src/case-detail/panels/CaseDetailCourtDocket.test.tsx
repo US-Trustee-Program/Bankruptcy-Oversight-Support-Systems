@@ -1,16 +1,20 @@
 import { BrowserRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
+import CaseDetailCourtDocket, {
+  docketSorterClosure,
+  fileSizeDescription,
+  generateDocketFilenameDisplay,
+} from '@/case-detail/panels/CaseDetailCourtDocket';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
-
-function toTextContent(de: CaseDocketEntry) {
-  return de.documentNumber + de.dateFiled + ' - ' + de.summaryText + de.fullText;
-}
+import {
+  CaseDocket,
+  CaseDocketEntry,
+  CaseDocketEntryDocument,
+} from '@/lib/type-declarations/chapter-15';
 
 describe('court docket panel tests', () => {
-  const docketEntries = [
+  const docketEntries: CaseDocket = [
     {
       sequenceNumber: 2,
       documentNumber: 1,
@@ -21,7 +25,7 @@ describe('court docket panel tests', () => {
     {
       sequenceNumber: 3,
       dateFiled: '2023-05-07T00:00:00.0000000',
-      summaryText: 'Add Judge',
+      summaryText: 'Motion',
       fullText: 'Docket entry number 2.',
     },
     {
@@ -30,6 +34,14 @@ describe('court docket panel tests', () => {
       dateFiled: '2023-07-07T00:00:00.0000000',
       summaryText: 'Add Attorney',
       fullText: 'Docket entry number 3.',
+      documents: [
+        {
+          fileLabel: '0-0',
+          fileSize: 1000,
+          fileExt: 'pdf',
+          fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
+        },
+      ],
     },
   ];
   const lastIndex = docketEntries.length - 1;
@@ -132,26 +144,128 @@ describe('court docket panel tests', () => {
   test('should sort docket entries', async () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
 
+    const youngestEntry = docketEntries[2];
+    const middleEntry = docketEntries[1];
+    const oldestEntry = docketEntries[0];
+    const sortedListFromApi = [oldestEntry, middleEntry, youngestEntry];
+
     render(
       <BrowserRouter>
-        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={sortedListFromApi} />
       </BrowserRouter>,
     );
 
-    const searchableDocketId = 'searchable-docket';
     const sortButtonId = 'docket-entry-sort';
-    const expectedFirstDocketTest = toTextContent(docketEntries[2]);
-    const expectedLastDocketTest = toTextContent(docketEntries[0]);
 
-    const startingDocket = screen.getByTestId(searchableDocketId);
+    // Check to make sure all the entries are in the HTML list.
+    const startingDocket = screen.getByTestId('searchable-docket');
     const sortButton = screen.getByTestId(sortButtonId);
     expect(startingDocket.childElementCount).toEqual(docketEntries.length);
-    fireEvent.click(sortButton);
-    const docket = screen.getByTestId(searchableDocketId);
 
-    expect(docket.children[0].textContent).toBe(expectedLastDocketTest);
-
+    // First Sort - oldest goes to the top of the list.
     fireEvent.click(sortButton);
-    expect(docket.children[0].textContent).toBe(expectedFirstDocketTest);
+    if (oldestEntry.documentNumber) {
+      expect(screen.getByTestId('docket-entry-0-number').textContent).toEqual(
+        oldestEntry.documentNumber?.toString(),
+      );
+    }
+    expect(screen.getByTestId('docket-entry-0-header').textContent).toEqual(
+      oldestEntry.dateFiled + ' - ' + oldestEntry.summaryText,
+    );
+    expect(screen.getByTestId('docket-entry-0-text').textContent).toEqual(oldestEntry.fullText);
+    if (oldestEntry.documents) {
+      expect(screen.getByTestId('document-unordered-list').childElementCount).toEqual(
+        oldestEntry.documents?.length,
+      );
+    }
+
+    // Second Sort - youngest returns to the top of the list.
+    fireEvent.click(sortButton);
+    if (youngestEntry.documentNumber) {
+      expect(screen.getByTestId('docket-entry-0-number').textContent).toEqual(
+        youngestEntry.documentNumber?.toString(),
+      );
+    }
+    expect(screen.getByTestId('docket-entry-0-header').textContent).toEqual(
+      youngestEntry.dateFiled + ' - ' + youngestEntry.summaryText,
+    );
+    expect(screen.getByTestId('docket-entry-0-text').textContent).toEqual(youngestEntry.fullText);
+    if (youngestEntry.documents) {
+      expect(screen.getByTestId('document-unordered-list').childElementCount).toEqual(
+        youngestEntry.documents?.length,
+      );
+    }
+  });
+
+  describe('Link formatting', () => {
+    test('should properly format a normal document', () => {
+      const document: CaseDocketEntryDocument = {
+        fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',
+        fileSize: 1000,
+        fileLabel: '2-0',
+        fileExt: 'pdf',
+      };
+      const expectedLinkText = 'View 2-0 [PDF, 1000 bytes]';
+      const actualLinkText = generateDocketFilenameDisplay(document);
+      expect(actualLinkText).toEqual(expectedLinkText);
+    });
+    test('should properly format a document missing an extension', () => {
+      const document: CaseDocketEntryDocument = {
+        fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',
+        fileSize: 1000,
+        fileLabel: '2-0',
+      };
+      const expectedLinkText = 'View 2-0 [1000 bytes]';
+      const actualLinkText = generateDocketFilenameDisplay(document);
+      expect(actualLinkText).toEqual(expectedLinkText);
+    });
+  });
+
+  describe('File size desciption', () => {
+    test('should show byte size if less than a KB', () => {
+      const expectedDescription = '1000 bytes';
+      const actualDescription = fileSizeDescription(1000);
+      expect(actualDescription).toEqual(expectedDescription);
+    });
+    test('should show KB file size if less than a MB', () => {
+      const expectedDescription = '2.0 KB';
+      const actualDescription = fileSizeDescription(2000);
+      expect(actualDescription).toEqual(expectedDescription);
+    });
+    test('should show MB file size if less than a GB', () => {
+      const expectedDescription = '1.0 MB';
+      const actualDescription = fileSizeDescription(1100000);
+      expect(actualDescription).toEqual(expectedDescription);
+    });
+    test('should show GB file size if greather than or equal to a GB', () => {
+      const expectedDescription = '1.0 GB';
+      const actualDescription = fileSizeDescription(1100000000);
+      expect(actualDescription).toEqual(expectedDescription);
+    });
+  });
+
+  describe('Docket entry sorter', () => {
+    const left: CaseDocketEntry = {
+      sequenceNumber: 0,
+      dateFiled: '',
+      summaryText: '',
+      fullText: '',
+    };
+    const right: CaseDocketEntry = {
+      sequenceNumber: 1,
+      dateFiled: '',
+      summaryText: '',
+      fullText: '',
+    };
+    test('should return the expected sort direction for Newest sort', () => {
+      const fn = docketSorterClosure('Newest');
+      const expectedValue = 1;
+      expect(fn(left, right)).toEqual(expectedValue);
+    });
+    test('should return the expected sort direction for Oldest sort', () => {
+      const fn = docketSorterClosure('Oldest');
+      const expectedValue = -1;
+      expect(fn(left, right)).toEqual(expectedValue);
+    });
   });
 });

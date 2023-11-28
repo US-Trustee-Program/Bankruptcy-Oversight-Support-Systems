@@ -1,6 +1,6 @@
 import { NORMAL_CASE_ID } from '../lib/adapters/gateways/dxtr/case-docket.mock.gateway';
 import httpTrigger from './case-docket.function';
-import { CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
+import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
 
 const context = require('azure-function-context-mock');
 
@@ -14,7 +14,7 @@ describe('Case docket function', () => {
     };
     const expectedResponseBody = {
       success: true,
-      body: CASE_DOCKET_ENTRIES,
+      body: DXTR_CASE_DOCKET_ENTRIES,
     };
     process.env = {
       DATABASE_MOCK: 'true',

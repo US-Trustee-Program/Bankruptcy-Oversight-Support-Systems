@@ -14,6 +14,40 @@ export interface CaseDetailCourtDocketProps {
 
 type SortDirection = 'Oldest' | 'Newest';
 
+export function fileSizeDescription(fileSize: number): string {
+  // https://learn.microsoft.com/en-us/style-guide/a-z-word-list-term-collections/term-collections/bits-bytes-terms
+  const KB = 1024;
+  const MB = 1048576;
+  const GB = 1073741824;
+  let unit: string = 'bytes';
+  let decimalSize: number = fileSize;
+  if (fileSize >= GB) {
+    decimalSize = fileSize / GB;
+    unit = 'GB';
+  } else if (fileSize >= MB) {
+    decimalSize = fileSize / MB;
+    unit = 'MB';
+  } else if (fileSize >= KB) {
+    decimalSize = fileSize / KB;
+    unit = 'KB';
+  }
+  const sizeString = unit === 'bytes' ? fileSize : (Math.round(decimalSize * 10) / 10).toFixed(1);
+  return `${sizeString} ${unit}`;
+}
+
+export function generateDocketFilenameDisplay(linkInfo: CaseDocketEntryDocument): string {
+  const { fileLabel, fileSize, fileExt } = linkInfo;
+  const extension = fileExt ? fileExt?.toUpperCase() + ', ' : '';
+  return `View ${fileLabel} [${extension}${fileSizeDescription(fileSize)}]`;
+}
+
+export function docketSorterClosure(sortDirection: SortDirection) {
+  return (left: CaseDocketEntry, right: CaseDocketEntry) => {
+    const direction = sortDirection === 'Newest' ? 1 : -1;
+    return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
+  };
+}
+
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries } = props;
   // TODO: Replace use of useEffect for handling loading with useTransition
@@ -29,11 +63,6 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
       docketEntry.summaryText.toLowerCase().includes(searchString) ||
       docketEntry.fullText.toLowerCase().includes(searchString)
     );
-  }
-
-  function docketSorter(left: CaseDocketEntry, right: CaseDocketEntry) {
-    const direction = sortDirection === 'Newest' ? 1 : -1;
-    return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
   }
 
   function toggleSort() {
@@ -103,7 +132,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           docketEntries &&
           docketEntries
             .filter(docketSearchFilter)
-            .sort(docketSorter)
+            .sort(docketSorterClosure(sortDirection))
             .map((docketEntry: CaseDocketEntry, idx: number) => {
               return (
                 <div
@@ -128,25 +157,31 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                       {docketEntry.dateFiled} - {docketEntry.summaryText}
                     </div>
                     <div
+                      className="docket-full-text"
                       data-testid={`docket-entry-${idx}-text`}
                       aria-label="full text of docket entry"
                     >
                       {docketEntry.fullText}
-                      {docketEntry.documents && (
-                        <ul className="usa-list usa-list--unstyled">
+                    </div>
+                    {docketEntry.documents && (
+                      <div className="docket-documents">
+                        <ul
+                          className="usa-list usa-list--unstyled"
+                          data-testid="document-unordered-list"
+                        >
                           {docketEntry.documents.map((linkInfo: CaseDocketEntryDocument) => {
                             return (
                               <li key={linkInfo.fileUri}>
-                                <a href={linkInfo.fileUri}>
-                                  View {linkInfo.fileLabel || linkInfo.fileUri} [{linkInfo.fileSize}{' '}
-                                  bytes]
+                                <a href={linkInfo.fileUri} target="_blank" rel="noreferrer">
+                                  {generateDocketFilenameDisplay(linkInfo)}
+                                  <Icon className="launch-icon" name="launch"></Icon>
                                 </a>
                               </li>
                             );
                           })}
                         </ul>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

@@ -58,10 +58,10 @@ export interface CaseDocketEntry {
 export type CaseDocket = CaseDocketEntry[];
 
 export interface CaseDocketEntryDocument {
-  sequenceNumber: number;
   fileUri: string;
   fileSize: number;
-  fileLabel?: string;
+  fileLabel: string;
+  fileExt?: string;
 }
 
 export interface Chapter15CaseDocketResponseData extends ResponseData {

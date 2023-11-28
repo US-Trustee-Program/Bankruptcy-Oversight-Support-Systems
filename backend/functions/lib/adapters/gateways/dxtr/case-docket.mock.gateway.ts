@@ -5,7 +5,7 @@ import {
   CaseDocketEntryDocument,
 } from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
-import { CaseDocketGateway } from '../gateways.types';
+import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { GatewayHelper } from '../gateway-helper';
 
 const MODULENAME = 'CASE-DOCKET-MOCK-GATEWAY';
