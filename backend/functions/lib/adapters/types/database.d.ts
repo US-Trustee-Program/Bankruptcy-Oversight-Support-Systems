@@ -21,21 +21,25 @@ export interface DbTableFieldSpec {
 
 export interface IDbConfig {
   server: string;
+  port: number;
   database: string;
-  user: string;
-  password: string;
-  azureManagedIdentity: string;
-  authentication: {
+  user?: string;
+  password?: string;
+  azureManagedIdentity?: string;
+  authentication?: {
     type: string;
   };
-  pool: {
+  pool?: {
     max: number;
     min: number;
     idleTimeoutMillis: number;
   };
-  options: {
-    encrypt: boolean | undefined;
-    trustServerCertificate: boolean | undefined;
+  options?: {
+    clientId?: string;
+    msiEndpoint?: string;
+    msiSecret?: string;
+    encrypt: boolean;
+    trustServerCertificate: boolean;
   };
 }
 

@@ -13,6 +13,8 @@ export async function executeQuery(
 ): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
 
+  // TODO CAMS-14 This is where the client gets create for sql connections.
+  // Do we need to create a connection pool object for this???
   try {
     const sqlConnectionPool = new ConnectionPool(databaseConfig as unknown as config);
     const sqlConnection = await sqlConnectionPool.connect();

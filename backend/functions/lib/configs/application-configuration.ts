@@ -6,7 +6,6 @@ dotenv.config();
 
 export class ApplicationConfiguration implements AppConfig {
   public readonly server: ServerType;
-  public readonly acmsDbConfig: IDbConfig;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly cosmosConfig: CosmosConfig;
@@ -16,7 +15,6 @@ export class ApplicationConfiguration implements AppConfig {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
 
     this.server = this.getAppServerConfig();
-    this.acmsDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE);
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.cosmosConfig = this.getCosmosConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
@@ -29,41 +27,57 @@ export class ApplicationConfiguration implements AppConfig {
     };
   }
 
+  // TODO CAMS-14 MAY Need to be refactor here for managed identity
   private getDbConfig(database: string): IDbConfig {
-    const dbConfig: IDbConfig = {
-      server: process.env.MSSQL_HOST,
-      database: database,
-      user: process.env.MSSQL_USER,
-      password: '',
-      azureManagedIdentity: process.env.AZURE_MANAGED_IDENTITY || '',
-      authentication: {
-        type: 'azure-active-directory-msi-app-service',
-      },
-      pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000,
-      },
-      options: {
-        encrypt: Boolean(process.env.MSSQL_ENCRYPT),
-        trustServerCertificate: Boolean(process.env.MSSQL_TRUST_UNSIGNED_CERT),
-      },
+    const server = process.env.MSSQL_HOST;
+    const port: number = Number(process.env.MSSQL_PORT) || 1433;
+    const user = process.env.MSSQL_USER;
+    const password = process.env.MSSQL_PASS;
+    const encrypt: boolean = Boolean(process.env.MSSQL_ENCRYPT);
+    const trustServerCertificate: boolean = Boolean(process.env.MSSQL_TRUST_UNSIGNED_CERT);
+    const type = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-msi-app-service';
+    const clientId = process.env.MSSQL_MANAGED_IDENTITY;
+    /*
+    Authentication types supported using managed identity
+      azure-active-directory-default
+      azure-active-directory-msi-app-service
+    */
+
+    const useSqlAuth = password && password.length > 0;
+
+    const config: IDbConfig = useSqlAuth
+      ? {
+          server,
+          port,
+          database,
+          user,
+          password,
+        }
+      : {
+          server,
+          port,
+          database,
+          authentication: {
+            type,
+          },
+        };
+
+    config.pool = {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30 * 1000,
     };
 
-    if (
-      dbConfig.azureManagedIdentity.length < 1 &&
-      process.env.MSSQL_PASS &&
-      process.env.MSSQL_PASS.length > 0
-    ) {
-      dbConfig.password = process.env.MSSQL_PASS;
-      dbConfig.authentication.type = 'default';
-    } else if (process.env.DATABASE_MOCK?.toLowerCase() === 'true') {
-      dbConfig.authentication.type = 'mock';
-    } else {
-      throw Error('No Database authentication type specified');
+    config.options = {
+      encrypt,
+      trustServerCertificate,
+    };
+
+    if (clientId) {
+      config.options.clientId = clientId;
     }
 
-    return dbConfig;
+    return config;
   }
 
   private getCosmosConfig(): CosmosConfig {

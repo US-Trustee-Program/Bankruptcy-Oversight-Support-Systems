@@ -95,7 +95,6 @@ COSMOS_MANAGED_IDENTITY=
 DATABASE_MOCK={a string: true | false}
 
 MSSQL_HOST={the FQDN of the database}
-MSSQL_DATABASE={the name of the ACMS database}
 MSSQL_DATABASE_DXTR={the name of the DXTR database}
 MSSQL_USER={the SQL Server Admin username}
 MSSQL_PASS={the SQL Server Admin user password}
