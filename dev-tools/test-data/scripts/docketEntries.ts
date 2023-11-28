@@ -105,6 +105,7 @@ async function main() {
             CS_CASEID: docketEntry.CS_CASEID,
             DE_SEQNO: docketEntry.DE_SEQNO,
             PDF_SIZE: randomInt(SIZE_MB_5),
+            COURT_STATUS: 'pdf',
           });
           docketDocuments.push(documentEntry);
         }
