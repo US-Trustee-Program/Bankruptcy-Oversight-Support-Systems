@@ -39,6 +39,9 @@ export async function executeQuery(
 
     return queryResult;
   } catch (error) {
+    // TODO CAMS-14 : current logging approach doesn't properly log useful exeception info
+    applicationContext.log.error(error);
+
     log.error(applicationContext, MODULE_NAME, (error as Error).message, error);
 
     const queryResult: QueryResults = {
