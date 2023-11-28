@@ -29,6 +29,7 @@ function showReopenDate(reOpenDate: string | undefined, closedDate: string | und
   }
   return false;
 }
+
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);

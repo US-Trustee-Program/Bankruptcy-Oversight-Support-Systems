@@ -1,0 +1,16 @@
+.case-detail-header {
+  .sub-headers {
+    position: relative;
+    top: auto;
+    background-color: transparent;
+  }
+  .sub-headers.fixed {
+    position: fixed;
+    width: 100%;
+    margin: 0;
+    top: 0;
+    background-color: #fefefe;
+    border: 1px solid #f0f0f0;
+    z-index: 10;
+  }
+}
