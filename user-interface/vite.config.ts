@@ -70,8 +70,7 @@ export default defineConfig({
         'src/lib/models/*mock*.ts',
         'src/lib/components/utils/http.adapter.ts',
       ],
-      lines: 90,
-      branches: 85,
+      branches: 90,
     },
   },
   build: {

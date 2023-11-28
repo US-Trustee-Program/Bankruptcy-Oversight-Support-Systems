@@ -33,7 +33,7 @@ function ToggleModalButtonComponent(
 
   const dataTestidSuffix = buttonIndex ? `-${buttonIndex}` : '';
 
-  let classes = 'usa-button';
+  let classes = '';
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
 
   if (toggleAction === 'open') {
@@ -45,6 +45,7 @@ function ToggleModalButtonComponent(
   if (uswdsStyle) classes += ' ' + uswdsStyle;
   if (buttonState) classes += ' ' + buttonState;
   if (className) classes += ' ' + className;
+  classes = classes.trim();
 
   function disableButton(state: boolean) {
     setIsDisabled(state);

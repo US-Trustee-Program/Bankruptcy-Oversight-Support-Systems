@@ -1,7 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
 export enum UswdsButtonStyle {
-  Default = '',
+  Default = 'usa-button',
   Unstyled = 'usa-button--unstyled',
   Secondary = 'usa-button--secondary',
   Cool = 'usa-button--accent-cool',
