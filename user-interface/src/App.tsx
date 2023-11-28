@@ -10,17 +10,22 @@ import Home from './home/Home';
 import CaseAssignment from './case-assignment/CaseAssignmentScreen';
 import CaseDetail from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
+import ScrollToTopButton from './lib/components/ScrollToTopButton';
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
+  const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
+  const bodyElement = document.querySelector('.App');
 
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > 100) {
+  function documentScroll(ev: React.UIEvent<HTMLElement>) {
+    if ((ev.currentTarget as Element).scrollTop > 100) {
       setAppClasses('App header-scrolled-out');
+      setScrollBtnClass('show');
     } else {
       setAppClasses('App');
+      setScrollBtnClass('');
     }
-  });
+  }
 
   return (
     <AppInsightsErrorBoundary
@@ -30,7 +35,7 @@ function App() {
       }}
       appInsights={reactPlugin}
     >
-      <div className={appClasses}>
+      <div className={appClasses} onScroll={documentScroll}>
         <HeaderNavBar />
         <div className="body">
           <Routes>
@@ -39,6 +44,7 @@ function App() {
             <Route path="/case-detail/:caseId/*" element={<CaseDetail />}></Route>
             <Route path="*" element={<NotFound />}></Route>
           </Routes>
+          <ScrollToTopButton className={scrollBtnClass} target={bodyElement} />
         </div>
       </div>
     </AppInsightsErrorBoundary>
