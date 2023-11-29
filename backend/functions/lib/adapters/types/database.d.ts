@@ -28,6 +28,9 @@ export interface IDbConfig {
   azureManagedIdentity?: string;
   authentication?: {
     type: string;
+    options?: {
+      clientId: string;
+    };
   };
   pool?: {
     max: number;
@@ -35,7 +38,6 @@ export interface IDbConfig {
     idleTimeoutMillis: number;
   };
   options?: {
-    clientId?: string;
     msiEndpoint?: string;
     msiSecret?: string;
     encrypt: boolean;

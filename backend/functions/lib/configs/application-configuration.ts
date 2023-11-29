@@ -13,7 +13,6 @@ export class ApplicationConfiguration implements AppConfig {
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
-
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.cosmosConfig = this.getCosmosConfig();
@@ -27,40 +26,41 @@ export class ApplicationConfiguration implements AppConfig {
     };
   }
 
-  // TODO CAMS-14 MAY Need to be refactor here for managed identity
   private getDbConfig(database: string): IDbConfig {
     const server = process.env.MSSQL_HOST;
     const port: number = Number(process.env.MSSQL_PORT) || 1433;
-    const user = process.env.MSSQL_USER;
-    const password = process.env.MSSQL_PASS;
     const encrypt: boolean = Boolean(process.env.MSSQL_ENCRYPT);
     const trustServerCertificate: boolean = Boolean(process.env.MSSQL_TRUST_UNSIGNED_CERT);
-    const type = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-msi-app-service';
-    const clientId = process.env.MSSQL_MANAGED_IDENTITY;
-    /*
-    Authentication types supported using managed identity
-      azure-active-directory-default
-      azure-active-directory-msi-app-service
-    */
+    const type = process.env.MSSQL_AUTH_TYPE || ' azure-active-directory-default';
+    const user = process.env.MSSQL_USER;
+    const password = process.env.MSSQL_PASS;
+    const clientId = process.env.MSSQL_CLIENT_ID; // User Identity client
+
+    const config: IDbConfig = {
+      server,
+      port,
+      database,
+    };
 
     const useSqlAuth = password && password.length > 0;
+    if (useSqlAuth) {
+      config.user = user;
+      config.password = password;
+    } else {
+      config.authentication = {
+        type,
+      };
 
-    const config: IDbConfig = useSqlAuth
-      ? {
-          server,
-          port,
-          database,
-          user,
-          password,
-        }
-      : {
-          server,
-          port,
-          database,
-          authentication: {
-            type,
-          },
-        };
+      // If client id is not set here, ensure that AZURE_CLIENT_ID is set when using DefaultAzureCredential
+      if (clientId) {
+        config.authentication.options = { clientId };
+      }
+    }
+
+    // Override auth type value to mock if this environment variable is set to true
+    if (process.env.DATABASE_MOCK?.toLowerCase() === 'true') {
+      config.authentication.type = 'mock';
+    }
 
     config.pool = {
       max: 10,
@@ -72,10 +72,6 @@ export class ApplicationConfiguration implements AppConfig {
       encrypt,
       trustServerCertificate,
     };
-
-    if (clientId) {
-      config.options.clientId = clientId;
-    }
 
     return config;
   }
