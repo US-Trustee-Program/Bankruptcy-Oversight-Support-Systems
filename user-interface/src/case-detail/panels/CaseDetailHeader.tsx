@@ -26,7 +26,10 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
     if (camsHeader) {
       const caseDetailHeader = document.querySelector('.case-detail-header.fixed');
       const caseDetailH1 = document.querySelector('.case-detail-header h1');
+      console.log('TOP POSITION OF H1 ', caseDetailH1?.getBoundingClientRect().top);
+      console.log('case detail Header section', caseDetailHeader);
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
+        console.log('Header should now be fixed', caseDetailH1?.getBoundingClientRect().top);
         fix();
         props.navigationRef.current?.fix();
       } else if (
@@ -49,7 +52,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
     <>
       {isFixed && (
         <>
-          <div className="case-detail-header fixed">
+          <div className="case-detail-header fixed" data-testid="case-detail-fixed-header">
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
@@ -102,7 +105,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
         </>
       )}
       {!isFixed && (
-        <div className="case-detail-header">
+        <div className="case-detail-header" data-testid="case-detail-header">
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">

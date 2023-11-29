@@ -18,6 +18,7 @@ function App() {
   const bodyElement = document.querySelector('.App');
 
   function documentScroll(ev: React.UIEvent<HTMLElement>) {
+    console.log((ev.currentTarget as Element).scrollTop);
     if ((ev.currentTarget as Element).scrollTop > 100) {
       setAppClasses('App header-scrolled-out');
       setScrollBtnClass('show');
@@ -35,7 +36,7 @@ function App() {
       }}
       appInsights={reactPlugin}
     >
-      <div className={appClasses} onScroll={documentScroll}>
+      <div className={appClasses} onScroll={documentScroll} data-testid="app-component-test-id">
         <HeaderNavBar />
         <div className="body">
           <Routes>
