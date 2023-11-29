@@ -3,7 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { SubmitCancelButtonGroup } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import React from 'react';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { BUTTON_BASE_CLASS, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 
 describe('Submit cancel button group tests', () => {
   test('should apply provided button style', () => {
@@ -28,9 +28,11 @@ describe('Submit cancel button group tests', () => {
     );
 
     const submit = screen.getByTestId('toggle-modal-button-submit');
+    expect(submit.className).toContain(BUTTON_BASE_CLASS);
     expect(submit.className).toContain(UswdsButtonStyle.Cool);
 
     const cancel = screen.getByTestId('toggle-modal-button-cancel');
+    expect(cancel.className).toContain(BUTTON_BASE_CLASS);
     expect(cancel.className).toContain(UswdsButtonStyle.Cool);
   });
 
@@ -50,9 +52,10 @@ describe('Submit cancel button group tests', () => {
     );
 
     const submit = screen.getByTestId('toggle-modal-button-submit');
-    expect(submit.className).toContain(UswdsButtonStyle.Default);
+    expect(submit.className).toContain(BUTTON_BASE_CLASS);
 
     const cancel = screen.getByTestId('toggle-modal-button-cancel');
+    expect(cancel.className).toContain(BUTTON_BASE_CLASS);
     expect(cancel.className).toContain(UswdsButtonStyle.Unstyled);
   });
 
@@ -89,10 +92,11 @@ describe('Submit cancel button group tests', () => {
     );
 
     const submit = screen.getByTestId('toggle-modal-button-submit');
-    expect(submit.className).toContain(UswdsButtonStyle.Default);
+    expect(submit.className).toContain(BUTTON_BASE_CLASS);
     expect(submit.className).toContain('test-class-one');
 
     const cancel = screen.getByTestId('toggle-modal-button-cancel');
+    expect(cancel.className).toContain(BUTTON_BASE_CLASS);
     expect(cancel.className).toContain(UswdsButtonStyle.Unstyled);
     expect(cancel.className).toContain('test-class-two');
     expect(cancel.className).not.toContain('padding-105');
