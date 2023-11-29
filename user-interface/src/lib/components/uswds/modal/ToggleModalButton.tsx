@@ -1,4 +1,4 @@
-import { ButtonProps, UswdsButtonState, UswdsButtonStyle } from '../Button';
+import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonState, UswdsButtonStyle } from '../Button';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { ModalRefType, ToggleModalButtonRef } from './modal-refs';
@@ -33,7 +33,7 @@ function ToggleModalButtonComponent(
 
   const dataTestidSuffix = buttonIndex ? `-${buttonIndex}` : '';
 
-  let classes = '';
+  let classes = BUTTON_BASE_CLASS;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
 
   if (toggleAction === 'open') {
