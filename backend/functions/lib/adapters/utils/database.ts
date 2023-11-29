@@ -1,4 +1,4 @@
-import { ConnectionPool, config } from 'mssql';
+import { ConnectionError, ConnectionPool, MSSQLError, config } from 'mssql';
 import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
@@ -27,6 +27,7 @@ export async function executeQuery(
     }
     const results = await sqlRequest.query(query);
 
+    // TODO : May want to refactor to just return results without the message and success
     const queryResult: QueryResults = {
       results,
       message: '',
@@ -39,17 +40,56 @@ export async function executeQuery(
 
     return queryResult;
   } catch (error) {
-    // TODO CAMS-14 : current logging approach doesn't properly log useful exeception info
-    applicationContext.log.error(error);
+    if (isConnectionError(error)) {
+      const errorMessages = [];
+      // No recursive function here. Limiting this to just 2 "errors" lists deep.
+      if (isAggregateError(error.originalError)) {
+        error.originalError.errors.reduce((acc, e) => {
+          if (isAggregateError(e)) {
+            e.errors.forEach((lowestE) => {
+              acc.push(lowestE.message);
+            });
+          } else {
+            acc.push(e.message);
+          }
+          return acc;
+        }, errorMessages);
+      } else {
+        errorMessages.push(error.originalError.message);
+      }
 
-    log.error(applicationContext, MODULE_NAME, (error as Error).message, error);
+      log.error(applicationContext, MODULE_NAME, 'ConnectionError', { errorMessages });
+    } else if (isMssqlError(error)) {
+      log.error(applicationContext, MODULE_NAME, 'MssqlError', {
+        name: error.name,
+        originalError: error.originalError,
+      });
+    } else {
+      log.error(applicationContext, MODULE_NAME, error.message, error);
+    }
 
+    // TODO May want to refactor to throw CamsError and remove returning QueryResults
     const queryResult: QueryResults = {
       results: {},
       message: (error as Error).message,
       success: false,
     };
-
     return queryResult;
   }
+}
+
+function isMssqlError(e: unknown): e is MSSQLError {
+  return e instanceof MSSQLError;
+}
+
+function isConnectionError(e: unknown): e is MSSQLError {
+  return e instanceof ConnectionError;
+}
+
+type AggregateError = Error & {
+  errors?: Error[];
+};
+
+function isAggregateError(e: unknown): e is AggregateError {
+  return 'errors' in (e as object);
 }
