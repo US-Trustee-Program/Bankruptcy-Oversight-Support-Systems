@@ -87,42 +87,37 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
       {searchFeature && (
         <div className="filter-and-search padding-y-4 grid-row">
           <div className="grid-col-8" data-testid="docket-entry-search">
-            <section aria-label="Small search component">
-              <div className="usa-search usa-search--small">
-                <label className="" htmlFor="basic-search-field">
-                  Find in Docket
-                </label>
-                <IconInput
-                  className="search-icon"
-                  id="basic-search-field"
-                  name="basic-search"
-                  icon="search"
-                  autocomplete="off"
-                  onChange={search}
-                />
-              </div>
-            </section>
+            <div className="usa-search usa-search--small">
+              <label htmlFor="basic-search-field">Find in Docket</label>
+              <IconInput
+                className="search-icon"
+                id="basic-search-field"
+                name="basic-search"
+                icon="search"
+                autocomplete="off"
+                onChange={search}
+              />
+            </div>
           </div>
           <div className="sort grid-col-4">
-            <section aria-label="Small sort component">
-              <div className="usa-sort usa-sort--small">
-                <button
-                  className="usa-button usa-button--outline sort-button"
-                  id="basic-sort-button"
-                  name="basic-sort"
-                  onClick={toggleSort}
-                  data-testid="docket-entry-sort"
-                >
-                  <div>
-                    Sort ({sortDirection})
-                    <Icon
-                      className="sort-button-icon"
-                      name={sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'}
-                    />
-                  </div>
-                </button>
-              </div>
-            </section>
+            <div className="usa-sort usa-sort--small">
+              <button
+                className="usa-button usa-button--outline sort-button"
+                id="basic-sort-button"
+                name="basic-sort"
+                onClick={toggleSort}
+                data-testid="docket-entry-sort"
+                aria-label={'Sort ' + sortDirection + ' First'}
+              >
+                <div aria-hidden="true">
+                  <span aria-hidden="true">Sort ({sortDirection})</span>
+                  <Icon
+                    className="sort-button-icon"
+                    name={sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'}
+                  />
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
