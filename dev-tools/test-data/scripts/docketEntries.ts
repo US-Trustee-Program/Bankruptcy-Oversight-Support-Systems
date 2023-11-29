@@ -82,7 +82,7 @@ async function main() {
     let entryDate = dateFiled;
 
     // Create up to 50 docket entries.
-    let lastDocumentNumber = 0;
+    let lastDocumentNumber = 1;
     for (let sequenceNumber = 0; sequenceNumber < randomInt(50); sequenceNumber++) {
       const docketEntry = docketEntryGenerator({
         csCaseId,
