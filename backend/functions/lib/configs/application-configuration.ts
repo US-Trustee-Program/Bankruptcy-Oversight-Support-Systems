@@ -31,7 +31,7 @@ export class ApplicationConfiguration implements AppConfig {
     const port: number = Number(process.env.MSSQL_PORT) || 1433;
     const encrypt: boolean = Boolean(process.env.MSSQL_ENCRYPT);
     const trustServerCertificate: boolean = Boolean(process.env.MSSQL_TRUST_UNSIGNED_CERT);
-    const type = process.env.MSSQL_AUTH_TYPE || ' azure-active-directory-default';
+    const type = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
     const user = process.env.MSSQL_USER;
     const password = process.env.MSSQL_PASS;
     const clientId = process.env.MSSQL_CLIENT_ID; // User Identity client

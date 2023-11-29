@@ -25,7 +25,6 @@ export interface IDbConfig {
   database: string;
   user?: string;
   password?: string;
-  azureManagedIdentity?: string;
   authentication?: {
     type: string;
     options?: {
@@ -38,8 +37,6 @@ export interface IDbConfig {
     idleTimeoutMillis: number;
   };
   options?: {
-    msiEndpoint?: string;
-    msiSecret?: string;
     encrypt: boolean;
     trustServerCertificate: boolean;
   };
