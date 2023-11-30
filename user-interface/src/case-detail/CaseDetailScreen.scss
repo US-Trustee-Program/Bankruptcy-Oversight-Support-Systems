@@ -1,15 +1,6 @@
 .App {
   .body {
     .case-detail {
-      .back-button {
-        display: inline-block;
-        padding-top: 2rem;
-        padding-bottom: 2.5rem;
-        svg {
-          margin-right: 0.5rem;
-          vertical-align: text-bottom;
-        }
-      }
       .case-card-list {
         .case-card {
           .case-detail-item-name {

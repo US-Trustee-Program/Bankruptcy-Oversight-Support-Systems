@@ -35,7 +35,7 @@ function App() {
       }}
       appInsights={reactPlugin}
     >
-      <div className={appClasses} onScroll={documentScroll}>
+      <div className={appClasses} onScroll={documentScroll} data-testid="app-component-test-id">
         <HeaderNavBar />
         <div className="body">
           <Routes>
