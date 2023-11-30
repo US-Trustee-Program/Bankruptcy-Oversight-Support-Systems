@@ -87,10 +87,8 @@ describe('court docket panel tests', () => {
     expect(docketEntry2DocumentNumber.innerHTML).toEqual('');
   });
 
-  test('should render docket search when the feature is turned on', async () => {
+  test('should render docket search when the feature is turned on and there are docket entries', async () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-    const docketEntries: CaseDocketEntry[] = [];
-
     render(
       <BrowserRouter>
         <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
@@ -130,15 +128,15 @@ describe('court docket panel tests', () => {
       </BrowserRouter>,
     );
 
-    const searchableDocketId = 'searchable-docket';
-    const startingDocket = screen.getByTestId(searchableDocketId);
-    expect(startingDocket.childElementCount).toEqual(docketEntries.length);
+    const docketEntryClassName = 'docket-entry';
+    const docketEntryElements = document.getElementsByClassName(docketEntryClassName);
+    expect(docketEntryElements.length).toEqual(docketEntries.length);
 
     const searchInput = screen.getByTestId('basic-search-field');
     fireEvent.change(searchInput, { target: { value: 'number 2' } });
 
-    const filteredDocket = screen.getByTestId(searchableDocketId);
-    expect(filteredDocket.childElementCount).toEqual(1);
+    const filteredDocketEntryElements = document.getElementsByClassName(docketEntryClassName);
+    expect(filteredDocketEntryElements.length).toEqual(1);
   });
 
   test('should sort docket entries', async () => {
@@ -266,6 +264,38 @@ describe('court docket panel tests', () => {
       const fn = docketSorterClosure('Oldest');
       const expectedValue = -1;
       expect(fn(left, right)).toEqual(expectedValue);
+    });
+  });
+
+  describe('No docket entry alert tests', () => {
+    test('should display alert when no docket entries are found', async () => {
+      render(
+        <BrowserRouter>
+          <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={[]} />
+        </BrowserRouter>,
+      );
+
+      const alertContainer = await screen.findByTestId('alert-container');
+      expect(alertContainer).toBeInTheDocument();
+      expect(alertContainer.className).toContain('inline-alert');
+
+      const alert = await screen.findByTestId('alert');
+      expect(alert.className).toContain('usa-alert__visible');
+    });
+
+    test('should not display alert when docket entries are found', async () => {
+      render(
+        <BrowserRouter>
+          <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={docketEntries} />
+        </BrowserRouter>,
+      );
+
+      const alertContainer = await screen.findByTestId('alert-container');
+      expect(alertContainer).toBeInTheDocument();
+      expect(alertContainer.className).not.toContain('inline-alert');
+
+      const alert = await screen.findByTestId('alert');
+      expect(alert.className).not.toContain('usa-alert__visible');
     });
   });
 });
