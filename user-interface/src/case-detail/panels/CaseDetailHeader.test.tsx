@@ -110,6 +110,7 @@ describe('Case Detail Header tests', () => {
           <header
             className="cams-header usa-header-usa-header--basic"
             style={{ minHeight: '100px', height: '100px' }}
+            data-testid="cams-header-test-id"
           ></header>
           <CaseDetail caseDetail={testCaseDetail} />
           <div style={{ minHeight: '2000px', height: '2000px' }}></div>
@@ -126,30 +127,46 @@ describe('Case Detail Header tests', () => {
       { timeout: 1000 },
     );
 
-    const initialHeader = await screen.findByTestId('case-detail-header');
-    expect(initialHeader).toBeInTheDocument();
+    let normalHeader = await screen.findByTestId('case-detail-header');
+    expect(normalHeader).toBeInTheDocument();
 
-    /*
-    await act(async () => {
-      await fireEvent.scroll(app, { target: { scrollY: 98 } });
-    });
-    */
-    await fireEvent.scroll(app as Element, { target: { scrollTop: 98 } });
+    window.HTMLElement.prototype.getBoundingClientRect = () =>
+      ({
+        top: 2,
+      }) as DOMRect;
+    fireEvent.scroll(app as Element, { target: { scrollTop: 98 } });
 
-    const semiScrolledHeader = await screen.findByTestId('case-detail-header');
-    expect(semiScrolledHeader).not.toHaveClass('fixed');
+    expect(normalHeader).toBeInTheDocument();
+    expect(normalHeader).not.toHaveClass('fixed');
 
-    /*
-    await act(async () => {
-      fireEvent.scroll(app, { target: { scrollY: 1000 } });
-    });
-    */
-    await fireEvent.scroll(app as Element, { target: { scrollTop: 1000 } });
+    window.HTMLElement.prototype.getBoundingClientRect = () =>
+      ({
+        top: -175,
+      }) as DOMRect;
+    fireEvent.scroll(app as Element, { target: { scrollTop: 275 } });
+
+    const fixedHeader = await screen.findByTestId('case-detail-fixed-header');
+    expect(normalHeader).not.toBeInTheDocument();
+    expect(fixedHeader).toBeInTheDocument();
+
+    const camsHeader = await screen.findByTestId('cams-header-test-id');
+    window.HTMLElement.prototype.getBoundingClientRect = () =>
+      ({
+        top: 100,
+      }) as DOMRect;
+    camsHeader.getBoundingClientRect = vi.fn().mockReturnValue({
+      bottom: 150,
+    } as DOMRect);
+    fixedHeader.getBoundingClientRect = vi.fn().mockReturnValue({
+      bottom: 100,
+    } as DOMRect);
+    fireEvent.scroll(app as Element, { target: { scrollTop: 0 } });
 
     await waitFor(
       async () => {
-        const fixedHeader = await screen.findByTestId('case-detail-fixed-header');
-        expect(fixedHeader).toBeInTheDocument();
+        normalHeader = await screen.findByTestId('case-detail-header');
+        expect(normalHeader).toBeInTheDocument();
+        expect(fixedHeader).not.toBeInTheDocument();
       },
       { timeout: 5000 },
     );
