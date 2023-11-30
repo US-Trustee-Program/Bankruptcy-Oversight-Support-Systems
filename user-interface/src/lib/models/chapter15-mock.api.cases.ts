@@ -167,7 +167,9 @@ export default class Chapter15MockApi extends Api {
 
   public static async get(path: string): Promise<Chapter15CaseDetailsResponseData> {
     let response: ResponseData;
-    if (path.match(/\/cases\/[\d-]+\/docket/)) {
+    if (path.match(/\/cases\/123-12-12345\/docket/)) {
+      return Promise.reject(new Error());
+    } else if (path.match(/\/cases\/[\d-]+\/docket/)) {
       response = {
         message: '',
         count: 1,
