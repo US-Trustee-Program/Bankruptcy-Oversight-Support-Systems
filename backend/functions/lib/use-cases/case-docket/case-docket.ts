@@ -1,4 +1,4 @@
-import { CaseDocketGateway } from '../../adapters/gateways/gateways.types';
+import { CaseDocketGateway } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDocket } from './case-docket.model';
 

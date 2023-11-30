@@ -1,5 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
+export const BUTTON_BASE_CLASS = 'usa-button';
+
 export enum UswdsButtonStyle {
   Default = '',
   Unstyled = 'usa-button--unstyled',
@@ -42,7 +44,7 @@ const ButtonComponent = (
   ref: React.Ref<ButtonRef>,
 ) => {
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
-  const classes = ['usa-button'];
+  const classes = [BUTTON_BASE_CLASS];
 
   if (uswdsStyle) classes.push(uswdsStyle);
   if (buttonState) classes.push(buttonState);

@@ -93,6 +93,20 @@ export default class Chapter15MockApi extends Api {
       summaryText: 'Case Association - Joint Administration',
       fullText:
         'Ustilo basium teneo abeo urbanus terminatio somniculosus sapiente tollo capto. Curatio curo abbas. Adulatio curo sufficio comminor conicio. Sed quia argentum campana admiratio. Ut odio admoveo adsidue confero ambulo urbanus tenus.',
+      documents: [
+        {
+          fileUri: 'https://somecourt.doj.gov/api/rest_v1/page/pdf/0208-882356-5-4-0.pdf',
+          fileSize: 100000,
+          fileLabel: '4-0',
+          fileExt: 'pdf',
+        },
+        {
+          fileUri: 'https://somecourt.doj.gov/api/rest_v1/page/pdf/0208-882356-5-4-1.pdf',
+          fileSize: 100000,
+          fileLabel: '4-1',
+          fileExt: 'pdf',
+        },
+      ],
     },
   ];
 
@@ -153,7 +167,9 @@ export default class Chapter15MockApi extends Api {
 
   public static async get(path: string): Promise<Chapter15CaseDetailsResponseData> {
     let response: ResponseData;
-    if (path.match(/\/cases\/[\d-]+\/docket/)) {
+    if (path.match(/\/cases\/123-12-12345\/docket/)) {
+      return Promise.reject(new Error());
+    } else if (path.match(/\/cases\/[\d-]+\/docket/)) {
       response = {
         message: '',
         count: 1,
