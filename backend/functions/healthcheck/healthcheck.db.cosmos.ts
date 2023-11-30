@@ -43,12 +43,12 @@ export default class HealthcheckCosmosDb {
   public async checkDbWrite() {
     try {
       // Check write access
-      const { item: item } = await this.cosmosDbClient
+      const { item } = await this.cosmosDbClient
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
         .items.create({});
       log.debug(this.applicationContext, MODULE_NAME, `New item created ${item.id}`);
-      return item.id;
+      return item.id != undefined;
     } catch (e) {
       log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
     }
