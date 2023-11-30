@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import IconInput from '@/lib/components/IconInput';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseDocketEntry, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
@@ -6,6 +6,7 @@ import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFl
 import './CaseDetailCourtDocket.scss';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import Icon from '@/lib/components/uswds/Icon';
+import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export interface CaseDetailCourtDocketProps {
   caseId?: string;
@@ -54,6 +55,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   const [isLoading, setIsLoading] = useState(true);
   const [searchString, setSearchString] = useState('');
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
+  const alertRef = useRef<AlertRefType>(null);
 
   const flags = useFeatureFlags();
   const searchFeature = flags[DOCKET_SEARCH_ENABLED];
@@ -76,15 +78,20 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   useEffect(() => {
     setIsLoading(!docketEntries);
+    if (!hasDocketEntries) {
+      alertRef.current?.show(true);
+    }
   }, [docketEntries]);
 
   useEffect(() => {
     handleHighlight(window, document, 'searchable-docket', searchString);
   }, [searchString, sortDirection]);
 
+  const hasDocketEntries = docketEntries && !!docketEntries.length;
+
   return (
     <div id="case-detail-court-docket-panel">
-      {searchFeature && (
+      {hasDocketEntries && searchFeature && (
         <div className="filter-and-search padding-y-4 grid-row">
           <div className="grid-col-8" data-testid="docket-entry-search">
             <div className="usa-search usa-search--small">
@@ -124,7 +131,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
       <div id="searchable-docket" data-testid="searchable-docket">
         {isLoading && <LoadingIndicator />}
         {!isLoading &&
-          docketEntries &&
+          hasDocketEntries &&
           docketEntries
             .filter(docketSearchFilter)
             .sort(docketSorterClosure(sortDirection))
@@ -182,6 +189,17 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
               );
             })}
       </div>
+      <Alert
+        message={
+          'We are unable to retrieve court docket entries for this case. Please try again later. If the problem persists, please submit a feedback request describing the issue.'
+        }
+        type={UswdsAlertStyle.Error}
+        role={'status'}
+        slim={true}
+        ref={alertRef}
+        timeout={0}
+        title={'Docket Entries Not Available'}
+      />{' '}
     </div>
   );
 }

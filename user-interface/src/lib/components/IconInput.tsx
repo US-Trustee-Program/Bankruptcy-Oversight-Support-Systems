@@ -11,6 +11,7 @@ export interface IconInputProps {
   autocomplete?: 'off';
   position?: 'left' | 'right';
   onChange?: ChangeEventHandler<HTMLInputElement>;
+  disabled?: boolean;
 }
 
 export default function IconInput(props: IconInputProps) {
@@ -24,6 +25,7 @@ export default function IconInput(props: IconInputProps) {
         autoComplete={props.autocomplete}
         onChange={props.onChange}
         data-testid={props.id}
+        disabled={props.disabled}
       />
       <Icon className={`usa-icon ${props.className}`} name={props.icon}></Icon>
     </div>

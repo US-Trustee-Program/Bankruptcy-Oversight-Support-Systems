@@ -8,6 +8,8 @@ export interface AlertProps {
   role: 'status' | 'alert';
   slim?: boolean;
   timeout?: number;
+  title?: string;
+  className?: string;
 }
 
 export enum UswdsAlertStyle {
@@ -24,17 +26,19 @@ enum IsVisible {
 }
 
 export interface AlertRefType {
-  show: () => void;
+  show: (inline?: boolean) => void;
   hide: () => void;
 }
 
 function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const [isVisible, setIsVisible] = useState<IsVisible>(IsVisible.Unset);
+  const [isInline, setIsInline] = useState<boolean>(false);
   let classes = `usa-alert ${props.type}`;
   if (props.slim === true) classes += ' usa-alert--slim';
 
-  function show() {
+  function show(inline: boolean = false) {
     setIsVisible(IsVisible.True);
+    setIsInline(inline);
   }
 
   function hide() {
@@ -53,7 +57,10 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }));
 
   return (
-    <div className="usa-alert-container">
+    <div
+      className={isInline ? 'usa-alert-container inline-alert' : 'usa-alert-container'}
+      data-testid={'alert-container'}
+    >
       <div
         className={`${classes} ${
           isVisible === IsVisible.True
@@ -66,6 +73,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
         data-testid={`alert`}
       >
         <div className="usa-alert__body">
+          {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}
           <p className="usa-alert__text" data-testid="alert-message">
             {props.message}
           </p>

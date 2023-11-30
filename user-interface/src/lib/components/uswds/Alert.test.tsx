@@ -62,6 +62,9 @@ describe('Test Alert component', () => {
       </React.StrictMode>,
     );
 
+    const alertContainer = screen.getByTestId('alert-container');
+    expect(alertContainer).not.toHaveClass('inline-alert');
+
     const alert = screen.getByTestId('alert');
     expect(alert).not.toHaveClass('usa-alert__visible');
     expect(alert).not.toHaveClass('usa-alert__hidden');
@@ -69,6 +72,14 @@ describe('Test Alert component', () => {
 
     alertRef.current?.show();
     await sleep(100);
+    expect(alertContainer).not.toHaveClass('inline-alert');
+    expect(alert).toHaveClass('usa-alert__visible');
+    expect(alert).not.toHaveClass('usa-alert__hidden');
+    expect(alert).not.toHaveClass('usa-alert__unset');
+
+    alertRef.current?.show(true);
+    await sleep(100);
+    expect(alertContainer).toHaveClass('inline-alert');
     expect(alert).toHaveClass('usa-alert__visible');
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
