@@ -53,8 +53,16 @@ export interface CaseDocketEntry {
   dateFiled: string;
   summaryText: string;
   fullText: string;
+  documents?: CaseDocketEntryDocument[];
 }
 export type CaseDocket = CaseDocketEntry[];
+
+export interface CaseDocketEntryDocument {
+  fileUri: string;
+  fileSize: number;
+  fileLabel: string;
+  fileExt?: string;
+}
 
 export interface Chapter15CaseDocketResponseData extends ResponseData {
   body: CaseDocket;

@@ -52,10 +52,15 @@ export const CaseDetail = (props: CaseDetailProps) => {
   };
 
   const fetchCaseDocketEntries = async () => {
-    api.get(`/cases/${caseId}/docket`, {}).then((data) => {
-      const response = data as Chapter15CaseDocketResponseData;
-      setCaseDocketEntries(response.body);
-    });
+    api
+      .get(`/cases/${caseId}/docket`, {})
+      .then((data) => {
+        const response = data as Chapter15CaseDocketResponseData;
+        setCaseDocketEntries(response.body);
+      })
+      .catch(() => {
+        setCaseDocketEntries([]);
+      });
   };
 
   useEffect(() => {

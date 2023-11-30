@@ -22,7 +22,15 @@
       "url": "http://localhost:3000/case-detail/101-23-44461/court-docket",
       "actions": [
         "wait for element [id='searchable-docket'] to be visible",
-        "set field #basic-search-field to Motion"
+        "set field #basic-search-field to Motion",
+        "set field #basic-search-field to joint"
+      ],
+      "timeout": 20000
+    },
+    {
+      "url": "http://localhost:3000/case-detail/123-12-12345/court-docket",
+      "actions": [
+        "wait for element [data-testid='alert-container'] to be visible"
       ],
       "timeout": 20000
     }
