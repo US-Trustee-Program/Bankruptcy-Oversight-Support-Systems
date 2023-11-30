@@ -84,6 +84,9 @@ param databaseConnectionString string = ''
 @description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
+@description('Name for managed identity of database server')
+param sqlServerIdentityName string = ''
+
 @description('Resource group name for managed identity of database server')
 param sqlServerIdentityResourceGroupName string = ''
 
@@ -370,7 +373,7 @@ module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServe
 }
 
 // Creates a managed identity that would be used to grant access to functionapp instance
-var sqlIdentityName = 'id-${functionName}-readonly'
+var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${functionName}-readonly'
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName) ? sqlServerIdentityResourceGroupName : sqlServerResourceGroupName
 module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlIdentityRG)

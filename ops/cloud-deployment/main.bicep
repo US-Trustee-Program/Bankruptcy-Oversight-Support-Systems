@@ -48,6 +48,11 @@ param azHostSuffix string = '.net'
 param databaseConnectionString string = ''
 param sqlServerName string = ''
 param sqlServerResourceGroupName string = ''
+@description('Name for managed identity of database server')
+param sqlServerIdentityName string = ''
+@description('Resource group name for managed identity of database server')
+param sqlServerIdentityResourceGroupName string = ''
+
 
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
@@ -167,6 +172,8 @@ module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
+    sqlServerIdentityName: sqlServerIdentityName
+    sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
     corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
     allowVeracodeScan: allowVeracodeScan
     createAlerts: createAlerts
