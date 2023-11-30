@@ -84,6 +84,9 @@ param databaseConnectionString string = ''
 @description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
+@description('Resource group name for managed identity of database server')
+param sqlServerIdentityResourceGroupName string = ''
+
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
@@ -276,6 +279,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${appConfigIdentity.id}': {}
+      '${sqlIdentity.id}': {}
     }
   }
   properties: {
@@ -287,6 +291,8 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   }
   dependsOn: [
     appConfigIdentity
+    sqlManagedIdentity
+    sqlIdentity
   ]
 }
 
@@ -361,6 +367,22 @@ module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServe
     sqlServerName: sqlServerName
     subnetId: subnet.outputs.subnetId
   }
+}
+
+// Creates a managed identity that would be used to grant access to functionapp instance
+var sqlIdentityName = 'id-${functionName}-readonly'
+var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName) ? sqlServerIdentityResourceGroupName : sqlServerResourceGroupName
+module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
+  scope: resourceGroup(sqlIdentityRG)
+  name: '${functionName}-sql-identity-module'
+  params: {
+    managedIdentityName: sqlIdentityName
+    location: location
+  }
+}
+resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: sqlIdentityName
+  scope: resourceGroup(sqlIdentityRG)
 }
 
 output functionAppName string = functionApp.name
