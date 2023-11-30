@@ -1,7 +1,8 @@
-import { ConnectionError, ConnectionPool, MSSQLError, config } from 'mssql';
+import { ConnectionError, MSSQLError } from 'mssql';
 import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
+import { getSqlConnection } from '../../factory';
 
 const MODULE_NAME = 'DATABASE-UTILITY';
 
@@ -12,13 +13,10 @@ export async function executeQuery(
   input?: DbTableFieldSpec[],
 ): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
-
-  // TODO CAMS-14 This is where the client gets create for sql connections.
-  // Do we need to create a connection pool object for this???
   try {
-    const sqlConnectionPool = new ConnectionPool(databaseConfig as unknown as config);
+    const sqlConnectionPool = getSqlConnection(databaseConfig);
     const sqlConnection = await sqlConnectionPool.connect();
-    const sqlRequest = await sqlConnection.request();
+    const sqlRequest = sqlConnection.request();
 
     if (typeof input != 'undefined') {
       input.forEach((item) => {
@@ -78,11 +76,11 @@ export async function executeQuery(
   }
 }
 
-function isMssqlError(e: unknown): e is MSSQLError {
+function isMssqlError(e): e is MSSQLError {
   return e instanceof MSSQLError;
 }
 
-function isConnectionError(e: unknown): e is MSSQLError {
+function isConnectionError(e): e is ConnectionError {
   return e instanceof ConnectionError;
 }
 
