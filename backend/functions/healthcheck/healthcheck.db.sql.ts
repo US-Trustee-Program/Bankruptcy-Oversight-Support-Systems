@@ -16,7 +16,7 @@ export default class HealthcheckSqlDb {
       const client = getSqlConnection(this.applicationContext.config.dxtrDbConfig);
       const sqlConnection = await client.connect();
       const sqlRequest = sqlConnection.request();
-      const results = await sqlRequest.query('SELECT TOP 1 * FROM [dbo].[AO_CSS]');
+      const results = await sqlRequest.query('SELECT TOP 1 * FROM [dbo].[AO_CS]');
       sqlConnection.close();
       return results.recordset.length > 0;
     } catch (error) {
