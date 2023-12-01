@@ -10,9 +10,8 @@ import { CaseDetailScrollPanelRef } from './CaseDetailScrollPanelRef';
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
   caseId: string | undefined;
-  navigationRef: React.RefObject<CaseDetailScrollPanelRef>;
-  searchFilterRef: React.RefObject<CaseDetailScrollPanelRef>;
   caseDetail?: CaseDetailType;
+  navigationPaneRef: React.RefObject<CaseDetailScrollPanelRef>;
 }
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
@@ -29,15 +28,13 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       const caseDetailH1 = document.querySelector('.case-detail-header h1');
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
         fix();
-        props.navigationRef.current?.fix();
-        props.searchFilterRef.current?.fix();
+        props.navigationPaneRef.current?.fix();
       } else if (
         caseDetailHeader &&
         camsHeader.getBoundingClientRect().bottom > caseDetailHeader.getBoundingClientRect().bottom
       ) {
         loosen();
-        props.navigationRef.current?.loosen();
-        props.searchFilterRef.current?.loosen();
+        props.navigationPaneRef.current?.loosen();
       }
     }
   };
