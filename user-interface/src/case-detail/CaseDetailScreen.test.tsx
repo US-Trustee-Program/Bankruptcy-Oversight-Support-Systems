@@ -1,10 +1,17 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import { CaseDetail } from './CaseDetailScreen';
+import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
+import { CaseDetail, docketSorterClosure } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDetailType, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
+import {
+  CaseDetailType,
+  CaseDocketEntry,
+  Debtor,
+  DebtorAttorney,
+} from '@/lib/type-declarations/chapter-15';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import React from 'react';
+import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { vi } from 'vitest';
+import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -668,58 +675,282 @@ describe('Case Detail screen tests', () => {
     },
   );
 
-  describe('Fix navigation area tests', () => {
-    test('should render with css class name of "case-details-navigation fixed" when ref.fix() is called and "case-details-navigation" when ref.loosen() is called', async () => {
-      const testCaseDetail: CaseDetailType = {
-        caseId: '080-01-12345',
-        chapter: '15',
-        officeName: 'Redondo Beach',
-        caseTitle: 'The Beach Boys',
-        dateFiled: '01-04-1962',
-        judgeName: 'some judge',
-        debtorTypeLabel: 'Corporate Business',
-        petitionLabel: 'Voluntary Petition',
-        closedDate: '01-08-1963',
-        dismissedDate: '01-08-1964',
-        assignments: [],
-        debtor: {
-          name: 'Roger Rabbit',
-        },
-        debtorAttorney: {
-          name: 'Jane Doe',
-          address1: '123 Rabbithole Lane',
-          cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-          phone: '234-123-1234',
-        },
-      };
+  describe('Fixed navigation area', () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: '080-01-12345',
+      chapter: '15',
+      officeName: 'Redondo Beach',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      judgeName: 'some judge',
+      debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [],
+      debtor: {
+        name: 'Roger Rabbit',
+      },
+      debtorAttorney: {
+        name: 'Jane Doe',
+        address1: '123 Rabbithole Lane',
+        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+        phone: '234-123-1234',
+      },
+    };
 
+    test('should fix when scrolled at top of viewport', async () => {
       render(
         <BrowserRouter>
-          {/*<CaseDetailNavigation*/}
-          {/*  caseId="12345"*/}
-          {/*  initiallySelectedNavLink={NavState.BASIC_INFO}*/}
-          {/*/>*/}
-          <CaseDetail caseDetail={testCaseDetail} />
+          <div className="App" data-testid="app-component-test-id">
+            <header
+              className="cams-header usa-header-usa-header--basic"
+              style={{ minHeight: '100px', height: '100px' }}
+              data-testid="cams-header-test-id"
+            ></header>
+            <CaseDetail caseDetail={testCaseDetail} />
+            <div style={{ minHeight: '2000px', height: '2000px' }}></div>
+          </div>
+        </BrowserRouter>,
+      );
+
+      const app = await screen.findByTestId('app-component-test-id');
+
+      await waitFor(() => {
+        const pane = document.querySelector('.left-navigation-pane-container');
+        expect(pane).toBeInTheDocument();
+        expect(pane).not.toHaveClass('fixed');
+      });
+
+      const paneBeforeBreak = document.querySelector('.left-navigation-pane-container');
+      expect(paneBeforeBreak).toBeInTheDocument();
+
+      window.HTMLElement.prototype.getBoundingClientRect = () =>
+        ({
+          top: 2,
+        }) as DOMRect;
+      fireEvent.scroll(app as Element, { target: { scrollTop: 98 } });
+
+      expect(paneBeforeBreak).toBeInTheDocument();
+      expect(paneBeforeBreak).not.toHaveClass('fixed');
+
+      window.HTMLElement.prototype.getBoundingClientRect = () =>
+        ({
+          top: -175,
+        }) as DOMRect;
+      fireEvent.scroll(app as Element, { target: { scrollTop: 275 } });
+
+      const paneAfterBreak = document.querySelector('.left-navigation-pane-container');
+      expect(paneAfterBreak).toBeInTheDocument();
+      expect(paneAfterBreak).toHaveClass('fixed');
+    });
+
+    test('should render docket search when the feature is turned on and there are docket entries', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+      const testCaseDocketEntries = [
+        {
+          sequenceNumber: 2,
+          documentNumber: 1,
+          dateFiled: '2023-05-07T00:00:00.0000000',
+          summaryText: 'Add Judge',
+          fullText: 'Docket entry number 1.',
+        },
+        {
+          sequenceNumber: 3,
+          dateFiled: '2023-05-07T00:00:00.0000000',
+          summaryText: 'Motion',
+          fullText: 'Docket entry number 2.',
+        },
+        {
+          sequenceNumber: 4,
+          documentNumber: 2,
+          dateFiled: '2023-07-07T00:00:00.0000000',
+          summaryText: 'Add Attorney',
+          fullText: 'Docket entry number 3.',
+          documents: [
+            {
+              fileLabel: '0-0',
+              fileSize: 1000,
+              fileExt: 'pdf',
+              fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
+            },
+          ],
+        },
+      ];
+      render(
+        <BrowserRouter>
+          <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
         </BrowserRouter>,
       );
 
       await waitFor(() => {
-        const navigationPane = document.querySelector('.left-navigation-pane-container');
-        expect(navigationPane).toBeInTheDocument();
-        expect(navigationPane).not.toHaveClass('fixed');
+        const searchInput = document.querySelector('#basic-search-field');
+        console.log(document.body);
+        expect(searchInput).toBeInTheDocument();
       });
+    });
+  });
 
-      // const navigation = document.querySelector('.case-details-navigation');
+  describe('Docket entry sorter', () => {
+    const left: CaseDocketEntry = {
+      sequenceNumber: 0,
+      dateFiled: '',
+      summaryText: '',
+      fullText: '',
+    };
+    const right: CaseDocketEntry = {
+      sequenceNumber: 1,
+      dateFiled: '',
+      summaryText: '',
+      fullText: '',
+    };
+    test('should return the expected sort direction for Newest sort', () => {
+      const fn = docketSorterClosure('Newest');
+      const expectedValue = 1;
+      expect(fn(left, right)).toEqual(expectedValue);
+    });
+    test('should return the expected sort direction for Oldest sort', () => {
+      const fn = docketSorterClosure('Oldest');
+      const expectedValue = -1;
+      expect(fn(left, right)).toEqual(expectedValue);
+    });
+  });
 
-      // navRef.current?.fix();
-      // await waitFor(async () => {
-      //   expect(navigation).toHaveClass('fixed');
-      // });
-      //
-      // navRef.current?.loosen();
-      // await waitFor(async () => {
-      //   expect(navigation).not.toHaveClass('fixed');
-      // });
+  describe('old tests we may have to rewrite', () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: '080-01-12345',
+      chapter: '15',
+      officeName: 'Redondo Beach',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      judgeName: 'some judge',
+      debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [],
+      debtor: {
+        name: 'Roger Rabbit',
+      },
+      debtorAttorney: {
+        name: 'Jane Doe',
+        address1: '123 Rabbithole Lane',
+        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+        phone: '234-123-1234',
+      },
+    };
+
+    const testCaseDocketEntries = [
+      {
+        sequenceNumber: 2,
+        documentNumber: 1,
+        dateFiled: '2023-05-07T00:00:00.0000000',
+        summaryText: 'Add Judge',
+        fullText: 'Docket entry number 1.',
+      },
+      {
+        sequenceNumber: 3,
+        dateFiled: '2023-05-07T00:00:00.0000000',
+        summaryText: 'Motion',
+        fullText: 'Docket entry number 2.',
+      },
+      {
+        sequenceNumber: 4,
+        documentNumber: 2,
+        dateFiled: '2023-07-07T00:00:00.0000000',
+        summaryText: 'Add Attorney',
+        fullText: 'Docket entry number 3.',
+        documents: [
+          {
+            fileLabel: '0-0',
+            fileSize: 1000,
+            fileExt: 'pdf',
+            fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
+          },
+        ],
+      },
+    ];
+
+    test('should filter the list of docket entries per the search text', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+      const routePath = '/case-detail/111-11-1234/court-docket';
+      render(
+        <MemoryRouter initialEntries={[routePath]}>
+          <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+        </MemoryRouter>,
+      );
+
+      const searchableDocketId = 'searchable-docket';
+      const startingDocket = screen.getByTestId(searchableDocketId);
+      expect(startingDocket.childElementCount).toEqual(testCaseDocketEntries.length);
+
+      const searchInput = screen.getByTestId('basic-search-field');
+      fireEvent.change(searchInput, { target: { value: 'number 2' } });
+
+      const filteredDocket = screen.getByTestId(searchableDocketId);
+      expect(filteredDocket.childElementCount).toEqual(1);
+    });
+
+    test('should sort docket entries', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+      const youngestEntry = testCaseDocketEntries[2];
+      const middleEntry = testCaseDocketEntries[1];
+      const oldestEntry = testCaseDocketEntries[0];
+      const sortedListFromApi = [oldestEntry, middleEntry, youngestEntry];
+
+      render(
+        <BrowserRouter>
+          <CaseDetailCourtDocket
+            caseId="081-12-12345"
+            docketEntries={sortedListFromApi}
+            searchString=""
+            hasDocketEntries={true}
+          />
+        </BrowserRouter>,
+      );
+
+      const sortButtonId = 'docket-entry-sort';
+
+      // Check to make sure all the entries are in the HTML list.
+      const startingDocket = screen.getByTestId('searchable-docket');
+      const sortButton = screen.getByTestId(sortButtonId);
+      expect(startingDocket.childElementCount).toEqual(testCaseDocketEntries.length);
+
+      // First Sort - oldest goes to the top of the list.
+      fireEvent.click(sortButton);
+      if (oldestEntry.documentNumber) {
+        expect(screen.getByTestId('docket-entry-0-number').textContent).toEqual(
+          oldestEntry.documentNumber?.toString(),
+        );
+      }
+      expect(screen.getByTestId('docket-entry-0-header').textContent).toEqual(
+        oldestEntry.dateFiled + ' - ' + oldestEntry.summaryText,
+      );
+      expect(screen.getByTestId('docket-entry-0-text').textContent).toEqual(oldestEntry.fullText);
+      if (oldestEntry.documents) {
+        expect(screen.getByTestId('document-unordered-list').childElementCount).toEqual(
+          oldestEntry.documents?.length,
+        );
+      }
+
+      // Second Sort - youngest returns to the top of the list.
+      fireEvent.click(sortButton);
+      if (youngestEntry.documentNumber) {
+        expect(screen.getByTestId('docket-entry-0-number').textContent).toEqual(
+          youngestEntry.documentNumber?.toString(),
+        );
+      }
+      expect(screen.getByTestId('docket-entry-0-header').textContent).toEqual(
+        youngestEntry.dateFiled + ' - ' + youngestEntry.summaryText,
+      );
+      expect(screen.getByTestId('docket-entry-0-text').textContent).toEqual(youngestEntry.fullText);
+      if (youngestEntry.documents) {
+        expect(screen.getByTestId('document-unordered-list').childElementCount).toEqual(
+          youngestEntry.documents?.length,
+        );
+      }
     });
   });
 });
