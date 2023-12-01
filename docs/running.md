@@ -128,9 +128,9 @@ Grant access to a managed identity with the following sql query
 ```sql
 CREATE USER [userAssignedIdentityName] FROM EXTERNAL PROVIDER;
 ALTER ROLE db_datareader ADD MEMBER [userAssignedIdentityName];
-// Remember to leverage principle of least privilege
-// ALTER ROLE db_datawriter ADD MEMBER [userAssignedIdentityName];
-// ALTER ROLE db_ddladmin ADD MEMBER [userAssignedIdentityName];
+-- Remember to leverage principle of least privilege
+-- ALTER ROLE db_datawriter ADD MEMBER [userAssignedIdentityName];
+-- ALTER ROLE db_ddladmin ADD MEMBER [userAssignedIdentityName];
 GO
 ```
 
