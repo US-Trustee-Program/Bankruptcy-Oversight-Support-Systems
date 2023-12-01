@@ -166,6 +166,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
           JOIN AO_PDF_PATH AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
       WHERE C.CS_DIV=@courtDiv AND C.CASE_ID=@dxtrCaseId
       AND DC.COURT_STATUS != 'unk'
+      AND DC.DELETED_LT = 'N'
     `;
 
     const queryResult: QueryResults = await executeQuery(
