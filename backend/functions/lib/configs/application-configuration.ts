@@ -42,7 +42,7 @@ export class ApplicationConfiguration implements AppConfig {
       database,
     };
 
-    const useSqlAuth = password && password.length > 0;
+    const useSqlAuth = user && password;
     if (useSqlAuth) {
       config.user = user;
       config.password = password;
@@ -55,11 +55,6 @@ export class ApplicationConfiguration implements AppConfig {
       if (clientId) {
         config.authentication.options = { clientId };
       }
-    }
-
-    // Override auth type value to mock if this environment variable is set to true
-    if (process.env.DATABASE_MOCK?.toLowerCase() === 'true') {
-      config.authentication.type = 'mock';
     }
 
     config.pool = {

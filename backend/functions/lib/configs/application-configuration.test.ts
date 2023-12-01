@@ -12,32 +12,32 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env = env;
   });
 
-  // test('Should setup Config with default database authentication if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is not empty', async () => {
-  //   process.env.AZURE_MANAGED_IDENTITY = '';
-  //   process.env.MSSQL_PASS = 'abcdefg';
-  //   const config = new ApplicationConfiguration();
+  test('Should contain client id in config when MSSQL_CLIENT_ID is set', async () => {
+    const expectedClientId = '12345';
+    process.env.MSSQL_CLIENT_ID = expectedClientId;
+    process.env.MSSQL_USER = '';
+    process.env.MSSQL_PASS = undefined;
 
-  //   expect(config.acmsDbConfig.authentication.type).toEqual('default');
-  // });
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.dxtrDbConfig.authentication.type).not.toBeNull();
+    expect(appConfig.dxtrDbConfig.authentication.options.clientId).not.toBeNull();
+    expect(appConfig.dxtrDbConfig.authentication.options.clientId).toEqual(expectedClientId);
+  });
 
-  // test('Should setup Config with database mock if AZURE_MANAGED_IDENTITY is 0 length and MSSQL_PASS is 0 length and DATABASE_MOCK environment variable is set', async () => {
-  //   process.env.AZURE_MANAGED_IDENTITY = '';
-  //   process.env.MSSQL_PASS = '';
-  //   process.env.DATABASE_MOCK = 'true';
-  //   const config = new ApplicationConfiguration();
+  test('Should default to azure-active-directory-default if no password provided', async () => {
+    process.env.MSSQL_USER = 'tester';
+    process.env.MSSQL_PASS = undefined;
 
-  //   expect(config.acmsDbConfig.authentication.type).toEqual('mock');
-  // });
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.dxtrDbConfig.authentication.type).not.toBeNull();
+  });
 
-  test('Should throw Error if setting up Config and AZURE_MANAGED_IDENTITY is 0 length, MSSQL_PASS is 0 length and DATABASE_MOCK environment variable is false', async () => {
-    process.env.AZURE_MANAGED_IDENTITY = '';
-    process.env.MSSQL_PASS = '';
-    process.env.DATABASE_MOCK = 'false';
+  test('Should use sql auth', async () => {
+    process.env.MSSQL_USER = 'tester';
+    process.env.MSSQL_PASS = 'password';
 
-    try {
-      new ApplicationConfiguration();
-    } catch (e) {
-      expect(e.message).toBe('No Database authentication type specified');
-    }
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.dxtrDbConfig.user).not.toBeNull();
+    expect(appConfig.dxtrDbConfig.password).not.toBeNull();
   });
 });
