@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import IconInput from '@/lib/components/IconInput';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
-import { CaseDocketEntry, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
+import {
+  CaseDocketEntry,
+  CaseDocketEntryDocument,
+  CaseDocketSummaryFacet,
+} from '@/lib/type-declarations/chapter-15';
 import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import Icon from '@/lib/components/uswds/Icon';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './CaseDetailCourtDocket.scss';
 
+export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
+
 export interface CaseDetailCourtDocketProps {
   caseId?: string;
   docketEntries?: CaseDocketEntry[];
+  facets?: string[];
 }
 
 type SortDirection = 'Oldest' | 'Newest';
@@ -59,12 +66,18 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   const flags = useFeatureFlags();
   const searchFeature = flags[DOCKET_SEARCH_ENABLED];
+  const facets: string[] = props.facets || [];
 
   function docketSearchFilter(docketEntry: CaseDocketEntry) {
     return (
       docketEntry.summaryText.toLowerCase().includes(searchString) ||
       docketEntry.fullText.toLowerCase().includes(searchString)
     );
+  }
+
+  function facetFilter(docketEntry: CaseDocketEntry) {
+    if (facets.length === 0) return docketEntry;
+    return facets.includes(docketEntry.summaryText);
   }
 
   function toggleSort() {
@@ -134,6 +147,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           hasDocketEntries &&
           docketEntries
             .filter(docketSearchFilter)
+            .filter(facetFilter)
             .sort(docketSorterClosure(sortDirection))
             .map((docketEntry: CaseDocketEntry, idx: number) => {
               return (

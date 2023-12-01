@@ -11,6 +11,8 @@ import {
 } from '@/lib/type-declarations/chapter-15';
 import { mapNavState } from './panels/CaseDetailNavigation';
 import { CaseDetailNavigationRef } from './panels/CaseDetailNavigation.d';
+import ReactSelect, { MultiValue } from 'react-select';
+import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -31,12 +33,24 @@ function showReopenDate(reOpenDate: string | undefined, closedDate: string | und
   return false;
 }
 
+export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
+  const facetOptions = [...facets.entries()].map<Record<string, string>>(([key, facet]) => {
+    return { value: key, label: `${key} (${facet.count})` };
+  });
+  console.log(facetOptions);
+  return facetOptions;
+}
+
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
+  const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
+    new Map(),
+  );
+  const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const navRef = useRef<CaseDetailNavigationRef>(null);
   const location = useLocation();
 
@@ -57,6 +71,20 @@ export const CaseDetail = (props: CaseDetailProps) => {
       .then((data) => {
         const response = data as Chapter15CaseDocketResponseData;
         setCaseDocketEntries(response.body);
+        const facets = response.body.reduce<CaseDocketSummaryFacets>(
+          (acc: CaseDocketSummaryFacets, de: CaseDocketEntry) => {
+            if (acc.has(de.summaryText)) {
+              const facet = acc.get(de.summaryText)!;
+              facet.count = facet.count + 1;
+              acc.set(de.summaryText, facet);
+            } else {
+              acc.set(de.summaryText, { text: de.summaryText, count: 1 });
+            }
+            return acc;
+          },
+          new Map(),
+        );
+        setCaseDocketSummaryFacets(facets);
       })
       .catch(() => {
         setCaseDocketEntries([]);
@@ -78,6 +106,17 @@ export const CaseDetail = (props: CaseDetailProps) => {
       fetchCaseDocketEntries();
     }
   }, []);
+
+  const handleSelectedFacet = (newValue: MultiValue<Record<string, string>>) => {
+    const selected: string[] = [];
+    newValue.forEach((value) => {
+      const { value: selection } = value;
+      selected.push(selection);
+    });
+    setSelectedFacets(selected);
+  };
+
+  console.log(caseDocketSummaryFacets);
 
   return (
     <>
@@ -121,6 +160,14 @@ export const CaseDetail = (props: CaseDetailProps) => {
                   initiallySelectedNavLink={navState}
                   ref={navRef}
                 />
+                <div>
+                  <ReactSelect
+                    options={getSummaryFacetList(caseDocketSummaryFacets)}
+                    isMulti
+                    closeMenuOnSelect={false}
+                    onChange={handleSelectedFacet}
+                  ></ReactSelect>
+                </div>
               </div>
               <div className="grid-col-6">
                 <Suspense fallback={<LoadingIndicator />}>
@@ -143,6 +190,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                         <CaseDetailCourtDocket
                           caseId={caseBasicInfo.caseId}
                           docketEntries={caseDocketEntries}
+                          facets={selectedFacets}
                         />
                       }
                     />
