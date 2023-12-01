@@ -34,7 +34,7 @@ describe('Testing that database configuration is loaded correctly based on envir
 
   test('Should use sql auth', async () => {
     process.env.MSSQL_USER = 'tester';
-    process.env.MSSQL_PASS = 'password';
+    process.env.MSSQL_PASS = (Math.random() + 1).toString(36);
 
     const appConfig = new ApplicationConfiguration();
     expect(appConfig.dxtrDbConfig.user).not.toBeNull();
