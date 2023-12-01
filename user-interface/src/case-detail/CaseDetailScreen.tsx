@@ -65,7 +65,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [searchString, setSearchString] = useState('');
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
-  const searchFilterRef = useRef<CaseDetailScrollPanelRef>(null);
 
   const location = useLocation();
   const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
@@ -177,8 +176,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
           <>
             <CaseDetailHeader
               isLoading={isLoading}
-              navigationRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
-              searchFilterRef={searchFilterRef as React.RefObject<CaseDetailScrollPanelRef>}
+              navigationPaneRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
               caseId={caseId}
             />
             <div className="grid-row grid-gap-lg">
@@ -199,8 +197,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
               isLoading={false}
               caseId={caseBasicInfo.caseId}
               caseDetail={caseBasicInfo}
-              navigationRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
-              searchFilterRef={searchFilterRef as React.RefObject<CaseDetailScrollPanelRef>}
+              navigationPaneRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
             />
             <div className="grid-row grid-gap-lg">
               <div id="left-gutter" className="grid-col-1"></div>
