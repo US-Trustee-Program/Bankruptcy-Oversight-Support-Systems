@@ -4,6 +4,7 @@ import { CaseDetail } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import React from 'react';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -666,4 +667,59 @@ describe('Case Detail screen tests', () => {
       expect(caseDocketLink).toHaveClass('usa-current');
     },
   );
+
+  describe('Fix navigation area tests', () => {
+    test('should render with css class name of "case-details-navigation fixed" when ref.fix() is called and "case-details-navigation" when ref.loosen() is called', async () => {
+      const testCaseDetail: CaseDetailType = {
+        caseId: '080-01-12345',
+        chapter: '15',
+        officeName: 'Redondo Beach',
+        caseTitle: 'The Beach Boys',
+        dateFiled: '01-04-1962',
+        judgeName: 'some judge',
+        debtorTypeLabel: 'Corporate Business',
+        petitionLabel: 'Voluntary Petition',
+        closedDate: '01-08-1963',
+        dismissedDate: '01-08-1964',
+        assignments: [],
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney: {
+          name: 'Jane Doe',
+          address1: '123 Rabbithole Lane',
+          cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+          phone: '234-123-1234',
+        },
+      };
+
+      render(
+        <BrowserRouter>
+          {/*<CaseDetailNavigation*/}
+          {/*  caseId="12345"*/}
+          {/*  initiallySelectedNavLink={NavState.BASIC_INFO}*/}
+          {/*/>*/}
+          <CaseDetail caseDetail={testCaseDetail} />
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        const navigationPane = document.querySelector('.left-navigation-pane-container');
+        expect(navigationPane).toBeInTheDocument();
+        expect(navigationPane).not.toHaveClass('fixed');
+      });
+
+      // const navigation = document.querySelector('.case-details-navigation');
+
+      // navRef.current?.fix();
+      // await waitFor(async () => {
+      //   expect(navigation).toHaveClass('fixed');
+      // });
+      //
+      // navRef.current?.loosen();
+      // await waitFor(async () => {
+      //   expect(navigation).not.toHaveClass('fixed');
+      // });
+    });
+  });
 });

@@ -1,7 +1,5 @@
-import './CaseDetailNavigation.scss';
-import { useImperativeHandle, useState, forwardRef } from 'react';
+import { useState, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
-import { CaseDetailNavigationRef } from './CaseDetailNavigation.d';
 
 export function mapNavState(path: string) {
   const cleanPath = path.replace(/\/$/, '').split('/');
@@ -27,21 +25,15 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current' : '';
 }
 
-function CaseDetailNavigationComponent(
-  { caseId, initiallySelectedNavLink }: CaseDetailNavigationProps,
-  ref: React.Ref<CaseDetailNavigationRef>,
-) {
+function CaseDetailNavigationComponent({
+  caseId,
+  initiallySelectedNavLink,
+}: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
-  const [navClassName, setNavClassName] = useState<string>('');
-
-  useImperativeHandle(ref, () => ({
-    fix: () => setNavClassName('fixed'),
-    loosen: () => setNavClassName(''),
-  }));
 
   return (
     <>
-      <nav className={`case-details-navigation ${navClassName}`} aria-label="Side navigation">
+      <nav className="case-details-navigation" aria-label="Side navigation">
         <ul className="usa-sidenav">
           <li className="usa-sidenav__item">
             <Link

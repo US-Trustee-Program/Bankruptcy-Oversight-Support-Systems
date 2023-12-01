@@ -1,5 +1,5 @@
 import './CaseDetailScreen.scss';
-import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
@@ -10,14 +10,26 @@ import {
   Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import { mapNavState } from './panels/CaseDetailNavigation';
-import { CaseDetailNavigationRef } from './panels/CaseDetailNavigation.d';
+import { CaseDetailScrollPanelRef } from './panels/CaseDetailScrollPanelRef';
 import ReactSelect, { MultiValue } from 'react-select';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
+import Icon from '@/lib/components/uswds/Icon';
+import IconInput from '@/lib/components/IconInput';
+import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
 const CaseDetailNavigation = lazy(() => import('./panels/CaseDetailNavigation'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
+
+type SortDirection = 'Oldest' | 'Newest';
+
+export function docketSorterClosure(sortDirection: SortDirection) {
+  return (left: CaseDocketEntry, right: CaseDocketEntry) => {
+    const direction = sortDirection === 'Newest' ? 1 : -1;
+    return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
+  };
+}
 
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
@@ -37,7 +49,6 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   const facetOptions = [...facets.entries()].map<Record<string, string>>(([key, facet]) => {
     return { value: key, label: `${key} (${facet.count})` };
   });
-  console.log(facetOptions);
   return facetOptions;
 }
 
@@ -51,10 +62,19 @@ export const CaseDetail = (props: CaseDetailProps) => {
     new Map(),
   );
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
-  const navRef = useRef<CaseDetailNavigationRef>(null);
-  const location = useLocation();
+  const [searchString, setSearchString] = useState('');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
+  const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
+  const searchFilterRef = useRef<CaseDetailScrollPanelRef>(null);
 
+  const location = useLocation();
+  const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
   const navState = mapNavState(location.pathname);
+
+  const hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
+
+  const flags = useFeatureFlags();
+  const searchFeature = flags[DOCKET_SEARCH_ENABLED];
 
   const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
@@ -91,6 +111,44 @@ export const CaseDetail = (props: CaseDetailProps) => {
       });
   };
 
+  function toggleSort() {
+    setSortDirection(sortDirection === 'Newest' ? 'Oldest' : 'Newest');
+  }
+
+  function search(ev: React.ChangeEvent<HTMLInputElement>) {
+    const searchString = ev.target.value.toLowerCase();
+    setSearchString(searchString);
+  }
+
+  const handleSelectedFacet = (newValue: MultiValue<Record<string, string>>) => {
+    const selected: string[] = [];
+    newValue.forEach((value) => {
+      const { value: selection } = value;
+      selected.push(selection);
+    });
+    setSelectedFacets(selected);
+  };
+
+  function docketSearchFilter(docketEntry: CaseDocketEntry) {
+    return (
+      docketEntry.summaryText.toLowerCase().includes(searchString) ||
+      docketEntry.fullText.toLowerCase().includes(searchString)
+    );
+  }
+
+  function facetFilter(docketEntry: CaseDocketEntry) {
+    if (selectedFacets.length === 0) return docketEntry;
+    return selectedFacets.includes(docketEntry.summaryText);
+  }
+
+  function applySortAndFilters(docketEntries: CaseDocketEntry[] | undefined) {
+    if (docketEntries === undefined) return;
+    return docketEntries
+      .filter(docketSearchFilter)
+      .filter(facetFilter)
+      .sort(docketSorterClosure(sortDirection));
+  }
+
   useEffect(() => {
     if (props.caseDetail) {
       setCaseBasicInfo(props.caseDetail);
@@ -107,16 +165,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
     }
   }, []);
 
-  const handleSelectedFacet = (newValue: MultiValue<Record<string, string>>) => {
-    const selected: string[] = [];
-    newValue.forEach((value) => {
-      const { value: selection } = value;
-      selected.push(selection);
-    });
-    setSelectedFacets(selected);
-  };
-
-  console.log(caseDocketSummaryFacets);
+  useImperativeHandle(leftNavContainerRef, () => ({
+    fix: () => setLeftNavContainerFixed('grid-col-2 fixed'),
+    loosen: () => setLeftNavContainerFixed(''),
+  }));
 
   return (
     <>
@@ -125,17 +177,14 @@ export const CaseDetail = (props: CaseDetailProps) => {
           <>
             <CaseDetailHeader
               isLoading={isLoading}
-              navigationRef={navRef as React.RefObject<CaseDetailNavigationRef>}
+              navigationRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
+              searchFilterRef={searchFilterRef as React.RefObject<CaseDetailScrollPanelRef>}
               caseId={caseId}
             />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation
-                  caseId={caseId}
-                  initiallySelectedNavLink={navState}
-                  ref={navRef}
-                />
+                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
               </div>
               <div className="grid-col-8">
                 <LoadingIndicator />
@@ -150,23 +199,67 @@ export const CaseDetail = (props: CaseDetailProps) => {
               isLoading={false}
               caseId={caseBasicInfo.caseId}
               caseDetail={caseBasicInfo}
-              navigationRef={navRef as React.RefObject<CaseDetailNavigationRef>}
+              navigationRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
+              searchFilterRef={searchFilterRef as React.RefObject<CaseDetailScrollPanelRef>}
             />
             <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
+              <div id="left-gutter" className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation
-                  caseId={caseId}
-                  initiallySelectedNavLink={navState}
-                  ref={navRef}
-                />
-                <div>
-                  <ReactSelect
-                    options={getSummaryFacetList(caseDocketSummaryFacets)}
-                    isMulti
-                    closeMenuOnSelect={false}
-                    onChange={handleSelectedFacet}
-                  ></ReactSelect>
+                <div className={'left-navigation-pane-container ' + leftNavContainerFixed}>
+                  <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+                  {hasDocketEntries && searchFeature && (
+                    <div className={`filter-and-search padding-y-4`}>
+                      <div className="sort form-field">
+                        <div className="usa-sort usa-sort--small">
+                          <button
+                            className="usa-button usa-button--outline sort-button"
+                            id="basic-sort-button"
+                            name="basic-sort"
+                            onClick={toggleSort}
+                            data-testid="docket-entry-sort"
+                            aria-label={'Sort ' + sortDirection + ' First'}
+                          >
+                            <div aria-hidden="true">
+                              <span aria-hidden="true">Sort ({sortDirection})</span>
+                              <Icon
+                                className="sort-button-icon"
+                                name={
+                                  sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'
+                                }
+                              />
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div
+                        className="in-docket-search form-field"
+                        data-testid="docket-entry-search"
+                      >
+                        <div className="usa-search usa-search--small">
+                          <label htmlFor="basic-search-field">Find in Docket</label>
+                          <IconInput
+                            className="search-icon"
+                            id="basic-search-field"
+                            name="basic-search"
+                            icon="search"
+                            autocomplete="off"
+                            onChange={search}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="docket-summary-facets form-field">
+                        <label>Filter</label>
+                        <ReactSelect
+                          options={getSummaryFacetList(caseDocketSummaryFacets)}
+                          isMulti
+                          closeMenuOnSelect={false}
+                          onChange={handleSelectedFacet}
+                        ></ReactSelect>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="grid-col-6">
@@ -189,8 +282,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
                       element={
                         <CaseDetailCourtDocket
                           caseId={caseBasicInfo.caseId}
-                          docketEntries={caseDocketEntries}
-                          facets={selectedFacets}
+                          docketEntries={applySortAndFilters(caseDocketEntries)}
+                          searchString={searchString}
+                          hasDocketEntries={caseDocketEntries && caseDocketEntries?.length > 1}
                         />
                       }
                     />
@@ -199,7 +293,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                 <Outlet />
               </div>
               <div className="grid-col-2"></div>
-              <div className="grid-col-1"></div>
+              <div id="right-gutter" className="grid-col-1"></div>
             </div>
           </>
         )}

@@ -5,12 +5,13 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
-import { CaseDetailNavigationRef } from './CaseDetailNavigation.d';
+import { CaseDetailScrollPanelRef } from './CaseDetailScrollPanelRef';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
   caseId: string | undefined;
-  navigationRef: React.RefObject<CaseDetailNavigationRef>;
+  navigationRef: React.RefObject<CaseDetailScrollPanelRef>;
+  searchFilterRef: React.RefObject<CaseDetailScrollPanelRef>;
   caseDetail?: CaseDetailType;
 }
 
@@ -29,12 +30,14 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
         fix();
         props.navigationRef.current?.fix();
+        props.searchFilterRef.current?.fix();
       } else if (
         caseDetailHeader &&
         camsHeader.getBoundingClientRect().bottom > caseDetailHeader.getBoundingClientRect().bottom
       ) {
         loosen();
         props.navigationRef.current?.loosen();
+        props.searchFilterRef.current?.loosen();
       }
     }
   };
