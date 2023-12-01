@@ -48,6 +48,11 @@ interface CaseDetailType {
   petitionLabel: string;
 }
 
+export interface CaseDocketSummaryFacet {
+  text: string;
+  count: number;
+}
+
 export interface CaseDocketEntry {
   sequenceNumber: number;
   documentNumber?: number;
