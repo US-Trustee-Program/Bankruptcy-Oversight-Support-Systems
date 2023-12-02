@@ -151,6 +151,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   useEffect(() => {
     if (props.caseDetail) {
       setCaseBasicInfo(props.caseDetail);
+      setIsLoading(false);
     } else if (!isLoading) {
       fetchCaseBasicInfo();
     }
