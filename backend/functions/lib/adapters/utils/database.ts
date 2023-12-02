@@ -52,10 +52,8 @@ export async function executeQuery(
           }
           return acc;
         }, errorMessages);
-      } else {
-        errorMessages.push(error.originalError.message);
       }
-
+      errorMessages.push(error.message);
       log.error(applicationContext, MODULE_NAME, 'ConnectionError', { errorMessages });
     } else if (isMssqlError(error)) {
       log.error(applicationContext, MODULE_NAME, 'MssqlError', {
@@ -89,5 +87,5 @@ type AggregateError = Error & {
 };
 
 function isAggregateError(e: unknown): e is AggregateError {
-  return 'errors' in (e as object);
+  return e && 'errors' in (e as object);
 }

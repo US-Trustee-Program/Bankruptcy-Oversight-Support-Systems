@@ -2,7 +2,41 @@ import { executeQuery } from '../utils/database';
 import { QueryResults, IDbConfig } from '../types/database';
 const functionContext = require('azure-function-context-mock');
 import { applicationContextCreator } from '../utils/application-context-creator';
-import { ConnectionError, RequestError } from 'mssql';
+import { ConnectionError, MSSQLError, RequestError } from 'mssql';
+
+// Setting default Jest mocks for mssql
+// eslint-disable-next-line no-var
+var connectionError = new ConnectionError('');
+// eslint-disable-next-line no-var
+var requestError = new RequestError('');
+// eslint-disable-next-line no-var
+var mssqlError = new MSSQLError('');
+
+const mockClose = jest.fn();
+const mockQuery = jest.fn();
+const mockRequest = jest.fn().mockImplementation(() => ({
+  input: jest.fn(),
+  query: mockQuery,
+}));
+const mockConnect = jest.fn().mockImplementation(
+  (): Promise<unknown> =>
+    Promise.resolve({
+      request: mockRequest,
+      close: mockClose,
+    }),
+);
+jest.mock('mssql', () => {
+  return {
+    ConnectionError: jest.fn().mockReturnValue(connectionError),
+    RequestError: jest.fn().mockReturnValue(requestError),
+    MSSQLError: jest.fn().mockReturnValue(mssqlError),
+    ConnectionPool: jest.fn().mockImplementation(() => {
+      return {
+        connect: mockConnect,
+      };
+    }),
+  };
+});
 
 describe('Tests database client exceptions', () => {
   beforeEach(() => {
@@ -12,18 +46,12 @@ describe('Tests database client exceptions', () => {
   test('should handle known mssql MSSQLError exceptions', async () => {
     const expectedErrorMessage = 'Test MSSQLError exception';
     const context = await applicationContextCreator(functionContext);
-    const mockFuncConnect = jest.fn().mockImplementation(() => {
-      throw new RequestError(expectedErrorMessage);
-    });
-    const mockFuncConnectionPool = jest.fn().mockImplementation(() => {
-      return {
-        connect: mockFuncConnect,
-      };
-    });
-    jest.mock('mssql', () => {
-      return {
-        ConnectionPool: mockFuncConnectionPool,
-      };
+    const requestError = new RequestError(expectedErrorMessage);
+    requestError.name = 'RequestError';
+    requestError.code = '';
+    requestError.message = expectedErrorMessage;
+    mockRequest.mockImplementation(() => {
+      throw requestError;
     });
 
     // method under test
@@ -34,25 +62,19 @@ describe('Tests database client exceptions', () => {
       [],
     );
 
-    expect(mockFuncConnect).toThrow(expectedErrorMessage);
+    expect(mockRequest).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
   });
 
   test('should handle known mssql ConnectionError exceptions', async () => {
     const expectedErrorMessage = 'Test ConnectionError exception';
     const context = await applicationContextCreator(functionContext);
-    const mockFuncConnect = jest.fn().mockImplementation(() => {
-      throw new ConnectionError(expectedErrorMessage);
-    });
-    const mockFuncConnectionPool = jest.fn().mockImplementation(() => {
-      return {
-        connect: mockFuncConnect,
-      };
-    });
-    jest.mock('mssql', () => {
-      return {
-        ConnectionPool: mockFuncConnectionPool,
-      };
+    const connectionError = new ConnectionError(expectedErrorMessage);
+    connectionError.code = '';
+    connectionError.name = 'ConnectionError';
+    connectionError.message = expectedErrorMessage;
+    mockConnect.mockImplementation(() => {
+      throw connectionError;
     });
 
     // method under test
@@ -62,39 +84,41 @@ describe('Tests database client exceptions', () => {
       'SELECT * FROM bar',
       [],
     );
-    expect(mockFuncConnect).toThrow(expectedErrorMessage);
+    expect(mockConnect).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
   });
 
   test('should handle known mssql ConnectionError exceptions with AggregateErrors', async () => {
     const expectedErrorMessage = 'Test ConnectionError exception with AggregateErrors';
-    const context = await applicationContextCreator(functionContext);
-
-    const mockFuncConnect = jest.fn().mockImplementation((): Promise<unknown> => {
-      const connectionError = new Error(expectedErrorMessage) as ConnectionError;
-      connectionError.code = '';
-      connectionError.name = 'ConnectionError';
-      connectionError.originalError = {
-        message: '',
-        name: 'AggregateError',
-        errors: [
-          { message: 'Something happen 01', name: '01', code: '' } as Error,
-          { message: 'Something happen 02', name: '02', code: '' } as Error,
-        ],
-      } as AggregateError;
+    const connectionError = new ConnectionError(expectedErrorMessage);
+    connectionError.code = '';
+    connectionError.name = 'ConnectionError';
+    connectionError.message = expectedErrorMessage;
+    connectionError.originalError = {
+      message: '',
+      name: 'AggregateError',
+      errors: [
+        { message: 'Something happen 01', name: '01', code: '' } as MSSQLError,
+        {
+          message: 'Something happen 02',
+          name: '02',
+          code: '',
+          originalError: {
+            name: '03',
+            message: 'Nested aggregate errors',
+            errors: [
+              { message: 'Nested aggregate error 04', name: '04', code: '' } as MSSQLError,
+              { message: 'Nested aggregate error 05', name: '05', code: '' } as MSSQLError,
+            ],
+          } as AggregateError,
+        } as ConnectionError,
+      ],
+    } as AggregateError;
+    mockConnect.mockImplementation(() => {
       throw connectionError;
     });
-    const mockFunctionConnectionPool = jest.fn().mockImplementation(() => {
-      return {
-        connect: mockFuncConnect,
-      };
-    });
-    jest.mock('mssql', () => {
-      return {
-        ConnectionPool: mockFunctionConnectionPool,
-      };
-    });
 
+    const context = await applicationContextCreator(functionContext);
     // method under test
     const queryResult: QueryResults = await executeQuery(
       context,
@@ -103,7 +127,7 @@ describe('Tests database client exceptions', () => {
       [],
     );
 
-    expect(mockFuncConnect).toThrow(expectedErrorMessage);
+    expect(mockConnect).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
   });
 });
