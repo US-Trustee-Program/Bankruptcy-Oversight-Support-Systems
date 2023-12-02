@@ -1,9 +1,10 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
+import { render, waitFor, screen, queryByTestId, fireEvent, act } from '@testing-library/react';
 import { CaseDetail, docketSorterClosure } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
   CaseDetailType,
+  CaseDocket,
   CaseDocketEntry,
   Debtor,
   DebtorAttorney,
@@ -11,7 +12,6 @@ import {
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { vi } from 'vitest';
-import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -840,7 +840,7 @@ describe('Case Detail screen tests', () => {
       },
     };
 
-    const testCaseDocketEntries = [
+    const testCaseDocketEntries: CaseDocket = [
       {
         sequenceNumber: 2,
         documentNumber: 1,
@@ -874,7 +874,10 @@ describe('Case Detail screen tests', () => {
     test('should filter the list of docket entries per the search text', async () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
 
+      // TODO: Need to get the MemoryRouter to work to cause the docket screen to render.
       const routePath = '/case-detail/111-11-1234/court-docket';
+      // const routePath = '/111-11-1234/court-docket';
+      // const routePath = '/court-docket';
       render(
         <MemoryRouter initialEntries={[routePath]}>
           <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
@@ -900,16 +903,20 @@ describe('Case Detail screen tests', () => {
       const oldestEntry = testCaseDocketEntries[0];
       const sortedListFromApi = [oldestEntry, middleEntry, youngestEntry];
 
+      // TODO: Need to get the MemoryRouter to work to cause the docket screen to render.
+      // const routePath = '/case-detail/111-11-1234/court-docket';
+      const routePath = '/court-docket';
       render(
-        <BrowserRouter>
-          <CaseDetailCourtDocket
-            caseId="081-12-12345"
-            docketEntries={sortedListFromApi}
-            searchString=""
-            hasDocketEntries={true}
-          />
-        </BrowserRouter>,
+        <MemoryRouter initialEntries={[routePath]}>
+          <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={sortedListFromApi} />
+        </MemoryRouter>,
       );
+
+      act(async () => {
+        const docketLink = screen.getByTestId('court-docket-link');
+        expect(docketLink).toBeInTheDocument();
+        docketLink.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
 
       const sortButtonId = 'docket-entry-sort';
 
