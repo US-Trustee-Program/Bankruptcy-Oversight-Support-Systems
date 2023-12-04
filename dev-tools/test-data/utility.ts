@@ -59,17 +59,18 @@ export function toSqlUpdateStatement(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   record: Array<any>,
 ): string {
-  const predicateColumnIndexes = predicateColumns.reduce((acc, value) => {
+  const predicateColumnIndexes = predicateColumns.reduce((accumulator, value) => {
     const idx = columnNames.findIndex((element) => element === value);
-    if (idx >= 0) acc.push(idx);
-    return acc;
+    if (idx >= 0) accumulator.push(idx);
+    return accumulator;
   }, [] as number[]);
   const assignments = record
-    .reduce((acc, value, idx) => {
-      if (predicateColumnIndexes.includes(idx)) return acc;
-      if (omitColumnsNames.findIndex((element) => element === columnNames[idx]) !== -1) return acc;
-      acc.push(`${columnNames[idx]}=${sqlEscapeValue(value)}`);
-      return acc;
+    .reduce((accumulator, value, idx) => {
+      if (predicateColumnIndexes.includes(idx)) return accumulator;
+      if (omitColumnsNames.findIndex((element) => element === columnNames[idx]) !== -1)
+        return accumulator;
+      accumulator.push(`${columnNames[idx]}=${sqlEscapeValue(value)}`);
+      return accumulator;
     }, [])
     .join(', ');
   const predicate = predicateColumns
