@@ -85,6 +85,20 @@ export const DXTR_DOCKET_ENTRIES_DOCUMENTS: DxtrCaseDocketEntryDocument[] = [
     uriStem: 'https://somecourt.doj.gov/api/rest_v1/page/pdf',
     deleted: 'N',
   },
+  {
+    sequenceNumber: 0,
+    uriStem: null,
+    fileName: 'missing-uri-stem.pdf',
+    fileSize: 4060318,
+    deleted: 'N',
+  },
+  {
+    sequenceNumber: 0,
+    uriStem: null,
+    fileName: 'deleted-file.pdf',
+    fileSize: 4060318,
+    deleted: 'Y',
+  },
 ];
 
 const SEQUENCE_NUMBER_DOCUMENT_MAP = new Map<number, CaseDocketEntryDocument[]>([

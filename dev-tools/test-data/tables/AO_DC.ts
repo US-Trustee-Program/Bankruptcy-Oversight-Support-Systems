@@ -322,6 +322,9 @@ export const AO_DC_InsertableColumnNames: ColumnNames = [
   'PDF_SIZE',
   'COURT_STATUS',
   'DELETED_LT',
+  'REGION_DELETED',
+  'REGION_COPIED',
+  'REGION_COPIED_DATE',
 ];
 export const AO_DC_ColumnNames: ColumnNames = [...AO_DC_InsertableColumnNames];
 export interface AO_DC_RecordProps {
@@ -333,6 +336,9 @@ export interface AO_DC_RecordProps {
   PDF_SIZE?: number;
   COURT_STATUS?: string;
   DELETED_LT?: string;
+  REGION_DELETED?: string;
+  REGION_COPIED?: string;
+  REGION_COPIED_DATE?: string;
 }
 export class AO_DC_Record implements TableRecordHelper {
   FILE_NAME: string = '';
@@ -343,6 +349,9 @@ export class AO_DC_Record implements TableRecordHelper {
   DM_SEQ?: number;
   PDF_SIZE?: number;
   DELETED_LT: string = 'N';
+  REGION_DELETED?: string = 'N';
+  REGION_COPIED?: string = 'Y';
+  REGION_COPIED_DATE?: string = '2023-12-04';
 
   constructor(props: AO_DC_RecordProps) {
     Object.assign(this, props);
@@ -361,6 +370,9 @@ export class AO_DC_Record implements TableRecordHelper {
       this.PDF_SIZE,
       this.COURT_STATUS,
       this.DELETED_LT,
+      this.REGION_DELETED,
+      this.REGION_COPIED,
+      this.REGION_COPIED_DATE,
     ];
   }
 }
