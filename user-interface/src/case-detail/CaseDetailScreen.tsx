@@ -9,9 +9,9 @@ import {
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
-import { mapNavState } from './panels/CaseDetailNavigation';
+import { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import { CaseDetailScrollPanelRef } from './panels/CaseDetailScrollPanelRef';
-import ReactSelect, { MultiValue } from 'react-select';
+import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
@@ -89,7 +89,10 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   const facetOptions = [...facets.entries()].map<Record<string, string>>(([key, facet]) => {
     return { value: key, label: `${key} (${facet.count})` };
   });
-  return facetOptions;
+  return facetOptions.sort((a, b) => {
+    if (a.label === b.label) return 0;
+    return a.label < b.label ? -1 : 1;
+  });
 }
 
 export const CaseDetail = (props: CaseDetailProps) => {
@@ -108,7 +111,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   const location = useLocation();
   const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
-  const navState = mapNavState(location.pathname);
+  const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
@@ -150,11 +153,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setSearchString(searchString);
   }
 
-  const handleSelectedFacet = (newValue: MultiValue<Record<string, string>>) => {
-    const selected: string[] = [];
-    newValue.forEach((value) => {
+  const handleSelectedFacet = (newValue: MultiSelectOptionList<Record<string, string>>) => {
+    const selected = newValue.map((value: Record<string, string>) => {
       const { value: selection } = value;
-      selected.push(selection);
+      return selection;
     });
     setSelectedFacets(selected);
   };
@@ -178,6 +180,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
       fetchCaseDocketEntries();
     }
   }, []);
+
+  useEffect(() => {
+    setNavState(mapNavState(location.pathname));
+  }, [location]);
 
   useImperativeHandle(leftNavContainerRef, () => ({
     fix: () => setLeftNavContainerFixed('grid-col-2 fixed'),
@@ -219,8 +225,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <div className="grid-col-2">
                 <div className={'left-navigation-pane-container ' + leftNavContainerFixed}>
                   <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
-                  {hasDocketEntries && searchFeature && (
-                    <div className={`filter-and-search padding-y-4`}>
+                  {hasDocketEntries && navState === NavState.COURT_DOCKET && searchFeature && (
+                    <div
+                      className={`filter-and-search padding-y-4`}
+                      data-testid="filter-and-search-panel"
+                    >
                       <div className="sort form-field">
                         <div className="usa-sort usa-sort--small">
                           <button
@@ -263,12 +272,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
                       <div className="docket-summary-facets form-field">
                         <label>Filter</label>
-                        <ReactSelect
+                        <MultiSelect
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
-                          isMulti
                           closeMenuOnSelect={false}
                           onChange={handleSelectedFacet}
-                        ></ReactSelect>
+                        ></MultiSelect>
                       </div>
                     </div>
                   )}
