@@ -453,7 +453,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: courtId,
     });
 
-    const query = `SELECT
+    const query = `
+      SELECT
         TRIM(CONCAT(
           AT_FIRST_NAME,
           ' ',
@@ -476,7 +477,8 @@ export default class CasesDxtrGateway implements CasesInterface {
           AT_COUNTRY
         )) as cityStateZipCountry,
         AT_PHONENO as phone,
-        AT_E_MAIL as email
+        AT_E_MAIL as email,
+        AT_OFFICE as office
       FROM [dbo].[AO_AT]
       WHERE
         CS_CASEID = @dxtrId AND
@@ -512,6 +514,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       debtorAttorney.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
       debtorAttorney.phone = record.phone;
       debtorAttorney.email = record.email;
+      debtorAttorney.office = record.office;
     });
     return debtorAttorney || null;
   }

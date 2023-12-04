@@ -149,6 +149,15 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
             >
               {props.caseDetail.debtorAttorney.name}
             </div>
+            {props.caseDetail.debtorAttorney.office && (
+              <div
+                className="padding-bottom-1"
+                data-testid="case-detail-debtor-counsel-office"
+                aria-label="debtor counsel office"
+              >
+                {props.caseDetail.debtorAttorney.office}
+              </div>
+            )}
             <div>
               {props.caseDetail.debtorAttorney.address1 && (
                 <div
