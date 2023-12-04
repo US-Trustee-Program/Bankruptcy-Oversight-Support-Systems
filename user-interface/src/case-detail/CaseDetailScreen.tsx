@@ -60,6 +60,17 @@ export function applySortAndFilters(
     .sort(docketSorterClosure(options.sortDirection));
 }
 
+function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEntry) {
+  if (acc.has(de.summaryText)) {
+    const facet = acc.get(de.summaryText)!;
+    facet.count = facet.count + 1;
+    acc.set(de.summaryText, facet);
+  } else {
+    acc.set(de.summaryText, { text: de.summaryText, count: 1 });
+  }
+  return acc;
+}
+
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
   caseDocketEntries?: CaseDocketEntry[];
@@ -120,16 +131,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
         const response = data as Chapter15CaseDocketResponseData;
         setCaseDocketEntries(response.body);
         const facets = response.body.reduce<CaseDocketSummaryFacets>(
-          (acc: CaseDocketSummaryFacets, de: CaseDocketEntry) => {
-            if (acc.has(de.summaryText)) {
-              const facet = acc.get(de.summaryText)!;
-              facet.count = facet.count + 1;
-              acc.set(de.summaryText, facet);
-            } else {
-              acc.set(de.summaryText, { text: de.summaryText, count: 1 });
-            }
-            return acc;
-          },
+          summaryTextFacetReducer,
           new Map(),
         );
         setCaseDocketSummaryFacets(facets);
@@ -157,28 +159,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setSelectedFacets(selected);
   };
 
-  /*
-  function docketSearchFilter(docketEntry: CaseDocketEntry) {
-    return (
-      docketEntry.summaryText.toLowerCase().includes(searchString) ||
-      docketEntry.fullText.toLowerCase().includes(searchString)
-    );
-  }
-
-  function facetFilter(docketEntry: CaseDocketEntry) {
-    if (selectedFacets.length === 0) return docketEntry;
-    return selectedFacets.includes(docketEntry.summaryText);
-  }
-
-  function applySortAndFilters(docketEntries: CaseDocketEntry[] | undefined) {
-    if (docketEntries === undefined) return;
-    return docketEntries
-      .filter(docketSearchFilter)
-      .filter(facetFilter)
-      .sort(docketSorterClosure(sortDirection));
-  }
-  */
-
   useEffect(() => {
     if (props.caseDetail) {
       setCaseBasicInfo(props.caseDetail);
@@ -192,6 +172,8 @@ export const CaseDetail = (props: CaseDetailProps) => {
     if (props.caseDocketEntries) {
       setCaseDocketEntries(props.caseDocketEntries);
       hasDocketEntries = !!props.caseDocketEntries.length;
+      const facets = props.caseDocketEntries.reduce(summaryTextFacetReducer, new Map());
+      setCaseDocketSummaryFacets(facets);
     } else {
       fetchCaseDocketEntries();
     }

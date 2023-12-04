@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId, fireEvent, act } from '@testing-library/react';
+import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
 import { CaseDetail, docketSorterClosure, applySortAndFilters } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
@@ -10,7 +10,6 @@ import {
   DebtorAttorney,
 } from '@/lib/type-declarations/chapter-15';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import ReactRouter from 'react-router';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { vi } from 'vitest';
 
@@ -777,6 +776,12 @@ describe('Case Detail screen tests', () => {
             },
           ],
         },
+        {
+          sequenceNumber: 5,
+          dateFiled: '2023-05-07T00:00:00.0000000',
+          summaryText: 'Motion',
+          fullText: 'Docket entry number 4.',
+        },
       ];
       render(
         <BrowserRouter>
@@ -786,7 +791,6 @@ describe('Case Detail screen tests', () => {
 
       await waitFor(() => {
         const searchInput = document.querySelector('#basic-search-field');
-        console.log(document.body);
         expect(searchInput).toBeInTheDocument();
       });
     });
@@ -881,22 +885,75 @@ describe('Case Detail screen tests', () => {
         sortDirection: 'Oldest',
       });
 
-      if (filteredDocketEntries) {
-        expect(filteredDocketEntries.length).toEqual(1);
-      }
+      expect(filteredDocketEntries?.length).toEqual(1);
+      const actualEntry = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      expect(actualEntry).toEqual(testCaseDocketEntries[1]);
+    });
+
+    test('should filter the list of docket entries per the selected facets', async () => {
+      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+        searchString: '',
+        selectedFacets: [
+          testCaseDocketEntries[1].summaryText,
+          testCaseDocketEntries[2].summaryText,
+        ],
+        sortDirection: 'Oldest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(2);
+      const actualEntriesOne = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      expect(actualEntriesOne).toEqual(testCaseDocketEntries[1]);
+      const actualEntriesTwo = filteredDocketEntries ? filteredDocketEntries[1] : null;
+      expect(actualEntriesTwo).toEqual(testCaseDocketEntries[2]);
+    });
+
+    test('should sort the list of docket entries oldest first', async () => {
+      const youngestEntry = testCaseDocketEntries[2];
+      const middleEntry = testCaseDocketEntries[1];
+      const oldestEntry = testCaseDocketEntries[0];
+
+      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+        searchString: '',
+        selectedFacets: [],
+        sortDirection: 'Oldest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(3);
+      const first = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      const second = filteredDocketEntries ? filteredDocketEntries[1] : null;
+      const third = filteredDocketEntries ? filteredDocketEntries[2] : null;
+      expect(first).toEqual(oldestEntry);
+      expect(second).toEqual(middleEntry);
+      expect(third).toEqual(youngestEntry);
+    });
+
+    test('should sort the list of docket entries newest first', async () => {
+      const youngestEntry = testCaseDocketEntries[2];
+      const middleEntry = testCaseDocketEntries[1];
+      const oldestEntry = testCaseDocketEntries[0];
+
+      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+        searchString: '',
+        selectedFacets: [],
+        sortDirection: 'Newest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(3);
+      const first = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      const second = filteredDocketEntries ? filteredDocketEntries[1] : null;
+      const third = filteredDocketEntries ? filteredDocketEntries[2] : null;
+      expect(first).toEqual(youngestEntry);
+      expect(second).toEqual(middleEntry);
+      expect(third).toEqual(oldestEntry);
     });
 
     test.skip('should filter the list of docket entries per the search text', async () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
 
-      // TODO: Need to get the MemoryRouter to work to cause the docket screen to render.
-      const routePath = `/case-detail/${testCaseId}/court-docket`;
-      // const routePath = `/${testCaseId}/court-docket`;
-      // const routePath = '/court-docket';
       render(
-        <MemoryRouter initialEntries={[routePath]}>
+        <BrowserRouter>
           <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-        </MemoryRouter>,
+        </BrowserRouter>,
       );
 
       const searchableDocketId = 'searchable-docket';
@@ -909,87 +966,5 @@ describe('Case Detail screen tests', () => {
       const filteredDocket = screen.getByTestId(searchableDocketId);
       expect(filteredDocket.childElementCount).toEqual(1);
     });
-
-    test.skip('should sort docket entries', async () => {
-      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-
-      const youngestEntry = testCaseDocketEntries[2];
-      const middleEntry = testCaseDocketEntries[1];
-      const oldestEntry = testCaseDocketEntries[0];
-      const sortedListFromApi = [oldestEntry, middleEntry, youngestEntry];
-
-      // TODO: Need to get the MemoryRouter to work to cause the docket screen to render.
-      const routePath = '/case-detail/111-11-1234/court-docket';
-      //const routePath = `/case-detail/${testCaseId}`;
-      render(
-        <MemoryRouter initialEntries={[routePath]}>
-          <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={sortedListFromApi} />
-        </MemoryRouter>,
-      );
-
-      await act(async () => {
-        const docketLink = screen.getByTestId('court-docket-link');
-        expect(docketLink).toBeInTheDocument();
-        console.log(document.body.innerHTML);
-        //docketLink.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      });
-
-      /*
-      await waitFor(
-        () => {
-          const loadingIndicator = screen.getByTestId('loading-indicator');
-          expect(loadingIndicator).not.toBeInTheDocument();
-        },
-        { timeout: 5000 },
-      );
-      */
-
-      /*
-      const sortButtonId = 'docket-entry-sort';
-
-      // Check to make sure all the entries are in the HTML list.
-      const startingDocket = screen.getByTestId('searchable-docket');
-      const sortButton = screen.getByTestId(sortButtonId);
-      expect(startingDocket.childElementCount).toEqual(testCaseDocketEntries.length);
-
-      console.log(sortButton);
-      */
-      /*
-      // First Sort - oldest goes to the top of the list.
-      fireEvent.click(sortButton);
-      if (oldestEntry.documentNumber) {
-        expect(screen.getByTestId('docket-entry-0-number').textContent).toEqual(
-          oldestEntry.documentNumber?.toString(),
-        );
-      }
-      expect(screen.getByTestId('docket-entry-0-header').textContent).toEqual(
-        oldestEntry.dateFiled + ' - ' + oldestEntry.summaryText,
-      );
-      expect(screen.getByTestId('docket-entry-0-text').textContent).toEqual(oldestEntry.fullText);
-      if (oldestEntry.documents) {
-        expect(screen.getByTestId('document-unordered-list').childElementCount).toEqual(
-          oldestEntry.documents?.length,
-        );
-      }
-
-      // Second Sort - youngest returns to the top of the list.
-      fireEvent.click(sortButton);
-      if (youngestEntry.documentNumber) {
-        expect(screen.getByTestId('docket-entry-0-number').textContent).toEqual(
-          youngestEntry.documentNumber?.toString(),
-        );
-      }
-      expect(screen.getByTestId('docket-entry-0-header').textContent).toEqual(
-        youngestEntry.dateFiled + ' - ' + youngestEntry.summaryText,
-      );
-      expect(screen.getByTestId('docket-entry-0-text').textContent).toEqual(youngestEntry.fullText);
-      if (youngestEntry.documents) {
-        expect(screen.getByTestId('document-unordered-list').childElementCount).toEqual(
-          youngestEntry.documents?.length,
-        );
-      }
-      */
-    }, 10000);
   });
 });
