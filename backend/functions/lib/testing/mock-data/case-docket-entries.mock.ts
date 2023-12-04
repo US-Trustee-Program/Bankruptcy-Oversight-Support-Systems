@@ -55,30 +55,35 @@ export const DXTR_DOCKET_ENTRIES_DOCUMENTS: DxtrCaseDocketEntryDocument[] = [
     fileSize: 100000,
     fileName: '0208-882356-2-1-0.pdf',
     uriStem: 'https://somecourt.doj.gov/api/rest_v1/page/pdf',
+    deleted: 'N',
   },
   {
     sequenceNumber: 3,
     fileSize: 100000,
     fileName: '0208-882356-3-2-0.pdf',
     uriStem: 'https://somecourt.doj.gov/api/rest_v1/page/pdf',
+    deleted: 'N',
   },
   {
     sequenceNumber: 4,
     fileSize: 100000,
     fileName: '0208-882356-4-3-0.pdf',
     uriStem: 'https://somecourt.doj.gov/api/rest_v1/page/pdf',
+    deleted: 'N',
   },
   {
     sequenceNumber: 5,
     fileSize: 100000,
     fileName: '0208-882356-5-4-0.pdf',
     uriStem: 'https://somecourt.doj.gov/api/rest_v1/page/pdf',
+    deleted: 'N',
   },
   {
     sequenceNumber: 5,
     fileSize: 100000,
     fileName: '0208-882356-5-4-1.pdf',
     uriStem: 'https://somecourt.doj.gov/api/rest_v1/page/pdf',
+    deleted: 'N',
   },
 ];
 
