@@ -1,6 +1,11 @@
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
-import { CaseDetail, docketSorterClosure, applySortAndFilters } from './CaseDetailScreen';
+import {
+  CaseDetail,
+  docketSorterClosure,
+  applySortAndFilters,
+  getSummaryFacetList,
+} from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
   CaseDetailType,
@@ -9,9 +14,10 @@ import {
   Debtor,
   DebtorAttorney,
 } from '@/lib/type-declarations/chapter-15';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { vi } from 'vitest';
+import ReactRouter from 'react-router';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -744,56 +750,6 @@ describe('Case Detail screen tests', () => {
       expect(paneAfterBreak).toBeInTheDocument();
       expect(paneAfterBreak).toHaveClass('fixed');
     });
-
-    test('should render docket search when the feature is turned on and there are docket entries', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-      const testCaseDocketEntries = [
-        {
-          sequenceNumber: 2,
-          documentNumber: 1,
-          dateFiled: '2023-05-07T00:00:00.0000000',
-          summaryText: 'Add Judge',
-          fullText: 'Docket entry number 1.',
-        },
-        {
-          sequenceNumber: 3,
-          dateFiled: '2023-05-07T00:00:00.0000000',
-          summaryText: 'Motion',
-          fullText: 'Docket entry number 2.',
-        },
-        {
-          sequenceNumber: 4,
-          documentNumber: 2,
-          dateFiled: '2023-07-07T00:00:00.0000000',
-          summaryText: 'Add Attorney',
-          fullText: 'Docket entry number 3.',
-          documents: [
-            {
-              fileLabel: '0-0',
-              fileSize: 1000,
-              fileExt: 'pdf',
-              fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
-            },
-          ],
-        },
-        {
-          sequenceNumber: 5,
-          dateFiled: '2023-05-07T00:00:00.0000000',
-          summaryText: 'Motion',
-          fullText: 'Docket entry number 4.',
-        },
-      ];
-      render(
-        <BrowserRouter>
-          <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-        </BrowserRouter>,
-      );
-
-      await waitFor(() => {
-        const searchInput = document.querySelector('#basic-search-field');
-        expect(searchInput).toBeInTheDocument();
-      });
-    });
   });
 
   describe('Docket entry sorter', () => {
@@ -876,6 +832,12 @@ describe('Case Detail screen tests', () => {
           },
         ],
       },
+      {
+        sequenceNumber: 5,
+        dateFiled: '2023-05-07T00:00:00.0000000',
+        summaryText: 'Motion',
+        fullText: 'Docket entry number 4.',
+      },
     ];
 
     test('should filter the list of docket entries per the search text', async () => {
@@ -895,7 +857,7 @@ describe('Case Detail screen tests', () => {
         searchString: '',
         selectedFacets: [
           testCaseDocketEntries[1].summaryText,
-          testCaseDocketEntries[2].summaryText,
+          testCaseDocketEntries[3].summaryText,
         ],
         sortDirection: 'Oldest',
       });
@@ -904,7 +866,7 @@ describe('Case Detail screen tests', () => {
       const actualEntriesOne = filteredDocketEntries ? filteredDocketEntries[0] : null;
       expect(actualEntriesOne).toEqual(testCaseDocketEntries[1]);
       const actualEntriesTwo = filteredDocketEntries ? filteredDocketEntries[1] : null;
-      expect(actualEntriesTwo).toEqual(testCaseDocketEntries[2]);
+      expect(actualEntriesTwo).toEqual(testCaseDocketEntries[3]);
     });
 
     test('should sort the list of docket entries oldest first', async () => {
@@ -912,7 +874,8 @@ describe('Case Detail screen tests', () => {
       const middleEntry = testCaseDocketEntries[1];
       const oldestEntry = testCaseDocketEntries[0];
 
-      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+      const docketEntries = testCaseDocketEntries.slice(0, 3);
+      const filteredDocketEntries = applySortAndFilters(docketEntries, {
         searchString: '',
         selectedFacets: [],
         sortDirection: 'Oldest',
@@ -932,7 +895,8 @@ describe('Case Detail screen tests', () => {
       const middleEntry = testCaseDocketEntries[1];
       const oldestEntry = testCaseDocketEntries[0];
 
-      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+      const docketEntries = testCaseDocketEntries.slice(0, 3);
+      const filteredDocketEntries = applySortAndFilters(docketEntries, {
         searchString: '',
         selectedFacets: [],
         sortDirection: 'Newest',
@@ -947,24 +911,133 @@ describe('Case Detail screen tests', () => {
       expect(third).toEqual(oldestEntry);
     });
 
-    test.skip('should filter the list of docket entries per the search text', async () => {
+    test('should display sort and filter panel when navigated to docket entries', async () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
 
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
       render(
-        <BrowserRouter>
-          <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-        </BrowserRouter>,
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
       );
 
-      const searchableDocketId = 'searchable-docket';
-      const startingDocket = screen.getByTestId(searchableDocketId);
-      expect(startingDocket.childElementCount).toEqual(testCaseDocketEntries.length);
+      let basicInfoLink;
+      let docketEntryLink;
+      const filterSearchPanelId = 'filter-and-search-panel';
+      let filterSearchPanel: HTMLElement | null;
 
-      const searchInput = screen.getByTestId('basic-search-field');
-      fireEvent.change(searchInput, { target: { value: 'number 2' } });
+      await waitFor(() => {
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).not.toBeInTheDocument();
+      });
 
-      const filteredDocket = screen.getByTestId(searchableDocketId);
-      expect(filteredDocket.childElementCount).toEqual(1);
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        basicInfoLink = screen.getByTestId('basic-info-link');
+        fireEvent.click(basicInfoLink as Element);
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).not.toBeInTheDocument();
+      });
+    });
+
+    test('should not display sort and filter panel when navigated to basic info', async () => {
+      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+      const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
+
+      render(
+        <MemoryRouter initialEntries={[docketEntryPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/court-docket"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      const filterSearchPanelId = 'filter-and-search-panel';
+      let filterSearchPanel;
+
+      await waitFor(async () => {
+        filterSearchPanel = await screen.findByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        const basicInfoLink = screen.getByTestId('basic-info-link');
+        fireEvent.click(basicInfoLink as Element);
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).not.toBeInTheDocument();
+      });
+    });
+
+    test('should sort facets in call to getDocumentSummaryFacets', async () => {
+      const testFacets = new Map([
+        [
+          'Motion for Joint Administration',
+          {
+            text: 'Motion for Joint Administration',
+            count: 5,
+          },
+        ],
+        [
+          'Add Judge',
+          {
+            text: 'Add Judge',
+            count: 2,
+          },
+        ],
+        [
+          'Case Association - Joint Administration',
+          {
+            text: 'Case Association - Joint Administration',
+            count: 2,
+          },
+        ],
+        [
+          'Order Re: Motion for Joint Administration',
+          {
+            text: 'Order Re: Motion for Joint Administration',
+            count: 1,
+          },
+        ],
+      ]);
+      const expectedFacets = [
+        { value: 'Add Judge', label: 'Add Judge (2)' },
+        {
+          value: 'Case Association - Joint Administration',
+          label: 'Case Association - Joint Administration (2)',
+        },
+        {
+          value: 'Motion for Joint Administration',
+          label: 'Motion for Joint Administration (5)',
+        },
+        {
+          value: 'Order Re: Motion for Joint Administration',
+          label: 'Order Re: Motion for Joint Administration (1)',
+        },
+      ];
+
+      const resultFacets = getSummaryFacetList(testFacets);
+      expect(resultFacets).toStrictEqual(expectedFacets);
     });
   });
 });
