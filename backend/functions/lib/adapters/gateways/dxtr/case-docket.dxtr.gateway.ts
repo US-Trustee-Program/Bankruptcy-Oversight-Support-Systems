@@ -26,10 +26,8 @@ export type DxtrCaseDocketEntryDocument = {
 export function translateModel(files: DxtrCaseDocketEntryDocument[]): CaseDocketEntryDocument[] {
   const doSingleNaming = files.length === 1;
 
-  return files.reduce<CaseDocketEntryDocument[]>((acc, file) => {
-    const { uriStem, fileName, fileSize, deleted } = file;
-
-    if (deleted === 'Y' || !uriStem) return acc;
+  return files.reduce<CaseDocketEntryDocument[]>((accumulator, file) => {
+    const { uriStem, fileName, fileSize } = file;
 
     let mappedFileInfo;
     const fileUri = uriStem + '/' + fileName;
@@ -56,8 +54,8 @@ export function translateModel(files: DxtrCaseDocketEntryDocument[]): CaseDocket
         fileLabel: fileName,
       };
     }
-    acc.push(mappedFileInfo);
-    return acc;
+    accumulator.push(mappedFileInfo);
+    return accumulator;
   }, []);
 }
 
@@ -78,6 +76,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     const documents = await this._getCaseDocketDocuments(context, caseId);
     const dxtrDocumentMap = new Map<number, DxtrCaseDocketEntryDocument[]>();
     documents.forEach((d) => {
+      if (d.deleted === 'Y' || !d.uriStem) return;
       const key = d.sequenceNumber;
       const list = dxtrDocumentMap.has(key) ? dxtrDocumentMap.get(key) : [];
       list.push(d);

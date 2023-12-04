@@ -159,13 +159,6 @@ describe('Test case docket DXTR Gateway', () => {
           fileSize: 4060318,
           deleted: 'N',
         },
-        {
-          sequenceNumber: 0,
-          uriStem: 'https://some.domain.gov/api/v1/path/to',
-          fileName: 'deleted-file.pdf',
-          fileSize: 4060318,
-          deleted: 'Y',
-        },
       ];
 
       const expectedCaseDocketEntryDocuments = [
