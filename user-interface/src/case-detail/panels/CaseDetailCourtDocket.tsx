@@ -176,7 +176,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                               <li key={linkInfo.fileUri}>
                                 <a href={linkInfo.fileUri} target="_blank" rel="noreferrer">
                                   {generateDocketFilenameDisplay(linkInfo)}
-                                  <Icon className="launch-icon" name="launch"></Icon>
+                                  <Icon className="link-icon" name="launch"></Icon>
                                 </a>
                               </li>
                             );
