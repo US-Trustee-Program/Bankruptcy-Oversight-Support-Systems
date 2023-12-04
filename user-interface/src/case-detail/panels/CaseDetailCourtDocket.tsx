@@ -3,10 +3,10 @@ import IconInput from '@/lib/components/IconInput';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseDocketEntry, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
 import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import './CaseDetailCourtDocket.scss';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import Icon from '@/lib/components/uswds/Icon';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import './CaseDetailCourtDocket.scss';
 
 export interface CaseDetailCourtDocketProps {
   caseId?: string;
