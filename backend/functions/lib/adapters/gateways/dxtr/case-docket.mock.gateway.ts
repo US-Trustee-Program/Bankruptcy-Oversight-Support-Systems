@@ -13,13 +13,6 @@ const MODULENAME = 'CASE-DOCKET-MOCK-GATEWAY';
 export const NORMAL_CASE_ID = '111-11-11111';
 
 export class MockCaseDocketGateway implements CaseDocketGateway {
-  async getCaseDocketDocuments(
-    _context: ApplicationContext,
-    _caseId: string,
-  ): Promise<CaseDocketEntryDocument[]> {
-    return Promise.resolve([]);
-  }
-
   async getCaseDocket(_context: ApplicationContext, caseId: string): Promise<CaseDocket> {
     const gatewayHelper = new GatewayHelper();
     if (caseId === NORMAL_CASE_ID) {

@@ -129,30 +129,42 @@ describe('Test case docket DXTR Gateway', () => {
           uriStem: 'https://some.domain.gov/api/v1/path/to',
           fileName: '0208-173976-0-0-0.pdf',
           fileSize: 908038,
+          deleted: 'N',
         },
         {
           sequenceNumber: 0,
           uriStem: 'https://some.domain.gov/api/v1/path/to',
           fileName: '0208-173976-0-0-1.pdf',
           fileSize: 2093190,
+          deleted: 'N',
         },
         {
           sequenceNumber: 0,
           uriStem: 'https://some.domain.gov/api/v1/path/to',
           fileName: '0208-173976-0-0-2.pdf',
           fileSize: 1357930,
+          deleted: 'N',
         },
         {
           sequenceNumber: 0,
           uriStem: 'https://some.domain.gov/api/v1/path/to',
           fileName: '0208-173976-2-1-3.pdf',
           fileSize: 4411203,
+          deleted: 'N',
         },
         {
           sequenceNumber: 0,
           uriStem: 'https://some.domain.gov/api/v1/path/to',
           fileName: '02081739763240.pdf',
           fileSize: 4060318,
+          deleted: 'N',
+        },
+        {
+          sequenceNumber: 0,
+          uriStem: 'https://some.domain.gov/api/v1/path/to',
+          fileName: 'deleted-file.pdf',
+          fileSize: 4060318,
+          deleted: 'Y',
         },
       ];
 
@@ -200,6 +212,7 @@ describe('Test case docket DXTR Gateway', () => {
           uriStem: 'https://some.domain.gov/api/v1/path/to',
           fileName: '0208-173976-0-0-0.pdf',
           fileSize: 908038,
+          deleted: 'N',
         },
       ];
 
@@ -225,6 +238,7 @@ describe('Test case docket DXTR Gateway', () => {
         fileName: '',
         fileSize: 1000,
         uriStem: '',
+        deleted: 'N',
         parts: ['4', '0', 'pdf'],
       };
       const fileTwo = {
@@ -232,6 +246,7 @@ describe('Test case docket DXTR Gateway', () => {
         fileName: '',
         fileSize: 1000,
         uriStem: '',
+        deleted: 'N',
         parts: ['4', '1', 'pdf'],
       };
       expect(documentSorter(fileOne, fileTwo)).toEqual(-1);
@@ -244,6 +259,7 @@ describe('Test case docket DXTR Gateway', () => {
         fileName: 'abc.pdf',
         fileSize: 1000,
         uriStem: '',
+        deleted: 'N',
         parts: ['4', 'a', 'pdf'],
       };
       const fileTwo = {
@@ -251,6 +267,7 @@ describe('Test case docket DXTR Gateway', () => {
         fileName: 'def.pdf',
         fileSize: 1000,
         uriStem: '',
+        deleted: 'N',
         parts: ['4', '1', 'pdf'],
       };
       expect(documentSorter(fileOne, fileTwo)).toEqual(-1);
@@ -263,6 +280,7 @@ describe('Test case docket DXTR Gateway', () => {
         fileName: 'abc.pdf',
         fileSize: 1000,
         uriStem: '',
+        deleted: 'N',
         parts: ['4'],
       };
       const fileTwo = {
@@ -270,6 +288,7 @@ describe('Test case docket DXTR Gateway', () => {
         fileName: 'def.pdf',
         fileSize: 1000,
         uriStem: '',
+        deleted: 'N',
         parts: ['4', '1', 'pdf'],
       };
       expect(documentSorter(fileOne, fileTwo)).toEqual(-1);
