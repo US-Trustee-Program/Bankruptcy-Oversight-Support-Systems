@@ -31,6 +31,35 @@ export function docketSorterClosure(sortDirection: SortDirection) {
   };
 }
 
+function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) {
+  return (
+    docketEntry.summaryText.toLowerCase().includes(searchString) ||
+    docketEntry.fullText.toLowerCase().includes(searchString)
+  );
+}
+
+function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
+  if (selectedFacets.length === 0) return docketEntry;
+  return selectedFacets.includes(docketEntry.summaryText);
+}
+
+interface sortAndFilterOptions {
+  searchString: string;
+  selectedFacets: string[];
+  sortDirection: SortDirection;
+}
+
+export function applySortAndFilters(
+  docketEntries: CaseDocketEntry[] | undefined,
+  options: sortAndFilterOptions,
+) {
+  if (docketEntries === undefined) return;
+  return docketEntries
+    .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchString))
+    .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
+    .sort(docketSorterClosure(options.sortDirection));
+}
+
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
   caseDocketEntries?: CaseDocketEntry[];
@@ -70,7 +99,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
   const navState = mapNavState(location.pathname);
 
-  const hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
+  let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
   const flags = useFeatureFlags();
   const searchFeature = flags[DOCKET_SEARCH_ENABLED];
@@ -128,6 +157,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setSelectedFacets(selected);
   };
 
+  /*
   function docketSearchFilter(docketEntry: CaseDocketEntry) {
     return (
       docketEntry.summaryText.toLowerCase().includes(searchString) ||
@@ -147,6 +177,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
       .filter(facetFilter)
       .sort(docketSorterClosure(sortDirection));
   }
+  */
 
   useEffect(() => {
     if (props.caseDetail) {
@@ -160,6 +191,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   useEffect(() => {
     if (props.caseDocketEntries) {
       setCaseDocketEntries(props.caseDocketEntries);
+      hasDocketEntries = !!props.caseDocketEntries.length;
     } else {
       fetchCaseDocketEntries();
     }
@@ -280,7 +312,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
                       element={
                         <CaseDetailCourtDocket
                           caseId={caseBasicInfo.caseId}
-                          docketEntries={applySortAndFilters(caseDocketEntries)}
+                          docketEntries={applySortAndFilters(caseDocketEntries, {
+                            searchString,
+                            selectedFacets,
+                            sortDirection,
+                          })}
                           searchString={searchString}
                           hasDocketEntries={caseDocketEntries && caseDocketEntries?.length > 1}
                         />
