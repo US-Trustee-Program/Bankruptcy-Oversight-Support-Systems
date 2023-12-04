@@ -13,7 +13,7 @@ interface attorneyGeneratorProps {
 function attorneyGenerator(props: attorneyGeneratorProps): AO_AT_RecordProps {
   if (!props.chapter) props.chapter = '15';
   const AT_LAST_NAME = faker.person.lastName();
-  const AT_OFFICE = AT_LAST_NAME + ' PLC';
+  const AT_OFFICE = AT_LAST_NAME + ', PLC';
   return {
     CS_CASEID: props.csCaseId,
     COURT_ID: props.courtId ?? '0208',

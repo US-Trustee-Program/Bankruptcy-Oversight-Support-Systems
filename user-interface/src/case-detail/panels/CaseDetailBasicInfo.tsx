@@ -1,5 +1,6 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
+import Icon from '@/lib/components/uswds/Icon';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -158,7 +159,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                 {props.caseDetail.debtorAttorney.office}
               </div>
             )}
-            <div>
+            <div className="padding-bottom-1">
               {props.caseDetail.debtorAttorney.address1 && (
                 <div
                   data-testid="case-detail-debtor-counsel-address1"
@@ -191,29 +192,32 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                   {props.caseDetail.debtorAttorney.cityStateZipCountry}
                 </div>
               )}
-              {props.caseDetail.debtorAttorney.phone && (
-                <div
-                  data-testid="case-detail-debtor-counsel-phone"
-                  aria-label="debtor counsel phone"
-                >
-                  {props.caseDetail.debtorAttorney.phone}
-                </div>
-              )}
-              {props.caseDetail.debtorAttorney.email && (
-                <div
-                  data-testid="case-detail-debtor-counsel-email"
-                  aria-label="debtor counsel email"
-                >
-                  <a
-                    href={`mailto:${props.caseDetail.debtorAttorney.email}?subject=${getCaseNumber(
-                      props.caseDetail.caseId,
-                    )} - ${props.caseDetail.caseTitle}`}
-                  >
-                    {props.caseDetail.debtorAttorney.email}
-                  </a>
-                </div>
-              )}
             </div>
+            {props.caseDetail.debtorAttorney.phone && (
+              <div
+                className="padding-bottom-1"
+                data-testid="case-detail-debtor-counsel-phone"
+                aria-label="debtor counsel phone"
+              >
+                {props.caseDetail.debtorAttorney.phone}
+              </div>
+            )}
+            {props.caseDetail.debtorAttorney.email && (
+              <div
+                className="padding-bottom-1"
+                data-testid="case-detail-debtor-counsel-email"
+                aria-label="debtor counsel email"
+              >
+                <a
+                  href={`mailto:${props.caseDetail.debtorAttorney.email}?subject=${getCaseNumber(
+                    props.caseDetail.caseId,
+                  )} - ${props.caseDetail.caseTitle}`}
+                >
+                  {props.caseDetail.debtorAttorney.email}
+                  <Icon className="link-icon" name="mail_outline"></Icon>
+                </a>
+              </div>
+            )}
           </>
         )}
         {!props.caseDetail.debtorAttorney && (
