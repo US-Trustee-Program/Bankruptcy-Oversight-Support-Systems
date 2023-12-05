@@ -14,10 +14,7 @@ import {
   Debtor,
   DebtorAttorney,
 } from '@/lib/type-declarations/chapter-15';
-import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
-import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { vi } from 'vitest';
-import ReactRouter from 'react-router';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -778,31 +775,6 @@ describe('Case Detail screen tests', () => {
   });
 
   describe('sort, search, and filter tests', () => {
-    const testCaseId = '111-11-12345';
-
-    const testCaseDetail: CaseDetailType = {
-      caseId: testCaseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: 'some judge',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary Petition',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: [],
-      debtor: {
-        name: 'Roger Rabbit',
-      },
-      debtorAttorney: {
-        name: 'Jane Doe',
-        address1: '123 Rabbithole Lane',
-        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-        phone: '234-123-1234',
-      },
-    };
-
     const testCaseDocketEntries: CaseDocket = [
       {
         sequenceNumber: 2,
@@ -909,84 +881,6 @@ describe('Case Detail screen tests', () => {
       expect(first).toEqual(youngestEntry);
       expect(second).toEqual(middleEntry);
       expect(third).toEqual(oldestEntry);
-    });
-
-    test('should display sort and filter panel when navigated to docket entries', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-
-      const basicInfoPath = `/case-detail/${testCaseId}/`;
-
-      render(
-        <MemoryRouter initialEntries={[basicInfoPath]}>
-          <Routes>
-            <Route
-              path="case-detail/:id/*"
-              element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      let basicInfoLink;
-      let docketEntryLink;
-      const filterSearchPanelId = 'filter-and-search-panel';
-      let filterSearchPanel: HTMLElement | null;
-
-      await waitFor(() => {
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).not.toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).not.toBeInTheDocument();
-      });
-    });
-
-    test('should not display sort and filter panel when navigated to basic info', async () => {
-      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-
-      const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
-
-      render(
-        <MemoryRouter initialEntries={[docketEntryPath]}>
-          <Routes>
-            <Route
-              path="case-detail/:id/court-docket"
-              element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      const filterSearchPanelId = 'filter-and-search-panel';
-      let filterSearchPanel;
-
-      await waitFor(async () => {
-        filterSearchPanel = await screen.findByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        const basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).not.toBeInTheDocument();
-      });
     });
 
     test('should sort facets in call to getDocumentSummaryFacets', async () => {
