@@ -183,6 +183,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   useEffect(() => {
     setNavState(mapNavState(location.pathname));
+    if (navState !== NavState.COURT_DOCKET) {
+      setSelectedFacets([]);
+    }
   }, [location]);
 
   useImperativeHandle(leftNavContainerRef, () => ({
