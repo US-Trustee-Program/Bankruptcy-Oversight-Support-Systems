@@ -208,8 +208,8 @@ describe('date-helper tests', () => {
   });
 
   describe('getMonthDayYearStringFromDate tests', () => {
-    test('should convert Jan 1, 2023 to 01-01-2023', async () => {
-      expect(getMonthDayYearStringFromDate(new Date(2023, 0, 1))).toEqual('01-01-2023');
+    test('should convert Jan 1, 2023 to 2023-01-01', async () => {
+      expect(getMonthDayYearStringFromDate(new Date(2023, 0, 1))).toEqual('2023-01-01');
     });
   });
 

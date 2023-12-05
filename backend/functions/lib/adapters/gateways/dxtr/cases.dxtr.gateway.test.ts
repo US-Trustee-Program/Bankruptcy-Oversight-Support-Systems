@@ -256,9 +256,9 @@ describe('Test DXTR Gateway', () => {
       testCase.caseId,
     );
 
-    const closedDate = '10-31-2023';
-    const dismissedDate = '11-15-2023';
-    const reopenedDate = '12-31-2023';
+    const closedDate = '2023-10-31';
+    const dismissedDate = '2023-11-15';
+    const reopenedDate = '2023-12-31';
     const expectedClose: CaseDetailInterface = {
       ...cases[0],
       closedDate,
