@@ -271,11 +271,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
                       </div>
 
                       <div className="docket-summary-facets form-field">
-                        <label>Filter</label>
+                        <label>Filter by Summary</label>
                         <MultiSelect
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
                           closeMenuOnSelect={false}
                           onChange={handleSelectedFacet}
+                          label="Filter by Summary"
                         ></MultiSelect>
                       </div>
                     </div>
