@@ -1,7 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import CaseDetailNavigation, { NavState, mapNavState, setCurrentNav } from './CaseDetailNavigation';
 import { BrowserRouter } from 'react-router-dom';
-import { CaseDetailNavigationRef } from './CaseDetailNavigation.d';
 import React from 'react';
 
 describe('Navigation tests', () => {
@@ -43,30 +42,5 @@ describe('Navigation tests', () => {
     const result = mapNavState('case-detail/1234/court-docket/');
 
     expect(result).toEqual(NavState.COURT_DOCKET);
-  });
-
-  test('should render with css class name of "case-details-navigation fixed" when ref.fix() is called and "case-details-navigation" when ref.loosen() is called', async () => {
-    const navRef = React.createRef<CaseDetailNavigationRef>();
-    render(
-      <BrowserRouter>
-        <CaseDetailNavigation
-          caseId="12345"
-          initiallySelectedNavLink={NavState.BASIC_INFO}
-          ref={navRef}
-        />
-      </BrowserRouter>,
-    );
-
-    const navigation = document.querySelector('.case-details-navigation');
-
-    navRef.current?.fix();
-    await waitFor(async () => {
-      expect(navigation).toHaveClass('fixed');
-    });
-
-    navRef.current?.loosen();
-    await waitFor(async () => {
-      expect(navigation).not.toHaveClass('fixed');
-    });
   });
 });

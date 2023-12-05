@@ -25,6 +25,18 @@
       ul {
         padding-bottom: 0.5rem;
       }
+      .filter-and-search {
+        .form-field {
+          padding-bottom: 1.5rem;
+        }
+        .docket-summary-facets label {
+          margin-bottom: 0.5rem;
+        }
+      }
+      .left-navigation-pane-container.fixed {
+        position: fixed;
+        top: 125px;
+      }
     }
   }
 }
