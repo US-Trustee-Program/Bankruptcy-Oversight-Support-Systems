@@ -9,5 +9,6 @@ export interface FeatureFlagSet {
 
 export const defaultFeatureFlags: FeatureFlagSet = {
   'chapter-twelve-enabled': false,
+  'chapter-eleven-enabled': false,
   'docket-search-enabled': true,
 };
