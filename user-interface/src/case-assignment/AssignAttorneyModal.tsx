@@ -9,7 +9,10 @@ import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import Api from '../lib/models/api';
 import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  CHAPTER_ELEVEN_ENABLED,
+  CHAPTER_TWELVE_ENABLED,
+} from '../lib/hooks/UseFeatureFlags';
 import { getFullName } from '@common/name-helper';
 
 export interface AssignAttorneyModalProps {
@@ -44,7 +47,9 @@ function AssignAttorneyModalComponent(
     </>
   );
   const chapterTwelveEnabled = flags[CHAPTER_TWELVE_ENABLED];
-  const caseLoadLabel = chapterTwelveEnabled ? 'Case Load' : 'Chapter 15 Cases';
+  const chapterElevenEnabled = flags[CHAPTER_ELEVEN_ENABLED];
+  const caseLoadLabel =
+    chapterTwelveEnabled || chapterElevenEnabled ? 'Case Load' : 'Chapter 15 Cases';
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
