@@ -10,6 +10,7 @@ export interface MultiSelectProps {
   className?: string;
   closeMenuOnSelect?: boolean;
   options?: Record<string, string>[];
+  label: string;
 }
 
 export default function MultiSelect(props: MultiSelectProps) {
@@ -70,6 +71,7 @@ export default function MultiSelect(props: MultiSelectProps) {
 
   return (
     <ReactSelect
+      aria-label={props.label}
       options={props.options}
       isMulti
       closeMenuOnSelect={props.closeMenuOnSelect}
