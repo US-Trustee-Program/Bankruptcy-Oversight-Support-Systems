@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import {
-  CaseDocket,
-  CaseDocketEntryDocument,
-} from '../../../use-cases/case-docket/case-docket.model';
+import { CaseDocket } from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { GatewayHelper } from '../gateway-helper';
