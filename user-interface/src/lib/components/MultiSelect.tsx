@@ -14,7 +14,6 @@ export interface MultiSelectProps {
 }
 
 export default function MultiSelect(props: MultiSelectProps) {
-  //
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
       ...provided,

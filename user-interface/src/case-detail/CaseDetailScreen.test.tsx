@@ -777,7 +777,7 @@ describe('Case Detail screen tests', () => {
     });
   });
 
-  describe('old tests we may have to rewrite', () => {
+  describe('sort, search, and filter tests', () => {
     const testCaseId = '111-11-12345';
 
     const testCaseDetail: CaseDetailType = {
