@@ -15,7 +15,6 @@ import {
   DebtorAttorney,
 } from '@/lib/type-declarations/chapter-15';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
-import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { vi } from 'vitest';
 import ReactRouter from 'react-router';
 
@@ -912,8 +911,6 @@ describe('Case Detail screen tests', () => {
     });
 
     test('should display sort and filter panel when navigated to docket entries', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-
       const basicInfoPath = `/case-detail/${testCaseId}/`;
 
       render(
@@ -956,8 +953,6 @@ describe('Case Detail screen tests', () => {
 
     test('should not display sort and filter panel when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 
       render(
