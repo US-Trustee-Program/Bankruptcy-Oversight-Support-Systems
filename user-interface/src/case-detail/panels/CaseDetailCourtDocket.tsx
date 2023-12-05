@@ -82,53 +82,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                   aria-label="document number"
                   title={`Document number ${docketEntry.documentNumber}`}
                 >
-<<<<<<< HEAD
-                  <div
-                    className="grid-col-1 document-number-column usa-tooltip"
-                    data-testid={`docket-entry-${idx}-number`}
-                    aria-label="document number"
-                    title={`Document number ${docketEntry.documentNumber}`}
-                  >
-                    {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
-                  </div>
-                  <div className="grid-col-11 docket-content">
-                    <div
-                      className="docket-entry-header"
-                      aria-label="date filed and summary text for the docket entry"
-                      data-testid={`docket-entry-${idx}-header`}
-                    >
-                      {docketEntry.dateFiled} - {docketEntry.summaryText}
-                    </div>
-                    <div
-                      className="docket-full-text"
-                      data-testid={`docket-entry-${idx}-text`}
-                      aria-label="full text of docket entry"
-                    >
-                      {docketEntry.fullText}
-                    </div>
-                    {docketEntry.documents && (
-                      <div className="docket-documents">
-                        <ul
-                          className="usa-list usa-list--unstyled"
-                          data-testid="document-unordered-list"
-                        >
-                          {docketEntry.documents.map((linkInfo: CaseDocketEntryDocument) => {
-                            return (
-                              <li key={linkInfo.fileUri}>
-                                <a href={linkInfo.fileUri} target="_blank" rel="noreferrer">
-                                  {generateDocketFilenameDisplay(linkInfo)}
-                                  <Icon className="link-icon" name="launch"></Icon>
-                                </a>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-=======
                   {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
->>>>>>> c042d1a1 (Refining side panel docket filters)
                 </div>
                 <div className="grid-col-11 docket-content">
                   <div
@@ -156,7 +110,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                             <li key={linkInfo.fileUri}>
                               <a href={linkInfo.fileUri} target="_blank" rel="noreferrer">
                                 {generateDocketFilenameDisplay(linkInfo)}
-                                <Icon className="launch-icon" name="launch"></Icon>
+                                <Icon className="link-icon" name="launch"></Icon>
                               </a>
                             </li>
                           );
