@@ -5,6 +5,7 @@ import CaseDetailCourtDocket, {
   generateDocketFilenameDisplay,
 } from '@/case-detail/panels/CaseDetailCourtDocket';
 import { CaseDocket, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
+import { formatDate } from '@/lib/utils/datetime';
 
 describe('court docket panel tests', () => {
   const docketEntries: CaseDocket = [
@@ -76,7 +77,9 @@ describe('court docket panel tests', () => {
     expect(docketEntry1DocumentNumber).toHaveTextContent(documentNumberOne?.toString() || '');
     const docketEntry1Header = screen.getByTestId('docket-entry-0-header');
     expect(docketEntry1Header.innerHTML).toEqual(
-      docketEntries[firstIndex].dateFiled + ' - ' + docketEntries[firstIndex].summaryText,
+      formatDate(docketEntries[firstIndex].dateFiled) +
+        ' - ' +
+        docketEntries[firstIndex].summaryText,
     );
     const docketEntry1Text = screen.getByTestId('docket-entry-0-text');
     expect(docketEntry1Text.innerHTML).toEqual(docketEntries[firstIndex].fullText);
