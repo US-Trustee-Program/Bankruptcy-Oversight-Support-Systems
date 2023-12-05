@@ -9,6 +9,7 @@ import { handleHighlight } from '@/lib/utils/highlight-api';
 import Icon from '@/lib/components/uswds/Icon';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './CaseDetailCourtDocket.scss';
+import { formatDate } from '@/lib/utils/datetime';
 
 export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
 
@@ -90,7 +91,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                     aria-label="date filed and summary text for the docket entry"
                     data-testid={`docket-entry-${idx}-header`}
                   >
-                    {docketEntry.dateFiled} - {docketEntry.summaryText}
+                    {formatDate(docketEntry.dateFiled)} - {docketEntry.summaryText}
                   </div>
                   <div
                     className="docket-full-text"

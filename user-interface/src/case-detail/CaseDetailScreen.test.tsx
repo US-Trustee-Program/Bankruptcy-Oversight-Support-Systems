@@ -1,3 +1,4 @@
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
 import {
@@ -14,7 +15,7 @@ import {
   Debtor,
   DebtorAttorney,
 } from '@/lib/type-declarations/chapter-15';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { formatDate } from '@/lib/utils/datetime';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -85,15 +86,15 @@ describe('Case Detail screen tests', () => {
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
         expect(dateFiled).toHaveTextContent('Filed');
-        expect(dateFiled).toHaveTextContent('01-04-1962');
+        expect(dateFiled).toHaveTextContent('1/4/1962');
 
         const closedDate = screen.getByTestId('case-detail-closed-date');
         expect(closedDate).toHaveTextContent('Closed by court');
-        expect(closedDate).toHaveTextContent('01-08-1963');
+        expect(closedDate).toHaveTextContent('1/8/1963');
 
         const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
         expect(dismissedDate).toHaveTextContent('Dismissed by court');
-        expect(dismissedDate).toHaveTextContent('01-08-1964');
+        expect(dismissedDate).toHaveTextContent('1/8/1964');
 
         const chapter = screen.getByTestId('case-chapter');
         expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
@@ -451,7 +452,7 @@ describe('Case Detail screen tests', () => {
 
         expect(reopenedDateSection).toBeInTheDocument();
         expect(reopenedDateSection).toHaveTextContent('Reopened by court');
-        expect(reopenedDateSection).toHaveTextContent(testCaseDetail.reopenedDate as string);
+        expect(reopenedDateSection).toHaveTextContent(formatDate(testCaseDetail.reopenedDate!));
       },
       { timeout: 1000 },
     );
@@ -490,7 +491,7 @@ describe('Case Detail screen tests', () => {
 
         expect(closedDateSection).toBeInTheDocument();
         expect(closedDateSection).toHaveTextContent('Closed by court');
-        expect(closedDateSection).toHaveTextContent(testCaseDetail.closedDate as string);
+        expect(closedDateSection).toHaveTextContent(formatDate(testCaseDetail.closedDate!));
       },
       { timeout: 1000 },
     );

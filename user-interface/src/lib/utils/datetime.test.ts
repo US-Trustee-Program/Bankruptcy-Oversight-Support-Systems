@@ -15,5 +15,9 @@ describe('Date/Time utilities', () => {
       const actual = formatDate(new Date(2023, 11, 1));
       expect(actual).toEqual('12/1/2023');
     });
+    it('should return the input if the date cannot be parsed', async () => {
+      const actual = formatDate('unparsable');
+      expect(actual).toEqual('unparsable');
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
+import { formatDate } from '@/lib/utils/datetime';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -20,24 +21,28 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           <ul className="usa-list usa-list--unstyled">
             <li data-testid="case-detail-filed-date">
               <span className="case-detail-item-name">Filed:</span>
-              <span className="case-detail-item-value">{caseDetail.dateFiled}</span>
+              <span className="case-detail-item-value">{formatDate(caseDetail.dateFiled)}</span>
             </li>
             {caseDetail.reopenedDate && showReopenDate && (
               <li data-testid="case-detail-reopened-date">
                 <span className="case-detail-item-name">Reopened by court:</span>
-                <span className="case-detail-item-value">{caseDetail.reopenedDate}</span>
+                <span className="case-detail-item-value">
+                  {formatDate(caseDetail.reopenedDate)}
+                </span>
               </li>
             )}
-            {!showReopenDate && (
+            {!showReopenDate && caseDetail.closedDate && (
               <li data-testid="case-detail-closed-date">
                 <span className="case-detail-item-name">Closed by court:</span>
-                <span className="case-detail-item-value">{caseDetail.closedDate}</span>
+                <span className="case-detail-item-value">{formatDate(caseDetail.closedDate)}</span>
               </li>
             )}
             {caseDetail.dismissedDate && (
               <li data-testid="case-detail-dismissed-date">
                 <span className="case-detail-item-name">Dismissed by court:</span>
-                <span className="case-detail-item-value">{caseDetail.dismissedDate}</span>
+                <span className="case-detail-item-value">
+                  {formatDate(caseDetail.dismissedDate)}
+                </span>
               </li>
             )}
           </ul>
