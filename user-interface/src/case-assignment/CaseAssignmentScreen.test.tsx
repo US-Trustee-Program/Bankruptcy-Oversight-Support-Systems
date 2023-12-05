@@ -240,6 +240,13 @@ describe('CaseAssignment Component Tests', () => {
                 dateFiled: '2023-04-14',
                 assignments: [],
               },
+              {
+                caseId: '081-23-44455',
+                chapter: '11',
+                caseTitle: 'Foo Bar',
+                dateFiled: '2023-04-14',
+                assignments: [],
+              },
             ],
           },
         });
@@ -254,7 +261,7 @@ describe('CaseAssignment Component Tests', () => {
     await waitFor(() => {
       const unassignedTableBody = screen.getAllByTestId('unassigned-table-body');
       const unassignedData = unassignedTableBody[0].querySelectorAll('tr');
-      expect(unassignedData).toHaveLength(2);
+      expect(unassignedData).toHaveLength(3);
       const assignedTableBody = screen.getAllByTestId('assigned-table-body');
       const assignedData = assignedTableBody[0].querySelectorAll('tr');
       expect(assignedData).toHaveLength(2);
@@ -631,13 +638,11 @@ describe('CaseAssignment Component Tests', () => {
       await waitFor(() => {
         const screenTitle = screen.getByTestId('case-list-heading');
         expect(screenTitle).toBeInTheDocument();
-        expect(screenTitle.innerHTML).toEqual('Chapter 15 Bankruptcy Cases');
+        expect(screenTitle.innerHTML).toEqual('Bankruptcy Cases');
       });
     });
 
-    test('should contain chapter column when true', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': true });
-
+    test('should display correct chapter number', async () => {
       render(
         <BrowserRouter>
           <CaseAssignment />
@@ -651,37 +656,18 @@ describe('CaseAssignment Component Tests', () => {
           expect(e.innerHTML).toEqual('Chapter');
         }
 
-        const unassignedTableData = screen.getByTestId('081-23-44460-chapter');
-        expect(unassignedTableData).toBeInTheDocument();
-        expect(unassignedTableData.innerHTML).toContain('12');
+        const chapterElevenTableData = screen.getByTestId('081-23-44455-chapter');
+        expect(chapterElevenTableData).toBeInTheDocument();
+        expect(chapterElevenTableData.innerHTML).toContain('11');
 
-        const assignedTableData = screen.getByTestId('081-23-44461-chapter');
-        expect(assignedTableData).toBeInTheDocument();
-        expect(assignedTableData.innerHTML).toContain('15');
+        const chapterTwelveTableData = screen.getByTestId('081-23-44460-chapter');
+        expect(chapterTwelveTableData).toBeInTheDocument();
+        expect(chapterTwelveTableData.innerHTML).toContain('12');
+
+        const chapterFifteenTableData = screen.getByTestId('081-23-44461-chapter');
+        expect(chapterFifteenTableData).toBeInTheDocument();
+        expect(chapterFifteenTableData.innerHTML).toContain('15');
       });
-    });
-
-    test('should not contain chapter column when false', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'chapter-twelve-enabled': false });
-
-      render(
-        <BrowserRouter>
-          <CaseAssignment />
-        </BrowserRouter>,
-      );
-
-      await waitFor(() => {
-        const unassignedTable = screen.getByTestId('unassigned-table');
-        expect(unassignedTable).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId('chapter-table-header')).not.toBeInTheDocument();
-
-      const unassignedTableData = screen.queryByTestId('081-23-44460-chapter');
-      expect(unassignedTableData).not.toBeInTheDocument();
-
-      const assignedTableData = screen.queryByTestId('081-23-44461-chapter');
-      expect(assignedTableData).not.toBeInTheDocument();
     });
   });
 });

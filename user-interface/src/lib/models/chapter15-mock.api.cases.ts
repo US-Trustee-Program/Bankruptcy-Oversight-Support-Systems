@@ -48,6 +48,11 @@ export default class Chapter15MockApi extends Api {
       caseTitle: 'Marilyn Lang and Rudy Bryant',
       dateFiled: '01-04-2023',
     },
+    {
+      caseId: '101-23-44455',
+      caseTitle: 'Justin Long and Michael Cera',
+      dateFiled: '02-07-2023',
+    },
   ];
 
   static caseDocketEntries: CaseDocketEntry[] = [

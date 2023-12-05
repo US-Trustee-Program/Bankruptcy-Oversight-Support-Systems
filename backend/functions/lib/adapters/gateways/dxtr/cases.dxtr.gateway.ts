@@ -48,8 +48,8 @@ function sqlSelectList(top: string, chapter: string) {
     AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)
   `;
 }
-function sqlUnion(query1: string, query2: string) {
-  return `${query1} UNION ALL ${query2}`;
+function sqlUnion(queries: string[]) {
+  return queries.join(' UNION ALL ');
 }
 
 export default class CasesDxtrGateway implements CasesInterface {
@@ -105,7 +105,8 @@ export default class CasesDxtrGateway implements CasesInterface {
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {
     const doChapter12Enable = applicationContext.featureFlags['chapter-twelve-enabled'];
-    const rowsToReturn = doChapter12Enable ? '10' : '20';
+    const doChapter11Enable = applicationContext.featureFlags['chapter-eleven-enabled'];
+    const rowsToReturn = doChapter12Enable || doChapter11Enable ? '10' : '20';
 
     const input: DbTableFieldSpec[] = [];
     const date = new Date();
@@ -126,9 +127,11 @@ export default class CasesDxtrGateway implements CasesInterface {
       type: mssql.Char,
       value: MANHATTAN_GROUP_DESIGNATOR,
     });
-    const query = doChapter12Enable
-      ? sqlUnion(sqlSelectList(rowsToReturn, '15'), sqlSelectList(rowsToReturn, '12'))
-      : sqlSelectList(rowsToReturn, '15');
+    const queries = [];
+    queries.push(sqlSelectList(rowsToReturn, '15'));
+    if (doChapter12Enable) queries.push(sqlSelectList(rowsToReturn, '12'));
+    if (doChapter11Enable) queries.push(sqlSelectList(rowsToReturn, '11'));
+    const query = sqlUnion(queries);
 
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
@@ -189,7 +192,9 @@ export default class CasesDxtrGateway implements CasesInterface {
           ON cs.COURT_ID = office.COURT_ID
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
         WHERE cs.CASE_ID = @dxtrCaseId
-        AND cs.CS_DIV = @courtDiv`;
+        AND cs.CS_DIV = @courtDiv
+        ORDER BY
+          cs.CS_DATE_FILED DESC`;
 
     const queryResult: QueryResults = await executeQuery(
       applicationContext,

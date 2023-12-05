@@ -3,14 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 import Api from '../lib/models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '@/lib/type-declarations/chapter-15';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
-import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
+import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
-import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import useFeatureFlags, { CHAPTER_TWELVE_ENABLED } from '../lib/hooks/UseFeatureFlags';
 
 const modalId = 'assign-attorney-modal';
 
@@ -21,12 +20,10 @@ interface Chapter15Node extends Chapter15Type {
 const TABLE_TRANSFER_TIMEOUT = 10;
 
 export const CaseAssignment = () => {
-  const flags = useFeatureFlags();
   const modalRef = useRef<ModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  const chapterTwelveEnabled = flags[CHAPTER_TWELVE_ENABLED];
-  const screenTitle = chapterTwelveEnabled ? 'Bankruptcy Cases' : 'Chapter 15 Bankruptcy Cases';
+  const screenTitle = 'Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
@@ -208,11 +205,9 @@ export const CaseAssignment = () => {
                           <th scope="col" role="columnheader">
                             Case Number
                           </th>
-                          {chapterTwelveEnabled && (
-                            <th scope="col" role="columnheader" data-testid="chapter-table-header">
-                              Chapter
-                            </th>
-                          )}
+                          <th scope="col" role="columnheader" data-testid="chapter-table-header">
+                            Chapter
+                          </th>
                           <th scope="col" role="columnheader">
                             Case Title (Debtor)
                           </th>
@@ -266,12 +261,10 @@ export const CaseAssignment = () => {
                                     {getCaseNumber(theCase.caseId)}
                                   </a>
                                 </td>
-                                {chapterTwelveEnabled && (
-                                  <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
-                                    <span className="mobile-title">Chapter:</span>
-                                    {theCase.chapter}
-                                  </td>
-                                )}
+                                <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
+                                  <span className="mobile-title">Chapter:</span>
+                                  {theCase.chapter}
+                                </td>
                                 <td className="case-title-column">
                                   <span className="mobile-title">Case Title (Debtor):</span>
                                   {theCase.caseTitle}
@@ -314,11 +307,9 @@ export const CaseAssignment = () => {
                           <th scope="col" role="columnheader">
                             Case Number
                           </th>
-                          {chapterTwelveEnabled && (
-                            <th scope="col" role="columnheader" data-testid="chapter-table-header">
-                              Chapter
-                            </th>
-                          )}
+                          <th scope="col" role="columnheader" data-testid="chapter-table-header">
+                            Chapter
+                          </th>
                           <th scope="col" role="columnheader">
                             Case Title (Debtor)
                           </th>
@@ -379,12 +370,10 @@ export const CaseAssignment = () => {
                                     {getCaseNumber(theCase.caseId)}
                                   </a>
                                 </td>
-                                {chapterTwelveEnabled && (
-                                  <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
-                                    <span className="mobile-title">Chapter:</span>
-                                    {theCase.chapter}
-                                  </td>
-                                )}
+                                <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
+                                  <span className="mobile-title">Chapter:</span>
+                                  {theCase.chapter}
+                                </td>
                                 <td className="case-title-column">
                                   <span className="mobile-title">Case Title (Debtor):</span>
                                   {theCase.caseTitle}
