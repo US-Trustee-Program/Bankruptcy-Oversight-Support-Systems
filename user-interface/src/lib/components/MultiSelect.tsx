@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// refactor - let's find a way to avoid using any
 import './MultiSelect.scss';
 import ReactSelect from 'react-select';
 
