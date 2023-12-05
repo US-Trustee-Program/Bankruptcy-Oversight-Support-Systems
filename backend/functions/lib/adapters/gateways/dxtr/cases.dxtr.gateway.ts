@@ -41,7 +41,7 @@ function sqlSelectList(top: string, chapter: string) {
     CS_DIV+'-'+CASE_ID as caseId,
     CS_SHORT_TITLE as caseTitle,
     CS_CHAPTER as chapter,
-    FORMAT(CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled
+    FORMAT(CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled
     FROM [dbo].[AO_CS]
     WHERE CS_CHAPTER = '${chapter}'
     AND GRP_DES = @groupDesignator
@@ -173,7 +173,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
         cs.CS_SHORT_TITLE as caseTitle,
-        FORMAT(cs.CS_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
+        FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
         cs.CS_CASEID as dxtrId,
         cs.CS_CHAPTER as chapter,
         cs.COURT_ID as courtId,
