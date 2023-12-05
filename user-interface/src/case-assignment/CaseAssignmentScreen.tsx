@@ -10,6 +10,7 @@ import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Al
 import AttorneysApi from '../lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { formatDate } from '@/lib/utils/datetime';
 
 const modalId = 'assign-attorney-modal';
 
@@ -275,7 +276,7 @@ export const CaseAssignment = () => {
                                   data-sort-active={true}
                                 >
                                   <span className="mobile-title">Filing Date:</span>
-                                  {theCase.dateFiled}
+                                  {formatDate(theCase.dateFiled)}
                                 </td>
                                 <td data-testid={`attorney-list-${idx}`} className="attorney-list">
                                   <span className="mobile-title">Assigned Attorney:</span>
@@ -384,7 +385,7 @@ export const CaseAssignment = () => {
                                   data-sort-active={true}
                                 >
                                   <span className="mobile-title">Filing Date:</span>
-                                  {theCase.dateFiled}
+                                  {formatDate(theCase.dateFiled)}
                                 </td>
                                 <td data-testid={`attorney-list-${idx}`} className="attorney-list">
                                   <span className="mobile-title">Assigned Attorney:</span>
