@@ -32,10 +32,10 @@ describe('App', () => {
 
     expect(scrollToTopBtn).not.toHaveClass('show');
 
-    await fireEvent.scroll(app as Element, { target: { scrollTop: 101 } });
+    fireEvent.scroll(app as Element, { target: { scrollTop: 101 } });
     expect(scrollToTopBtn).toHaveClass('show');
 
-    await fireEvent.scroll(app as Element, { target: { scrollTop: 90 } });
+    fireEvent.scroll(app as Element, { target: { scrollTop: 90 } });
     expect(scrollToTopBtn).not.toHaveClass('show');
   });
 
@@ -52,10 +52,10 @@ describe('App', () => {
     expect((app as Element).scrollTop).toEqual(0);
     expect(scrollToTopBtn).not.toHaveClass('show');
 
-    await fireEvent.scroll(app as Element, { target: { scrollTop: 101 } });
+    fireEvent.scroll(app as Element, { target: { scrollTop: 101 } });
     expect((app as Element).scrollTop).toEqual(101);
 
-    await fireEvent.click(scrollToTopBtn as Element);
+    fireEvent.click(scrollToTopBtn as Element);
     expect((app as Element).scrollTop).toEqual(0);
 
     waitFor(() => {

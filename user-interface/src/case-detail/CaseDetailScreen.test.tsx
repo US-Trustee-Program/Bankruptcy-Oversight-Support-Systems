@@ -1,9 +1,23 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import { CaseDetail } from './CaseDetailScreen';
+import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
+import {
+  CaseDetail,
+  docketSorterClosure,
+  applySortAndFilters,
+  getSummaryFacetList,
+} from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDetailType, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import {
+  CaseDetailType,
+  CaseDocket,
+  CaseDocketEntry,
+  Debtor,
+  DebtorAttorney,
+} from '@/lib/type-declarations/chapter-15';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
+import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { vi } from 'vitest';
+import ReactRouter from 'react-router';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -666,4 +680,364 @@ describe('Case Detail screen tests', () => {
       expect(caseDocketLink).toHaveClass('usa-current');
     },
   );
+
+  describe('Fixed navigation area', () => {
+    const testCaseDetail: CaseDetailType = {
+      caseId: '080-01-12345',
+      chapter: '15',
+      officeName: 'Redondo Beach',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      judgeName: 'some judge',
+      debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [],
+      debtor: {
+        name: 'Roger Rabbit',
+      },
+      debtorAttorney: {
+        name: 'Jane Doe',
+        address1: '123 Rabbithole Lane',
+        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+        phone: '234-123-1234',
+      },
+    };
+
+    test('should fix when scrolled at top of viewport', async () => {
+      render(
+        <BrowserRouter>
+          <div className="App" data-testid="app-component-test-id">
+            <header
+              className="cams-header usa-header-usa-header--basic"
+              style={{ minHeight: '100px', height: '100px' }}
+              data-testid="cams-header-test-id"
+            ></header>
+            <CaseDetail caseDetail={testCaseDetail} />
+            <div style={{ minHeight: '2000px', height: '2000px' }}></div>
+          </div>
+        </BrowserRouter>,
+      );
+
+      const app = await screen.findByTestId('app-component-test-id');
+
+      await waitFor(() => {
+        const pane = document.querySelector('.left-navigation-pane-container');
+        expect(pane).toBeInTheDocument();
+        expect(pane).not.toHaveClass('fixed');
+      });
+
+      const paneBeforeBreak = document.querySelector('.left-navigation-pane-container');
+      expect(paneBeforeBreak).toBeInTheDocument();
+
+      window.HTMLElement.prototype.getBoundingClientRect = () =>
+        ({
+          top: 2,
+        }) as DOMRect;
+      fireEvent.scroll(app as Element, { target: { scrollTop: 98 } });
+
+      expect(paneBeforeBreak).toBeInTheDocument();
+      expect(paneBeforeBreak).not.toHaveClass('fixed');
+
+      window.HTMLElement.prototype.getBoundingClientRect = () =>
+        ({
+          top: -175,
+        }) as DOMRect;
+      fireEvent.scroll(app as Element, { target: { scrollTop: 275 } });
+
+      const paneAfterBreak = document.querySelector('.left-navigation-pane-container');
+      expect(paneAfterBreak).toBeInTheDocument();
+      expect(paneAfterBreak).toHaveClass('fixed');
+    });
+  });
+
+  describe('Docket entry sorter', () => {
+    const left: CaseDocketEntry = {
+      sequenceNumber: 0,
+      dateFiled: '',
+      summaryText: '',
+      fullText: '',
+    };
+    const right: CaseDocketEntry = {
+      sequenceNumber: 1,
+      dateFiled: '',
+      summaryText: '',
+      fullText: '',
+    };
+    test('should return the expected sort direction for Newest sort', () => {
+      const fn = docketSorterClosure('Newest');
+      const expectedValue = 1;
+      expect(fn(left, right)).toEqual(expectedValue);
+    });
+    test('should return the expected sort direction for Oldest sort', () => {
+      const fn = docketSorterClosure('Oldest');
+      const expectedValue = -1;
+      expect(fn(left, right)).toEqual(expectedValue);
+    });
+  });
+
+  describe('sort, search, and filter tests', () => {
+    const testCaseId = '111-11-12345';
+
+    const testCaseDetail: CaseDetailType = {
+      caseId: testCaseId,
+      chapter: '15',
+      officeName: 'Redondo Beach',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      judgeName: 'some judge',
+      debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary Petition',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [],
+      debtor: {
+        name: 'Roger Rabbit',
+      },
+      debtorAttorney: {
+        name: 'Jane Doe',
+        address1: '123 Rabbithole Lane',
+        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+        phone: '234-123-1234',
+      },
+    };
+
+    const testCaseDocketEntries: CaseDocket = [
+      {
+        sequenceNumber: 2,
+        documentNumber: 1,
+        dateFiled: '2023-05-07T00:00:00.0000000',
+        summaryText: 'Add Judge',
+        fullText: 'Docket entry number 1.',
+      },
+      {
+        sequenceNumber: 3,
+        dateFiled: '2023-05-07T00:00:00.0000000',
+        summaryText: 'Motion',
+        fullText: 'Docket entry number 2.',
+      },
+      {
+        sequenceNumber: 4,
+        documentNumber: 2,
+        dateFiled: '2023-07-07T00:00:00.0000000',
+        summaryText: 'Add Attorney',
+        fullText: 'Docket entry number 3.',
+        documents: [
+          {
+            fileLabel: '0-0',
+            fileSize: 1000,
+            fileExt: 'pdf',
+            fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
+          },
+        ],
+      },
+      {
+        sequenceNumber: 5,
+        dateFiled: '2023-05-07T00:00:00.0000000',
+        summaryText: 'Motion',
+        fullText: 'Docket entry number 4.',
+      },
+    ];
+
+    test('should filter the list of docket entries per the search text', async () => {
+      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+        searchString: 'number 2',
+        selectedFacets: [],
+        sortDirection: 'Oldest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(1);
+      const actualEntry = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      expect(actualEntry).toEqual(testCaseDocketEntries[1]);
+    });
+
+    test('should filter the list of docket entries per the selected facets', async () => {
+      const filteredDocketEntries = applySortAndFilters(testCaseDocketEntries, {
+        searchString: '',
+        selectedFacets: [
+          testCaseDocketEntries[1].summaryText,
+          testCaseDocketEntries[3].summaryText,
+        ],
+        sortDirection: 'Oldest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(2);
+      const actualEntriesOne = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      expect(actualEntriesOne).toEqual(testCaseDocketEntries[1]);
+      const actualEntriesTwo = filteredDocketEntries ? filteredDocketEntries[1] : null;
+      expect(actualEntriesTwo).toEqual(testCaseDocketEntries[3]);
+    });
+
+    test('should sort the list of docket entries oldest first', async () => {
+      const youngestEntry = testCaseDocketEntries[2];
+      const middleEntry = testCaseDocketEntries[1];
+      const oldestEntry = testCaseDocketEntries[0];
+
+      const docketEntries = testCaseDocketEntries.slice(0, 3);
+      const filteredDocketEntries = applySortAndFilters(docketEntries, {
+        searchString: '',
+        selectedFacets: [],
+        sortDirection: 'Oldest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(3);
+      const first = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      const second = filteredDocketEntries ? filteredDocketEntries[1] : null;
+      const third = filteredDocketEntries ? filteredDocketEntries[2] : null;
+      expect(first).toEqual(oldestEntry);
+      expect(second).toEqual(middleEntry);
+      expect(third).toEqual(youngestEntry);
+    });
+
+    test('should sort the list of docket entries newest first', async () => {
+      const youngestEntry = testCaseDocketEntries[2];
+      const middleEntry = testCaseDocketEntries[1];
+      const oldestEntry = testCaseDocketEntries[0];
+
+      const docketEntries = testCaseDocketEntries.slice(0, 3);
+      const filteredDocketEntries = applySortAndFilters(docketEntries, {
+        searchString: '',
+        selectedFacets: [],
+        sortDirection: 'Newest',
+      });
+
+      expect(filteredDocketEntries?.length).toEqual(3);
+      const first = filteredDocketEntries ? filteredDocketEntries[0] : null;
+      const second = filteredDocketEntries ? filteredDocketEntries[1] : null;
+      const third = filteredDocketEntries ? filteredDocketEntries[2] : null;
+      expect(first).toEqual(youngestEntry);
+      expect(second).toEqual(middleEntry);
+      expect(third).toEqual(oldestEntry);
+    });
+
+    test('should display sort and filter panel when navigated to docket entries', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let basicInfoLink;
+      let docketEntryLink;
+      const filterSearchPanelId = 'filter-and-search-panel';
+      let filterSearchPanel: HTMLElement | null;
+
+      await waitFor(() => {
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).not.toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        basicInfoLink = screen.getByTestId('basic-info-link');
+        fireEvent.click(basicInfoLink as Element);
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).not.toBeInTheDocument();
+      });
+    });
+
+    test('should not display sort and filter panel when navigated to basic info', async () => {
+      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
+
+      const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
+
+      render(
+        <MemoryRouter initialEntries={[docketEntryPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/court-docket"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      const filterSearchPanelId = 'filter-and-search-panel';
+      let filterSearchPanel;
+
+      await waitFor(async () => {
+        filterSearchPanel = await screen.findByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        const basicInfoLink = screen.getByTestId('basic-info-link');
+        fireEvent.click(basicInfoLink as Element);
+        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
+        expect(filterSearchPanel).not.toBeInTheDocument();
+      });
+    });
+
+    test('should sort facets in call to getDocumentSummaryFacets', async () => {
+      const testFacets = new Map([
+        [
+          'Motion for Joint Administration',
+          {
+            text: 'Motion for Joint Administration',
+            count: 5,
+          },
+        ],
+        [
+          'Add Judge',
+          {
+            text: 'Add Judge',
+            count: 2,
+          },
+        ],
+        [
+          'Case Association - Joint Administration',
+          {
+            text: 'Case Association - Joint Administration',
+            count: 2,
+          },
+        ],
+        [
+          'Order Re: Motion for Joint Administration',
+          {
+            text: 'Order Re: Motion for Joint Administration',
+            count: 1,
+          },
+        ],
+      ]);
+      const expectedFacets = [
+        { value: 'Add Judge', label: 'Add Judge (2)' },
+        {
+          value: 'Case Association - Joint Administration',
+          label: 'Case Association - Joint Administration (2)',
+        },
+        {
+          value: 'Motion for Joint Administration',
+          label: 'Motion for Joint Administration (5)',
+        },
+        {
+          value: 'Order Re: Motion for Joint Administration',
+          label: 'Order Re: Motion for Joint Administration (1)',
+        },
+      ];
+
+      const resultFacets = getSummaryFacetList(testFacets);
+      expect(resultFacets).toStrictEqual(expectedFacets);
+    });
+  });
 });

@@ -2,9 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailHeader from './CaseDetailHeader';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
-import { CaseDetailNavigationRef } from './CaseDetailNavigation.d';
 import CaseDetail from '../CaseDetailScreen';
 import React from 'react';
+import { CaseDetailScrollPanelRef } from './CaseDetailScrollPanelRef';
 
 describe('Case Detail Header tests', () => {
   const testCaseDetail: CaseDetailType = {
@@ -32,14 +32,14 @@ describe('Case Detail Header tests', () => {
   };
 
   test('should render loading info when isLoading is true', () => {
-    const navRef = React.createRef<CaseDetailNavigationRef>();
+    const navRef = React.createRef<CaseDetailScrollPanelRef>();
     render(
       <BrowserRouter>
         <CaseDetailHeader
           caseDetail={testCaseDetail}
           isLoading={true}
           caseId={testCaseDetail.caseId}
-          navigationRef={navRef}
+          navigationPaneRef={navRef}
         />
       </BrowserRouter>,
     );
@@ -52,14 +52,14 @@ describe('Case Detail Header tests', () => {
   });
 
   test('should render case detail info when isLoading is false', () => {
-    const navRef = React.createRef<CaseDetailNavigationRef>();
+    const navRef = React.createRef<CaseDetailScrollPanelRef>();
     render(
       <BrowserRouter>
         <CaseDetailHeader
           caseDetail={testCaseDetail}
           isLoading={false}
           caseId={testCaseDetail.caseId}
-          navigationRef={navRef}
+          navigationPaneRef={navRef}
         />
       </BrowserRouter>,
     );
