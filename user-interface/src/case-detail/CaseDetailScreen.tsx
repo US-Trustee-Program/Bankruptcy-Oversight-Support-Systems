@@ -15,7 +15,6 @@ import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
-import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -114,9 +113,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
-
-  const flags = useFeatureFlags();
-  const searchFeature = flags[DOCKET_SEARCH_ENABLED];
 
   const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
@@ -225,7 +221,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <div className="grid-col-2">
                 <div className={'left-navigation-pane-container ' + leftNavContainerFixed}>
                   <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
-                  {hasDocketEntries && navState === NavState.COURT_DOCKET && searchFeature && (
+                  {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                     <div
                       className={`filter-and-search padding-y-4`}
                       data-testid="filter-and-search-panel"
