@@ -1,5 +1,6 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
+import Icon from '@/lib/components/uswds/Icon';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -10,6 +11,7 @@ export interface CaseDetailBasicInfoProps {
 }
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
+  const { caseDetail, showReopenDate } = props;
   return (
     <div className="case-card-list">
       <div className="date-information padding-bottom-4 case-card">
@@ -18,24 +20,24 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           <ul className="usa-list usa-list--unstyled">
             <li data-testid="case-detail-filed-date">
               <span className="case-detail-item-name">Filed:</span>
-              <span className="case-detail-item-value">{props.caseDetail.dateFiled}</span>
+              <span className="case-detail-item-value">{caseDetail.dateFiled}</span>
             </li>
-            {props.caseDetail.reopenedDate && props.showReopenDate && (
+            {caseDetail.reopenedDate && showReopenDate && (
               <li data-testid="case-detail-reopened-date">
                 <span className="case-detail-item-name">Reopened by court:</span>
-                <span className="case-detail-item-value">{props.caseDetail.reopenedDate}</span>
+                <span className="case-detail-item-value">{caseDetail.reopenedDate}</span>
               </li>
             )}
-            {!props.showReopenDate && (
+            {!showReopenDate && (
               <li data-testid="case-detail-closed-date">
                 <span className="case-detail-item-name">Closed by court:</span>
-                <span className="case-detail-item-value">{props.caseDetail.closedDate}</span>
+                <span className="case-detail-item-value">{caseDetail.closedDate}</span>
               </li>
             )}
-            {props.caseDetail.dismissedDate && (
+            {caseDetail.dismissedDate && (
               <li data-testid="case-detail-dismissed-date">
                 <span className="case-detail-item-name">Dismissed by court:</span>
-                <span className="case-detail-item-value">{props.caseDetail.dismissedDate}</span>
+                <span className="case-detail-item-value">{caseDetail.dismissedDate}</span>
               </li>
             )}
           </ul>
@@ -44,19 +46,18 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
       <div className="assigned-staff-information padding-bottom-4 case-card">
         <h3>Assigned Staff</h3>
         <div className="assigned-staff-list">
-          {props.caseDetail.regionId && (
+          {caseDetail.regionId && (
             <div
               className="case-detail-region-id"
               data-testid="case-detail-region-id"
               aria-label="assigned region and office"
             >
-              Region {props.caseDetail.regionId.replace(/^0*/, '')} - {props.caseDetail.officeName}{' '}
-              Office
+              Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
             </div>
           )}
           <ul className="usa-list usa-list--unstyled">
-            {props.caseDetail.assignments?.length > 0 &&
-              (props.caseDetail.assignments as Array<string>)?.map((staff: string, idx: number) => {
+            {caseDetail.assignments?.length > 0 &&
+              (caseDetail.assignments as Array<string>)?.map((staff: string, idx: number) => {
                 return (
                   <li key={idx} className="individual-assignee">
                     <span className="assignee-name">{staff}</span>
@@ -65,7 +66,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                   </li>
                 );
               })}
-            {props.caseDetail.assignments?.length == 0 && (
+            {caseDetail.assignments?.length == 0 && (
               <span className="unassigned-placeholder">(unassigned)</span>
             )}
           </ul>
@@ -73,12 +74,12 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
       </div>
       <div className="judge-information padding-bottom-4 case-card">
         <h3>Judge</h3>
-        {props.caseDetail.judgeName && (
+        {caseDetail.judgeName && (
           <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
-            {props.caseDetail.judgeName}
+            {caseDetail.judgeName}
           </div>
         )}
-        {!props.caseDetail.judgeName && (
+        {!caseDetail.judgeName && (
           <div className="case-detail-judge-name" data-testid="case-detail-no-judge-name">
             {informationUnavailable}
           </div>
@@ -88,126 +89,138 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
         <h3>Debtor</h3>
         <ul className="usa-list usa-list--unstyled">
           <li data-testid="case-detail-debtor-name" aria-label="debtor name">
-            {props.caseDetail.debtor.name}
+            {caseDetail.debtor.name}
           </li>
-          {props.caseDetail.debtor.taxId && (
+          {caseDetail.debtor.taxId && (
             <li
               data-testid="case-detail-debtor-taxId"
               aria-label="debtor employer identification number"
             >
               <span className="case-detail-item-name">EIN:</span>
-              <span className="case-detail-item-value">{props.caseDetail.debtor.taxId}</span>
+              <span className="case-detail-item-value">{caseDetail.debtor.taxId}</span>
             </li>
           )}
-          {props.caseDetail.debtor.ssn && (
+          {caseDetail.debtor.ssn && (
             <li data-testid="case-detail-debtor-ssn" aria-label="debtor social security number">
               <span className="case-detail-item-name">SSN/ITIN:</span>
-              <span className="case-detail-item-value">{props.caseDetail.debtor.ssn}</span>
+              <span className="case-detail-item-value">{caseDetail.debtor.ssn}</span>
             </li>
           )}
-          {!props.caseDetail.debtor.taxId && !props.caseDetail.debtor.ssn && (
+          {!caseDetail.debtor.taxId && !caseDetail.debtor.ssn && (
             <li data-testid="case-detail-debtor-no-taxids" aria-label="debtor tax identification">
               {taxIdUnavailable}
             </li>
           )}
           <li data-testid="case-detail-debtor-type" aria-label="debtor type">
-            {props.caseDetail.debtorTypeLabel}
+            {caseDetail.debtorTypeLabel}
           </li>
         </ul>
-        {props.caseDetail.debtor.address1 && (
+        {caseDetail.debtor.address1 && (
           <div data-testid="case-detail-debtor-address1" aria-label="debtor address line 1">
-            {props.caseDetail.debtor.address1}
+            {caseDetail.debtor.address1}
           </div>
         )}
-        {props.caseDetail.debtor.address2 && (
+        {caseDetail.debtor.address2 && (
           <div data-testid="case-detail-debtor-address2" aria-label="debtor address line 2">
-            {props.caseDetail.debtor.address2}
+            {caseDetail.debtor.address2}
           </div>
         )}
-        {props.caseDetail.debtor.address3 && (
+        {caseDetail.debtor.address3 && (
           <div data-testid="case-detail-debtor-address3" aria-label="debtor address line 3">
-            {props.caseDetail.debtor.address3}
+            {caseDetail.debtor.address3}
           </div>
         )}
-        {props.caseDetail.debtor.cityStateZipCountry && (
+        {caseDetail.debtor.cityStateZipCountry && (
           <div
             data-testid="case-detail-debtor-cityStateZipCountry"
             aria-label="debtor city, state, zip, country"
           >
-            {props.caseDetail.debtor.cityStateZipCountry}
+            {caseDetail.debtor.cityStateZipCountry}
           </div>
         )}
       </div>
       <div className="debtor-counsel-information padding-bottom-4 case-card">
         <h3>Debtor&apos;s Counsel</h3>
-        {props.caseDetail.debtorAttorney && (
+        {caseDetail.debtorAttorney && (
           <>
             <div
               className="padding-bottom-1"
               data-testid="case-detail-debtor-counsel-name"
               aria-label="debtor counsel name"
             >
-              {props.caseDetail.debtorAttorney.name}
+              {caseDetail.debtorAttorney.name}
             </div>
-            <div>
-              {props.caseDetail.debtorAttorney.address1 && (
+            {caseDetail.debtorAttorney.office && (
+              <div
+                className="padding-bottom-1"
+                data-testid="case-detail-debtor-counsel-office"
+                aria-label="debtor counsel office"
+              >
+                {caseDetail.debtorAttorney.office}
+              </div>
+            )}
+            <div className="padding-bottom-1">
+              {caseDetail.debtorAttorney.address1 && (
                 <div
                   data-testid="case-detail-debtor-counsel-address1"
                   aria-label="debtor counsel address line 1"
                 >
-                  {props.caseDetail.debtorAttorney.address1}
+                  {caseDetail.debtorAttorney.address1}
                 </div>
               )}
-              {props.caseDetail.debtorAttorney.address2 && (
+              {caseDetail.debtorAttorney.address2 && (
                 <div
                   data-testid="case-detail-debtor-counsel-address2"
                   aria-label="debtor counsel address line 2"
                 >
-                  {props.caseDetail.debtorAttorney.address2}
+                  {caseDetail.debtorAttorney.address2}
                 </div>
               )}
-              {props.caseDetail.debtorAttorney.address3 && (
+              {caseDetail.debtorAttorney.address3 && (
                 <div
                   data-testid="case-detail-debtor-counsel-address3"
                   aria-label="debtor counsel address line 3"
                 >
-                  {props.caseDetail.debtorAttorney.address3}
+                  {caseDetail.debtorAttorney.address3}
                 </div>
               )}
-              {props.caseDetail.debtorAttorney.cityStateZipCountry && (
+              {caseDetail.debtorAttorney.cityStateZipCountry && (
                 <div
                   data-testid="case-detail-debtor-counsel-cityStateZipCountry"
                   aria-label="debtor counsel city, state, zip, country"
                 >
-                  {props.caseDetail.debtorAttorney.cityStateZipCountry}
-                </div>
-              )}
-              {props.caseDetail.debtorAttorney.phone && (
-                <div
-                  data-testid="case-detail-debtor-counsel-phone"
-                  aria-label="debtor counsel phone"
-                >
-                  {props.caseDetail.debtorAttorney.phone}
-                </div>
-              )}
-              {props.caseDetail.debtorAttorney.email && (
-                <div
-                  data-testid="case-detail-debtor-counsel-email"
-                  aria-label="debtor counsel email"
-                >
-                  <a
-                    href={`mailto:${props.caseDetail.debtorAttorney.email}?subject=${getCaseNumber(
-                      props.caseDetail.caseId,
-                    )} - ${props.caseDetail.caseTitle}`}
-                  >
-                    {props.caseDetail.debtorAttorney.email}
-                  </a>
+                  {caseDetail.debtorAttorney.cityStateZipCountry}
                 </div>
               )}
             </div>
+            {caseDetail.debtorAttorney.phone && (
+              <div
+                className="padding-bottom-1"
+                data-testid="case-detail-debtor-counsel-phone"
+                aria-label="debtor counsel phone"
+              >
+                {caseDetail.debtorAttorney.phone}
+              </div>
+            )}
+            {caseDetail.debtorAttorney.email && (
+              <div
+                className="padding-bottom-1"
+                data-testid="case-detail-debtor-counsel-email"
+                aria-label="debtor counsel email"
+              >
+                <a
+                  href={`mailto:${caseDetail.debtorAttorney.email}?subject=${getCaseNumber(
+                    caseDetail.caseId,
+                  )} - ${caseDetail.caseTitle}`}
+                >
+                  {caseDetail.debtorAttorney.email}
+                  <Icon className="link-icon" name="mail_outline"></Icon>
+                </a>
+              </div>
+            )}
           </>
         )}
-        {!props.caseDetail.debtorAttorney && (
+        {!caseDetail.debtorAttorney && (
           <div data-testid="case-detail-no-debtor-attorney" aria-label="debtor attorney">
             {informationUnavailable}
           </div>
