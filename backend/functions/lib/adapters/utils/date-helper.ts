@@ -48,7 +48,7 @@ export function getYearMonthDayStringFromDate(date: Date) {
 export function getMonthDayYearStringFromDate(date: Date) {
   const monthString = padDateElement(date.getMonth() + 1);
   const dateString = padDateElement(date.getDate());
-  return `${monthString}-${dateString}-${date.getFullYear()}`;
+  return `${date.getFullYear()}-${monthString}-${dateString}`;
 }
 
 function padDateElement(value: number) {
