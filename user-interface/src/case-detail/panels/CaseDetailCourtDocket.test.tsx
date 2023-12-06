@@ -39,10 +39,16 @@ describe('court docket panel tests', () => {
   ];
   const firstIndex = 0;
 
-  test('should render loading info when isLoading is true', () => {
+  test('should render loading info when isDocketLoading is true', () => {
     render(
       <BrowserRouter>
-        <CaseDetailCourtDocket caseId="081-12-12345" docketEntries={undefined} searchString="" />
+        <CaseDetailCourtDocket
+          caseId="081-12-12345"
+          docketEntries={undefined}
+          searchString=""
+          hasDocketEntries={false}
+          isDocketLoading={true}
+        />
       </BrowserRouter>,
     );
 
@@ -60,6 +66,7 @@ describe('court docket panel tests', () => {
           docketEntries={docketEntries}
           searchString=""
           hasDocketEntries={true}
+          isDocketLoading={false}
         />
       </BrowserRouter>,
     );
@@ -141,6 +148,7 @@ describe('court docket panel tests', () => {
             docketEntries={[]}
             searchString=""
             hasDocketEntries={false}
+            isDocketLoading={false}
           />
         </BrowserRouter>,
       );
@@ -161,6 +169,7 @@ describe('court docket panel tests', () => {
             docketEntries={docketEntries}
             searchString=""
             hasDocketEntries={true}
+            isDocketLoading={false}
           />
         </BrowserRouter>,
       );

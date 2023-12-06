@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import {
   CaseDocketEntry,
@@ -16,7 +16,8 @@ export interface CaseDetailCourtDocketProps {
   caseId?: string;
   docketEntries?: CaseDocketEntry[];
   searchString: string;
-  hasDocketEntries?: boolean;
+  hasDocketEntries: boolean;
+  isDocketLoading: boolean;
 }
 
 export function fileSizeDescription(fileSize: number): string {
@@ -49,12 +50,10 @@ export function generateDocketFilenameDisplay(linkInfo: CaseDocketEntryDocument)
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries, hasDocketEntries } = props;
   // TODO: Replace use of useEffect for handling loading with useTransition
-  const [isLoading, setIsLoading] = useState(true);
   const alertRef = useRef<AlertRefType>(null);
 
   useEffect(() => {
-    setIsLoading(!docketEntries);
-    if (!hasDocketEntries) {
+    if (!props.isDocketLoading && !hasDocketEntries) {
       alertRef.current?.show(true);
     }
   }, [docketEntries]);
@@ -66,8 +65,8 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   return (
     <div id="case-detail-court-docket-panel">
       <div id="searchable-docket" data-testid="searchable-docket">
-        {isLoading && <LoadingIndicator />}
-        {!isLoading &&
+        {props.isDocketLoading && <LoadingIndicator />}
+        {!props.isDocketLoading &&
           hasDocketEntries &&
           docketEntries?.map((docketEntry: CaseDocketEntry, idx: number) => {
             return (
