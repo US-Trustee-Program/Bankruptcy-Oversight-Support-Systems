@@ -182,6 +182,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   useEffect(() => {
     setNavState(mapNavState(location.pathname));
+    if (navState !== NavState.COURT_DOCKET) {
+      setSelectedFacets([]);
+    }
   }, [location]);
 
   useImperativeHandle(leftNavContainerRef, () => ({
@@ -251,7 +254,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           </button>
                         </div>
                       </div>
-
                       <div
                         className="in-docket-search form-field"
                         data-testid="docket-entry-search"
@@ -268,7 +270,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           />
                         </div>
                       </div>
-
                       {filterFeature && (
                         <div className="docket-summary-facets form-field">
                           <label>Filter by Summary</label>
