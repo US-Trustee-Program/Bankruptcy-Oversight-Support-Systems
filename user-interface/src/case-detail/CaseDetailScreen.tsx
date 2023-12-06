@@ -148,6 +148,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
       })
       .catch(() => {
         setCaseDocketEntries([]);
+        setIsDocketLoading(false);
       });
   };
 
