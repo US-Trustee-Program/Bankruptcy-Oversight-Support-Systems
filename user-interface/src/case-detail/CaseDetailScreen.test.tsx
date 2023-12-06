@@ -86,15 +86,15 @@ describe('Case Detail screen tests', () => {
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
         expect(dateFiled).toHaveTextContent('Filed');
-        expect(dateFiled).toHaveTextContent('1/4/1962');
+        expect(dateFiled).toHaveTextContent('01/04/1962');
 
         const closedDate = screen.getByTestId('case-detail-closed-date');
         expect(closedDate).toHaveTextContent('Closed by court');
-        expect(closedDate).toHaveTextContent('1/8/1963');
+        expect(closedDate).toHaveTextContent('01/08/1963');
 
         const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
         expect(dismissedDate).toHaveTextContent('Dismissed by court');
-        expect(dismissedDate).toHaveTextContent('1/8/1964');
+        expect(dismissedDate).toHaveTextContent('01/08/1964');
 
         const chapter = screen.getByTestId('case-chapter');
         expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');

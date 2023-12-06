@@ -1,4 +1,9 @@
-const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC' });
+const formatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
 
 export function formatDate(dateOrString: Date | string): string {
   try {
