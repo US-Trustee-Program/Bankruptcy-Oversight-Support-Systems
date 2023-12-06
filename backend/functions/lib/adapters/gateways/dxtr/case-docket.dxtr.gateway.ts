@@ -115,7 +115,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     SELECT
       D.DE_SEQNO as sequenceNumber,
       D.DE_DOCUMENT_NUM as documentNumber,
-      FORMAT(D.DE_DATE_FILED, 'MM-dd-yyyy') as dateFiled,
+      FORMAT(D.DE_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
       ISNULL(D.DO_SUMMARY_TEXT, 'SUMMARY NOT AVAILABLE') as summaryText,
       ISNULL(D.DT_TEXT, 'TEXT NOT AVAILABLE') as fullText
     FROM AO_DE AS D

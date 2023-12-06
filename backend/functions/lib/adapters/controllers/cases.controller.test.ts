@@ -14,12 +14,12 @@ const expectedListResult = {
       {
         caseId: caseId2,
         caseTitle: 'Crawford, Turner and Garrett',
-        dateFiled: '05-20-2011',
+        dateFiled: '2011-05-20',
       },
       {
         caseId: caseId1,
         caseTitle: 'Ali-Cruz',
-        dateFiled: '04-23-2014',
+        dateFiled: '2014-04-23',
       },
     ],
   },
@@ -32,8 +32,8 @@ const expectedDetailResult = {
     caseDetails: {
       caseId: caseId1,
       caseTitle: 'Crawford, Turner and Garrett',
-      dateFiled: '05-20-2011',
-      dateClosed: '06-21-2011',
+      dateFiled: '2011-05-20',
+      dateClosed: '2011-06-21',
       assignments: [],
     },
   },
