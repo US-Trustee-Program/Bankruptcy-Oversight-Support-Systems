@@ -15,6 +15,7 @@ import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
+import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -113,6 +114,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
+
+  const flags = useFeatureFlags();
+  const filterFeature = flags[DOCKET_FILTER_ENABLED];
 
   const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
@@ -266,15 +270,17 @@ export const CaseDetail = (props: CaseDetailProps) => {
                         </div>
                       </div>
 
-                      <div className="docket-summary-facets form-field">
-                        <label>Filter by Summary</label>
-                        <MultiSelect
-                          options={getSummaryFacetList(caseDocketSummaryFacets)}
-                          closeMenuOnSelect={false}
-                          onChange={handleSelectedFacet}
-                          label="Filter by Summary"
-                        ></MultiSelect>
-                      </div>
+                      {filterFeature && (
+                        <div className="docket-summary-facets form-field">
+                          <label>Filter by Summary</label>
+                          <MultiSelect
+                            options={getSummaryFacetList(caseDocketSummaryFacets)}
+                            closeMenuOnSelect={false}
+                            onChange={handleSelectedFacet}
+                            label="Filter by Summary"
+                          ></MultiSelect>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
