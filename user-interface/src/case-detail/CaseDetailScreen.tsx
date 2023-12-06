@@ -15,7 +15,10 @@ import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
-import useFeatureFlags, { DOCKET_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  DOCKET_FILTER_ENABLED,
+  DOCKET_SEARCH_ENABLED,
+} from '@/lib/hooks/UseFeatureFlags';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -117,6 +120,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   const flags = useFeatureFlags();
   const searchFeature = flags[DOCKET_SEARCH_ENABLED];
+  const filterFeature = flags[DOCKET_FILTER_ENABLED];
 
   const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
@@ -183,6 +187,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   useEffect(() => {
     setNavState(mapNavState(location.pathname));
+    if (navState !== NavState.COURT_DOCKET) {
+      setSelectedFacets([]);
+    }
   }, [location]);
 
   useImperativeHandle(leftNavContainerRef, () => ({
@@ -225,62 +232,71 @@ export const CaseDetail = (props: CaseDetailProps) => {
               <div className="grid-col-2">
                 <div className={'left-navigation-pane-container ' + leftNavContainerFixed}>
                   <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
-                  {hasDocketEntries && navState === NavState.COURT_DOCKET && searchFeature && (
-                    <div
-                      className={`filter-and-search padding-y-4`}
-                      data-testid="filter-and-search-panel"
-                    >
-                      <div className="sort form-field">
-                        <div className="usa-sort usa-sort--small">
-                          <button
-                            className="usa-button usa-button--outline sort-button"
-                            id="basic-sort-button"
-                            name="basic-sort"
-                            onClick={toggleSort}
-                            data-testid="docket-entry-sort"
-                            aria-label={'Sort ' + sortDirection + ' First'}
-                          >
-                            <div aria-hidden="true">
-                              <span aria-hidden="true">Sort ({sortDirection})</span>
-                              <Icon
-                                className="sort-button-icon"
-                                name={
-                                  sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'
-                                }
-                              />
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-
+                  {hasDocketEntries &&
+                    navState === NavState.COURT_DOCKET &&
+                    (searchFeature || filterFeature) && (
                       <div
-                        className="in-docket-search form-field"
-                        data-testid="docket-entry-search"
+                        className={`filter-and-search padding-y-4`}
+                        data-testid="filter-and-search-panel"
                       >
-                        <div className="usa-search usa-search--small">
-                          <label htmlFor="basic-search-field">Find in Docket</label>
-                          <IconInput
-                            className="search-icon"
-                            id="basic-search-field"
-                            name="basic-search"
-                            icon="search"
-                            autocomplete="off"
-                            onChange={search}
-                          />
-                        </div>
-                      </div>
+                        {searchFeature && (
+                          <>
+                            <div className="sort form-field">
+                              <div className="usa-sort usa-sort--small">
+                                <button
+                                  className="usa-button usa-button--outline sort-button"
+                                  id="basic-sort-button"
+                                  name="basic-sort"
+                                  onClick={toggleSort}
+                                  data-testid="docket-entry-sort"
+                                  aria-label={'Sort ' + sortDirection + ' First'}
+                                >
+                                  <div aria-hidden="true">
+                                    <span aria-hidden="true">Sort ({sortDirection})</span>
+                                    <Icon
+                                      className="sort-button-icon"
+                                      name={
+                                        sortDirection === 'Newest'
+                                          ? 'arrow_upward'
+                                          : 'arrow_downward'
+                                      }
+                                    />
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
 
-                      <div className="docket-summary-facets form-field">
-                        <label>Filter by Summary</label>
-                        <MultiSelect
-                          options={getSummaryFacetList(caseDocketSummaryFacets)}
-                          closeMenuOnSelect={false}
-                          onChange={handleSelectedFacet}
-                          label="Filter by Summary"
-                        ></MultiSelect>
+                            <div
+                              className="in-docket-search form-field"
+                              data-testid="docket-entry-search"
+                            >
+                              <div className="usa-search usa-search--small">
+                                <label htmlFor="basic-search-field">Find in Docket</label>
+                                <IconInput
+                                  className="search-icon"
+                                  id="basic-search-field"
+                                  name="basic-search"
+                                  icon="search"
+                                  autocomplete="off"
+                                  onChange={search}
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {filterFeature && (
+                          <div className="docket-summary-facets form-field">
+                            <label>Filter by Summary</label>
+                            <MultiSelect
+                              options={getSummaryFacetList(caseDocketSummaryFacets)}
+                              closeMenuOnSelect={false}
+                              onChange={handleSelectedFacet}
+                              label="Filter by Summary"
+                            ></MultiSelect>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
               <div className="grid-col-6">
