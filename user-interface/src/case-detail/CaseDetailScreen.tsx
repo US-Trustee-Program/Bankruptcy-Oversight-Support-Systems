@@ -97,6 +97,7 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
 export const CaseDetail = (props: CaseDetailProps) => {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
@@ -127,6 +128,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   };
 
   const fetchCaseDocketEntries = async () => {
+    setIsDocketLoading(true);
     api
       .get(`/cases/${caseId}/docket`, {})
       .then((data) => {
@@ -137,9 +139,11 @@ export const CaseDetail = (props: CaseDetailProps) => {
           new Map(),
         );
         setCaseDocketSummaryFacets(facets);
+        setIsDocketLoading(false);
       })
       .catch(() => {
         setCaseDocketEntries([]);
+        setIsDocketLoading(false);
       });
   };
 
@@ -311,7 +315,8 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             sortDirection,
                           })}
                           searchString={searchString}
-                          hasDocketEntries={caseDocketEntries && caseDocketEntries?.length > 1}
+                          hasDocketEntries={!!caseDocketEntries && caseDocketEntries?.length > 1}
+                          isDocketLoading={isDocketLoading}
                         />
                       }
                     />
