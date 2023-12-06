@@ -71,8 +71,6 @@ describe('Case Detail sort, search, and filter tests', () => {
   ];
 
   test('should display sort and filter panel when navigated to docket entries', async () => {
-    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
-
     const basicInfoPath = `/case-detail/${testCaseId}/`;
 
     render(
@@ -123,7 +121,6 @@ describe('Case Detail sort, search, and filter tests', () => {
 
   test('should not display sort and filter panel when navigated to basic info', async () => {
     vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': true });
 
     const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 
@@ -155,40 +152,6 @@ describe('Case Detail sort, search, and filter tests', () => {
     await waitFor(() => {
       const basicInfoLink = screen.getByTestId('basic-info-link');
       fireEvent.click(basicInfoLink as Element);
-      sortButton = screen.queryByTestId(sortButtonId);
-      expect(sortButton).not.toBeInTheDocument();
-      searchInput = screen.queryByTestId(searchInputId);
-      expect(searchInput).not.toBeInTheDocument();
-    });
-  });
-
-  test('should not display sort and find in docket when feature flag is off', async () => {
-    vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-    vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-search-enabled': false });
-
-    const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
-
-    render(
-      <MemoryRouter initialEntries={[docketEntryPath]}>
-        <Routes>
-          <Route
-            path="case-detail/:id/court-docket"
-            element={
-              <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    const sortButtonId = 'docket-entry-sort';
-    let sortButton: HTMLElement | null;
-    const searchInputId = 'docket-entry-search';
-    let searchInput;
-
-    await waitFor(async () => {
-      const navPane = document.querySelector('.left-navigation-pane-container');
-      expect(navPane).toBeInTheDocument();
       sortButton = screen.queryByTestId(sortButtonId);
       expect(sortButton).not.toBeInTheDocument();
       searchInput = screen.queryByTestId(searchInputId);
