@@ -43,7 +43,9 @@ Note required environment variables and secrets defined in build tool for pipeli
 | **Azure SQL Server**                       | ---                    | ---              | ---                                                                                                         |
 | AZ_SQL_CONN_STR                            | Secret                 | ---              | ---                                                                                                         |
 | AZ_SQL_SERVER_NAME                         | Secret                 | ---              | ---                                                                                                         |
-| AZ_MSSQL_HOST                              | Secret                 | ---              | ---                                                                                                         |
+| AZ_SQL_IDENTITY_NAME                       | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth           |
+| AZ_SQL_IDENTITY_RG_NAME                    | Secret                 | ---              | Azure resource group name that managed identity belong to. Required if not using SQL Auth                   |
+| ~~~AZ_MSSQL_HOST~~~                        | ~~~Secret~~~           | ---              | ---                                                                                                         |
 | ~~AZ_MSSQL_DATABASE~~                      | ~~Secret~~             | ---              | ~~ACMS database name~~ No longer needed                                                                     |
 | ~~AZ_MSSQL_DATABASE_DXTR~~                 | ~~Secret~~             | ---              | ~~DXTR database name~~ Moved to KeyVault                                                                    |
 | ~~AZ_MSSQL_USER~~                          | ~~Secret~~             | ---              | Moved to KeyVault                                                                                           |

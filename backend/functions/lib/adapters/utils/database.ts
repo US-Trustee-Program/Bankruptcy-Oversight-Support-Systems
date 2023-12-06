@@ -1,7 +1,8 @@
-import { ConnectionPool, config } from 'mssql';
+import { ConnectionError, MSSQLError } from 'mssql';
 import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
+import { getSqlConnection } from '../../factory';
 
 const MODULE_NAME = 'DATABASE-UTILITY';
 
@@ -12,11 +13,10 @@ export async function executeQuery(
   input?: DbTableFieldSpec[],
 ): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
-
   try {
-    const sqlConnectionPool = new ConnectionPool(databaseConfig as unknown as config);
+    const sqlConnectionPool = getSqlConnection(databaseConfig);
     const sqlConnection = await sqlConnectionPool.connect();
-    const sqlRequest = await sqlConnection.request();
+    const sqlRequest = sqlConnection.request();
 
     if (typeof input != 'undefined') {
       input.forEach((item) => {
@@ -25,6 +25,7 @@ export async function executeQuery(
     }
     const results = await sqlRequest.query(query);
 
+    // TODO : May want to refactor to just return results without the message and success
     const queryResult: QueryResults = {
       results,
       message: '',
@@ -37,14 +38,54 @@ export async function executeQuery(
 
     return queryResult;
   } catch (error) {
-    log.error(applicationContext, MODULE_NAME, (error as Error).message, error);
+    if (isConnectionError(error)) {
+      const errorMessages = [];
+      // No recursive function here. Limiting this to just 2 "errors" lists deep.
+      if (isAggregateError(error.originalError)) {
+        error.originalError.errors.reduce((acc, e) => {
+          if (isAggregateError(e)) {
+            e.errors.forEach((lowestE) => {
+              acc.push(lowestE.message);
+            });
+          } else {
+            acc.push(e.message);
+          }
+          return acc;
+        }, errorMessages);
+      }
+      errorMessages.push(error.message);
+      log.error(applicationContext, MODULE_NAME, 'ConnectionError', { errorMessages });
+    } else if (isMssqlError(error)) {
+      log.error(applicationContext, MODULE_NAME, 'MssqlError', {
+        name: error.name,
+        originalError: error.originalError,
+      });
+    } else {
+      log.error(applicationContext, MODULE_NAME, error.message, error);
+    }
 
+    // TODO May want to refactor to throw CamsError and remove returning QueryResults
     const queryResult: QueryResults = {
       results: {},
       message: (error as Error).message,
       success: false,
     };
-
     return queryResult;
   }
+}
+
+function isMssqlError(e): e is MSSQLError {
+  return e instanceof MSSQLError;
+}
+
+function isConnectionError(e): e is ConnectionError {
+  return e instanceof ConnectionError;
+}
+
+type AggregateError = Error & {
+  errors?: Error[];
+};
+
+function isAggregateError(e: unknown): e is AggregateError {
+  return e && 'errors' in (e as object);
 }

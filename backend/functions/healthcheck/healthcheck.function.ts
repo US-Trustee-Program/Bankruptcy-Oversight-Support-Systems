@@ -3,9 +3,10 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
-import HealthcheckCosmosDb from './healthcheck.db';
+import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import HealthcheckSqlDb from './healthcheck.db.sql';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
@@ -16,6 +17,7 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
+  const healthchechSqlDbClient = new HealthcheckSqlDb(applicationContext);
 
   log.debug(applicationContext, MODULE_NAME, 'Health check endpoint invoked');
 
@@ -25,17 +27,30 @@ const httpTrigger: AzureFunction = async function (
   log.debug(applicationContext, MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
   const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
 
+  const checkSqlDbReadAccess = await healthchechSqlDbClient.checkDxtrDbRead();
+  log.debug(
+    applicationContext,
+    MODULE_NAME,
+    'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,
+  );
+
   const respBody = {
-    cosmosDbWriteStatus: checkCosmosDbWrite,
-    cosmosDbReadStatus: checkCosmosDbRead,
-    cosmosDbDeleteStatus: checkCosmosDbDelete,
+    database: {
+      cosmosDbWriteStatus: checkCosmosDbWrite,
+      cosmosDbReadStatus: checkCosmosDbRead,
+      cosmosDbDeleteStatus: checkCosmosDbDelete,
+      sqlDbReadStatus: checkSqlDbReadAccess,
+    },
   };
 
   // Add boolean flag for any other checks here
-  const allCheckPassed = checkCosmosDbWrite && checkCosmosDbRead && checkCosmosDbDelete;
-
-  functionContext.res = allCheckPassed
-    ? httpSuccess({ status: 'OK' })
+  functionContext.res = checkResults(
+    checkCosmosDbWrite,
+    checkCosmosDbRead,
+    checkCosmosDbDelete,
+    checkSqlDbReadAccess,
+  )
+    ? httpSuccess(Object.assign({ status: 'OK' }, respBody))
     : httpError(
         new CamsError(MODULE_NAME, {
           message: JSON.stringify(respBody),
@@ -43,5 +58,14 @@ const httpTrigger: AzureFunction = async function (
         }),
       );
 };
+
+function checkResults(...results: boolean[]) {
+  for (const i in results) {
+    if (!results[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export default httpTrigger;
