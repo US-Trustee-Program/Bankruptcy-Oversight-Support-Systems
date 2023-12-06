@@ -910,47 +910,6 @@ describe('Case Detail screen tests', () => {
       expect(third).toEqual(oldestEntry);
     });
 
-    test('should display sort and filter panel when navigated to docket entries', async () => {
-      const basicInfoPath = `/case-detail/${testCaseId}/`;
-
-      render(
-        <MemoryRouter initialEntries={[basicInfoPath]}>
-          <Routes>
-            <Route
-              path="case-detail/:id/*"
-              element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      let basicInfoLink;
-      let docketEntryLink;
-      const filterSearchPanelId = 'filter-and-search-panel';
-      let filterSearchPanel: HTMLElement | null;
-
-      await waitFor(() => {
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).not.toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
-        filterSearchPanel = screen.queryByTestId(filterSearchPanelId);
-        expect(filterSearchPanel).not.toBeInTheDocument();
-      });
-    });
-
     test('should not display sort and filter panel when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
