@@ -9,7 +9,7 @@ import {
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
-import { mapNavState, NavState } from './panels/CaseDetailNavigation';
+import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import { CaseDetailScrollPanelRef } from './panels/CaseDetailScrollPanelRef';
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
@@ -19,7 +19,6 @@ import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFl
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
-const CaseDetailNavigation = lazy(() => import('./panels/CaseDetailNavigation'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
 
 type SortDirection = 'Oldest' | 'Newest';
