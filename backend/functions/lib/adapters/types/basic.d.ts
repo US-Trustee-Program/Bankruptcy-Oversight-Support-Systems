@@ -5,7 +5,6 @@ import { CamsError } from '../../common-errors/cams-error';
 
 export interface AppConfig {
   dbMock: boolean;
-  acmsDbConfig: IDbConfig;
   dxtrDbConfig: IDbConfig;
   server: ServerType;
 }

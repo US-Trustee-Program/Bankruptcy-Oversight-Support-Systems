@@ -5,7 +5,7 @@ import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { CosmosConfig } from './adapters/types/database';
+import { CosmosConfig, IDbConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-humble';
@@ -13,6 +13,7 @@ import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
+import { ConnectionPool, config } from 'mssql';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -54,4 +55,10 @@ export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUse
     ? new MockCaseDocketGateway()
     : new DxtrCaseDocketGateway();
   return new CaseDocketUseCase(gateway);
+};
+
+export const getSqlConnection = (databaseConfig: IDbConfig) => {
+  // Reference https://github.com/tediousjs/node-mssql#readme
+  // TODO We may want to refactor this to use non ConnectionPool connection object since we have moved to function app.
+  return new ConnectionPool(databaseConfig as config);
 };

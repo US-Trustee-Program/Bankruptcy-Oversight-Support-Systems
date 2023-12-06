@@ -95,12 +95,14 @@ COSMOS_MANAGED_IDENTITY=
 DATABASE_MOCK={a string: true | false}
 
 MSSQL_HOST={the FQDN of the database}
-MSSQL_DATABASE={the name of the ACMS database}
 MSSQL_DATABASE_DXTR={the name of the DXTR database}
-MSSQL_USER={the SQL Server Admin username}
-MSSQL_PASS={the SQL Server Admin user password}
 MSSQL_ENCRYPT={a string: true | false}
 MSSQL_TRUST_UNSIGNED_CERT={a string: true | false}
+# Required for SQL Auth. Recommended alternative is to use managed identities.
+MSSQL_USER={the SQL Server Admin username}
+MSSQL_PASS={the SQL Server Admin user password}
+# Required for connecting to CAMS SQL server database
+MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
 
 STARTING_MONTH={number of months previous to today to use as a starting month (defaults to 6)}
 ```
@@ -115,6 +117,24 @@ Azure for the value
 To interact with the Cosmos database from your local machine you will need to set up
 access separately. One way to do this is by setting up
 [role based access](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac).
+
+##### SQL Server Database
+
+###### Passwordless connection (via Azure User Managed Identity)
+
+Existing Bicep deployment can automate the creation of the user managed identity and assign the identity to the functionapp instance. The below are some manual steps to handle.
+
+Grant access to a managed identity with the following sql query
+```sql
+CREATE USER [userAssignedIdentityName] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [userAssignedIdentityName];
+-- Remember to leverage principle of least privilege
+-- ALTER ROLE db_datawriter ADD MEMBER [userAssignedIdentityName];
+-- ALTER ROLE db_ddladmin ADD MEMBER [userAssignedIdentityName];
+GO
+```
+
+Also ensure to set the environment variable for the functionapp, MSSQL_CLIENT_ID. This is stored as a secret in Keyvault.
 
 ##### Azure Functions Core
 

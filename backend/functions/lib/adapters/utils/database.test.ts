@@ -62,6 +62,5 @@ describe('Tests database', () => {
 
     // assert
     expect(queryResult).toEqual({ results: 'test string', message: '', success: true });
-    console.log(queryResult);
   });
 });
