@@ -16,6 +16,7 @@ import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDoc
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
 import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -37,26 +38,49 @@ function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) 
   );
 }
 
+function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: number) {
+  if (docketEntry.documentNumber === documentNumber) return docketEntry;
+}
+
 function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
   if (selectedFacets.length === 0) return docketEntry;
   return selectedFacets.includes(docketEntry.summaryText);
 }
 
 interface sortAndFilterOptions {
-  searchString: string;
+  searchInDocketText: string;
   selectedFacets: string[];
   sortDirection: SortDirection;
+  documentNumber: number | null;
 }
 
 export function applySortAndFilters(
   docketEntries: CaseDocketEntry[] | undefined,
   options: sortAndFilterOptions,
 ) {
-  if (docketEntries === undefined) return;
-  return docketEntries
-    .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchString))
-    .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
-    .sort(docketSorterClosure(options.sortDirection));
+  if (docketEntries === undefined) {
+    return { filteredDocketEntries: docketEntries, alertOptions: undefined };
+  }
+  if (options.documentNumber) {
+    const filteredDocketEntries = docketEntries.filter((docketEntry) =>
+      documentNumberFilter(docketEntry, options.documentNumber!),
+    );
+    const alertOptions =
+      filteredDocketEntries.length === 0
+        ? {
+            message: 'The document number you entered is not found in the docket.',
+            title: 'Document Number Not Found',
+            type: UswdsAlertStyle.Warning,
+          }
+        : undefined;
+    return { filteredDocketEntries, alertOptions };
+  } else {
+    const filteredDocketEntries = docketEntries
+      .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchInDocketText))
+      .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
+      .sort(docketSorterClosure(options.sortDirection));
+    return { filteredDocketEntries, alertOptions: undefined };
+  }
 }
 
 function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEntry) {
@@ -105,7 +129,8 @@ export const CaseDetail = (props: CaseDetailProps) => {
     new Map(),
   );
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
-  const [searchString, setSearchString] = useState('');
+  const [searchInDocketText, setSearchInDocketText] = useState('');
+  const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
 
@@ -151,9 +176,18 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setSortDirection(sortDirection === 'Newest' ? 'Oldest' : 'Newest');
   }
 
-  function search(ev: React.ChangeEvent<HTMLInputElement>) {
+  function searchDocketText(ev: React.ChangeEvent<HTMLInputElement>) {
     const searchString = ev.target.value.toLowerCase();
-    setSearchString(searchString);
+    setSearchInDocketText(searchString);
+  }
+
+  function searchDocumentNumber(ev: React.ChangeEvent<HTMLInputElement>) {
+    const newDocumentNumber = parseInt(ev.target.value.trim());
+    if (isNaN(newDocumentNumber)) {
+      setDocumentNumber(null);
+      return;
+    }
+    setDocumentNumber(newDocumentNumber);
   }
 
   const handleSelectedFacet = (newValue: MultiSelectOptionList<Record<string, string>>) => {
@@ -195,6 +229,13 @@ export const CaseDetail = (props: CaseDetailProps) => {
     fix: () => setLeftNavContainerFixed('grid-col-2 fixed'),
     loosen: () => setLeftNavContainerFixed(''),
   }));
+
+  const { filteredDocketEntries, alertOptions } = applySortAndFilters(caseDocketEntries, {
+    searchInDocketText,
+    selectedFacets,
+    sortDirection,
+    documentNumber,
+  });
 
   return (
     <>
@@ -270,7 +311,29 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             name="basic-search"
                             icon="search"
                             autocomplete="off"
-                            onChange={search}
+                            onChange={searchDocketText}
+                          />
+                        </div>
+                      </div>
+                      <div
+                        className="in-docket-search form-field"
+                        data-testid="docket-number-search"
+                      >
+                        <div className="usa-search usa-search--small">
+                          <label htmlFor="search-by-document-number">Go to Document Number</label>
+                          <IconInput
+                            pattern="^[0-9]*$"
+                            inputmode="numeric"
+                            title="Enter numbers only"
+                            className="search-icon"
+                            id="document-number-search-field"
+                            type="number"
+                            name="search-by-document-number"
+                            icon="search"
+                            autocomplete="off"
+                            onChange={searchDocumentNumber}
+                            min={1}
+                            max={caseDocketEntries?.length}
                           />
                         </div>
                       </div>
@@ -309,12 +372,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
                       element={
                         <CaseDetailCourtDocket
                           caseId={caseBasicInfo.caseId}
-                          docketEntries={applySortAndFilters(caseDocketEntries, {
-                            searchString,
-                            selectedFacets,
-                            sortDirection,
-                          })}
-                          searchString={searchString}
+                          docketEntries={filteredDocketEntries}
+                          alertOptions={alertOptions}
+                          searchString={searchInDocketText}
                           hasDocketEntries={!!caseDocketEntries && caseDocketEntries?.length > 1}
                           isDocketLoading={isDocketLoading}
                         />
