@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import {
   CaseDocketEntry,
@@ -13,12 +13,18 @@ import { formatDate } from '@/lib/utils/datetime';
 
 export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
 
+export interface AlertOptions {
+  message: string;
+  title: string;
+  type: UswdsAlertStyle;
+}
 export interface CaseDetailCourtDocketProps {
   caseId?: string;
   docketEntries?: CaseDocketEntry[];
   searchString: string;
   hasDocketEntries: boolean;
   isDocketLoading: boolean;
+  alertOptions?: AlertOptions;
 }
 
 export function fileSizeDescription(fileSize: number): string {
@@ -53,9 +59,27 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   // TODO: Replace use of useEffect for handling loading with useTransition
   const alertRef = useRef<AlertRefType>(null);
 
+  const [alertOptions, setAlertOptions] = useState<AlertOptions | null>(null);
+
   useEffect(() => {
-    if (!props.isDocketLoading && !hasDocketEntries) {
-      alertRef.current?.show(true);
+    if (!props.isDocketLoading) {
+      if (!hasDocketEntries) {
+        setAlertOptions({
+          message:
+            'We are unable to retrieve court docket entries for this case. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
+          type: UswdsAlertStyle.Error,
+          title: 'Docket Entries Not Available',
+        });
+        alertRef.current?.show();
+      } else if (props.alertOptions) {
+        setAlertOptions(props.alertOptions);
+        alertRef.current?.show();
+      } else {
+        alertRef.current?.hide();
+        if (props.searchString) {
+          handleHighlight(window, document, 'searchable-docket', props.searchString);
+        }
+      }
     }
   }, [docketEntries]);
 
@@ -124,15 +148,14 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           })}
       </div>
       <Alert
-        message={
-          'We are unable to retrieve court docket entries for this case. Please try again later. If the problem persists, please submit a feedback request describing the issue.'
-        }
-        type={UswdsAlertStyle.Error}
+        message={alertOptions?.message || ''}
+        type={alertOptions?.type || UswdsAlertStyle.Error}
         role={'status'}
         slim={true}
         ref={alertRef}
         timeout={0}
-        title={'Docket Entries Not Available'}
+        title={alertOptions?.title || ''}
+        inline={true}
       />{' '}
     </div>
   );

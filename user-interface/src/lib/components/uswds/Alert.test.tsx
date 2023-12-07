@@ -77,13 +77,6 @@ describe('Test Alert component', () => {
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
-    alertRef.current?.show(true);
-    await sleep(100);
-    expect(alertContainer).toHaveClass('inline-alert');
-    expect(alert).toHaveClass('usa-alert__visible');
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
-
     await sleep(5000);
     expect(alert).toHaveClass('usa-alert__visible');
     expect(alert).not.toHaveClass('usa-alert__hidden');
@@ -95,6 +88,27 @@ describe('Test Alert component', () => {
     expect(alert).toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
+
+  test('should have inline-alert class if declared as inline', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+            inline={true}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alertContainer = screen.getByTestId('alert-container');
+    expect(alertContainer).toHaveClass('inline-alert');
+  });
 
   test('should have info class', async () => {
     const alertRef = React.createRef<AlertRefType>();
