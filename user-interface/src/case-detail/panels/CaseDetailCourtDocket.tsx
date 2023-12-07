@@ -70,10 +70,10 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           type: UswdsAlertStyle.Error,
           title: 'Docket Entries Not Available',
         });
-        alertRef.current?.show(true);
+        alertRef.current?.show();
       } else if (props.alertOptions) {
         setAlertOptions(props.alertOptions);
-        alertRef.current?.show(true);
+        alertRef.current?.show();
       } else {
         alertRef.current?.hide();
         if (props.searchString) {
@@ -155,6 +155,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
         ref={alertRef}
         timeout={0}
         title={alertOptions?.title || ''}
+        inline={true}
       />{' '}
     </div>
   );

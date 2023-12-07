@@ -10,6 +10,7 @@ export interface AlertProps {
   timeout?: number;
   title?: string;
   className?: string;
+  inline?: boolean;
 }
 
 export enum UswdsAlertStyle {
@@ -32,16 +33,14 @@ export interface AlertRefType {
 
 function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const [isVisible, setIsVisible] = useState<IsVisible>(IsVisible.Unset);
-  const [isInline, setIsInline] = useState<boolean>(false);
   let classes = `usa-alert ${props.type}`;
-  const isInlineClass = isInline ? `inline-alert` : '';
+  const isInlineClass = props.inline ? `inline-alert` : '';
   const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
 
   if (props.slim === true) classes += ' usa-alert--slim';
 
-  function show(inline: boolean = false) {
+  function show() {
     setIsVisible(IsVisible.True);
-    setIsInline(inline);
   }
 
   function hide() {
