@@ -90,9 +90,6 @@ param sqlServerIdentityName string = ''
 @description('Resource group name for managed identity of database server')
 param sqlServerIdentityResourceGroupName string = ''
 
-@description('boolean to determine creation of SQL Managed Identity')
-param createSqlManagedId bool = false
-
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
@@ -378,7 +375,7 @@ module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServe
 // Creates a managed identity that would be used to grant access to functionapp instance
 var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${functionName}-readonly'
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName) ? sqlServerIdentityResourceGroupName : sqlServerResourceGroupName
-module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlManagedId) {
+module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlIdentityRG)
   name: '${functionName}-sql-identity-module'
   params: {
@@ -386,7 +383,7 @@ module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSq
     location: location
   }
 }
-resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (createSqlManagedId) {
+resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: sqlIdentityName
   scope: resourceGroup(sqlIdentityRG)
 }
