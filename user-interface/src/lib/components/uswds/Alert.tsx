@@ -34,6 +34,9 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const [isVisible, setIsVisible] = useState<IsVisible>(IsVisible.Unset);
   const [isInline, setIsInline] = useState<boolean>(false);
   let classes = `usa-alert ${props.type}`;
+  const isInlineClass = isInline ? `inline-alert` : '';
+  const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
+
   if (props.slim === true) classes += ' usa-alert--slim';
 
   function show(inline: boolean = false) {
@@ -46,10 +49,15 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }
 
   useEffect(() => {
-    if (isVisible === IsVisible.True && props.timeout && props.timeout > 0) {
-      setTimeout(hide, props.timeout * 1000);
+    if (isVisible === IsVisible.True) {
+      setContainerClasses(`${isInlineClass} visible`);
+      if (!!props.timeout && props.timeout > 0) {
+        setTimeout(hide, props.timeout * 1000);
+      }
+    } else {
+      setContainerClasses(isInlineClass);
     }
-  }, [isVisible === IsVisible.True && !!props.timeout]);
+  }, [isVisible === IsVisible.True]);
 
   useImperativeHandle(ref, () => ({
     show,
@@ -57,10 +65,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }));
 
   return (
-    <div
-      className={isInline ? 'usa-alert-container inline-alert' : 'usa-alert-container'}
-      data-testid={'alert-container'}
-    >
+    <div className={`usa-alert-container ${containerClasses}`} data-testid={'alert-container'}>
       <div
         className={`${classes} ${
           isVisible === IsVisible.True
