@@ -77,7 +77,8 @@ Note required environment variables and secrets defined in build tool for pipeli
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Application**                            | ---                    | ---              | ---                                                                                                         |
 | STARTING_MONTH                             | Variable               | ---              | Used by application for filtering cases by date range.                                                      |
-| USTP_ISSUE_COLLECTOR_HASH                  | Secrets                | ---              | USTP Only parameter used for CSP policy                                                                     |
+| USTP_ISSUE_COLLECTOR_HASH                  | Secrets                | ---              | USTP Only parameter used for CSP policy.                                                                    |
+| CSP_CAMS_REACT_SELECT_HASH                 | Secrets                | ---              | Allow react-select to pass CSP policy.                                                                      |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **KeyVault**                               | ---                    | ---              | ---                                                                                                         |
 | AZ_KV_APP_CONFIG_NAME                      | Secrets                | ---              | Specifies existing Application Configuration KeyVault                                                       |
