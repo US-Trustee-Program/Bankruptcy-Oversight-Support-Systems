@@ -274,16 +274,18 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (cr
 /*
   Create functionapp
 */
+var userAssignedIdentities = union(
+  {
+    '${appConfigIdentity.id}': {}
+  }, createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
+)
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
   location: location
   kind: 'functionapp,linux'
   identity: {
     type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${appConfigIdentity.id}': {}
-      '${sqlIdentity.id}': {}
-    }
+    userAssignedIdentities: userAssignedIdentities
   }
   properties: {
     serverFarmId: servicePlan.id
