@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // refactor - let's find a way to avoid using any
 import './MultiSelect.scss';
-import Select from 'react-select';
+import ReactSelect from 'react-select';
 
 export declare type MultiSelectOptionList<Option> = readonly Option[];
 
@@ -69,7 +69,7 @@ export default function MultiSelect(props: MultiSelectProps) {
   };
 
   return (
-    <Select
+    <ReactSelect
       aria-label={props.label}
       options={props.options}
       isMulti
@@ -77,6 +77,6 @@ export default function MultiSelect(props: MultiSelectProps) {
       onChange={props.onChange}
       className={`${props.className || ''} cams-multi-select`}
       styles={customStyles}
-    ></Select>
+    ></ReactSelect>
   );
 }
