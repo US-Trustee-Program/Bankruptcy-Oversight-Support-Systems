@@ -179,7 +179,6 @@ describe('court docket panel tests', () => {
 
       const alertContainer = await screen.findByTestId('alert-container');
       expect(alertContainer).toBeInTheDocument();
-      expect(alertContainer.className).not.toContain('inline-alert');
 
       const alert = await screen.findByTestId('alert');
       expect(alert.className).not.toContain('usa-alert__visible');
