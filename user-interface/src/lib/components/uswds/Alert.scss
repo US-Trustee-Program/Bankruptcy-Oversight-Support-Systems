@@ -28,9 +28,14 @@
 
 .usa-alert-container {
   position: fixed;
+  display: none;
   top: 30px;
   z-index: 10;
   width: 100%;
+}
+
+.usa-alert-container.visible {
+  display: block;
 }
 
 .header-scrolled-out .usa-alert-container {
