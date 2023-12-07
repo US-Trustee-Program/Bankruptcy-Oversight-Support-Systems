@@ -5,6 +5,7 @@ import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
   CaseDetailType,
+  CaseDocket,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
@@ -17,6 +18,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
 import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -24,11 +26,27 @@ const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'
 
 type SortDirection = 'Oldest' | 'Newest';
 
+export function findDocketDateBounds(docket: CaseDocket): DateRange {
+  let start: string | undefined = undefined;
+  let end: string | undefined = undefined;
+  docket.forEach((entry) => {
+    if (start === undefined || start > entry.dateFiled) start = entry.dateFiled;
+    if (end === undefined || end < entry.dateFiled) end = entry.dateFiled;
+  });
+  return { start, end };
+}
+
 export function docketSorterClosure(sortDirection: SortDirection) {
   return (left: CaseDocketEntry, right: CaseDocketEntry) => {
     const direction = sortDirection === 'Newest' ? 1 : -1;
     return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
   };
+}
+
+function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
+  if (dateRange.start && docketEntry.dateFiled < dateRange.start) return false;
+  if (dateRange.end && docketEntry.dateFiled > dateRange.end) return false;
+  return true;
 }
 
 function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) {
@@ -52,6 +70,7 @@ interface sortAndFilterOptions {
   selectedFacets: string[];
   sortDirection: SortDirection;
   documentNumber: number | null;
+  selectedDateRange: DateRange;
 }
 
 export function applySortAndFilters(
@@ -76,6 +95,7 @@ export function applySortAndFilters(
     return { filteredDocketEntries, alertOptions };
   } else {
     const filteredDocketEntries = docketEntries
+      .filter((docketEntry) => dateRangeFilter(docketEntry, options.selectedDateRange))
       .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchInDocketText))
       .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
       .sort(docketSorterClosure(options.sortDirection));
@@ -137,6 +157,8 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const location = useLocation();
   const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
+  const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
@@ -163,6 +185,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
           summaryTextFacetReducer,
           new Map(),
         );
+        setDateRangeBounds(findDocketDateBounds(response.body));
         setCaseDocketSummaryFacets(facets);
         setIsDocketLoading(false);
       })
@@ -197,6 +220,14 @@ export const CaseDetail = (props: CaseDetailProps) => {
     });
     setSelectedFacets(selected);
   };
+
+  function handleStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    setSelectedDateRange({ ...selectedDateRange, start: ev.target.value });
+  }
+
+  function handleEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
+  }
 
   useEffect(() => {
     if (props.caseDetail) {
@@ -235,6 +266,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
     selectedFacets,
     sortDirection,
     documentNumber,
+    selectedDateRange,
   });
 
   return (
@@ -336,6 +368,17 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             max={caseDocketEntries?.length}
                           />
                         </div>
+                      </div>
+                      <div className="in-docket-search form-field" data-testid="docket-date-range">
+                        <DateRangePicker
+                          id="docket-date-range"
+                          startDateLabel="Docket Entries from"
+                          endDateLabel="To"
+                          onStartDateChange={handleStartDateChange}
+                          onEndDateChange={handleEndDateChange}
+                          minDate={dateRangeBounds.start}
+                          maxDate={dateRangeBounds.end}
+                        ></DateRangePicker>
                       </div>
                       {filterFeature && (
                         <div className="docket-summary-facets form-field">

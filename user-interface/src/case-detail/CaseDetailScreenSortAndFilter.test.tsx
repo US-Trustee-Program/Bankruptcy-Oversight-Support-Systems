@@ -308,6 +308,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         selectedFacets: [],
         sortDirection: 'Oldest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(1);
@@ -326,6 +327,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         ],
         sortDirection: 'Oldest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(2);
@@ -348,6 +350,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         selectedFacets: [],
         sortDirection: 'Oldest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(3);
@@ -372,6 +375,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         selectedFacets: [],
         sortDirection: 'Newest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(3);
