@@ -124,6 +124,10 @@ param targetApiServerHost string
 @secure()
 param ustpIssueCollectorHash string = ''
 
+@description('React-Select hash. Used to set Content-Security-Policy')
+@secure()
+param camsReactSelectHash string
+
 module webappSubnet './lib/network/subnet.bicep' = {
   name: '${webappName}-subnet-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
@@ -237,6 +241,10 @@ var applicationSettings = concat([
     {
       name: 'CSP_USTP_ISSUE_COLLECTOR_HASH'
       value: ustpIssueCollectorHash
+    }
+    {
+      name: 'CSP_CAMS_REACT_SELECT_HASH'
+      value: camsReactSelectHash
     }
     {
       name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst

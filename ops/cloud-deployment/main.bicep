@@ -82,6 +82,10 @@ param actionGroupName string
 @secure()
 param ustpIssueCollectorHash string = ''
 
+@description('React-Select hash. Used to set Content-Security-Policy')
+@secure()
+param camsReactSelectHash string
+
 @description('Name of the managed identity with read access to the keyvault storing application configurations.')
 @secure()
 param idKeyvaultAppConfiguration string
@@ -137,6 +141,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
     actionGroupResourceGroupName: analyticsResourceGroupName
     targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix}'
     ustpIssueCollectorHash: ustpIssueCollectorHash
+    camsReactSelectHash: camsReactSelectHash
   }
 }
 
