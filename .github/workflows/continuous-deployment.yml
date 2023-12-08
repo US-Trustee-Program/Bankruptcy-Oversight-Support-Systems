@@ -443,7 +443,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        uses: nick-fields/retry@2
+        uses: nick-fields/retry@v2
         with:
           timeout_minutes: 10 # Expect deployment to take no longer than 10 minutes
           max_attempts: 2
