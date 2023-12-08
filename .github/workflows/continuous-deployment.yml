@@ -443,11 +443,15 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: |
-          ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.tar \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.webappName }}
+        uses: nick-fields/retry@2
+        with:
+          timeout_minutes: 10 # Expect deployment to take no longer than 10 minutes
+          max_attempts: 2
+          command: |
+            ./ops/scripts/pipeline/az-app-deploy.sh \
+            --src ./${{ needs.build-info.outputs.webappName }}.tar \
+            -g ${{ steps.rgApp.outputs.out }} \
+            -n ${{ needs.build-info.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
