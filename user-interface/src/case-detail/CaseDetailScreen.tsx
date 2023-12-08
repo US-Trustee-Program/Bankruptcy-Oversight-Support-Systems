@@ -320,7 +320,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
                         data-testid="docket-number-search"
                       >
                         <div className="usa-search usa-search--small">
-                          <label htmlFor="search-by-document-number">Go to Document Number</label>
+                          <label htmlFor="document-number-search-field">
+                            Go to Document Number
+                          </label>
                           <IconInput
                             pattern="^[0-9]*$"
                             inputmode="numeric"
