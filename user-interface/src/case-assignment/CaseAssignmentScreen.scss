@@ -7,6 +7,28 @@
   }
 
   table.case-list {
+    .attorney-list {
+      .table-flex-container {
+        display: flex;
+        position: relative;
+        align-content: center;
+
+        .attorney-list-container {
+          flex: 1;
+          padding-right: 20px;
+          border-right: 1px solid #dddddd;
+        }
+        .table-column-toolbar {
+          padding-left: 20px;
+          align-self: center;
+          text-align: right;
+
+          button {
+            padding: 0.75rem 1rem;
+          }
+        }
+      }
+    }
     td.case-number {
       min-width: 115px;
     }

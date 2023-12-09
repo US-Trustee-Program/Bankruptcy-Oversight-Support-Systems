@@ -11,6 +11,7 @@ import AttorneysApi from '../lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
+import Icon from '@/lib/components/uswds/Icon';
 
 const modalId = 'assign-attorney-modal';
 
@@ -38,6 +39,7 @@ export const CaseAssignment = () => {
     timeOut: number;
   }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
+  const [selectedAttorneyList, setSelectedAttorneyList] = useState<string[]>([]);
   const [inTableTransferMode, setInTableTransferMode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
@@ -118,6 +120,13 @@ export const CaseAssignment = () => {
 
   const onOpenModal = (theCase: Chapter15Type) => {
     setBCase(theCase);
+    setSelectedAttorneyList([]);
+    return theCase;
+  };
+
+  const onOpenEditModal = (theCase: Chapter15Type, assignments: string[]) => {
+    setBCase(theCase);
+    setSelectedAttorneyList(assignments);
     return theCase;
   };
 
@@ -388,13 +397,32 @@ export const CaseAssignment = () => {
                                   {formatDate(theCase.dateFiled)}
                                 </td>
                                 <td data-testid={`attorney-list-${idx}`} className="attorney-list">
-                                  <span className="mobile-title">Assigned Attorney:</span>
-                                  {theCase.assignments?.map((attorney, key: number) => (
-                                    <div key={key}>
-                                      {attorney}
-                                      <br />
+                                  <div className="table-flex-container">
+                                    <span className="mobile-title">Assigned Attorney:</span>
+                                    <div className="attorney-list-container">
+                                      {theCase.assignments?.map((attorney, key: number) => (
+                                        <div key={key}>
+                                          {attorney}
+                                          <br />
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
+                                    <div className="table-column-toolbar">
+                                      <ToggleModalButton
+                                        className="case-assignment-modal-toggle"
+                                        buttonIndex={`${idx}`}
+                                        toggleAction="open"
+                                        modalId={`${modalId}`}
+                                        modalRef={modalRef}
+                                        onClick={() =>
+                                          onOpenEditModal(theCase, theCase.assignments as string[])
+                                        }
+                                        title="edit assignments"
+                                      >
+                                        <Icon name="edit"></Icon>
+                                      </ToggleModalButton>
+                                    </div>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -418,6 +446,7 @@ export const CaseAssignment = () => {
           bCase={bCase}
           modalId={`${modalId}`}
           callBack={updateCase}
+          selectedAttorneyList={selectedAttorneyList}
         ></AssignAttorneyModal>
       )}
     </>

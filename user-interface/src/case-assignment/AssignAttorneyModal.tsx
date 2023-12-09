@@ -17,6 +17,7 @@ import { getFullName } from '@common/name-helper';
 
 export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
+  selectedAttorneyList?: string[];
   bCase: Chapter15Type | undefined;
   modalId: string;
   callBack: (props: CallBackProps) => void;
@@ -52,7 +53,9 @@ function AssignAttorneyModalComponent(
     chapterTwelveEnabled || chapterElevenEnabled ? 'Case Load' : 'Chapter 15 Cases';
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
+
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
+
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   for (let i = 0; i < props.attorneyList.length; i++) {
     const checkboxRef = useRef<CheckboxRef>(null);
@@ -143,6 +146,9 @@ function AssignAttorneyModalComponent(
     checkboxListRefs.forEach((cbox) => {
       cbox.current?.setChecked(false);
     });
+    if (!!props.selectedAttorneyList && props.selectedAttorneyList.length > 0) {
+      setCheckListValues(props.selectedAttorneyList);
+    }
   }
 
   function freezeBackground() {
@@ -173,6 +179,7 @@ function AssignAttorneyModalComponent(
       }
     }
   };
+
   return (
     <Modal
       ref={modalRef}
