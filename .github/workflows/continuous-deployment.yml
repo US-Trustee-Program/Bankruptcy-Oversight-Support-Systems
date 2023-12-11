@@ -337,7 +337,7 @@ jobs:
   rerun-failed-build:
     runs-on: ubuntu-latest
     needs: [build-info, build-service, build-frontend]
-    if: failure() && needs.build-frontend != 'success'
+    if: always() && needs.build-frontend != 'success'
     steps:
       - name: Rerun failed jobs in current workflow
         run: |
