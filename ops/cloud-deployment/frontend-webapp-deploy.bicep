@@ -257,7 +257,7 @@ var applicationSettings = concat([
       value: '~2'
     }
     {
-      name: 'APPlICATIONINSIGHTS_CONNECTION_STRING'
+      name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
       value: appInsights.outputs.connectionString
     }
   ] : []
