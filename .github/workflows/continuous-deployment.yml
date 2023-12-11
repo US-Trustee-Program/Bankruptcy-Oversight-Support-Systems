@@ -294,7 +294,12 @@ jobs:
         run: |
           CI=true npm run coverage
       - name: fail build
+        id: build
+        continue-on-error: true
         run: exit 1
+      - name: Retry frontend build
+        if: steps.build.outcome=='failure'
+        run: echo "Made it here"
       - name: Package
         run: |
           mkdir artifacts
