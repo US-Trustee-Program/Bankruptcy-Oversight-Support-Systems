@@ -1,11 +1,53 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
-import { applySortAndFilters, CaseDetail, getSummaryFacetList } from './CaseDetailScreen';
+import { render, waitFor, screen, fireEvent, act } from '@testing-library/react';
+import {
+  applySortAndFilters,
+  CaseDetail,
+  findDocketLimits,
+  getSummaryFacetList,
+} from './CaseDetailScreen';
 import { CaseDetailType, CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { vi } from 'vitest';
 import ReactRouter from 'react-router';
+
+const testCaseDocketEntries: CaseDocket = [
+  {
+    sequenceNumber: 2,
+    documentNumber: 1,
+    dateFiled: '2023-05-07',
+    summaryText: 'Add Judge',
+    fullText: 'Docket entry number 1.',
+  },
+  {
+    sequenceNumber: 3,
+    dateFiled: '2023-06-07',
+    summaryText: 'Motion',
+    fullText: 'Docket entry number 2.',
+  },
+  {
+    sequenceNumber: 4,
+    documentNumber: 2,
+    dateFiled: '2023-07-07',
+    summaryText: 'Add Attorney',
+    fullText: 'Docket entry number 3.',
+    documents: [
+      {
+        fileLabel: '0-0',
+        fileSize: 1000,
+        fileExt: 'pdf',
+        fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
+      },
+    ],
+  },
+  {
+    sequenceNumber: 5,
+    dateFiled: '2023-08-07',
+    summaryText: 'Motion',
+    fullText: 'Docket entry number 4.',
+  },
+];
 
 describe('Case Detail sort, search, and filter tests', () => {
   const testCaseId = '111-11-12345';
@@ -32,43 +74,6 @@ describe('Case Detail sort, search, and filter tests', () => {
       phone: '234-123-1234',
     },
   };
-
-  const testCaseDocketEntries: CaseDocket = [
-    {
-      sequenceNumber: 2,
-      documentNumber: 1,
-      dateFiled: '2023-05-07T00:00:00.0000000',
-      summaryText: 'Add Judge',
-      fullText: 'Docket entry number 1.',
-    },
-    {
-      sequenceNumber: 3,
-      dateFiled: '2023-05-07T00:00:00.0000000',
-      summaryText: 'Motion',
-      fullText: 'Docket entry number 2.',
-    },
-    {
-      sequenceNumber: 4,
-      documentNumber: 2,
-      dateFiled: '2023-07-07T00:00:00.0000000',
-      summaryText: 'Add Attorney',
-      fullText: 'Docket entry number 3.',
-      documents: [
-        {
-          fileLabel: '0-0',
-          fileSize: 1000,
-          fileExt: 'pdf',
-          fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
-        },
-      ],
-    },
-    {
-      sequenceNumber: 5,
-      dateFiled: '2023-05-07T00:00:00.0000000',
-      summaryText: 'Motion',
-      fullText: 'Docket entry number 4.',
-    },
-  ];
 
   describe('display tests', () => {
     test('should display sort and filter panel when navigated to docket entries', async () => {
@@ -265,42 +270,36 @@ describe('Case Detail sort, search, and filter tests', () => {
   });
 
   describe('sort, search, and filter tests', () => {
-    const testCaseDocketEntries: CaseDocket = [
-      {
-        sequenceNumber: 2,
-        documentNumber: 1,
-        dateFiled: '2023-05-07T00:00:00.0000000',
-        summaryText: 'Add Judge',
-        fullText: 'Docket entry number 1.',
-      },
-      {
-        sequenceNumber: 3,
-        dateFiled: '2023-05-07T00:00:00.0000000',
-        summaryText: 'Motion',
-        fullText: 'Docket entry number 2.',
-      },
-      {
-        sequenceNumber: 4,
-        documentNumber: 2,
-        dateFiled: '2023-07-07T00:00:00.0000000',
-        summaryText: 'Add Attorney',
-        fullText: 'Docket entry number 3.',
-        documents: [
-          {
-            fileLabel: '0-0',
-            fileSize: 1000,
-            fileExt: 'pdf',
-            fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
-          },
-        ],
-      },
-      {
-        sequenceNumber: 5,
-        dateFiled: '2023-05-07T00:00:00.0000000',
-        summaryText: 'Motion',
-        fullText: 'Docket entry number 4.',
-      },
-    ];
+    test('should find limits in the docket', () => {
+      const limits = findDocketLimits(testCaseDocketEntries);
+      expect(limits.dateRange.start).toEqual('2023-05-07');
+      expect(limits.dateRange.end).toEqual('2023-08-07');
+      expect(limits.documentRange.first).toEqual(1);
+      expect(limits.documentRange.last).toEqual(2);
+    });
+
+    test('should return default limits if docket is empty', () => {
+      const limits = findDocketLimits([]);
+      expect(limits.dateRange.start).toBeUndefined;
+      expect(limits.dateRange.end).toBeUndefined;
+      expect(limits.documentRange.first).toEqual(0);
+      expect(limits.documentRange.last).toEqual(0);
+    });
+
+    test('should the document range should be 0 if the docket entries do not have a document number', () => {
+      const limits = findDocketLimits([
+        {
+          sequenceNumber: 2,
+          dateFiled: '2023-05-07',
+          summaryText: 'Add Judge',
+          fullText: 'Docket entry number 1.',
+        },
+      ]);
+      expect(limits.dateRange.start).toBeUndefined;
+      expect(limits.dateRange.end).toBeUndefined;
+      expect(limits.documentRange.first).toEqual(0);
+      expect(limits.documentRange.last).toEqual(0);
+    });
 
     test('should filter the list of docket entries per the search text', async () => {
       const { filteredDocketEntries, alertOptions } = applySortAndFilters(testCaseDocketEntries, {
@@ -308,6 +307,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         selectedFacets: [],
         sortDirection: 'Oldest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(1);
@@ -326,6 +326,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         ],
         sortDirection: 'Oldest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(2);
@@ -348,6 +349,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         selectedFacets: [],
         sortDirection: 'Oldest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(3);
@@ -372,6 +374,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         selectedFacets: [],
         sortDirection: 'Newest',
         documentNumber: null,
+        selectedDateRange: {},
       });
 
       expect(filteredDocketEntries?.length).toEqual(3);
@@ -434,6 +437,204 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       const resultFacets = getSummaryFacetList(testFacets);
       expect(resultFacets).toStrictEqual(expectedFacets);
+    });
+  });
+
+  describe('Find document number', () => {
+    test('should show an entry for a single matched document number', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let dateRangePicker;
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+
+        const docketListBefore = screen.getByTestId('searchable-docket');
+        expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
+        dateRangePicker = screen.queryByTestId('docket-date-range');
+
+        expect(dateRangePicker).toBeInTheDocument();
+
+        const docNumberInput = screen.getByTestId('document-number-search-field');
+        expect(docNumberInput).toBeInTheDocument();
+        act(() => {
+          fireEvent.change(docNumberInput, { target: { value: '1' } });
+        });
+      });
+
+      const docketListAfter = screen.getByTestId('searchable-docket');
+      expect(docketListAfter.children.length).toEqual(1);
+    });
+
+    test('should show error message if an invalid document number is entered', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let dateRangePicker;
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+
+        dateRangePicker = screen.queryByTestId('docket-date-range');
+        expect(dateRangePicker).toBeInTheDocument();
+
+        const docNumberInput = screen.getByTestId('document-number-search-field');
+        expect(docNumberInput).toBeInTheDocument();
+        act(() => {
+          fireEvent.change(docNumberInput, { target: { value: '100' } });
+        });
+
+        const alertMessage = screen.getByTestId('alert-message');
+        expect(alertMessage).toHaveTextContent(
+          'The document number you entered is not found in the docket.',
+        );
+      });
+    });
+
+    test('should show all docket entries if the docket number is cleared', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let dateRangePicker;
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+
+        const docketListBefore = screen.getByTestId('searchable-docket');
+        expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
+        dateRangePicker = screen.queryByTestId('docket-date-range');
+
+        expect(dateRangePicker).toBeInTheDocument();
+
+        const docNumberInput = screen.getByTestId('document-number-search-field');
+        expect(docNumberInput).toBeInTheDocument();
+        act(() => {
+          fireEvent.change(docNumberInput, { target: { value: '1' } });
+          fireEvent.change(docNumberInput, { target: { value: '' } });
+        });
+      });
+
+      const docketListAfter = screen.getByTestId('searchable-docket');
+      expect(docketListAfter.children.length).toEqual(testCaseDocketEntries.length);
+    });
+  });
+
+  describe('Date Picker', () => {
+    test('should list proper dockets when start date changes', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let dateRangePicker;
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+
+        const docketListBefore = screen.getByTestId('searchable-docket');
+        expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
+        dateRangePicker = screen.queryByTestId('docket-date-range');
+
+        expect(dateRangePicker).toBeInTheDocument();
+
+        const startDateText = screen.getByTestId('docket-date-range-date-start');
+        expect(startDateText).toBeInTheDocument();
+        act(() => {
+          fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+        });
+      });
+
+      const docketListAfter = screen.getByTestId('searchable-docket');
+      expect(docketListAfter.children.length).toEqual(2);
+    });
+    test('should list proper dockets when start date changes', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let dateRangePicker;
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+
+        const docketListBefore = screen.getByTestId('searchable-docket');
+        expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
+        dateRangePicker = screen.queryByTestId('docket-date-range');
+
+        expect(dateRangePicker).toBeInTheDocument();
+
+        const endDateText = screen.getByTestId('docket-date-range-date-end');
+        expect(endDateText).toBeInTheDocument();
+        act(() => {
+          fireEvent.change(endDateText, { target: { value: '2023-07-01' } });
+        });
+      });
+
+      const docketListAfter = screen.getByTestId('searchable-docket');
+      expect(docketListAfter.children.length).toEqual(2);
     });
   });
 });
