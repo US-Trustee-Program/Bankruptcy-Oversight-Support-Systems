@@ -337,10 +337,12 @@ jobs:
   rerun-failed-build:
     runs-on: ubuntu-latest
     needs: [build-info, build-service, build-frontend]
-    if: failure() && needs.build-frontend != 'success' || failure() && needs.build-service.result != 'success'
+    if: failure() && needs.build-frontend != 'success'
     steps:
       - name: Rerun failed jobs in current workflow
-        run: gh run rerun ${{github.run_id}} --failed
+        run: |
+          echo "Got to retry"
+          gh run rerun ${{github.run_id}} --failed
   deploy:
     runs-on: ubuntu-latest
     needs:
