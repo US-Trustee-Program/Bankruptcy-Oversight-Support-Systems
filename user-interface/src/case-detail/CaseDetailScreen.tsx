@@ -26,14 +26,36 @@ const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'
 
 type SortDirection = 'Oldest' | 'Newest';
 
-export function findDocketDateBounds(docket: CaseDocket): DateRange {
-  let start: string | undefined = undefined;
-  let end: string | undefined = undefined;
-  docket.forEach((entry) => {
-    if (start === undefined || start > entry.dateFiled) start = entry.dateFiled;
-    if (end === undefined || end < entry.dateFiled) end = entry.dateFiled;
+interface DocketLimits {
+  dateRange: DateRange;
+  documentRange: DocumentRange;
+}
+
+interface DocumentRange {
+  first: number;
+  last: number;
+}
+
+export function findDocketLimits(docket: CaseDocket): DocketLimits {
+  const dateRange: DateRange = { start: undefined, end: undefined };
+  const documentRange: DocumentRange = { first: 0, last: 0 };
+
+  if (!docket.length) return { dateRange, documentRange };
+
+  const firstEntryWithDocument = docket.find((entry) => {
+    return !!entry.documentNumber;
   });
-  return { start, end };
+  const lastEntryWithDocument = docket.findLast((entry) => {
+    return !!entry.documentNumber;
+  });
+
+  documentRange.first = firstEntryWithDocument?.documentNumber || 0;
+  documentRange.last = lastEntryWithDocument?.documentNumber || 0;
+
+  dateRange.start = docket[0].dateFiled;
+  dateRange.end = docket[docket.length - 1].dateFiled;
+
+  return { dateRange, documentRange };
 }
 
 export function docketSorterClosure(sortDirection: SortDirection) {
@@ -159,6 +181,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
+  const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
@@ -185,7 +208,9 @@ export const CaseDetail = (props: CaseDetailProps) => {
           summaryTextFacetReducer,
           new Map(),
         );
-        setDateRangeBounds(findDocketDateBounds(response.body));
+        const limits = findDocketLimits(response.body);
+        setDocumentRange(limits.documentRange);
+        setDateRangeBounds(limits.dateRange);
         setCaseDocketSummaryFacets(facets);
         setIsDocketLoading(false);
       })
@@ -213,13 +238,13 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setDocumentNumber(newDocumentNumber);
   }
 
-  const handleSelectedFacet = (newValue: MultiSelectOptionList<Record<string, string>>) => {
+  function handleSelectedFacet(newValue: MultiSelectOptionList<Record<string, string>>) {
     const selected = newValue.map((value: Record<string, string>) => {
       const { value: selection } = value;
       return selection;
     });
     setSelectedFacets(selected);
-  };
+  }
 
   function handleStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setSelectedDateRange({ ...selectedDateRange, start: ev.target.value });
@@ -364,8 +389,8 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             icon="search"
                             autocomplete="off"
                             onChange={searchDocumentNumber}
-                            min={1}
-                            max={caseDocketEntries?.length}
+                            min={documentRange.first}
+                            max={documentRange.last}
                           />
                         </div>
                       </div>
