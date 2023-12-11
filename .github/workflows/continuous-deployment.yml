@@ -272,13 +272,6 @@ jobs:
           node-version: 18.17.1
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
-      - name: fail build
-        continue-on-error: true
-        id: failbuild
-        run: exit 1
-      - name: retry build
-        id: build2
-        run: echo "in retry"
       - name: Execute Build
         run: |
           pushd ../common
@@ -293,10 +286,6 @@ jobs:
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           npm run build --if-present
-
-      - name: fail build
-        id: failbuild2
-        run: exit 1
       - name: Execute Coverage
         run: |
           CI=true npm run coverage
@@ -338,20 +327,6 @@ jobs:
           name: ${{ needs.build-info.outputs.apiName }}-build
           path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
-  rerun-failed-build:
-    runs-on: ubuntu-latest
-    needs: [build-info, build-service, build-frontend]
-    if: failure() && needs.build-frontend != 'success'
-    steps:
-      - uses: actions/checkout@v3
-      - name: get current dir
-        run: pwd
-      - name: Rerun failed jobs in current workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "Got to retry"
-          gh run rerun ${{ github.run_id }} --failed
   deploy:
     runs-on: ubuntu-latest
     needs:
@@ -528,13 +503,6 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
-  # rerun-failed-deploy:
-  #   runs-on: ubuntu-latest
-  #   needs: [build-info, deploy, deploy-webapp, deploy-service]
-  #   if: failure() && needs.deploy-webapp.result != 'success' || failure() && needs.deploy-service.result != 'success'
-  #   steps:
-  #     - name: Rerun failed jobs in current workflow
-  #       run: gh run rerun ${{github.run_id}} --failed
   smoke-test-application:
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]
