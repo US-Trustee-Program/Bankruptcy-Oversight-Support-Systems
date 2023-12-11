@@ -44,9 +44,6 @@ export default function DateRangePicker(props: DateRangePickerProps) {
         <label className="usa-label" id={id + '-date-start-label'} htmlFor={id + '-date-start'}>
           {startDateLabel || 'Start date'}
         </label>
-        {/* <div className="usa-hint" id={id + '-date-start-hint'}>
-          mm/dd/yyyy
-        </div> */}
         <div className="usa-date-picker">
           <input
             type="date"
@@ -66,9 +63,6 @@ export default function DateRangePicker(props: DateRangePickerProps) {
         <label className="usa-label" id={id + '-date-end-label'} htmlFor={id + '-date-end'}>
           {endDateLabel || 'End date'}
         </label>
-        {/* <div className="usa-hint" id={id + '-date-end-hint'}>
-          mm/dd/yyyy
-        </div> */}
         <div className="usa-date-picker">
           <input
             type="date"
