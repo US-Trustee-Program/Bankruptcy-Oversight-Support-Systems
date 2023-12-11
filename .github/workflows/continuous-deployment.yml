@@ -339,12 +339,13 @@ jobs:
     needs: [build-info, build-service, build-frontend]
     if: always() && needs.build-frontend != 'success'
     steps:
+      - uses: actions/checkout@v3
       - name: Rerun failed jobs in current workflow
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Got to retry"
-          gh run rerun ${{github.run_id}} --failed
+          gh run rerun ${{ github.run_id }} --failed
   deploy:
     runs-on: ubuntu-latest
     needs:
