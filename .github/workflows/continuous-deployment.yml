@@ -264,7 +264,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info]
     environment: ${{ needs.build-info.outputs.environment }}
-    # continue-on-error: true
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v3
 
@@ -499,7 +499,7 @@ jobs:
   rerun-failed-deploy:
     runs-on: ubuntu-latest
     needs: [build-info, deploy, deploy-webapp, deploy-service]
-    if: al() && needs.deploy-webapp.result != 'success' || failure() && needs.deploy-service.result != 'success'
+    if: always() && needs.deploy-webapp.result != 'success' || always() && needs.deploy-service.result != 'success'
     steps:
       - name: Rerun failed jobs in current workflow
         run: gh run rerun ${{github.run_id}} --failed
