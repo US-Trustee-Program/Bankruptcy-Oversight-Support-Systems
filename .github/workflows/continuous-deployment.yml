@@ -273,11 +273,12 @@ jobs:
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
       - name: fail build
-        id: build
+        continue-on-error: true
+        id: failbuild
         run: exit 1
-      # - name: retry build
-      #   id: build2
-      #   run: echo "in retry"
+      - name: retry build
+        id: build2
+        run: echo "in retry"
       - name: Execute Build
         run: |
           pushd ../common
@@ -293,6 +294,9 @@ jobs:
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           npm run build --if-present
 
+      - name: fail build
+        id: failbuild2
+        run: exit 1
       - name: Execute Coverage
         run: |
           CI=true npm run coverage
