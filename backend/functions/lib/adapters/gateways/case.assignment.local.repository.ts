@@ -2,6 +2,7 @@ import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignm
 import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 const MODULE_NAME = 'LOCAL-ASSIGNMENT-REPOSITORY';
 
@@ -23,8 +24,35 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return assignmentId.toString();
   }
 
+  public async updateAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
+    const index = this.caseAttorneyAssignments.findIndex(
+      (assignment) => assignment.id === caseAssignment.id,
+    );
+    if (index >= 0) {
+      this.caseAttorneyAssignments[index] = caseAssignment;
+    } else {
+      throw new UnknownError(MODULE_NAME, {
+        message:
+          'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
+        originalError: new Error('Can not find record'),
+        status: 500,
+      });
+    }
+    log.info(this.applicationContext, MODULE_NAME, caseAssignment.name);
+    return caseAssignment.id;
+  }
+
   public async getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
     return this.caseAttorneyAssignments.find((assignment) => assignment.id === assignmentId);
+  }
+
+  public async assignmentExists(assignment: CaseAttorneyAssignment): Promise<boolean> {
+    const response = this.caseAttorneyAssignments.find((existingAssignment) => {
+      return (
+        existingAssignment.name === assignment.name && existingAssignment.role === assignment.role
+      );
+    });
+    return !!response;
   }
 
   public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {

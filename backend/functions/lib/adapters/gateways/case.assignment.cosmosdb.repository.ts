@@ -10,6 +10,10 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
+interface FindAssignmentsByCaseIdProps {
+  includeHistory?: boolean;
+}
+
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
   private cosmosDbClient;
   private applicationContext: ApplicationContext;
@@ -51,14 +55,74 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     }
   }
 
+  async updateAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
+    try {
+      const { item } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .item(caseAssignment.id)
+        .replace(caseAssignment);
+      log.debug(this.applicationContext, MODULE_NAME, `Assignment updated ${item.id}`);
+      return item.id;
+    } catch (e) {
+      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      if (e.status === 403) {
+        throw new ForbiddenError(MODULE_NAME, {
+          message:
+            'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
+          originalError: e,
+          status: 500,
+        });
+      } else {
+        throw new UnknownError(MODULE_NAME, {
+          message:
+            'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
+          originalError: e,
+          status: 500,
+        });
+      }
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
     throw new Error('Method not implemented.');
   }
 
-  async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+  async assignmentExists(assignment: CaseAttorneyAssignment): Promise<boolean> {
     const querySpec = {
-      query: 'SELECT * FROM c WHERE c.caseId = @caseId',
+      query: 'SELECT * FROM c WHERE c.caseId = @caseId AND c.name = @name AND c.role = @role',
+      parameters: [
+        {
+          name: '@caseId',
+          value: assignment.caseId,
+        },
+        {
+          name: '@name',
+          value: assignment.name,
+        },
+        {
+          name: '@role',
+          value: assignment.role,
+        },
+      ],
+    };
+    const response = await this.queryData(querySpec);
+    return !!response.length;
+  }
+
+  async findAssignmentsByCaseId(
+    caseId: string,
+    options?: FindAssignmentsByCaseIdProps,
+  ): Promise<CaseAttorneyAssignment[]> {
+    let query = '';
+    if (options && options.includeHistory) {
+      query = 'SELECT * FROM c WHERE c.caseId = @caseId';
+    } else {
+      query = 'SELECT * FROM c WHERE c.caseId = @caseId AND c.unassigned != true';
+    }
+    const querySpec = {
+      query,
       parameters: [
         {
           name: '@caseId',

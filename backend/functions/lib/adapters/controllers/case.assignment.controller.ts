@@ -36,12 +36,16 @@ export class CaseAssignmentController {
           params.caseId,
           attorney,
           params.role,
+          undefined,
+          undefined,
+          new Date().toISOString(),
         );
         listOfAssignments.push(assignment);
       });
       const assignmentUseCase = new CaseAssignment(this.applicationContext);
       return assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
+        params.caseId,
         listOfAssignments,
       );
     } catch (exception) {

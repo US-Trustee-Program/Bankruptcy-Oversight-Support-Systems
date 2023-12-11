@@ -2,7 +2,9 @@ import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignme
 
 export interface CaseAssignmentRepositoryInterface {
   createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string>;
+  updateAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string>;
   getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment>;
   findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]>;
   findAssignmentsByAssigneeName(attorney: string): Promise<CaseAttorneyAssignment[]>;
+  assignmentExists(assignment: CaseAttorneyAssignment): Promise<boolean>;
 }
