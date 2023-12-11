@@ -283,7 +283,6 @@ export const CaseAssignment = () => {
                                     toggleAction="open"
                                     toggleProps={{
                                       bCase: theCase,
-                                      selectedAttorneyList: [],
                                     }}
                                     modalId={`${modalId}`}
                                     modalRef={modalRef}
@@ -405,7 +404,6 @@ export const CaseAssignment = () => {
                                         toggleAction="open"
                                         toggleProps={{
                                           bCase: theCase,
-                                          selectedAttorneyList: theCase.assignments,
                                         }}
                                         modalId={`${modalId}`}
                                         modalRef={modalRef}

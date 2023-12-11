@@ -1,12 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import AssignAttorneyModal from './AssignAttorneyModal';
+import AssignAttorneyModal, { AssignAttorneyModalRefType } from './AssignAttorneyModal';
 import React from 'react';
-import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import Api from '@/lib/models/api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
-import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { getFullName } from '@common/name-helper';
 
@@ -38,13 +36,13 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
-    const bCase: Chapter15Type = {
-      caseId: '123',
-      caseTitle: 'Test Case',
-      dateFiled: '01/01/2024',
-    };
+    // const bCase: Chapter15Type = {
+    //   caseId: '123',
+    //   caseTitle: 'Test Case',
+    //   dateFiled: '01/01/2024',
+    // };
 
-    const modalRef = React.createRef<ModalRefType>();
+    const modalRef = React.createRef<AssignAttorneyModalRefType>();
     const callback = vi.fn();
     const modalId = 'some-modal-id';
     render(
@@ -57,7 +55,6 @@ describe('Test Assign Attorney Modal Component', () => {
             <AssignAttorneyModal
               ref={modalRef}
               attorneyList={attorneyList}
-              bCase={bCase}
               modalId={modalId}
               callBack={callback}
             ></AssignAttorneyModal>
@@ -118,12 +115,12 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     const callback = vi.fn();
 
-    const bCase: Chapter15Type = {
-      caseId: '123',
-      caseTitle: 'Test Case',
-      dateFiled: '01/01/2024',
-    };
-    const modalRef = React.createRef<ModalRefType>();
+    // const bCase: Chapter15Type = {
+    //   caseId: '123',
+    //   caseTitle: 'Test Case',
+    //   dateFiled: '01/01/2024',
+    // };
+    const modalRef = React.createRef<AssignAttorneyModalRefType>();
 
     const modalId = 'some-modal-id';
     render(
@@ -136,7 +133,6 @@ describe('Test Assign Attorney Modal Component', () => {
             <AssignAttorneyModal
               ref={modalRef}
               attorneyList={attorneyList}
-              bCase={bCase}
               modalId={modalId}
               callBack={callback}
             ></AssignAttorneyModal>
@@ -181,12 +177,12 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   describe('Feature flag chapter-twelve-enabled', () => {
-    const bCase: Chapter15Type = {
-      caseId: '123',
-      caseTitle: 'Test Case',
-      dateFiled: '01/01/2024',
-    };
-    const modalRef = React.createRef<ModalRefType>();
+    // const bCase: Chapter15Type = {
+    //   caseId: '123',
+    //   caseTitle: 'Test Case',
+    //   dateFiled: '01/01/2024',
+    // };
+    const modalRef = React.createRef<AssignAttorneyModalRefType>();
     const modalId = 'some-modal-id';
     const caseLoadLabelTestId = 'case-load-label';
     const caseLoadTableHeaderTestId = 'case-load-table-header';
@@ -204,7 +200,6 @@ describe('Test Assign Attorney Modal Component', () => {
               <AssignAttorneyModal
                 ref={modalRef}
                 attorneyList={attorneyList}
-                bCase={bCase}
                 modalId={modalId}
                 callBack={() => {
                   return;
@@ -245,7 +240,6 @@ describe('Test Assign Attorney Modal Component', () => {
               <AssignAttorneyModal
                 ref={modalRef}
                 attorneyList={attorneyList}
-                bCase={bCase}
                 modalId={modalId}
                 callBack={() => {
                   return;

@@ -16,7 +16,6 @@ import useFeatureFlags, {
 import { getFullName } from '@common/name-helper';
 
 export interface ModalOpenProps {
-  selectedAttorneyList?: string[];
   bCase: Chapter15Type | undefined;
 }
 
@@ -94,16 +93,18 @@ function AssignAttorneyModalComponent(
     if (showProps) {
       if (showProps.bCase) {
         setBCase(showProps.bCase);
-      }
-      if (showProps.selectedAttorneyList) {
-        checkboxListRefs.forEach((cbox) => {
-          const label = cbox.current?.getLabel();
-          if (label && showProps.selectedAttorneyList?.includes(label)) {
-            cbox.current?.setChecked(true);
-          } else {
-            cbox.current?.setChecked(false);
-          }
-        });
+        if (showProps.bCase.assignments) {
+          setCheckListValues([...showProps.bCase.assignments]);
+          const assignments = showProps.bCase.assignments;
+          checkboxListRefs.forEach((cbox) => {
+            const label = cbox.current?.getLabel();
+            if (label && assignments.includes(label)) {
+              cbox.current?.setChecked(true);
+            } else {
+              cbox.current?.setChecked(false);
+            }
+          });
+        }
       }
     }
     if (modalRef.current?.show) {
@@ -127,14 +128,26 @@ function AssignAttorneyModalComponent(
     };
   });
 
+  function areArraysSame(ar1: string[], ar2: string[]): boolean {
+    return JSON.stringify(ar1.sort()) === JSON.stringify(ar2.sort());
+  }
+
   function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, name: string) {
-    let localCheckListValues = checkListValues;
+    let localCheckListValues = [...checkListValues];
     if (ev.target.checked && !checkListValues.includes(name)) {
       localCheckListValues.push(name);
     } else if (!ev.target.checked && checkListValues.includes(name)) {
       localCheckListValues = checkListValues.filter((theName) => theName !== name);
     }
-    modalRef.current?.buttons?.current?.disableSubmitButton(localCheckListValues.length === 0);
+    // TODO: This should look for a difference between the current selection list
+    // compare bCase.assignments to localCheckListValues
+    const isTheSame =
+      localCheckListValues &&
+      bCase.assignments &&
+      areArraysSame(localCheckListValues, bCase.assignments);
+
+    modalRef.current?.buttons?.current?.disableSubmitButton(!!isTheSame);
+
     setCheckListValues(localCheckListValues);
   }
 
