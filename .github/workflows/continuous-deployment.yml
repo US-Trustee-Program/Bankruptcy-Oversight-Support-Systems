@@ -293,18 +293,25 @@ jobs:
       - name: Execute Coverage
         run: |
           CI=true npm run coverage
-
+      - name: fail build
+        run: exit 1
       - name: Package
         run: |
           mkdir artifacts
           tar -cvf artifacts/${{ needs.build-info.outputs.webappName }}.tar ./build
-
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.build-info.outputs.webappName }}-build
           path: user-interface/artifacts/
           if-no-files-found: error
+  rerun-failed-webapp-build:
+    runs-on: ubuntu-latest
+    needs: [build-info, build-frontend]
+    if: needs.build-frontend.result != 'success'
+    steps:
+      - name: Rerun failed jobs in current workflow
+        run: gh run rerun ${{github.run_id}} --failed
 
   build-service:
     defaults:
@@ -443,12 +450,19 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
-        run: |
-          ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.tar \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.webappName }}
-
+        run: exit 1
+        # run: |
+        #   ./ops/scripts/pipeline/az-app-deploy.sh \
+        #   --src ./${{ needs.build-info.outputs.webappName }}.tar \
+        #   -g ${{ steps.rgApp.outputs.out }} \
+        #   -n ${{ needs.build-info.outputs.webappName }}
+  # rerun-failed-webapp-deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: [build-info, deploy, deploy-webapp]
+  #   if: needs.deploy-webapp.result == 'failed'
+  #   steps:
+  #     - name: Rerun failed jobs in current workflow
+  #       run: gh run rerun ${{github.run_id}} --failed
   deploy-service:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
