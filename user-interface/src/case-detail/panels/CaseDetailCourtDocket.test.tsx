@@ -6,6 +6,7 @@ import CaseDetailCourtDocket, {
 } from '@/case-detail/panels/CaseDetailCourtDocket';
 import { CaseDocket, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
+import * as highlightModule from '@/lib/utils/highlight-api';
 
 describe('court docket panel tests', () => {
   const docketEntries: CaseDocket = [
@@ -182,6 +183,24 @@ describe('court docket panel tests', () => {
 
       const alert = await screen.findByTestId('alert');
       expect(alert.className).not.toContain('usa-alert__visible');
+    });
+  });
+
+  describe('Highlight API integration', () => {
+    test('should call handleHighlight if searchWords are passed to the component', async () => {
+      const handleHighlightSpy = vi.spyOn(highlightModule, 'handleHighlight');
+      render(
+        <BrowserRouter>
+          <CaseDetailCourtDocket
+            caseId="081-12-12345"
+            docketEntries={[]}
+            searchString="test"
+            hasDocketEntries={true}
+            isDocketLoading={false}
+          />
+        </BrowserRouter>,
+      );
+      expect(handleHighlightSpy).toHaveBeenCalled();
     });
   });
 });

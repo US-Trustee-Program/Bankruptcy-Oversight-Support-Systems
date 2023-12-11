@@ -50,7 +50,6 @@ function CaseDetailNavigationComponent({
               className={setCurrentNav(activeNav, NavState.COURT_DOCKET)}
               to={`/case-detail/${caseId}/court-docket`}
               onClick={() => {
-                console.log('clicked on court docket link');
                 return setActiveNav(NavState.COURT_DOCKET);
               }}
               data-testid="court-docket-link"
