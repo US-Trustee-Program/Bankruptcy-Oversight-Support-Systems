@@ -1,8 +1,8 @@
 import { RefObject } from 'react';
 
 export interface ModalRefType {
-  show: () => void;
-  hide: () => void;
+  show: (object) => void;
+  hide: (object) => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }
 

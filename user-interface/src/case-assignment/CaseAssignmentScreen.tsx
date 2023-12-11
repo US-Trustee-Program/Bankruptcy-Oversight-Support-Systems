@@ -4,8 +4,10 @@ import Api from '../lib/models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '@/lib/type-declarations/chapter-15';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
-import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import AssignAttorneyModal, {
+  AssignAttorneyModalRefType,
+  CallBackProps,
+} from './AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
@@ -22,7 +24,7 @@ interface Chapter15Node extends Chapter15Type {
 const TABLE_TRANSFER_TIMEOUT = 10;
 
 export const CaseAssignment = () => {
-  const modalRef = useRef<ModalRefType>(null);
+  const modalRef = useRef<AssignAttorneyModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const screenTitle = 'Bankruptcy Cases';
@@ -31,7 +33,6 @@ export const CaseAssignment = () => {
   const subTitle = `Region ${regionId} (${officeName} Office)`;
   const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
   const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
-  const [bCase, setBCase] = useState<Chapter15Type>();
   const [caseListLoadError, setCaseListLoadError] = useState(false);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
@@ -39,7 +40,6 @@ export const CaseAssignment = () => {
     timeOut: number;
   }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
-  const [selectedAttorneyList, setSelectedAttorneyList] = useState<string[]>([]);
   const [inTableTransferMode, setInTableTransferMode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
@@ -116,18 +116,6 @@ export const CaseAssignment = () => {
       .catch((reason) => {
         console.error((reason as Error).message);
       });
-  };
-
-  const onOpenModal = (theCase: Chapter15Type) => {
-    setBCase(theCase);
-    setSelectedAttorneyList([]);
-    return theCase;
-  };
-
-  const onOpenEditModal = (theCase: Chapter15Type, assignments: string[]) => {
-    setBCase(theCase);
-    setSelectedAttorneyList(assignments);
-    return theCase;
   };
 
   function updateCase({ bCase, selectedAttorneyList, status, apiResult }: CallBackProps) {
@@ -293,9 +281,12 @@ export const CaseAssignment = () => {
                                     className="case-assignment-modal-toggle"
                                     buttonIndex={`${idx}`}
                                     toggleAction="open"
+                                    toggleProps={{
+                                      bCase: theCase,
+                                      selectedAttorneyList: [],
+                                    }}
                                     modalId={`${modalId}`}
                                     modalRef={modalRef}
-                                    onClick={() => onOpenModal(theCase)}
                                   >
                                     Assign
                                   </ToggleModalButton>
@@ -412,11 +403,12 @@ export const CaseAssignment = () => {
                                         className="case-assignment-modal-toggle"
                                         buttonIndex={`${idx}`}
                                         toggleAction="open"
+                                        toggleProps={{
+                                          bCase: theCase,
+                                          selectedAttorneyList: theCase.assignments,
+                                        }}
                                         modalId={`${modalId}`}
                                         modalRef={modalRef}
-                                        onClick={() =>
-                                          onOpenEditModal(theCase, theCase.assignments as string[])
-                                        }
                                         title="edit assignments"
                                       >
                                         <Icon name="edit"></Icon>
@@ -443,10 +435,8 @@ export const CaseAssignment = () => {
         <AssignAttorneyModal
           ref={modalRef}
           attorneyList={attorneyList}
-          bCase={bCase}
           modalId={`${modalId}`}
           callBack={updateCase}
-          selectedAttorneyList={selectedAttorneyList}
         ></AssignAttorneyModal>
       )}
     </>

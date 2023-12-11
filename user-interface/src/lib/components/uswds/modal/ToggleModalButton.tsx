@@ -10,6 +10,7 @@ export interface ModalToggleButtonProps {
   buttonState?: UswdsButtonState;
   disabled?: boolean;
   toggleAction: 'open' | 'close';
+  toggleProps?: object;
   modalId: string;
   modalRef: React.RefObject<ModalRefType>;
   title?: string;
@@ -23,6 +24,7 @@ function ToggleModalButtonComponent(
     buttonState,
     disabled,
     toggleAction,
+    toggleProps,
     modalId,
     onClick,
     className,
@@ -58,9 +60,9 @@ function ToggleModalButtonComponent(
       onClick(e);
     }
     if (toggleAction === 'open') {
-      modalRef.current?.show();
+      modalRef.current?.show(toggleProps);
     } else {
-      modalRef.current?.hide();
+      modalRef.current?.hide(toggleProps);
     }
   }
 
