@@ -60,17 +60,21 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'html'],
       exclude: [
-        '/index.tsx',
-        '/reportWebVitals.ts',
-        '/configuration/apiConfiguration.ts',
+        '**/index.tsx',
+        '**/reportWebVitals.ts',
+        '**/.dependency-cruiser.js',
+        'src/configuration/apiConfiguration.ts',
         'node_modules/',
         'src/setupTests.ts',
         'src/ApplicationInsightsService.tsx',
         'build',
         'src/lib/models/*mock*.ts',
         'src/lib/components/utils/http.adapter.ts',
+        '**/*.d.ts'
       ],
-      branches: 90,
+      thresholds: {
+        branches: 90,
+      },
     },
   },
   build: {
