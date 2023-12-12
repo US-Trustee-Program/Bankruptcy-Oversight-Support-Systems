@@ -14,6 +14,7 @@ export function mapNavState(path: string) {
 export interface CaseDetailNavigationProps {
   caseId: string | undefined;
   initiallySelectedNavLink: NavState;
+  className?: string;
 }
 
 export enum NavState {
@@ -28,12 +29,13 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 function CaseDetailNavigationComponent({
   caseId,
   initiallySelectedNavLink,
+  className,
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
 
   return (
     <>
-      <nav className="case-details-navigation" aria-label="Side navigation">
+      <nav className={`case-details-navigation ${className ?? ''}`} aria-label="Side navigation">
         <ul className="usa-sidenav">
           <li className="usa-sidenav__item">
             <Link
