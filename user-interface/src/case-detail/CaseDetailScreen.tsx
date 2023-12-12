@@ -240,6 +240,14 @@ export const CaseDetail = (props: CaseDetailProps) => {
     }
     setDocumentNumber(newDocumentNumber);
   }
+  function clearFilters() {
+    setDocumentNumber(null);
+    setSelectedFacets([]);
+    setSearchInDocketText('');
+    setSelectedDateRange({ ...selectedDateRange, start: undefined, end: undefined });
+    //TODO: reset visual input values
+    return;
+  }
 
   function handleSelectedFacet(newValue: MultiSelectOptionList<Record<string, string>>) {
     const selected = newValue.map((value: Record<string, string>) => {
@@ -415,6 +423,17 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             max={documentRange.last}
                           />
                         </div>
+                      </div>
+                      <div className="form-field">
+                        <button
+                          className="usa-button usa-button--outline clear-filters-button"
+                          id="clear-filters-button"
+                          name="clear-filters"
+                          onClick={clearFilters}
+                          data-testid="clear-filters"
+                        >
+                          <span aria-hidden="true">Clear All Filters</span>
+                        </button>
                       </div>
                     </div>
                   )}
