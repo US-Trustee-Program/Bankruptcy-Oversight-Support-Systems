@@ -89,9 +89,11 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     throw new Error('Method not implemented.');
   }
 
+  // TODO: Maybe delete this now if it isn't used.
   async assignmentExists(assignment: CaseAttorneyAssignment): Promise<boolean> {
     const querySpec = {
-      query: 'SELECT * FROM c WHERE c.caseId = @caseId AND c.name = @name AND c.role = @role',
+      query:
+        'SELECT * FROM c WHERE c.caseId = @caseId AND c.name = @name AND c.role = @role AND NOT IS_DEFINED(c.unassignedOn)',
       parameters: [
         {
           name: '@caseId',
@@ -119,7 +121,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     if (options && options.includeHistory) {
       query = 'SELECT * FROM c WHERE c.caseId = @caseId';
     } else {
-      query = 'SELECT * FROM c WHERE c.caseId = @caseId AND c.unassigned != true';
+      query = 'SELECT * FROM c WHERE c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';
     }
     const querySpec = {
       query,
@@ -130,7 +132,8 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         },
       ],
     };
-    return await this.queryData(querySpec);
+    const response = await this.queryData(querySpec);
+    return response;
   }
 
   async findAssignmentsByAssigneeName(name: string): Promise<CaseAttorneyAssignment[]> {

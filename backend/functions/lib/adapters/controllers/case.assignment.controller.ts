@@ -36,9 +36,8 @@ export class CaseAssignmentController {
           params.caseId,
           attorney,
           params.role,
-          undefined,
-          undefined,
           new Date().toISOString(),
+          undefined,
         );
         listOfAssignments.push(assignment);
       });

@@ -5,27 +5,24 @@ export class CaseAttorneyAssignment {
   caseId: string;
   name: string;
   role: CaseAssignmentRole;
-  unassigned?: true;
+  assignedOn: string;
   unassignedOn?: string;
-  createdOn?: string;
 
   constructor(
     caseId: string,
     name: string,
     role: string,
-    unassigned?: true,
+    assignedOn: string,
     unassignedOn?: string,
-    createdOn?: string,
   ) {
     this.caseId = caseId;
     this.name = name;
     this.role = CaseAssignmentRole[role];
-    if (unassigned) {
-      this.unassigned = true;
+    if (unassignedOn) {
       this.unassignedOn = unassignedOn;
     }
-    if (createdOn) {
-      this.createdOn = createdOn;
+    if (assignedOn) {
+      this.assignedOn = assignedOn;
     }
   }
 }
