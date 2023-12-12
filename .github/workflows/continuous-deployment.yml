@@ -441,7 +441,7 @@ jobs:
           --src ./${{ needs.build-info.outputs.webappName }}.tar \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
-      - name: Deploy to Azure WebApp
+      - name: Retry Deploy to Azure WebApp
         if: steps.deploy-webapp-step.outcome != 'success'
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
