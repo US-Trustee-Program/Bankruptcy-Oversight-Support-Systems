@@ -1,5 +1,5 @@
 import './CaseDetailScreen.scss';
-import { lazy, Suspense, useState, useEffect, useRef, useImperativeHandle } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
@@ -45,9 +45,13 @@ export function findDocketLimits(docket: CaseDocket): DocketLimits {
   const firstEntryWithDocument = docket.find((entry) => {
     return !!entry.documentNumber;
   });
-  const lastEntryWithDocument = docket.findLast((entry) => {
-    return !!entry.documentNumber;
-  });
+  let lastEntryWithDocument = undefined;
+  for (let i = docket.length - 1; i >= 0; i--) {
+    if (docket[i].documentNumber) {
+      lastEntryWithDocument = docket[i];
+      break;
+    }
+  }
 
   documentRange.first = firstEntryWithDocument?.documentNumber || 0;
   documentRange.last = lastEntryWithDocument?.documentNumber || 0;
@@ -177,7 +181,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
 
   const location = useLocation();
-  const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
@@ -281,11 +284,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
     }
   }, [location]);
 
-  useImperativeHandle(leftNavContainerRef, () => ({
-    fix: () => setLeftNavContainerFixed('grid-col-2 fixed'),
-    loosen: () => setLeftNavContainerFixed(''),
-  }));
-
   const { filteredDocketEntries, alertOptions } = applySortAndFilters(caseDocketEntries, {
     searchInDocketText,
     selectedFacets,
@@ -327,7 +325,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <div className="grid-row grid-gap-lg">
               <div id="left-gutter" className="grid-col-1"></div>
               <div className="grid-col-2">
-                <div className={'left-navigation-pane-container ' + leftNavContainerFixed}>
+                <div className={'left-navigation-pane-container'}>
                   <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
                   {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                     <div
@@ -372,6 +370,28 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           />
                         </div>
                       </div>
+                      {filterFeature && (
+                        <div className="docket-summary-facets form-field">
+                          <label>Filter by Summary</label>
+                          <MultiSelect
+                            options={getSummaryFacetList(caseDocketSummaryFacets)}
+                            closeMenuOnSelect={false}
+                            onChange={handleSelectedFacet}
+                            label="Filter by Summary"
+                          ></MultiSelect>
+                        </div>
+                      )}
+                      <div className="in-docket-search form-field" data-testid="docket-date-range">
+                        <DateRangePicker
+                          id="docket-date-range"
+                          startDateLabel="Docket Entries from"
+                          endDateLabel="To"
+                          onStartDateChange={handleStartDateChange}
+                          onEndDateChange={handleEndDateChange}
+                          minDate={dateRangeBounds.start}
+                          maxDate={dateRangeBounds.end}
+                        ></DateRangePicker>
+                      </div>
                       <div
                         className="in-docket-search form-field"
                         data-testid="docket-number-search"
@@ -396,28 +416,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           />
                         </div>
                       </div>
-                      <div className="in-docket-search form-field" data-testid="docket-date-range">
-                        <DateRangePicker
-                          id="docket-date-range"
-                          startDateLabel="Docket Entries from"
-                          endDateLabel="To"
-                          onStartDateChange={handleStartDateChange}
-                          onEndDateChange={handleEndDateChange}
-                          minDate={dateRangeBounds.start}
-                          maxDate={dateRangeBounds.end}
-                        ></DateRangePicker>
-                      </div>
-                      {filterFeature && (
-                        <div className="docket-summary-facets form-field">
-                          <label>Filter by Summary</label>
-                          <MultiSelect
-                            options={getSummaryFacetList(caseDocketSummaryFacets)}
-                            closeMenuOnSelect={false}
-                            onChange={handleSelectedFacet}
-                            label="Filter by Summary"
-                          ></MultiSelect>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

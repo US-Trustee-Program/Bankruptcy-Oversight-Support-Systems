@@ -19,6 +19,22 @@
     },
     "http://localhost:3000/case-detail/101-23-44461",
     {
+      "url": "http://localhost:3000/case-detail/101-23-44461/court-docket",
+      "actions": [
+        "wait for element [id='searchable-docket'] to be visible",
+        "set field #basic-search-field to Motion",
+        "set field #basic-search-field to joint",
+        "set field #document-number-search-field to 10000",
+        "clear field #document-number-search-field",
+        "click element .cams-multi-select"
+      ],
+      "timeout": 20000,
+      "viewport": {
+        "width": 1280,
+        "height": 2048
+      }
+    },
+    {
       "url": "http://localhost:3000/case-detail/123-12-12345/court-docket",
       "actions": [
         "wait for element [data-testid='alert-container'] to be visible"
