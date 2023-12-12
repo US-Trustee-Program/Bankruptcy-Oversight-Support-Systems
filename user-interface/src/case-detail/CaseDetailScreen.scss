@@ -1,3 +1,4 @@
+@import '../styles/theme.scss';
 .App {
   .body {
     .case-detail {
@@ -32,10 +33,6 @@
         .docket-summary-facets label {
           margin-bottom: 0.5rem;
         }
-      }
-      .left-navigation-pane-container.fixed {
-        position: fixed;
-        top: 125px;
       }
     }
   }
