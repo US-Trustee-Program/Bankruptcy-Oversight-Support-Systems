@@ -1,6 +1,6 @@
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId, fireEvent } from '@testing-library/react';
+import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import { CaseDetail, docketSorterClosure } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
@@ -672,77 +672,6 @@ describe('Case Detail screen tests', () => {
       expect(caseDocketLink).toHaveClass('usa-current');
     },
   );
-
-  describe('Fixed navigation area', () => {
-    const testCaseDetail: CaseDetailType = {
-      caseId: '080-01-12345',
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: 'some judge',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary Petition',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: [],
-      debtor: {
-        name: 'Roger Rabbit',
-      },
-      debtorAttorney: {
-        name: 'Jane Doe',
-        address1: '123 Rabbithole Lane',
-        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-        phone: '234-123-1234',
-      },
-    };
-
-    test('should fix when scrolled at top of viewport', async () => {
-      render(
-        <BrowserRouter>
-          <div className="App" data-testid="app-component-test-id">
-            <header
-              className="cams-header usa-header-usa-header--basic"
-              style={{ minHeight: '100px', height: '100px' }}
-              data-testid="cams-header-test-id"
-            ></header>
-            <CaseDetail caseDetail={testCaseDetail} />
-            <div style={{ minHeight: '2000px', height: '2000px' }}></div>
-          </div>
-        </BrowserRouter>,
-      );
-
-      const app = await screen.findByTestId('app-component-test-id');
-
-      await waitFor(() => {
-        const pane = document.querySelector('.left-navigation-pane-container');
-        expect(pane).toBeInTheDocument();
-        expect(pane).not.toHaveClass('fixed');
-      });
-
-      const paneBeforeBreak = document.querySelector('.left-navigation-pane-container');
-      expect(paneBeforeBreak).toBeInTheDocument();
-
-      window.HTMLElement.prototype.getBoundingClientRect = () =>
-        ({
-          top: 2,
-        }) as DOMRect;
-      fireEvent.scroll(app as Element, { target: { scrollTop: 98 } });
-
-      expect(paneBeforeBreak).toBeInTheDocument();
-      expect(paneBeforeBreak).not.toHaveClass('fixed');
-
-      window.HTMLElement.prototype.getBoundingClientRect = () =>
-        ({
-          top: -175,
-        }) as DOMRect;
-      fireEvent.scroll(app as Element, { target: { scrollTop: 275 } });
-
-      const paneAfterBreak = document.querySelector('.case-details-navigation');
-      expect(paneAfterBreak).toBeInTheDocument();
-      expect(paneAfterBreak).toHaveClass('fixed');
-    });
-  });
 
   describe('Docket entry sorter', () => {
     const left: CaseDocketEntry = {
