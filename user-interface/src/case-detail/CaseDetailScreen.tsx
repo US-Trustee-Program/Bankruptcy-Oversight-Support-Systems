@@ -45,9 +45,13 @@ export function findDocketLimits(docket: CaseDocket): DocketLimits {
   const firstEntryWithDocument = docket.find((entry) => {
     return !!entry.documentNumber;
   });
-  const lastEntryWithDocument = docket.findLast((entry) => {
-    return !!entry.documentNumber;
-  });
+  let lastEntryWithDocument = undefined;
+  for (let i = docket.length - 1; i >= 0; i--) {
+    if (docket[i].documentNumber) {
+      lastEntryWithDocument = docket[i];
+      break;
+    }
+  }
 
   documentRange.first = firstEntryWithDocument?.documentNumber || 0;
   documentRange.last = lastEntryWithDocument?.documentNumber || 0;
@@ -177,7 +181,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
 
   const location = useLocation();
-  const [leftNavContainerFixed, setLeftNavContainerFixed] = useState<string>('');
+  const [navigationFixed, setNavigationFixed] = useState<string>('');
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
@@ -282,8 +286,8 @@ export const CaseDetail = (props: CaseDetailProps) => {
   }, [location]);
 
   useImperativeHandle(leftNavContainerRef, () => ({
-    fix: () => setLeftNavContainerFixed('grid-col-2 fixed'),
-    loosen: () => setLeftNavContainerFixed(''),
+    fix: () => setNavigationFixed('grid-col-2 fixed'),
+    loosen: () => setNavigationFixed(''),
   }));
 
   const { filteredDocketEntries, alertOptions } = applySortAndFilters(caseDocketEntries, {
@@ -327,8 +331,12 @@ export const CaseDetail = (props: CaseDetailProps) => {
             <div className="grid-row grid-gap-lg">
               <div id="left-gutter" className="grid-col-1"></div>
               <div className="grid-col-2">
-                <div className={'left-navigation-pane-container ' + leftNavContainerFixed}>
-                  <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+                <div className={'left-navigation-pane-container'}>
+                  <CaseDetailNavigation
+                    caseId={caseId}
+                    initiallySelectedNavLink={navState}
+                    className={navigationFixed}
+                  />
                   {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                     <div
                       className={`filter-and-search padding-y-4`}
