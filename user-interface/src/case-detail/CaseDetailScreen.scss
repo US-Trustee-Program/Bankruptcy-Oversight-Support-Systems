@@ -1,3 +1,4 @@
+@import '../styles/theme.scss';
 .App {
   .body {
     .case-detail {
@@ -33,9 +34,12 @@
           margin-bottom: 0.5rem;
         }
       }
-      .left-navigation-pane-container.fixed {
+      .case-details-navigation.fixed {
         position: fixed;
-        top: 125px;
+        top: 85px;
+        padding-top: 40px;
+        z-index: 10;
+        background: $cams-theme-background;
       }
     }
   }

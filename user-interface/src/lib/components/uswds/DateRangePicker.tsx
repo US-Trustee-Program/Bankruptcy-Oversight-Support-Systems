@@ -1,3 +1,4 @@
+import './DateRangePicker.scss';
 import { useState } from 'react';
 
 export interface DateRange {
@@ -36,7 +37,7 @@ export default function DateRangePicker(props: DateRangePickerProps) {
   return (
     <div
       id={id}
-      className="usa-date-range-picker"
+      className="usa-date-range-picker cams-date-picker"
       data-min-date={props.minDate}
       data-max-date={props.maxDate}
     >
