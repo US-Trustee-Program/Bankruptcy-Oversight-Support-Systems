@@ -738,7 +738,7 @@ describe('Case Detail screen tests', () => {
         }) as DOMRect;
       fireEvent.scroll(app as Element, { target: { scrollTop: 275 } });
 
-      const paneAfterBreak = document.querySelector('.left-navigation-pane-container');
+      const paneAfterBreak = document.querySelector('.case-details-navigation');
       expect(paneAfterBreak).toBeInTheDocument();
       expect(paneAfterBreak).toHaveClass('fixed');
     });
