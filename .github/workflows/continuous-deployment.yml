@@ -444,6 +444,7 @@ jobs:
       - name: Retry Deploy to Azure WebApp
         if: steps.deploy-webapp-step.outcome != 'success'
         run: |
+          sleep 30s &&
           ./ops/scripts/pipeline/az-app-deploy.sh \
           --src ./${{ needs.build-info.outputs.webappName }}.tar \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -491,6 +492,7 @@ jobs:
       - name: Retry Deploy Azure Functions backend
         if: steps.deploy-backend-step.outcome != 'success'
         run: |
+          sleep 30s &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.apiName }} \
