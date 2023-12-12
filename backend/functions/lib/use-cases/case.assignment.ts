@@ -27,28 +27,32 @@ export class CaseAssignment {
   public async createTrialAttorneyAssignments(
     applicationContext: ApplicationContext,
     caseId: string,
-    listOfAssignments: CaseAttorneyAssignment[],
+    newAssignments: CaseAttorneyAssignment[],
   ): Promise<AttorneyAssignmentResponseInterface> {
     const listOfAssignmentIdsCreated: string[] = [];
 
+    // Unassign an existing attorney that does not appear in the new assignment list.
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
-    for (const assignment of existingAssignments) {
-      const alreadyAssigned = listOfAssignments.find((newAssignment) => {
-        newAssignment.name === assignment.name && newAssignment.role === assignment.role;
+    for (const existingAssignment of existingAssignments) {
+      const stillAssigned = newAssignments.find((newAssignment) => {
+        newAssignment.name === existingAssignment.name &&
+          newAssignment.role === existingAssignment.role;
       });
-      if (!alreadyAssigned) {
+      if (!stillAssigned) {
         await this.assignmentRepository.updateAssignment({
-          ...assignment,
-          unassigned: true,
+          ...existingAssignment,
           unassignedOn: new Date().toISOString(),
         });
       }
     }
 
-    for (const assignment of listOfAssignments) {
-      if (!this.assignmentRepository.assignmentExists(assignment)) {
+    // Add any attorney from the new assignment list to the case that is not already assigned.
+    for (const assignment of newAssignments) {
+      const existingAssignment = existingAssignments.find((ea) => {
+        return ea.name === assignment.name && ea.role === assignment.role;
+      });
+      if (!existingAssignment) {
         const assignmentId = await this.createAssignment(assignment);
-        // need to add an entry to history stating that assignment was created.
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }
@@ -57,7 +61,7 @@ export class CaseAssignment {
     log.info(
       applicationContext,
       MODULE_NAME,
-      `Created ${listOfAssignmentIdsCreated.length} assignments for case number ${listOfAssignments[0].caseId}.`,
+      `Created ${listOfAssignmentIdsCreated.length} assignments for case number ${newAssignments[0].caseId}.`,
       listOfAssignmentIdsCreated,
     );
     return {
