@@ -260,11 +260,9 @@ jobs:
     defaults:
       run:
         working-directory: user-interface
-
     runs-on: ubuntu-latest
     needs: [build-info]
     environment: ${{ needs.build-info.outputs.environment }}
-
     steps:
       - uses: actions/checkout@v3
 
@@ -274,7 +272,6 @@ jobs:
           node-version: 18.17.1
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
-
       - name: Execute Build
         run: |
           pushd ../common
@@ -289,23 +286,19 @@ jobs:
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           npm run build --if-present
-
       - name: Execute Coverage
         run: |
           CI=true npm run coverage
-
       - name: Package
         run: |
           mkdir artifacts
           tar -cvf artifacts/${{ needs.build-info.outputs.webappName }}.tar ./build
-
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.build-info.outputs.webappName }}-build
           path: user-interface/artifacts/
           if-no-files-found: error
-
   build-service:
     defaults:
       run:
@@ -325,7 +318,6 @@ jobs:
       - name: Execute Coverage
         run: |
           npm run coverage
-
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
 
@@ -335,7 +327,6 @@ jobs:
           name: ${{ needs.build-info.outputs.apiName }}-build
           path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
-
   deploy:
     runs-on: ubuntu-latest
     needs:
@@ -443,12 +434,21 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
+        id: deploy-webapp-step
+        continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
           --src ./${{ needs.build-info.outputs.webappName }}.tar \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
-
+      - name: Retry Deploy to Azure WebApp
+        if: steps.deploy-webapp-step.outcome != 'success'
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-app-deploy.sh \
+          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.webappName }}
   deploy-service:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
@@ -474,6 +474,8 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Functions backend
+        continue-on-error: true
+        id: deploy-backend-step
         run: |
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -487,7 +489,22 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
-
+      - name: Retry Deploy Azure Functions backend
+        if: steps.deploy-backend-step.outcome != 'success'
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-func-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.apiName }} \
+          --src ./${{ needs.build-info.outputs.apiName }}.zip \
+          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
+          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
+          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
+          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
+          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
   smoke-test-application:
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]
