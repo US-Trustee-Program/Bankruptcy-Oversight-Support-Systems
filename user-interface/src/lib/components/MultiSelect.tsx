@@ -11,6 +11,7 @@ export interface MultiSelectProps {
   closeMenuOnSelect?: boolean;
   options?: Record<string, string>[];
   label: string;
+  id: string;
 }
 
 export default function MultiSelect(props: MultiSelectProps) {
@@ -77,6 +78,8 @@ export default function MultiSelect(props: MultiSelectProps) {
       onChange={props.onChange}
       className={`${props.className || ''} cams-multi-select`}
       styles={customStyles}
+      id={props.id}
+      data-testid={props.id}
     ></ReactSelect>
   );
 }

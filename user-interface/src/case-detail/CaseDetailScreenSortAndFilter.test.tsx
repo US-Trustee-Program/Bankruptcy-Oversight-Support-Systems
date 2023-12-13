@@ -637,4 +637,64 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(docketListAfter.children.length).toEqual(2);
     });
   });
+  describe('Clear Filters', () => {
+    test('clear filter fields when clear filters button is clicked', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let docNumberSearchInput = screen.getByTestId('document-number-search-field');
+      let searchInput = screen.getByTestId('document-number-search-field');
+      let docketFacetInput = screen.getByTestId('facet-multi-select');
+      let clearFiltersButton = screen.getByTestId('clear-filters');
+      let endDateText = screen.getByTestId('docket-date-range-date-end');
+      let startDateText = screen.getByTestId('docket-date-range-date-start');
+
+      await waitFor(() => {
+        const docketListBefore = screen.getByTestId('searchable-docket');
+        expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
+        expect(clearFiltersButton).toBeInTheDocument();
+        act(() => {
+          fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+          fireEvent.change(endDateText, { target: { value: '2023-011-01' } });
+          fireEvent.change(docNumberSearchInput, { target: { value: '1' } });
+          fireEvent.change(searchInput, { target: { value: 'abc' } });
+          fireEvent.change(docketFacetInput, {
+            target: { value: testCaseDocketEntries[0].summaryText },
+          });
+        });
+      });
+      const docketListAfterInput = screen.getByTestId('searchable-docket');
+      expect(docketListAfterInput.children.length).toEqual(0);
+      await waitFor(() => {
+        act(() => {
+          fireEvent.click(clearFiltersButton as Element);
+        });
+      });
+      const docketListAfterClear = screen.getByTestId('searchable-docket');
+      docNumberSearchInput = screen.getByTestId('document-number-search-field');
+      searchInput = screen.getByTestId('document-number-search-field');
+      docketFacetInput = screen.getByTestId('facet-multi-select');
+      clearFiltersButton = screen.getByTestId('clear-filters');
+      endDateText = screen.getByTestId('docket-date-range-date-end');
+      startDateText = screen.getByTestId('docket-date-range-date-start');
+      expect(docketListAfterClear.children.length).toEqual(testCaseDocketEntries.length);
+      expect(docNumberSearchInput.textContent).toBe('');
+      expect(searchInput.textContent).toBe('');
+      expect(docketFacetInput.textContent).toBe(undefined);
+      expect(endDateText.textContent).toBe(undefined);
+      expect(startDateText.textContent).toBe(undefined);
+    });
+  });
 });
