@@ -16,7 +16,6 @@ import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
-import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
 import { IconInputRef } from '@/lib/components/uswds/icon-input';
@@ -194,9 +193,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const facetPickerRef = useRef<MultiSelectRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
-  const flags = useFeatureFlags();
-  const filterFeature = flags[DOCKET_FILTER_ENABLED];
-
   const fetchCaseBasicInfo = async () => {
     setIsLoading(true);
     api.get(`/cases/${caseId}`, {}).then((data) => {
@@ -310,7 +306,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   return (
     <>
-      <div className="case-detail">
+      <div className="case-detail" data-testid="case-detail">
         {isLoading && (
           <>
             <CaseDetailHeader
@@ -387,19 +383,20 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           />
                         </div>
                       </div>
-                      {filterFeature && (
-                        <div className="docket-summary-facets form-field">
-                          <label>Filter by Summary</label>
-                          <MultiSelect
-                            id="facet-multi-select"
-                            options={getSummaryFacetList(caseDocketSummaryFacets)}
-                            closeMenuOnSelect={false}
-                            onChange={handleSelectedFacet}
-                            label="Filter by Summary"
-                            ref={facetPickerRef}
-                          ></MultiSelect>
-                        </div>
-                      )}
+                      <div
+                        className="docket-summary-facets form-field"
+                        data-testid="facet-multi-select-container-test-id"
+                      >
+                        <label>Filter by Summary</label>
+                        <MultiSelect
+                          id="facet-multi-select"
+                          options={getSummaryFacetList(caseDocketSummaryFacets)}
+                          closeMenuOnSelect={false}
+                          onChange={handleSelectedFacet}
+                          label="Filter by Summary"
+                          ref={facetPickerRef}
+                        ></MultiSelect>
+                      </div>
                       <div className="in-docket-search form-field" data-testid="docket-date-range">
                         <DateRangePicker
                           id="docket-date-range"
