@@ -2,6 +2,9 @@
 // refactor - let's find a way to avoid using any
 import './MultiSelect.scss';
 import ReactSelect from 'react-select';
+import { MultiSelectRef } from './multi-select';
+import { forwardRef, useImperativeHandle } from 'react';
+import React from 'react';
 
 export declare type MultiSelectOptionList<Option> = readonly Option[];
 
@@ -14,7 +17,10 @@ export interface MultiSelectProps {
   id: string;
 }
 
-export default function MultiSelect(props: MultiSelectProps) {
+function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<MultiSelectRef>) {
+  //const multiSelectRef =
+  //  React.useRef<SelectInstance<MultiSelectProps, true, GroupBase<MultiSelectProps>>>();
+  const multiSelectRef = React.useRef(null);
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
       ...provided,
@@ -69,6 +75,21 @@ export default function MultiSelect(props: MultiSelectProps) {
     }),
   };
 
+  function clearValue() {
+    if (
+      multiSelectRef.current &&
+      Object.prototype.hasOwnProperty.call(multiSelectRef.current, 'clearValue')
+    ) {
+      (multiSelectRef.current as MultiSelectRef).clearValue();
+    }
+  }
+
+  useImperativeHandle(ref, () => {
+    return {
+      clearValue,
+    };
+  });
+
   return (
     <ReactSelect
       aria-label={props.label}
@@ -80,6 +101,10 @@ export default function MultiSelect(props: MultiSelectProps) {
       styles={customStyles}
       id={props.id}
       data-testid={props.id}
+      ref={multiSelectRef}
     ></ReactSelect>
   );
 }
+
+const MultiSelect = forwardRef(MultiSelectComponent);
+export default MultiSelect;

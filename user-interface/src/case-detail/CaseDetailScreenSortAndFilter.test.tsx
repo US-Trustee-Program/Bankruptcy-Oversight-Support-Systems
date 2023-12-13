@@ -637,6 +637,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(docketListAfter.children.length).toEqual(2);
     });
   });
+
   describe('Clear Filters', () => {
     test('clear filter fields when clear filters button is clicked', async () => {
       const basicInfoPath = `/case-detail/${testCaseId}/`;
