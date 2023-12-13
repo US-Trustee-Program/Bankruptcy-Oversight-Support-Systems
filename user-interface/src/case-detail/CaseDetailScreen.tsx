@@ -19,6 +19,9 @@ import IconInput from '@/lib/components/IconInput';
 import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
+import { IconInputRef } from '@/lib/components/uswds/icon-input';
+import { DateRangePickerRef } from '@/lib/components/uswds/date-range-picker';
+import { MultiSelectRef } from '@/lib/components/multi-select';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -185,7 +188,10 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
-
+  const findInDocketRef = useRef<IconInputRef>(null);
+  const findByDocketNumberRef = useRef<IconInputRef>(null);
+  const dateRangeRef = useRef<DateRangePickerRef>(null);
+  const facetPickerRef = useRef<MultiSelectRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
   const flags = useFeatureFlags();
@@ -241,22 +247,14 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setDocumentNumber(newDocumentNumber);
   }
   function clearFilters() {
-    // setClearAllFilters(true);
-    // applySortAndFilters(caseDocketEntries, {
-    //   searchInDocketText: '',
-    //   selectedFacets: [],
-    //   sortDirection: 'Newest',
-    //   documentNumber: null,
-    //   selectedDateRange: {
-    //     start: undefined,
-    //     end: undefined,
-    //   },
-    // });
-    setDocumentNumber(null);
-    setSelectedFacets([]);
     setSearchInDocketText('');
+    findInDocketRef.current?.clearValue();
+    setDocumentNumber(null);
+    findByDocketNumberRef.current?.clearValue();
     setSelectedDateRange({ ...selectedDateRange, start: undefined, end: undefined });
-    //TODO: reset visual input values
+    dateRangeRef.current?.clearValue();
+    setSelectedFacets([]);
+    facetPickerRef.current?.clearValue();
     return;
   }
 
@@ -275,7 +273,6 @@ export const CaseDetail = (props: CaseDetailProps) => {
   function handleEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
   }
-
   useEffect(() => {
     if (props.caseDetail) {
       setCaseBasicInfo(props.caseDetail);
@@ -386,6 +383,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             icon="search"
                             autocomplete="off"
                             onChange={searchDocketText}
+                            ref={findInDocketRef}
                           />
                         </div>
                       </div>
@@ -398,6 +396,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             closeMenuOnSelect={false}
                             onChange={handleSelectedFacet}
                             label="Filter by Summary"
+                            ref={facetPickerRef}
                           ></MultiSelect>
                         </div>
                       )}
@@ -410,6 +409,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           onEndDateChange={handleEndDateChange}
                           minDate={dateRangeBounds.start}
                           maxDate={dateRangeBounds.end}
+                          ref={dateRangeRef}
                         ></DateRangePicker>
                       </div>
                       <div
@@ -433,6 +433,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             onChange={searchDocumentNumber}
                             min={documentRange.first}
                             max={documentRange.last}
+                            ref={findByDocketNumberRef}
                           />
                         </div>
                       </div>

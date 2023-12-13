@@ -1,5 +1,6 @@
 import './DateRangePicker.scss';
-import { useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
+import { DateRangePickerRef } from './date-range-picker';
 
 export interface DateRange {
   start?: string;
@@ -16,13 +17,25 @@ export interface DateRangePickerProps {
   endDateLabel?: string;
 }
 
-export default function DateRangePicker(props: DateRangePickerProps) {
+function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
   const { id, startDateLabel, endDateLabel, minDate, maxDate } = props;
 
   const [internalDateRange, setInternalDateRange] = useState<DateRange>({
     start: minDate,
     end: maxDate,
   });
+  const [startDateValue, setStartDateValue] = useState<string | undefined>(undefined);
+  const [endDateValue, setEndDateValue] = useState<string | undefined>(undefined);
+
+  function clearValue() {
+    setInternalDateRange(internalDateRange);
+    setStartDateValue('');
+    setEndDateValue('');
+    setTimeout(() => {
+      setStartDateValue(undefined);
+      setEndDateValue(undefined);
+    }, 250);
+  }
 
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
@@ -33,6 +46,12 @@ export default function DateRangePicker(props: DateRangePickerProps) {
     setInternalDateRange({ ...internalDateRange, end: ev.target.value || maxDate });
     if (props.onEndDateChange) props.onEndDateChange(ev);
   }
+
+  useImperativeHandle(ref, () => {
+    return {
+      clearValue,
+    };
+  });
 
   return (
     <div
@@ -57,6 +76,7 @@ export default function DateRangePicker(props: DateRangePickerProps) {
             min={minDate}
             max={internalDateRange.end}
             data-testid={id + '-date-start'}
+            value={startDateValue}
           />
         </div>
       </div>
@@ -76,9 +96,12 @@ export default function DateRangePicker(props: DateRangePickerProps) {
             min={internalDateRange.start}
             max={maxDate}
             data-testid={id + '-date-end'}
+            value={endDateValue}
           />
         </div>
       </div>
     </div>
   );
 }
+const DateRangePicker = forwardRef(DateRangePickerComponent);
+export default DateRangePicker;
