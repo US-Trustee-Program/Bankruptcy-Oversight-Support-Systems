@@ -179,7 +179,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
-
+  // const [clearAllFilters, setClearAllFilters] = useState<boolean>(false);
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
@@ -241,6 +241,17 @@ export const CaseDetail = (props: CaseDetailProps) => {
     setDocumentNumber(newDocumentNumber);
   }
   function clearFilters() {
+    // setClearAllFilters(true);
+    // applySortAndFilters(caseDocketEntries, {
+    //   searchInDocketText: '',
+    //   selectedFacets: [],
+    //   sortDirection: 'Newest',
+    //   documentNumber: null,
+    //   selectedDateRange: {
+    //     start: undefined,
+    //     end: undefined,
+    //   },
+    // });
     setDocumentNumber(null);
     setSelectedFacets([]);
     setSearchInDocketText('');
