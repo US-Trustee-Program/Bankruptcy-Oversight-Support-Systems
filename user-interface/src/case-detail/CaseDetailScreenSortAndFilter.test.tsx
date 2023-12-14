@@ -1,14 +1,12 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent, act } from '@testing-library/react';
-import {
+import { render, waitFor, screen, fireEvent, act, within } from '@testing-library/react';
+import CaseDetail, {
   applySortAndFilters,
-  CaseDetail,
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
 import { CaseDetailType, CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { vi } from 'vitest';
 import ReactRouter from 'react-router';
 
@@ -123,7 +121,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).not.toBeInTheDocument();
       });
-    });
+    }, 5000);
 
     test('should not display sort and filter panel when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
@@ -163,11 +161,9 @@ describe('Case Detail sort, search, and filter tests', () => {
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).not.toBeInTheDocument();
       });
-    });
+    }, 5000);
 
     test('should display filter select when navigated to docket entries', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-filter-enabled': true });
-
       const basicInfoPath = `/case-detail/${testCaseId}/`;
 
       render(
@@ -206,11 +202,10 @@ describe('Case Detail sort, search, and filter tests', () => {
         filterSelectElement = document.querySelector(filterSelectClass);
         expect(filterSelectElement).not.toBeInTheDocument();
       });
-    });
+    }, 5000);
 
     test('should not display filter select when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-filter-enabled': true });
 
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 
@@ -241,32 +236,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         filterSelectElement = document.querySelector(filterSelectClass);
         expect(filterSelectElement).not.toBeInTheDocument();
       });
-    });
-
-    test('should not display filter when feature flag is off', async () => {
-      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({ 'docket-filter-enabled': false });
-
-      const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
-
-      render(
-        <MemoryRouter initialEntries={[docketEntryPath]}>
-          <Routes>
-            <Route
-              path="case-detail/:id/court-docket"
-              element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      await waitFor(async () => {
-        const filterSelect = document.querySelector('.docket-summary-facets');
-        expect(filterSelect).not.toBeInTheDocument();
-      });
-    });
+    }, 5000);
   });
 
   describe('sort, search, and filter tests', () => {
@@ -419,6 +389,7 @@ describe('Case Detail sort, search, and filter tests', () => {
           },
         ],
       ]);
+
       const expectedFacets = [
         { value: 'Add Judge', label: 'Add Judge (2)' },
         {
@@ -548,6 +519,7 @@ describe('Case Detail sort, search, and filter tests', () => {
 
         const docNumberInput = screen.getByTestId('document-number-search-field');
         expect(docNumberInput).toBeInTheDocument();
+
         act(() => {
           fireEvent.change(docNumberInput, { target: { value: '1' } });
           fireEvent.change(docNumberInput, { target: { value: '' } });
@@ -598,6 +570,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       const docketListAfter = screen.getByTestId('searchable-docket');
       expect(docketListAfter.children.length).toEqual(2);
     });
+
     test('should list proper dockets when start date changes', async () => {
       const basicInfoPath = `/case-detail/${testCaseId}/`;
 
@@ -616,6 +589,7 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       let dateRangePicker;
       let docketEntryLink;
+
       await waitFor(() => {
         docketEntryLink = screen.getByTestId('court-docket-link');
         fireEvent.click(docketEntryLink as Element);
@@ -635,6 +609,103 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       const docketListAfter = screen.getByTestId('searchable-docket');
       expect(docketListAfter.children.length).toEqual(2);
+    });
+  });
+
+  describe('Clear Filters', () => {
+    test('clear filter fields when clear filters button is clicked', async () => {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:id/*"
+              element={
+                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let docketEntryLink;
+      let sortButton;
+
+      sortButton = screen.queryByTestId('docket-entry-sort');
+      expect(sortButton).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        fireEvent.click(docketEntryLink as Element);
+        sortButton = screen.queryByTestId('docket-entry-sort');
+        expect(sortButton).toBeInTheDocument();
+
+        const docketListBefore = screen.getByTestId('searchable-docket');
+        expect(docketListBefore).toBeInTheDocument();
+        expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
+      });
+
+      let searchInput = screen.getByTestId('basic-search-field');
+      expect(searchInput).toBeInTheDocument();
+
+      let startDateText = screen.getByTestId('docket-date-range-date-start');
+      expect(startDateText).toBeInTheDocument();
+
+      let endDateText = screen.getByTestId('docket-date-range-date-end');
+      expect(endDateText).toBeInTheDocument();
+
+      let docNumberSearchInput = screen.getByTestId('document-number-search-field');
+      expect(docNumberSearchInput).toBeInTheDocument();
+
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+      expect(docketFacetContainer).toBeInTheDocument();
+      // test id does not work for the multi-select react component.  Quite a bummer.
+      let docketFacetInput = within(docketFacetContainer).getByRole('combobox');
+      expect(docketFacetInput).toBeInTheDocument();
+
+      const clearFiltersButton = screen.getByTestId('clear-filters');
+      expect(clearFiltersButton).toBeInTheDocument();
+
+      const caseDetailScreen = screen.getByTestId('case-detail');
+      expect(caseDetailScreen).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.change(searchInput, { target: { value: 'abc' } });
+        fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+        fireEvent.change(endDateText, { target: { value: '2023-011-01' } });
+        fireEvent.change(docNumberSearchInput, { target: { value: '1' } });
+        fireEvent.change(docketFacetInput, {
+          target: { value: testCaseDocketEntries[0].summaryText },
+        });
+      });
+
+      const docketListAfterInput = screen.getByTestId('searchable-docket');
+      expect(docketListAfterInput.children.length).toEqual(1);
+
+      await waitFor(() => {
+        act(() => {
+          fireEvent.click(clearFiltersButton as Element);
+        });
+      });
+
+      const docketListAfterClear = screen.getByTestId('searchable-docket');
+      expect(docketListAfterClear.children.length).toEqual(testCaseDocketEntries.length);
+
+      searchInput = screen.getByTestId('document-number-search-field');
+      expect(searchInput.textContent).toBe('');
+
+      docketFacetInput = within(docketFacetContainer).getByRole('combobox');
+      expect(docketFacetInput.textContent).toBe('');
+
+      startDateText = screen.getByTestId('docket-date-range-date-start');
+      expect(startDateText.textContent).toBe('');
+
+      endDateText = screen.getByTestId('docket-date-range-date-end');
+      expect(endDateText.textContent).toBe('');
+
+      docNumberSearchInput = screen.getByTestId('document-number-search-field');
+      expect(docNumberSearchInput.textContent).toBe('');
     });
   });
 });
