@@ -10,9 +10,6 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
-interface FindAssignmentsByCaseIdProps {
-  includeHistory?: boolean;
-}
 
 export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositoryInterface {
   private cosmosDbClient;
@@ -89,40 +86,9 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     throw new Error('Method not implemented.');
   }
 
-  // TODO: Maybe delete this now if it isn't used.
-  async assignmentExists(assignment: CaseAttorneyAssignment): Promise<boolean> {
-    const querySpec = {
-      query:
-        'SELECT * FROM c WHERE c.caseId = @caseId AND c.name = @name AND c.role = @role AND NOT IS_DEFINED(c.unassignedOn)',
-      parameters: [
-        {
-          name: '@caseId',
-          value: assignment.caseId,
-        },
-        {
-          name: '@name',
-          value: assignment.name,
-        },
-        {
-          name: '@role',
-          value: assignment.role,
-        },
-      ],
-    };
-    const response = await this.queryData(querySpec);
-    return !!response.length;
-  }
-
-  async findAssignmentsByCaseId(
-    caseId: string,
-    options?: FindAssignmentsByCaseIdProps,
-  ): Promise<CaseAttorneyAssignment[]> {
+  async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
     let query = '';
-    if (options && options.includeHistory) {
-      query = 'SELECT * FROM c WHERE c.caseId = @caseId';
-    } else {
-      query = 'SELECT * FROM c WHERE c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';
-    }
+    query = 'SELECT * FROM c WHERE c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';
     const querySpec = {
       query,
       parameters: [
