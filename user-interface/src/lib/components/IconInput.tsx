@@ -1,7 +1,7 @@
 import { ChangeEventHandler, forwardRef, useImperativeHandle, useState } from 'react';
 import './IconInput.scss';
 import Icon from './uswds/Icon';
-import { IconInputRef } from './uswds/icon-input';
+import { InputRef } from '../type-declarations/input-fields';
 
 export interface IconInputProps {
   id: string;
@@ -20,7 +20,7 @@ export interface IconInputProps {
   inputmode?: 'search' | 'text' | 'email' | 'tel' | 'url' | 'none' | 'numeric' | 'decimal';
 }
 
-function IconInputComponent(props: IconInputProps, ref: React.Ref<IconInputRef>) {
+function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string | undefined>(undefined);
   function clearValue() {

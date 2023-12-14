@@ -2,9 +2,9 @@
 // refactor - let's find a way to avoid using any
 import './MultiSelect.scss';
 import ReactSelect from 'react-select';
-import { MultiSelectRef } from './multi-select';
 import { forwardRef, useImperativeHandle } from 'react';
 import React from 'react';
+import { InputRef } from '../type-declarations/input-fields';
 
 export declare type MultiSelectOptionList<Option> = readonly Option[];
 
@@ -17,9 +17,7 @@ export interface MultiSelectProps {
   id: string;
 }
 
-function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<MultiSelectRef>) {
-  //const multiSelectRef =
-  //  React.useRef<SelectInstance<MultiSelectProps, true, GroupBase<MultiSelectProps>>>();
+function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>) {
   const multiSelectRef = React.useRef(null);
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
@@ -76,11 +74,8 @@ function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<MultiSelec
   };
 
   function clearValue() {
-    if (
-      multiSelectRef.current &&
-      Object.prototype.hasOwnProperty.call(multiSelectRef.current, 'clearValue')
-    ) {
-      (multiSelectRef.current as MultiSelectRef).clearValue();
+    if (multiSelectRef.current && Object.hasOwn(multiSelectRef.current, 'clearValue')) {
+      (multiSelectRef.current as InputRef).clearValue();
     }
   }
 

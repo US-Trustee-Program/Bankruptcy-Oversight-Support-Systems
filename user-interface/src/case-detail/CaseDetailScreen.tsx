@@ -18,9 +18,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
-import { IconInputRef } from '@/lib/components/uswds/icon-input';
-import { DateRangePickerRef } from '@/lib/components/uswds/date-range-picker';
-import { MultiSelectRef } from '@/lib/components/multi-select';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -36,6 +34,14 @@ interface DocketLimits {
 interface DocumentRange {
   first: number;
   last: number;
+}
+
+interface sortAndFilterOptions {
+  searchInDocketText: string;
+  selectedFacets: string[];
+  sortDirection: SortDirection;
+  documentNumber: number | null;
+  selectedDateRange: DateRange;
 }
 
 export function findDocketLimits(docket: CaseDocket): DocketLimits {
@@ -91,14 +97,6 @@ function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: numb
 function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
   if (selectedFacets.length === 0) return docketEntry;
   return selectedFacets.includes(docketEntry.summaryText);
-}
-
-interface sortAndFilterOptions {
-  searchInDocketText: string;
-  selectedFacets: string[];
-  sortDirection: SortDirection;
-  documentNumber: number | null;
-  selectedDateRange: DateRange;
 }
 
 export function applySortAndFilters(
@@ -166,7 +164,7 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   });
 }
 
-export const CaseDetail = (props: CaseDetailProps) => {
+export default function CaseDetail(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
@@ -181,28 +179,27 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
-  // const [clearAllFilters, setClearAllFilters] = useState<boolean>(false);
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
-  const findInDocketRef = useRef<IconInputRef>(null);
-  const findByDocketNumberRef = useRef<IconInputRef>(null);
-  const dateRangeRef = useRef<DateRangePickerRef>(null);
-  const facetPickerRef = useRef<MultiSelectRef>(null);
+  const findInDocketRef = useRef<InputRef>(null);
+  const findByDocketNumberRef = useRef<InputRef>(null);
+  const dateRangeRef = useRef<InputRef>(null);
+  const facetPickerRef = useRef<InputRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
-  const fetchCaseBasicInfo = async () => {
+  async function fetchCaseBasicInfo() {
     setIsLoading(true);
     api.get(`/cases/${caseId}`, {}).then((data) => {
       const response = data as Chapter15CaseDetailsResponseData;
       setCaseBasicInfo(response.body?.caseDetails);
       setIsLoading(false);
     });
-  };
+  }
 
-  const fetchCaseDocketEntries = async () => {
+  async function fetchCaseDocketEntries() {
     setIsDocketLoading(true);
     api
       .get(`/cases/${caseId}/docket`, {})
@@ -223,7 +220,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
         setCaseDocketEntries([]);
         setIsDocketLoading(false);
       });
-  };
+  }
 
   function toggleSort() {
     setSortDirection(sortDirection === 'Newest' ? 'Oldest' : 'Newest');
@@ -242,6 +239,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
     }
     setDocumentNumber(newDocumentNumber);
   }
+
   function clearFilters() {
     setSearchInDocketText('');
     findInDocketRef.current?.clearValue();
@@ -269,6 +267,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
   function handleEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
   }
+
   useEffect(() => {
     if (props.caseDetail) {
       setCaseBasicInfo(props.caseDetail);
@@ -489,6 +488,4 @@ export const CaseDetail = (props: CaseDetailProps) => {
       </div>
     </>
   );
-};
-
-export default CaseDetail;
+}
