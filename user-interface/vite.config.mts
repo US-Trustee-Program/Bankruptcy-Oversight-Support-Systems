@@ -70,7 +70,8 @@ export default defineConfig({
         'build',
         'src/lib/models/*mock*.ts',
         'src/lib/components/utils/http.adapter.ts',
-        '**/*.d.ts'
+        'src/lib/components/**/*Examples.tsx',
+        '**/*.d.ts',
       ],
       thresholds: {
         branches: 90,

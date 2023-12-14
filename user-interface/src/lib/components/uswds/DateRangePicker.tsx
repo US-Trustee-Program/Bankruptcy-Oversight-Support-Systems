@@ -1,6 +1,6 @@
+import { InputRef } from '@/lib/type-declarations/input-fields';
 import './DateRangePicker.scss';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { DateRangePickerRef } from './date-range-picker';
 
 export interface DateRange {
   start?: string;
@@ -17,7 +17,7 @@ export interface DateRangePickerProps {
   endDateLabel?: string;
 }
 
-function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
+function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<InputRef>) {
   const { id, startDateLabel, endDateLabel, minDate, maxDate } = props;
 
   const [internalDateRange, setInternalDateRange] = useState<DateRange>({

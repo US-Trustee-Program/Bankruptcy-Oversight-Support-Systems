@@ -1,8 +1,7 @@
 import { describe } from 'vitest';
 import { render, waitFor, screen, fireEvent, act, within } from '@testing-library/react';
-import {
+import CaseDetail, {
   applySortAndFilters,
-  CaseDetail,
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';

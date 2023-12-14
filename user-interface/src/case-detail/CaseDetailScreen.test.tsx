@@ -1,7 +1,7 @@
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import { CaseDetail, docketSorterClosure } from './CaseDetailScreen';
+import CaseDetail, { docketSorterClosure } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
   CaseDetailType,
