@@ -139,8 +139,6 @@ function AssignAttorneyModalComponent(
     } else if (!ev.target.checked && checkListValues.includes(name)) {
       localCheckListValues = checkListValues.filter((theName) => theName !== name);
     }
-    // TODO: This should look for a difference between the current selection list
-    // compare bCase.assignments to localCheckListValues
     const isTheSame =
       localCheckListValues &&
       bCase.assignments &&
@@ -183,9 +181,6 @@ function AssignAttorneyModalComponent(
         });
       })
       .catch((e: Error) => {
-        // we ought to have a section of the screen that takes a z-index top level alert to display updates
-        // that is system wide and always displays in the same place.  Probably an alert triggered by
-        // a redux update.
         props.callBack({
           bCase: bCase,
           selectedAttorneyList: finalAttorneyList,

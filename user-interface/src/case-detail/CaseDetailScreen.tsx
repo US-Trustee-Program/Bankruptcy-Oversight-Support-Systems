@@ -440,6 +440,7 @@ export default function CaseDetail(props: CaseDetailProps) {
                           name="clear-filters"
                           onClick={clearFilters}
                           data-testid="clear-filters"
+                          aria-label="Clear All Filters"
                         >
                           <span aria-hidden="true">Clear All Filters</span>
                         </button>

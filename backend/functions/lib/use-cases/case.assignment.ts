@@ -20,6 +20,8 @@ export class CaseAssignment {
     newAssignments: string[],
     role: string,
   ): Promise<AttorneyAssignmentResponseInterface> {
+    log.info(applicationContext, MODULE_NAME, 'New assignments:', newAssignments);
+
     const listOfAssignments: CaseAttorneyAssignment[] = [];
     const attorneys = [...new Set(newAssignments)];
     const currentDate = new Date().toISOString();
@@ -34,7 +36,6 @@ export class CaseAssignment {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
-    // Unassign an existing attorney that does not appear in the new assignment list.
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     for (const existingAssignment of existingAssignments) {
       const stillAssigned = listOfAssignments.find((newAssignment) => {
@@ -51,9 +52,6 @@ export class CaseAssignment {
       }
     }
 
-    log.info(applicationContext, MODULE_NAME, 'New assignments:', newAssignments);
-
-    // Add any attorney from the new assignment list to the case that is not already assigned.
     for (const assignment of listOfAssignments) {
       const existingAssignment = existingAssignments.find((ea) => {
         return ea.name === assignment.name && ea.role === assignment.role;
