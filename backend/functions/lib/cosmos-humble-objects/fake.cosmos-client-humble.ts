@@ -84,6 +84,9 @@ export default class FakeCosmosClientHumble {
                 if (assignment.caseId === 'throw-permissions-error') {
                   throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
                 }
+                if (assignment.caseId === 'throw-unknown-error') {
+                  throw new UnknownError(MODULE_NAME);
+                }
                 console.log(id);
                 return {
                   item: assignment,

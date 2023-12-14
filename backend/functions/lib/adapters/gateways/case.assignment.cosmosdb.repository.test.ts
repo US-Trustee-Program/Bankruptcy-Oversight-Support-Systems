@@ -302,35 +302,25 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
       caseId: caseId,
       name: 'Susan Arbeit',
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CaseAssignmentRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
-    expect(await repository.createAssignment(existingCaseAttorneyAssignment)).rejects.toThrow(
+    await expect(repository.createAssignment(existingCaseAttorneyAssignment)).rejects.toThrow(
       'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
     );
   });
 
   test('When updating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
-    const caseId = randomUUID();
-
-    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
-      caseId: caseId,
-      name: 'Susan Arbeit',
-      role: CaseAssignmentRole[trialAttorneyRole],
-      assignedOn: currentDate,
-    };
-
-    await repository.createAssignment(existingCaseAttorneyAssignment);
-
     const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      id: 'some-id',
       caseId: 'throw-unknown-error',
       name: 'some-attorney-name',
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CaseAssignmentRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
-    expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
+    await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
       'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
     );
   });
