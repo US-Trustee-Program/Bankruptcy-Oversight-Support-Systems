@@ -126,37 +126,38 @@ export const CaseAssignment = () => {
         timeOut: 8,
       });
       alertRef.current?.show();
-    } else if (selectedAttorneyList.length > 0) {
-      if (bCase) {
-        bCase.assignments = selectedAttorneyList;
-        setInTableTransferMode(bCase.caseId);
+    } else if (bCase) {
+      bCase.assignments = selectedAttorneyList;
+      setInTableTransferMode(bCase.caseId);
 
-        // prepare new unassigned case list table to remove case from unassigned list
-        const tempUnassignedCaseList = unassignedCaseList.filter((theCase) => {
-          if (bCase.caseId !== (theCase as Chapter15Type).caseId) {
-            return true;
-          }
-          return false;
-        });
-        setUnassignedCaseList(tempUnassignedCaseList);
+      // Modify the unassigned list.
+      const tempUnassignedCaseList = unassignedCaseList.filter((aCase) => {
+        return aCase.caseId !== bCase.caseId;
+      });
+      if (selectedAttorneyList.length === 0) tempUnassignedCaseList.push(bCase);
+      tempUnassignedCaseList.sort(sortByDate).sort(sortByCaseId);
+      setUnassignedCaseList(tempUnassignedCaseList);
 
-        const tempAssignedCaseList = assignedCaseList.filter((aCase) => {
-          return aCase.caseId !== bCase.caseId;
-        });
-        tempAssignedCaseList.push(bCase);
-        tempAssignedCaseList.sort(sortByDate).sort(sortByCaseId);
-        setAssignedCaseList(tempAssignedCaseList);
+      // Modify the assigned list.
+      const tempAssignedCaseList = assignedCaseList.filter((aCase) => {
+        return aCase.caseId !== bCase.caseId;
+      });
+      if (selectedAttorneyList.length > 0) tempAssignedCaseList.push(bCase);
+      tempAssignedCaseList.sort(sortByDate).sort(sortByCaseId);
+      setAssignedCaseList(tempAssignedCaseList);
 
-        const alertMessage = `${selectedAttorneyList
-          .map((attorney) => attorney)
-          .join(', ')} assigned to case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}`;
-        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
-        alertRef.current?.show();
+      const alertPrefix =
+        selectedAttorneyList.length > 0
+          ? `${selectedAttorneyList.map((attorney) => attorney).join(', ')} assigned to case`
+          : `Unassigned attorneys from case`;
+      const alertMessage = alertPrefix + ` ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}`;
 
-        setTimeout(() => {
-          setInTableTransferMode('');
-        }, TABLE_TRANSFER_TIMEOUT * 1000);
-      }
+      setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
+      alertRef.current?.show();
+
+      setTimeout(() => {
+        setInTableTransferMode('');
+      }, TABLE_TRANSFER_TIMEOUT * 1000);
     }
   }
 
