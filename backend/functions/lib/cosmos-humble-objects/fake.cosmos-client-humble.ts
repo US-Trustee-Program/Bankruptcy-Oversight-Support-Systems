@@ -1,6 +1,7 @@
 import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ForbiddenError } from '../common-errors/forbidden-error';
 import { AggregateAuthenticationError } from '@azure/identity';
+import { UnknownError } from '../common-errors/unknown-error';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
@@ -27,6 +28,9 @@ export default class FakeCosmosClientHumble {
             create: (assignment: CaseAttorneyAssignment) => {
               if (assignment.caseId === 'throw-permissions-error') {
                 throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
+              }
+              if (assignment.caseId === 'throw-unknown-error') {
+                throw new UnknownError(MODULE_NAME, { message: 'unknown' });
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);
@@ -58,6 +62,22 @@ export default class FakeCosmosClientHumble {
                 },
               };
             },
+          },
+          item: (id: string) => {
+            return {
+              replace: (assignment: CaseAttorneyAssignment) => {
+                if (assignment.caseId === 'throw-permissions-error') {
+                  throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
+                }
+                if (assignment.caseId === 'throw-unknown-error') {
+                  throw new UnknownError(MODULE_NAME);
+                }
+                console.log(id);
+                return {
+                  item: assignment,
+                };
+              },
+            };
           },
         };
       },

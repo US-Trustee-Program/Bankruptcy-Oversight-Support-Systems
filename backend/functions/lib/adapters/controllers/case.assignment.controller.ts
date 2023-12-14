@@ -1,5 +1,4 @@
 import { ApplicationContext } from '../types/basic';
-import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignment } from '../../use-cases/case.assignment';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
@@ -28,21 +27,12 @@ export class CaseAssignmentController {
   }): Promise<AttorneyAssignmentResponseInterface> {
     this.validateRequestParameters(params);
     try {
-      const listOfAssignments: CaseAttorneyAssignment[] = [];
-
-      const attorneys = [...new Set(params.listOfAttorneyNames)];
-      attorneys.forEach((attorney) => {
-        const assignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-          params.caseId,
-          attorney,
-          params.role,
-        );
-        listOfAssignments.push(assignment);
-      });
       const assignmentUseCase = new CaseAssignment(this.applicationContext);
       return assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
-        listOfAssignments,
+        params.caseId,
+        params.listOfAttorneyNames,
+        params.role,
       );
     } catch (exception) {
       log.error(this.applicationContext, MODULE_NAME, exception.message);
@@ -66,10 +56,6 @@ export class CaseAssignmentController {
       errors = true;
     } else if (!params.caseId.match(VALID_CASEID_PATTERN)) {
       message += INVALID_CASEID_MESSAGE;
-      errors = true;
-    }
-    if (!params.listOfAttorneyNames || params.listOfAttorneyNames.length < 1) {
-      badParams.push('attorneyList');
       errors = true;
     }
     if (!params.role) {

@@ -7,6 +7,7 @@ import { CaseAssignmentRole } from '../types/case.assignment.role';
 const functionContext = require('azure-function-context-mock');
 
 describe('Test case assignment cosmosdb repository tests', () => {
+  const currentDate = new Date().toISOString();
   const perryMason = 'Perry Mason';
   const benMatlock = 'Ben Matlock';
   const clairHuxtable = 'Clair Huxtable';
@@ -19,16 +20,19 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('should create two assignments and find both of them', async () => {
     const caseId = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
+
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+      caseId: caseId,
+      name: clairHuxtable,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
       caseId,
-      'Susan Arbeit',
-      trialAttorneyRole,
-    );
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseId,
-      'Jeffery McCaslin',
-      trialAttorneyRole,
-    );
+      name: perryMason,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
     const assignmentId2 = await repository.createAssignment(testCaseAttorneyAssignment2);
@@ -51,19 +55,65 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(assignment2.name).toEqual(testCaseAttorneyAssignment2.name);
   });
 
+  test('should update existing assignment record', async () => {
+    const caseId = randomUUID();
+
+    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      caseId: caseId,
+      name: clairHuxtable,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+
+    const actualIdResponse = await repository.createAssignment(testCaseAttorneyAssignment);
+    expect(actualIdResponse).toBeTruthy();
+
+    testCaseAttorneyAssignment.id = actualIdResponse;
+    testCaseAttorneyAssignment.unassignedOn = new Date().toISOString();
+    const actualIdUpdateResponse = await repository.updateAssignment(testCaseAttorneyAssignment);
+
+    expect(actualIdUpdateResponse).toEqual(actualIdResponse);
+  });
+
+  test('should throw a permissions exception when user doesnt have permission to update an assignment', async () => {
+    const caseId = randomUUID();
+
+    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      caseId: caseId,
+      name: clairHuxtable,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+
+    await repository.createAssignment(existingCaseAttorneyAssignment);
+
+    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      caseId: 'throw-permissions-error',
+      name: benMatlock,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+
+    await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
+      'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
+    );
+  });
+
   test('should find only assignments for the requested case', async () => {
     const caseIdOne = randomUUID();
     const caseIdTwo = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdOne,
-      'Susan Arbeit',
-      trialAttorneyRole,
-    );
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdTwo,
-      'Jeffery McCaslin',
-      trialAttorneyRole,
-    );
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+      caseId: caseIdOne,
+      name: clairHuxtable,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+      caseId: caseIdTwo,
+      name: perryMason,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
     const assignmentId2 = await repository.createAssignment(testCaseAttorneyAssignment2);
@@ -94,11 +144,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      'throw-permissions-error',
-      'some-attorney-name',
-      trialAttorneyRole,
-    );
+    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      caseId: 'throw-permissions-error',
+      name: benMatlock,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
       'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
@@ -126,40 +177,46 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('should find all assignments for a given attorney', async () => {
     const caseIdOne = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdOne,
-      perryMason,
-      trialAttorneyRole,
-    );
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdOne,
-      benMatlock,
-      trialAttorneyRole,
-    );
+    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+      caseId: caseIdOne,
+      name: perryMason,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+      caseId: caseIdOne,
+      name: benMatlock,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
 
     const caseIdTwo = randomUUID();
-    const testCaseAttorneyAssignment3: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdTwo,
-      clairHuxtable,
-      trialAttorneyRole,
-    );
-    const testCaseAttorneyAssignment4: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdTwo,
-      perryMason,
-      trialAttorneyRole,
-    );
+    const testCaseAttorneyAssignment3: CaseAttorneyAssignment = {
+      caseId: caseIdTwo,
+      name: clairHuxtable,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+    const testCaseAttorneyAssignment4: CaseAttorneyAssignment = {
+      caseId: caseIdTwo,
+      name: perryMason,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
 
     const caseIdThree = randomUUID();
-    const testCaseAttorneyAssignment5: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdThree,
-      clairHuxtable,
-      trialAttorneyRole,
-    );
-    const testCaseAttorneyAssignment6: CaseAttorneyAssignment = new CaseAttorneyAssignment(
-      caseIdThree,
-      benMatlock,
-      trialAttorneyRole,
-    );
+    const testCaseAttorneyAssignment5: CaseAttorneyAssignment = {
+      caseId: caseIdThree,
+      name: clairHuxtable,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
+    const testCaseAttorneyAssignment6: CaseAttorneyAssignment = {
+      caseId: caseIdThree,
+      name: benMatlock,
+      role: CaseAssignmentRole[trialAttorneyRole],
+      assignedOn: currentDate,
+    };
 
     await repository.createAssignment(testCaseAttorneyAssignment1);
     await repository.createAssignment(testCaseAttorneyAssignment2);
@@ -236,6 +293,35 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
     expect(benAssignments).toEqual(
       expect.not.arrayContaining([expect.objectContaining({ name: clairHuxtable })]),
+    );
+  });
+
+  test('When creating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
+    const caseId = 'throw-unknown-error';
+
+    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      caseId: caseId,
+      name: clairHuxtable,
+      role: CaseAssignmentRole.TrialAttorney,
+      assignedOn: currentDate,
+    };
+
+    await expect(repository.createAssignment(existingCaseAttorneyAssignment)).rejects.toThrow(
+      'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
+    );
+  });
+
+  test('When updating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
+    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+      id: 'some-id',
+      caseId: 'throw-unknown-error',
+      name: benMatlock,
+      role: CaseAssignmentRole.TrialAttorney,
+      assignedOn: currentDate,
+    };
+
+    await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
+      'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
     );
   });
 });
