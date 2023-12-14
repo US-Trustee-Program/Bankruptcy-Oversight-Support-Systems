@@ -51,7 +51,11 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  findAssignmentsByAssigneeName(attorney: string): Promise<CaseAttorneyAssignment[]> {
-    return Promise.resolve([]);
+  findAssignmentsByAssigneeName(name: string): Promise<CaseAttorneyAssignment[]> {
+    return Promise.resolve(
+      this.caseAttorneyAssignments.filter((a) => {
+        return a.name === name;
+      }),
+    );
   }
 }
