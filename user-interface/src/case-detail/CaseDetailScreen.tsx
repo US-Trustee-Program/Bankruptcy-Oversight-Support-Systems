@@ -16,9 +16,9 @@ import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import IconInput from '@/lib/components/IconInput';
-import useFeatureFlags, { DOCKET_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -34,6 +34,14 @@ interface DocketLimits {
 interface DocumentRange {
   first: number;
   last: number;
+}
+
+interface sortAndFilterOptions {
+  searchInDocketText: string;
+  selectedFacets: string[];
+  sortDirection: SortDirection;
+  documentNumber: number | null;
+  selectedDateRange: DateRange;
 }
 
 export function findDocketLimits(docket: CaseDocket): DocketLimits {
@@ -89,14 +97,6 @@ function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: numb
 function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
   if (selectedFacets.length === 0) return docketEntry;
   return selectedFacets.includes(docketEntry.summaryText);
-}
-
-interface sortAndFilterOptions {
-  searchInDocketText: string;
-  selectedFacets: string[];
-  sortDirection: SortDirection;
-  documentNumber: number | null;
-  selectedDateRange: DateRange;
 }
 
 export function applySortAndFilters(
@@ -164,7 +164,7 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   });
 }
 
-export const CaseDetail = (props: CaseDetailProps) => {
+export default function CaseDetail(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
@@ -179,28 +179,27 @@ export const CaseDetail = (props: CaseDetailProps) => {
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
-
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
-
+  const findInDocketRef = useRef<InputRef>(null);
+  const findByDocketNumberRef = useRef<InputRef>(null);
+  const dateRangeRef = useRef<InputRef>(null);
+  const facetPickerRef = useRef<InputRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
-  const flags = useFeatureFlags();
-  const filterFeature = flags[DOCKET_FILTER_ENABLED];
-
-  const fetchCaseBasicInfo = async () => {
+  async function fetchCaseBasicInfo() {
     setIsLoading(true);
     api.get(`/cases/${caseId}`, {}).then((data) => {
       const response = data as Chapter15CaseDetailsResponseData;
       setCaseBasicInfo(response.body?.caseDetails);
       setIsLoading(false);
     });
-  };
+  }
 
-  const fetchCaseDocketEntries = async () => {
+  async function fetchCaseDocketEntries() {
     setIsDocketLoading(true);
     api
       .get(`/cases/${caseId}/docket`, {})
@@ -221,7 +220,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
         setCaseDocketEntries([]);
         setIsDocketLoading(false);
       });
-  };
+  }
 
   function toggleSort() {
     setSortDirection(sortDirection === 'Newest' ? 'Oldest' : 'Newest');
@@ -239,6 +238,18 @@ export const CaseDetail = (props: CaseDetailProps) => {
       return;
     }
     setDocumentNumber(newDocumentNumber);
+  }
+
+  function clearFilters() {
+    setSearchInDocketText('');
+    findInDocketRef.current?.clearValue();
+    setDocumentNumber(null);
+    findByDocketNumberRef.current?.clearValue();
+    setSelectedDateRange({ ...selectedDateRange, start: undefined, end: undefined });
+    dateRangeRef.current?.clearValue();
+    setSelectedFacets([]);
+    facetPickerRef.current?.clearValue();
+    return;
   }
 
   function handleSelectedFacet(newValue: MultiSelectOptionList<Record<string, string>>) {
@@ -294,7 +305,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
 
   return (
     <>
-      <div className="case-detail">
+      <div className="case-detail" data-testid="case-detail">
         {isLoading && (
           <>
             <CaseDetailHeader
@@ -367,20 +378,24 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             icon="search"
                             autocomplete="off"
                             onChange={searchDocketText}
+                            ref={findInDocketRef}
                           />
                         </div>
                       </div>
-                      {filterFeature && (
-                        <div className="docket-summary-facets form-field">
-                          <label>Filter by Summary</label>
-                          <MultiSelect
-                            options={getSummaryFacetList(caseDocketSummaryFacets)}
-                            closeMenuOnSelect={false}
-                            onChange={handleSelectedFacet}
-                            label="Filter by Summary"
-                          ></MultiSelect>
-                        </div>
-                      )}
+                      <div
+                        className="docket-summary-facets form-field"
+                        data-testid="facet-multi-select-container-test-id"
+                      >
+                        <label>Filter by Summary</label>
+                        <MultiSelect
+                          id="facet-multi-select"
+                          options={getSummaryFacetList(caseDocketSummaryFacets)}
+                          closeMenuOnSelect={false}
+                          onChange={handleSelectedFacet}
+                          label="Filter by Summary"
+                          ref={facetPickerRef}
+                        ></MultiSelect>
+                      </div>
                       <div className="in-docket-search form-field" data-testid="docket-date-range">
                         <DateRangePicker
                           id="docket-date-range"
@@ -390,6 +405,7 @@ export const CaseDetail = (props: CaseDetailProps) => {
                           onEndDateChange={handleEndDateChange}
                           minDate={dateRangeBounds.start}
                           maxDate={dateRangeBounds.end}
+                          ref={dateRangeRef}
                         ></DateRangePicker>
                       </div>
                       <div
@@ -413,8 +429,20 @@ export const CaseDetail = (props: CaseDetailProps) => {
                             onChange={searchDocumentNumber}
                             min={documentRange.first}
                             max={documentRange.last}
+                            ref={findByDocketNumberRef}
                           />
                         </div>
+                      </div>
+                      <div className="form-field">
+                        <button
+                          className="usa-button usa-button--outline clear-filters-button"
+                          id="clear-filters-button"
+                          name="clear-filters"
+                          onClick={clearFilters}
+                          data-testid="clear-filters"
+                        >
+                          <span aria-hidden="true">Clear All Filters</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -460,6 +488,4 @@ export const CaseDetail = (props: CaseDetailProps) => {
       </div>
     </>
   );
-};
-
-export default CaseDetail;
+}

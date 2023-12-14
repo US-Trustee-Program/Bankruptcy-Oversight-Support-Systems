@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import Alert, { AlertRefType, UswdsAlertStyle } from './Alert';
-import React from 'react';
 
 export const UswdsAlertExamples = () => {
   const alertRef1 = useRef<AlertRefType>(null);
