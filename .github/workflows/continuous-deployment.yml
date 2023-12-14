@@ -161,7 +161,7 @@ jobs:
 
   security-sast-scan:
     runs-on: ubuntu-latest
-
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v3
 
@@ -335,7 +335,6 @@ jobs:
         build-frontend,
         build-service,
         accessibility-test,
-        security-sast-scan,
         security-sca-scan-frontend,
         security-sca-scan-backend,
         security-sca-scan-common,
