@@ -87,8 +87,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   }
 
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
-    let query = '';
-    query = 'SELECT * FROM c WHERE c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';
+    const query = 'SELECT * FROM c WHERE c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';
     const querySpec = {
       query,
       parameters: [
