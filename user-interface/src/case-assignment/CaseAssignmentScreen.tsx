@@ -254,7 +254,14 @@ export const CaseAssignment = () => {
                         {(unassignedCaseList as Array<Chapter15Type>).map(
                           (theCase: Chapter15Type, idx: number) => {
                             return (
-                              <tr key={idx}>
+                              <tr
+                                key={idx}
+                                className={
+                                  theCase.caseId === inTableTransferMode
+                                    ? 'in-table-transfer-mode'
+                                    : ''
+                                }
+                              >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
                                   <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
