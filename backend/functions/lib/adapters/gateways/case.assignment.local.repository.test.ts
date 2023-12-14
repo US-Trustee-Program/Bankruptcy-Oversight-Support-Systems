@@ -83,7 +83,7 @@ describe('Case Assignment Repository Tests', () => {
     );
   });
 
-  test('Should return assignment by id', async () => {
+  test('Should return assignment by case id', async () => {
     const applicationContext = await applicationContextCreator(context);
     const localRepo: CaseAssignmentRepositoryInterface = new CaseAssignmentLocalRepository(
       applicationContext,
@@ -122,7 +122,7 @@ describe('Case Assignment Repository Tests', () => {
       assignedOn: currentDate,
     };
 
-    // First create a record to update.
+    // First create a record to lookup by name.
     await localRepo.createAssignment(assignment);
     const created = await localRepo.findAssignmentsByCaseId(caseId);
     expect(created[0]).toEqual(assignment);

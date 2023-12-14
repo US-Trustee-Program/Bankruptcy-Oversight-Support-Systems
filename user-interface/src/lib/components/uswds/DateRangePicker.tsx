@@ -2,6 +2,9 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import './DateRangePicker.scss';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 
+// Alias for readability.
+const debounce = setTimeout;
+
 export interface DateRange {
   start?: string;
   end?: string;
@@ -27,12 +30,13 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
   const [startDateValue, setStartDateValue] = useState<string | undefined>(undefined);
   const [endDateValue, setEndDateValue] = useState<string | undefined>(undefined);
 
-  // set timeout added to solve some funky weirdness with the date type input handling keyboard events after a reset.
   function clearValue() {
     setInternalDateRange(internalDateRange);
     setStartDateValue('');
     setEndDateValue('');
-    setTimeout(() => {
+
+    // debounce to solve some funky weirdness with the date type input handling keyboard events after a reset.
+    debounce(() => {
       setStartDateValue(undefined);
       setEndDateValue(undefined);
     }, 250);

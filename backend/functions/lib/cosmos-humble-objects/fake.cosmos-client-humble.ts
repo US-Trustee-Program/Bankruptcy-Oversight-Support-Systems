@@ -40,21 +40,6 @@ export default class FakeCosmosClientHumble {
                 },
               };
             },
-            replace: (assignment: CaseAttorneyAssignment) => {
-              if (assignment.caseId === 'throw-permissions-error') {
-                throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
-              }
-              if (assignment.caseId === 'throw-unknown-error') {
-                throw new UnknownError(MODULE_NAME);
-              }
-              assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
-              this.caseAssignments.push(assignment);
-              return {
-                item: {
-                  ...assignment,
-                },
-              };
-            },
             query: (query: QueryOptions) => {
               this.itemQueryParams = query.parameters;
               return {
