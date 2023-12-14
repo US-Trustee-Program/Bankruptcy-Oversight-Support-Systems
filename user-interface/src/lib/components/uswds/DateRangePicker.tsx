@@ -27,6 +27,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
   const [startDateValue, setStartDateValue] = useState<string | undefined>(undefined);
   const [endDateValue, setEndDateValue] = useState<string | undefined>(undefined);
 
+  // set timeout added to solve some funky weirdness with the date type input handling keyboard events after a reset.
   function clearValue() {
     setInternalDateRange(internalDateRange);
     setStartDateValue('');
