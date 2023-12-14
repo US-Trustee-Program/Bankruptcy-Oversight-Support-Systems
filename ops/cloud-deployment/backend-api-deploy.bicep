@@ -7,6 +7,7 @@ param planName string
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param planType string = 'P1v2'
 
@@ -23,6 +24,13 @@ var planTypeToSkuMap = {
     tier: 'Basic'
     size: 'B2'
     family: 'B'
+    capacity: 1
+  }
+  S1: {
+    name: 'S1'
+    tier: 'Standard'
+    size: 'S1'
+    family: 'S'
     capacity: 1
   }
 }

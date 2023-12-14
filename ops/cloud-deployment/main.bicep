@@ -22,6 +22,7 @@ param webappPlanName string = 'plan-${webappName}'
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param webappPlanType string
 
@@ -37,6 +38,7 @@ param apiPlanName string = 'plan-${apiName}'
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param apiPlanType string
 
