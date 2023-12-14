@@ -17,10 +17,6 @@ import Icon from '@/lib/components/uswds/Icon';
 
 const modalId = 'assign-attorney-modal';
 
-interface Chapter15Node extends Chapter15Type {
-  sortableDateFiled: string;
-}
-
 const TABLE_TRANSFER_TIMEOUT = 10;
 
 export const CaseAssignment = () => {
@@ -31,8 +27,8 @@ export const CaseAssignment = () => {
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
-  const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
-  const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
+  const [unassignedCaseList, setUnassignedCaseList] = useState<Array<Chapter15Type>>([]);
+  const [assignedCaseList, setAssignedCaseList] = useState<Array<Chapter15Type>>([]);
   const [caseListLoadError, setCaseListLoadError] = useState(false);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
@@ -44,12 +40,20 @@ export const CaseAssignment = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
-  function sortMethod(a: object, b: object): number {
-    const recordA: Chapter15Node = a as Chapter15Node;
-    const recordB: Chapter15Node = b as Chapter15Node;
-    if (recordA.sortableDateFiled < recordB.sortableDateFiled) {
+  function sortByDate(a: Chapter15Type, b: Chapter15Type): number {
+    if (a.dateFiled < b.dateFiled) {
       return 1;
-    } else if (recordA.sortableDateFiled > recordB.sortableDateFiled) {
+    } else if (a.dateFiled > b.dateFiled) {
+      return -1;
+    } else {
+      return 0;
+    }
+  }
+
+  function sortByCaseId(a: Chapter15Type, b: Chapter15Type): number {
+    if (a.caseId < b.caseId) {
+      return 1;
+    } else if (a.caseId > b.caseId) {
       return -1;
     } else {
       return 0;
@@ -62,24 +66,20 @@ export const CaseAssignment = () => {
     await api
       .list('/cases')
       .then((res) => {
-        const assignmentList: Chapter15Node[] = [];
-        const nonAssignmentList: Chapter15Node[] = [];
+        const assignmentList: Chapter15Type[] = [];
+        const nonAssignmentList: Chapter15Type[] = [];
 
         const chapter15Response = res as Chapter15CaseListResponseData;
         chapter15Response?.body?.caseList.forEach((theCase) => {
-          const caseNode = theCase as Chapter15Node;
-          const dateFiled = caseNode.dateFiled.split('-');
-          // Filing date formatted in SQL query as MM-dd-yyyy (ISO is yyyy-MM-dd)
-          // dateFiled[0] = month, dateFiled[1] = day, dateFiled[2] = year
-          caseNode.sortableDateFiled = `${dateFiled[2]}${dateFiled[0]}${dateFiled[1]}`;
+          const caseNode = theCase as Chapter15Type;
           if (caseNode.assignments && caseNode.assignments.length > 0) {
             assignmentList.push(caseNode);
           } else {
             nonAssignmentList.push(caseNode);
           }
         });
-        const sortedAssignedList = assignmentList.sort(sortMethod);
-        const sortedNonAssignedList = nonAssignmentList.sort(sortMethod);
+        const sortedAssignedList = assignmentList.sort(sortByDate);
+        const sortedNonAssignedList = nonAssignmentList.sort(sortByDate);
 
         setUnassignedCaseList(sortedNonAssignedList || []);
         setAssignedCaseList(sortedAssignedList || []);
@@ -140,10 +140,11 @@ export const CaseAssignment = () => {
         });
         setUnassignedCaseList(tempUnassignedCaseList);
 
-        // prepare new assigned case list table to add case to assigned list
-        const tempAssignedCaseList = [...assignedCaseList];
-        tempAssignedCaseList.push(bCase as object);
-        tempAssignedCaseList.sort(sortMethod);
+        const tempAssignedCaseList = assignedCaseList.filter((aCase) => {
+          return aCase.caseId !== bCase.caseId;
+        });
+        tempAssignedCaseList.push(bCase);
+        tempAssignedCaseList.sort(sortByDate).sort(sortByCaseId);
         setAssignedCaseList(tempAssignedCaseList);
 
         const alertMessage = `${selectedAttorneyList
@@ -249,8 +250,8 @@ export const CaseAssignment = () => {
                         </tr>
                       </thead>
                       <tbody data-testid="unassigned-table-body">
-                        {(unassignedCaseList as Array<Chapter15Node>).map(
-                          (theCase: Chapter15Node, idx: number) => {
+                        {(unassignedCaseList as Array<Chapter15Type>).map(
+                          (theCase: Chapter15Type, idx: number) => {
                             return (
                               <tr key={idx}>
                                 <td className="case-number">
@@ -269,7 +270,7 @@ export const CaseAssignment = () => {
                                 </td>
                                 <td
                                   className="filing-date"
-                                  data-sort-value={theCase.sortableDateFiled}
+                                  data-sort-value={theCase.dateFiled}
                                   data-sort-active={true}
                                 >
                                   <span className="mobile-title">Filing Date:</span>
@@ -353,8 +354,8 @@ export const CaseAssignment = () => {
                         </tr>
                       </thead>
                       <tbody data-testid="assigned-table-body">
-                        {(assignedCaseList as Array<Chapter15Node>).map(
-                          (theCase: Chapter15Node, idx: number) => {
+                        {(assignedCaseList as Array<Chapter15Type>).map(
+                          (theCase: Chapter15Type, idx: number) => {
                             return (
                               <tr
                                 key={idx}
@@ -380,7 +381,7 @@ export const CaseAssignment = () => {
                                 </td>
                                 <td
                                   className="filing-date"
-                                  data-sort-value={theCase.sortableDateFiled}
+                                  data-sort-value={theCase.dateFiled}
                                   data-sort-active={true}
                                 >
                                   <span className="mobile-title">Filing Date:</span>

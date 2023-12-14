@@ -35,13 +35,7 @@ describe('Test Assign Attorney Modal Component', () => {
     attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mobnext];
   });
 
-  test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
-    // const bCase: Chapter15Type = {
-    //   caseId: '123',
-    //   caseTitle: 'Test Case',
-    //   dateFiled: '01/01/2024',
-    // };
-
+  test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
     const modalRef = React.createRef<AssignAttorneyModalRefType>();
     const callback = vi.fn();
     const modalId = 'some-modal-id';
@@ -87,6 +81,7 @@ describe('Test Assign Attorney Modal Component', () => {
       fireEvent.click(checkbox2);
     });
 
+    expect(checkbox2).toBeChecked();
     expect(submitButton).toBeEnabled();
 
     act(() => {
@@ -115,11 +110,6 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     const callback = vi.fn();
 
-    // const bCase: Chapter15Type = {
-    //   caseId: '123',
-    //   caseTitle: 'Test Case',
-    //   dateFiled: '01/01/2024',
-    // };
     const modalRef = React.createRef<AssignAttorneyModalRefType>();
 
     const modalId = 'some-modal-id';
@@ -140,6 +130,14 @@ describe('Test Assign Attorney Modal Component', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+
+    modalRef.current?.show({
+      bCase: {
+        caseId: '123',
+        caseTitle: 'Test Case',
+        dateFiled: '01/01/2024',
+      },
+    });
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -177,11 +175,6 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   describe('Feature flag chapter-twelve-enabled', () => {
-    // const bCase: Chapter15Type = {
-    //   caseId: '123',
-    //   caseTitle: 'Test Case',
-    //   dateFiled: '01/01/2024',
-    // };
     const modalRef = React.createRef<AssignAttorneyModalRefType>();
     const modalId = 'some-modal-id';
     const caseLoadLabelTestId = 'case-load-label';

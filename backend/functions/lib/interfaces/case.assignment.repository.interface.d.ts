@@ -6,5 +6,4 @@ export interface CaseAssignmentRepositoryInterface {
   getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment>;
   findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]>;
   findAssignmentsByAssigneeName(attorney: string): Promise<CaseAttorneyAssignment[]>;
-  assignmentExists(assignment: CaseAttorneyAssignment): Promise<boolean>;
 }

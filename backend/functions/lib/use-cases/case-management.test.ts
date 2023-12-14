@@ -14,18 +14,21 @@ const functionContext = require('azure-function-context-mock');
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
+const currentDate = new Date().toISOString();
 const assignments: CaseAttorneyAssignment[] = [
   {
     id: '1',
     caseId: '081-23-01176',
     name: attorneyJaneSmith,
     role: CaseAssignmentRole.TrialAttorney,
+    assignedOn: currentDate,
   },
   {
     id: '2',
     caseId: '081-23-01176',
     name: attorneyJoeNobel,
     role: CaseAssignmentRole.TrialAttorney,
+    assignedOn: currentDate,
   },
 ];
 

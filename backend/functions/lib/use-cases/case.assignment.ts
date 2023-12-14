@@ -4,39 +4,44 @@ import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignme
 import { ApplicationContext } from '../adapters/types/basic';
 import { AttorneyAssignmentResponseInterface } from '../adapters/types/case.assignment';
 import log from '../adapters/services/logger.service';
+import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 export class CaseAssignment {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
 
-  constructor(
-    applicationContext: ApplicationContext,
-    assignmentRepository?: CaseAssignmentRepositoryInterface,
-  ) {
-    if (!assignmentRepository) {
-      this.assignmentRepository = getAssignmentRepository(applicationContext);
-    } else {
-      this.assignmentRepository = assignmentRepository;
-    }
-  }
-
-  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
-    return await this.assignmentRepository.createAssignment(caseAssignment);
+  constructor(applicationContext: ApplicationContext) {
+    this.assignmentRepository = getAssignmentRepository(applicationContext);
   }
 
   public async createTrialAttorneyAssignments(
     applicationContext: ApplicationContext,
     caseId: string,
-    newAssignments: CaseAttorneyAssignment[],
+    newAssignments: string[],
+    role: string,
   ): Promise<AttorneyAssignmentResponseInterface> {
+    const listOfAssignments: CaseAttorneyAssignment[] = [];
+    const attorneys = [...new Set(newAssignments)];
+    const currentDate = new Date().toISOString();
+    attorneys.forEach((attorney) => {
+      const assignment: CaseAttorneyAssignment = {
+        caseId: caseId,
+        name: attorney,
+        role: CaseAssignmentRole[role],
+        assignedOn: currentDate,
+      };
+      listOfAssignments.push(assignment);
+    });
     const listOfAssignmentIdsCreated: string[] = [];
 
     // Unassign an existing attorney that does not appear in the new assignment list.
     const existingAssignments = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     for (const existingAssignment of existingAssignments) {
-      const stillAssigned = newAssignments.find((newAssignment) => {
-        newAssignment.name === existingAssignment.name &&
-          newAssignment.role === existingAssignment.role;
+      const stillAssigned = listOfAssignments.find((newAssignment) => {
+        return (
+          newAssignment.name === existingAssignment.name &&
+          newAssignment.role === existingAssignment.role
+        );
       });
       if (!stillAssigned) {
         await this.assignmentRepository.updateAssignment({
@@ -46,13 +51,15 @@ export class CaseAssignment {
       }
     }
 
+    log.info(applicationContext, MODULE_NAME, 'New assignments:', newAssignments);
+
     // Add any attorney from the new assignment list to the case that is not already assigned.
-    for (const assignment of newAssignments) {
+    for (const assignment of listOfAssignments) {
       const existingAssignment = existingAssignments.find((ea) => {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
-        const assignmentId = await this.createAssignment(assignment);
+        const assignmentId = await this.assignmentRepository.createAssignment(assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }
@@ -61,9 +68,11 @@ export class CaseAssignment {
     log.info(
       applicationContext,
       MODULE_NAME,
-      `Created ${listOfAssignmentIdsCreated.length} assignments for case number ${newAssignments[0].caseId}.`,
+      `Updated assignments for case number ${caseId}.`,
       listOfAssignmentIdsCreated,
     );
+
+    // TODO: Maybe return the updated assignement state for the case, i.e. the new attorney list.
     return {
       success: true,
       message: 'Trial attorney assignments created.',

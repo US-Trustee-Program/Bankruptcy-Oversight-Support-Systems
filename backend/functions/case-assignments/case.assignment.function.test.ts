@@ -130,30 +130,6 @@ describe('Case Assignment Function Tests', () => {
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
-  test('returns bad request 400 when a attorneyList is empty or not passed in the request', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
-    const request = {
-      method: 'POST',
-      query: {},
-      body: {
-        caseId: '001-90-90123',
-        attorneyList: [],
-        role: 'TrialAttorney',
-      },
-    };
-    const expectedResponse = {
-      message: 'Required parameter(s) attorneyList is/are absent.',
-      success: false,
-    };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(applicationContext, request);
-    expect(applicationContext.res.body).toEqual(expectedResponse);
-    expect(applicationContext.res.statusCode).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
   test('returns bad request 400 when a role is not passed in the request', async () => {
     const applicationContext = await applicationContextCreator(functionContext);
     const request = {
