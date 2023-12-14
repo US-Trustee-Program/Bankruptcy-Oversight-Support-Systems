@@ -10,8 +10,10 @@ export interface ModalToggleButtonProps {
   buttonState?: UswdsButtonState;
   disabled?: boolean;
   toggleAction: 'open' | 'close';
+  toggleProps?: object;
   modalId: string;
   modalRef: React.RefObject<ModalRefType>;
+  title?: string;
 }
 
 function ToggleModalButtonComponent(
@@ -22,10 +24,12 @@ function ToggleModalButtonComponent(
     buttonState,
     disabled,
     toggleAction,
+    toggleProps,
     modalId,
     onClick,
     className,
     modalRef,
+    title,
   }: ModalToggleButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
   ref: React.Ref<ToggleModalButtonRef>,
 ) {
@@ -56,9 +60,9 @@ function ToggleModalButtonComponent(
       onClick(e);
     }
     if (toggleAction === 'open') {
-      modalRef.current?.show();
+      modalRef.current?.show(toggleProps);
     } else {
-      modalRef.current?.hide();
+      modalRef.current?.hide(toggleProps);
     }
   }
 
@@ -75,6 +79,7 @@ function ToggleModalButtonComponent(
       data-testid={`toggle-modal-button${dataTestidSuffix}`}
       aria-disabled={isDisabled}
       disabled={isDisabled}
+      title={title}
       {...dataProp}
     >
       {children}

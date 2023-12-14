@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export interface CheckboxProps {
   id: string;
@@ -12,6 +12,7 @@ export interface CheckboxProps {
 
 export interface CheckboxRef {
   setChecked: (value: boolean) => void;
+  getLabel: () => string;
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
@@ -35,11 +36,27 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     }
   };
 
+  function getLabel() {
+    return props.label ?? '';
+  }
+
   function setChecked(value: boolean) {
     setIsChecked(value);
   }
 
-  useImperativeHandle(ref, () => ({ setChecked }), []);
+  useEffect(() => {
+    // initializing isChecked above as a default doesn't work for some reason.
+    if (props.checked) setIsChecked(true);
+  }, [props.checked]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      setChecked,
+      getLabel,
+    }),
+    [],
+  );
   const checkboxTestId = props.id ? `checkbox-${props.id}` : 'checkbox';
   const labelTestId = props.id ? `checkbox-label-${props.id}` : 'checkbox-label';
   return (
