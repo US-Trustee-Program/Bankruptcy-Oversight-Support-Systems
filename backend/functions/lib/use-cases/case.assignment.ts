@@ -10,6 +10,7 @@ import log from '../adapters/services/logger.service';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
+
 export class CaseAssignmentUseCase {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
 

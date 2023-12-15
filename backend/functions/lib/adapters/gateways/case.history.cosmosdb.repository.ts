@@ -25,7 +25,7 @@ export class CaseHistoryCosmosDbRepository implements CaseHistoryGateway {
     caseId: string,
   ): Promise<CaseAssignmentHistory[]> {
     const query =
-      'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT_HISTORY" AND c.caseId = @caseId';
+      'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT_HISTORY" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
     const querySpec = {
       query,
       parameters: [

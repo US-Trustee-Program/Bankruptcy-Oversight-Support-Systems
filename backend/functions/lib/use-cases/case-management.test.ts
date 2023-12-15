@@ -37,7 +37,7 @@ const assignments: CaseAssignment[] = [
 const caseIdWithAssignments = '081-23-01176';
 jest.mock('./case.assignment', () => {
   return {
-    CaseAssignment: jest.fn().mockImplementation(() => {
+    CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
         findAssignmentsByCaseId: (caseId: string) => {
           if (caseId === caseIdWithAssignments) {

@@ -6,6 +6,8 @@ export function mapNavState(path: string) {
   switch (cleanPath[cleanPath.length - 1]) {
     case 'court-docket':
       return NavState.COURT_DOCKET;
+    case 'audit-history':
+      return NavState.AUDIT_HISTORY;
     default:
       return NavState.BASIC_INFO;
   }
@@ -20,6 +22,7 @@ export interface CaseDetailNavigationProps {
 export enum NavState {
   BASIC_INFO,
   COURT_DOCKET,
+  AUDIT_HISTORY,
 }
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
@@ -57,6 +60,18 @@ function CaseDetailNavigationComponent({
               data-testid="court-docket-link"
             >
               Court Docket
+            </Link>
+          </li>
+          <li className="usa-sidenav__item">
+            <Link
+              className={setCurrentNav(activeNav, NavState.AUDIT_HISTORY)}
+              to={`/case-detail/${caseId}/audit-history`}
+              onClick={() => {
+                return setActiveNav(NavState.AUDIT_HISTORY);
+              }}
+              data-testid="audit-history-link"
+            >
+              Assignment History
             </Link>
           </li>
         </ul>
