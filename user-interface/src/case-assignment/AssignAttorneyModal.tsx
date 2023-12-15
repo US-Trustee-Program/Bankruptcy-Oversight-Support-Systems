@@ -38,6 +38,7 @@ export interface AttorneyListResponseData extends ResponseData {
 export interface CallBackProps {
   bCase: Chapter15Type | undefined;
   selectedAttorneyList: string[];
+  previouslySelectedList: string[];
   status: 'success' | 'error';
   apiResult: object;
 }
@@ -70,6 +71,7 @@ function AssignAttorneyModalComponent(
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
 
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
+  const [previouslySelectedList, setPreviouslySelectedList] = useState<string[]>([]);
 
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   for (let i = 0; i < props.attorneyList.length; i++) {
@@ -95,6 +97,7 @@ function AssignAttorneyModalComponent(
         setBCase(showProps.bCase);
         if (showProps.bCase.assignments) {
           setCheckListValues([...showProps.bCase.assignments]);
+          setPreviouslySelectedList([...showProps.bCase.assignments]);
           const assignments = showProps.bCase.assignments;
           checkboxListRefs.forEach((cbox) => {
             const label = cbox.current?.getLabel();
@@ -174,16 +177,18 @@ function AssignAttorneyModalComponent(
     })
       .then((result) => {
         props.callBack({
-          bCase: bCase,
+          bCase,
           selectedAttorneyList: finalAttorneyList,
+          previouslySelectedList,
           status: 'success',
           apiResult: result,
         });
       })
       .catch((e: Error) => {
         props.callBack({
-          bCase: bCase,
+          bCase,
           selectedAttorneyList: finalAttorneyList,
+          previouslySelectedList,
           status: 'error',
           apiResult: e,
         });
