@@ -1,9 +1,10 @@
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { CaseAssignment, CaseAssignmentHistory } from '../adapters/types/case.assignment';
 
 export interface CaseAssignmentRepositoryInterface {
-  createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string>;
-  updateAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string>;
-  getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment>;
-  findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]>;
-  findAssignmentsByAssigneeName(attorney: string): Promise<CaseAttorneyAssignment[]>;
+  createAssignment(caseAssignment: CaseAssignment): Promise<string>;
+  updateAssignment(caseAssignment: CaseAssignment): Promise<string>;
+  getAssignment(assignmentId: string): Promise<CaseAssignment>;
+  findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]>;
+  findAssignmentsByAssigneeName(attorney: string): Promise<CaseAssignment[]>;
+  createAssignmentHistory(history: CaseAssignmentHistory): Promise<string>;
 }

@@ -1,8 +1,8 @@
-import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignmentCosmosDbRepository } from './case.assignment.cosmosdb.repository';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { randomUUID } from 'crypto';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
+import { CaseAssignment } from '../types/case.assignment';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -21,13 +21,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should create two assignments and find both of them', async () => {
     const caseId = randomUUID();
 
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment1: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment2: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -58,7 +60,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should update existing assignment record', async () => {
     const caseId = randomUUID();
 
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -78,7 +81,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should throw a permissions exception when user doesnt have permission to update an assignment', async () => {
     const caseId = randomUUID();
 
-    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const existingCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -87,7 +91,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     await repository.createAssignment(existingCaseAttorneyAssignment);
 
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: 'throw-permissions-error',
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -102,13 +107,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should find only assignments for the requested case', async () => {
     const caseIdOne = randomUUID();
     const caseIdTwo = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment1: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment2: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -144,7 +151,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: 'throw-permissions-error',
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -177,13 +185,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('should find all assignments for a given attorney', async () => {
     const caseIdOne = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment1: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment2: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -191,13 +201,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
 
     const caseIdTwo = randomUUID();
-    const testCaseAttorneyAssignment3: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment3: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment4: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment4: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -205,13 +217,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
 
     const caseIdThree = randomUUID();
-    const testCaseAttorneyAssignment5: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment5: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdThree,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment6: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment6: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdThree,
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -299,7 +313,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('When creating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
     const caseId = 'throw-unknown-error';
 
-    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const existingCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole.TrialAttorney,
@@ -312,7 +327,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When updating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       id: 'some-id',
       caseId: 'throw-unknown-error',
       name: benMatlock,

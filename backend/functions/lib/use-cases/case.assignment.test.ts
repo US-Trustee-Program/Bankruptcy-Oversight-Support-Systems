@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
-import { CaseAssignment } from './case.assignment';
+import { CaseAssignmentUseCase } from './case.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 
 const functionContext = require('azure-function-context-mock');
@@ -54,7 +54,7 @@ describe('Case assignment tests', () => {
       ];
       findAssignmentsByCaseId.mockResolvedValue(assignments);
 
-      const assignmentUseCase = new CaseAssignment(applicationContext);
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
 
       const actualAssignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
 
@@ -70,7 +70,7 @@ describe('Case assignment tests', () => {
     const role = CaseAssignmentRole.TrialAttorney;
 
     test('should create new case assignments when none exist on the case', async () => {
-      const assignmentUseCase = new CaseAssignment(applicationContext);
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
 
       findAssignmentsByCaseId.mockResolvedValue([]);
 
@@ -105,7 +105,7 @@ describe('Case assignment tests', () => {
     });
 
     test('should add new case assignments on a case with existing assignments', async () => {
-      const assignmentUseCase = new CaseAssignment(applicationContext);
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
       const assignmentOne = {
@@ -141,7 +141,7 @@ describe('Case assignment tests', () => {
     });
 
     test('should remove assignments', async () => {
-      const assignmentUseCase = new CaseAssignment(applicationContext);
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       const assignments = [];
 
       const assignmentOne = {

@@ -1,7 +1,7 @@
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ForbiddenError } from '../common-errors/forbidden-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { UnknownError } from '../common-errors/unknown-error';
+import { CaseAssignment } from '../adapters/types/case.assignment';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
@@ -15,7 +15,7 @@ interface QueryOptions {
 }
 
 export default class FakeCosmosClientHumble {
-  private caseAssignments: CaseAttorneyAssignment[] = [];
+  private caseAssignments: CaseAssignment[] = [];
   private itemQueryParams: QueryParams[] = [];
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -25,7 +25,7 @@ export default class FakeCosmosClientHumble {
       container: (containerName: string) => {
         return {
           items: {
-            create: (assignment: CaseAttorneyAssignment) => {
+            create: (assignment: CaseAssignment) => {
               if (assignment.caseId === 'throw-permissions-error') {
                 throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
               }
@@ -47,7 +47,7 @@ export default class FakeCosmosClientHumble {
                   if (this.itemQueryParams[0].value === 'throw auth error') {
                     throw new AggregateAuthenticationError([], 'forbidden');
                   }
-                  const result: CaseAttorneyAssignment[] = [];
+                  const result: CaseAssignment[] = [];
                   query.parameters.forEach((params) => {
                     this.caseAssignments.find((caseItem) => {
                       if (caseItem.caseId === params.value) {
@@ -65,7 +65,7 @@ export default class FakeCosmosClientHumble {
           },
           item: (id: string) => {
             return {
-              replace: (assignment: CaseAttorneyAssignment) => {
+              replace: (assignment: CaseAssignment) => {
                 if (assignment.caseId === 'throw-permissions-error') {
                   throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
                 }

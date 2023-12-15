@@ -14,6 +14,9 @@ import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
+import { CaseHistoryUseCase } from './use-cases/case-history/case-history';
+import { CaseHistoryCosmosDbRepository } from './adapters/gateways/case.history.cosmosdb.repository';
+import { MockCaseHistoryCosmosDbRepository } from './adapters/gateways/case.history.mock.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -55,6 +58,13 @@ export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUse
     ? new MockCaseDocketGateway()
     : new DxtrCaseDocketGateway();
   return new CaseDocketUseCase(gateway);
+};
+
+export const getCaseHistoryUseCase = (context: ApplicationContext): CaseHistoryUseCase => {
+  const gateway = context.config.get('dbMock')
+    ? new MockCaseHistoryCosmosDbRepository()
+    : new CaseHistoryCosmosDbRepository(context);
+  return new CaseHistoryUseCase(gateway);
 };
 
 export const getSqlConnection = (databaseConfig: IDbConfig) => {

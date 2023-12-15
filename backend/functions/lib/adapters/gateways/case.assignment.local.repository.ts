@@ -1,13 +1,14 @@
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
-import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { ApplicationContext } from '../types/basic';
 import log from '../services/logger.service';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { CaseAssignment, CaseAssignmentHistory } from '../types/case.assignment';
 
 const MODULE_NAME = 'LOCAL-ASSIGNMENT-REPOSITORY';
 
 export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryInterface {
-  private caseAttorneyAssignments: CaseAttorneyAssignment[] = [];
+  private caseAttorneyAssignments: CaseAssignment[] = [];
+  private caseAttorneyAssignmentHistory: CaseAssignmentHistory[] = [];
   private nextUnusedId = 1;
   private applicationContext: ApplicationContext;
 
@@ -15,7 +16,7 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     this.applicationContext = applicationContext;
   }
 
-  public async createAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
+  public async createAssignment(caseAssignment: CaseAssignment): Promise<string> {
     const assignmentId = this.nextUnusedId;
     caseAssignment.id = assignmentId.toString();
     this.caseAttorneyAssignments.push(caseAssignment);
@@ -24,7 +25,15 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return assignmentId.toString();
   }
 
-  public async updateAssignment(caseAssignment: CaseAttorneyAssignment): Promise<string> {
+  public async createAssignmentHistory(history: CaseAssignmentHistory): Promise<string> {
+    const assignmentId = this.nextUnusedId;
+    history.id = assignmentId.toString();
+    this.caseAttorneyAssignmentHistory.push(history);
+    ++this.nextUnusedId;
+    return assignmentId.toString();
+  }
+
+  public async updateAssignment(caseAssignment: CaseAssignment): Promise<string> {
     const index = this.caseAttorneyAssignments.findIndex(
       (assignment) => assignment.id === caseAssignment.id,
     );
@@ -42,15 +51,15 @@ export class CaseAssignmentLocalRepository implements CaseAssignmentRepositoryIn
     return caseAssignment.id;
   }
 
-  public async getAssignment(assignmentId: string): Promise<CaseAttorneyAssignment> {
+  public async getAssignment(assignmentId: string): Promise<CaseAssignment> {
     return this.caseAttorneyAssignments.find((assignment) => assignment.id === assignmentId);
   }
 
-  public async findAssignmentsByCaseId(caseId: string): Promise<CaseAttorneyAssignment[]> {
+  public async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
     return this.caseAttorneyAssignments.filter((assignment) => assignment.caseId === caseId);
   }
 
-  public async findAssignmentsByAssigneeName(name: string): Promise<CaseAttorneyAssignment[]> {
+  public async findAssignmentsByAssigneeName(name: string): Promise<CaseAssignment[]> {
     return Promise.resolve(
       this.caseAttorneyAssignments.filter((a) => {
         return a.name === name;
