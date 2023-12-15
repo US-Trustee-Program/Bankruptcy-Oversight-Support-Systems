@@ -2,8 +2,8 @@ import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignm
 import { CaseAssignmentLocalRepository } from './case.assignment.local.repository';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
-import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { CaseAssignment } from '../types/case.assignment';
 const context = require('azure-function-context-mock');
 
 describe('Case Assignment Repository Tests', () => {
@@ -11,7 +11,8 @@ describe('Case Assignment Repository Tests', () => {
     const applicationContext = await applicationContextCreator(context);
     const caseId = '123';
     const currentDate = new Date().toISOString();
-    const testCaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: 'Susan Arbeit',
       role: CaseAssignmentRole['TrialAttorney'],
@@ -33,7 +34,8 @@ describe('Case Assignment Repository Tests', () => {
 
     const caseId = '123';
     const currentDate = new Date().toISOString();
-    const assignementToCreate = {
+    const assignementToCreate: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: 'Susan Arbeit',
       role: CaseAssignmentRole['TrialAttorney'],
@@ -46,7 +48,7 @@ describe('Case Assignment Repository Tests', () => {
     expect(created[0]).toEqual(assignementToCreate);
 
     // Then update the record.
-    const assignmentToUpdate: CaseAttorneyAssignment = {
+    const assignmentToUpdate: CaseAssignment = {
       ...assignementToCreate,
       unassignedOn: new Date().toISOString(),
     };
@@ -63,7 +65,8 @@ describe('Case Assignment Repository Tests', () => {
 
     const caseId = '123';
     const currentDate = new Date().toISOString();
-    const assignment = {
+    const assignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: 'Susan Arbeit',
       role: CaseAssignmentRole['TrialAttorney'],
@@ -91,7 +94,8 @@ describe('Case Assignment Repository Tests', () => {
 
     const caseId = '123';
     const currentDate = new Date().toISOString();
-    const assignment = {
+    const assignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: 'Susan Arbeit',
       role: CaseAssignmentRole['TrialAttorney'],
@@ -115,7 +119,8 @@ describe('Case Assignment Repository Tests', () => {
 
     const caseId = '123';
     const currentDate = new Date().toISOString();
-    const assignment = {
+    const assignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: 'Susan Arbeit',
       role: CaseAssignmentRole['TrialAttorney'],

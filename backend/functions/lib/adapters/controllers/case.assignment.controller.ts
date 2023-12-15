@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../types/basic';
-import { CaseAssignment } from '../../use-cases/case.assignment';
+import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import log from '../services/logger.service';
 import { AssignmentError } from '../../use-cases/assignment.exception';
@@ -27,7 +27,7 @@ export class CaseAssignmentController {
   }): Promise<AttorneyAssignmentResponseInterface> {
     this.validateRequestParameters(params);
     try {
-      const assignmentUseCase = new CaseAssignment(this.applicationContext);
+      const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       return assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
         params.caseId,
