@@ -118,7 +118,13 @@ export const CaseAssignment = () => {
       });
   };
 
-  function updateCase({ bCase, selectedAttorneyList, status, apiResult }: CallBackProps) {
+  function updateCase({
+    bCase,
+    selectedAttorneyList,
+    previouslySelectedList,
+    status,
+    apiResult,
+  }: CallBackProps) {
     if (status === 'error') {
       setAssignmentAlert({
         message: (apiResult as Error).message,
@@ -127,6 +133,23 @@ export const CaseAssignment = () => {
       });
       alertRef.current?.show();
     } else if (bCase) {
+      const messageArr = [];
+      const addedAssignments = selectedAttorneyList.filter(
+        (el) => !previouslySelectedList.includes(el),
+      );
+      const removedAssignments = previouslySelectedList.filter(
+        (el) => !selectedAttorneyList.includes(el),
+      );
+
+      if (addedAssignments.length > 0) {
+        messageArr.push(`${addedAssignments.map((attorney) => attorney).join(', ')} assigned to`);
+      }
+      if (removedAssignments.length > 0) {
+        messageArr.push(
+          `${removedAssignments.map((attorney) => attorney).join(', ')} unassigned from`,
+        );
+      }
+
       bCase.assignments = selectedAttorneyList;
       setInTableTransferMode(bCase.caseId);
 
@@ -146,11 +169,8 @@ export const CaseAssignment = () => {
       tempAssignedCaseList.sort(sortByDate).sort(sortByCaseId);
       setAssignedCaseList(tempAssignedCaseList);
 
-      const alertPrefix =
-        selectedAttorneyList.length > 0
-          ? `${selectedAttorneyList.map((attorney) => attorney).join(', ')} assigned to case`
-          : `Unassigned attorneys from case`;
-      const alertMessage = alertPrefix + ` ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}`;
+      const alertMessage =
+        messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
 
       setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
       alertRef.current?.show();
