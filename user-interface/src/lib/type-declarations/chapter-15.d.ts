@@ -47,6 +47,34 @@ interface CaseDetailType {
   debtorTypeLabel: string;
   petitionLabel: string;
 }
+export interface CaseAudit {
+  id?: string;
+  documentType: 'ASSIGNMENT';
+  caseId: string;
+  name: string;
+  role: string;
+  assignedOn: string;
+  unassignedOn?: string;
+}
+
+export interface CaseStaffAssignment {
+  id?: string;
+  documentType: 'ASSIGNMENT';
+  caseId: string;
+  name: string;
+  role: string;
+  assignedOn: string;
+  unassignedOn?: string;
+}
+
+export interface CaseAuditHistory {
+  id?: string;
+  documentType: 'ASSIGNMENT_HISTORY';
+  caseId: string;
+  occurredAtTimestamp: string;
+  previousAssignments: CaseStaffAssignment[];
+  newAssignments: CaseStaffAssignment[];
+}
 
 export interface CaseDocketSummaryFacet {
   text: string;
@@ -84,4 +112,8 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
     caseDetails: CaseDetailType;
   };
+}
+
+export interface CaseAuditHistoryResponseData extends ResponseData {
+  body: CaseAuditHistory[];
 }

@@ -4,6 +4,8 @@ import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom'
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
+  CaseAuditHistory,
+  CaseAuditHistoryResponseData,
   CaseDetailType,
   CaseDocket,
   CaseDocketEntry,
@@ -19,6 +21,7 @@ import IconInput from '@/lib/components/IconInput';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -143,6 +146,7 @@ function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEnt
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
   caseDocketEntries?: CaseDocketEntry[];
+  caseAuditHistory?: CaseAuditHistory[];
 }
 
 function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
@@ -168,12 +172,14 @@ export default function CaseDetail(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
+  const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
+  const [caseAuditHistory, setCaseAuditHistory] = useState<CaseAuditHistory[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
@@ -219,6 +225,23 @@ export default function CaseDetail(props: CaseDetailProps) {
       .catch(() => {
         setCaseDocketEntries([]);
         setIsDocketLoading(false);
+      });
+  }
+
+  async function fetchCaseAuditHistory() {
+    setIsAuditHistoryLoading(true);
+    api
+      .get(`/cases/${caseId}/history`, {})
+      .then((data) => {
+        const response = data as CaseAuditHistoryResponseData;
+        if (response) {
+          setCaseAuditHistory(response.body);
+          setIsAuditHistoryLoading(false);
+        }
+      })
+      .catch(() => {
+        setCaseAuditHistory([]);
+        setIsAuditHistoryLoading(false);
       });
   }
 
@@ -285,6 +308,14 @@ export default function CaseDetail(props: CaseDetailProps) {
       setCaseDocketSummaryFacets(facets);
     } else {
       fetchCaseDocketEntries();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (props.caseAuditHistory) {
+      setCaseAuditHistory(props.caseAuditHistory);
+    } else {
+      fetchCaseAuditHistory();
     }
   }, []);
 
@@ -474,6 +505,15 @@ export default function CaseDetail(props: CaseDetailProps) {
                           searchString={searchInDocketText}
                           hasDocketEntries={!!caseDocketEntries && caseDocketEntries?.length > 1}
                           isDocketLoading={isDocketLoading}
+                        />
+                      }
+                    />
+                    <Route
+                      path="audit-history"
+                      element={
+                        <CaseDetailAuditHistory
+                          caseHistory={caseAuditHistory}
+                          isAuditHistoryLoading={isAuditHistoryLoading}
                         />
                       }
                     />

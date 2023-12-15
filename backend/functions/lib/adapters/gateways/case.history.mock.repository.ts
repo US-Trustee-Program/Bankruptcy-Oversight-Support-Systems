@@ -8,6 +8,7 @@ import { GatewayHelper } from './gateway-helper';
 const MODULENAME = 'CASE-HISTORY-MOCK-GATEWAY';
 
 export const NORMAL_CASE_ID = '111-11-11111';
+export const ERROR_CASE_ID = '000-00-00000';
 
 export class MockCaseHistoryCosmosDbRepository implements CaseHistoryGateway {
   async getCaseAssignmentHistory(
@@ -15,9 +16,9 @@ export class MockCaseHistoryCosmosDbRepository implements CaseHistoryGateway {
     caseId: string,
   ): Promise<CaseAssignmentHistory[]> {
     const gatewayHelper = new GatewayHelper();
-    if (caseId === NORMAL_CASE_ID) {
-      return Promise.resolve(gatewayHelper.getCaseHistoryMockExtract());
+    if (caseId === ERROR_CASE_ID) {
+      return Promise.reject(new NotFoundError(MODULENAME, { data: { caseId } }));
     }
-    return Promise.reject(new NotFoundError(MODULENAME, { data: { caseId } }));
+    return Promise.resolve(gatewayHelper.getCaseHistoryMockExtract());
   }
 }
