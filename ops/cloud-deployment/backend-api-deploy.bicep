@@ -38,6 +38,9 @@ var planTypeToSkuMap = {
 @description('Azure functions app name')
 param functionName string
 
+@description('Azure functions app deployment slot name')
+param functionSlotName string = 'staging'
+
 @description('Existing Private DNS Zone used for application')
 param privateDnsZoneName string
 
@@ -82,6 +85,11 @@ param functionsVersion string = '~4'
 @maxLength(24)
 param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, functionName)}'
 
+@description('Storage account name. Default creates unique name from resource group id and stack name')
+@minLength(3)
+@maxLength(24)
+param slotFunctionsStorageName string = 'slotfunc${uniqueString(resourceGroup().id, functionName)}'
+
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
 
@@ -109,6 +117,9 @@ param allowVeracodeScan bool = false
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
+
+@description('boolean to determine creation of deployment slot for the functionapp')
+param deploySlot bool
 
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
@@ -205,6 +216,20 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateLinkServiceId: functionApp.id
   }
 }
+module slotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deploySlot) {
+  name: '${functionName}-${functionSlotName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites'
+    stackName: '${functionName}-${functionSlotName}'
+    location: location
+    virtualNetworkName: virtualNetworkName
+    privateDnsZoneName: privateDnsZoneName
+    privateEndpointSubnetName: privateEndpointSubnetName
+    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
+    privateLinkServiceId: functionAppSlot.id
+  }
+}
 
 /*
   Storage resource for Azure functions
@@ -214,6 +239,21 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   location: location
   tags: {
     'Stack Name': functionName
+  }
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'Storage'
+  properties: {
+    supportsHttpsTrafficOnly: true
+    defaultToOAuthAuthentication: true
+  }
+}
+resource slotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = if(deploySlot) {
+  name: slotFunctionsStorageName
+  location: location
+  tags: {
+    'Stack Name': '${functionName}-${functionSlotName}'
   }
   sku: {
     name: 'Standard_LRS'
@@ -246,6 +286,17 @@ module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
   dependsOn: [
     appInsights
     functionApp
+  ]
+}
+module slotDiagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = if (deploySlot) {
+  name: '${functionName}-${functionSlotName}-diagnostic-settings-module'
+  params: {
+    functionAppName: '${functionName}/${functionSlotName}'
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+    functionAppSlot
   ]
 }
 module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
@@ -307,7 +358,27 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     sqlIdentity
   ]
 }
-
+resource functionAppSlot 'Microsoft.Web/sites/slots@2022-09-01' existing = if(deploySlot) {
+  parent: functionApp
+  name: functionSlotName
+  // location: location
+  // kind: 'functionapp,linux'
+  // identity: {
+  //   type: 'UserAssigned'
+  //   userAssignedIdentities: userAssignedIdentities
+  // }
+  // properties: {
+  //   serverFarmId: servicePlan.id
+  //   enabled: true
+  //   httpsOnly: true
+  //   virtualNetworkSubnetId: subnet.outputs.subnetId
+  //   keyVaultReferenceIdentity: appConfigIdentity.id
+  // }
+  // dependsOn: [
+  //   appConfigIdentity
+  //   sqlIdentity
+  // ]
+}
 var applicationSettings = concat([
     {
       name: 'AzureWebJobsStorage'
@@ -325,6 +396,23 @@ var applicationSettings = concat([
   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
   createApplicationInsights ? [ { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString } ] : []
 )
+// var slotApplicationSettings = concat([
+//     {
+//       name: 'AzureWebJobsStorage'
+//       value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+//     }
+//     {
+//       name: 'FUNCTIONS_EXTENSION_VERSION'
+//       value: functionsVersion
+//     }
+//     {
+//       name: 'FUNCTIONS_WORKER_RUNTIME'
+//       value: functionsRuntime
+//     }
+//   ],
+//   !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
+//   createApplicationInsights ? [ { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString } ] : []
+// )
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
       action: 'Deny'
@@ -369,7 +457,36 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     appSettings: applicationSettings
   }
 }
-
+// resource functionAppSlotConfig 'Microsoft.Web/sites/slots/config@2022-09-01' = if (deploySlot) {
+//   parent: functionAppSlot
+//   name: 'web'
+//   properties: {
+//     cors: {
+//       allowedOrigins: corsAllowOrigins
+//     }
+//     numberOfWorkers: 1
+//     alwaysOn: true
+//     http20Enabled: true
+//     functionAppScaleLimit: 0
+//     minimumElasticInstanceCount: 0
+//     publicNetworkAccess: 'Enabled'
+//     ipSecurityRestrictions: ipSecurityRestrictionsRules
+//     ipSecurityRestrictionsDefaultAction: 'Deny'
+//     scmIpSecurityRestrictions: [
+//       {
+//         ipAddress: 'Any'
+//         action: 'Deny'
+//         priority: 2147483647
+//         name: 'Deny all'
+//         description: 'Deny all access'
+//       }
+//     ]
+//     scmIpSecurityRestrictionsDefaultAction: 'Deny'
+//     scmIpSecurityRestrictionsUseMain: false
+//     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+//     appSettings: slotApplicationSettings
+//   }
+// }
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
 module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)

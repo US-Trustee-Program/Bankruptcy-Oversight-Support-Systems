@@ -449,9 +449,6 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
 
-      - name: Deploy WebApp slot
-        if: ${{ vars.ENVIRONMENT  == 'Main-Gov' }}
-        run: az webapp deployment slot create --name ${{ needs.build-info.outputs.webappName }} --resource-group ${{ secrets.AZ_APP_RG }} --slot staging --configuration-source ${{ needs.build-info.outputs.webappName }}
   deploy-service:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
@@ -509,9 +506,6 @@ jobs:
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
-      - name: Deploy WebApp slot
-        if: ${{ vars.ENVIRONMENT  == 'Main-Gov' }}
-        run: az webapp deployment slot create --name ${{ needs.build-info.outputs.apiName }} --resource-group ${{ secrets.AZ_APP_RG }} --slot staging --configuration-source ${{ needs.build-info.outputs.apiName }}
   smoke-test-application:
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]

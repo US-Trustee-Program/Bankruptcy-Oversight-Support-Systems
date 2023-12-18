@@ -40,6 +40,9 @@ var planTypeToSkuMap = {
 @description('Webapp application name')
 param webappName string
 
+@description('Webapp application deployment slot name')
+param webappSlotName string = 'staging'
+
 @description('Private DNS Zone used for application')
 param privateDnsZoneName string
 
@@ -110,6 +113,9 @@ param allowVeracodeScan bool = false
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
+@description('boolean to determine creation of deployment slot for the webapp')
+param deploySlot bool = false
+
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
@@ -172,6 +178,20 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateLinkServiceId: webapp.id
   }
 }
+module slotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if (deploySlot) {
+  name: '${webappName}-${webappSlotName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites'
+    stackName: '${webappName}-${webappSlotName}'
+    location: location
+    virtualNetworkName: virtualNetworkName
+    privateDnsZoneName: privateDnsZoneName
+    privateEndpointSubnetName: webappPrivateEndpointSubnetName
+    privateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
+    privateLinkServiceId: webappSlot.id
+  }
+}
 
 module appInsights './lib/app-insights/app-insights.bicep' = if (deployAppInsights) {
   name: '${webappName}-application-insights-module'
@@ -183,7 +203,6 @@ module appInsights './lib/app-insights/app-insights.bicep' = if (deployAppInsigh
     workspaceResourceId: analyticsWorkspaceId
   }
 }
-
 module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${webappName}-healthcheck-alert-rule-module'
   params: {
@@ -226,6 +245,17 @@ module diagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep'
     webapp
   ]
 }
+module slotDiagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep' = if (deploySlot) {
+  name: '${webappName}-${webappSlotName}-diagnostic-settings-module'
+  params: {
+    webappName: '${webappName}/${webappSlotName}'
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+    webapp
+  ]
+}
 
 /*
   Create webapp
@@ -240,6 +270,18 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
+}
+resource webappSlot 'Microsoft.Web/sites/slots@2022-09-01' existing = if (deploySlot) {
+  parent: webapp
+  name: webappSlotName
+  // location: location
+  // kind: 'app'
+  // properties: {
+  //   serverFarmId: serverFarm.id
+  //   enabled: true
+  //   httpsOnly: true
+  //   virtualNetworkSubnetId: webappSubnet.outputs.subnetId
+  // }
 }
 var applicationSettings = concat([
     {
@@ -270,6 +312,35 @@ var applicationSettings = concat([
     }
   ] : []
 )
+// var slotApplicationSettings = concat([
+//     {
+//       name: 'CSP_API_SERVER_HOST'
+//       value: targetApiServerHost
+//     }
+//     {
+//       name: 'CSP_USTP_ISSUE_COLLECTOR_HASH'
+//       value: ustpIssueCollectorHash
+//     }
+//     {
+//       name: 'CSP_CAMS_REACT_SELECT_HASH'
+//       value: camsReactSelectHash
+//     }
+//     {
+//       name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
+//       value: '$uri'
+//     }
+//   ],
+//   deployAppInsights ? [
+//     {
+//       name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+//       value: '~2'
+//     }
+//     {
+//       name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+//       value: appInsights.outputs.connectionString
+//     }
+//   ] : []
+// )
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
       action: 'Deny'
@@ -325,6 +396,47 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
       appCommandLine: appCommandLine
     }, isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {})
 }
+// resource webappSlotConfig 'Microsoft.Web/sites/slots/config@2022-09-01' = if (deploySlot) {
+//   parent: webappSlot
+//   name: 'web'
+//   properties: union({
+//       appSettings: applicationSettings
+//       numberOfWorkers: 1
+//       alwaysOn: true
+//       http20Enabled: true
+//       minimumElasticInstanceCount: 0
+//       publicNetworkAccess: 'Enabled'
+//       ipSecurityRestrictions: ipSecurityRestrictionsRules
+//       ipSecurityRestrictionsDefaultAction: 'Deny'
+//       scmIpSecurityRestrictions: [
+//         {
+//           ipAddress: 'Any'
+//           action: 'Deny'
+//           priority: 2147483647
+//           name: 'Deny all'
+//           description: 'Deny all access'
+//         }
+//       ]
+//       scmIpSecurityRestrictionsDefaultAction: 'Deny'
+//       scmIpSecurityRestrictionsUseMain: false
+//       defaultDocuments: [
+//         'index.html'
+//       ]
+//       httpLoggingEnabled: true
+//       logsDirectorySizeLimit: 100
+//       use32BitWorkerProcess: true
+//       managedPipelineMode: 'Integrated'
+//       virtualApplications: [
+//         {
+//           virtualPath: '/'
+//           physicalPath: 'site\\wwwroot'
+//           preloadEnabled: true
+//         }
+//       ]
+//       linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
+//       appCommandLine: appCommandLine
+//     }, isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {})
+// }
 
 output webappName string = webapp.name
 output webappId string = webapp.id

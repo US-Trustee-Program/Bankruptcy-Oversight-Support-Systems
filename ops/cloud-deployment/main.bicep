@@ -65,6 +65,9 @@ param analyticsWorkspaceId string = ''
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
+@description('boolean to determine creation and configuration of webapp and functionapp slots')
+param deploySlot bool = true
+
 @description('boolean to determine creation of Action Groups')
 param createActionGroup bool = false
 
@@ -144,6 +147,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
     targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix}'
     ustpIssueCollectorHash: ustpIssueCollectorHash
     camsReactSelectHash: camsReactSelectHash
+    deploySlot: deploySlot
   }
 }
 
@@ -188,6 +192,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams
     actionGroupResourceGroupName: analyticsResourceGroupName
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    deploySlot: deploySlot
   }
   dependsOn: [
     ustpWebapp
