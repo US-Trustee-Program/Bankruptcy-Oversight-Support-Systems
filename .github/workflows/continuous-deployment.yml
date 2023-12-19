@@ -369,6 +369,15 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpNetworkEncrypted }}
 
+      - name: Create Slot Resources
+        if: ((github.ref == 'refs/heads/main') || true)
+        run: |
+          ./ops/scripts/pipeline/az-slot-resource-deploy.sh \
+            --webappName ${{ needs.build-info.outputs.webappName }} \
+            --apiName ${{ needs.build-info.outputs.apiName }} \
+            -g ${{ steps.rgApp.outputs.out }} \
+            --slot "staging"
+
       - name: Create Azure resource groups
         id: azure-resource-group
         run: |

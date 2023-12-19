@@ -86,11 +86,12 @@ ruleName="agent-${app_name:0:26}" # rule name has a 32 character limit
 
 function on_exit() {
     # always try to remove temporary access
+    config_cmd="az functionapp config access-restriction remove -g ${app_rg} -n ${app_name} --slot ${slot_name} --rule-name ${ruleName} --scm-site true 1>/dev/null"
     if [ ${deploy_slot} == true ]; then
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
-
+    config_cmd="${config_cmd} --slot ${slot_name}"
+    eval "${config_cmd}"
     else
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
+    eval "${config_cmd}"
     fi
 }
 trap on_exit EXIT
@@ -146,8 +147,11 @@ fi
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
-    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --settings ${app_settings} ${decorated_kv_settings} --query "[].name" --output tsv
-    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --settings ${app_settings} ${decorated_kv_settings} --query "[].name" --output tsv
+    app_settings_cmd="az functionapp config appsettings set -g ${app_rg} -n ${app_name} --settings ${app_settings} ${decorated_kv_settings} --query [].name --output tsv"
+    if [ ${deploy_slot} == true ]; then
+        app_settings_cmd="${app_settings_cmd} --slot ${slot_name}"
+        eval "${app_settings_cmd}"
+    else
+        eval "${app_settings_cmd}"
+    fi
 fi
