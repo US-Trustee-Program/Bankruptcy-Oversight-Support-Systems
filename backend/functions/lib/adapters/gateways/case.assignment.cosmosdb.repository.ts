@@ -18,8 +18,8 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   private containerName = 'assignments';
   private cosmosConfig: CosmosConfig;
 
-  constructor(applicationContext: ApplicationContext, testClient = false) {
-    this.cosmosDbClient = getCosmosDbClient(applicationContext, testClient);
+  constructor(applicationContext: ApplicationContext) {
+    this.cosmosDbClient = getCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
     this.applicationContext = applicationContext;
   }
@@ -114,6 +114,26 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     throw new Error('Method not implemented.');
   }
 
+  async getAssignmentHistory(caseId: string): Promise<CaseAssignmentHistory[]> {
+    const query =
+      'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT_HISTORY" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
+    const querySpec = {
+      query,
+      parameters: [
+        {
+          name: '@caseId',
+          value: caseId,
+        },
+        {
+          name: '@documentType',
+          value: 'ASSIGNMENT_HISTORY',
+        },
+      ],
+    };
+    const response = await this.queryData(querySpec);
+    return response as CaseAssignmentHistory[];
+  }
+
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
     const query =
       'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT" AND c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';
@@ -124,10 +144,14 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
           name: '@caseId',
           value: caseId,
         },
+        {
+          name: '@documentType',
+          value: 'ASSIGNMENT',
+        },
       ],
     };
     const response = await this.queryData(querySpec);
-    return response;
+    return response as CaseAssignment[];
   }
 
   async findAssignmentsByAssigneeName(name: string): Promise<CaseAssignment[]> {
@@ -138,12 +162,16 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
           name: '@name',
           value: name,
         },
+        {
+          name: '@documentType',
+          value: 'ASSIGNMENT',
+        },
       ],
     };
-    return await this.queryData(querySpec);
+    return (await this.queryData(querySpec)) as CaseAssignment[];
   }
 
-  private async queryData(querySpec: object): Promise<CaseAssignment[]> {
+  private async queryData(querySpec: object): Promise<CaseAssignment[] | CaseAssignmentHistory[]> {
     try {
       const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
@@ -158,6 +186,8 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
           message: 'Failed to authenticate to Azure',
           originalError: e,
         });
+      } else {
+        throw e;
       }
     }
   }

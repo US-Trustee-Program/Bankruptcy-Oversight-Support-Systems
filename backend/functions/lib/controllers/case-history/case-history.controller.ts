@@ -1,6 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
-import { getCaseHistoryUseCase } from '../../factory';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseAssignmentHistory } from '../../adapters/types/case.assignment';
@@ -32,15 +31,12 @@ export class CaseHistoryController {
   private readonly useCase: CaseHistoryUseCase;
 
   constructor(applicationContext: ApplicationContext) {
-    this.useCase = getCaseHistoryUseCase(applicationContext);
+    this.useCase = new CaseHistoryUseCase(applicationContext);
   }
 
-  public async getCaseHistory(
-    context: ApplicationContext,
-    request: GetCaseHistoryRequest,
-  ): Promise<GetCaseHistoryResponse> {
+  public async getCaseHistory(request: GetCaseHistoryRequest): Promise<GetCaseHistoryResponse> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(context, request.caseId);
+      const caseHistory = await this.useCase.getCaseHistory(request.caseId);
       return {
         success: true,
         body: caseHistory,

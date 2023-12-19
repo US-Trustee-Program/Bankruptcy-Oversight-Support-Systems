@@ -14,9 +14,6 @@ import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
-import { CaseHistoryUseCase } from './use-cases/case-history/case-history';
-import { CaseHistoryCosmosDbRepository } from './adapters/gateways/case.history.cosmosdb.repository';
-import { MockCaseHistoryCosmosDbRepository } from './adapters/gateways/case.history.mock.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -33,20 +30,17 @@ export const getCasesGateway = (applicationContext: ApplicationContext): CasesIn
 export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
 ): CaseAssignmentRepositoryInterface => {
-  if (applicationContext.config.get('dbMock')) {
-    return new CaseAssignmentCosmosDbRepository(applicationContext, true);
-  } else {
-    return new CaseAssignmentCosmosDbRepository(applicationContext);
-  }
+  return new CaseAssignmentCosmosDbRepository(applicationContext);
 };
 
 export const getCosmosDbClient = (
   applicationContext: ApplicationContext,
-  testClient: boolean = false,
 ): CosmosClientHumble | FakeCosmosClientHumble => {
-  return testClient
-    ? new FakeCosmosClientHumble()
-    : new CosmosClientHumble(applicationContext.config);
+  if (applicationContext.config.get('dbMock')) {
+    return new FakeCosmosClientHumble();
+  } else {
+    return new CosmosClientHumble(applicationContext.config);
+  }
 };
 
 export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
@@ -58,13 +52,6 @@ export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUse
     ? new MockCaseDocketGateway()
     : new DxtrCaseDocketGateway();
   return new CaseDocketUseCase(gateway);
-};
-
-export const getCaseHistoryUseCase = (context: ApplicationContext): CaseHistoryUseCase => {
-  const gateway = context.config.get('dbMock')
-    ? new MockCaseHistoryCosmosDbRepository()
-    : new CaseHistoryCosmosDbRepository(context);
-  return new CaseHistoryUseCase(gateway);
 };
 
 export const getSqlConnection = (databaseConfig: IDbConfig) => {

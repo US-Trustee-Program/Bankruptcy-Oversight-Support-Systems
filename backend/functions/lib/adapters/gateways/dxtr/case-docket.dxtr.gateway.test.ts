@@ -8,6 +8,7 @@ import {
   DXTR_CASE_DOCKET_ENTRIES,
   DXTR_DOCKET_ENTRIES_DOCUMENTS,
 } from '../../../testing/mock-data/case-docket-entries.mock';
+import { NOT_FOUND_ERROR_CASE_ID } from '../../../cosmos-humble-objects/fake.cosmos-client-humble';
 
 describe('Test case docket DXTR Gateway', () => {
   const querySpy = jest.spyOn(database, 'executeQuery');
@@ -92,7 +93,7 @@ describe('Test case docket DXTR Gateway', () => {
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
       const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
-      const mockCaseId = '000-00-00000';
+      const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow('Not found');
     });
 
@@ -110,7 +111,7 @@ describe('Test case docket DXTR Gateway', () => {
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
       const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
-      const mockCaseId = '000-00-00000';
+      const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(expectedMessage);
 
       await expect(gateway._getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(
