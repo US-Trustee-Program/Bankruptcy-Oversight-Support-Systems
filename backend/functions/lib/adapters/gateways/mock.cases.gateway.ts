@@ -5,7 +5,7 @@ import { GatewayHelper } from './gateway-helper';
 import log from '../services/logger.service';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
 
-const MODULE_NAME = 'CASES-LOCAL-GATEWAY';
+const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
   getCases = async (
