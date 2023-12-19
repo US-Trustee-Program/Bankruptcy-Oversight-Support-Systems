@@ -3,6 +3,9 @@ param location string = resourceGroup().location
 @description('Azure functions app name')
 param functionName string
 
+@description('Azure functions app name')
+param webappName string = 'ustp-cams-dev-5e91e7-webapp'
+
 @description('Azure functions app deployment slot name')
 param functionSlotName string = 'staging'
 
@@ -44,6 +47,9 @@ resource sqlManagedId 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-
 resource cosmosManagedId 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: cosmosManagedIdName
 }
+resource nodeApiSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-02-01' existing = {
+  name: privateEndpointSubnetName
+}
 resource functionAppSlot 'Microsoft.Web/sites/slots@2022-09-01' = {
   parent: functionApp
   name: functionSlotName
@@ -56,6 +62,55 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2022-09-01' = {
       '${cosmosManagedId.id}': {}
     }
   }
+  properties: {
+    cloningInfo: {
+      sourceWebAppId: functionApp.id
+      sourceWebAppLocation: location
+    }
+    serverFarmId: functionApp.properties.serverFarmId
+    keyVaultReferenceIdentity: kvManagedId.id
+    virtualNetworkSubnetId: nodeApiSubnet.id
+  }
+}
+resource functionAppSlotConfig 'Microsoft.Web/sites/slots/config@2023-01-01'= {
+  parent: functionAppSlot
+  name: 'web'
+  properties: {
+    linuxFxVersion: 'PHP|8.2'
+    cors: {
+      allowedOrigins: [
+        'https://${webappName}-${functionSlotName}.azurewebsites.us'
+      ]
+    }
+    ipSecurityRestrictions: [
+      {
+        ipAddress: '0.0.0.0/0'
+        action: 'Allow'
+        tag: 'Default'
+        priority: 100
+        name: 'AllowAll'
+      }
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Allow'
+        priority: 2147483647
+        name: 'Allow all'
+        description: 'Allow all access'
+      }
+    ]
+    scmIpSecurityRestrictionsDefaultAction: 'Allow'
+  }
+
 }
 // resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
 //   name: analyticsWorkspaceName
