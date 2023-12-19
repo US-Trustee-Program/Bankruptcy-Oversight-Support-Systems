@@ -1,5 +1,5 @@
-import { NORMAL_CASE_ID } from '../../cosmos-humble-objects/fake.cosmos-client-humble';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
+import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseHistoryUseCase } from './case-history';
 

@@ -4,8 +4,8 @@ import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom'
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
-  CaseAuditHistory,
-  CaseAuditHistoryResponseData,
+  CaseStaffAssignmentHistory,
+  CaseStaffAssignmentHistoryResponseData,
   CaseDetailType,
   CaseDocket,
   CaseDocketEntry,
@@ -13,7 +13,6 @@ import {
   Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
-import { CaseDetailScrollPanelRef } from './panels/CaseDetailScrollPanelRef';
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
@@ -146,7 +145,7 @@ function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEnt
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
   caseDocketEntries?: CaseDocketEntry[];
-  caseAuditHistory?: CaseAuditHistory[];
+  caseStaffAssignmentHistory?: CaseStaffAssignmentHistory[];
 }
 
 function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
@@ -179,12 +178,13 @@ export default function CaseDetail(props: CaseDetailProps) {
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
-  const [caseAuditHistory, setCaseAuditHistory] = useState<CaseAuditHistory[]>([]);
+  const [caseStaffAssignmentHistory, setCaseStaffAssignmentHistory] = useState<
+    CaseStaffAssignmentHistory[]
+  >([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
-  const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
@@ -228,19 +228,19 @@ export default function CaseDetail(props: CaseDetailProps) {
       });
   }
 
-  async function fetchCaseAuditHistory() {
+  async function fetchCaseStaffAssignmentHistory() {
     setIsAuditHistoryLoading(true);
     api
       .get(`/cases/${caseId}/history`, {})
       .then((data) => {
-        const response = data as CaseAuditHistoryResponseData;
+        const response = data as CaseStaffAssignmentHistoryResponseData;
         if (response) {
-          setCaseAuditHistory(response.body);
+          setCaseStaffAssignmentHistory(response.body);
           setIsAuditHistoryLoading(false);
         }
       })
       .catch(() => {
-        setCaseAuditHistory([]);
+        setCaseStaffAssignmentHistory([]);
         setIsAuditHistoryLoading(false);
       });
   }
@@ -312,10 +312,10 @@ export default function CaseDetail(props: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
-    if (props.caseAuditHistory) {
-      setCaseAuditHistory(props.caseAuditHistory);
+    if (props.caseStaffAssignmentHistory) {
+      setCaseStaffAssignmentHistory(props.caseStaffAssignmentHistory);
     } else {
-      fetchCaseAuditHistory();
+      fetchCaseStaffAssignmentHistory();
     }
   }, []);
 
@@ -339,11 +339,7 @@ export default function CaseDetail(props: CaseDetailProps) {
       <div className="case-detail" data-testid="case-detail">
         {isLoading && (
           <>
-            <CaseDetailHeader
-              isLoading={isLoading}
-              navigationPaneRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
-              caseId={caseId}
-            />
+            <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
@@ -362,7 +358,6 @@ export default function CaseDetail(props: CaseDetailProps) {
               isLoading={false}
               caseId={caseBasicInfo.caseId}
               caseDetail={caseBasicInfo}
-              navigationPaneRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
             />
             <div className="grid-row grid-gap-lg">
               <div id="left-gutter" className="grid-col-1"></div>
@@ -512,7 +507,7 @@ export default function CaseDetail(props: CaseDetailProps) {
                       path="audit-history"
                       element={
                         <CaseDetailAuditHistory
-                          caseHistory={caseAuditHistory}
+                          caseHistory={caseStaffAssignmentHistory}
                           isAuditHistoryLoading={isAuditHistoryLoading}
                         />
                       }

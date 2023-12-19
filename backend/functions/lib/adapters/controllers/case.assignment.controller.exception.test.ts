@@ -1,8 +1,8 @@
 import { describe } from 'node:test';
-import { THROW_UNKNOWN_ERROR_CASE_ID } from '../../cosmos-humble-objects/fake.cosmos-client-humble';
 import { CaseAssignmentController } from './case.assignment.controller';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { THROW_UNKNOWN_ERROR_CASE_ID } from '../../testing/testing-constants';
 
 jest.mock('../../use-cases/case.assignment', () => {
   return {

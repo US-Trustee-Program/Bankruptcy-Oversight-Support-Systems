@@ -124,10 +124,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
           name: '@caseId',
           value: caseId,
         },
-        {
-          name: '@documentType',
-          value: 'ASSIGNMENT_HISTORY',
-        },
       ],
     };
     const response = await this.queryData(querySpec);
@@ -144,10 +140,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
           name: '@caseId',
           value: caseId,
         },
-        {
-          name: '@documentType',
-          value: 'ASSIGNMENT',
-        },
       ],
     };
     const response = await this.queryData(querySpec);
@@ -156,15 +148,12 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
 
   async findAssignmentsByAssigneeName(name: string): Promise<CaseAssignment[]> {
     const querySpec = {
-      query: 'SELECT * FROM c WHERE c.name = @name',
+      query:
+        'SELECT * FROM c WHERE c.name = @name AND c.documentType = "ASSIGNMENT" AND NOT IS_DEFINED(c.unassignedOn)',
       parameters: [
         {
           name: '@name',
           value: name,
-        },
-        {
-          name: '@documentType',
-          value: 'ASSIGNMENT',
         },
       ],
     };

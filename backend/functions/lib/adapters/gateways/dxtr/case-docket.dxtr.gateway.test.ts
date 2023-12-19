@@ -2,13 +2,12 @@ import { QueryResults } from '../../types/database';
 import * as database from '../../utils/database';
 import { documentSorter, DxtrCaseDocketGateway, translateModel } from './case-docket.dxtr.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { NORMAL_CASE_ID } from './case-docket.mock.gateway';
 import {
   CASE_DOCKET_ENTRIES,
   DXTR_CASE_DOCKET_ENTRIES,
   DXTR_DOCKET_ENTRIES_DOCUMENTS,
 } from '../../../testing/mock-data/case-docket-entries.mock';
-import { NOT_FOUND_ERROR_CASE_ID } from '../../../cosmos-humble-objects/fake.cosmos-client-humble';
+import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../testing/testing-constants';
 
 describe('Test case docket DXTR Gateway', () => {
   const querySpy = jest.spyOn(database, 'executeQuery');

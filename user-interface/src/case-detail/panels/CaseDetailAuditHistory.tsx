@@ -1,9 +1,10 @@
-import { formatDateTime } from '@/lib/utils/datetime';
-import { CaseAuditHistory } from '@/lib/type-declarations/chapter-15';
+import { formatDate } from '@/lib/utils/datetime';
+import { CaseStaffAssignmentHistory } from '@/lib/type-declarations/chapter-15';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export interface CaseDetailAuditHistoryProps {
-  caseHistory: CaseAuditHistory[];
+  caseHistory: CaseStaffAssignmentHistory[];
   isAuditHistoryLoading: boolean;
 }
 
@@ -18,7 +19,18 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         {!isAuditHistoryLoading && (
           <>
             {caseHistory.length < 1 && (
-              <div data-testid="empty-assignments-test-id">No assignments in history.</div>
+              <div data-testid="empty-assignments-test-id">
+                <Alert
+                  message="No assignments in history"
+                  type={UswdsAlertStyle.Info}
+                  role={'status'}
+                  slim={true}
+                  timeout={0}
+                  title=""
+                  show={true}
+                  inline={true}
+                />
+              </div>
             )}
             {caseHistory.length > 0 && (
               <table data-testid="history-table" className="usa-table usa-table--borderless">
@@ -55,7 +67,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
                             </td>
                             <td data-testid={`change-date-${idx}`}>
                               <span className="text-no-wrap">
-                                {formatDateTime(history.occurredAtTimestamp)}
+                                {formatDate(history.occurredAtTimestamp)}
                               </span>
                             </td>
                           </tr>
