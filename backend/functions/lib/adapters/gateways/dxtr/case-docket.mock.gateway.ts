@@ -8,6 +8,7 @@ import { GatewayHelper } from '../gateway-helper';
 const MODULENAME = 'CASE-DOCKET-MOCK-GATEWAY';
 
 export const NORMAL_CASE_ID = '111-11-11111';
+export const NOT_FOUND_ERROR_CASE_ID = '000-00-00000';
 
 export class MockCaseDocketGateway implements CaseDocketGateway {
   async getCaseDocket(_context: ApplicationContext, caseId: string): Promise<CaseDocket> {

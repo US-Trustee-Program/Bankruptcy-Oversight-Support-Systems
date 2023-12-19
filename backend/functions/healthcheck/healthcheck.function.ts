@@ -59,7 +59,7 @@ const httpTrigger: AzureFunction = async function (
       );
 };
 
-function checkResults(...results: boolean[]) {
+export function checkResults(...results: boolean[]) {
   for (const i in results) {
     if (!results[i]) {
       return false;

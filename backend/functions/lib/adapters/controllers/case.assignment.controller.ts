@@ -39,7 +39,7 @@ export class CaseAssignmentController {
       if (exception instanceof CamsError) {
         throw exception;
       }
-      throw new UnknownError(exception.module || MODULE_NAME, { originalError: exception });
+      throw new UnknownError(MODULE_NAME, { originalError: exception });
     }
   }
 

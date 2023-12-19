@@ -1,4 +1,5 @@
 import { NORMAL_CASE_ID } from '../lib/adapters/gateways/dxtr/case-docket.mock.gateway';
+import { NOT_FOUND_ERROR_CASE_ID } from '../lib/cosmos-humble-objects/fake.cosmos-client-humble';
 import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import httpTrigger from './case-history.function';
 
@@ -22,8 +23,9 @@ describe('Case docket function', () => {
     await httpTrigger(context, request);
     expect(context.res.body).toEqual(expectedResponseBody);
   });
+
   test('Should return an error response for a non-existent case ID', async () => {
-    const bogusCaseId = '000-00-00000';
+    const bogusCaseId = NOT_FOUND_ERROR_CASE_ID;
     const request = {
       params: {
         caseId: bogusCaseId,

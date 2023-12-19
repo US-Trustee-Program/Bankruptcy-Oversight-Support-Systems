@@ -2,6 +2,8 @@ import { ForbiddenError } from '../common-errors/forbidden-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CaseAssignment } from '../adapters/types/case.assignment';
+import { GatewayHelper } from '../adapters/gateways/gateway-helper';
+import { NotFoundError } from '../common-errors/not-found-error';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
@@ -13,6 +15,11 @@ interface QueryOptions {
   query: string;
   parameters: QueryParams[];
 }
+
+export const NORMAL_CASE_ID = '111-11-11111';
+export const NOT_FOUND_ERROR_CASE_ID = '000-00-00000';
+export const THROW_PERMISSIONS_ERROR_CASE_ID = '888-88-88888';
+export const THROW_UNKNOWN_ERROR_CASE_ID = '999-99-99999';
 
 export default class FakeCosmosClientHumble {
   private caseAssignments: CaseAssignment[] = [];
@@ -26,10 +33,10 @@ export default class FakeCosmosClientHumble {
         return {
           items: {
             create: (assignment: CaseAssignment) => {
-              if (assignment.caseId === 'throw-permissions-error') {
+              if (assignment.caseId === THROW_PERMISSIONS_ERROR_CASE_ID) {
                 throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
               }
-              if (assignment.caseId === 'throw-unknown-error') {
+              if (assignment.caseId === THROW_UNKNOWN_ERROR_CASE_ID) {
                 throw new UnknownError(MODULE_NAME, { message: 'unknown' });
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
@@ -44,21 +51,30 @@ export default class FakeCosmosClientHumble {
               this.itemQueryParams = query.parameters;
               return {
                 fetchAll: () => {
-                  if (this.itemQueryParams[0].value === 'throw auth error') {
+                  if (this.itemQueryParams[0].value === THROW_PERMISSIONS_ERROR_CASE_ID) {
                     throw new AggregateAuthenticationError([], 'forbidden');
-                  }
-                  const result: CaseAssignment[] = [];
-                  query.parameters.forEach((params) => {
-                    this.caseAssignments.find((caseItem) => {
-                      if (caseItem.caseId === params.value) {
-                        result.push(caseItem);
-                      }
-                      if (caseItem.name === params.value) {
-                        result.push(caseItem);
-                      }
+                  } else if (this.itemQueryParams[0].value === NOT_FOUND_ERROR_CASE_ID) {
+                    throw new NotFoundError(MODULE_NAME, {
+                      data: { ERROR_CASE_ID: NOT_FOUND_ERROR_CASE_ID },
                     });
-                  });
-                  return { resources: result };
+                  }
+                  if (this.itemQueryParams[1].value === 'ASSIGNMENT') {
+                    const result: CaseAssignment[] = [];
+                    query.parameters.forEach((params) => {
+                      this.caseAssignments.find((caseItem) => {
+                        if (caseItem.caseId === params.value) {
+                          result.push(caseItem);
+                        }
+                        if (caseItem.name === params.value) {
+                          result.push(caseItem);
+                        }
+                      });
+                    });
+                    return { resources: result };
+                  } else if (this.itemQueryParams[1].value === 'ASSIGNMENT_HISTORY') {
+                    const gatewayHelper = new GatewayHelper();
+                    return { resources: gatewayHelper.getCaseHistoryMockExtract() };
+                  }
                 },
               };
             },
@@ -66,10 +82,10 @@ export default class FakeCosmosClientHumble {
           item: (id: string) => {
             return {
               replace: (assignment: CaseAssignment) => {
-                if (assignment.caseId === 'throw-permissions-error') {
+                if (assignment.caseId === THROW_PERMISSIONS_ERROR_CASE_ID) {
                   throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
                 }
-                if (assignment.caseId === 'throw-unknown-error') {
+                if (assignment.caseId === THROW_UNKNOWN_ERROR_CASE_ID) {
                   throw new UnknownError(MODULE_NAME);
                 }
                 console.log(id);

@@ -78,7 +78,7 @@ export class CaseAssignmentUseCase {
       previousAssignments: existingAssignmentRecords,
       newAssignments: newAssignmentRecords,
     };
-    this.assignmentRepository.createAssignmentHistory(history);
+    await this.assignmentRepository.createAssignmentHistory(history);
 
     log.info(
       applicationContext,

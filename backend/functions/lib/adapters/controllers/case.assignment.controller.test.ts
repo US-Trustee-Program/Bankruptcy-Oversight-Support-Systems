@@ -1,6 +1,7 @@
 import { CaseAssignmentController } from './case.assignment.controller';
-import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { applicationContextCreator } from '../utils/application-context-creator';
+import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../cosmos-humble-objects/fake.cosmos-client-humble';
+
 const functionContext = require('azure-function-context-mock');
 
 describe('Case Assignment Creation Tests', () => {
@@ -15,8 +16,6 @@ describe('Case Assignment Creation Tests', () => {
     };
   });
 
-  // TODO: figure out a way to test exceptional behavior
-
   test('A case is assigned to an attorney when requested', async () => {
     const testCaseAssignment = {
       caseId: '001-18-12345',
@@ -24,14 +23,9 @@ describe('Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    let assignmentResponse: AttorneyAssignmentResponseInterface;
     const assignmentController = new CaseAssignmentController(applicationContext);
-    try {
-      assignmentResponse =
-        await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-    } catch (exception) {
-      // exception.message;
-    }
+    const assignmentResponse =
+      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
     expect(assignmentResponse.body.length).toBe(1);
     expect(assignmentResponse.body[0]).toBeTruthy();
@@ -45,14 +39,9 @@ describe('Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    let assignmentResponse: AttorneyAssignmentResponseInterface;
     const assignmentController = new CaseAssignmentController(applicationContext);
-    try {
-      assignmentResponse =
-        await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-    } catch (exception) {
-      // exception.message;
-    }
+    const assignmentResponse =
+      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
     expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
   });
@@ -65,15 +54,24 @@ describe('Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    let assignmentResponse: AttorneyAssignmentResponseInterface;
     const assignmentController = new CaseAssignmentController(applicationContext);
-    try {
-      assignmentResponse =
-        await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-    } catch (exception) {
-      // exception.message;
-    }
+    const assignmentResponse =
+      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
     expect(assignmentResponse.body.length).toBe(3);
+  });
+
+  test('should throw a CAMS permission error', async () => {
+    const testCaseAssignment = {
+      caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
+      listOfAttorneyNames: [],
+      role: trialAttorneyRole,
+    };
+
+    const assignmentController = new CaseAssignmentController(applicationContext);
+
+    await expect(
+      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+    ).rejects.toThrow('Failed to authenticate to Azure');
   });
 });
