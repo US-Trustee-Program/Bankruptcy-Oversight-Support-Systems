@@ -1,23 +1,13 @@
 import httpTrigger from './case.assignment.function';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-
-const functionContext = require('azure-function-context-mock');
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 
 describe('Case Assignment Function Tests', () => {
-  const env = process.env;
-  beforeEach(() => {
-    process.env = {
-      ...env,
-      DATABASE_MOCK: 'true',
-    };
-  });
-
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -39,7 +29,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -62,7 +52,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -85,7 +75,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -110,7 +100,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a caseId is invalid format', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -131,7 +121,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -156,7 +146,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const request = {
       method: 'POST',
       query: {},
@@ -181,7 +171,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(
       applicationContext,
     );
@@ -211,7 +201,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const caseId = '001-67-89012';
     const request = {
       method: 'POST',

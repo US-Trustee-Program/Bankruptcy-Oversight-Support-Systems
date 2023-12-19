@@ -4,19 +4,20 @@ import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { getYearMonthDayStringFromDate } from '../adapters/utils/date-helper';
-import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { MockCasesGateway } from '../adapters/gateways/case-management.mock.gateway';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
+import { CaseAssignment } from '../adapters/types/case.assignment';
 
 const functionContext = require('azure-function-context-mock');
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
 const currentDate = new Date().toISOString();
-const assignments: CaseAttorneyAssignment[] = [
+const assignments: CaseAssignment[] = [
   {
+    documentType: 'ASSIGNMENT',
     id: '1',
     caseId: '081-23-01176',
     name: attorneyJaneSmith,
@@ -24,6 +25,7 @@ const assignments: CaseAttorneyAssignment[] = [
     assignedOn: currentDate,
   },
   {
+    documentType: 'ASSIGNMENT',
     id: '2',
     caseId: '081-23-01176',
     name: attorneyJoeNobel,
@@ -35,7 +37,7 @@ const assignments: CaseAttorneyAssignment[] = [
 const caseIdWithAssignments = '081-23-01176';
 jest.mock('./case.assignment', () => {
   return {
-    CaseAssignment: jest.fn().mockImplementation(() => {
+    CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
         findAssignmentsByCaseId: (caseId: string) => {
           if (caseId === caseIdWithAssignments) {

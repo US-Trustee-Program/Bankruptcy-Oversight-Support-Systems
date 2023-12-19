@@ -11,6 +11,7 @@ export interface AlertProps {
   title?: string;
   className?: string;
   inline?: boolean;
+  show?: boolean;
 }
 
 export enum UswdsAlertStyle {
@@ -32,7 +33,9 @@ export interface AlertRefType {
 }
 
 function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
-  const [isVisible, setIsVisible] = useState<IsVisible>(IsVisible.Unset);
+  const [isVisible, setIsVisible] = useState<IsVisible>(
+    props.show ? IsVisible.True : IsVisible.Unset,
+  );
   let classes = `usa-alert ${props.type}`;
   const isInlineClass = props.inline ? `inline-alert` : '';
   const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
