@@ -1,10 +1,13 @@
-import { CaseAttorneyAssignment } from '../types/case.attorney.assignment';
 import { CaseAssignmentCosmosDbRepository } from './case.assignment.cosmosdb.repository';
-import { applicationContextCreator } from '../utils/application-context-creator';
 import { randomUUID } from 'crypto';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
-
-const functionContext = require('azure-function-context-mock');
+import { CaseAssignment, CaseAssignmentHistory } from '../types/case.assignment';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
+import {
+  THROW_PERMISSIONS_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../../testing/testing-constants';
 
 describe('Test case assignment cosmosdb repository tests', () => {
   const currentDate = new Date().toISOString();
@@ -13,21 +16,24 @@ describe('Test case assignment cosmosdb repository tests', () => {
   const clairHuxtable = 'Clair Huxtable';
   const trialAttorneyRole = 'TrialAttorney';
   let repository: CaseAssignmentCosmosDbRepository;
+
   beforeEach(async () => {
-    const applicationContext = await applicationContextCreator(functionContext);
-    repository = new CaseAssignmentCosmosDbRepository(applicationContext, true);
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    repository = new CaseAssignmentCosmosDbRepository(applicationContext);
   });
 
   test('should create two assignments and find both of them', async () => {
     const caseId = randomUUID();
 
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment1: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment2: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -58,7 +64,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should update existing assignment record', async () => {
     const caseId = randomUUID();
 
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -78,7 +85,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should throw a permissions exception when user doesnt have permission to update an assignment', async () => {
     const caseId = randomUUID();
 
-    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const existingCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -87,8 +95,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     await repository.createAssignment(existingCaseAttorneyAssignment);
 
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
-      caseId: 'throw-permissions-error',
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
+      caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -102,13 +111,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should find only assignments for the requested case', async () => {
     const caseIdOne = randomUUID();
     const caseIdTwo = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment1: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment2: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -144,8 +155,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('Throws a permissions exception when user doesnt have permission to create an assignment', async () => {
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
-      caseId: 'throw-permissions-error',
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
+      caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -168,7 +180,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('Should throw AggregateAuthentication Error for authentication errors from credentials', async () => {
     try {
-      await repository.findAssignmentsByCaseId('throw auth error');
+      await repository.findAssignmentsByCaseId(THROW_PERMISSIONS_ERROR_CASE_ID);
       expect(true).toBeFalsy();
     } catch (e) {
       expect((e as Error).message).toEqual('Failed to authenticate to Azure');
@@ -177,13 +189,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('should find all assignments for a given attorney', async () => {
     const caseIdOne = randomUUID();
-    const testCaseAttorneyAssignment1: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment1: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment2: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment2: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -191,13 +205,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
 
     const caseIdTwo = randomUUID();
-    const testCaseAttorneyAssignment3: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment3: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment4: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment4: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -205,13 +221,15 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
 
     const caseIdThree = randomUUID();
-    const testCaseAttorneyAssignment5: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment5: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdThree,
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
     };
-    const testCaseAttorneyAssignment6: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment6: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseIdThree,
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
@@ -297,9 +315,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When creating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
-    const caseId = 'throw-unknown-error';
+    const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
 
-    const existingCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const existingCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       caseId: caseId,
       name: clairHuxtable,
       role: CaseAssignmentRole.TrialAttorney,
@@ -312,9 +331,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When updating an assignment, Should throw Unknown Error if an unknown error occurs', async () => {
-    const testCaseAttorneyAssignment: CaseAttorneyAssignment = {
+    const testCaseAttorneyAssignment: CaseAssignment = {
+      documentType: 'ASSIGNMENT',
       id: 'some-id',
-      caseId: 'throw-unknown-error',
+      caseId: THROW_UNKNOWN_ERROR_CASE_ID,
       name: benMatlock,
       role: CaseAssignmentRole.TrialAttorney,
       assignedOn: currentDate,
@@ -323,5 +343,45 @@ describe('Test case assignment cosmosdb repository tests', () => {
     await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
       'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
     );
+  });
+
+  describe('Test case history cosmosdb repository tests', () => {
+    test('should return case history for attorney assignments', async () => {
+      const caseId = '123-11-1234';
+      const actualAssignmentsOne = await repository.getAssignmentHistory(caseId);
+
+      expect(actualAssignmentsOne.length).toEqual(2);
+      expect(actualAssignmentsOne).toEqual(CASE_HISTORY);
+    });
+
+    test('should throw a permissions error when user doesnt have permission to create assignment history', async () => {
+      const caseId = THROW_PERMISSIONS_ERROR_CASE_ID;
+      const testCaseAssignmentHistory: CaseAssignmentHistory = {
+        caseId,
+        documentType: 'ASSIGNMENT_HISTORY',
+        occurredAtTimestamp: new Date().toISOString(),
+        previousAssignments: [],
+        newAssignments: [],
+      };
+
+      await expect(repository.createAssignmentHistory(testCaseAssignmentHistory)).rejects.toThrow(
+        'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+      );
+    });
+
+    test('should throw UnknownError if an unknown error occurs', async () => {
+      const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
+      const testCaseAssignmentHistory: CaseAssignmentHistory = {
+        caseId,
+        documentType: 'ASSIGNMENT_HISTORY',
+        occurredAtTimestamp: new Date().toISOString(),
+        previousAssignments: [],
+        newAssignments: [],
+      };
+
+      await expect(repository.createAssignmentHistory(testCaseAssignmentHistory)).rejects.toThrow(
+        'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+      );
+    });
   });
 });

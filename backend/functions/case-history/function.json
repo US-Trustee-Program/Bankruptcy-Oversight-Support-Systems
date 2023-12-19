@@ -5,6 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
+      "route": "cases/{caseId?}/history",
       "methods": [
         "get"
       ]
@@ -15,6 +16,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/backend/functions/healthcheck/healthcheck.function.js",
-  "entryPoint": "default"
+  "scriptFile": "../dist/backend/functions/case-history/case-history.function.js"
 }

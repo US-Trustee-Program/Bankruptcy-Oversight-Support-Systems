@@ -48,6 +48,25 @@ interface CaseDetailType {
   petitionLabel: string;
 }
 
+export interface CaseStaffAssignment {
+  id?: string;
+  documentType: 'ASSIGNMENT';
+  caseId: string;
+  name: string;
+  role: string;
+  assignedOn: string;
+  unassignedOn?: string;
+}
+
+export interface CaseStaffAssignmentHistory {
+  id?: string;
+  documentType: 'ASSIGNMENT_HISTORY';
+  caseId: string;
+  occurredAtTimestamp: string;
+  previousAssignments: CaseStaffAssignment[];
+  newAssignments: CaseStaffAssignment[];
+}
+
 export interface CaseDocketSummaryFacet {
   text: string;
   count: number;
@@ -84,4 +103,8 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
     caseDetails: CaseDetailType;
   };
+}
+
+export interface CaseStaffAssignmentHistoryResponseData extends ResponseData {
+  body: CaseStaffAssignmentHistory[];
 }

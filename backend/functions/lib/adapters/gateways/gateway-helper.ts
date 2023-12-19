@@ -6,7 +6,9 @@ import { CamsError } from '../../common-errors/cams-error';
 import { ATTORNEYS } from '../../testing/mock-data/debtor-attorneys.mock';
 import { DEBTORS } from '../../testing/mock-data/debtors.mock';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-entries.mock';
+import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import { CaseDocketEntry } from '../../use-cases/case-docket/case-docket.model';
+import { CaseAssignmentHistory } from '../types/case.assignment';
 
 export class GatewayHelper {
   getAllCasesMockExtract(): CaseDetailInterface[] {
@@ -22,6 +24,10 @@ export class GatewayHelper {
 
   getCaseDocketEntriesMockExtract(): CaseDocketEntry[] {
     return DXTR_CASE_DOCKET_ENTRIES;
+  }
+
+  getCaseHistoryMockExtract(): CaseAssignmentHistory[] {
+    return CASE_HISTORY;
   }
 
   getAllDebtorsMockExtract(): Map<string, Party> {

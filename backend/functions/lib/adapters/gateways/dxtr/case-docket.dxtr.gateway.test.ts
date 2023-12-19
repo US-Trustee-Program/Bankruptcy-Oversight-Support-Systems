@@ -2,12 +2,12 @@ import { QueryResults } from '../../types/database';
 import * as database from '../../utils/database';
 import { documentSorter, DxtrCaseDocketGateway, translateModel } from './case-docket.dxtr.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { NORMAL_CASE_ID } from './case-docket.mock.gateway';
 import {
   CASE_DOCKET_ENTRIES,
   DXTR_CASE_DOCKET_ENTRIES,
   DXTR_DOCKET_ENTRIES_DOCUMENTS,
 } from '../../../testing/mock-data/case-docket-entries.mock';
+import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../testing/testing-constants';
 
 describe('Test case docket DXTR Gateway', () => {
   const querySpy = jest.spyOn(database, 'executeQuery');
@@ -92,7 +92,7 @@ describe('Test case docket DXTR Gateway', () => {
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
       const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
-      const mockCaseId = '000-00-00000';
+      const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow('Not found');
     });
 
@@ -110,7 +110,7 @@ describe('Test case docket DXTR Gateway', () => {
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
       const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
-      const mockCaseId = '000-00-00000';
+      const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(expectedMessage);
 
       await expect(gateway._getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(

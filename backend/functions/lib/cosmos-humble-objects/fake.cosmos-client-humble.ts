@@ -1,7 +1,14 @@
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
 import { ForbiddenError } from '../common-errors/forbidden-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { UnknownError } from '../common-errors/unknown-error';
+import { CaseAssignment } from '../adapters/types/case.assignment';
+import { GatewayHelper } from '../adapters/gateways/gateway-helper';
+import { NotFoundError } from '../common-errors/not-found-error';
+import {
+  NOT_FOUND_ERROR_CASE_ID,
+  THROW_PERMISSIONS_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../testing/testing-constants';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
@@ -15,7 +22,7 @@ interface QueryOptions {
 }
 
 export default class FakeCosmosClientHumble {
-  private caseAssignments: CaseAttorneyAssignment[] = [];
+  private caseAssignments: CaseAssignment[] = [];
   private itemQueryParams: QueryParams[] = [];
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -25,11 +32,11 @@ export default class FakeCosmosClientHumble {
       container: (containerName: string) => {
         return {
           items: {
-            create: (assignment: CaseAttorneyAssignment) => {
-              if (assignment.caseId === 'throw-permissions-error') {
+            create: (assignment: CaseAssignment) => {
+              if (assignment.caseId === THROW_PERMISSIONS_ERROR_CASE_ID) {
                 throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
               }
-              if (assignment.caseId === 'throw-unknown-error') {
+              if (assignment.caseId === THROW_UNKNOWN_ERROR_CASE_ID) {
                 throw new UnknownError(MODULE_NAME, { message: 'unknown' });
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
@@ -44,32 +51,41 @@ export default class FakeCosmosClientHumble {
               this.itemQueryParams = query.parameters;
               return {
                 fetchAll: () => {
-                  if (this.itemQueryParams[0].value === 'throw auth error') {
+                  if (this.itemQueryParams[0].value === THROW_PERMISSIONS_ERROR_CASE_ID) {
                     throw new AggregateAuthenticationError([], 'forbidden');
-                  }
-                  const result: CaseAttorneyAssignment[] = [];
-                  query.parameters.forEach((params) => {
-                    this.caseAssignments.find((caseItem) => {
-                      if (caseItem.caseId === params.value) {
-                        result.push(caseItem);
-                      }
-                      if (caseItem.name === params.value) {
-                        result.push(caseItem);
-                      }
+                  } else if (this.itemQueryParams[0].value === NOT_FOUND_ERROR_CASE_ID) {
+                    throw new NotFoundError(MODULE_NAME, {
+                      data: { ERROR_CASE_ID: NOT_FOUND_ERROR_CASE_ID },
                     });
-                  });
-                  return { resources: result };
+                  }
+                  if (query.query.includes('"ASSIGNMENT"')) {
+                    const result: CaseAssignment[] = [];
+                    query.parameters.forEach((params) => {
+                      this.caseAssignments.find((caseItem) => {
+                        if (caseItem.caseId === params.value) {
+                          result.push(caseItem);
+                        }
+                        if (caseItem.name === params.value) {
+                          result.push(caseItem);
+                        }
+                      });
+                    });
+                    return { resources: result };
+                  } else if (query.query.includes('"ASSIGNMENT_HISTORY"')) {
+                    const gatewayHelper = new GatewayHelper();
+                    return { resources: gatewayHelper.getCaseHistoryMockExtract() };
+                  }
                 },
               };
             },
           },
           item: (id: string) => {
             return {
-              replace: (assignment: CaseAttorneyAssignment) => {
-                if (assignment.caseId === 'throw-permissions-error') {
+              replace: (assignment: CaseAssignment) => {
+                if (assignment.caseId === THROW_PERMISSIONS_ERROR_CASE_ID) {
                   throw new ForbiddenError(MODULE_NAME, { message: 'forbidden' });
                 }
-                if (assignment.caseId === 'throw-unknown-error') {
+                if (assignment.caseId === THROW_UNKNOWN_ERROR_CASE_ID) {
                   throw new UnknownError(MODULE_NAME);
                 }
                 console.log(id);

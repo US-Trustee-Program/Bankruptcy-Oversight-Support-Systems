@@ -6,12 +6,12 @@ import {
 } from '../adapters/types/cases';
 import { getCasesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
-import { CaseAssignment } from './case.assignment';
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
 import { getOffice } from '../adapters/gateways/offices.gateway';
+import { CaseAssignment } from '../adapters/types/case.assignment';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -32,7 +32,7 @@ export class CaseManagement {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const caseAssignment = new CaseAssignment(applicationContext);
+      const caseAssignment = new CaseAssignmentUseCase(applicationContext);
       const cases = await this.casesGateway.getCases(applicationContext, {
         startingMonth: startingMonth || undefined,
       });
@@ -68,7 +68,7 @@ export class CaseManagement {
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
-    const caseAssignment = new CaseAssignment(applicationContext);
+    const caseAssignment = new CaseAssignmentUseCase(applicationContext);
     caseDetails.assignments = await this.getCaseAssigneeNames(
       applicationContext,
       caseAssignment,
@@ -88,13 +88,11 @@ export class CaseManagement {
 
   private async getCaseAssigneeNames(
     applicationContext: ApplicationContext,
-    caseAssignment: CaseAssignment,
+    caseAssignment: CaseAssignmentUseCase,
     c: CaseDetailInterface,
   ) {
     try {
-      const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
-        c.caseId,
-      );
+      const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(c.caseId);
       const assigneeNames = assignments.map((a) => {
         return a.name;
       });

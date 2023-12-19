@@ -1,8 +1,12 @@
-import { NORMAL_CASE_ID } from '../../adapters/gateways/dxtr/case-docket.mock.gateway';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseDocketController } from './case-docket.controller';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-entries.mock';
+import {
+  NORMAL_CASE_ID,
+  NOT_FOUND_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../../testing/testing-constants';
 
 describe('Test case-docket controller', () => {
   test('should return a case docket when getCaseDocket is called', async () => {
@@ -14,14 +18,14 @@ describe('Test case-docket controller', () => {
     expect(result.body).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });
   test('should throw a NotFoundError when a docket is not found', async () => {
-    const caseId = '000-00-00000'; // Induce a NotFoundError
+    const caseId = NOT_FOUND_ERROR_CASE_ID;
     const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const controller = new CaseDocketController(mockContext);
     await expect(controller.getCaseDocket(mockContext, { caseId })).rejects.toThrow('Not found');
   });
   test('should wrap unexpected errors with CamsError', async () => {
     const expectedMessage = 'Unknown error';
-    const caseId = '000-00-00000'; // Induce a UnknownError
+    const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const controller = new CaseDocketController(mockContext);
     jest.spyOn(CaseDocketUseCase.prototype, 'getCaseDocket').mockImplementation(async () => {

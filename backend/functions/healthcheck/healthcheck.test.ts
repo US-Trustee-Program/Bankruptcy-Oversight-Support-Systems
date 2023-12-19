@@ -1,4 +1,4 @@
-import httpTrigger from './healthcheck.function';
+import httpTrigger, { checkResults } from './healthcheck.function';
 const context = require('azure-function-context-mock');
 
 const mockRequestFunc = jest.fn().mockImplementation(() => ({
@@ -33,3 +33,11 @@ test('Healthcheck endpoint should return an ALIVE status', async () => {
 
   expect(context.res.body).not.toBeNull(); // Check for any response.
 }, 10000);
+
+test('checkResults should return false when one result is false and true when all results are true', () => {
+  expect(checkResults(false, true, true, true)).toBe(false);
+  expect(checkResults(true, false, true, true)).toBe(false);
+  expect(checkResults(true, true, false, true)).toBe(false);
+  expect(checkResults(true, true, true, false)).toBe(false);
+  expect(checkResults(true, true, true, true)).toBe(true);
+});

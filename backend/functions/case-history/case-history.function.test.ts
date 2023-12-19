@@ -1,6 +1,6 @@
-import httpTrigger from './case-docket.function';
-import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
+import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
+import httpTrigger from './case-history.function';
 
 const context = require('azure-function-context-mock');
 
@@ -14,7 +14,7 @@ describe('Case docket function', () => {
     };
     const expectedResponseBody = {
       success: true,
-      body: DXTR_CASE_DOCKET_ENTRIES,
+      body: CASE_HISTORY,
     };
     process.env = {
       DATABASE_MOCK: 'true',
@@ -22,6 +22,7 @@ describe('Case docket function', () => {
     await httpTrigger(context, request);
     expect(context.res.body).toEqual(expectedResponseBody);
   });
+
   test('Should return an error response for a non-existent case ID', async () => {
     const bogusCaseId = NOT_FOUND_ERROR_CASE_ID;
     const request = {
