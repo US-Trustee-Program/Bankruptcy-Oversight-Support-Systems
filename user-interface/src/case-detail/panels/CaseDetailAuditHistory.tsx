@@ -21,7 +21,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
             {caseHistory.length < 1 && (
               <div data-testid="empty-assignments-test-id">
                 <Alert
-                  message="No assignments in history"
+                  message="There are no assignments in the case history."
                   type={UswdsAlertStyle.Info}
                   role={'status'}
                   slim={true}

@@ -31,7 +31,7 @@ describe('audit history tests', () => {
     render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
 
     const emptyAssignments = await screen.findByTestId('empty-assignments-test-id');
-    expect(emptyAssignments).toHaveTextContent('No assignments in history.');
+    expect(emptyAssignments).toHaveTextContent('There are no assignments in the case history.');
 
     const historyTable = screen.queryByTestId('history-table');
     expect(historyTable).not.toBeInTheDocument();
