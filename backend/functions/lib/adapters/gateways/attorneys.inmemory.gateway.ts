@@ -3,10 +3,10 @@ import { getProperty } from '../../testing/mock-data';
 import { ApplicationContext } from '../types/basic';
 import { QueryResults } from '../types/database';
 import { AttorneyListRecordSet, AttorneyListDbResult } from '../types/attorneys';
-import { runQuery } from './local.inmemory.gateway';
+import { runQuery } from './inmemory.database.gateway';
 import { AttorneyGatewayInterface } from '../../use-cases/attorney.gateway.interface';
 
-const MODULE_NAME = 'ATTORNEYS-LOCAL-INMEMORY-DB-GATEWAY';
+const MODULE_NAME = 'ATTORNEYS-INMEMORY-DB-GATEWAY';
 
 const table = 'attorneys';
 

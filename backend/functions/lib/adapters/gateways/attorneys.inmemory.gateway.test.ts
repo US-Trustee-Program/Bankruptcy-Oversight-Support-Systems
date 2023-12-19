@@ -1,10 +1,10 @@
 const functionContext = require('azure-function-context-mock');
 import { applicationContextCreator } from '../utils/application-context-creator';
-import { AttorneyLocalGateway } from './attorneys.local.inmemory.gateway';
+import { AttorneyLocalGateway } from './attorneys.inmemory.gateway';
 import * as testingMockData from '../../testing/mock-data';
-import * as localInmemoryGateway from './local.inmemory.gateway';
+import * as localInmemoryGateway from './inmemory.database.gateway';
 
-describe('Local in-memory database gateway tests specific to attorneys list', () => {
+describe('In-memory database gateway tests specific to attorneys list', () => {
   let applicationContext;
 
   beforeEach(async () => {

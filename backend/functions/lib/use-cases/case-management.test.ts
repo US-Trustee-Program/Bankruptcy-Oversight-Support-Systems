@@ -4,7 +4,7 @@ import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { getYearMonthDayStringFromDate } from '../adapters/utils/date-helper';
-import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
+import { MockCasesGateway } from '../adapters/gateways/case-management.mock.gateway';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';

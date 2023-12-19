@@ -1,4 +1,4 @@
-import { CasesLocalGateway } from './cases.local.gateway';
+import { CasesLocalGateway } from './mock.cases.gateway';
 import { calculateDifferenceInMonths } from '../utils/date-helper';
 
 const context = require('azure-function-context-mock');

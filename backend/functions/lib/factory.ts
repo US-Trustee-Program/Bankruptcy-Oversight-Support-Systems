@@ -1,9 +1,9 @@
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
-import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
+import { AttorneyLocalGateway } from './adapters/gateways/attorneys.inmemory.gateway';
 import { CasesInterface } from './use-cases/cases.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
-import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
+import { CasesLocalGateway } from './adapters/gateways/mock.cases.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { CosmosConfig, IDbConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';

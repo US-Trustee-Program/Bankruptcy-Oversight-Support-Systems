@@ -1,6 +1,6 @@
 import { DbResult } from '../types/database';
 import { getProperty } from '../../testing/mock-data';
-import * as db from './local.inmemory.gateway';
+import * as db from './inmemory.database.gateway';
 import { RecordObj } from '../types/basic';
 import { applicationContextCreator } from '../utils/application-context-creator';
 const context = require('azure-function-context-mock');

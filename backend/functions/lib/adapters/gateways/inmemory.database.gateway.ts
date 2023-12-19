@@ -3,7 +3,7 @@ import { ApplicationContext, ObjectKeyVal, RecordObj } from '../types/basic.js';
 import { DbResult, QueryResults } from '../types/database.js';
 import { getProperty, mockData } from '../../testing/mock-data';
 
-const MODULE_NAME = 'LOCAL-INMEMORY-DATA-MODULE';
+const MODULE_NAME = 'INMEMORY-DATA-MODULE';
 
 const runQuery = async (
   applicationContext: ApplicationContext,
