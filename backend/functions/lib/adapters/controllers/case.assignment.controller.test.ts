@@ -1,6 +1,6 @@
 import { CaseAssignmentController } from './case.assignment.controller';
 import { applicationContextCreator } from '../utils/application-context-creator';
-import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../cosmos-humble-objects/fake.cosmos-client-humble';
+import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
 
 const functionContext = require('azure-function-context-mock');
 

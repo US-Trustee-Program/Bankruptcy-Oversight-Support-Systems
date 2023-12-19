@@ -7,7 +7,7 @@ import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
-} from '../../cosmos-humble-objects/fake.cosmos-client-humble';
+} from '../../testing/testing-constants';
 
 describe('Test case assignment cosmosdb repository tests', () => {
   const currentDate = new Date().toISOString();

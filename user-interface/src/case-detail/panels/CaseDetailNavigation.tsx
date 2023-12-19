@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export function mapNavState(path: string) {
@@ -80,6 +80,7 @@ function CaseDetailNavigationComponent({
   );
 }
 
-const CaseDetailNavigation = forwardRef(CaseDetailNavigationComponent);
+// const CaseDetailNavigation = forwardRef(CaseDetailNavigationComponent);
 
-export default CaseDetailNavigation;
+// export default CaseDetailNavigation;
+export default CaseDetailNavigationComponent;

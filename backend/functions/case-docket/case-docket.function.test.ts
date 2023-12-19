@@ -1,9 +1,6 @@
 import httpTrigger from './case-docket.function';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
-import {
-  NORMAL_CASE_ID,
-  NOT_FOUND_ERROR_CASE_ID,
-} from '../lib/adapters/gateways/dxtr/case-docket.mock.gateway';
+import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 
 const context = require('azure-function-context-mock');
 

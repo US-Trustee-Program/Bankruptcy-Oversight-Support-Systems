@@ -1,6 +1,5 @@
-import { NORMAL_CASE_ID } from '../lib/adapters/gateways/dxtr/case-docket.mock.gateway';
-import { NOT_FOUND_ERROR_CASE_ID } from '../lib/cosmos-humble-objects/fake.cosmos-client-humble';
 import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
+import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 import httpTrigger from './case-history.function';
 
 const context = require('azure-function-context-mock');

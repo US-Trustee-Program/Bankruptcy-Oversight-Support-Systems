@@ -4,6 +4,11 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { CaseAssignment } from '../adapters/types/case.assignment';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { NotFoundError } from '../common-errors/not-found-error';
+import {
+  NOT_FOUND_ERROR_CASE_ID,
+  THROW_PERMISSIONS_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../testing/testing-constants';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
@@ -15,11 +20,6 @@ interface QueryOptions {
   query: string;
   parameters: QueryParams[];
 }
-
-export const NORMAL_CASE_ID = '111-11-11111';
-export const NOT_FOUND_ERROR_CASE_ID = '000-00-00000';
-export const THROW_PERMISSIONS_ERROR_CASE_ID = '888-88-88888';
-export const THROW_UNKNOWN_ERROR_CASE_ID = '999-99-99999';
 
 export default class FakeCosmosClientHumble {
   private caseAssignments: CaseAssignment[] = [];
@@ -58,7 +58,7 @@ export default class FakeCosmosClientHumble {
                       data: { ERROR_CASE_ID: NOT_FOUND_ERROR_CASE_ID },
                     });
                   }
-                  if (this.itemQueryParams[1].value === 'ASSIGNMENT') {
+                  if (query.query.includes('"ASSIGNMENT"')) {
                     const result: CaseAssignment[] = [];
                     query.parameters.forEach((params) => {
                       this.caseAssignments.find((caseItem) => {
@@ -71,7 +71,7 @@ export default class FakeCosmosClientHumble {
                       });
                     });
                     return { resources: result };
-                  } else if (this.itemQueryParams[1].value === 'ASSIGNMENT_HISTORY') {
+                  } else if (query.query.includes('"ASSIGNMENT_HISTORY"')) {
                     const gatewayHelper = new GatewayHelper();
                     return { resources: gatewayHelper.getCaseHistoryMockExtract() };
                   }

@@ -69,7 +69,6 @@ export class CaseAssignmentUseCase {
       }
     }
 
-    // TODO: Log the history here with the existing and new assignments.
     const newAssignmentRecords = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     const history: CaseAssignmentHistory = {
       caseId,
@@ -87,7 +86,7 @@ export class CaseAssignmentUseCase {
       listOfAssignmentIdsCreated,
     );
 
-    // TODO: Maybe return the updated assignement state for the case, i.e. the new attorney list.
+    // TODO: Maybe return the updated assignment state for the case, i.e. the new attorney list.
     return {
       success: true,
       message: 'Trial attorney assignments created.',

@@ -156,7 +156,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
         timeout={0}
         title={alertOptions?.title || ''}
         inline={true}
-      />{' '}
+      />
     </div>
   );
 }

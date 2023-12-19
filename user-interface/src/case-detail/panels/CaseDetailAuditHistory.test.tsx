@@ -1,12 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import { CaseAuditHistory, CaseStaffAssignment } from '@/lib/type-declarations/chapter-15';
+import {
+  CaseStaffAssignmentHistory,
+  CaseStaffAssignment,
+} from '@/lib/type-declarations/chapter-15';
 
-const EXPECTED_DATE_TIME = '01/01/2024 12:01 PM MST';
+const EXPECTED_DATE_TIME = '01/01/2024';
 
 vi.mock('../../lib/utils/datetime', () => {
   return {
-    formatDateTime: (): string => EXPECTED_DATE_TIME,
+    formatDate: (): string => EXPECTED_DATE_TIME,
   };
 });
 
@@ -14,7 +17,7 @@ describe('audit history tests', () => {
   const caseId = '000-11-22222';
 
   test('should display loading indicator if loading', async () => {
-    const caseHistory: CaseAuditHistory[] = [];
+    const caseHistory: CaseStaffAssignmentHistory[] = [];
 
     render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={true} />);
 
@@ -23,7 +26,7 @@ describe('audit history tests', () => {
   });
 
   test('should display no assignments message if no history exists', async () => {
-    const caseHistory: CaseAuditHistory[] = [];
+    const caseHistory: CaseStaffAssignmentHistory[] = [];
 
     render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
 
@@ -74,7 +77,7 @@ describe('audit history tests', () => {
         assignedOn: '2023-12-25T00:00:00.000Z',
       },
     ];
-    const caseHistory: CaseAuditHistory[] = [
+    const caseHistory: CaseStaffAssignmentHistory[] = [
       {
         id: '1234567890',
         documentType: 'ASSIGNMENT_HISTORY',
@@ -105,7 +108,7 @@ describe('audit history tests', () => {
   });
 
   test('should display (none) when no assignments exist.', async () => {
-    const caseHistory: CaseAuditHistory[] = [
+    const caseHistory: CaseStaffAssignmentHistory[] = [
       {
         id: '',
         documentType: 'ASSIGNMENT_HISTORY',

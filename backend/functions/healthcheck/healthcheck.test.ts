@@ -39,5 +39,5 @@ test('checkResults should return false when one result is false and true when al
   expect(checkResults(true, false, true, true)).toBe(false);
   expect(checkResults(true, true, false, true)).toBe(false);
   expect(checkResults(true, true, true, false)).toBe(false);
-  expect(checkResults(true, true, true, true)).toBeTruthy();
+  expect(checkResults(true, true, true, true)).toBe(true);
 });

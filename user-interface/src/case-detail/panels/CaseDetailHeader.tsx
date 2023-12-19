@@ -5,13 +5,11 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
-import { CaseDetailScrollPanelRef } from './CaseDetailScrollPanelRef';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
   caseId: string | undefined;
   caseDetail?: CaseDetailType;
-  navigationPaneRef: React.RefObject<CaseDetailScrollPanelRef>;
 }
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
@@ -28,13 +26,11 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       const caseDetailH1 = document.querySelector('.case-detail-header h1');
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
         fix();
-        props.navigationPaneRef.current?.fix();
       } else if (
         caseDetailHeader &&
         camsHeader.getBoundingClientRect().bottom > caseDetailHeader.getBoundingClientRect().bottom
       ) {
         loosen();
-        props.navigationPaneRef.current?.loosen();
       }
     }
   };
