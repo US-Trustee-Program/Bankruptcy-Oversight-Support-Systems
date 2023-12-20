@@ -10,10 +10,13 @@ param databaseContainers array = [
   {
     name: 'healthcheck'
     partitionKey1: '/id'
+    partitionKeys: ['/id']
   }
   {
     name: 'assignments'
     partitionKey1: '/caseId'
+    partitionKey2: '/documentType'
+    partitionKeys: ['/caseId', '/documentType']
   }
 ]
 

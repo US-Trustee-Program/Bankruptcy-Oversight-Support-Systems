@@ -23,9 +23,7 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
     resource: {
       id: c.name
       partitionKey: {
-        paths: [
-          c.partitionKey1
-        ]
+        paths: c.partitionKeys
       }
     }
   }
