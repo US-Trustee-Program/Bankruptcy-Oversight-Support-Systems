@@ -208,3 +208,6 @@ output vnetName string = virtualNetworkName
 // Allowed subnet name that should have access to CosmosDb
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
 output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
+
+output keyVaultId string = ustpFunctions[0].outputs.keyVaultId
+output sqlManagedId string = ustpFunctions[0].outputs.sqlManagedId
