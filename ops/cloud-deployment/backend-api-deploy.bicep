@@ -216,20 +216,22 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateLinkServiceId: functionApp.id
   }
 }
-module slotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deploySlot) {
-  name: '${functionName}-${functionSlotName}-pep-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    privateLinkGroup: 'sites'
-    stackName: '${functionName}-${functionSlotName}'
-    location: location
-    virtualNetworkName: virtualNetworkName
-    privateDnsZoneName: privateDnsZoneName
-    privateEndpointSubnetName: privateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
-    privateLinkServiceId: functionAppSlot.id
-  }
-}
+
+// TODO CAMS-160 should be moved out to azure cli script
+// module slotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deploySlot) {
+//   name: '${functionName}-${functionSlotName}-pep-module'
+//   scope: resourceGroup(virtualNetworkResourceGroupName)
+//   params: {
+//     privateLinkGroup: 'sites'
+//     stackName: '${functionName}-${functionSlotName}'
+//     location: location
+//     virtualNetworkName: virtualNetworkName
+//     privateDnsZoneName: privateDnsZoneName
+//     privateEndpointSubnetName: privateEndpointSubnetName
+//     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
+//     privateLinkServiceId: functionAppSlot.id
+//   }
+// }
 
 /*
   Storage resource for Azure functions
@@ -249,21 +251,21 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
     defaultToOAuthAuthentication: true
   }
 }
-resource slotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = if(deploySlot) {
-  name: slotFunctionsStorageName
-  location: location
-  tags: {
-    'Stack Name': '${functionName}-${functionSlotName}'
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
-  }
-}
+// resource slotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = if(deploySlot) {
+//   name: slotFunctionsStorageName
+//   location: location
+//   tags: {
+//     'Stack Name': '${functionName}-${functionSlotName}'
+//   }
+//   sku: {
+//     name: 'Standard_LRS'
+//   }
+//   kind: 'Storage'
+//   properties: {
+//     supportsHttpsTrafficOnly: true
+//     defaultToOAuthAuthentication: true
+//   }
+// }
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 module appInsights './lib/app-insights/app-insights.bicep' = if (createApplicationInsights) {
@@ -288,17 +290,18 @@ module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
     functionApp
   ]
 }
-module slotDiagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = if (deploySlot) {
-  name: '${functionName}-${functionSlotName}-diagnostic-settings-module'
-  params: {
-    functionAppName: '${functionName}/${functionSlotName}'
-    workspaceResourceId: analyticsWorkspaceId
-  }
-  dependsOn: [
-    appInsights
-    functionAppSlot
-  ]
-}
+// TODO CAMS-160 in script instead
+// module slotDiagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = if (deploySlot) {
+//   name: '${functionName}-${functionSlotName}-diagnostic-settings-module'
+//   params: {
+//     functionAppName: '${functionName}/${functionSlotName}'
+//     workspaceResourceId: analyticsWorkspaceId
+//   }
+//   dependsOn: [
+//     appInsights
+//     functionAppSlot
+//   ]
+// }
 module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${functionName}-healthcheck-alert-rule-module'
   params: {
@@ -358,27 +361,27 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     sqlIdentity
   ]
 }
-resource functionAppSlot 'Microsoft.Web/sites/slots@2022-09-01' existing = if(deploySlot) {
-  parent: functionApp
-  name: functionSlotName
-  // location: location
-  // kind: 'functionapp,linux'
-  // identity: {
-  //   type: 'UserAssigned'
-  //   userAssignedIdentities: userAssignedIdentities
-  // }
-  // properties: {
-  //   serverFarmId: servicePlan.id
-  //   enabled: true
-  //   httpsOnly: true
-  //   virtualNetworkSubnetId: subnet.outputs.subnetId
-  //   keyVaultReferenceIdentity: appConfigIdentity.id
-  // }
-  // dependsOn: [
-  //   appConfigIdentity
-  //   sqlIdentity
-  // ]
-}
+// resource functionAppSlot 'Microsoft.Web/sites/slots@2022-09-01' existing = if(deploySlot) {
+//   parent: functionApp
+//   name: functionSlotName
+//   // location: location
+//   // kind: 'functionapp,linux'
+//   // identity: {
+//   //   type: 'UserAssigned'
+//   //   userAssignedIdentities: userAssignedIdentities
+//   // }
+//   // properties: {
+//   //   serverFarmId: servicePlan.id
+//   //   enabled: true
+//   //   httpsOnly: true
+//   //   virtualNetworkSubnetId: subnet.outputs.subnetId
+//   //   keyVaultReferenceIdentity: appConfigIdentity.id
+//   // }
+//   // dependsOn: [
+//   //   appConfigIdentity
+//   //   sqlIdentity
+//   // ]
+// }
 var applicationSettings = concat([
     {
       name: 'AzureWebJobsStorage'
@@ -517,5 +520,5 @@ resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
 output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output createdSqlServerVnetRule bool = createSqlServerVnetRule
-output keyVaultId string = functionAppConfig.properties.keyVaultReferenceIdentity
+output keyVaultId string = functionApp.properties.keyVaultReferenceIdentity
 output sqlManagedId string = sqlIdentity.id
