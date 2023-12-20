@@ -396,9 +396,9 @@ jobs:
           cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
           echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
 
-          keyVaultId=$(cat ./outputs.json | jq -r keyVaultId.value)
+          keyVaultId=$(cat ./outputs.json | jq -r .keyVaultId.value)
           echo "keyVaultId=${keyVaultId}" >> $GITHUB_OUTPUT
-          sqlManagedId=$(cat ./outputs.json | jq -r sqlManagedId.value)
+          sqlManagedId=$(cat ./outputs.json | jq -r .sqlManagedId.value)
           echo "sqlManagedId=${sqlManagedId}" >> $GITHUB_OUTPUT
 
       - name: Deploy database
