@@ -47,7 +47,7 @@ describe('App Router Tests', () => {
 
     await act(async () => {
       // verify page content for expected route after navigating
-      await userEvent.click(screen.getByTestId('main-nav-case-assignment-link'));
+      await userEvent.click(screen.getByTestId('header-cases-link'));
     });
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
