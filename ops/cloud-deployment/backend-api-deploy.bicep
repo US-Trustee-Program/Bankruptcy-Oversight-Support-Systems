@@ -517,3 +517,5 @@ resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
 output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output createdSqlServerVnetRule bool = createSqlServerVnetRule
+output keyVaultId string = functionAppConfig.properties.keyVaultReferenceIdentity
+output sqlManagedId string = sqlIdentity.id

@@ -41,6 +41,8 @@ jobs:
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
+      environmentHash: ${{ steps.check-env.outputs.out }}
+      slotName: "staging"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -292,13 +294,14 @@ jobs:
       - name: Package
         run: |
           mkdir artifacts
-          tar -cvf artifacts/${{ needs.build-info.outputs.webappName }}.tar ./build
+          zip -r artifacts/${{ needs.build-info.outputs.webappName }}.zip ./build/
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.build-info.outputs.webappName }}-build
           path: user-interface/artifacts/
           if-no-files-found: error
+
   build-service:
     defaults:
       run:
@@ -327,6 +330,7 @@ jobs:
           name: ${{ needs.build-info.outputs.apiName }}-build
           path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
+
   deploy:
     runs-on: ubuntu-latest
     needs:
@@ -369,15 +373,6 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpNetworkEncrypted }}
 
-      - name: Create Slot Resources
-        if: ((github.ref == 'refs/heads/main') || true)
-        run: |
-          ./ops/scripts/pipeline/az-slot-resource-deploy.sh \
-            --webappName ${{ needs.build-info.outputs.webappName }} \
-            --apiName ${{ needs.build-info.outputs.apiName }} \
-            -g ${{ steps.rgApp.outputs.out }} \
-            --slot "staging"
-
       - name: Create Azure resource groups
         id: azure-resource-group
         run: |
@@ -401,6 +396,11 @@ jobs:
           cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
           echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
 
+          keyVaultId=$(cat ./outputs.json | jq -r keyVaultId.value)
+          echo "keyVaultId=${keyVaultId}" >> $GITHUB_OUTPUT
+          sqlManagedId=$(cat ./outputs.json | jq -r sqlManagedId.value)
+          echo "sqlManagedId=${sqlManagedId}" >> $GITHUB_OUTPUT
+
       - name: Deploy database
         id: azure-db-deploy
         run: |
@@ -416,6 +416,29 @@ jobs:
           echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
           cosmosDbPrincipalId=$(cat ./outputs.json | jq -r .cosmosDbPrincipalId.value)
           echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
+          cosmosDbManagedId=$(cat ./outputs.json | jq -r .cosmosDbManagedId.value)
+          echo "cosmosDbManagedId=${cosmosDbManagedId}" >> $GITHUB_OUTPUT
+
+      - name: Create Webapp Slot Resource
+        if: ((github.ref == 'refs/heads/main') || true)
+        run: |
+          ./ops/scripts/pipeline/az-slot-web-resource-deploy.sh \
+            --webappName ${{ needs.build-info.outputs.webappName }} \
+            --apiName ${{ needs.build-info.outputs.apiName }} \
+            --resourceGroup ${{ steps.rgApp.outputs.out }} \
+            --slotName ${{ needs.build-info.outputs.slotName }}
+
+      - name: Create API Slot Resource
+        if: ((github.ref == 'refs/heads/main') || true)
+        run: |
+          ./ops/scripts/pipeline/az-slot-api-resource-deploy.sh \
+            --apiName ${{ needs.build-info.outputs.apiName }} \
+            --resourceGroup ${{ steps.rgApp.outputs.out }} \
+            --slotName ${{ needs.build-info.outputs.slotName }} \
+            --kvReferenceId ${{ steps.azure-deploy.outputs.keyVaultId }} \
+            --sqlReferenceId ${{ steps.azure-deploy.outputs.sqlManagedId }} \
+            --cosmosReferenceId ${{ steps.azure-db-deploy.outputs.cosmosDbManagedId }} \
+            --storageAccName "storagenodeapi${{ needs.build-info.outputs.environmentHash }}${{ needs.build-info.outputs.slotName }}"
 
   deploy-webapp:
     runs-on: ubuntu-latest
@@ -446,7 +469,7 @@ jobs:
         continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          --src ./${{ needs.build-info.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
       - name: Retry Deploy to Azure WebApp
@@ -454,7 +477,7 @@ jobs:
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          --src ./${{ needs.build-info.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
 

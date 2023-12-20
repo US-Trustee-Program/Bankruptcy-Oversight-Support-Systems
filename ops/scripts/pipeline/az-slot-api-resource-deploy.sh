@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Title:        az-app-deploy.sh
+# Description:  Helper script to deploy webapp build artifact to existing Azure site
+# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
+#
+# Exitcodes
+# ==========
+# 0   No error
+# 1   Script interrupted
+# 2   Unknown flag or switch passed as parameter to script
+# 10+ Validation check errors
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    -h | --help)
+        echo "USAGE: az-slot-deploy.sh -h -g resourceGroupName --webappName webappName --apiName functionappName --slot staging"
+        exit 0
+        ;;
+    --resourceGroup)
+        app_rg="${2}"
+        shift 2
+        ;;
+
+    --apiName)
+        api_name="${2}"
+        shift 2
+        ;;
+
+    --slotName)
+        slot_name="${2}"
+        shift 2
+        ;;
+
+    --kvReferenceId)
+        kv_ref_id="${2}"
+        shift 2
+        ;;
+    --sqlReferenceId)
+        sql_ref_id="${2}"
+        shift 2
+        ;;
+    --cosmosReferenceId)
+        cosmos_ref_id="${2}"
+        shift 2
+        ;;
+    --storageAccName)
+        storage_acc_name="${2}"
+        shift 2
+        ;;
+    *)
+        exit 2 # error on unknown flag/switch
+        ;;
+    esac
+done
+
+#Function App Slot Deployment and Configuration
+
+echo "Creating Node API Staging Slot..."
+az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
+
+echo "Creating Storage account for Node API Slot..."
+az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
+storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$storage_acc_name" --query '[0].value' -o tsv)
+
+echo "Updating Node API Slot Configuration with new storage account..."
+# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
+az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+
+echo "Assigning managed Identities..."
+az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities "$kv_ref_id $sql_ref_id $cosmos_ref_id"
+
+echo "Setting KeyVaultReferenceIdentity..."
+az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings keyVaultReferenceIdentity="$kv_ref_id"

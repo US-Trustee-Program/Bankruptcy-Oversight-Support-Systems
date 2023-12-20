@@ -44,6 +44,8 @@ param apiPlanType string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
+@description('Name of deployment slot for frontend and backend')
+param slotName string = 'staging'
 param azHostSuffix string = '.net'
 
 @secure()
@@ -144,7 +146,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
     createAlerts: createAlerts
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
-    targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix}'
+    targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix} ${apiName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
     ustpIssueCollectorHash: ustpIssueCollectorHash
     camsReactSelectHash: camsReactSelectHash
     deploySlot: deploySlot
