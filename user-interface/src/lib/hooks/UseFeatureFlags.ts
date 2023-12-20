@@ -7,7 +7,6 @@ export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
-  console.log(config.clientId);
   if (!config.clientId) return defaultFeatureFlags;
 
   const featureFlags = useFlags();
