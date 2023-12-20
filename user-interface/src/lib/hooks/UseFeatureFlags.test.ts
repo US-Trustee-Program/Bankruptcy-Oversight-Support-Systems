@@ -6,8 +6,8 @@ import useFeatureFlags from './UseFeatureFlags';
 const BOGUS_CLIENT_ID = 'bogus-client-id';
 
 const remoteFeatureFlags: FeatureFlagSet = {
-  'test-three': false,
-  'test-four': true,
+  'remote-flag-1': false,
+  'remote-flag-2': true,
 };
 
 describe('useFeatureFlag hook', () => {
