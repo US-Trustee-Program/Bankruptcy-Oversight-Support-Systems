@@ -68,7 +68,7 @@ param analyticsWorkspaceId string = ''
 param deployAppInsights bool = false
 
 @description('boolean to determine creation and configuration of webapp and functionapp slots')
-param deploySlot bool = true
+param deploySlot bool = false
 
 @description('boolean to determine creation of Action Groups')
 param createActionGroup bool = false
