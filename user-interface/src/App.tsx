@@ -5,12 +5,14 @@ import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-j
 import { reactPlugin } from './ApplicationInsightsService';
 import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
-import featureFlags from './configuration/featureFlagConfiguration';
+import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import Home from './home/Home';
 import CaseAssignment from './case-assignment/CaseAssignmentScreen';
 import CaseDetail from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
+
+const featureFlagConfig = getFeatureFlagConfiguration();
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
@@ -52,11 +54,11 @@ function App() {
 }
 
 let AppToExport: React.ComponentType;
-if (featureFlags.useExternalProvider) {
+if (featureFlagConfig.useExternalProvider) {
   AppToExport = withLDProvider({
-    clientSideID: featureFlags.clientId,
+    clientSideID: featureFlagConfig.clientId,
     reactOptions: {
-      useCamelCaseFlagKeys: featureFlags.useCamelCaseFlagKeys,
+      useCamelCaseFlagKeys: featureFlagConfig.useCamelCaseFlagKeys,
     },
     options: {
       baseUrl: 'https://clientsdk.launchdarkly.us',
