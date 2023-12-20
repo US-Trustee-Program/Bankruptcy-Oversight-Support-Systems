@@ -17,10 +17,10 @@ repos:
           files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
           types: [ file ]
           additional_dependencies:
-          -   eslint@8.55.0
-          -   eslint-config-prettier@9.0.0
-          -   eslint-plugin-prettier@5.0.1
-          -   eslint-plugin-react@7.33.2
+          -   eslint
+          -   eslint-config-prettier
+          -   eslint-plugin-prettier
+          -   eslint-plugin-react
           -   typescript
           -   '@typescript-eslint/eslint-plugin'
           -   '@typescript-eslint/parser'
