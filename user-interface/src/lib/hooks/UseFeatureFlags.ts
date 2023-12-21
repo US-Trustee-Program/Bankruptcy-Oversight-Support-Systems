@@ -4,6 +4,7 @@ import { getFeatureFlagConfiguration } from '../../configuration/featureFlagConf
 
 export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
+export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
