@@ -14,6 +14,8 @@ import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
+import { OrdersGateway } from './use-cases/gateways.types';
+import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -58,4 +60,10 @@ export const getSqlConnection = (databaseConfig: IDbConfig) => {
   // Reference https://github.com/tediousjs/node-mssql#readme
   // TODO We may want to refactor this to use non ConnectionPool connection object since we have moved to function app.
   return new ConnectionPool(databaseConfig as config);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getOrdersGateway = (_context: ApplicationContext): OrdersGateway => {
+  // TODO: Implement mock gateway and instantiate if dbMock flag is true.
+  return new DxtrOrdersGateway();
 };
