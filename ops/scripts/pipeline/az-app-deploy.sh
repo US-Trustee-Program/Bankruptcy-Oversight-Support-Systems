@@ -88,7 +88,7 @@ if [ ${deploy_slot} == true ] ; then
 # az webapp up --html --os-type linux -n "${app_name}"
     az webapp deploy -g "${app_rg}" --src-path "${artifact_path}" -n "${app_name}" --slot "${slot_name}"
 else
-    az webapp up --html --os-type linux -n "${app_name}"
+    az webapp deploy -g "${app_rg}" --src-path "${artifact_path}" -n "${app_name}"
 fi
 
 
