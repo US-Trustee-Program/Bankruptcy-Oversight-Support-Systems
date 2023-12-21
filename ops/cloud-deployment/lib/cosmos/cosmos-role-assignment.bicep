@@ -7,12 +7,12 @@ param principalId string
 @description('Resource id of role definition')
 param roleDefinitionId string
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
 
 var sqlRoleAssignmentName = 'RoleAssignment${accountName}${principalId}'
-resource sqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = {
+resource sqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-11-15' = {
   parent: account
   name: guid(sqlRoleAssignmentName)
   properties: {

@@ -1,12 +1,12 @@
 @description('Cosmos DB account name, max length 44 characters')
 param accountName string
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
 
 var cosmosDbReadWriteRoleName = 'CosmosDbReadWrite${accountName}'
-resource customRoleDefinition 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' = {
+resource customRoleDefinition 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-11-15' = {
   parent: account
   name: guid(cosmosDbReadWriteRoleName)
   properties: {
