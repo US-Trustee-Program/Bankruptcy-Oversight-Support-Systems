@@ -142,12 +142,6 @@ function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEnt
   return acc;
 }
 
-interface CaseDetailProps {
-  caseDetail?: CaseDetailType;
-  caseDocketEntries?: CaseDocketEntry[];
-  caseStaffAssignmentHistory?: CaseStaffAssignmentHistory[];
-}
-
 function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
   if (reOpenDate) {
     if (closedDate && reOpenDate > closedDate) {
@@ -165,6 +159,12 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
     if (a.label === b.label) return 0;
     return a.label < b.label ? -1 : 1;
   });
+}
+
+interface CaseDetailProps {
+  caseDetail?: CaseDetailType;
+  caseDocketEntries?: CaseDocketEntry[];
+  caseStaffAssignmentHistory?: CaseStaffAssignmentHistory[];
 }
 
 export default function CaseDetail(props: CaseDetailProps) {
