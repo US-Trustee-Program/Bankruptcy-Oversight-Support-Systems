@@ -161,7 +161,7 @@ var funcParams = [
     privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
   }
 ]
-module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
+module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
@@ -196,13 +196,23 @@ module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams
   ]
 }]
 
-output webappName string = ustpWebapp.outputs.webappName
-output functionAppName string = deployFunctions ? ustpFunctions[0].outputs.functionAppName : ''
+
+// main.bicep outputs
+
 output vnetName string = virtualNetworkName
 
 // Allowed subnet name that should have access to CosmosDb
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
 output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
 
-output keyVaultId string = ustpFunctions[0].outputs.keyVaultId
-output sqlManagedId string = ustpFunctions[0].outputs.sqlManagedId
+resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+  name: idKeyvaultAppConfiguration
+  scope: resourceGroup(kvAppConfigResourceGroupName)
+}
+output keyVaultId string = identityKeyVaultAppConfig.id
+
+resource identitySQL 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+  name: sqlServerIdentityName
+  scope: resourceGroup(sqlServerIdentityResourceGroupName)
+}
+output sqlManagedId string = identitySQL.id
