@@ -28,6 +28,11 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --webappName)
+        webapp_name="${2}"
+        shift 2
+        ;;
+
     --slotName)
         slot_name="${2}"
         shift 2
@@ -60,6 +65,16 @@ done
 echo "Creating Node API Staging Slot..."
 az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
 
+echo "Setting CORS Allowed origins for the API..."
+az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins https://"$webapp_name"-"$slot_name".azurewebsites.us
+
+echo "Assigning managed Identities..."
+# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
+az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
+
+echo "Setting KeyVaultReferenceIdentity..."
+az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings keyVaultReferenceIdentity="$kv_ref_id"
+
 echo "Creating Storage account for Node API Slot..."
 az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
 storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$storage_acc_name" --query '[0].value' -o tsv)
@@ -67,10 +82,3 @@ storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$sto
 echo "Updating Node API Slot Configuration with new storage account..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
 az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
-
-echo "Assigning managed Identities..."
-# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
-
-echo "Setting KeyVaultReferenceIdentity..."
-az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings keyVaultReferenceIdentity="$kv_ref_id"

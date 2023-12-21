@@ -44,10 +44,9 @@ done
 
 
 # WebApp Slot Deployment and configuration
-
+echo "Creating deployment slot for webapp: ${webapp_name}..."
 az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
+
+echo "Modifying app settings for deployment slot..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
 az webapp config appsettings set --resource-group $app_rg  --name $webapp_name --slot $slot_name --settings CSP_API_SERVER_HOST="${api_name}-${slot_name}.azurewebsites.us"
-
-echo "Setting CORS Allowed origins for the API..."
-az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins https://"$webapp_name"-"$slot_name".azurewebsites.us

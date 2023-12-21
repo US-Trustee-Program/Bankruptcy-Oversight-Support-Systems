@@ -424,15 +424,20 @@ jobs:
         run: |
           ./ops/scripts/pipeline/az-slot-web-resource-deploy.sh \
             --webappName ${{ needs.build-info.outputs.webappName }} \
-            --apiName ${{ needs.build-info.outputs.apiName }} \
+            --apiName ${{ needs.build-info.outputs.apiName }}
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --slotName ${{ needs.build-info.outputs.slotName }}
-
+      - name: echo ID
+        if: ((github.ref == 'refs/heads/main') || true)
+        run: |
+          echo "CosmosId: ${{ steps.azure-db-deploy.outputs.cosmosDbManagedId }}" && \
       - name: Create API Slot Resource
         if: ((github.ref == 'refs/heads/main') || true)
         run: |
+          echo "CosmosId: ${{ steps.azure-db-deploy.outputs.cosmosDbManagedId }}" && \
           ./ops/scripts/pipeline/az-slot-api-resource-deploy.sh \
             --apiName ${{ needs.build-info.outputs.apiName }} \
+            --webappName ${{ needs.build-info.outputs.webappName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --slotName ${{ needs.build-info.outputs.slotName }} \
             --kvReferenceId ${{ steps.azure-deploy.outputs.keyVaultId }} \
