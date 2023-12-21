@@ -38,9 +38,6 @@ var planTypeToSkuMap = {
 @description('Azure functions app name')
 param functionName string
 
-@description('Azure functions app deployment slot name')
-param functionSlotName string = 'staging'
-
 @description('Existing Private DNS Zone used for application')
 param privateDnsZoneName string
 
@@ -85,11 +82,6 @@ param functionsVersion string = '~4'
 @maxLength(24)
 param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, functionName)}'
 
-@description('Storage account name. Default creates unique name from resource group id and stack name')
-@minLength(3)
-@maxLength(24)
-param slotFunctionsStorageName string = 'slotfunc${uniqueString(resourceGroup().id, functionName)}'
-
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
 
@@ -117,9 +109,6 @@ param allowVeracodeScan bool = false
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
-
-@description('boolean to determine creation of deployment slot for the functionapp')
-param deploySlot bool
 
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''

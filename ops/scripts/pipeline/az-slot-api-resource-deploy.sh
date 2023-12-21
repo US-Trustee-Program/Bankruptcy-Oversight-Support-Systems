@@ -61,6 +61,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 #Function App Slot Deployment and Configuration
+echo "Creating Storage account for Node API Slot..."
+az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
+storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$storage_acc_name" --query '[0].value' -o tsv)
 
 echo "Creating Node API Staging Slot..."
 az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
@@ -78,7 +81,3 @@ az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" -
 
 echo "Setting KeyVaultReferenceIdentity..."
 az functionapp update --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
-
-echo "Creating Storage account for Node API Slot..."
-az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
-storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$storage_acc_name" --query '[0].value' -o tsv)
