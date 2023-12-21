@@ -65,8 +65,12 @@ done
 echo "Creating Node API Staging Slot..."
 az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
 
+echo "Updating Node API Slot Configuration with new storage account..."
+# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
+az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+
 echo "Setting CORS Allowed origins for the API..."
-az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins https://"$webapp_name"-"$slot_name".azurewebsites.us
+az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
 
 echo "Assigning managed Identities..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
@@ -78,7 +82,3 @@ az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_n
 echo "Creating Storage account for Node API Slot..."
 az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
 storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$storage_acc_name" --query '[0].value' -o tsv)
-
-echo "Updating Node API Slot Configuration with new storage account..."
-# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
