@@ -77,7 +77,7 @@ echo "Assigning managed Identities..."
 az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
 
 echo "Setting KeyVaultReferenceIdentity..."
-az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings keyVaultReferenceIdentity="$kv_ref_id"
+az functionapp update --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
 
 echo "Creating Storage account for Node API Slot..."
 az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
