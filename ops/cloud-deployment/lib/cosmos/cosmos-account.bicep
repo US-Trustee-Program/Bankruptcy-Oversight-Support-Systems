@@ -85,7 +85,7 @@ var allowedSubnetList = [for item in allowedSubnets: {
   ignoreMissingVNetServiceEndpoint: false
 }]
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' = {
   name: accountName
   location: location
   kind: 'GlobalDocumentDB'
