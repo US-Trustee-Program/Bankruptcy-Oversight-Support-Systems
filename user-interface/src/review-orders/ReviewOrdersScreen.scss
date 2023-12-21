@@ -1,0 +1,28 @@
+.review-orders-screen {
+  .order-list-container {
+    .order-type {
+      span {
+        background-color: #5C5C5C;
+        color: white;
+        padding: 2px 8px 2px 8px;
+        border-radius: 2px;
+      }
+    }
+    .order-status {
+      span {
+        color: white;
+        padding: 2px 8px 2px 8px;
+        border-radius: 2px;
+      }
+      span.pending {
+        background: #C2850C;
+      }
+      span.approved {
+        background: #008817;
+      }
+      span.rejected {
+        background: #D83933;
+      }
+    }
+  }
+}
