@@ -473,7 +473,6 @@ jobs:
           --src ./${{ needs.build-info.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }} \
-          --deploySlot true
           --slotName ${{ needs.build-info.outputs.slotName }}
       - name: Retry Deploy to Azure WebApp slot
         if: steps.deploy-webapp-step.outcome != 'success'
@@ -483,7 +482,6 @@ jobs:
           --src ./${{ needs.build-info.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }} \
-          --deploySlot true
           --slotName ${{ needs.build-info.outputs.slotName }}
 
   deploy-service:
