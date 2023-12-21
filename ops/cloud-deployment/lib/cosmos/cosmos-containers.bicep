@@ -24,6 +24,7 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
       id: c.name
       partitionKey: {
         paths: c.partitionKeys
+        kind: length(c.partitionKeys) == 1 ? 'Hash' : 'MultiHash'
       }
     }
   }
