@@ -474,6 +474,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }} \
           --deploySlot true
+          --slotName "staging"
       - name: Retry Deploy to Azure WebApp
         if: steps.deploy-webapp-step.outcome != 'success' && (github.ref == 'refs/heads/main')
         run: |
@@ -483,6 +484,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }} \
           --deploySlot true
+          --slotName "staging"
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -524,7 +526,8 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
-          --deploySlot true
+          --deploySlot true \
+          --slotName "staging"
       - name: Retry Deploy Azure Functions backend
         if: steps.deploy-backend-step.outcome != 'success'
         run: |
@@ -541,7 +544,8 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
-          --deploySlot
+          --deploySlot true
+          --slotName "staging"
 
   smoke-test-application:
     runs-on: ubuntu-latest
