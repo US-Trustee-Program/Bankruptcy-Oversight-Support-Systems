@@ -474,7 +474,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }} \
           --deploySlot true
-          --slotName "staging"
+          --slotName ${{ needs.build-info.outputs.slotName }}
       - name: Retry Deploy to Azure WebApp slot
         if: steps.deploy-webapp-step.outcome != 'success' && (github.ref == 'refs/heads/main')
         run: |
@@ -484,7 +484,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }} \
           --deploySlot true
-          --slotName "staging"
+          --slotName ${{ needs.build-info.outputs.slotName }}
 
   deploy-service:
     runs-on: ubuntu-latest
@@ -518,7 +518,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
-          --slotName "staging"
+          --slotName ${{ needs.build-info.outputs.slotName }}
       # - name: Retry Deploy Azure Functions backend
       #   if: steps.deploy-backend-step.outcome != 'success'
       #   run: |
@@ -566,6 +566,27 @@ jobs:
           -p ${{ env.priority }} \
           --is-cicd
       - name: Health check api
+        if: ((github.ref == 'refs/heads/main') || true)
+        run: |
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}-${{ needs.build-info.outputs.slotName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}-${{ needs.build-info.outputs.slotName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
+
+          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+            exit 0
+          else
+            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+            exit 1
+          fi
+      - name: Execute Integration Tests
+        if: ((github.ref == 'refs/heads/main') || true)
+        run: |
+          pushd backend/functions
+          npm ci
+          export CASES_FUNCTION_URL="https://${{ env.apiName }}-${{ needs.build-info.outputs.slotName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+          npm run test:integration
+          popd
+      - name: Health check api
+        if: ((github.ref != 'refs/heads/main') || false)
         run: |
           webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
           apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck)
@@ -577,6 +598,7 @@ jobs:
             exit 1
           fi
       - name: Execute Integration Tests
+        if: ((github.ref != 'refs/heads/main') || false)
         run: |
           pushd backend/functions
           npm ci
@@ -608,6 +630,10 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      - name: Enable slot access
+        run: |
+          az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ needs.build-info.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --slot ${{ needs.build-info.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
       - name: Enable access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
