@@ -11,12 +11,12 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
   name: accountName
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' existing = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-09-15' existing = {
   parent: account
   name: databaseName
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = [for c in databaseContainers: {
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-09-15' = [for c in databaseContainers: {
   parent: database
   name: c.name
   properties: {

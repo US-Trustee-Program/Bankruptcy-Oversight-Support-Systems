@@ -8,7 +8,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
   name: accountName
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-09-15' = {
   parent: account
   name: databaseName
   properties: {
