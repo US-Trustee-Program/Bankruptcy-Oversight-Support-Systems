@@ -69,7 +69,8 @@ echo "Updating Node API Slot Configuration with new storage account..."
 az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
 
 echo "Assigning managed Identities..."
-az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities "$kv_ref_id $sql_ref_id $cosmos_ref_id"
+# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
+az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
 
 echo "Setting KeyVaultReferenceIdentity..."
 az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings keyVaultReferenceIdentity="$kv_ref_id"
