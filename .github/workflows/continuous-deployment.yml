@@ -424,17 +424,12 @@ jobs:
         run: |
           ./ops/scripts/pipeline/az-slot-web-resource-deploy.sh \
             --webappName ${{ needs.build-info.outputs.webappName }} \
-            --apiName ${{ needs.build-info.outputs.apiName }}
+            --apiName ${{ needs.build-info.outputs.apiName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --slotName ${{ needs.build-info.outputs.slotName }}
-      - name: echo ID
-        if: ((github.ref == 'refs/heads/main') || true)
-        run: |
-          echo "CosmosId: ${{ steps.azure-db-deploy.outputs.cosmosDbManagedId }}" && \
       - name: Create API Slot Resource
         if: ((github.ref == 'refs/heads/main') || true)
         run: |
-          echo "CosmosId: ${{ steps.azure-db-deploy.outputs.cosmosDbManagedId }}" && \
           ./ops/scripts/pipeline/az-slot-api-resource-deploy.sh \
             --apiName ${{ needs.build-info.outputs.apiName }} \
             --webappName ${{ needs.build-info.outputs.webappName }} \
@@ -480,7 +475,7 @@ jobs:
           -n ${{ needs.build-info.outputs.webappName }} \
           --deploySlot true
           --slotName "staging"
-      - name: Retry Deploy to Azure WebApp
+      - name: Retry Deploy to Azure WebApp slot
         if: steps.deploy-webapp-step.outcome != 'success' && (github.ref == 'refs/heads/main')
         run: |
           sleep 30 &&
@@ -515,7 +510,7 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy Azure Functions backend
+      - name: Deploy Azure Functions slot backend
         continue-on-error: true
         id: deploy-backend-step
         run: |
@@ -549,7 +544,7 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
-          --deploySlot true
+          --deploySlot true \
           --slotName "staging"
 
   smoke-test-application:
