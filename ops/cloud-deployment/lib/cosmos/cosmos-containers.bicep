@@ -7,16 +7,16 @@ param databaseName string
 @description('List of objects with following properties: name, partitionKey1')
 param databaseContainers array
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' existing = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' existing = {
   parent: account
   name: databaseName
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = [for c in databaseContainers: {
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = [for c in databaseContainers: {
   parent: database
   name: c.name
   properties: {
@@ -25,6 +25,7 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
       partitionKey: {
         paths: c.partitionKeys
         kind: length(c.partitionKeys) == 1 ? 'Hash' : 'MultiHash'
+        version: 2
       }
     }
   }
