@@ -1,6 +1,11 @@
-import './ReviewOrdersScreen.scss';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
+import Api from '../lib/models/api';
+import MockApi from '../lib/models/chapter15-mock.api.cases';
+import './ReviewOrdersScreen.scss';
+import { Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+
+const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
 type ReviewOrderCourtInfo = {
   name: string;
@@ -10,73 +15,78 @@ type ReviewOrderCourtInfo = {
 
 export default function ReviewOrders() {
   const [courtSelection, setCourtSelection] = useState<ReviewOrderCourtInfo>();
-  const [, setCaseSelection] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_caseSelection, setCaseSelection] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [orderList, setOrderList] = useState<Array<Order>>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isOrderListLoading, setIsOrderListLoading] = useState(false);
 
   /****  START MOCK DATA  ****/
 
   const regionNumber = '02';
-  const orderList = [
-    {
-      caseId: '23-12345',
-      region: '02',
-      location: 'Manhattan',
-      caseTitle: 'Some case title',
-      courtName: 'court 1',
-      orderType: 'transfer',
-      orderDate: '01/23/2024',
-      status: 'pending',
-      summaryText: '1st accordion',
-      fullText: 'here is some content hidden inside the 1st accordion',
-    },
-    {
-      caseId: '23-12346',
-      region: '02',
-      location: 'Manhattan',
-      caseTitle: 'Some case title 2',
-      courtName: 'court 2',
-      orderDate: '01/24/2024',
-      orderType: 'consolidation',
-      status: 'pending',
-      summaryText: '2nd accordion',
-      fullText: 'here is some content hidden inside the 2nd accordion',
-    },
-    {
-      caseId: '23-12347',
-      region: '02',
-      location: 'Manhattan',
-      caseTitle: 'Some case title 3',
-      courtName: 'court 2',
-      orderDate: '01/25/2024',
-      orderType: 'transfer',
-      status: 'approved',
-      summaryText: '3rd accordion',
-      fullText: 'here is some content hidden inside the 3rd accordion',
-    },
-    {
-      caseId: '23-12348',
-      region: '02',
-      location: 'Manhattan',
-      caseTitle: 'Some case title 4',
-      courtName: 'court 1',
-      orderDate: '01/26/2024',
-      orderType: 'transfer',
-      status: 'pending',
-      summaryText: '4th accordion',
-      fullText: 'here is some content hidden inside the 4th accordion',
-    },
-    {
-      caseId: '23-12349',
-      region: '02',
-      location: 'Manhattan',
-      caseTitle: 'Some case title 5',
-      courtName: 'court 3',
-      orderDate: '01/27/2024',
-      orderType: 'transfer',
-      status: 'rejected',
-      summaryText: '5th accordion',
-      fullText: 'here is some content hidden inside the 5th accordion',
-    },
-  ];
+  // const orderList = [
+  //   {
+  //     caseId: '23-12345',
+  //     region: '02',
+  //     location: 'Manhattan',
+  //     caseTitle: 'Some case title',
+  //     courtName: 'court 1',
+  //     orderType: 'transfer',
+  //     orderDate: '01/23/2024',
+  //     status: 'pending',
+  //     summaryText: '1st accordion',
+  //     fullText: 'here is some content hidden inside the 1st accordion',
+  //   },
+  //   {
+  //     caseId: '23-12346',
+  //     region: '02',
+  //     location: 'Manhattan',
+  //     caseTitle: 'Some case title 2',
+  //     courtName: 'court 2',
+  //     orderDate: '01/24/2024',
+  //     orderType: 'consolidation',
+  //     status: 'pending',
+  //     summaryText: '2nd accordion',
+  //     fullText: 'here is some content hidden inside the 2nd accordion',
+  //   },
+  //   {
+  //     caseId: '23-12347',
+  //     region: '02',
+  //     location: 'Manhattan',
+  //     caseTitle: 'Some case title 3',
+  //     courtName: 'court 2',
+  //     orderDate: '01/25/2024',
+  //     orderType: 'transfer',
+  //     status: 'approved',
+  //     summaryText: '3rd accordion',
+  //     fullText: 'here is some content hidden inside the 3rd accordion',
+  //   },
+  //   {
+  //     caseId: '23-12348',
+  //     region: '02',
+  //     location: 'Manhattan',
+  //     caseTitle: 'Some case title 4',
+  //     courtName: 'court 1',
+  //     orderDate: '01/26/2024',
+  //     orderType: 'transfer',
+  //     status: 'pending',
+  //     summaryText: '4th accordion',
+  //     fullText: 'here is some content hidden inside the 4th accordion',
+  //   },
+  //   {
+  //     caseId: '23-12349',
+  //     region: '02',
+  //     location: 'Manhattan',
+  //     caseTitle: 'Some case title 5',
+  //     courtName: 'court 3',
+  //     orderDate: '01/27/2024',
+  //     orderType: 'transfer',
+  //     status: 'rejected',
+  //     summaryText: '5th accordion',
+  //     fullText: 'here is some content hidden inside the 5th accordion',
+  //   },
+  // ];
 
   const courtList: ReviewOrderCourtInfo[] = [
     {
@@ -103,6 +113,25 @@ export default function ReviewOrders() {
   const caseList = ['case 1', 'case 2', 'case 3'];
 
   /****  END MOCK DATA  ****/
+
+  async function getOrders() {
+    setIsOrderListLoading(true);
+    api
+      .get(`/orders`, {})
+      .then((data) => {
+        const response = data as OrderResponseData;
+        setOrderList(response.body);
+        setIsOrderListLoading(false);
+      })
+      .catch(() => {
+        setOrderList([]);
+        setIsOrderListLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    getOrders();
+  }, []);
 
   const statusType = new Map();
   statusType.set('pending', 'Pending Review');
@@ -151,12 +180,7 @@ export default function ReviewOrders() {
                         <h4>
                           {order.orderDate} - Order to {orderType.get(order.orderType)}
                         </h4>
-                        <p>
-                          Court order transferring to new court district. The legal definitions of
-                          the terms bankruptcy, insolvency, liquidation and dissolution are
-                          contested in the Indian legal system. There is no regulation or statute
-                          legislated upon bankruptcy which denotes a condition of inability...
-                        </p>
+                        <p>{order.fullText}</p>
                       </div>
                       <section className="order-form">
                         <div className="court-selection">

@@ -9,4 +9,5 @@ export type Order = CaseDocketEntry & {
   regionId: string;
   orderType: 'transfer';
   orderDate: string;
+  status: 'pending' | 'approved' | 'rejected';
 };
