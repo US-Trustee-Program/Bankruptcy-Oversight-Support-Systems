@@ -23,6 +23,11 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --idResourceGroup)
+        id_rg="${2}"
+        shift 2
+        ;;
+
     --apiName)
         api_name="${2}"
         shift 2
@@ -38,16 +43,16 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --kvReferenceId)
-        kv_ref_id="${2}"
+    --kvIdName)
+        kv_id_name="${2}"
         shift 2
         ;;
-    --sqlReferenceId)
-        sql_ref_id="${2}"
+    --sqlIdName)
+        sql_id_name="${2}"
         shift 2
         ;;
-    --cosmosReferenceId)
-        cosmos_ref_id="${2}"
+    --cosmosIdName)
+        cosmos_id_name="${2}"
         shift 2
         ;;
     --storageAccName)
@@ -77,6 +82,10 @@ az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins "https
 
 echo "Assigning managed Identities..."
 # Identities occasionally come through with improper id for usage here, this constructs that
+sql_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$sql_id_name'].id" -o tsv)
+kv_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$kv_id_name'].id" -o tsv)
+cosmos_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$cosmos_id_name'].id" -o tsv)
+
 
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
 az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
