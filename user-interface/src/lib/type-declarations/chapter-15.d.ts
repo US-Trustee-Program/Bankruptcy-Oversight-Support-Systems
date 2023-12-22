@@ -125,3 +125,18 @@ export type Order = CaseDocketEntry & {
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;
 }
+
+export interface OfficeDetails {
+  divisionCode: string;
+  groupDesignator: string;
+  courtId: string;
+  courtName: string;
+  officeCode: string;
+  state: string;
+  courtDivisionName: string;
+  region: string;
+}
+
+export interface OfficesResponseData extends ResponseData {
+  body: OfficeDetails[];
+}
