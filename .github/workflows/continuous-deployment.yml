@@ -433,15 +433,16 @@ jobs:
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
 
       - name: Create Webapp Slot Resource
-        if: ((github.ref == 'refs/heads/main') || true)
+        if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         run: |
           ./ops/scripts/pipeline/az-slot-web-resource-deploy.sh \
             --webappName ${{ needs.build-info.outputs.webappName }} \
             --apiName ${{ needs.build-info.outputs.apiName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --slotName ${{ needs.build-info.outputs.slotName }}
+
       - name: Create API Slot Resource
-        if: ((github.ref == 'refs/heads/main') || true)
+        if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         run: |
           ./ops/scripts/pipeline/az-slot-api-resource-deploy.sh \
             --apiName ${{ needs.build-info.outputs.apiName }} \
@@ -480,7 +481,7 @@ jobs:
 
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-step
-        if: ((github.ref == 'refs/heads/main') || true)
+        if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-app-slot-deploy.sh \
@@ -489,7 +490,7 @@ jobs:
           -n ${{ needs.build-info.outputs.webappName }} \
           --slotName ${{ needs.build-info.outputs.slotName }}
       - name: Retry Deploy to Azure WebApp slot
-        if: steps.deploy-webapp-step.outcome != 'success'
+        if: steps.deploy-webapp-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-app-slot-deploy.sh \
@@ -523,8 +524,9 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Functions slot backend
-        continue-on-error: true
         id: deploy-backend-step
+        if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
+        continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -533,7 +535,7 @@ jobs:
           --slotName ${{ needs.build-info.outputs.slotName }}
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-retry
-        if: steps.deploy-backend-step.outcome != 'success'
+        if: steps.deploy-backend-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         run: |
           ./ops/scripts/pipeline/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -559,7 +561,7 @@ jobs:
       #     --slotName "staging"
 
   smoke-test-application-slots:
-    if: ((github.ref == 'refs/heads/main') || true)
+    if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp, deploy-service]
     environment: ${{ needs.build-info.outputs.environment }}
