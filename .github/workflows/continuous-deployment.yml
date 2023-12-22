@@ -479,8 +479,26 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy to Azure WebApp Slot
+      - name: Deploy to Azure WebApp
         id: deploy-webapp-step
+        if: ((github.ref == 'refs/heads/main') || ${{ !inputs.enableSlotDeployment }})
+        continue-on-error: true
+        run: |
+          ./ops/scripts/pipeline/az-app-deploy.sh \
+          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.webappName }}
+      - name: Retry Deploy to Azure WebApp
+        if: steps.deploy-webapp-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ !inputs.enableSlotDeployment }})
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-app-deploy.sh \
+          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.webappName }}
+
+      - name: Deploy to Azure WebApp Slot
+        id: deploy-webapp-slot-step
         if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         continue-on-error: true
         run: |
@@ -490,7 +508,7 @@ jobs:
           -n ${{ needs.build-info.outputs.webappName }} \
           --slotName ${{ needs.build-info.outputs.slotName }}
       - name: Retry Deploy to Azure WebApp slot
-        if: steps.deploy-webapp-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
+        if: steps.deploy-webapp-slot-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-app-slot-deploy.sh \
@@ -523,8 +541,42 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy Azure Functions slot backend
+      - name: Deploy Azure Functions backend
         id: deploy-backend-step
+        if: ((github.ref == 'refs/heads/main') || ${{ !inputs.enableSlotDeployment }})
+        continue-on-error: true
+        run: |
+          ./ops/scripts/pipeline/az-func-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.apiName }} \
+          --src ./${{ needs.build-info.outputs.apiName }}.zip \
+          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
+          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
+          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
+          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
+          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
+      - name: Retry Deploy Azure Functions backend
+        if: steps.deploy-backend-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ !inputs.enableSlotDeployment }})
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-func-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.build-info.outputs.apiName }} \
+          --src ./${{ needs.build-info.outputs.apiName }}.zip \
+          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
+          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
+          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
+          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
+          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
+
+      - name: Deploy Azure Functions slot backend
+        id: deploy-backend-slot-step
         if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         continue-on-error: true
         run: |
@@ -534,7 +586,7 @@ jobs:
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
           --slotName ${{ needs.build-info.outputs.slotName }}
       - name: Deploy Azure Functions slot backend
-        id: deploy-backend-retry
+        id: deploy-backend-slot-retry
         if: steps.deploy-backend-step.outcome != 'success' && ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
         run: |
           ./ops/scripts/pipeline/az-func-slot-deploy.sh \
@@ -542,23 +594,6 @@ jobs:
           -n ${{ needs.build-info.outputs.apiName }} \
           --src ./${{ needs.build-info.outputs.apiName }}.zip \
           --slotName ${{ needs.build-info.outputs.slotName }}
-      # - name: Retry Deploy Azure Functions backend
-      #   if: steps.deploy-backend-step.outcome != 'success'
-      #   run: |
-      #     sleep 30 &&
-      #     ./ops/scripts/pipeline/az-func-slot-deploy.sh \
-      #     -g ${{ steps.rgApp.outputs.out }} \
-      #     -n ${{ needs.build-info.outputs.apiName }} \
-      #     --src ./${{ needs.build-info.outputs.apiName }}.zip \
-      #     --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-      #     --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
-      #     --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-      #     COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
-      #     COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-      #     COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }}" \
-      #     --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
-      #     --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
-      #     --slotName "staging"
 
   smoke-test-application-slots:
     if: ((github.ref == 'refs/heads/main') || ${{ inputs.enableSlotDeployment }})
