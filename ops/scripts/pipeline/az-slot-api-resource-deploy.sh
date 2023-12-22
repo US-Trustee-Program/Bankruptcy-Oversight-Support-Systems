@@ -77,14 +77,7 @@ az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins "https
 
 echo "Assigning managed Identities..."
 # Identities occasionally come through with improper id for usage here, this constructs that
-idString="/identities/"
-replacementString="/userAssignedIdentities/"
-# shellcheck disable=SC2001 # REASON: need to use sed
-kv_ref_id=$(echo "$kv_ref_id" | sed "s#$idString#$replacementString#")
-# shellcheck disable=SC2001 # REASON: REASON: need to use sed
-sql_ref_id=$(echo "$sql_ref_id" | sed "s#$idString#$replacementString#")
-# shellcheck disable=SC2001 # REASON: REASON: need to use sed
-cosmos_ref_id=$(echo "$cosmos_ref_id" | sed "s#$idString#$replacementString#")
+
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
 az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
 

@@ -205,13 +205,13 @@ output vnetName string = virtualNetworkName
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
 output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
 
-resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 output keyVaultId string = identityKeyVaultAppConfig.id
 
-resource identitySQL 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+resource identitySQL 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: sqlServerIdentityName
   scope: resourceGroup(sqlServerIdentityResourceGroupName)
 }
