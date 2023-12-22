@@ -408,7 +408,10 @@ jobs:
           echo "keyVaultId=${keyVaultId}" >> $GITHUB_OUTPUT
           sqlManagedId=$(cat ./outputs.json | jq -r .sqlManagedId.value)
           echo "sqlManagedId=${sqlManagedId}" >> $GITHUB_OUTPUT
-
+          keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
+          echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
+          sqlManagedIdName=$(cat ./outputs.json | jq -r .sqlManagedIdName.value)
+          echo "sqlManagedIdName=${sqlManagedIdName}" >> $GITHUB_OUTPUT
       - name: Deploy database
         id: azure-db-deploy
         run: |
@@ -424,8 +427,8 @@ jobs:
           echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
           cosmosDbPrincipalId=$(cat ./outputs.json | jq -r .cosmosDbPrincipalId.value)
           echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
-          cosmosDbManagedId=$(cat ./outputs.json | jq -r .cosmosDbManagedId.value)
-          echo "cosmosDbManagedId=${cosmosDbManagedId}" >> $GITHUB_OUTPUT
+          cosmosDbManagedIdName=$(cat ./outputs.json | jq -r .cosmosDbManagedIdName.value)
+          echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
 
       - name: Create Webapp Slot Resource
         if: ((github.ref == 'refs/heads/main') || true)
@@ -442,12 +445,13 @@ jobs:
             --apiName ${{ needs.build-info.outputs.apiName }} \
             --webappName ${{ needs.build-info.outputs.webappName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
+            --idResourceGroup ${{ secrets.AZURE_RG }} \
             --slotName ${{ needs.build-info.outputs.slotName }} \
-            --kvReferenceId ${{ steps.azure-deploy.outputs.keyVaultId }} \
-            --sqlReferenceId ${{ steps.azure-deploy.outputs.sqlManagedId }} \
-            --cosmosReferenceId ${{ steps.azure-db-deploy.outputs.cosmosDbManagedId }} \
+            --kvIdName ${{ steps.azure-deploy.outputs.keyVaultManagedIdName }} \
+            --sqlIdName ${{ steps.azure-deploy.outputs.sqlManagedIdName }} \
+            --cosmosIdName ${{ steps.azure-db-deploy.outputs.cosmosDbManagedIdName }} \
             --storageAccName "storagenodeapi${{ needs.build-info.outputs.environmentHash }}${{ needs.build-info.outputs.slotName }}"
-
+        # Need to change storage acct name based on env
   deploy-webapp:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]

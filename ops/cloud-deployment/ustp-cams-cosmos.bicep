@@ -146,4 +146,4 @@ module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.b
 
 output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
 output cosmosDbPrincipalId string = cosmosDbUserManagedIdentity.outputs.principalId
-output cosmosDbManagedId string = cosmosDbUserManagedIdentity.outputs.id
+output cosmosDbManagedIdName string = cosmosDbUserManagedIdentity.outputs.name
