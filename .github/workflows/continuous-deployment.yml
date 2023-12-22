@@ -485,7 +485,7 @@ jobs:
         continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          --src ./${{ needs.build-info.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
       - name: Retry Deploy to Azure WebApp
@@ -493,7 +493,7 @@ jobs:
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.tar \
+          --src ./${{ needs.build-info.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ needs.build-info.outputs.webappName }}
 
