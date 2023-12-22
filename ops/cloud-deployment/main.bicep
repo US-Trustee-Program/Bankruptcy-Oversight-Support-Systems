@@ -10,6 +10,7 @@ param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
 param linkVnetIds array = []
 
+@description('Set to true to deploy web module resources. This should be set to false for Azure slot deployments.')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
 param webappResourceGroupName string
@@ -26,6 +27,7 @@ param webappPlanName string = 'plan-${webappName}'
 ])
 param webappPlanType string
 
+@description('Set to true to deploy api module resources. This should be set to false for Azure slot deployments.')
 param deployFunctions bool = true
 param apiName string = '${appName}-node-api'
 param apiFunctionsResourceGroupName string
