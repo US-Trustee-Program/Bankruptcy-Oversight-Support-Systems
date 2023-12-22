@@ -4,23 +4,22 @@ import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import './ReviewOrdersScreen.scss';
-import { Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import {
+  OfficeDetails,
+  OfficesResponseData,
+  Order,
+  OrderResponseData,
+} from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
-type ReviewOrderCourtInfo = {
-  courtName: string;
-  regionId: string;
-  courtDivisionName: string;
-};
-
 export default function ReviewOrders() {
-  const [courtSelection, setCourtSelection] = useState<ReviewOrderCourtInfo>();
+  const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
+  const [courtSelection, setCourtSelection] = useState<OfficeDetails>();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_caseSelection, setCaseSelection] = useState<string>('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [orderList, setOrderList] = useState<Array<Order>>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isOrderListLoading, setIsOrderListLoading] = useState(false);
@@ -28,28 +27,6 @@ export default function ReviewOrders() {
   /****  START MOCK DATA  ****/
 
   const regionNumber = '02';
-
-  const courtList: ReviewOrderCourtInfo[] = [
-    {
-      courtName: 'court 1',
-      regionId: '02',
-      courtDivisionName: 'Manhattan',
-    },
-    {
-      courtName: 'court 2',
-      regionId: '02',
-      courtDivisionName: 'Manhattan',
-    },
-    {
-      courtName: 'court 3',
-      regionId: '02',
-      courtDivisionName: 'Manhattan',
-    },
-  ];
-  const courtListHashMap = new Map();
-  courtList.map((court) => {
-    courtListHashMap.set(court.courtName, court);
-  });
 
   /****  END MOCK DATA  ****/
 
@@ -68,8 +45,26 @@ export default function ReviewOrders() {
       });
   }
 
+  async function getOffices() {
+    api
+      .get(`/offices`, {})
+      .then((data) => {
+        const response = data as OfficesResponseData;
+        setOfficesList(
+          response.body.sort((a, b) => {
+            const aKey = a.courtName + '-' + a.courtDivisionName;
+            const bKey = b.courtName + '-' + b.courtDivisionName;
+            if (aKey === bKey) return 0;
+            return aKey > bKey ? 1 : -1;
+          }),
+        );
+      })
+      .catch();
+  }
+
   useEffect(() => {
     getOrders();
+    getOffices();
   }, []);
 
   const statusType = new Map();
@@ -82,7 +77,9 @@ export default function ReviewOrders() {
   orderType.set('consolidation', 'Consolidation');
 
   function handleCourtSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
-    setCourtSelection(courtListHashMap.get(ev.target.value));
+    const office = officesList.find((o) => o.divisionCode === ev.target.value);
+    if (office) setCourtSelection(office);
+    else setCourtSelection(undefined);
   }
 
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -147,9 +144,10 @@ export default function ReviewOrders() {
                                 id={`court-selection-${order.caseId}`}
                                 onChange={handleCourtSelection}
                               >
-                                {courtList.map((court, index) => (
-                                  <option value={court.courtName} key={index}>
-                                    {court.courtName}
+                                <option value=""></option>
+                                {officesList.map((court, index) => (
+                                  <option value={court.divisionCode} key={index}>
+                                    {court.courtName} ({court.courtDivisionName})
                                   </option>
                                 ))}
                               </select>
@@ -161,6 +159,7 @@ export default function ReviewOrders() {
                           <div>
                             <input
                               id={`new-case-input-${idx}`}
+                              className="usa-input"
                               value={order.newCaseId}
                               onChange={handleCaseInputChange}
                             />
@@ -169,8 +168,7 @@ export default function ReviewOrders() {
                         <div className="preview-results">
                           <CaseSelection
                             fromCourt={{
-                              courtName: order.courtName,
-                              regionId: order.regionId,
+                              region: order.regionId,
                               courtDivisionName: order.courtDivisionName,
                             }}
                             toCourt={courtSelection}
@@ -190,9 +188,14 @@ export default function ReviewOrders() {
   );
 }
 
+interface CaseSelectionAttributes {
+  courtDivisionName: string;
+  region: string;
+}
+
 interface CaseSelectionProps {
-  toCourt: ReviewOrderCourtInfo | undefined;
-  fromCourt: ReviewOrderCourtInfo;
+  fromCourt: CaseSelectionAttributes;
+  toCourt?: CaseSelectionAttributes;
 }
 
 function CaseSelection(props: CaseSelectionProps) {
@@ -204,11 +207,11 @@ function CaseSelection(props: CaseSelectionProps) {
         <>
           USTP Office: transfer from
           <span className="from-location transfer-highlight__span">
-            {fromCourt.regionId} - {fromCourt.courtDivisionName}
+            {fromCourt.region} - {fromCourt.courtDivisionName}
           </span>
           to
           <span className="to-location transfer-highlight__span">
-            {toCourt.regionId} - {toCourt.courtDivisionName}
+            {toCourt.region} - {toCourt.courtDivisionName}
           </span>
         </>
       )}
