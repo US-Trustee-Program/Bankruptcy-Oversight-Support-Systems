@@ -27,7 +27,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         DE.DO_SUMMARY_TEXT AS summaryText,
         DE.DT_TEXT AS fullText,
         FORMAT(DE.DE_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
-        'Pending Review' as status
+        'pending' as status
       FROM AO_TX AS TX
       JOIN AO_DE AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO
       JOIN AO_CS AS CS ON TX.CS_CASEID=CS.CS_CASEID
