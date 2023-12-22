@@ -24,5 +24,17 @@
         background: #D83933;
       }
     }
+    .order-form {
+      .court-selection {
+        display: flex;
+        padding-bottom: 2rem;
+        > div {
+          display: flex;
+          flex-direction: column;
+          justify-content: end;
+          padding-right: 1rem;
+        }
+      }
+    }
   }
 }
