@@ -80,7 +80,7 @@ export interface AO_DE_RecordProps {
 export class AO_DE_Record implements TableRecordHelper {
   CS_CASEID: string = '';
   COURT_ID: string = '';
-  DE_SEQNO: string = '';
+  DE_SEQNO: number = 0;
   DE_DOCUMENT_NUM?: string;
   DE_DATE_ENTER?: string;
   DE_DATE_FILED?: string;
