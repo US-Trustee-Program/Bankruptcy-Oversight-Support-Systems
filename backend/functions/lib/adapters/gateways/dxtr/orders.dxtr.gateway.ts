@@ -26,9 +26,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
         return rawOrder satisfies Order;
       })
       .sort((a, b) => {
-        if (a.orderDate < b.orderDate) return 1;
-        if (a.orderDate > b.orderDate) return -1;
-        return 0;
+        if (a.orderDate === b.orderDate) return 0;
+        return a.orderDate < b.orderDate ? -1 : 1;
       });
   }
 
