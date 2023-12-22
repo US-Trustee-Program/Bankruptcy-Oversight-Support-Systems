@@ -34,7 +34,34 @@
           justify-content: end;
           padding-right: 1rem;
         }
+        div.transfer-from-to__div {
+          padding-bottom: 0.5rem;
+        }
+        .new-court__select {
+          min-width: 300px;
+        }
+
       }
+    }
+    .transfer-highlight__span {
+      padding: 0 0.3rem;
+      font-weight: bold;
+    }
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .review-orders-screen {
+      .order-list-container {
+        .order-form {
+          .court-selection {
+            display: block;
+
+            .new-court__select {
+              min-width: none;
+            }
+          }
+       }
     }
   }
 }

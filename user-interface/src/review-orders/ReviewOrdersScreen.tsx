@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import './ReviewOrdersScreen.scss';
 import { Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
 type ReviewOrderCourtInfo = {
-  name: string;
-  region: string;
-  location: string;
+  courtName: string;
+  regionId: string;
+  courtDivisionName: string;
 };
 
 export default function ReviewOrders() {
@@ -26,92 +28,28 @@ export default function ReviewOrders() {
   /****  START MOCK DATA  ****/
 
   const regionNumber = '02';
-  // const orderList = [
-  //   {
-  //     caseId: '23-12345',
-  //     region: '02',
-  //     location: 'Manhattan',
-  //     caseTitle: 'Some case title',
-  //     courtName: 'court 1',
-  //     orderType: 'transfer',
-  //     orderDate: '01/23/2024',
-  //     status: 'pending',
-  //     summaryText: '1st accordion',
-  //     fullText: 'here is some content hidden inside the 1st accordion',
-  //   },
-  //   {
-  //     caseId: '23-12346',
-  //     region: '02',
-  //     location: 'Manhattan',
-  //     caseTitle: 'Some case title 2',
-  //     courtName: 'court 2',
-  //     orderDate: '01/24/2024',
-  //     orderType: 'consolidation',
-  //     status: 'pending',
-  //     summaryText: '2nd accordion',
-  //     fullText: 'here is some content hidden inside the 2nd accordion',
-  //   },
-  //   {
-  //     caseId: '23-12347',
-  //     region: '02',
-  //     location: 'Manhattan',
-  //     caseTitle: 'Some case title 3',
-  //     courtName: 'court 2',
-  //     orderDate: '01/25/2024',
-  //     orderType: 'transfer',
-  //     status: 'approved',
-  //     summaryText: '3rd accordion',
-  //     fullText: 'here is some content hidden inside the 3rd accordion',
-  //   },
-  //   {
-  //     caseId: '23-12348',
-  //     region: '02',
-  //     location: 'Manhattan',
-  //     caseTitle: 'Some case title 4',
-  //     courtName: 'court 1',
-  //     orderDate: '01/26/2024',
-  //     orderType: 'transfer',
-  //     status: 'pending',
-  //     summaryText: '4th accordion',
-  //     fullText: 'here is some content hidden inside the 4th accordion',
-  //   },
-  //   {
-  //     caseId: '23-12349',
-  //     region: '02',
-  //     location: 'Manhattan',
-  //     caseTitle: 'Some case title 5',
-  //     courtName: 'court 3',
-  //     orderDate: '01/27/2024',
-  //     orderType: 'transfer',
-  //     status: 'rejected',
-  //     summaryText: '5th accordion',
-  //     fullText: 'here is some content hidden inside the 5th accordion',
-  //   },
-  // ];
 
   const courtList: ReviewOrderCourtInfo[] = [
     {
-      name: 'court 1',
-      region: '02',
-      location: 'Manhattan',
+      courtName: 'court 1',
+      regionId: '02',
+      courtDivisionName: 'Manhattan',
     },
     {
-      name: 'court 2',
-      region: '02',
-      location: 'Manhattan',
+      courtName: 'court 2',
+      regionId: '02',
+      courtDivisionName: 'Manhattan',
     },
     {
-      name: 'court 3',
-      region: '02',
-      location: 'Manhattan',
+      courtName: 'court 3',
+      regionId: '02',
+      courtDivisionName: 'Manhattan',
     },
   ];
   const courtListHashMap = new Map();
   courtList.map((court) => {
-    courtListHashMap.set(court.name, court);
+    courtListHashMap.set(court.courtName, court);
   });
-
-  const caseList = ['case 1', 'case 2', 'case 3'];
 
   /****  END MOCK DATA  ****/
 
@@ -147,7 +85,7 @@ export default function ReviewOrders() {
     setCourtSelection(courtListHashMap.get(ev.target.value));
   }
 
-  function handleCaseSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
+  function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setCaseSelection(ev.target.value);
   }
 
@@ -165,12 +103,14 @@ export default function ReviewOrders() {
                 return (
                   <Accordion key={idx} id={`order-list-${idx}`}>
                     <div className="accordion-heading grid-row grid-gap-lg">
-                      <div className="grid-col-1 case-id text-no-wrap">{order.caseId}</div>
-                      <div className="grid-col-3 case-title text-no-wrap">{order.caseTitle}</div>
+                      <div className="grid-col-1 case-id text-no-wrap">
+                        {getCaseNumber(order.caseId)}
+                      </div>
+                      <div className="grid-col-4 case-title text-no-wrap">{order.caseTitle}</div>
                       <div className="grid-col-1 order-date text-no-wrap">
                         {formatDate(order.orderDate)}
                       </div>
-                      <div className="grid-col-3"></div>
+                      <div className="grid-col-2"></div>
                       <div className="grid-col-2 order-type text-no-wrap">
                         <span>{orderType.get(order.orderType)}</span>
                       </div>
@@ -180,48 +120,59 @@ export default function ReviewOrders() {
                     </div>
                     <div className="accordion-content">
                       <div className="order-legal-statement">
-                        <h4>
+                        <Link to="#">
+                          {order.documentNumber && (
+                            <span className="document-number">#{order.documentNumber} - </span>
+                          )}
                           {formatDate(order.orderDate)} - {order.summaryText}
-                        </h4>
+                        </Link>
                         <p>{order.fullText}</p>
                       </div>
                       <section className="order-form">
                         <div className="court-selection">
-                          <div>
-                            Transfer {order.caseId} from {order.caseTitle} to
+                          <div className="transfer-from-to__div">
+                            <div>
+                              Transfer
+                              <span className="transfer-highlight__span">{order.caseId}</span>
+                              from
+                              <span className="transfer-highlight__span">{order.caseTitle}</span>
+                              to
+                            </div>
                           </div>
                           <div>
                             <label>New Court</label>
-                            <select
-                              className="usa-select"
-                              id={`court-selection-${order.caseId}`}
-                              onChange={handleCourtSelection}
-                            >
-                              {courtList.map((court, index) => (
-                                <option value={court.name} key={index}>
-                                  {court.name}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="usa-combo-box">
+                              <select
+                                className="usa-select new-court__select"
+                                id={`court-selection-${order.caseId}`}
+                                onChange={handleCourtSelection}
+                              >
+                                {courtList.map((court, index) => (
+                                  <option value={court.courtName} key={index}>
+                                    {court.courtName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                         </div>
                         <div className="case-selection">
                           <label>New Case</label>
-                          <select
-                            className="usa-select"
-                            id={`case-selection-${order.caseId}`}
-                            onChange={handleCaseSelection}
-                          >
-                            {caseList.map((bCase, index) => (
-                              <option value={bCase} key={index}>
-                                {bCase}
-                              </option>
-                            ))}
-                          </select>
+                          <div>
+                            <input
+                              id={`new-case-input-${idx}`}
+                              value={order.newCaseId}
+                              onChange={handleCaseInputChange}
+                            />
+                          </div>
                         </div>
                         <div className="preview-results">
                           <CaseSelection
-                            fromCourt={courtListHashMap.get(order.courtName)}
+                            fromCourt={{
+                              courtName: order.courtName,
+                              regionId: order.regionId,
+                              courtDivisionName: order.courtDivisionName,
+                            }}
                             toCourt={courtSelection}
                           ></CaseSelection>
                         </div>
@@ -252,12 +203,12 @@ function CaseSelection(props: CaseSelectionProps) {
       {fromCourt && toCourt && (
         <>
           USTP Office: transfer from
-          <span className="from-location">
-            {fromCourt.region} - {fromCourt.location}
+          <span className="from-location transfer-highlight__span">
+            {fromCourt.regionId} - {fromCourt.courtDivisionName}
           </span>
           to
-          <span className="to-location">
-            {toCourt.region} - {toCourt.location}
+          <span className="to-location transfer-highlight__span">
+            {toCourt.regionId} - {toCourt.courtDivisionName}
           </span>
         </>
       )}
