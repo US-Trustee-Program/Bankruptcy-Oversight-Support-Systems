@@ -4,6 +4,7 @@ import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import './ReviewOrdersScreen.scss';
 import { Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import { formatDate } from '@/lib/utils/datetime';
 
 const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -166,7 +167,9 @@ export default function ReviewOrders() {
                     <div className="accordion-heading grid-row grid-gap-lg">
                       <div className="grid-col-1 case-id text-no-wrap">{order.caseId}</div>
                       <div className="grid-col-3 case-title text-no-wrap">{order.caseTitle}</div>
-                      <div className="grid-col-1 order-date text-no-wrap">{order.orderDate}</div>
+                      <div className="grid-col-1 order-date text-no-wrap">
+                        {formatDate(order.orderDate)}
+                      </div>
                       <div className="grid-col-3"></div>
                       <div className="grid-col-2 order-type text-no-wrap">
                         <span>{orderType.get(order.orderType)}</span>
@@ -178,7 +181,7 @@ export default function ReviewOrders() {
                     <div className="accordion-content">
                       <div className="order-legal-statement">
                         <h4>
-                          {order.orderDate} - Order to {orderType.get(order.orderType)}
+                          {formatDate(order.orderDate)} - {order.summaryText}
                         </h4>
                         <p>{order.fullText}</p>
                       </div>
