@@ -1,4 +1,9 @@
+import * as mssql from 'mssql';
 import { CamsError } from '../../common-errors/cams-error';
+import { ApplicationContext } from '../types/basic';
+import { DbTableFieldSpec, QueryResults } from '../types/database';
+import { executeQuery } from '../utils/database';
+import { OfficeDetails } from '../../use-cases/offices/offices.model';
 
 // TODO: This lookup may need to be migrated to a database at some point in the future.
 // This is a domain concern that we have not decided on where is the most appropriate place to keep outside of the gateway directory.
@@ -283,4 +288,36 @@ export function getOffice(id: string): string {
     message: 'Cannot find office by ID',
     data: { id },
   });
+}
+
+export async function getOffices(context: ApplicationContext): Promise<OfficeDetails[]> {
+  const input: DbTableFieldSpec[] = [];
+
+  const query = `
+  SELECT TOP (1000) a.[CS_DIV] AS divisionCode
+      ,a.[GRP_DES] AS groupDesignator
+      ,a.[COURT_ID] AS courtId
+      ,a.[OFFICE_CODE] AS officeCode
+      ,a.[STATE] AS state
+	  ,c.COURT_NAME AS courtName
+	  ,b.OFFICE_NAME AS officeName
+  FROM [dbo].[AO_CS_DIV] a
+  JOIN [dbo].[AO_OFFICE] b on a.COURT_ID = b.COURT_ID and a.OFFICE_CODE = b.OFFICE_CODE
+  JOIN [dbo].[AO_COURT] c on a.COURT_ID = c.COURT_ID
+  WHERE 1 = 1
+    AND GRP_DES in ('AL', 'BR', 'BU', 'LI', 'NH', 'NY', 'RO', 'UT')
+  ORDER BY GRP_DES, a.OFFICE_CODE`;
+
+  const queryResult: QueryResults = await executeQuery(
+    context,
+    context.config.dxtrDbConfig,
+    query,
+    input,
+  );
+
+  if (queryResult.success) {
+    return (queryResult.results as mssql.IResult<OfficeDetails>).recordset;
+  } else {
+    throw new CamsError(MODULE_NAME, { message: queryResult.message });
+  }
 }
