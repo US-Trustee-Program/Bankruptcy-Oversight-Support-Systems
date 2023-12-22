@@ -3,29 +3,15 @@ import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseAssignmentHistory } from '../../adapters/types/case.assignment';
+import { CamsResponse } from '../controller-types';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
-
-interface SuccessMonad {
-  success: true;
-  body: unknown;
-}
-
-interface ErrorMonad {
-  success: false;
-  message: string;
-  errors: Array<string>;
-}
-
-type Monad = SuccessMonad | ErrorMonad;
 
 type GetCaseHistoryRequest = {
   caseId: string;
 };
 
-type GetCaseHistoryResponse = Monad & {
-  body: CaseAssignmentHistory[];
-};
+type GetCaseHistoryResponse = CamsResponse<Array<CaseAssignmentHistory>>;
 
 export class CaseHistoryController {
   private readonly useCase: CaseHistoryUseCase;

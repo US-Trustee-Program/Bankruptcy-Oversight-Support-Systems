@@ -4,29 +4,15 @@ import { getCaseDocketUseCase } from '../../factory';
 import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { CamsResponse } from '../controller-types';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
-
-interface SuccessMonad {
-  success: true;
-  body: unknown;
-}
-
-interface ErrorMonad {
-  success: false;
-  message: string;
-  errors: Array<string>;
-}
-
-type Monad = SuccessMonad | ErrorMonad;
 
 type GetCaseDocketRequest = {
   caseId: string;
 };
 
-type GetCaseDocketResponse = Monad & {
-  body: CaseDocket;
-};
+type GetCaseDocketResponse = CamsResponse<CaseDocket>;
 
 export class CaseDocketController {
   private readonly useCase: CaseDocketUseCase;
