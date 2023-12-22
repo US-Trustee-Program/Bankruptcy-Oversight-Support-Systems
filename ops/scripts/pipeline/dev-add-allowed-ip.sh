@@ -26,6 +26,11 @@ while [[ $# -gt 0 ]]; do
         stack_name="${2}"
         shift 2
         ;;
+
+    --slot-name)
+        slot_name="${2}"
+        shift 2
+        ;;
     -p | --priority)
         priority="${2}"
         shift 2
@@ -63,8 +68,11 @@ fi
 
 ruleName=${ruleName:0:32} # trim up to 32 character limit
 echo "Attempting to add Ip allow rule (${ruleName})"
+if [ ! -f "${slot_name}" ]; then
 az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
-
 az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
-
+else
+az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --slot "${slot_name}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
+az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --slot "${slot_name}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
+fi
 echo "Done"
