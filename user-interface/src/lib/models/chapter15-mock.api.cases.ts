@@ -3,6 +3,8 @@ import {
   CaseDetailType,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
+  OfficeDetails,
+  Order,
 } from '../type-declarations/chapter-15';
 import Api from './api';
 
@@ -146,6 +148,131 @@ export default class Chapter15MockApi extends Api {
     petitionLabel: 'Voluntary Petition',
   };
 
+  static offices: Array<OfficeDetails> = [
+    {
+      divisionCode: '001',
+      groupDesignator: 'AA',
+      courtId: '0101',
+      officeCode: '1',
+      officeName: 'A1',
+      state: 'NY',
+      courtName: 'A District of New York',
+      courtDivisionName: 'New York 1',
+      region: '02',
+    },
+    {
+      divisionCode: '002',
+      groupDesignator: 'AB',
+      courtId: '0102',
+      officeCode: '2',
+      officeName: 'B1',
+      state: 'NY',
+      courtName: 'B District of New York',
+      courtDivisionName: 'New York 1',
+      region: '02',
+    },
+    {
+      divisionCode: '003',
+      groupDesignator: 'AC',
+      courtId: '0103',
+      officeCode: '3',
+      officeName: 'C1',
+      state: 'NY',
+      courtName: 'C District of New York',
+      courtDivisionName: 'New York 1',
+      region: '02',
+    },
+    {
+      divisionCode: '004',
+      groupDesignator: 'AD',
+      courtId: '0104',
+      officeCode: '4',
+      officeName: 'D1',
+      state: 'NY',
+      courtName: 'D District of New York',
+      courtDivisionName: 'New York 1',
+      region: '02',
+    },
+  ];
+
+  static orders: Array<Order> = [
+    {
+      caseId: '01-00001',
+      caseTitle: 'Case 1',
+      chapter: '15',
+      courtName: 'Court 1',
+      courtDivisionName: 'Court Division 1',
+      regionId: '02',
+      orderType: 'transfer',
+      orderDate: '01-01-2024',
+      status: 'pending',
+      newCaseId: '',
+      sequenceNumber: 1,
+      documentNumber: 1,
+      dateFiled: '01/01/2024',
+      summaryText: 'Summary Text 1',
+      fullText: 'Full Text 1',
+      documents: [
+        {
+          fileUri: 'file1',
+          fileSize: 1000001,
+          fileLabel: 'FileLabel1',
+          fileExt: 'pdf',
+        },
+      ],
+    },
+    {
+      caseId: '01-00002',
+      caseTitle: 'Case 2',
+      chapter: '15',
+      courtName: 'Court 2',
+      courtDivisionName: 'Court Division 2',
+      regionId: '02',
+      orderType: 'transfer',
+      orderDate: '01-02-2024',
+      status: 'approved',
+      newCaseId: '',
+      sequenceNumber: 2,
+      documentNumber: 2,
+      dateFiled: '01/02/2024',
+      summaryText: 'Summary Text 2',
+      fullText: 'Full Text 2',
+      documents: [
+        {
+          fileUri: 'file2',
+          fileSize: 1000002,
+          fileLabel: 'FileLabel2',
+          fileExt: 'pdf',
+        },
+      ],
+    },
+    {
+      caseId: '01-00003',
+      caseTitle: 'Case 3',
+      chapter: '15',
+      courtName: 'Court 3',
+      courtDivisionName: 'Court Division 3',
+      regionId: '02',
+      orderType: 'transfer',
+      orderDate: '01-03-2024',
+      status: 'rejected',
+      newCaseId: '',
+      sequenceNumber: 3,
+      documentNumber: 3,
+      dateFiled: '01/03/2024',
+      summaryText: 'Summary Text 3',
+      fullText: 'Full Text 3',
+      documents: [
+        {
+          fileUri: 'file3',
+          fileSize: 1000003,
+          fileLabel: 'FileLabel3',
+          fileExt: 'pdf',
+        },
+      ],
+    },
+  ];
+
   public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;
     switch (path) {
@@ -187,6 +314,18 @@ export default class Chapter15MockApi extends Api {
         body: {
           caseDetails: Chapter15MockApi.caseDetails,
         },
+      };
+    } else if (path.match(/\/orders/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: Chapter15MockApi.orders,
+      };
+    } else if (path.match(/\/offices/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: Chapter15MockApi.offices,
       };
     } else {
       response = {
