@@ -24,11 +24,7 @@ export default function ReviewOrders() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isOrderListLoading, setIsOrderListLoading] = useState(false);
 
-  /****  START MOCK DATA  ****/
-
   const regionNumber = '02';
-
-  /****  END MOCK DATA  ****/
 
   async function getOrders() {
     setIsOrderListLoading(true);

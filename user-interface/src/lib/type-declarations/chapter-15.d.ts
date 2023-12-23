@@ -132,6 +132,7 @@ export interface OfficeDetails {
   courtId: string;
   courtName: string;
   officeCode: string;
+  officeName: string;
   state: string;
   courtDivisionName: string;
   region: string;

@@ -28,7 +28,11 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
     });
   };
 
-  return <div className="usa-accordion">{renderChildren()}</div>;
+  return (
+    <div className="usa-accordion" data-testid="accordion-group">
+      {renderChildren()}
+    </div>
+  );
 };
 
 interface AccordionProps extends PropsWithChildren {
@@ -54,12 +58,13 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
 
   return (
     <>
-      <h4 className="usa-accordion__heading">
+      <h4 className="usa-accordion__heading" data-testid={`accordion-${props.id}`}>
         <button
           type="button"
           className="usa-accordion__button"
           aria-expanded={expanded}
           aria-controls={`accordion-${props.id}`}
+          data-testid={`accordion-button-${props.id}`}
           onClick={toggle}
         >
           {props.children[0]}
@@ -68,6 +73,7 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
       <div
         id={`accordion=${props.id}`}
         className="usa-accordion__content usa-prose"
+        data-testid={`accordion-content-${props.id}`}
         hidden={!expanded}
       >
         {props.children[1]}
