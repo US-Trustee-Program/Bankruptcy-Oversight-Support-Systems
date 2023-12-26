@@ -108,9 +108,8 @@ describe('CaseAssignment Component Tests', () => {
   });
 
   test('/cases should not contain any Unassigned Cases table when all cases are assigned', async () => {
-    vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .mockImplementation((_path: string): Promise<ResponseData> => {
+    vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
+      (_path: string): Promise<ResponseData> => {
         return Promise.resolve({
           message: 'not found',
           count: 0,
@@ -137,7 +136,8 @@ describe('CaseAssignment Component Tests', () => {
             ],
           },
         });
-      });
+      },
+    );
 
     render(
       <BrowserRouter>
@@ -159,9 +159,8 @@ describe('CaseAssignment Component Tests', () => {
   });
 
   test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
-    vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .mockImplementation((_path: string): Promise<ResponseData> => {
+    vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
+      (_path: string): Promise<ResponseData> => {
         return Promise.resolve({
           message: 'not found',
           count: 0,
@@ -188,7 +187,8 @@ describe('CaseAssignment Component Tests', () => {
             ],
           },
         });
-      });
+      },
+    );
 
     render(
       <BrowserRouter>
@@ -204,9 +204,8 @@ describe('CaseAssignment Component Tests', () => {
   });
 
   test('/cases should contain table displaying 1 unassigned case and table with 2 assigned cases when 2 cases are assigned and 1 is not', async () => {
-    vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .mockImplementation((_path: string): Promise<ResponseData> => {
+    vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
+      (_path: string): Promise<ResponseData> => {
         return Promise.resolve({
           message: '',
           count: 4,
@@ -250,7 +249,8 @@ describe('CaseAssignment Component Tests', () => {
             ],
           },
         });
-      });
+      },
+    );
 
     render(
       <BrowserRouter>
@@ -278,7 +278,6 @@ describe('CaseAssignment Component Tests', () => {
   /*
   test('/cases should contain a valid list of cases in the table when api.list returns more than 0 results', async () => {
     vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .mockImplementation((_path: string): Promise<ResponseData> => {
         return Promise.resolve({
           message: '',
@@ -312,7 +311,6 @@ describe('CaseAssignment Component Tests', () => {
    * we are commenting it out for now.
   test('should display success alert after creating assignments', async () => {
     vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .mockImplementation((_path: string): Promise<ResponseData> => {
         return Promise.resolve({
           message: '',
@@ -467,7 +465,6 @@ describe('CaseAssignment Component Tests', () => {
   // consistently then we should re-enable it.
   test(`should display selected attorneys' names after creating assignments`, async () => {
     vi.spyOn(Chapter15MockApi, 'list')
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .mockImplementation((_path: string): Promise<ResponseData> => {
         return Promise.resolve({
           message: '',

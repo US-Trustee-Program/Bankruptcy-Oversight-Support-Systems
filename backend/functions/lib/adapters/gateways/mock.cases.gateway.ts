@@ -10,8 +10,7 @@ const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 export class CasesLocalGateway implements CasesInterface {
   getCases = async (
     applicationContext: ApplicationContext,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    options: {
+    _options: {
       startingMonth?: number;
     },
   ): Promise<CaseDetailInterface[]> => {

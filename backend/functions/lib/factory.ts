@@ -16,6 +16,7 @@ import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock
 import { ConnectionPool, config } from 'mssql';
 import { OrdersGateway } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -62,8 +63,10 @@ export const getSqlConnection = (databaseConfig: IDbConfig) => {
   return new ConnectionPool(databaseConfig as config);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getOrdersGateway = (_context: ApplicationContext): OrdersGateway => {
-  // TODO: Implement mock gateway and instantiate if dbMock flag is true.
-  return new DxtrOrdersGateway();
+export const getOrdersGateway = (applicationContext: ApplicationContext): OrdersGateway => {
+  if (applicationContext.config.get('dbMock')) {
+    return new MockOrdersGateway();
+  } else {
+    return new DxtrOrdersGateway();
+  }
 };

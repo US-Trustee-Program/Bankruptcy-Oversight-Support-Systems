@@ -20,7 +20,8 @@ describe('Test case-history controller', () => {
     const controller = new CaseHistoryController(applicationContext);
     const result = await controller.getCaseHistory({ caseId });
     expect(result.success).toBeTruthy();
-    expect(result.body).toEqual(CASE_HISTORY);
+    console.log(result);
+    expect(result['body']).toEqual(CASE_HISTORY);
   });
 
   test('should throw a NotFoundError when a history is not found', async () => {

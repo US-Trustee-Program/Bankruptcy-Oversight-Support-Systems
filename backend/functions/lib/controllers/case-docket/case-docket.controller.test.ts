@@ -15,7 +15,7 @@ describe('Test case-docket controller', () => {
     const controller = new CaseDocketController(mockContext);
     const result = await controller.getCaseDocket(mockContext, { caseId });
     expect(result.success).toBeTruthy();
-    expect(result.body).toEqual(DXTR_CASE_DOCKET_ENTRIES);
+    expect(result['body']).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });
   test('should throw a NotFoundError when a docket is not found', async () => {
     const caseId = NOT_FOUND_ERROR_CASE_ID;

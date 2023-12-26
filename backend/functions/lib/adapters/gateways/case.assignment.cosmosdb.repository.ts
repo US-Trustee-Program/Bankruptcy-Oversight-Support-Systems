@@ -109,8 +109,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getAssignment(assignmentId: string): Promise<CaseAssignment> {
+  getAssignment(_assignmentId: string): Promise<CaseAssignment> {
     throw new Error('Method not implemented.');
   }
 
