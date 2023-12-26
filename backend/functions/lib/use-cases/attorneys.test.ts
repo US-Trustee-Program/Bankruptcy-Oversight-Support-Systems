@@ -19,9 +19,10 @@ describe('Test attorneys use-case', () => {
     };
 
     const gateway = {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      getAttorneys: async (applicationContext: ApplicationContext, fields: { officeId: string }) =>
-        mockResult,
+      getAttorneys: async (
+        _applicationContext: ApplicationContext,
+        _fields: { officeId: string },
+      ) => mockResult,
     };
 
     const mockContext = await applicationContextCreator(context);

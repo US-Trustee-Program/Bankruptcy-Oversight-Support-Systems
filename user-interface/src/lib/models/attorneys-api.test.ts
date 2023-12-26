@@ -11,8 +11,7 @@ describe('Attorneys API test', () => {
     vi.mock('./api', () => {
       return {
         default: {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          list: (path: string, options?: ObjectKeyVal): Promise<ResponseData> => {
+          list: (_path: string, _options?: ObjectKeyVal): Promise<ResponseData> => {
             return Promise.resolve({
               message: '',
               count: 2,

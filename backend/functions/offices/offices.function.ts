@@ -5,8 +5,7 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  officesRequest: HttpRequest,
+  _officesRequest: HttpRequest,
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   const officesController = new OfficesController();

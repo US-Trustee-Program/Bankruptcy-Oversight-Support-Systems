@@ -12,7 +12,6 @@ initializeApplicationInsights();
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _ordersRequest: HttpRequest,
 ): Promise<void> {
   const context = await applicationContextCreator(functionContext);

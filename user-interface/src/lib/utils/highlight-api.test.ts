@@ -31,9 +31,7 @@ describe('CSS Highlight API integration', () => {
     const document = window.document;
 
     // We have to stub out the Highlight class declaration and add it to global scope.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     class Highlight {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       constructor(_props: unknown) {}
     }
     vi.stubGlobal('Highlight', Highlight);
@@ -64,9 +62,7 @@ describe('CSS Highlight API integration', () => {
     const document = window.document;
 
     // We have to stub out the Highlight class declaration and add it to global scope.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     class Highlight {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       constructor(_props: unknown) {}
     }
     vi.stubGlobal('Highlight', Highlight);
@@ -105,9 +101,7 @@ describe('CSS Highlight API integration', () => {
     const document = window.document;
 
     // We have to stub out the Highlight class declaration and add it to global scope.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     class Highlight {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       constructor(_props: unknown) {}
     }
     vi.stubGlobal('Highlight', Highlight);

@@ -3,8 +3,7 @@ import { HttpResponse } from '../types/http';
 
 const fetchSpy = jest
   .spyOn(global, 'fetch')
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  .mockImplementation((_url: URL, requestInit: RequestInit): Promise<Response> => {
+  .mockImplementation((_url: URL, _requestInit: RequestInit): Promise<Response> => {
     // has to return a Promise<Response>
     return Promise.resolve({
       ok: true,

@@ -100,7 +100,6 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
       return Promise.resolve({
         message: 'post mock',

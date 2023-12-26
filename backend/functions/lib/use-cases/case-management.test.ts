@@ -156,10 +156,8 @@ describe('Case list tests', () => {
   test('should throw error and return specific error message received when error is thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
       async getCases(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        context,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+        _context,
+        _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
       ): Promise<CaseDetailInterface[]> {
         throw Error('some random error');
       }
@@ -183,10 +181,8 @@ describe('Case list tests', () => {
   test('should throw error with given message and return it when thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
       async getCases(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        context,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+        _context,
+        _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
       ): Promise<CaseDetailInterface[]> {
         throw new CamsError('SOME_MODULE', { message: 'some error message' });
       }

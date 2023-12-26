@@ -32,6 +32,15 @@
     "object-curly-spacing": ["warn", "always"],
     "object-curly-newline": ["off"],
     "block-spacing": ["warn", "always"],
-    "@typescript-eslint/no-var-requires": ["off"]
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-var-requires": ["off"],
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
   }
 }

@@ -18,11 +18,9 @@ const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 export default function ReviewOrders() {
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [courtSelection, setCourtSelection] = useState<OfficeDetails>();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_caseSelection, setCaseSelection] = useState<string>('');
   const [orderList, setOrderList] = useState<Array<Order>>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isOrderListLoading, setIsOrderListLoading] = useState(false);
+  const [_isOrderListLoading, setIsOrderListLoading] = useState(false);
 
   const regionNumber = '02';
 

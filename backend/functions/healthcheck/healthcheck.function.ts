@@ -12,8 +12,7 @@ const MODULE_NAME = 'HEALTHCHECK';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  req: HttpRequest,
+  _req: HttpRequest,
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
