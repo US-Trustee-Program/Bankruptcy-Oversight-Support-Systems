@@ -17,6 +17,8 @@ import { ConnectionPool, config } from 'mssql';
 import { OrdersGateway } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
+import { OfficesGatewayInterface } from './use-cases/offices/offices.gateway.interface';
+import OfficesDxtrGateway from './adapters/gateways/offices.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -69,4 +71,8 @@ export const getOrdersGateway = (applicationContext: ApplicationContext): Orders
   } else {
     return new DxtrOrdersGateway();
   }
+};
+
+export const getOfficesGateway = (): OfficesGatewayInterface => {
+  return new OfficesDxtrGateway();
 };
