@@ -25,7 +25,7 @@ export class CaseManagement {
     } else {
       this.casesGateway = casesGateway;
     }
-    this.officesGateway = getOfficesGateway();
+    this.officesGateway = getOfficesGateway(applicationContext);
   }
 
   async getCases(applicationContext: ApplicationContext): Promise<CaseListDbResult> {

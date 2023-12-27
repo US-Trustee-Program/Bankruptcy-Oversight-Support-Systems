@@ -1,9 +1,9 @@
-import { CamsError } from '../../common-errors/cams-error';
+import { CamsError } from '../../../common-errors/cams-error';
 import OfficesDxtrGateway from './offices.gateway';
-import { ApplicationContext } from '../types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import * as database from '../utils/database';
-import { QueryResults } from '../types/database';
+import { ApplicationContext } from '../../types/basic';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import * as database from '../../utils/database';
+import { QueryResults } from '../../types/database';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {

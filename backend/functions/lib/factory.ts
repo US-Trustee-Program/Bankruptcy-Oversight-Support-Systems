@@ -18,7 +18,8 @@ import { OrdersGateway } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
 import { OfficesGatewayInterface } from './use-cases/offices/offices.gateway.interface';
-import OfficesDxtrGateway from './adapters/gateways/offices.gateway';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.gateway';
+import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -73,6 +74,12 @@ export const getOrdersGateway = (applicationContext: ApplicationContext): Orders
   }
 };
 
-export const getOfficesGateway = (): OfficesGatewayInterface => {
-  return new OfficesDxtrGateway();
+export const getOfficesGateway = (
+  applicationContext: ApplicationContext,
+): OfficesGatewayInterface => {
+  if (applicationContext.config.get('dbMock')) {
+    return new MockOfficesGateway();
+  } else {
+    return new OfficesDxtrGateway();
+  }
 };

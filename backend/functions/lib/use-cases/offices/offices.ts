@@ -1,9 +1,10 @@
-import { getOffices } from '../../adapters/gateways/offices.gateway';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficeDetails } from './offices.model';
+import { getOfficesGateway } from '../../factory';
 
 export class OfficesUseCase {
   public async getOffices(applicationContext: ApplicationContext): Promise<Array<OfficeDetails>> {
-    return getOffices(applicationContext);
+    const gateway = getOfficesGateway(applicationContext);
+    return gateway.getOffices(applicationContext);
   }
 }
