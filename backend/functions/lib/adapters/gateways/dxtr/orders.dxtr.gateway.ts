@@ -6,7 +6,7 @@ import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { Order } from '../../../use-cases/orders/orders.model';
-import { DxtrCaseDocketEntryDocument } from './case-docket.dxtr.gateway';
+import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
 
 const MODULENAME = 'ORDERS-DXTR-GATEWAY';
 
@@ -33,7 +33,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     return rawOrders
       .map((rawOrder) => {
         if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
-          rawOrder.documents = [mappedDocuments.get(rawOrder.dxtrCaseId)];
+          rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
         }
         if (rawOrder.rawRec.toUpperCase().includes('WARN:')) {
           rawOrder.newCaseId = rawOrder.rawRec.split('WARN:')[1].trim();
