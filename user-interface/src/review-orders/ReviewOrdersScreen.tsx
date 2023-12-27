@@ -12,6 +12,7 @@ import {
 } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 
 const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -118,6 +119,7 @@ export default function ReviewOrders() {
                           {formatDate(order.orderDate)} - {order.summaryText}
                         </Link>
                         <p>{order.fullText}</p>
+                        {order.documents && <DocketEntryDocumentList documents={order.documents} />}
                       </div>
                       <section className="order-form">
                         <div className="court-selection">
