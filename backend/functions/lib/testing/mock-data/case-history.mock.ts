@@ -85,7 +85,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
       {
         documentType: 'ASSIGNMENT',
         caseId: '081-22-84687',
-        name: 'Richard C Morrissey',
+        name: 'Daniel Rudewicz',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:26.755Z',
         id: '7a6e1dba-4a27-4c59-85bb-919a6746a676',
