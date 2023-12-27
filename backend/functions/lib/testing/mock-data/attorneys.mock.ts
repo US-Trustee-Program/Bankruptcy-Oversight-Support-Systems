@@ -36,13 +36,6 @@ const list = {
       office: 'Manhattan',
     },
     {
-      firstName: 'Richard',
-      middleName: 'C',
-      lastName: 'Morrissey',
-      generation: '',
-      office: 'Manhattan',
-    },
-    {
       firstName: 'Andrea',
       middleName: 'B',
       lastName: 'Schwartz',
