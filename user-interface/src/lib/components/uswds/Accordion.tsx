@@ -71,7 +71,7 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
         </button>
       </h4>
       <div
-        id={`accordion=${props.id}`}
+        id={`accordion-${props.id}`}
         className="usa-accordion__content usa-prose"
         data-testid={`accordion-content-${props.id}`}
         hidden={!expanded}

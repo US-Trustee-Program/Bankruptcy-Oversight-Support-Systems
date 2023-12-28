@@ -35,12 +35,7 @@ export interface DocketEntryDocumentListProps {
 export default function DocketEntryDocumentList(props: DocketEntryDocumentListProps) {
   const { documents } = props;
 
-  if (!documents || documents.length === 0) {
-    console.log('Uh, there aint no documents.', documents);
-    return <></>;
-  }
-
-  console.log('there are documents. ', documents);
+  if (!documents || documents.length === 0) return <></>;
 
   return (
     <div className="docket-documents">

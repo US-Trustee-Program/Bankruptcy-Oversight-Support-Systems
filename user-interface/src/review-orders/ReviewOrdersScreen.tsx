@@ -19,7 +19,7 @@ const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 export default function ReviewOrders() {
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [courtSelection, setCourtSelection] = useState<OfficeDetails>();
-  const [_caseSelection, setCaseSelection] = useState<string>('');
+  const [caseSelection, setCaseSelection] = useState<string>('');
   const [orderList, setOrderList] = useState<Array<Order>>([]);
   const [_isOrderListLoading, setIsOrderListLoading] = useState(false);
 
@@ -54,7 +54,7 @@ export default function ReviewOrders() {
           }),
         );
       })
-      .catch();
+      .catch(() => {});
   }
 
   useEffect(() => {
@@ -78,6 +78,7 @@ export default function ReviewOrders() {
   }
 
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    console.log('id', ev.target.id);
     setCaseSelection(ev.target.value);
   }
 
@@ -94,7 +95,10 @@ export default function ReviewOrders() {
               {orderList.map((order, idx: number) => {
                 return (
                   <Accordion key={idx} id={`order-list-${idx}`}>
-                    <div className="accordion-heading grid-row grid-gap-lg">
+                    <div
+                      className="accordion-heading grid-row grid-gap-lg"
+                      data-testid={`accordion-heading-${idx}`}
+                    >
                       <div className="grid-col-1 case-id text-no-wrap">
                         {getCaseNumber(order.caseId)}
                       </div>
@@ -110,7 +114,7 @@ export default function ReviewOrders() {
                         <span className={order.status}>{statusType.get(order.status)}</span>
                       </div>
                     </div>
-                    <div className="accordion-content">
+                    <div className="accordion-content" data-testid={`accordion-content-${idx}`}>
                       <div className="order-legal-statement">
                         <Link to="#">
                           {order.documentNumber && (
@@ -138,6 +142,7 @@ export default function ReviewOrders() {
                               <select
                                 className="usa-select new-court__select"
                                 id={`court-selection-${order.caseId}`}
+                                data-testid={`court-selection-${idx}`}
                                 onChange={handleCourtSelection}
                               >
                                 <option value=""></option>
@@ -155,20 +160,23 @@ export default function ReviewOrders() {
                           <div>
                             <input
                               id={`new-case-input-${idx}`}
+                              data-testid={`new-case-input-${idx}`}
                               className="usa-input"
-                              value={order.newCaseId}
+                              value={caseSelection}
                               onChange={handleCaseInputChange}
                             />
                           </div>
                         </div>
                         <div className="preview-results">
-                          <CaseSelection
-                            fromCourt={{
-                              region: order.regionId,
-                              courtDivisionName: order.courtDivisionName,
-                            }}
-                            toCourt={courtSelection}
-                          ></CaseSelection>
+                          <span data-testid={`preview-description-${idx}`}>
+                            <CaseSelection
+                              fromCourt={{
+                                region: order.regionId,
+                                courtDivisionName: order.courtDivisionName,
+                              }}
+                              toCourt={courtSelection}
+                            ></CaseSelection>
+                          </span>
                         </div>
                       </section>
                     </div>

@@ -197,7 +197,7 @@ export default class Chapter15MockApi extends Api {
 
   static orders: Array<Order> = [
     {
-      caseId: '01-00001',
+      caseId: '081-01-00001',
       caseTitle: 'Case 1',
       chapter: '15',
       courtName: 'Court 1',
@@ -222,7 +222,7 @@ export default class Chapter15MockApi extends Api {
       ],
     },
     {
-      caseId: '01-00002',
+      caseId: '081-01-00002',
       caseTitle: 'Case 2',
       chapter: '15',
       courtName: 'Court 2',
@@ -247,7 +247,7 @@ export default class Chapter15MockApi extends Api {
       ],
     },
     {
-      caseId: '01-00003',
+      caseId: '081-01-00003',
       caseTitle: 'Case 3',
       chapter: '15',
       courtName: 'Court 3',
