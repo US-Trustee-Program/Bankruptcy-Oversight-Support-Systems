@@ -16,6 +16,13 @@ import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 
 const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
+export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
+  const aKey = a.courtName + '-' + a.courtDivisionName;
+  const bKey = b.courtName + '-' + b.courtDivisionName;
+  if (aKey === bKey) return 0;
+  return aKey > bKey ? 1 : -1;
+}
+
 export default function ReviewOrders() {
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [courtSelection, setCourtSelection] = useState<OfficeDetails>();
@@ -45,14 +52,7 @@ export default function ReviewOrders() {
       .get(`/offices`, {})
       .then((data) => {
         const response = data as OfficesResponseData;
-        setOfficesList(
-          response.body.sort((a, b) => {
-            const aKey = a.courtName + '-' + a.courtDivisionName;
-            const bKey = b.courtName + '-' + b.courtDivisionName;
-            if (aKey === bKey) return 0;
-            return aKey > bKey ? 1 : -1;
-          }),
-        );
+        setOfficesList(response.body.sort(officeSorter));
       })
       .catch(() => {});
   }
