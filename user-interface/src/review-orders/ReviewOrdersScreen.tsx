@@ -144,6 +144,7 @@ export default function ReviewOrders() {
                                 id={`court-selection-${order.caseId}`}
                                 data-testid={`court-selection-${idx}`}
                                 onChange={handleCourtSelection}
+                                aria-label="New court options"
                               >
                                 <option value=""></option>
                                 {officesList.map((court, index) => (
@@ -164,6 +165,7 @@ export default function ReviewOrders() {
                               className="usa-input"
                               value={caseSelection}
                               onChange={handleCaseInputChange}
+                              aria-label="New case ID"
                             />
                           </div>
                         </div>
