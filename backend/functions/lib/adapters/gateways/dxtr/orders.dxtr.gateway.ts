@@ -19,33 +19,39 @@ export interface DxtrOrderDocument extends DxtrCaseDocketEntryDocument {
   dxtrCaseId: string;
 }
 
+export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: string }) {
+  if (a.orderDate === b.orderDate) return 0;
+  return a.orderDate < b.orderDate ? -1 : 1;
+}
+
 export class DxtrOrdersGateway implements OrdersGateway {
   async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    const rawOrders = await this._getOrders(context);
-    const documents = await this._getDocuments(context);
-    const mappedDocuments = documents.reduce((map, document) => {
-      const { dxtrCaseId } = document;
-      delete document.dxtrCaseId;
-      map.set(dxtrCaseId, document);
-      return map;
-    }, new Map());
+    try {
+      const rawOrders = await this._getOrders(context);
+      const documents = await this._getDocuments(context);
+      const mappedDocuments = documents.reduce((map, document) => {
+        const { dxtrCaseId } = document;
+        delete document.dxtrCaseId;
+        map.set(dxtrCaseId, document);
+        return map;
+      }, new Map());
 
-    return rawOrders
-      .map((rawOrder) => {
-        if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
-          rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
-        }
-        if (rawOrder.rawRec.toUpperCase().includes('WARN:')) {
-          rawOrder.newCaseId = rawOrder.rawRec.split('WARN:')[1].trim();
-        }
-        delete rawOrder.dxtrCaseId;
-        delete rawOrder.rawRec;
-        return rawOrder satisfies Order;
-      })
-      .sort((a, b) => {
-        if (a.orderDate === b.orderDate) return 0;
-        return a.orderDate < b.orderDate ? -1 : 1;
-      });
+      return rawOrders
+        .map((rawOrder) => {
+          if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
+            rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
+          }
+          if (rawOrder.rawRec && rawOrder.rawRec.toUpperCase().includes('WARN:')) {
+            rawOrder.newCaseId = rawOrder.rawRec.split('WARN:')[1].trim();
+          }
+          delete rawOrder.dxtrCaseId;
+          delete rawOrder.rawRec;
+          return rawOrder satisfies Order;
+        })
+        .sort(dxtrOrdersSorter);
+    } catch (originalError) {
+      throw new CamsError(MODULENAME, { originalError });
+    }
   }
 
   async _getOrders(context: ApplicationContext): Promise<Array<DxtrOrder>> {
@@ -94,7 +100,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrOrder>).recordset;
     } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
+      return Promise.reject(new CamsError(MODULENAME, { message: queryResult.message }));
     }
   }
 
@@ -187,8 +193,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrOrderDocument>).recordset;
     } else {
-      console.log(query);
-      throw new CamsError(MODULENAME, { message: queryResult.message });
+      return Promise.reject(new CamsError(MODULENAME, { message: queryResult.message }));
     }
   }
 }
