@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OrderResponseData } from '@/lib/type-declarations/chapter-15';
-import ReviewOrders from './ReviewOrdersScreen';
+import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import ReviewOrders, { officeSorter } from './ReviewOrdersScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -19,6 +19,103 @@ describe('Review Orders screen', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  test('should sort offices', () => {
+    const testOffices: OfficeDetails[] = [
+      {
+        divisionCode: '001',
+        groupDesignator: 'AA',
+        courtId: '0101',
+        officeCode: '1',
+        officeName: 'A1',
+        state: 'NY',
+        courtName: 'A',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+      {
+        divisionCode: '003',
+        groupDesignator: 'AC',
+        courtId: '0103',
+        officeCode: '3',
+        officeName: 'C1',
+        state: 'NY',
+        courtName: 'C',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+      {
+        divisionCode: '003',
+        groupDesignator: 'AC',
+        courtId: '0103',
+        officeCode: '3',
+        officeName: 'C1',
+        state: 'NY',
+        courtName: 'C',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+      {
+        divisionCode: '002',
+        groupDesignator: 'AB',
+        courtId: '0102',
+        officeCode: '2',
+        officeName: 'B1',
+        state: 'NY',
+        courtName: 'B',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+    ];
+    const expectedOffices: OfficeDetails[] = [
+      {
+        divisionCode: '001',
+        groupDesignator: 'AA',
+        courtId: '0101',
+        officeCode: '1',
+        officeName: 'A1',
+        state: 'NY',
+        courtName: 'A',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+      {
+        divisionCode: '002',
+        groupDesignator: 'AB',
+        courtId: '0102',
+        officeCode: '2',
+        officeName: 'B1',
+        state: 'NY',
+        courtName: 'B',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+      {
+        divisionCode: '003',
+        groupDesignator: 'AC',
+        courtId: '0103',
+        officeCode: '3',
+        officeName: 'C1',
+        state: 'NY',
+        courtName: 'C',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+      {
+        divisionCode: '003',
+        groupDesignator: 'AC',
+        courtId: '0103',
+        officeCode: '3',
+        officeName: 'C1',
+        state: 'NY',
+        courtName: 'C',
+        courtDivisionName: 'New York 1',
+        region: '02',
+      },
+    ];
+    const actualOffices = testOffices.sort(officeSorter);
+    expect(actualOffices).toEqual<OfficeDetails[]>(expectedOffices);
   });
 
   test('should render a list of orders', async () => {
