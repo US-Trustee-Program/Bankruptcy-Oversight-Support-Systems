@@ -262,6 +262,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       value: courtDiv,
     });
 
+    // NOTE: A derivative of the this SQL query is in `orders.dxtr.gateway.ts`.
     const query = `
       SELECT
         DE.DE_SEQNO AS sequenceNumber,
