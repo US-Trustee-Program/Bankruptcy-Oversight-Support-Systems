@@ -15,7 +15,10 @@
         border-radius: 2px;
       }
       span.pending {
-        background: #C2850C;
+        // pa11y failed background color #C2850C for contrast.
+        // The backgound color #a26b00 was specified by pa11y.
+        // background: #C2850C;
+        background: #a26b00;
       }
       span.approved {
         background: #008817;
