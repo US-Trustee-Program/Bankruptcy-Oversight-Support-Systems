@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
@@ -52,9 +52,8 @@ describe('App Router Tests', () => {
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });
-  /**/
 
-  test('should render Not Found 404 page when an invalid URL is supplied', () => {
+  test('should render Not Found 404 page when an invalid URL is supplied', async () => {
     const badRoute = '/some/bad/route';
 
     // use <MemoryRouter> when you want to manually control the history
@@ -65,6 +64,8 @@ describe('App Router Tests', () => {
     );
 
     // verify navigation to "no match" route
-    expect(screen.getByText(/404 - Not Found/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/404 - Not Found/i)).toBeInTheDocument();
+    });
   });
 });
