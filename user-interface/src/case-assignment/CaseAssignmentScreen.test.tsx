@@ -154,7 +154,6 @@ describe('CaseAssignment Component Tests', () => {
       expect(true).toBeFalsy();
     } catch (err) {
       expect(unassignedTableBody).toBeUndefined();
-      console.log('unassigned table does not exist');
     }
   });
 

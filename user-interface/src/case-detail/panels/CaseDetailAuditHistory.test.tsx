@@ -103,7 +103,6 @@ describe('audit history tests', () => {
 
     const dateElement = screen.queryByTestId('change-date-0');
     expect(dateElement).toBeInTheDocument();
-    console.log(dateElement);
     expect(dateElement).toHaveTextContent(EXPECTED_DATE_TIME);
   });
 

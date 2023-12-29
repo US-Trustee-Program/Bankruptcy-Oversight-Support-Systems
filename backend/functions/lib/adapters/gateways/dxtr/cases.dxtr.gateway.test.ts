@@ -224,7 +224,6 @@ describe('Test DXTR Gateway', () => {
     };
 
     querySpy.mockImplementationOnce(async () => {
-      console.log('Inside MockImplementation Once: ', mockCaseResults);
       return Promise.resolve(mockCaseResults);
     });
 
