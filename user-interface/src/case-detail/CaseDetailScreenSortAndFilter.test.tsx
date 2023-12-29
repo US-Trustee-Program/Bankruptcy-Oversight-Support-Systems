@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent, within } from '@testing-library/react';
 import CaseDetail, {
   applySortAndFilters,
   findDocketLimits,
@@ -90,8 +90,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         </MemoryRouter>,
       );
 
-      let basicInfoLink;
-      let docketEntryLink;
       const sortButtonId = 'docket-entry-sort';
       let sortButton: HTMLElement | null;
       const searchInputId = 'docket-entry-search';
@@ -102,20 +100,22 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(sortButton).not.toBeInTheDocument();
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).not.toBeInTheDocument();
+        const docketEntryLink = screen.getByTestId('court-docket-link');
+        expect(docketEntryLink).toBeInTheDocument();
       });
 
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).toBeInTheDocument();
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).toBeInTheDocument();
       });
 
+      const basicInfoLink = screen.getByTestId('basic-info-link');
+      fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
-        basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).not.toBeInTheDocument();
         searchInput = screen.queryByTestId(searchInputId);
@@ -153,9 +153,9 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(searchInput).toBeInTheDocument();
       });
 
+      const basicInfoLink = screen.getByTestId('basic-info-link');
+      fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
-        const basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).not.toBeInTheDocument();
         searchInput = screen.queryByTestId(searchInputId);
@@ -179,8 +179,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         </MemoryRouter>,
       );
 
-      let basicInfoLink;
-      let docketEntryLink;
       const filterSelectClass = '.docket-summary-facets';
       let filterSelectElement: HTMLElement | null;
 
@@ -189,16 +187,16 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(filterSelectElement).not.toBeInTheDocument();
       });
 
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
         filterSelectElement = document.querySelector(filterSelectClass);
         expect(filterSelectElement).toBeInTheDocument();
       });
 
+      const basicInfoLink = screen.getByTestId('basic-info-link');
+      fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
-        basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
         filterSelectElement = document.querySelector(filterSelectClass);
         expect(filterSelectElement).not.toBeInTheDocument();
       });
@@ -230,9 +228,9 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(filterSelectElement).toBeInTheDocument();
       });
 
+      const basicInfoLink = screen.getByTestId('basic-info-link');
+      fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
-        const basicInfoLink = screen.getByTestId('basic-info-link');
-        fireEvent.click(basicInfoLink as Element);
         filterSelectElement = document.querySelector(filterSelectClass);
         expect(filterSelectElement).not.toBeInTheDocument();
       });
@@ -429,11 +427,9 @@ describe('Case Detail sort, search, and filter tests', () => {
       );
 
       let dateRangePicker;
-      let docketEntryLink;
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-
         const docketListBefore = screen.getByTestId('searchable-docket');
         expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
         dateRangePicker = screen.queryByTestId('docket-date-range');
@@ -442,10 +438,9 @@ describe('Case Detail sort, search, and filter tests', () => {
 
         const docNumberInput = screen.getByTestId('document-number-search-field');
         expect(docNumberInput).toBeInTheDocument();
-        act(() => {
-          fireEvent.change(docNumberInput, { target: { value: '1' } });
-        });
       });
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
 
       const docketListAfter = screen.getByTestId('searchable-docket');
       expect(docketListAfter.children.length).toEqual(1);
@@ -468,20 +463,19 @@ describe('Case Detail sort, search, and filter tests', () => {
       );
 
       let dateRangePicker;
-      let docketEntryLink;
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-
         dateRangePicker = screen.queryByTestId('docket-date-range');
         expect(dateRangePicker).toBeInTheDocument();
 
         const docNumberInput = screen.getByTestId('document-number-search-field');
         expect(docNumberInput).toBeInTheDocument();
-        act(() => {
-          fireEvent.change(docNumberInput, { target: { value: '100' } });
-        });
+      });
 
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+      fireEvent.change(docNumberInput, { target: { value: '100' } });
+      await waitFor(() => {
         const alertMessage = screen.getByTestId('alert-message');
         expect(alertMessage).toHaveTextContent(
           'The document number you entered is not found in the docket.',
@@ -506,11 +500,9 @@ describe('Case Detail sort, search, and filter tests', () => {
       );
 
       let dateRangePicker;
-      let docketEntryLink;
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-
         const docketListBefore = screen.getByTestId('searchable-docket');
         expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
         dateRangePicker = screen.queryByTestId('docket-date-range');
@@ -519,12 +511,11 @@ describe('Case Detail sort, search, and filter tests', () => {
 
         const docNumberInput = screen.getByTestId('document-number-search-field');
         expect(docNumberInput).toBeInTheDocument();
-
-        act(() => {
-          fireEvent.change(docNumberInput, { target: { value: '1' } });
-          fireEvent.change(docNumberInput, { target: { value: '' } });
-        });
       });
+
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
+      fireEvent.change(docNumberInput, { target: { value: '' } });
 
       const docketListAfter = screen.getByTestId('searchable-docket');
       expect(docketListAfter.children.length).toEqual(testCaseDocketEntries.length);
@@ -549,11 +540,9 @@ describe('Case Detail sort, search, and filter tests', () => {
       );
 
       let dateRangePicker;
-      let docketEntryLink;
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-
         const docketListBefore = screen.getByTestId('searchable-docket');
         expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
         dateRangePicker = screen.queryByTestId('docket-date-range');
@@ -562,10 +551,10 @@ describe('Case Detail sort, search, and filter tests', () => {
 
         const startDateText = screen.getByTestId('docket-date-range-date-start');
         expect(startDateText).toBeInTheDocument();
-        act(() => {
-          fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
-        });
       });
+
+      const startDateText = screen.getByTestId('docket-date-range-date-start');
+      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
 
       const docketListAfter = screen.getByTestId('searchable-docket');
       expect(docketListAfter.children.length).toEqual(2);
@@ -588,12 +577,10 @@ describe('Case Detail sort, search, and filter tests', () => {
       );
 
       let dateRangePicker;
-      let docketEntryLink;
 
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
-
         const docketListBefore = screen.getByTestId('searchable-docket');
         expect(docketListBefore.children.length).toEqual(testCaseDocketEntries.length);
         dateRangePicker = screen.queryByTestId('docket-date-range');
@@ -602,10 +589,9 @@ describe('Case Detail sort, search, and filter tests', () => {
 
         const endDateText = screen.getByTestId('docket-date-range-date-end');
         expect(endDateText).toBeInTheDocument();
-        act(() => {
-          fireEvent.change(endDateText, { target: { value: '2023-07-01' } });
-        });
       });
+      const endDateText = screen.getByTestId('docket-date-range-date-end');
+      fireEvent.change(endDateText, { target: { value: '2023-07-01' } });
 
       const docketListAfter = screen.getByTestId('searchable-docket');
       expect(docketListAfter.children.length).toEqual(2);
@@ -629,15 +615,14 @@ describe('Case Detail sort, search, and filter tests', () => {
         </MemoryRouter>,
       );
 
-      let docketEntryLink;
       let sortButton;
 
       sortButton = screen.queryByTestId('docket-entry-sort');
       expect(sortButton).not.toBeInTheDocument();
 
+      const docketEntryLink = screen.getByTestId('court-docket-link');
+      fireEvent.click(docketEntryLink as Element);
       await waitFor(() => {
-        docketEntryLink = screen.getByTestId('court-docket-link');
-        fireEvent.click(docketEntryLink as Element);
         sortButton = screen.queryByTestId('docket-entry-sort');
         expect(sortButton).toBeInTheDocument();
 
@@ -670,24 +655,18 @@ describe('Case Detail sort, search, and filter tests', () => {
       const caseDetailScreen = screen.getByTestId('case-detail');
       expect(caseDetailScreen).toBeInTheDocument();
 
-      act(() => {
-        fireEvent.change(searchInput, { target: { value: 'abc' } });
-        fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
-        fireEvent.change(endDateText, { target: { value: '2023-011-01' } });
-        fireEvent.change(docNumberSearchInput, { target: { value: '1' } });
-        fireEvent.change(docketFacetInput, {
-          target: { value: testCaseDocketEntries[0].summaryText },
-        });
+      fireEvent.change(searchInput, { target: { value: 'abc' } });
+      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+      fireEvent.change(endDateText, { target: { value: '2023-011-01' } });
+      fireEvent.change(docNumberSearchInput, { target: { value: '1' } });
+      fireEvent.change(docketFacetInput, {
+        target: { value: testCaseDocketEntries[0].summaryText },
       });
 
       const docketListAfterInput = screen.getByTestId('searchable-docket');
       expect(docketListAfterInput.children.length).toEqual(1);
 
-      await waitFor(() => {
-        act(() => {
-          fireEvent.click(clearFiltersButton as Element);
-        });
-      });
+      fireEvent.click(clearFiltersButton as Element);
 
       const docketListAfterClear = screen.getByTestId('searchable-docket');
       expect(docketListAfterClear.children.length).toEqual(testCaseDocketEntries.length);
