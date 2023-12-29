@@ -108,3 +108,36 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
 export interface CaseStaffAssignmentHistoryResponseData extends ResponseData {
   body: CaseStaffAssignmentHistory[];
 }
+
+export type Order = CaseDocketEntry & {
+  caseId: string;
+  caseTitle: string;
+  chapter: string;
+  courtName: string;
+  courtDivisionName: string;
+  regionId: string;
+  orderType: 'transfer';
+  orderDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  newCaseId?: string;
+};
+
+export interface OrderResponseData extends ResponseData {
+  body: Array<Order>;
+}
+
+export interface OfficeDetails {
+  divisionCode: string;
+  groupDesignator: string;
+  courtId: string;
+  courtName: string;
+  officeCode: string;
+  officeName: string;
+  state: string;
+  courtDivisionName: string;
+  region: string;
+}
+
+export interface OfficesResponseData extends ResponseData {
+  body: OfficeDetails[];
+}

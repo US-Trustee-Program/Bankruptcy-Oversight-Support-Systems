@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import AssignAttorneyModal, { AssignAttorneyModalRefType } from './AssignAttorneyModal';
 import React from 'react';
@@ -60,47 +60,46 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
 
-    act(() => {
-      fireEvent.click(button);
-    });
+    fireEvent.click(button);
 
-    expect(modal).toHaveClass('is-visible');
-    expect(submitButton).toBeDisabled();
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-visible');
+      expect(submitButton).toBeDisabled();
+    });
 
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
 
-    act(() => {
-      fireEvent.click(checkbox1);
+    fireEvent.click(checkbox1);
+
+    await waitFor(() => {
+      expect(checkbox1).toBeChecked();
+      expect(submitButton).toBeEnabled();
     });
 
-    expect(checkbox1).toBeChecked();
-    expect(submitButton).toBeEnabled();
+    fireEvent.click(checkbox2);
 
-    act(() => {
-      fireEvent.click(checkbox2);
+    await waitFor(() => {
+      expect(checkbox2).toBeChecked();
+      expect(submitButton).toBeEnabled();
     });
 
-    expect(checkbox2).toBeChecked();
-    expect(submitButton).toBeEnabled();
+    fireEvent.click(checkbox1);
 
-    act(() => {
-      fireEvent.click(checkbox1);
+    await waitFor(() => {
+      expect(checkbox1).not.toBeChecked();
+      expect(submitButton).toBeEnabled();
     });
 
-    expect(checkbox1).not.toBeChecked();
-    expect(submitButton).toBeEnabled();
+    fireEvent.click(checkbox2);
 
-    act(() => {
-      fireEvent.click(checkbox2);
+    await waitFor(() => {
+      expect(checkbox2).not.toBeChecked();
+      expect(submitButton).toBeDisabled();
     });
-
-    expect(checkbox2).not.toBeChecked();
-    expect(submitButton).toBeDisabled();
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
       return Promise.resolve({
         message: 'post mock',
@@ -142,36 +141,35 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
-    act(() => {
-      fireEvent.click(button);
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-visible');
     });
 
-    expect(modal).toHaveClass('is-visible');
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-
     const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
-    act(() => {
-      fireEvent.click(checkbox1);
-      fireEvent.click(checkbox2);
-      fireEvent.click(checkbox3);
-    });
 
-    act(() => {
-      fireEvent.click(submitButton);
+    fireEvent.click(checkbox1);
+    fireEvent.click(checkbox2);
+    fireEvent.click(checkbox3);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith(
+        '/case-assignments',
+        expect.objectContaining({
+          attorneyList: expect.arrayContaining([
+            getFullName(mark),
+            getFullName(shara),
+            getFullName(brian),
+          ]),
+          caseId: '123',
+          role: 'TrialAttorney',
+        }),
+      );
     });
-    expect(postSpy).toHaveBeenCalledWith(
-      '/case-assignments',
-      expect.objectContaining({
-        attorneyList: expect.arrayContaining([
-          getFullName(mark),
-          getFullName(shara),
-          getFullName(brian),
-        ]),
-        caseId: '123',
-        role: 'TrialAttorney',
-      }),
-    );
   });
 
   describe('Feature flag chapter-twelve-enabled', () => {
@@ -205,16 +203,16 @@ describe('Test Assign Attorney Modal Component', () => {
       const button = screen.getByTestId('toggle-modal-button');
       const modal = screen.getByTestId(`modal-${modalId}`);
 
-      act(() => {
-        fireEvent.click(button);
-      });
+      fireEvent.click(button);
 
       const expectedLabel = 'Case Load';
 
-      expect(modal).toHaveClass('is-visible');
-      const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
-      expect(caseLoadLabel).toBeInTheDocument();
-      expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      await waitFor(() => {
+        expect(modal).toHaveClass('is-visible');
+        const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
+        expect(caseLoadLabel).toBeInTheDocument();
+        expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      });
 
       const caseLoadTableLabel = screen.getByTestId(caseLoadTableHeaderTestId);
       expect(caseLoadTableLabel).toBeInTheDocument();
@@ -245,16 +243,16 @@ describe('Test Assign Attorney Modal Component', () => {
       const button = screen.getByTestId('toggle-modal-button');
       const modal = screen.getByTestId(`modal-${modalId}`);
 
-      act(() => {
-        fireEvent.click(button);
-      });
+      fireEvent.click(button);
 
       const expectedLabel = 'Chapter 15 Cases';
 
-      expect(modal).toHaveClass('is-visible');
-      const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
-      expect(caseLoadLabel).toBeInTheDocument();
-      expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      await waitFor(() => {
+        expect(modal).toHaveClass('is-visible');
+        const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
+        expect(caseLoadLabel).toBeInTheDocument();
+        expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      });
 
       const caseLoadTableLabel = screen.getByTestId(caseLoadTableHeaderTestId);
       expect(caseLoadTableLabel).toBeInTheDocument();

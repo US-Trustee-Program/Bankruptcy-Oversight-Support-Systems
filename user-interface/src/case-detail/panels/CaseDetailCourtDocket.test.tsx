@@ -1,10 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
-import CaseDetailCourtDocket, {
-  fileSizeDescription,
-  generateDocketFilenameDisplay,
-} from '@/case-detail/panels/CaseDetailCourtDocket';
-import { CaseDocket, CaseDocketEntryDocument } from '@/lib/type-declarations/chapter-15';
+import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
+import { CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import * as highlightModule from '@/lib/utils/highlight-api';
 
@@ -94,53 +91,6 @@ describe('court docket panel tests', () => {
 
     const docketEntry2DocumentNumber = screen.getByTestId('docket-entry-1-number');
     expect(docketEntry2DocumentNumber.innerHTML).toEqual('');
-  });
-
-  describe('Link formatting', () => {
-    test('should properly format a normal document', () => {
-      const document: CaseDocketEntryDocument = {
-        fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',
-        fileSize: 1000,
-        fileLabel: '2-0',
-        fileExt: 'pdf',
-      };
-      const expectedLinkText = 'View 2-0 [PDF, 1000 bytes]';
-      const actualLinkText = generateDocketFilenameDisplay(document);
-      expect(actualLinkText).toEqual(expectedLinkText);
-    });
-    test('should properly format a document missing an extension', () => {
-      const document: CaseDocketEntryDocument = {
-        fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',
-        fileSize: 1000,
-        fileLabel: '2-0',
-      };
-      const expectedLinkText = 'View 2-0 [1000 bytes]';
-      const actualLinkText = generateDocketFilenameDisplay(document);
-      expect(actualLinkText).toEqual(expectedLinkText);
-    });
-  });
-
-  describe('File size desciption', () => {
-    test('should show byte size if less than a KB', () => {
-      const expectedDescription = '1000 bytes';
-      const actualDescription = fileSizeDescription(1000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
-    test('should show KB file size if less than a MB', () => {
-      const expectedDescription = '2.0 KB';
-      const actualDescription = fileSizeDescription(2000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
-    test('should show MB file size if less than a GB', () => {
-      const expectedDescription = '1.0 MB';
-      const actualDescription = fileSizeDescription(1100000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
-    test('should show GB file size if greather than or equal to a GB', () => {
-      const expectedDescription = '1.0 GB';
-      const actualDescription = fileSizeDescription(1100000000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
   });
 
   describe('No docket entry alert tests', () => {

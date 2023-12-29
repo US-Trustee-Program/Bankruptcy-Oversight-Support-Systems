@@ -3,8 +3,7 @@ import { HttpResponse } from '../types/http';
 
 const fetchSpy = jest
   .spyOn(global, 'fetch')
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  .mockImplementation((_url: URL, requestInit: RequestInit): Promise<Response> => {
+  .mockImplementation((_url: URL, _requestInit: RequestInit): Promise<Response> => {
     // has to return a Promise<Response>
     return Promise.resolve({
       ok: true,
@@ -54,9 +53,7 @@ describe('Tests out the http calls', () => {
     let response: HttpResponse = {} as HttpResponse;
     try {
       response = await httpGet(data);
-      console.log(response);
-    } catch (e) {
-      console.log('Into Catch block');
+    } catch {
       // Because we are not returning a Promise<Response> we catch the error and ignore as the test only
       //  cares about how fetch was called.
     }
