@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import DateRangePicker from './DateRangePicker';
 
 describe('Test DateRangePicker component', async () => {
@@ -20,16 +20,13 @@ describe('Test DateRangePicker component', async () => {
 
     const startDateText = screen.getByTestId('date-picker-date-start');
     expect(startDateText).toBeInTheDocument();
-    act(() => {
-      fireEvent.change(startDateText, { target: { value: '2020-01-01' } });
-    });
+
+    fireEvent.change(startDateText, { target: { value: '2020-01-01' } });
     expect(mockHandlerStart).toHaveBeenCalled();
 
     const endDateText = screen.getByTestId('date-picker-date-end');
     expect(endDateText).toBeInTheDocument();
-    act(() => {
-      fireEvent.change(endDateText, { target: { value: '2020-01-01' } });
-    });
+    fireEvent.change(endDateText, { target: { value: '2020-01-01' } });
     expect(mockHandlerEnd).toHaveBeenCalled();
   });
 
@@ -72,34 +69,26 @@ describe('Test DateRangePicker component', async () => {
     expect(startDateText).toHaveAttribute('max', '01/01/2035');
     expect(endDateText).toHaveAttribute('min', '01/01/2020');
 
-    act(() => {
-      fireEvent.change(startDateText, { target: { value: '2022-05-01' } });
-    });
+    fireEvent.change(startDateText, { target: { value: '2022-05-01' } });
 
     startDateText = screen.getByTestId('date-picker-date-start');
     endDateText = screen.getByTestId('date-picker-date-end');
     expect(startDateText).toHaveAttribute('max', '01/01/2035');
     expect(endDateText).toHaveAttribute('min', '2022-05-01');
 
-    act(() => {
-      fireEvent.change(endDateText, { target: { value: '2025-07-01' } });
-    });
+    fireEvent.change(endDateText, { target: { value: '2025-07-01' } });
 
     startDateText = screen.getByTestId('date-picker-date-start');
     endDateText = screen.getByTestId('date-picker-date-end');
     expect(startDateText).toHaveAttribute('max', '2025-07-01');
     expect(endDateText).toHaveAttribute('min', '2022-05-01');
 
-    act(() => {
-      fireEvent.change(startDateText, { target: { value: '' } });
-    });
+    fireEvent.change(startDateText, { target: { value: '' } });
 
     expect(startDateText).toHaveAttribute('max', '2025-07-01');
     expect(endDateText).toHaveAttribute('min', '01/01/2020');
 
-    act(() => {
-      fireEvent.change(endDateText, { target: { value: '' } });
-    });
+    fireEvent.change(endDateText, { target: { value: '' } });
 
     expect(startDateText).toHaveAttribute('max', '01/01/2035');
     expect(endDateText).toHaveAttribute('min', '01/01/2020');

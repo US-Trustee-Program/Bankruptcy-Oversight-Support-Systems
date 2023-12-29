@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import ReviewOrders, { officeSorter } from './ReviewOrdersScreen';
@@ -173,10 +173,8 @@ describe('Review Orders screen', () => {
       expect(content).not.toBeVisible();
     });
 
-    act(() => {
-      const heading = screen.getByTestId(`accordion-heading-${idx}`);
-      if (heading) fireEvent.click(heading);
-    });
+    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
       const content = screen.getByTestId(`accordion-content-${idx}`);
@@ -200,10 +198,8 @@ describe('Review Orders screen', () => {
       expect(content).not.toBeVisible();
     });
 
-    act(() => {
-      const heading = screen.getByTestId(`accordion-heading-${idx}`);
-      if (heading) fireEvent.click(heading);
-    });
+    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
       const content = screen.getByTestId(`accordion-content-${idx}`);
@@ -211,14 +207,12 @@ describe('Review Orders screen', () => {
       expect(content).toBeVisible();
     });
 
-    act(() => {
-      const selection = screen.getByTestId(`court-selection-${idx}`);
-      expect(selection).toBeInTheDocument();
-      if (selection) {
-        fireEvent.click(selection);
-        fireEvent.change(selection, { target: { value: '001' } });
-      }
-    });
+    const selection = screen.getByTestId(`court-selection-${idx}`);
+    expect(selection).toBeInTheDocument();
+    if (selection) {
+      fireEvent.click(selection);
+      fireEvent.change(selection, { target: { value: '001' } });
+    }
 
     await waitFor(async () => {
       const preview = screen.getByTestId(`preview-description-${idx}`);
@@ -245,10 +239,8 @@ describe('Review Orders screen', () => {
       expect(content).not.toBeVisible();
     });
 
-    act(() => {
-      const heading = screen.getByTestId(`accordion-heading-${idx}`);
-      if (heading) fireEvent.click(heading);
-    });
+    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
       const content = screen.getByTestId(`accordion-content-${idx}`);
@@ -256,14 +248,12 @@ describe('Review Orders screen', () => {
       expect(content).toBeVisible();
     });
 
-    act(() => {
-      const selection = screen.getByTestId(`court-selection-${idx}`);
-      expect(selection).toBeInTheDocument();
-      if (selection) {
-        fireEvent.click(selection);
-        fireEvent.change(selection, { target: { value: '001' } });
-      }
-    });
+    const selection = screen.getByTestId(`court-selection-${idx}`);
+    expect(selection).toBeInTheDocument();
+    if (selection) {
+      fireEvent.click(selection);
+      fireEvent.change(selection, { target: { value: '001' } });
+    }
 
     await waitFor(async () => {
       const preview = screen.getByTestId(`preview-description-${idx}`);
@@ -274,14 +264,11 @@ describe('Review Orders screen', () => {
       );
     });
 
-    act(() => {
-      const selection = screen.getByTestId(`court-selection-${idx}`);
-      expect(selection).toBeInTheDocument();
-      if (selection) {
-        fireEvent.click(selection);
-        fireEvent.change(selection, { target: { value: '' } });
-      }
-    });
+    expect(selection).toBeInTheDocument();
+    if (selection) {
+      fireEvent.click(selection);
+      fireEvent.change(selection, { target: { value: '' } });
+    }
 
     await waitFor(async () => {
       const preview = screen.queryByTestId(`preview-description-${idx}`);
@@ -304,10 +291,8 @@ describe('Review Orders screen', () => {
       screen.getByTestId(`accordion-content-${idx}`);
     });
 
-    act(() => {
-      const heading = screen.getByTestId(`accordion-heading-${idx}`);
-      if (heading) fireEvent.click(heading);
-    });
+    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
       const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
@@ -315,10 +300,8 @@ describe('Review Orders screen', () => {
     });
 
     const newValue = '081-22-33333';
-    act(() => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
-      fireEvent.change(newCaseIdText, { target: { value: newValue } });
-    });
+    const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
+    fireEvent.change(newCaseIdText, { target: { value: newValue } });
 
     await waitFor(async () => {
       const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);

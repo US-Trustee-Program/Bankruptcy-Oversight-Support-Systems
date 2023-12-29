@@ -32,13 +32,17 @@ function App() {
 
   return (
     <AppInsightsErrorBoundary
-      onError={(e) => {
-        console.log(e);
+      onError={(_error) => {
         return <h1>Something Went Wrong</h1>;
       }}
       appInsights={reactPlugin}
     >
-      <div className={appClasses} onScroll={documentScroll} data-testid="app-component-test-id">
+      <div
+        id="app-root"
+        className={appClasses}
+        onScroll={documentScroll}
+        data-testid="app-component-test-id"
+      >
         <Header />
         <div className="body">
           <Routes>
@@ -48,7 +52,11 @@ function App() {
             <Route path="/review-orders" element={<ReviewOrders />}></Route>
             <Route path="*" element={<NotFound />}></Route>
           </Routes>
-          <ScrollToTopButton className={scrollBtnClass} target={bodyElement} />
+          <ScrollToTopButton
+            className={scrollBtnClass}
+            target={bodyElement}
+            data-testid="scroll-to-top-button"
+          />
         </div>
       </div>
     </AppInsightsErrorBoundary>
