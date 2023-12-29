@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
@@ -45,10 +45,7 @@ describe('App Router Tests', () => {
 
     render(<App />, { wrapper: BrowserRouter });
 
-    await act(async () => {
-      // verify page content for expected route after navigating
-      await userEvent.click(screen.getByTestId('header-cases-link'));
-    });
+    await userEvent.click(screen.getByTestId('header-cases-link'));
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });
