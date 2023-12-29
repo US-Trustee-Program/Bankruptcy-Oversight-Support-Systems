@@ -12,6 +12,7 @@ import CaseDetail from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import ReviewOrders from './review-orders/ReviewOrdersScreen';
+import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -19,6 +20,7 @@ function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
   const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
+  const flags = useFeatureFlags();
 
   function documentScroll(ev: React.UIEvent<HTMLElement>) {
     if ((ev.currentTarget as Element).scrollTop > 100) {
@@ -49,7 +51,9 @@ function App() {
             <Route path="/" element={<Home />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetail />}></Route>
-            <Route path="/review-orders" element={<ReviewOrders />}></Route>
+            {flags[TRANSFER_ORDERS_ENABLED] && (
+              <Route path="/review-orders" element={<ReviewOrders />}></Route>
+            )}
             <Route path="*" element={<NotFound />}></Route>
           </Routes>
           <ScrollToTopButton
