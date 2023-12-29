@@ -28,9 +28,8 @@ describe('Tests for feature flags', () => {
     config = new ApplicationConfiguration();
   });
 
-  test('Should foo', async () => {
+  test('Should test a known feature flag with known set value', async () => {
     const flags = await getFeatureFlags(config);
-    console.log('Testing flags', flags);
     expect(flags['chapter-twelve-enabled']).toEqual(true);
   });
 });

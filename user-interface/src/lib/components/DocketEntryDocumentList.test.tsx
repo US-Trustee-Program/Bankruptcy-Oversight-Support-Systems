@@ -23,7 +23,6 @@ describe('DocketEntryDocumentList component', () => {
       const documents = [document, badDocument];
       render(<DocketEntryDocumentList documents={documents} />);
       const root = screen.queryByTestId('document-unordered-list');
-      console.log(root);
       expect(root).toBeInTheDocument();
       expect(root?.childNodes.length).toEqual(documents.length);
     });

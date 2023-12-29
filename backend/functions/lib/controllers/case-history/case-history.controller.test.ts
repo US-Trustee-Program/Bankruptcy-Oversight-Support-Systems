@@ -20,7 +20,6 @@ describe('Test case-history controller', () => {
     const controller = new CaseHistoryController(applicationContext);
     const result = await controller.getCaseHistory({ caseId });
     expect(result.success).toBeTruthy();
-    console.log(result);
     expect(result['body']).toEqual(CASE_HISTORY);
   });
 
