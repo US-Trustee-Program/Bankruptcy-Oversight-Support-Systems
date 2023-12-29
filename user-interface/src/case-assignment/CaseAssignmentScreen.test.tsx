@@ -407,9 +407,7 @@ describe('CaseAssignment Component Tests', () => {
       { timeout: 1000 },
     ).then(() => {
       passedExpects++;
-      act(() => {
-        fireEvent.click(assignButton);
-      });
+      fireEvent.click(assignButton);
     });
     await sleep(100);
 
@@ -425,15 +423,11 @@ describe('CaseAssignment Component Tests', () => {
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
 
-    act(() => {
-      fireEvent.click(checkbox1);
-      fireEvent.click(checkbox2);
-    });
+    fireEvent.click(checkbox1);
+    fireEvent.click(checkbox2);
 
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
-    act(() => {
-      fireEvent.click(submitButton);
-    });
+    fireEvent.click(submitButton);
     await sleep(100);
 
     const alert = screen.getByTestId('alert');
@@ -565,9 +559,7 @@ describe('CaseAssignment Component Tests', () => {
       { timeout: 1000 },
     ).then(() => {
       passedExpects++;
-      act(() => {
-        fireEvent.click(assignButton);
-      });
+      fireEvent.click(assignButton);
     });
     await sleep(100);
 
@@ -583,15 +575,11 @@ describe('CaseAssignment Component Tests', () => {
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
 
-    act(() => {
-      fireEvent.click(checkbox1);
-      fireEvent.click(checkbox2);
-    });
+    fireEvent.click(checkbox1);
+    fireEvent.click(checkbox2);
 
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
-    act(() => {
-      fireEvent.click(submitButton);
-    });
+    fireEvent.click(submitButton);
 
     const attorneyList = await screen.getByTestId('attorney-list-1');
 
