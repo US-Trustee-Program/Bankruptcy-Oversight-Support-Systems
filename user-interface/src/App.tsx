@@ -37,7 +37,12 @@ function App() {
       }}
       appInsights={reactPlugin}
     >
-      <div className={appClasses} onScroll={documentScroll} data-testid="app-component-test-id">
+      <div
+        id="app-root"
+        className={appClasses}
+        onScroll={documentScroll}
+        data-testid="app-component-test-id"
+      >
         <Header />
         <div className="body">
           <Routes>

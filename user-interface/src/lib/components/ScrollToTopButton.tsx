@@ -10,7 +10,12 @@ export interface ScrollToTopButtonProps {
 export default function ScrollToTopButton(props: ScrollToTopButtonProps) {
   function scrollElement(el: Element | null) {
     if (el) {
-      el.scrollTop = 0;
+      const appRoot = document.getElementById('app-root');
+      if (appRoot) {
+        appRoot.scrollTop = 0;
+        const scrollEvent = new CustomEvent('scroll');
+        appRoot.dispatchEvent(scrollEvent);
+      }
     }
   }
 

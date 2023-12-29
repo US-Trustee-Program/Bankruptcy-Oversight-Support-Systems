@@ -49,7 +49,6 @@ describe('App', () => {
     });
   });
 
-  /*
   test('should scroll to top when scroll-to-top button is clicked', async () => {
     render(
       <BrowserRouter>
@@ -79,5 +78,4 @@ describe('App', () => {
       expect(scrollToTopBtn).not.toHaveClass('show');
     });
   });
-  */
 });
