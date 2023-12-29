@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
-import {
-  CaseDocketEntry,
-  CaseDocketEntryDocument,
-  CaseDocketSummaryFacet,
-} from '@/lib/type-declarations/chapter-15';
-import { handleHighlight } from '@/lib/utils/highlight-api';
-import Icon from '@/lib/components/uswds/Icon';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import './CaseDetailCourtDocket.scss';
+import { CaseDocketEntry, CaseDocketSummaryFacet } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
+import { handleHighlight } from '@/lib/utils/highlight-api';
+import './CaseDetailCourtDocket.scss';
 
 export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
 
@@ -18,6 +14,7 @@ export interface AlertOptions {
   title: string;
   type: UswdsAlertStyle;
 }
+
 export interface CaseDetailCourtDocketProps {
   caseId?: string;
   docketEntries?: CaseDocketEntry[];
@@ -25,33 +22,6 @@ export interface CaseDetailCourtDocketProps {
   hasDocketEntries: boolean;
   isDocketLoading: boolean;
   alertOptions?: AlertOptions;
-}
-
-export function fileSizeDescription(fileSize: number): string {
-  // https://learn.microsoft.com/en-us/style-guide/a-z-word-list-term-collections/term-collections/bits-bytes-terms
-  const KB = 1024;
-  const MB = 1048576;
-  const GB = 1073741824;
-  let unit: string = 'bytes';
-  let decimalSize: number = fileSize;
-  if (fileSize >= GB) {
-    decimalSize = fileSize / GB;
-    unit = 'GB';
-  } else if (fileSize >= MB) {
-    decimalSize = fileSize / MB;
-    unit = 'MB';
-  } else if (fileSize >= KB) {
-    decimalSize = fileSize / KB;
-    unit = 'KB';
-  }
-  const sizeString = unit === 'bytes' ? fileSize : (Math.round(decimalSize * 10) / 10).toFixed(1);
-  return `${sizeString} ${unit}`;
-}
-
-export function generateDocketFilenameDisplay(linkInfo: CaseDocketEntryDocument): string {
-  const { fileLabel, fileSize, fileExt } = linkInfo;
-  const extension = fileExt ? fileExt?.toUpperCase() + ', ' : '';
-  return `View ${fileLabel} [${extension}${fileSizeDescription(fileSize)}]`;
 }
 
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
@@ -124,23 +94,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                     {docketEntry.fullText}
                   </div>
                   {docketEntry.documents && (
-                    <div className="docket-documents">
-                      <ul
-                        className="usa-list usa-list--unstyled"
-                        data-testid="document-unordered-list"
-                      >
-                        {docketEntry.documents.map((linkInfo: CaseDocketEntryDocument) => {
-                          return (
-                            <li key={linkInfo.fileUri}>
-                              <a href={linkInfo.fileUri} target="_blank" rel="noreferrer">
-                                {generateDocketFilenameDisplay(linkInfo)}
-                                <Icon className="link-icon" name="launch"></Icon>
-                              </a>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
+                    <DocketEntryDocumentList documents={docketEntry.documents} />
                   )}
                 </div>
               </div>

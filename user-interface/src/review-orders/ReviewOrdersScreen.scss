@@ -1,0 +1,70 @@
+.review-orders-screen {
+  .order-list-container {
+    .order-type {
+      span {
+        background-color: #5C5C5C;
+        color: white;
+        padding: 2px 8px 2px 8px;
+        border-radius: 2px;
+      }
+    }
+    .order-status {
+      span {
+        color: white;
+        padding: 2px 8px 2px 8px;
+        border-radius: 2px;
+      }
+      span.pending {
+        // pa11y failed background color #C2850C for contrast.
+        // The backgound color #a26b00 was specified by pa11y.
+        // background: #C2850C;
+        background: #a26b00;
+      }
+      span.approved {
+        background: #008817;
+      }
+      span.rejected {
+        background: #D83933;
+      }
+    }
+    .order-form {
+      .court-selection {
+        display: flex;
+        padding-bottom: 2rem;
+        > div {
+          display: flex;
+          flex-direction: column;
+          justify-content: end;
+          padding-right: 1rem;
+        }
+        div.transfer-from-to__div {
+          padding-bottom: 0.5rem;
+        }
+        .new-court__select {
+          min-width: 300px;
+        }
+
+      }
+    }
+    .transfer-highlight__span {
+      padding: 0 0.3rem;
+      font-weight: bold;
+    }
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .review-orders-screen {
+      .order-list-container {
+        .order-form {
+          .court-selection {
+            display: block;
+
+            .new-court__select {
+              min-width: none;
+            }
+          }
+       }
+    }
+  }
+}

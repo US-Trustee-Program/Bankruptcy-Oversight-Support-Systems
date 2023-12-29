@@ -13,8 +13,7 @@ export class MockCasesGateway implements CasesInterface {
   }
 
   async getCases(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    applicationContext: ApplicationContext,
+    _applicationContext: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]> {
     if (options.startingMonth != undefined) {
@@ -30,10 +29,8 @@ export class MockCasesGateway implements CasesInterface {
   }
 
   async getCaseDetail(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    applicationContext: ApplicationContext,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    caseId: string,
+    _applicationContext: ApplicationContext,
+    _caseId: string,
   ): Promise<CaseDetailInterface> {
     // const bCase = this.caseList.filter((aCase) => )
     throw new Error('not implemented');

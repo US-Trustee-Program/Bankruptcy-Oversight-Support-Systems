@@ -1,11 +1,6 @@
-import { CamsError } from '../../common-errors/cams-error';
-
 // TODO: This lookup may need to be migrated to a database at some point in the future.
 // This is a domain concern that we have not decided on where is the most appropriate place to keep outside of the gateway directory.
-
-const MODULE_NAME = 'OFFICES-GATEWAY';
-
-const offices = new Map<string, string>([
+export const USTP_OFFICE_NAME_MAP = new Map<string, string>([
   ['001', 'Portland'],
   ['002', 'Portland'],
   ['011', 'Boston'],
@@ -276,11 +271,3 @@ const offices = new Map<string, string>([
   ['931', 'Honolulu'],
   ['941', 'Honolulu'],
 ]);
-
-export function getOffice(id: string): string {
-  if (offices.has(id)) return offices.get(id);
-  throw new CamsError(MODULE_NAME, {
-    message: 'Cannot find office by ID',
-    data: { id },
-  });
-}

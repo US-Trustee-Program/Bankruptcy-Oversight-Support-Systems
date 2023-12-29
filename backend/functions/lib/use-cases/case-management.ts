@@ -1,22 +1,23 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import {
+  CaseDetailInterface,
   CaseDetailsDbResult,
   CaseListDbResult,
-  CaseDetailInterface,
 } from '../adapters/types/cases';
-import { getCasesGateway } from '../factory';
+import { getCasesGateway, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
-import { getOffice } from '../adapters/gateways/offices.gateway';
 import { CaseAssignment } from '../adapters/types/case.assignment';
+import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
 export class CaseManagement {
   casesGateway: CasesInterface;
+  officesGateway: OfficesGatewayInterface;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
     if (!casesGateway) {
@@ -24,6 +25,7 @@ export class CaseManagement {
     } else {
       this.casesGateway = casesGateway;
     }
+    this.officesGateway = getOfficesGateway(applicationContext);
   }
 
   async getCases(applicationContext: ApplicationContext): Promise<CaseListDbResult> {
@@ -75,7 +77,7 @@ export class CaseManagement {
       caseDetails,
     );
 
-    caseDetails.officeName = getOffice(caseDetails.courtDivision);
+    caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivision);
 
     return {
       success: true,
@@ -93,10 +95,9 @@ export class CaseManagement {
   ) {
     try {
       const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(c.caseId);
-      const assigneeNames = assignments.map((a) => {
+      return assignments.map((a) => {
         return a.name;
       });
-      return assigneeNames;
     } catch (e) {
       throw new AssignmentError(MODULE_NAME, {
         message:

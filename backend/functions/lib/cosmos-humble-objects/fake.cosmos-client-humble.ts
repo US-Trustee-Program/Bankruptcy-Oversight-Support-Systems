@@ -25,11 +25,9 @@ export default class FakeCosmosClientHumble {
   private caseAssignments: CaseAssignment[] = [];
   private itemQueryParams: QueryParams[] = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public database(databaseId: string) {
+  public database(_databaseId: string) {
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      container: (containerName: string) => {
+      container: (_containerName: string) => {
         return {
           items: {
             create: (assignment: CaseAssignment) => {

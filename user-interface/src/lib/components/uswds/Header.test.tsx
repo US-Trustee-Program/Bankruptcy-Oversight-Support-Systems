@@ -102,9 +102,7 @@ describe('Header', () => {
     );
 
     const linkToClick = await screen.findByTestId('header-review-orders-link');
-    await waitFor(() => {
-      fireEvent.click(linkToClick);
-    });
+    fireEvent.click(linkToClick);
 
     const casesLink = await screen.findByTestId('header-cases-link');
     expect(casesLink).toBeInTheDocument();

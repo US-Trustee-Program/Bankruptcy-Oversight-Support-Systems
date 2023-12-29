@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CaseDocket } from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
