@@ -3,6 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { Order } from './orders.model';
 
 export class OrdersUseCase {
+  // TODO: Maybe rename this to dxtrGateway, because we will have a Cosmos DB gateway too.
   private readonly gateway: OrdersGateway;
 
   constructor(gateway: OrdersGateway) {
@@ -11,5 +12,91 @@ export class OrdersUseCase {
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
     return this.gateway.getOrders(context);
+    // TODO: Update order.status with transaction state from Cosmos.
   }
+
+  // TODO: Implement updateOrder logic. Write transaction state to Cosmos. Partial?
+  // public async updateOrder(context: ApplicationContext, order: Order): Promise<Order>
+
+  // TODO: Consider a function to record orders in cosmos which triggers on a schedule.
+  // TODO: If all order data is in Cosmos then reads and writes are simplified, and possibly more performant. Reduce complexity?
+
+  /*
+
+  Data Sync Function
+
+  Use max TX_ID from AO_TX table in the query to return all records since the last sync. Keep the max TX_ID state in the Cosmos DB.
+
+  Lifecycle: pending -> order confirmed -> "transfering" -> order complete -> DONE.
+                     -> order rejected -> DONE.
+
+  Cosmos Document Design
+
+  collection: orders
+  partition key: caseId
+  index on: caseId, status, documentType/orderType, court?, region? office? other?
+
+  {
+    //
+    // READ ONLY attributes originating from DXTR.
+    //
+    "caseId": "081-21-45763",
+    "caseTitle": "Sanchez Group",
+    "chapter": "15",
+    "courtName": "Southern District of New York",
+    "courtDivisionName": "Manhattan",
+    "regionId": "02",
+    "orderType": "transfer",
+    "orderDate": "2021-04-03",
+    "sequenceNumber": 1,
+    "documentNumber": 1,
+    "summaryText": "Order Re: Transfer Case",
+    "fullText": "Caritas volaticus voluptatem combibo degenero theatrum. Iste adeo versus pauci decimus. Impedit cubicularis odio crebro. Id desparatus adeptio accusamus vulnus adfectus. Terga conqueror sapiente clementia appello. Magni cum verecundia repellat speculum tantum. Absum iusto vespillo adicio. Attonbitus inflammatio collum copia adulescens bis.",
+    "dateFiled": "2021-04-03",
+    "documents": [
+      {
+        "fileUri": "https://en.wikipedia.org/api/rest_v1/page/pdf/0208-307899-1-1-0.pdf",
+        "fileSize": 1514596,
+        "fileLabel": "1",
+        "fileExt": "pdf"
+      }
+    ],
+
+    //
+    // Originate from DXTR with default values. Mutated by the CAMS workflow lifecycle in Cosmos.
+    //
+    "status": "pending",
+    "newCaseId": "23-50607"
+
+    //
+    // Originate from CAMS
+    //
+
+    * current in flight region/court/office? ==> start with "departing", end with "destination". use this for index?
+
+    new court
+    new region
+    user
+    timestamp
+
+    * MAYBE need a change log.... __OR is this recorded to HISTORY/AUDIT collection??__ (yes)
+      {
+        start state
+        end state
+        user
+        timestamp
+        data: {
+          ...changed attributes??
+        }
+      }
+
+    //
+    // meta
+    //
+
+    documentType: "transfer" // SAME AS orderType??
+
+  }
+
+  */
 }
