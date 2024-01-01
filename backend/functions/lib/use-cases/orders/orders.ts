@@ -1,18 +1,17 @@
-import { OrdersGateway } from '../gateways.types';
+import { OrdersRepository } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order } from './orders.model';
 
 export class OrdersUseCase {
   // TODO: Maybe rename this to dxtrGateway, because we will have a Cosmos DB gateway too.
-  private readonly gateway: OrdersGateway;
+  private readonly ordersRepo: OrdersRepository;
 
-  constructor(gateway: OrdersGateway) {
-    this.gateway = gateway;
+  constructor(ordersRepo: OrdersRepository) {
+    this.ordersRepo = ordersRepo;
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    return this.gateway.getOrders(context);
-    // TODO: Update order.status with transaction state from Cosmos.
+    return this.ordersRepo.getOrders(context);
   }
 
   // TODO: Implement updateOrder logic. Write transaction state to Cosmos. Partial?
