@@ -12,3 +12,14 @@ export type Order = CaseDocketEntry & {
   status: 'pending' | 'approved' | 'rejected';
   newCaseId?: string;
 };
+
+export type OrderSync = {
+  orders: Order[];
+  maxTxId: number;
+};
+
+export type OrderSyncState = {
+  id: string;
+  txId: number;
+  documentType: string;
+};

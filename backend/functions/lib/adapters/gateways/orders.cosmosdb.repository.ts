@@ -5,7 +5,7 @@ import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
-import { Order } from '../../use-cases/orders/orders.model';
+import { Order, OrderSyncState } from '../../use-cases/orders/orders.model';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 
@@ -28,6 +28,67 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     };
     const response = await this.queryData<Order>(context, querySpec);
     return response;
+  }
+
+  async putOrders(context: ApplicationContext, orders: Order[]) {
+    try {
+      await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.create(orders);
+    } catch (e) {
+      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      if (e instanceof AggregateAuthenticationError) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError: e,
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  async getSyncState(context: ApplicationContext): Promise<OrderSyncState> {
+    const query = 'SELECT * FROM c WHERE documentType = "ORDERS_SYNC_STATE"';
+    try {
+      const { resources: results } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container('runtime')
+        .items.query(query)
+        .fetchAll();
+      return results[0];
+    } catch (e) {
+      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      if (e instanceof AggregateAuthenticationError) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError: e,
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  async updateSyncState(context: ApplicationContext, syncState: OrderSyncState) {
+    try {
+      await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container('runtime')
+        .item(syncState.id)
+        .replace(syncState);
+    } catch (e) {
+      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      if (e instanceof AggregateAuthenticationError) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError: e,
+        });
+      } else {
+        throw e;
+      }
+    }
   }
 
   private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
