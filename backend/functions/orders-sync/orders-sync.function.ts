@@ -1,28 +1,26 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import * as dotenv from 'dotenv';
-
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+// TODO: The original context was InvocationContext
+import { Context, Timer } from '@azure/functions';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 
+import * as dotenv from 'dotenv';
+
+// TODO: We need to look into upgrading this to use v4 of Azure Functions
 dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
-  _ordersRequest: HttpRequest,
+export default async function timerTrigger(
+  timer: Timer,
+  invocationContext: Context,
 ): Promise<void> {
-  const context = await applicationContextCreator(functionContext);
+  const context = await applicationContextCreator(invocationContext);
+
   const ordersController = new OrdersController(context);
   try {
-    const responseBody = await ordersController.getOrders(context);
-    functionContext.res = httpSuccess(responseBody);
+    await ordersController.syncOrders(context);
   } catch (camsError) {
     context.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
   }
-};
-
-export default httpTrigger;
+}

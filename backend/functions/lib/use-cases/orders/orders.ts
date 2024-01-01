@@ -1,13 +1,14 @@
-import { OrdersRepository } from '../gateways.types';
+import { OrdersGateway, OrdersRepository } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order } from './orders.model';
 
 export class OrdersUseCase {
-  // TODO: Maybe rename this to dxtrGateway, because we will have a Cosmos DB gateway too.
   private readonly ordersRepo: OrdersRepository;
+  private readonly ordersGateway: OrdersGateway;
 
-  constructor(ordersRepo: OrdersRepository) {
+  constructor(ordersRepo: OrdersRepository, ordersGateway: OrdersGateway) {
     this.ordersRepo = ordersRepo;
+    this.ordersGateway = ordersGateway;
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
@@ -18,8 +19,6 @@ export class OrdersUseCase {
   // public async updateOrder(context: ApplicationContext, order: Order): Promise<Order>
 
   // TODO: Consider a function to record orders in cosmos which triggers on a schedule.
-  // TODO: If all order data is in Cosmos then reads and writes are simplified, and possibly more performant. Reduce complexity?
-
   /*
 
   Data Sync Function
@@ -96,6 +95,17 @@ export class OrdersUseCase {
     documentType: "transfer" // SAME AS orderType??
 
   }
-
   */
+  public async syncOrders(context: ApplicationContext): Promise<void> {
+    const initialSyncState = await this.ordersRepo.getSyncState(context);
+    const { txId } = initialSyncState;
+
+    const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, txId);
+
+    await this.ordersRepo.putOrders(context, orders);
+
+    const finalSyncState = { ...initialSyncState, txId: maxTxId };
+
+    await this.ordersRepo.updateSyncState(context, finalSyncState);
+  }
 }
