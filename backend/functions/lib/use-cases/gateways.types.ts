@@ -17,3 +17,14 @@ export interface CaseHistoryGateway {
 export interface OrdersGateway {
   getOrders(context: ApplicationContext): Promise<Order[]>;
 }
+
+export interface CaseHistoryGateway {
+  getCaseAssignmentHistory(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseAssignmentHistory[]>;
+}
+
+export interface OrdersRepository {
+  getOrders(context: ApplicationContext): Promise<Order[]>;
+}
