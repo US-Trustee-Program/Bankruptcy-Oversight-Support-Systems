@@ -1,14 +1,25 @@
-import { OrdersGateway, OrdersRepository } from '../gateways.types';
+import {
+  OrderSyncState,
+  OrdersGateway,
+  OrdersRepository,
+  RuntimeRepository,
+} from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order } from './orders.model';
 
 export class OrdersUseCase {
-  private readonly ordersRepo: OrdersRepository;
   private readonly ordersGateway: OrdersGateway;
+  private readonly ordersRepo: OrdersRepository;
+  private readonly runtimeRepo: RuntimeRepository;
 
-  constructor(ordersRepo: OrdersRepository, ordersGateway: OrdersGateway) {
+  constructor(
+    ordersRepo: OrdersRepository,
+    ordersGateway: OrdersGateway,
+    runtimeRepo: RuntimeRepository,
+  ) {
     this.ordersRepo = ordersRepo;
     this.ordersGateway = ordersGateway;
+    this.runtimeRepo = runtimeRepo;
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
@@ -97,7 +108,10 @@ export class OrdersUseCase {
   }
   */
   public async syncOrders(context: ApplicationContext): Promise<void> {
-    const initialSyncState = await this.ordersRepo.getSyncState(context);
+    const initialSyncState = await this.runtimeRepo.getSyncState<OrderSyncState>(
+      context,
+      'ORDERS_SYNC_STATE',
+    );
     const { txId } = initialSyncState;
 
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, txId);
@@ -106,6 +120,6 @@ export class OrdersUseCase {
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
 
-    await this.ordersRepo.updateSyncState(context, finalSyncState);
+    await this.runtimeRepo.updateSyncState<OrderSyncState>(context, finalSyncState);
   }
 }

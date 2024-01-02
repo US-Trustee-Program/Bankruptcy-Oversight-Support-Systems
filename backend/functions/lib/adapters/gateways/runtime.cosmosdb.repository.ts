@@ -1,41 +1,42 @@
 import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getOrdersCosmosDbClient } from '../../factory';
+import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { OrdersRepository } from '../../use-cases/gateways.types';
-import { Order } from '../../use-cases/orders/orders.model';
+import {
+  RuntimeRepository,
+  SyncState,
+  SyncStateDocumentType,
+} from '../../use-cases/gateways.types';
 
-const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
+const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_RUNTIME';
 
-export class OrdersCosmosDbRepository implements OrdersRepository {
+export class RuntimeCosmosDbRepository implements RuntimeRepository {
   private cosmosDbClient;
 
-  private containerName = 'orders';
+  private containerName = 'runtime';
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getOrdersCosmosDbClient(applicationContext);
+    this.cosmosDbClient = getCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
   }
 
-  async getOrders(context: ApplicationContext): Promise<Order[]> {
-    const query = 'SELECT * FROM c';
-    const querySpec = {
-      query,
-      parameters: [],
-    };
-    const response = await this.queryData<Order>(context, querySpec);
-    return response;
-  }
-
-  async putOrders(context: ApplicationContext, orders: Order[]) {
+  async getSyncState<T extends SyncState>(
+    context: ApplicationContext,
+    documentType: SyncStateDocumentType,
+  ): Promise<T> {
+    // TODO: parameterize the documentType
+    const query = `SELECT * FROM c WHERE documentType = "${documentType}"`;
     try {
-      await this.cosmosDbClient
+      const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .items.create(orders);
+        .items.query(query)
+        .fetchAll();
+      // TODO: Need to check for ONE record. Error if 0 or >1.
+      return results[0];
     } catch (e) {
       log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
@@ -49,14 +50,13 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
+  async updateSyncState<T extends SyncState>(context: ApplicationContext, syncState: T) {
     try {
-      const { resources: results } = await this.cosmosDbClient
+      await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
-        .container(this.containerName)
-        .items.query(querySpec)
-        .fetchAll();
-      return results;
+        .container('runtime')
+        .item(syncState.id)
+        .replace(syncState);
     } catch (e) {
       log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
