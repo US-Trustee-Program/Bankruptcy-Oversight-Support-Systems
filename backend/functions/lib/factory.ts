@@ -87,6 +87,8 @@ export const getOrdersGateway = (applicationContext: ApplicationContext): Orders
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
+  // TODO: Replace this with a mock repo.
+  // if (applicationContext.config.get('dbMock')) return new MockOrdersCosmosDbRepository();
   return new OrdersCosmosDbRepository(applicationContext);
 };
 

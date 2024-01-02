@@ -17,9 +17,3 @@ export type OrderSync = {
   orders: Order[];
   maxTxId: number;
 };
-
-export type OrderSyncState = {
-  id: string;
-  txId: number;
-  documentType: string;
-};
