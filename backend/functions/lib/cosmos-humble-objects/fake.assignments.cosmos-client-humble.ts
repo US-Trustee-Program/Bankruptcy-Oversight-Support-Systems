@@ -21,7 +21,7 @@ interface QueryOptions {
   parameters: QueryParams[];
 }
 
-export default class FakeCosmosClientHumble {
+export default class FakeAssignmentsCosmosClientHumble {
   private caseAssignments: CaseAssignment[] = [];
   private itemQueryParams: QueryParams[] = [];
 
