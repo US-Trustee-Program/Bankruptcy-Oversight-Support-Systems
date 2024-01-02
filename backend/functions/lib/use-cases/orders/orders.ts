@@ -106,6 +106,13 @@ export class OrdersUseCase {
     documentType: "transfer" // SAME AS orderType??
 
   }
+
+  // TODO: Document how to trigger the sync function.
+
+  curl -v -d "{}" -H "Content-Type: application/json" http://localhost:7071/admin/functions/orders-sync
+
+  // TODO: Document how to setup local environment `local.settings.json` to run the API.
+
   */
   public async syncOrders(context: ApplicationContext): Promise<void> {
     const initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
@@ -115,11 +122,9 @@ export class OrdersUseCase {
     const { txId } = initialSyncState;
 
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, txId);
-
     await this.ordersRepo.putOrders(context, orders);
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
-
     await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
   }
 }
