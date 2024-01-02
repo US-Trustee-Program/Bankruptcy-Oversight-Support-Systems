@@ -31,20 +31,47 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   }
 
   async putOrders(context: ApplicationContext, orders: Order[]) {
+    if (!orders.length) return;
     try {
-      await this.cosmosDbClient
-        .database(this.cosmosConfig.databaseName)
-        .container(this.containerName)
-        .items.create(orders);
-    } catch (e) {
-      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
-      if (e instanceof AggregateAuthenticationError) {
+      // TODO: Revisit batch creation.
+      // const operations = orders.map((order) => {
+      //   return {
+      //     operationType: 'Create',
+      //     partitionKey: '/caseId',
+      //     resourceBody: order,
+      //   };
+      // });
+      // const results = await this.cosmosDbClient
+      //   .database(this.cosmosConfig.databaseName)
+      //   .container(this.containerName)
+      //   .items.batch(operations);
+      for (const order of orders) {
+        const _result = await this.cosmosDbClient
+          .database(this.cosmosConfig.databaseName)
+          .container(this.containerName)
+          .items.create(order);
+
+        // TODO: Revisit how we deal with failures. How are we going to recover?
+        // if (result.statusCode !== 201) {
+        //   throw new CamsError(MODULE_NAME, {
+        //     message: 'Failed to create order in Cosmos.',
+        //     data: result,
+        //   });
+        // }
+      }
+    } catch (originalError) {
+      log.error(
+        context,
+        MODULE_NAME,
+        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
+      );
+      if (originalError instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',
-          originalError: e,
+          originalError,
         });
       } else {
-        throw e;
+        throw originalError;
       }
     }
   }
@@ -57,15 +84,19 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .items.query(querySpec)
         .fetchAll();
       return results;
-    } catch (e) {
-      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
-      if (e instanceof AggregateAuthenticationError) {
+    } catch (originalError) {
+      log.error(
+        context,
+        MODULE_NAME,
+        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
+      );
+      if (originalError instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',
-          originalError: e,
+          originalError: originalError,
         });
       } else {
-        throw e;
+        throw originalError;
       }
     }
   }

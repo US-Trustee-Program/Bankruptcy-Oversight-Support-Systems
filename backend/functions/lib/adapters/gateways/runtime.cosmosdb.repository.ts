@@ -15,7 +15,7 @@ const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
 export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
   private cosmosDbClient;
 
-  private containerName = 'runtime_state';
+  private containerName = 'runtime-state';
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
@@ -28,7 +28,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
     documentType: RuntimeStateDocumentType,
   ): Promise<T> {
     // TODO: parameterize the documentType
-    const query = `SELECT * FROM c WHERE documentType = "${documentType}"`;
+    const query = `SELECT * FROM c WHERE c.documentType = "${documentType}"`;
     try {
       const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)

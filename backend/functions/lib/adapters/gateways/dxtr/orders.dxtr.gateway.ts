@@ -89,7 +89,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
     input.push({
       name: 'txId',
-      type: mssql.VarChar,
+      type: mssql.BigInt,
       value: txId,
     });
 
@@ -128,7 +128,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         AND CS.CS_CHAPTER IN (@chapters)
         AND G.REGION_ID IN (@regions)
         AND TX.TX_ID > @txId
-      ORDER BY TX.TX_DATE DESC
+      ORDER BY TX.TX_ID ASC
       `;
 
     const queryResult: QueryResults = await executeQuery(
