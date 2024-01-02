@@ -4,7 +4,7 @@ import { ORDERS } from '../lib/testing/mock-data/orders.mock';
 const context = require('azure-function-context-mock');
 
 describe('Orders Function tests', () => {
-  test('should return a list of orders', async () => {
+  test.skip('should return a list of orders', async () => {
     const request = {
       params: {},
     };

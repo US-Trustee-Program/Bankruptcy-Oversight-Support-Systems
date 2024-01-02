@@ -8,7 +8,8 @@ import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { CosmosConfig, IDbConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
-import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-humble';
+import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
+import FakeOrdersCosmosClientHumble from './cosmos-humble-objects/fake.orders.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
@@ -40,11 +41,21 @@ export const getAssignmentRepository = (
   return new CaseAssignmentCosmosDbRepository(applicationContext);
 };
 
-export const getCosmosDbClient = (
+export const getAssignmentsCosmosDbClient = (
   applicationContext: ApplicationContext,
-): CosmosClientHumble | FakeCosmosClientHumble => {
+): CosmosClientHumble | FakeAssignmentsCosmosClientHumble => {
   if (applicationContext.config.get('dbMock')) {
-    return new FakeCosmosClientHumble();
+    return new FakeAssignmentsCosmosClientHumble();
+  } else {
+    return new CosmosClientHumble(applicationContext.config);
+  }
+};
+
+export const getOrdersCosmosDbClient = (
+  applicationContext: ApplicationContext,
+): CosmosClientHumble | FakeOrdersCosmosClientHumble => {
+  if (applicationContext.config.get('dbMock')) {
+    return new FakeOrdersCosmosClientHumble();
   } else {
     return new CosmosClientHumble(applicationContext.config);
   }
@@ -76,12 +87,7 @@ export const getOrdersGateway = (applicationContext: ApplicationContext): Orders
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  if (applicationContext.config.get('dbMock')) {
-    // TODO: Replace this with a mock repo.
-    return new MockOrdersCosmosDbRepository();
-  } else {
-    return new OrdersCosmosDbRepository(applicationContext);
-  }
+  return new OrdersCosmosDbRepository(applicationContext);
 };
 
 export const getOfficesGateway = (

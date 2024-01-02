@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getCosmosDbClient } from '../../factory';
+import { getCosmosConfig, getOrdersCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
@@ -16,7 +16,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getCosmosDbClient(applicationContext);
+    this.cosmosDbClient = getOrdersCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
   }
 
