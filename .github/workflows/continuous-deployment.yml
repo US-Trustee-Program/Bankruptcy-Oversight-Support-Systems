@@ -159,48 +159,48 @@ jobs:
           vkey: "${{ secrets.VERACODE_API_KEY }}"
           criticality: "Medium"
 
-  # security-sast-scan:
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: true
-  #   steps:
-  #     - uses: actions/checkout@v3
+  security-sast-scan:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Package source code for scan
-  #       run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*"
+      - name: Package source code for scan
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*"
 
-  #     - uses: azure/login@v1
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
-  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-  #     - name: Download baseline file
-  #       run: |
-  #         az storage blob download \
-  #         --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
-  #         --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
-  #         -c baseline \
-  #         -n results-latest.json \
-  #         -f ./results-latest.json
+      - name: Download baseline file
+        run: |
+          az storage blob download \
+          --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
+          --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
+          -c baseline \
+          -n results-latest.json \
+          -f ./results-latest.json
 
-  #     - name: pipeline-scan
-  #       id: pipeline-scan
-  #       run: |
-  #         curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
-  #         unzip -o pipeline-scan-LATEST.zip
-  #         java -jar pipeline-scan.jar --version
+      - name: pipeline-scan
+        id: pipeline-scan
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip -o pipeline-scan-LATEST.zip
+          java -jar pipeline-scan.jar --version
 
-  #         java -jar pipeline-scan.jar \
-  #         -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
-  #         -bf results-latest.json \
-  #         -jf results.json \
-  #         -fjf filtered_results.json \
-  #         --file cams.zip
+          java -jar pipeline-scan.jar \
+          -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
+          -bf results-latest.json \
+          -jf results.json \
+          -fjf filtered_results.json \
+          --file cams.zip
 
-  #     - name: Upload to storage account
-  #       if: always()
-  #       run: |
-  #         az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
-  #         az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+      - name: Upload to storage account
+        if: always()
+        run: |
+          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
 
   security-sca-scan-frontend:
     runs-on: ubuntu-latest
@@ -335,6 +335,7 @@ jobs:
         build-frontend,
         build-service,
         accessibility-test,
+        security-sast-scan,
         security-sca-scan-frontend,
         security-sca-scan-backend,
         security-sca-scan-common,
