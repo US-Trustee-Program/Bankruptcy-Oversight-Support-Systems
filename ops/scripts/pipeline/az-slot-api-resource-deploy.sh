@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-app-deploy.sh
 # Description:  Helper script to deploy webapp build artifact to existing Azure site
@@ -75,10 +75,10 @@ az functionapp deployment slot create --name "$api_name" --resource-group "$app_
 
 echo "Updating Node API Slot Configuration with new storage account..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}" --slot-settings AzureWebJobsStorage=true
 
 echo "Setting CORS Allowed origins for the API..."
-az functionapp cors add -g "$app_rg" --name "$api_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
+az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
 
 echo "Assigning managed Identities..."
 # Identities occasionally come through with improper id for usage here, this constructs that

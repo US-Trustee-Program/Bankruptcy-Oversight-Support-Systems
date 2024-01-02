@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-func-deploy.sh
 # Description:  Helper script to deploy function build artifact to existing Azure site
@@ -13,7 +13,6 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 enable_debug=false
-deploy_slot=false
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
@@ -23,11 +22,6 @@ while [[ $# -gt 0 ]]; do
 
     -d | --debug)
         enable_debug=true
-        shift
-        ;;
-
-    --deploySlot)
-        deploy_slot=true
         shift
         ;;
 
@@ -71,10 +65,6 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --slotName)
-        slot_name="${2}"
-        shift 2
-        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -86,13 +76,7 @@ ruleName="agent-${app_name:0:26}" # rule name has a 32 character limit
 
 function on_exit() {
     # always try to remove temporary access
-    config_cmd="az functionapp config access-restriction remove -g ${app_rg} -n ${app_name} --slot ${slot_name} --rule-name ${ruleName} --scm-site true 1>/dev/null"
-    if [ ${deploy_slot} == true ]; then
-    config_cmd="${config_cmd} --slot ${slot_name}"
-    eval "${config_cmd}"
-    else
-    eval "${config_cmd}"
-    fi
+    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
 }
 trap on_exit EXIT
 
@@ -103,11 +87,8 @@ fi
 
 # allow build agent access to execute deployment
 agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
-if [ ${deploy_slot} ]; then
-    az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
-else
-    az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
-fi
+az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
+
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --src ${artifact_path}"
 if [[ ${enable_debug} == 'true' ]]; then
@@ -129,7 +110,6 @@ if [[ -n ${identities} ]]; then
             echo "Assigning identity ${azResourceId/*\//} to ${app_name}"
             # assign service with specified identity
             az functionapp identity assign -g "${app_rg}" -n "${app_name}" --identities "${azResourceId}"
-            az functionapp identity assign -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --identities "${azResourceId}"
         fi
 
     done
@@ -147,11 +127,6 @@ fi
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
-    app_settings_cmd="az functionapp config appsettings set -g ${app_rg} -n ${app_name} --settings ${app_settings} ${decorated_kv_settings} --query [].name --output tsv"
-    if [ ${deploy_slot} == true ]; then
-        app_settings_cmd="${app_settings_cmd} --slot ${slot_name}"
-        eval "${app_settings_cmd}"
-    else
-        eval "${app_settings_cmd}"
-    fi
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
+    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --settings ${app_settings} ${decorated_kv_settings} --query "[].name" --output tsv
 fi

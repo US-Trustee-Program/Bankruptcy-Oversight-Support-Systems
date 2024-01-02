@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-app-deploy.sh
 # Description:  Helper script to deploy webapp build artifact to existing Azure site
@@ -57,17 +57,8 @@ trap on_exit EXIT
 # allow build agent access to execute deployment
 agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
 ruleName="agent-${app_name:0:26}"
-
-echo "Editing traffic to allow deployment..."
 az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
 
 # Gives some extra time for prior management operation to complete before starting deployment
 sleep 10
-echo "Deploying to WebApp Slot..."
 az webapp deploy -g "${app_rg}" --src-path "${artifact_path}" -n "${app_name}" --slot "${slot_name}"
-
-
-
-# Alternative workaround to set Azure app service container runtime
-echo "Setting Linux|PHP to 8.2"
-az webapp config set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --linux-fx-version "PHP|8.2" 1>/dev/null

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-func-deploy.sh
 # Description:  Helper script to deploy function build artifact to existing Azure site
@@ -44,6 +44,12 @@ while [[ $# -gt 0 ]]; do
         slot_name="${2}"
         shift 2
         ;;
+
+    --settings)
+        app_settings="${2}"
+        shift 2
+        ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -79,3 +85,10 @@ fi
 echo "Deployment started"
 eval "${cmd}"
 echo "Deployment completed"
+
+# configure Application Settings # TODO CAMS-160 Can possibly be moved to Deploy job
+if [[ -n ${app_settings} ]]; then
+    echo "Set Application Settings for ${app_name}"
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
+    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "$slot_name" --settings ${app_settings} --query "[].name" --output tsv
+fi
