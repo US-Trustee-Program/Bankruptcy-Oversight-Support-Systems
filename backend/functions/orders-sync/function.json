@@ -6,7 +6,8 @@
       "name": "req",
       "schedule": "0 30 9 * * *",
       "runOnStartup": false,
-      "useMonitor": true
+      "useMonitor": true,
+      "connection": "AzureWebJobsStorage"
     }
   ],
   "scriptFile": "../dist/backend/functions/orders-sync/orders-sync.function.js"
