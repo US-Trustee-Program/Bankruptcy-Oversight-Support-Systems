@@ -772,6 +772,11 @@ jobs:
           -p ${{ env.priority }} \
           --slot-name ${{ env.slotName }} \
           --is-cicd
+      - name: Set Traffic Routing for Slot
+        run: |
+          az webapp traffic-routing set --distribution ${{ env.slotName }}=1 --name ${{ env.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing set --distribution ${{ env.slotName }}=1 --name ${{ env.apiName }} --resource-group ${{ steps.rgApp.outputs.out }}
+
       - name: Health check api
         run: |
           webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}-${{ env.slotName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }})
@@ -823,6 +828,9 @@ jobs:
       - name: Swap Deployment Slot
         run: |
           az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
+      - name: Set webapp Slot Traffic to 0
+        run: |
+          az webapp traffic-routing set --distribution ${{ env.slotName }}=0 --name ${{ env.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
 
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
@@ -851,6 +859,10 @@ jobs:
       - name: Swap Deployment Slot
         run: |
           az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
+      - name: Set API Slot Traffic to 0
+        run: |
+          az webapp traffic-routing set --distribution ${{ env.slotName }}=0 --name ${{ env.apiName }} --resource-group ${{ steps.rgApp.outputs.out }}
+
   smoke-test-application-post-swap:
     runs-on: ubuntu-latest
     needs:
