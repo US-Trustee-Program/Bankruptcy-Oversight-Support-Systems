@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { getOrdersGateway, getOrdersRepository } from '../../factory';
+import { getOrdersGateway, getOrdersRepository, getRuntimeStateRepository } from '../../factory';
 import { OrdersUseCase } from '../../use-cases/orders/orders';
 import { Order } from '../../use-cases/orders/orders.model';
 import { CamsResponse } from '../controller-types';
@@ -14,7 +14,11 @@ export class OrdersController {
   private readonly useCase: OrdersUseCase;
 
   constructor(context: ApplicationContext) {
-    this.useCase = new OrdersUseCase(getOrdersRepository(context), getOrdersGateway(context));
+    this.useCase = new OrdersUseCase(
+      getOrdersRepository(context),
+      getOrdersGateway(context),
+      getRuntimeStateRepository(context),
+    );
   }
 
   public async getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {

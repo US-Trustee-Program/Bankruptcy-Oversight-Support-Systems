@@ -24,22 +24,22 @@ export interface OrdersRepository {
 }
 
 // TODO: Move these models to a top level models file?
-export type SyncStateDocumentType = 'ORDERS_SYNC_STATE';
+export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE';
 
-export type SyncState = {
+export type RuntimeState = {
   id: string;
-  documentType: SyncStateDocumentType;
+  documentType: RuntimeStateDocumentType;
 };
 
-export type OrderSyncState = SyncState & {
+export type OrderSyncState = RuntimeState & {
   documentType: 'ORDERS_SYNC_STATE';
   txId: number;
 };
 
-export interface RuntimeRepository {
-  getSyncState<T extends SyncState>(
+export interface RuntimeStateRepository {
+  getState<T extends RuntimeState>(
     context: ApplicationContext,
-    documentType: SyncStateDocumentType,
+    documentType: RuntimeStateDocumentType,
   ): Promise<T>;
-  updateSyncState<T extends SyncState>(context: ApplicationContext, syncState: T);
+  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T);
 }
