@@ -124,7 +124,7 @@ export default function ReviewOrders() {
                             )}
                             {formatDate(order.orderDate)} - {order.summaryText}
                           </Link>
-                          <p className="measure-5">{order.fullText}</p>
+                          <p className="measure-6">{order.fullText}</p>
                           {order.documents && (
                             <DocketEntryDocumentList documents={order.documents} />
                           )}
