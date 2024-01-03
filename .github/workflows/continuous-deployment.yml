@@ -774,8 +774,8 @@ jobs:
           --is-cicd
       - name: Set Traffic Routing for Slot
         run: |
-          az webapp traffic-routing set --distribution ${{ env.slotName }}=1 --name ${{ env.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
-          az webapp traffic-routing set --distribution ${{ env.slotName }}=1 --name ${{ env.apiName }} --resource-group ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing set --distribution ${{ env.slotName }}=10 --name ${{ env.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing set --distribution ${{ env.slotName }}=10 --name ${{ env.apiName }} --resource-group ${{ steps.rgApp.outputs.out }}
 
       - name: Health check api
         run: |
