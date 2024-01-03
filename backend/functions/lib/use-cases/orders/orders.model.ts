@@ -1,6 +1,8 @@
 import { CaseDocketEntry } from '../case-docket/case-docket.model';
 
 export type Order = CaseDocketEntry & {
+  id?: string;
+  txId?: number;
   caseId: string;
   caseTitle: string;
   chapter: string;
@@ -11,6 +13,16 @@ export type Order = CaseDocketEntry & {
   orderDate: string;
   status: 'pending' | 'approved' | 'rejected';
   newCaseId?: string;
+};
+
+export type OrderTransfer = {
+  id: string;
+  txId: number;
+  caseId: string;
+  newCaseId: string;
+  newCourtName: string;
+  newCourtDivisionName: string;
+  status: 'pending' | 'approved' | 'rejected';
 };
 
 export type OrderSync = {

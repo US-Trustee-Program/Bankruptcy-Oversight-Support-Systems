@@ -5,7 +5,8 @@ import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
-import { Order } from '../../use-cases/orders/orders.model';
+import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 
@@ -28,6 +29,51 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     };
     const response = await this.queryData<Order>(context, querySpec);
     return response;
+  }
+
+  async updateOrder(context: ApplicationContext, data: OrderTransfer) {
+    try {
+      const { item } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .item(data.id);
+
+      if (item && item.txId == data.txId && item.caseId == data.caseId) {
+        const { newCaseId, newCourtName, newCourtDivisionName, status } = data;
+        const newItem = {
+          ...item,
+          newCaseId,
+          newCourtName,
+          newCourtDivisionName,
+          status,
+        };
+
+        await this.cosmosDbClient
+          .database(this.cosmosConfig.databaseName)
+          .container(this.containerName)
+          .item(data.id)
+          .replace(newItem);
+
+        log.debug(context, MODULE_NAME, `Order updated ${item.id}`);
+        return item.id;
+      } else {
+        throw new NotFoundError(`Order not found with id ${data.id}`);
+      }
+    } catch (originalError) {
+      log.error(
+        context,
+        MODULE_NAME,
+        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
+      );
+      if (originalError instanceof AggregateAuthenticationError) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError,
+        });
+      } else {
+        throw originalError;
+      }
+    }
   }
 
   async putOrders(context: ApplicationContext, orders: Order[]) {

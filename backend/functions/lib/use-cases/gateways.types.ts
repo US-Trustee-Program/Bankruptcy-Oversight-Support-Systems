@@ -1,7 +1,7 @@
 import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentHistory } from '../adapters/types/case.assignment';
-import { Order, OrderSync } from './orders/orders.model';
+import { Order, OrderSync, OrderTransfer } from './orders/orders.model';
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
@@ -21,6 +21,7 @@ export interface OrdersGateway {
 export interface OrdersRepository {
   getOrders(context: ApplicationContext): Promise<Order[]>;
   putOrders(context: ApplicationContext, orders: Order[]);
+  updateOrder(context: ApplicationContext, data: OrderTransfer);
 }
 
 // TODO: Move these models to a top level models file?
