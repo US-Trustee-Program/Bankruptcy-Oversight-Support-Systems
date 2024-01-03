@@ -779,8 +779,8 @@ jobs:
 
       - name: Health check api
         run: |
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}&x-ms-routing-name=${{ env.slotName }})
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck&x-ms-routing-name=${{ env.slotName }})
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}?x-ms-routing-name=${{ env.slotName }})
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }})
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             exit 0
