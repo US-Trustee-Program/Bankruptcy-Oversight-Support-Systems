@@ -3,12 +3,13 @@ import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { getOrdersGateway, getOrdersRepository, getRuntimeStateRepository } from '../../factory';
 import { OrdersUseCase } from '../../use-cases/orders/orders';
-import { Order } from '../../use-cases/orders/orders.model';
+import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { CamsResponse } from '../controller-types';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
 type GetOrdersResponse = CamsResponse<Array<Order>>;
+type PatchOrderResponse = CamsResponse<string>;
 
 export class OrdersController {
   private readonly useCase: OrdersUseCase;
@@ -27,6 +28,23 @@ export class OrdersController {
       return {
         success: true,
         body: orders,
+      };
+    } catch (originalError) {
+      throw originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    }
+  }
+
+  public async updateOrder(
+    context: ApplicationContext,
+    data: OrderTransfer,
+  ): Promise<PatchOrderResponse> {
+    try {
+      const result = await this.useCase.updateOrder(context, data);
+      return {
+        success: true,
+        body: result,
       };
     } catch (originalError) {
       throw originalError instanceof CamsError

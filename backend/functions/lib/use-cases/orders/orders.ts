@@ -5,7 +5,7 @@ import {
   RuntimeStateRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { Order } from './orders.model';
+import { Order, OrderTransfer } from './orders.model';
 
 export class OrdersUseCase {
   private readonly ordersGateway: OrdersGateway;
@@ -24,6 +24,10 @@ export class OrdersUseCase {
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
     return this.ordersRepo.getOrders(context);
+  }
+
+  public async updateOrder(context: ApplicationContext, data: OrderTransfer): Promise<string> {
+    return this.ordersRepo.updateOrder(context, data);
   }
 
   // TODO: Implement updateOrder logic. Write transaction state to Cosmos. Partial?
