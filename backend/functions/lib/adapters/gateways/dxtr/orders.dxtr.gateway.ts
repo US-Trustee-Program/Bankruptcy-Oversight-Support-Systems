@@ -56,6 +56,15 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
   async _getOrders(context: ApplicationContext): Promise<Array<DxtrOrder>> {
     const input: DbTableFieldSpec[] = [];
+
+    // TODO: This filter will be applied to Cosmos order documents based on user context in the future.
+    const chapters: string[] = ["'15'"];
+    if (context.featureFlags['chapter-eleven-enabled']) chapters.push("'11'");
+    if (context.featureFlags['chapter-twelve-enabled']) chapters.push("'12'");
+
+    // TODO: This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
+    const regions: string[] = ["'02'"];
+
     const query = `
       SELECT TOP 20
         CS.CS_CASEID AS dxtrCaseId,
@@ -87,6 +96,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       WHERE TX.TX_CODE = 'CTO'
+      AND CS.CS_CHAPTER IN (${chapters.join(',')})
+      AND G.REGION_ID IN (${regions.join(',')})
       ORDER BY TX.TX_DATE DESC
       `;
 
