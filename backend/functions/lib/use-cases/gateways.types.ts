@@ -21,7 +21,7 @@ export interface OrdersGateway {
 export interface OrdersRepository {
   getOrders(context: ApplicationContext): Promise<Order[]>;
   putOrders(context: ApplicationContext, orders: Order[]);
-  updateOrder(context: ApplicationContext, data: OrderTransfer);
+  updateOrder(context: ApplicationContext, id: string, data: OrderTransfer);
 }
 
 // TODO: Move these models to a top level models file?

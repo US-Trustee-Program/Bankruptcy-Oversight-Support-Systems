@@ -38,10 +38,11 @@ export class OrdersController {
 
   public async updateOrder(
     context: ApplicationContext,
+    id: string,
     data: OrderTransfer,
   ): Promise<PatchOrderResponse> {
     try {
-      const result = await this.useCase.updateOrder(context, data);
+      const result = await this.useCase.updateOrder(context, id, data);
       return {
         success: true,
         body: result,

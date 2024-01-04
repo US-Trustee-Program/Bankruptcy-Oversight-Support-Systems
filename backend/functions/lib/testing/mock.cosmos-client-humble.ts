@@ -29,7 +29,7 @@ export class HumbleItem<T> {
   read() {
     if (this.container.map.has(this.id)) {
       return {
-        item: this.container.map.get(this.id),
+        resource: this.container.map.get(this.id),
       };
     }
   }
@@ -64,7 +64,7 @@ export class HumbleContainer<T> {
   public get items() {
     return new HumbleItems<T>(this);
   }
-  item(id: string) {
+  item(id: string, _partitionKey?: string) {
     return new HumbleItem(this, id);
   }
 }

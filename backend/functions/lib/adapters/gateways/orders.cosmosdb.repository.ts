@@ -31,39 +31,37 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     return response;
   }
 
-  async updateOrder(context: ApplicationContext, data: OrderTransfer) {
+  async updateOrder(context: ApplicationContext, id: string, data: OrderTransfer) {
     try {
-      const { item } = await this.cosmosDbClient
+      const { resource: existingOrder } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(data.id)
+        .item(id, data.caseId)
         .read();
 
-      if (item && item.id == data.id && item.caseId == data.caseId) {
-        const { newCaseId, newCourtName, newCourtDivisionName, status } = data;
-        const newItem = {
-          ...item,
-          newCaseId,
-          newCourtName,
-          newCourtDivisionName,
-          status,
-        };
-
-        await this.cosmosDbClient
-          .database(this.cosmosConfig.databaseName)
-          .container(this.containerName)
-          .item(data.id)
-          .replace(newItem);
-
-        log.debug(context, MODULE_NAME, `Order updated ${item.id}`);
-        return {
-          id: item.id,
-        };
-      } else {
+      if (!existingOrder) {
         throw new NotFoundError(MODULE_NAME, {
-          message: `Order not found with id ${data.id}`,
+          message: `Order not found with id ${id}`,
         });
       }
+
+      const { newCaseId, newCourtName, newCourtDivisionName, status } = data;
+      const updatedOrder = {
+        ...existingOrder,
+        newCaseId,
+        newCourtName,
+        newCourtDivisionName,
+        status,
+      };
+
+      await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .item(id)
+        .replace(updatedOrder);
+
+      log.debug(context, MODULE_NAME, `Order updated ${id}`);
+      return { id };
     } catch (originalError) {
       log.error(
         context,

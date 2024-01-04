@@ -14,7 +14,7 @@ export interface LoggerHelper {
   info: (moduleName: string, message: string, data?: unknown) => void;
   warn: (moduleName: string, message: string, data?: unknown) => void;
   error: (moduleName: string, message: string, data?: unknown) => void;
-  camsError(erro: CamsError);
+  camsError: (error: CamsError) => void;
 }
 
 // TODO: By extending Context from Azure Functions we have allowed Azure to invade this codebase.

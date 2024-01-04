@@ -49,7 +49,7 @@ describe('Orders Function tests', () => {
         return Promise.resolve({ success: true, body: data });
       });
     const request = {
-      params: {},
+      params: { id },
       method: 'PATCH',
       body: {
         id,
@@ -57,9 +57,7 @@ describe('Orders Function tests', () => {
     };
     const expectedResponseBody = {
       success: true,
-      body: {
-        id,
-      },
+      body: id,
     };
     process.env = {
       DATABASE_MOCK: 'true',
@@ -69,7 +67,7 @@ describe('Orders Function tests', () => {
     expect(updateOrder).toHaveBeenCalled();
   });
 
-  test('should return error response', async () => {
+  test('should return error response when error is encountered on get list', async () => {
     getOrders = jest.fn().mockImplementation(() => {
       throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
     });
@@ -80,6 +78,31 @@ describe('Orders Function tests', () => {
     const expectedErrorResponse = {
       success: false,
       message: 'Mocked error',
+    };
+    await httpTrigger(context, request);
+    expect(context.res.body).toMatchObject(expectedErrorResponse);
+  });
+
+  test('should return error response when error is encountered on update', async () => {
+    const id = '1234567890';
+    getOrders = jest.fn().mockImplementation(() => {
+      throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
+    });
+    const request = {
+      params: { id },
+      method: 'PATCH',
+      body: {
+        id,
+      },
+    };
+    updateOrder = jest
+      .fn()
+      .mockImplementation((_context: ApplicationContext, _data: OrderTransfer) => {
+        throw new CamsError('ORDERS-FUNCTION-TEST', { message: 'Unknown error on update.' });
+      });
+    const expectedErrorResponse = {
+      success: false,
+      message: 'Unknown error on update.',
     };
     await httpTrigger(context, request);
     expect(context.res.body).toMatchObject(expectedErrorResponse);

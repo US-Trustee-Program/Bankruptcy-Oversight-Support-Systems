@@ -26,8 +26,12 @@ export class OrdersUseCase {
     return this.ordersRepo.getOrders(context);
   }
 
-  public async updateOrder(context: ApplicationContext, data: OrderTransfer): Promise<string> {
-    return this.ordersRepo.updateOrder(context, data);
+  public async updateOrder(
+    context: ApplicationContext,
+    id: string,
+    data: OrderTransfer,
+  ): Promise<string> {
+    return this.ordersRepo.updateOrder(context, id, data);
   }
 
   // TODO: Implement updateOrder logic. Write transaction state to Cosmos. Partial?
