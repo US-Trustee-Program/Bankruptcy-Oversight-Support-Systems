@@ -54,6 +54,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
           }
           delete rawOrder.dxtrCaseId;
           delete rawOrder.rawRec;
+          delete rawOrder.txId;
           return rawOrder satisfies Order;
         })
         .sort(dxtrOrdersSorter);

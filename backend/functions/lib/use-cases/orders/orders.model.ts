@@ -2,7 +2,6 @@ import { CaseDocketEntry } from '../case-docket/case-docket.model';
 
 export type Order = CaseDocketEntry & {
   id?: string;
-  txId?: number;
   caseId: string;
   caseTitle: string;
   chapter: string;
@@ -17,7 +16,7 @@ export type Order = CaseDocketEntry & {
 
 export type OrderTransfer = {
   id: string;
-  txId: number;
+  sequenceNumber: string;
   caseId: string;
   newCaseId: string;
   newCourtName: string;

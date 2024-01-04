@@ -36,9 +36,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
       const { item } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(data.id);
+        .item(data.id)
+        .read();
 
-      if (item && item.txId == data.txId && item.caseId == data.caseId) {
+      if (item && item.id == data.id && item.caseId == data.caseId) {
         const { newCaseId, newCourtName, newCourtDivisionName, status } = data;
         const newItem = {
           ...item,
@@ -55,9 +56,13 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
           .replace(newItem);
 
         log.debug(context, MODULE_NAME, `Order updated ${item.id}`);
-        return item.id;
+        return {
+          id: item.id,
+        };
       } else {
-        throw new NotFoundError(`Order not found with id ${data.id}`);
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Order not found with id ${data.id}`,
+        });
       }
     } catch (originalError) {
       log.error(
