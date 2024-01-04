@@ -11,6 +11,7 @@ import { Order } from '../../../use-cases/orders/orders.model';
 import { ApplicationContext } from '../../types/basic';
 
 const dxtrOrder: DxtrOrder = {
+  txId: 1,
   dxtrCaseId: '111111',
   rawRec: 'NNNNNN WARN: 22-111111',
   sequenceNumber: 0,
@@ -124,8 +125,9 @@ describe('DxtrOrdersGateway', () => {
       });
 
       const gateway = new DxtrOrdersGateway();
-      const orders = await gateway.getOrders(applicationContext);
-      expect(orders).toEqual([expectedOrder]);
+      const orderSync = await gateway.getOrderSync(applicationContext, 0);
+      expect(orderSync.orders).toEqual([expectedOrder]);
+      expect(orderSync.maxTxId).toEqual(1);
     });
 
     test('should add chapters enabled by feature flags', async () => {
@@ -197,7 +199,9 @@ describe('DxtrOrdersGateway', () => {
       });
 
       const gateway = new DxtrOrdersGateway();
-      await expect(gateway.getOrders(applicationContext)).rejects.toThrow(expectedErrorMessage);
+      await expect(gateway.getOrderSync(applicationContext, 0)).rejects.toThrow(
+        expectedErrorMessage,
+      );
     });
 
     test('should handle thrown errors from _getDocuments', async () => {
@@ -227,7 +231,9 @@ describe('DxtrOrdersGateway', () => {
       });
 
       const gateway = new DxtrOrdersGateway();
-      await expect(gateway.getOrders(applicationContext)).rejects.toThrow(expectedErrorMessage);
+      await expect(gateway.getOrderSync(applicationContext, 0)).rejects.toThrow(
+        expectedErrorMessage,
+      );
       querySpy.mockReset();
     });
   });

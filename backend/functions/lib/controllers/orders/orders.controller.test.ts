@@ -10,7 +10,7 @@ describe('orders controller tests', () => {
     applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
   });
 
-  test('should return a case history when getCaseHistory is called', async () => {
+  test('should return all orders', async () => {
     const controller = new OrdersController(applicationContext);
     const result = await controller.getOrders(applicationContext);
     expect(result.success).toBeTruthy();
