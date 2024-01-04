@@ -95,7 +95,7 @@ export default function ReviewOrders() {
               {orderList.map((order, idx: number) => {
                 return (
                   <Accordion key={idx} id={`order-list-${idx}`}>
-                    <div
+                    <section
                       className="accordion-heading grid-row grid-gap-lg"
                       data-testid={`accordion-heading-${idx}`}
                     >
@@ -113,30 +113,37 @@ export default function ReviewOrders() {
                       <div className="grid-col-2 order-status text-no-wrap">
                         <span className={order.status}>{statusType.get(order.status)}</span>
                       </div>
-                    </div>
-                    <div className="accordion-content" data-testid={`accordion-content-${idx}`}>
-                      <div className="order-legal-statement">
-                        <Link to="#">
-                          {order.documentNumber && (
-                            <span className="document-number">#{order.documentNumber} - </span>
+                    </section>
+                    <section className="accordion-content" data-testid={`accordion-content-${idx}`}>
+                      <div className="grid-row grid-gap-lg">
+                        <div className="grid-col-1"></div>
+                        <div className="order-legal-statement grid-col-10">
+                          <Link to="#">
+                            {order.documentNumber && (
+                              <span className="document-number">#{order.documentNumber} - </span>
+                            )}
+                            {formatDate(order.orderDate)} - {order.summaryText}
+                          </Link>
+                          <p className="measure-6">{order.fullText}</p>
+                          {order.documents && (
+                            <DocketEntryDocumentList documents={order.documents} />
                           )}
-                          {formatDate(order.orderDate)} - {order.summaryText}
-                        </Link>
-                        <p>{order.fullText}</p>
-                        {order.documents && <DocketEntryDocumentList documents={order.documents} />}
+                        </div>
+                        <div className="grid-col-1"></div>
                       </div>
                       <section className="order-form">
-                        <div className="court-selection">
-                          <div className="transfer-from-to__div">
-                            <div>
+                        <div className="court-selection grid-row grid-gap-lg">
+                          <div className="grid-col-1"></div>
+                          <div className="transfer-from-to__div grid-col-10">
+                            <div className="transfer-text">
                               Transfer
                               <span className="transfer-highlight__span">{order.caseId}</span>
                               from
-                              <span className="transfer-highlight__span">{order.caseTitle}</span>
+                              <span className="transfer-highlight__span">
+                                {order.courtName} ({order.courtDivisionName})
+                              </span>
                               to
                             </div>
-                          </div>
-                          <div>
                             <label>New Court</label>
                             <div className="usa-combo-box">
                               <select
@@ -155,33 +162,43 @@ export default function ReviewOrders() {
                               </select>
                             </div>
                           </div>
+                          <div className="grid-col-1"></div>
                         </div>
-                        <div className="case-selection">
-                          <label>New Case</label>
-                          <div>
-                            <input
-                              id={`new-case-input-${idx}`}
-                              data-testid={`new-case-input-${idx}`}
-                              className="usa-input"
-                              value={caseSelection}
-                              onChange={handleCaseInputChange}
-                              aria-label="New case ID"
-                            />
+                        <div className="case-selection grid-row grid-gap-lg">
+                          <div className="grid-col-1"></div>
+                          <div className="grid-col-4">
+                            <label>New Case</label>
+                            <div>
+                              <input
+                                id={`new-case-input-${idx}`}
+                                data-testid={`new-case-input-${idx}`}
+                                className="usa-input"
+                                value={caseSelection}
+                                onChange={handleCaseInputChange}
+                                aria-label="New case ID"
+                              />
+                            </div>
                           </div>
+                          <div className="grid-col-6"></div>
+                          <div className="grid-col-1"></div>
                         </div>
-                        <div className="preview-results">
-                          <span data-testid={`preview-description-${idx}`}>
-                            <CaseSelection
-                              fromCourt={{
-                                region: order.regionId,
-                                courtDivisionName: order.courtDivisionName,
-                              }}
-                              toCourt={courtSelection}
-                            ></CaseSelection>
-                          </span>
+                        <div className="preview-results grid-row grid-gap-lg">
+                          <div className="grid-col-1"></div>
+                          <div className="grid-col-10">
+                            <span data-testid={`preview-description-${idx}`}>
+                              <CaseSelection
+                                fromCourt={{
+                                  region: order.regionId,
+                                  courtDivisionName: order.courtDivisionName,
+                                }}
+                                toCourt={courtSelection}
+                              ></CaseSelection>
+                            </span>
+                          </div>
+                          <div className="grid-col-1"></div>
                         </div>
                       </section>
-                    </div>
+                    </section>
                   </Accordion>
                 );
               })}

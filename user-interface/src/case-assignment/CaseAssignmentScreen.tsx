@@ -14,6 +14,7 @@ import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import Icon from '@/lib/components/uswds/Icon';
+import { Link } from 'react-router-dom';
 
 const modalId = 'assign-attorney-modal';
 
@@ -284,9 +285,9 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                                  <Link className="usa-link" to={`/case-detail/${theCase.caseId}`}>
                                     {getCaseNumber(theCase.caseId)}
-                                  </a>
+                                  </Link>
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>
@@ -395,9 +396,9 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                                  <Link className="usa-link" to={`/case-detail/${theCase.caseId}`}>
                                     {getCaseNumber(theCase.caseId)}
-                                  </a>
+                                  </Link>
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>
