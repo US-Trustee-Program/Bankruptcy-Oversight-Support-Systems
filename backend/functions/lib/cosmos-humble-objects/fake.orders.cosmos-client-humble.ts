@@ -1,6 +1,9 @@
+/*
 import { ForbiddenError } from '../common-errors/forbidden-error';
 import { UnknownError } from '../common-errors/unknown-error';
+*/
 import { Order } from '../use-cases/orders/orders.model';
+/*
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
@@ -9,7 +12,12 @@ import { ORDERS } from '../testing/mock-data/orders.mock';
 import { NotFoundError } from '../common-errors/not-found-error';
 import { CamsError } from '../common-errors/cams-error';
 import { AggregateAuthenticationError } from '@azure/identity';
+*/
+import { HumbleClient } from '../testing/mock.cosmos-client-humble';
 
+export default class FakeOrdersCosmosClientHumble extends HumbleClient<Order> {}
+
+/*
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ORDERS';
 interface QueryParams {
   name: string;
@@ -21,7 +29,7 @@ interface QueryOptions {
   parameters: QueryParams[];
 }
 
-export default class FakeOrdersCosmosClientHumble {
+export class FakeOrdersCosmosClientHumble {
   private orders: Order[] = [...ORDERS];
 
   public database(_databaseId: string) {
@@ -90,45 +98,4 @@ export default class FakeOrdersCosmosClientHumble {
     };
   }
 }
-
-export class FakeOrdersCosmosClientHumbleAuthErrorDuringFetch {
-  public database(_databaseId: string) {
-    return {
-      container: (_containerName: string) => {
-        return {
-          items: {
-            query: (_query: QueryOptions) => {
-              return {
-                fetchAll: () => {
-                  throw new AggregateAuthenticationError([
-                    new ForbiddenError(MODULE_NAME, { message: 'forbidden' }),
-                  ]);
-                },
-              };
-            },
-          },
-        };
-      },
-    };
-  }
-}
-
-export class FakeOrdersCosmosClientHumbleUnknownErrorDuringFetch {
-  public database(_databaseId: string) {
-    return {
-      container: (_containerName: string) => {
-        return {
-          items: {
-            query: (_query: QueryOptions) => {
-              return {
-                fetchAll: () => {
-                  throw new UnknownError(MODULE_NAME, { message: 'unknown' });
-                },
-              };
-            },
-          },
-        };
-      },
-    };
-  }
-}
+*/

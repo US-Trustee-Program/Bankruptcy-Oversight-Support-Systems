@@ -1,4 +1,4 @@
-import { HumbleQuery } from '../../cosmos-humble-objects/fake.runtime.cosmos-client-humble';
+import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OrderSyncState } from '../../use-cases/gateways.types';
 import { RuntimeStateCosmosDbRepository } from './runtime.cosmosdb.repository';
