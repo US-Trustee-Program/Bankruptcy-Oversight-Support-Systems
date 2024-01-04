@@ -6,6 +6,9 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { OrderTransfer } from '../lib/use-cases/orders/orders.model';
+import { BadRequestError } from '../lib/common-errors/bad-request';
+
+const MODULE_NAME = 'ORDERS_CONTROLLER';
 
 dotenv.config();
 
@@ -38,8 +41,17 @@ async function updateOrder(functionContext: Context, ordersRequest: HttpRequest)
   const context = await applicationContextCreator(functionContext);
   const ordersController = new OrdersController(context);
   const data = ordersRequest?.body;
+  const id = ordersRequest.params['id'];
+  console.log('in the function', id, data);
+  if (id !== data.id) {
+    const camsError = new BadRequestError(MODULE_NAME, {
+      message: 'Cannot update order. ID of order does not match ID of request.',
+    });
+    context.logger.camsError(camsError);
+    functionContext.res = httpError(camsError);
+  }
   try {
-    const responseBody = await ordersController.updateOrder(context, data as OrderTransfer);
+    const responseBody = await ordersController.updateOrder(context, id, data as OrderTransfer);
     functionContext.res = httpSuccess(responseBody);
   } catch (camsError) {
     context.logger.camsError(camsError);

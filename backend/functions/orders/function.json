@@ -5,7 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "route": "orders",
+      "route": "orders/{id?}",
       "methods": [
         "get",
         "patch"

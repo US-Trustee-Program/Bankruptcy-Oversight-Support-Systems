@@ -27,7 +27,7 @@ import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.gateway';
 import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
 import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import FakeRuntimeStateCosmosClientHumble from './cosmos-humble-objects/fake.runtime.cosmos-client-humble';
-import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime.cosmosdb.repository';
+import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -121,7 +121,5 @@ export const getRuntimeCosmosDbClient = (
 export const getRuntimeStateRepository = (
   applicationContext: ApplicationContext,
 ): RuntimeStateRepository => {
-  // TODO: Replace this with a mock repo.
-  // if (applicationContext.config.get('dbMock')) return new MockOrdersCosmosDbRepository();
   return new RuntimeStateCosmosDbRepository(applicationContext);
 };

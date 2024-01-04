@@ -4,12 +4,7 @@ import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
-import {
-  HumbleDatabase,
-  HumbleItem,
-  HumbleItems,
-  HumbleQuery,
-} from '../../testing/mock.cosmos-client-humble';
+import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -49,6 +44,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     repository = new OrdersCosmosDbRepository(applicationContext);
+    jest.clearAllMocks();
   });
 
   test('should get a list of orders', async () => {
@@ -68,24 +64,38 @@ describe('Test case assignment cosmosdb repository tests', () => {
     });
 
     await expect(
-      repository.updateOrder(applicationContext, testNewOrderTransferData),
+      repository.updateOrder(applicationContext, testNewOrderData.id, testNewOrderTransferData),
     ).rejects.toThrow(`Replace error`);
     expect(mockRead).toHaveBeenCalled();
   });
 
   test('Should update order and return a cosmos order id', async () => {
     const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockImplementation(() => ({
-      item: testNewOrderData,
+      resource: testNewOrderData,
     }));
     const mockReplace = jest.spyOn(HumbleItem.prototype, 'replace').mockImplementation(() => {
       return {
         id: testNewOrderData.id,
       };
     });
-    const testResult = await repository.updateOrder(applicationContext, testNewOrderTransferData);
-    expect(testResult).toEqual({ id: 'test-id-0' });
+    const testResult = await repository.updateOrder(
+      applicationContext,
+      testNewOrderData.id,
+      testNewOrderTransferData,
+    );
+    expect(testResult).toEqual({ id: testNewOrderData.id });
     expect(mockRead).toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalled();
+  });
+
+  test('Should throw a NotFoundError if attempting to update a document that does not exist.', async () => {
+    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockImplementation(() => ({
+      resource: undefined,
+    }));
+    await expect(
+      repository.updateOrder(applicationContext, testNewOrderData.id, testNewOrderTransferData),
+    ).rejects.toThrow(`Order not found with id ${testNewOrderTransferData.id}`);
+    expect(mockRead).toHaveBeenCalled();
   });
 
   test('When putting an order, Should throw Unknown Error if an unknown error occurs', async () => {
@@ -127,11 +137,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should not put an empty order array', async () => {
     const ordersList: Order[] = [];
 
-    // TODO: We need a better way to spy deeper into the orders cosmos DB humble object.
-    const mockContainer = jest.spyOn(HumbleDatabase.prototype, 'container');
+    const create = jest.spyOn(HumbleItems.prototype, 'create');
 
     await repository.putOrders(applicationContext, ordersList);
-    expect(mockContainer).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
   });
 
   test('should put an order array', async () => {
@@ -155,23 +164,37 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(mockCreate).toHaveBeenCalledTimes(ordersList.length);
   });
 
-  test('Should throw ServerConfigError if an AggregateAuthenticationError error occurs when fetching all orders', async () => {
-    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementationOnce(() => {
-      throw new AggregateAuthenticationError([new Error('error')]);
+  test('should throw ServerConfigError if an AggregateAuthenticationError error is encountered', async () => {
+    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementationOnce(() => {
+      throw new AggregateAuthenticationError([], 'Mock AggregateAuthenticationError');
     });
-    await expect(async () => {
-      await repository.getOrders(applicationContext);
-    }).rejects.toThrow(`Failed to authenticate to Azure`);
-    expect(mockRead).toHaveBeenCalled();
+    await expect(repository.getOrders(applicationContext)).rejects.toThrow(
+      `Failed to authenticate to Azure`,
+    );
+    expect(fetchAll).toHaveBeenCalled();
+
+    const create = jest.spyOn(HumbleItems.prototype, 'create').mockImplementationOnce(() => {
+      throw new AggregateAuthenticationError([], 'Mock AggregateAuthenticationError');
+    });
+    await expect(repository.putOrders(applicationContext, [testNewOrderData])).rejects.toThrow(
+      `Failed to authenticate to Azure`,
+    );
+    expect(create).toHaveBeenCalled();
+
+    const read = jest.spyOn(HumbleItem.prototype, 'read').mockImplementationOnce(() => {
+      throw new AggregateAuthenticationError([], 'Mock AggregateAuthenticationError');
+    });
+    await expect(
+      repository.updateOrder(applicationContext, testNewOrderData.id, testNewOrderTransferData),
+    ).rejects.toThrow(`Failed to authenticate to Azure`);
+    expect(read).toHaveBeenCalled();
   });
 
-  test('Should throw UnknownError if any error occurs when fetching all orders that is not AggregateAuthenticationError', async () => {
+  test('should throw all other encountered errors', async () => {
     const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementationOnce(() => {
       throw new UnknownError('TEST_MODULE', { message: 'test error' });
     });
-    await expect(async () => {
-      await repository.getOrders(applicationContext);
-    }).rejects.toThrow(`test error`);
+    await expect(repository.getOrders(applicationContext)).rejects.toThrow(`test error`);
     expect(mockRead).toHaveBeenCalled();
   });
 });

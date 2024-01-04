@@ -1,5 +1,5 @@
 // TODO: The original context was InvocationContext
-import { Context, Timer } from '@azure/functions';
+import { Context } from '@azure/functions';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
@@ -11,11 +11,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-export default async function timerTrigger(
-  invocationContext: Context,
-  timer: Timer,
-): Promise<void> {
-  const _timer2 = timer;
+export default async function timerTrigger(invocationContext: Context): Promise<void> {
   const context = await applicationContextCreator(invocationContext);
 
   const ordersController = new OrdersController(context);
