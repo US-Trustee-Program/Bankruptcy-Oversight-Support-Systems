@@ -3,8 +3,16 @@ import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
-import FakeOrdersCosmosClientHumble from '../../cosmos-humble-objects/fake.orders.cosmos-client-humble';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
+import {
+  HumbleDatabase,
+  HumbleItem,
+  HumbleItems,
+  HumbleQuery,
+} from '../../testing/mock.cosmos-client-humble';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { AggregateAuthenticationError } from '@azure/identity';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
 
 const testNewOrderTransferData: OrderTransfer = {
   id: 'test-id-0',
@@ -43,25 +51,41 @@ describe('Test case assignment cosmosdb repository tests', () => {
     repository = new OrdersCosmosDbRepository(applicationContext);
   });
 
-  test('Should get a list of orders', async () => {
+  test('should get a list of orders', async () => {
+    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
+      resources: ORDERS,
+    });
+
     const testResult = await repository.getOrders(applicationContext);
+
     expect(testResult).toEqual(ORDERS);
+    expect(mockRead).toHaveBeenCalled();
   });
 
   test('When updating an order, Should throw Unknown Error if an unknown error occurs', async () => {
-    const errorTestNewOrderTransferData: OrderTransfer = {
-      ...testNewOrderTransferData,
-      id: 'error-id',
-    };
+    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockImplementation(() => {
+      throw new Error('Replace error');
+    });
 
     await expect(
-      repository.updateOrder(applicationContext, errorTestNewOrderTransferData),
-    ).rejects.toThrow(`Order not found with id error-id`);
+      repository.updateOrder(applicationContext, testNewOrderTransferData),
+    ).rejects.toThrow(`Replace error`);
+    expect(mockRead).toHaveBeenCalled();
   });
 
   test('Should update order and return a cosmos order id', async () => {
+    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockImplementation(() => ({
+      item: testNewOrderData,
+    }));
+    const mockReplace = jest.spyOn(HumbleItem.prototype, 'replace').mockImplementation(() => {
+      return {
+        id: testNewOrderData.id,
+      };
+    });
     const testResult = await repository.updateOrder(applicationContext, testNewOrderTransferData);
     expect(testResult).toEqual({ id: 'test-id-0' });
+    expect(mockRead).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalled();
   });
 
   test('When putting an order, Should throw Unknown Error if an unknown error occurs', async () => {
@@ -70,9 +94,14 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
     delete errorTestNewOrderData.id;
 
+    const mockRead = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+      throw new UnknownError('TEST_MODULE', { message: 'unknown error' });
+    });
+
     await expect(repository.putOrders(applicationContext, [errorTestNewOrderData])).rejects.toThrow(
-      `unique key violation`,
+      `unknown error`,
     );
+    expect(mockRead).toHaveBeenCalled();
   });
 
   test('When putting an order, Should throw ServerConfigError if an AggregateAuthenticationError error occurs', async () => {
@@ -83,19 +112,26 @@ describe('Test case assignment cosmosdb repository tests', () => {
     delete testNewOrderData2.id;
     const ordersList = [testNewOrderData2];
 
+    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+      throw new AggregateAuthenticationError([
+        new ForbiddenError('TEST_MODULE', { message: 'forbidden' }),
+      ]);
+    });
+
     await expect(async () => {
       await repository.putOrders(applicationContext, ordersList);
     }).rejects.toThrow(`Failed to authenticate to Azure`);
+    expect(mockCreate).toHaveBeenCalled();
   });
 
   test('should not put an empty order array', async () => {
     const ordersList: Order[] = [];
 
     // TODO: We need a better way to spy deeper into the orders cosmos DB humble object.
-    const databaseSpy = jest.spyOn(FakeOrdersCosmosClientHumble.prototype, 'database');
+    const mockContainer = jest.spyOn(HumbleDatabase.prototype, 'container');
 
     await repository.putOrders(applicationContext, ordersList);
-    expect(databaseSpy).not.toHaveBeenCalled();
+    expect(mockContainer).not.toHaveBeenCalled();
   });
 
   test('should put an order array', async () => {
@@ -111,10 +147,31 @@ describe('Test case assignment cosmosdb repository tests', () => {
     delete positiveTestNewOrderData2.id;
     const ordersList = [positiveTestNewOrderData1, positiveTestNewOrderData2];
 
-    // TODO: We need a better way to spy deeper into the orders cosmos DB humble object.
-    const databaseSpy = jest.spyOn(FakeOrdersCosmosClientHumble.prototype, 'database');
+    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+      return;
+    });
 
     await repository.putOrders(applicationContext, ordersList);
-    expect(databaseSpy).toHaveBeenCalledTimes(ordersList.length);
+    expect(mockCreate).toHaveBeenCalledTimes(ordersList.length);
+  });
+
+  test('Should throw ServerConfigError if an AggregateAuthenticationError error occurs when fetching all orders', async () => {
+    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementationOnce(() => {
+      throw new AggregateAuthenticationError([new Error('error')]);
+    });
+    await expect(async () => {
+      await repository.getOrders(applicationContext);
+    }).rejects.toThrow(`Failed to authenticate to Azure`);
+    expect(mockRead).toHaveBeenCalled();
+  });
+
+  test('Should throw UnknownError if any error occurs when fetching all orders that is not AggregateAuthenticationError', async () => {
+    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementationOnce(() => {
+      throw new UnknownError('TEST_MODULE', { message: 'test error' });
+    });
+    await expect(async () => {
+      await repository.getOrders(applicationContext);
+    }).rejects.toThrow(`test error`);
+    expect(mockRead).toHaveBeenCalled();
   });
 });
