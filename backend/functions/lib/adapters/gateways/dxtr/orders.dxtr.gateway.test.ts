@@ -128,6 +128,45 @@ describe('DxtrOrdersGateway', () => {
       expect(orders).toEqual([expectedOrder]);
     });
 
+    test('should add chapters enabled by feature flags', async () => {
+      const gateway = new DxtrOrdersGateway();
+
+      const querySpy = jest.spyOn(database, 'executeQuery');
+      const mockOrdersResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [dxtrOrder],
+        },
+        message: '',
+      };
+
+      const mockDocumentsResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [dxtrOrderDocument],
+        },
+        message: '',
+      };
+
+      applicationContext.featureFlags = {};
+      querySpy.mockResolvedValue(mockOrdersResults);
+      querySpy.mockResolvedValueOnce(mockDocumentsResults);
+
+      await gateway.getOrders(applicationContext);
+      expect(querySpy).toHaveBeenCalled(); //"CS.CS_CHAPTER IN ('15')"
+
+      applicationContext.featureFlags = {
+        'chapter-eleven-enabled': true,
+        'chapter-twelve-enabled': true,
+      };
+
+      querySpy.mockResolvedValue(mockOrdersResults);
+      querySpy.mockResolvedValueOnce(mockDocumentsResults);
+
+      await gateway.getOrders(applicationContext);
+      expect(querySpy).toHaveBeenCalled(); // "CS.CS_CHAPTER IN ('15','11','12')"
+    });
+
     test('should handle thrown errors from _getOrders', async () => {
       const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const querySpy = jest.spyOn(database, 'executeQuery');
