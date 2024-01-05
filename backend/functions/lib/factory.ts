@@ -1,9 +1,9 @@
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
-import { AttorneyLocalGateway } from './adapters/gateways/attorneys.local.inmemory.gateway';
+import { AttorneyLocalGateway } from './adapters/gateways/attorneys.inmemory.gateway';
 import { CasesInterface } from './use-cases/cases.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
-import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
+import { CasesLocalGateway } from './adapters/gateways/mock.cases.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { CosmosConfig, IDbConfig } from './adapters/types/database';
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
@@ -14,6 +14,12 @@ import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
+import { OrdersGateway } from './use-cases/gateways.types';
+import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
+import { OfficesGatewayInterface } from './use-cases/offices/offices.gateway.interface';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.gateway';
+import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -30,20 +36,17 @@ export const getCasesGateway = (applicationContext: ApplicationContext): CasesIn
 export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
 ): CaseAssignmentRepositoryInterface => {
-  if (applicationContext.config.get('dbMock')) {
-    return new CaseAssignmentCosmosDbRepository(applicationContext, true);
-  } else {
-    return new CaseAssignmentCosmosDbRepository(applicationContext);
-  }
+  return new CaseAssignmentCosmosDbRepository(applicationContext);
 };
 
 export const getCosmosDbClient = (
   applicationContext: ApplicationContext,
-  testClient: boolean = false,
 ): CosmosClientHumble | FakeCosmosClientHumble => {
-  return testClient
-    ? new FakeCosmosClientHumble()
-    : new CosmosClientHumble(applicationContext.config);
+  if (applicationContext.config.get('dbMock')) {
+    return new FakeCosmosClientHumble();
+  } else {
+    return new CosmosClientHumble(applicationContext.config);
+  }
 };
 
 export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
@@ -61,4 +64,22 @@ export const getSqlConnection = (databaseConfig: IDbConfig) => {
   // Reference https://github.com/tediousjs/node-mssql#readme
   // TODO We may want to refactor this to use non ConnectionPool connection object since we have moved to function app.
   return new ConnectionPool(databaseConfig as config);
+};
+
+export const getOrdersGateway = (applicationContext: ApplicationContext): OrdersGateway => {
+  if (applicationContext.config.get('dbMock')) {
+    return new MockOrdersGateway();
+  } else {
+    return new DxtrOrdersGateway();
+  }
+};
+
+export const getOfficesGateway = (
+  applicationContext: ApplicationContext,
+): OfficesGatewayInterface => {
+  if (applicationContext.config.get('dbMock')) {
+    return new MockOfficesGateway();
+  } else {
+    return new OfficesDxtrGateway();
+  }
 };

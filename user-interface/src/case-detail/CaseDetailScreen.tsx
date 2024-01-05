@@ -4,6 +4,8 @@ import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom'
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
+  CaseStaffAssignmentHistory,
+  CaseStaffAssignmentHistoryResponseData,
   CaseDetailType,
   CaseDocket,
   CaseDocketEntry,
@@ -11,7 +13,6 @@ import {
   Chapter15CaseDocketResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
-import { CaseDetailScrollPanelRef } from './panels/CaseDetailScrollPanelRef';
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
@@ -19,6 +20,7 @@ import IconInput from '@/lib/components/IconInput';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -140,11 +142,6 @@ function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEnt
   return acc;
 }
 
-interface CaseDetailProps {
-  caseDetail?: CaseDetailType;
-  caseDocketEntries?: CaseDocketEntry[];
-}
-
 function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
   if (reOpenDate) {
     if (closedDate && reOpenDate > closedDate) {
@@ -164,21 +161,30 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   });
 }
 
+interface CaseDetailProps {
+  caseDetail?: CaseDetailType;
+  caseDocketEntries?: CaseDocketEntry[];
+  caseStaffAssignmentHistory?: CaseStaffAssignmentHistory[];
+}
+
 export default function CaseDetail(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
+  const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
+  const [caseStaffAssignmentHistory, setCaseStaffAssignmentHistory] = useState<
+    CaseStaffAssignmentHistory[]
+  >([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
-  const leftNavContainerRef = useRef<CaseDetailScrollPanelRef>(null);
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
@@ -219,6 +225,23 @@ export default function CaseDetail(props: CaseDetailProps) {
       .catch(() => {
         setCaseDocketEntries([]);
         setIsDocketLoading(false);
+      });
+  }
+
+  async function fetchCaseStaffAssignmentHistory() {
+    setIsAuditHistoryLoading(true);
+    api
+      .get(`/cases/${caseId}/history`, {})
+      .then((data) => {
+        const response = data as CaseStaffAssignmentHistoryResponseData;
+        if (response) {
+          setCaseStaffAssignmentHistory(response.body);
+          setIsAuditHistoryLoading(false);
+        }
+      })
+      .catch(() => {
+        setCaseStaffAssignmentHistory([]);
+        setIsAuditHistoryLoading(false);
       });
   }
 
@@ -289,6 +312,14 @@ export default function CaseDetail(props: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
+    if (props.caseStaffAssignmentHistory) {
+      setCaseStaffAssignmentHistory(props.caseStaffAssignmentHistory);
+    } else {
+      fetchCaseStaffAssignmentHistory();
+    }
+  }, []);
+
+  useEffect(() => {
     setNavState(mapNavState(location.pathname));
     if (navState !== NavState.COURT_DOCKET) {
       setSelectedFacets([]);
@@ -308,11 +339,7 @@ export default function CaseDetail(props: CaseDetailProps) {
       <div className="case-detail" data-testid="case-detail">
         {isLoading && (
           <>
-            <CaseDetailHeader
-              isLoading={isLoading}
-              navigationPaneRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
-              caseId={caseId}
-            />
+            <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
@@ -331,7 +358,6 @@ export default function CaseDetail(props: CaseDetailProps) {
               isLoading={false}
               caseId={caseBasicInfo.caseId}
               caseDetail={caseBasicInfo}
-              navigationPaneRef={leftNavContainerRef as React.RefObject<CaseDetailScrollPanelRef>}
             />
             <div className="grid-row grid-gap-lg">
               <div id="left-gutter" className="grid-col-1"></div>
@@ -440,6 +466,7 @@ export default function CaseDetail(props: CaseDetailProps) {
                           name="clear-filters"
                           onClick={clearFilters}
                           data-testid="clear-filters"
+                          aria-label="Clear All Filters"
                         >
                           <span aria-hidden="true">Clear All Filters</span>
                         </button>
@@ -473,6 +500,15 @@ export default function CaseDetail(props: CaseDetailProps) {
                           searchString={searchInDocketText}
                           hasDocketEntries={!!caseDocketEntries && caseDocketEntries?.length > 1}
                           isDocketLoading={isDocketLoading}
+                        />
+                      }
+                    />
+                    <Route
+                      path="audit-history"
+                      element={
+                        <CaseDetailAuditHistory
+                          caseHistory={caseStaffAssignmentHistory}
+                          isAuditHistoryLoading={isAuditHistoryLoading}
                         />
                       }
                     />

@@ -4,8 +4,10 @@ const useExternalProvider = !!clientId;
 // DECISION IS TO NOT USE CAMEL CASE FLAGS
 const useCamelCaseFlagKeys = false;
 
-export default {
-  clientId,
-  useExternalProvider,
-  useCamelCaseFlagKeys,
-} as const;
+export const getFeatureFlagConfiguration = () => {
+  return {
+    clientId,
+    useExternalProvider,
+    useCamelCaseFlagKeys,
+  } as const;
+};

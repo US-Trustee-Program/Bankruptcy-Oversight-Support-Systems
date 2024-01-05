@@ -15,5 +15,6 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/backend/functions/healthcheck/healthcheck.function.js"
+  "scriptFile": "../dist/backend/functions/healthcheck/healthcheck.function.js",
+  "entryPoint": "default"
 }

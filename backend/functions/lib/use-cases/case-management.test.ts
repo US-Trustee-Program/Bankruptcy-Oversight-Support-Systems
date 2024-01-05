@@ -4,35 +4,40 @@ import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { getYearMonthDayStringFromDate } from '../adapters/utils/date-helper';
-import { MockCasesGateway } from '../adapters/gateways/mock-cases.gateway';
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { MockCasesGateway } from '../adapters/gateways/case-management.mock.gateway';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
+import { CaseAssignment } from '../adapters/types/case.assignment';
 
 const functionContext = require('azure-function-context-mock');
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
-const assignments: CaseAttorneyAssignment[] = [
+const currentDate = new Date().toISOString();
+const assignments: CaseAssignment[] = [
   {
+    documentType: 'ASSIGNMENT',
     id: '1',
     caseId: '081-23-01176',
     name: attorneyJaneSmith,
     role: CaseAssignmentRole.TrialAttorney,
+    assignedOn: currentDate,
   },
   {
+    documentType: 'ASSIGNMENT',
     id: '2',
     caseId: '081-23-01176',
     name: attorneyJoeNobel,
     role: CaseAssignmentRole.TrialAttorney,
+    assignedOn: currentDate,
   },
 ];
 
 const caseIdWithAssignments = '081-23-01176';
 jest.mock('./case.assignment', () => {
   return {
-    CaseAssignment: jest.fn().mockImplementation(() => {
+    CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
         findAssignmentsByCaseId: (caseId: string) => {
           if (caseId === caseIdWithAssignments) {
@@ -151,10 +156,8 @@ describe('Case list tests', () => {
   test('should throw error and return specific error message received when error is thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
       async getCases(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        context,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+        _context,
+        _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
       ): Promise<CaseDetailInterface[]> {
         throw Error('some random error');
       }
@@ -178,10 +181,8 @@ describe('Case list tests', () => {
   test('should throw error with given message and return it when thrown in casesGateway.getCases', async () => {
     class MockCasesGatewayWithError extends MockCasesGateway {
       async getCases(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        context,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
+        _context,
+        _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
       ): Promise<CaseDetailInterface[]> {
         throw new CamsError('SOME_MODULE', { message: 'some error message' });
       }

@@ -1,5 +1,5 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useRef, useImperativeHandle, useState, RefObject } from 'react';
 import Modal from '../lib/components/uswds/modal/Modal';
 import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import React from 'react';
@@ -7,7 +7,7 @@ import Checkbox, { CheckboxRef } from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
 import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import Api from '../lib/models/api';
-import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
+import { ModalRefType, SubmitCancelButtonGroupRef } from '../lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
@@ -15,9 +15,18 @@ import useFeatureFlags, {
 } from '../lib/hooks/UseFeatureFlags';
 import { getFullName } from '@common/name-helper';
 
+export interface ModalOpenProps {
+  bCase: Chapter15Type | undefined;
+}
+
+export interface AssignAttorneyModalRefType {
+  show: (showProps: ModalOpenProps | undefined) => void;
+  hide: () => void;
+  buttons?: RefObject<SubmitCancelButtonGroupRef>;
+}
+
 export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
-  bCase: Chapter15Type | undefined;
   modalId: string;
   callBack: (props: CallBackProps) => void;
 }
@@ -29,21 +38,29 @@ export interface AttorneyListResponseData extends ResponseData {
 export interface CallBackProps {
   bCase: Chapter15Type | undefined;
   selectedAttorneyList: string[];
+  previouslySelectedList: string[];
   status: 'success' | 'error';
   apiResult: object;
 }
 
 function AssignAttorneyModalComponent(
   props: AssignAttorneyModalProps,
-  ref: React.Ref<ModalRefType>,
+  ref: React.Ref<AssignAttorneyModalRefType>,
 ) {
+  const [bCase, setBCase] = useState<Chapter15Type>({
+    caseId: '',
+    chapter: '',
+    caseTitle: '',
+    dateFiled: '',
+    assignments: [],
+  });
   const flags = useFeatureFlags();
   const modalRef = useRef<ModalRefType>(null);
   const tableContainer = useRef<HTMLTableSectionElement | null>(null);
   const modalHeading = (
     <>
-      Choose Trial Attorney to assign to: {props.bCase?.caseTitle},{' '}
-      <span className="case-number">{getCaseNumber(props.bCase?.caseId)}</span>
+      Choose Trial Attorney to assign to: {bCase?.caseTitle},{' '}
+      <span className="case-number">{getCaseNumber(bCase?.caseId)}</span>
     </>
   );
   const chapterTwelveEnabled = flags[CHAPTER_TWELVE_ENABLED];
@@ -52,7 +69,10 @@ function AssignAttorneyModalComponent(
     chapterTwelveEnabled || chapterElevenEnabled ? 'Case Load' : 'Chapter 15 Cases';
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
+
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
+  const [previouslySelectedList, setPreviouslySelectedList] = useState<string[]>([]);
+
   const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
   for (let i = 0; i < props.attorneyList.length; i++) {
     const checkboxRef = useRef<CheckboxRef>(null);
@@ -71,25 +91,64 @@ function AssignAttorneyModalComponent(
     },
   };
 
-  useImperativeHandle(ref, () => {
-    if (modalRef.current?.show && modalRef.current?.hide) {
-      return { show: modalRef.current?.show, hide: modalRef.current?.hide };
-    } else {
-      return {
-        show: () => null,
-        hide: () => null,
-      };
+  function show(showProps: ModalOpenProps | undefined) {
+    if (showProps) {
+      if (showProps.bCase) {
+        setBCase(showProps.bCase);
+        if (showProps.bCase.assignments) {
+          setCheckListValues([...showProps.bCase.assignments]);
+          setPreviouslySelectedList([...showProps.bCase.assignments]);
+          const assignments = showProps.bCase.assignments;
+          checkboxListRefs.forEach((cbox) => {
+            const label = cbox.current?.getLabel();
+            if (label && assignments.includes(label)) {
+              cbox.current?.setChecked(true);
+            } else {
+              cbox.current?.setChecked(false);
+            }
+          });
+        }
+      }
     }
+    if (modalRef.current?.show) {
+      modalRef.current?.show({});
+    }
+  }
+
+  function hide() {
+    checkboxListRefs.forEach((cbox) => {
+      cbox.current?.setChecked(false);
+    });
+    if (modalRef.current?.hide) {
+      modalRef.current?.hide({});
+    }
+  }
+
+  useImperativeHandle(ref, () => {
+    return {
+      show,
+      hide,
+    };
   });
 
+  function areArraysSame(ar1: string[], ar2: string[]): boolean {
+    return JSON.stringify(ar1.sort()) === JSON.stringify(ar2.sort());
+  }
+
   function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, name: string) {
-    let localCheckListValues = checkListValues;
+    let localCheckListValues = [...checkListValues];
     if (ev.target.checked && !checkListValues.includes(name)) {
       localCheckListValues.push(name);
     } else if (!ev.target.checked && checkListValues.includes(name)) {
       localCheckListValues = checkListValues.filter((theName) => theName !== name);
     }
-    modalRef.current?.buttons?.current?.disableSubmitButton(localCheckListValues.length === 0);
+    const isTheSame =
+      localCheckListValues &&
+      bCase.assignments &&
+      areArraysSame(localCheckListValues, bCase.assignments);
+
+    modalRef.current?.buttons?.current?.disableSubmitButton(!!isTheSame);
+
     setCheckListValues(localCheckListValues);
   }
 
@@ -112,25 +171,24 @@ function AssignAttorneyModalComponent(
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
     // send attorney IDs to API
     await Api.post('/case-assignments', {
-      caseId: props.bCase?.caseId,
+      caseId: bCase?.caseId,
       attorneyList: finalAttorneyList,
       role: 'TrialAttorney',
     })
       .then((result) => {
         props.callBack({
-          bCase: props.bCase,
+          bCase,
           selectedAttorneyList: finalAttorneyList,
+          previouslySelectedList,
           status: 'success',
           apiResult: result,
         });
       })
       .catch((e: Error) => {
-        // we ought to have a section of the screen that takes a z-index top level alert to display updates
-        // that is system wide and always displays in the same place.  Probably an alert triggered by
-        // a redux update.
         props.callBack({
-          bCase: props.bCase,
+          bCase,
           selectedAttorneyList: finalAttorneyList,
+          previouslySelectedList,
           status: 'error',
           apiResult: e,
         });
@@ -140,9 +198,6 @@ function AssignAttorneyModalComponent(
 
   function onOpen() {
     freezeBackground();
-    checkboxListRefs.forEach((cbox) => {
-      cbox.current?.setChecked(false);
-    });
   }
 
   function freezeBackground() {
@@ -173,6 +228,7 @@ function AssignAttorneyModalComponent(
       }
     }
   };
+
   return (
     <Modal
       ref={modalRef}

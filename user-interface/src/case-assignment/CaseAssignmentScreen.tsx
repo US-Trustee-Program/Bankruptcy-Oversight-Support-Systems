@@ -4,33 +4,32 @@ import Api from '../lib/models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '@/lib/type-declarations/chapter-15';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
-import AssignAttorneyModal, { CallBackProps } from './AssignAttorneyModal';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import AssignAttorneyModal, {
+  AssignAttorneyModalRefType,
+  CallBackProps,
+} from './AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
+import Icon from '@/lib/components/uswds/Icon';
+import { Link } from 'react-router-dom';
 
 const modalId = 'assign-attorney-modal';
-
-interface Chapter15Node extends Chapter15Type {
-  sortableDateFiled: string;
-}
 
 const TABLE_TRANSFER_TIMEOUT = 10;
 
 export const CaseAssignment = () => {
-  const modalRef = useRef<ModalRefType>(null);
+  const modalRef = useRef<AssignAttorneyModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const screenTitle = 'Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
-  const [unassignedCaseList, setUnassignedCaseList] = useState<Array<object>>(Array<object>);
-  const [assignedCaseList, setAssignedCaseList] = useState<Array<object>>(Array<object>);
-  const [bCase, setBCase] = useState<Chapter15Type>();
+  const [unassignedCaseList, setUnassignedCaseList] = useState<Array<Chapter15Type>>([]);
+  const [assignedCaseList, setAssignedCaseList] = useState<Array<Chapter15Type>>([]);
   const [caseListLoadError, setCaseListLoadError] = useState(false);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
@@ -42,12 +41,20 @@ export const CaseAssignment = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
-  function sortMethod(a: object, b: object): number {
-    const recordA: Chapter15Node = a as Chapter15Node;
-    const recordB: Chapter15Node = b as Chapter15Node;
-    if (recordA.sortableDateFiled < recordB.sortableDateFiled) {
+  function sortByDate(a: Chapter15Type, b: Chapter15Type): number {
+    if (a.dateFiled < b.dateFiled) {
       return 1;
-    } else if (recordA.sortableDateFiled > recordB.sortableDateFiled) {
+    } else if (a.dateFiled > b.dateFiled) {
+      return -1;
+    } else {
+      return 0;
+    }
+  }
+
+  function sortByCaseId(a: Chapter15Type, b: Chapter15Type): number {
+    if (a.caseId < b.caseId) {
+      return 1;
+    } else if (a.caseId > b.caseId) {
       return -1;
     } else {
       return 0;
@@ -60,24 +67,20 @@ export const CaseAssignment = () => {
     await api
       .list('/cases')
       .then((res) => {
-        const assignmentList: Chapter15Node[] = [];
-        const nonAssignmentList: Chapter15Node[] = [];
+        const assignmentList: Chapter15Type[] = [];
+        const nonAssignmentList: Chapter15Type[] = [];
 
         const chapter15Response = res as Chapter15CaseListResponseData;
         chapter15Response?.body?.caseList.forEach((theCase) => {
-          const caseNode = theCase as Chapter15Node;
-          const dateFiled = caseNode.dateFiled.split('-');
-          // Filing date formatted in SQL query as MM-dd-yyyy (ISO is yyyy-MM-dd)
-          // dateFiled[0] = month, dateFiled[1] = day, dateFiled[2] = year
-          caseNode.sortableDateFiled = `${dateFiled[2]}${dateFiled[0]}${dateFiled[1]}`;
+          const caseNode = theCase as Chapter15Type;
           if (caseNode.assignments && caseNode.assignments.length > 0) {
             assignmentList.push(caseNode);
           } else {
             nonAssignmentList.push(caseNode);
           }
         });
-        const sortedAssignedList = assignmentList.sort(sortMethod);
-        const sortedNonAssignedList = nonAssignmentList.sort(sortMethod);
+        const sortedAssignedList = assignmentList.sort(sortByDate);
+        const sortedNonAssignedList = nonAssignmentList.sort(sortByDate);
 
         setUnassignedCaseList(sortedNonAssignedList || []);
         setAssignedCaseList(sortedAssignedList || []);
@@ -116,12 +119,13 @@ export const CaseAssignment = () => {
       });
   };
 
-  const onOpenModal = (theCase: Chapter15Type) => {
-    setBCase(theCase);
-    return theCase;
-  };
-
-  function updateCase({ bCase, selectedAttorneyList, status, apiResult }: CallBackProps) {
+  function updateCase({
+    bCase,
+    selectedAttorneyList,
+    previouslySelectedList,
+    status,
+    apiResult,
+  }: CallBackProps) {
     if (status === 'error') {
       setAssignmentAlert({
         message: (apiResult as Error).message,
@@ -129,36 +133,52 @@ export const CaseAssignment = () => {
         timeOut: 8,
       });
       alertRef.current?.show();
-    } else if (selectedAttorneyList.length > 0) {
-      if (bCase) {
-        bCase.assignments = selectedAttorneyList;
-        setInTableTransferMode(bCase.caseId);
+    } else if (bCase) {
+      const messageArr = [];
+      const addedAssignments = selectedAttorneyList.filter(
+        (el) => !previouslySelectedList.includes(el),
+      );
+      const removedAssignments = previouslySelectedList.filter(
+        (el) => !selectedAttorneyList.includes(el),
+      );
 
-        // prepare new unassigned case list table to remove case from unassigned list
-        const tempUnassignedCaseList = unassignedCaseList.filter((theCase) => {
-          if (bCase.caseId !== (theCase as Chapter15Type).caseId) {
-            return true;
-          }
-          return false;
-        });
-        setUnassignedCaseList(tempUnassignedCaseList);
-
-        // prepare new assigned case list table to add case to assigned list
-        const tempAssignedCaseList = [...assignedCaseList];
-        tempAssignedCaseList.push(bCase as object);
-        tempAssignedCaseList.sort(sortMethod);
-        setAssignedCaseList(tempAssignedCaseList);
-
-        const alertMessage = `${selectedAttorneyList
-          .map((attorney) => attorney)
-          .join(', ')} assigned to case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}`;
-        setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
-        alertRef.current?.show();
-
-        setTimeout(() => {
-          setInTableTransferMode('');
-        }, TABLE_TRANSFER_TIMEOUT * 1000);
+      if (addedAssignments.length > 0) {
+        messageArr.push(`${addedAssignments.map((attorney) => attorney).join(', ')} assigned to`);
       }
+      if (removedAssignments.length > 0) {
+        messageArr.push(
+          `${removedAssignments.map((attorney) => attorney).join(', ')} unassigned from`,
+        );
+      }
+
+      bCase.assignments = selectedAttorneyList;
+      setInTableTransferMode(bCase.caseId);
+
+      // Modify the unassigned list.
+      const tempUnassignedCaseList = unassignedCaseList.filter((aCase) => {
+        return aCase.caseId !== bCase.caseId;
+      });
+      if (selectedAttorneyList.length === 0) tempUnassignedCaseList.push(bCase);
+      tempUnassignedCaseList.sort(sortByDate).sort(sortByCaseId);
+      setUnassignedCaseList(tempUnassignedCaseList);
+
+      // Modify the assigned list.
+      const tempAssignedCaseList = assignedCaseList.filter((aCase) => {
+        return aCase.caseId !== bCase.caseId;
+      });
+      if (selectedAttorneyList.length > 0) tempAssignedCaseList.push(bCase);
+      tempAssignedCaseList.sort(sortByDate).sort(sortByCaseId);
+      setAssignedCaseList(tempAssignedCaseList);
+
+      const alertMessage =
+        messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
+
+      setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
+      alertRef.current?.show();
+
+      setTimeout(() => {
+        setInTableTransferMode('');
+      }, TABLE_TRANSFER_TIMEOUT * 1000);
     }
   }
 
@@ -252,15 +272,22 @@ export const CaseAssignment = () => {
                         </tr>
                       </thead>
                       <tbody data-testid="unassigned-table-body">
-                        {(unassignedCaseList as Array<Chapter15Node>).map(
-                          (theCase: Chapter15Node, idx: number) => {
+                        {(unassignedCaseList as Array<Chapter15Type>).map(
+                          (theCase: Chapter15Type, idx: number) => {
                             return (
-                              <tr key={idx}>
+                              <tr
+                                key={idx}
+                                className={
+                                  theCase.caseId === inTableTransferMode
+                                    ? 'in-table-transfer-mode'
+                                    : ''
+                                }
+                              >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                                  <Link className="usa-link" to={`/case-detail/${theCase.caseId}`}>
                                     {getCaseNumber(theCase.caseId)}
-                                  </a>
+                                  </Link>
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>
@@ -272,7 +299,7 @@ export const CaseAssignment = () => {
                                 </td>
                                 <td
                                   className="filing-date"
-                                  data-sort-value={theCase.sortableDateFiled}
+                                  data-sort-value={theCase.dateFiled}
                                   data-sort-active={true}
                                 >
                                   <span className="mobile-title">Filing Date:</span>
@@ -284,9 +311,11 @@ export const CaseAssignment = () => {
                                     className="case-assignment-modal-toggle"
                                     buttonIndex={`${idx}`}
                                     toggleAction="open"
+                                    toggleProps={{
+                                      bCase: theCase,
+                                    }}
                                     modalId={`${modalId}`}
                                     modalRef={modalRef}
-                                    onClick={() => onOpenModal(theCase)}
                                   >
                                     Assign
                                   </ToggleModalButton>
@@ -354,8 +383,8 @@ export const CaseAssignment = () => {
                         </tr>
                       </thead>
                       <tbody data-testid="assigned-table-body">
-                        {(assignedCaseList as Array<Chapter15Node>).map(
-                          (theCase: Chapter15Node, idx: number) => {
+                        {(assignedCaseList as Array<Chapter15Type>).map(
+                          (theCase: Chapter15Type, idx: number) => {
                             return (
                               <tr
                                 key={idx}
@@ -367,9 +396,9 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <a className="usa-link" href={`/case-detail/${theCase.caseId}`}>
+                                  <Link className="usa-link" to={`/case-detail/${theCase.caseId}`}>
                                     {getCaseNumber(theCase.caseId)}
-                                  </a>
+                                  </Link>
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>
@@ -381,20 +410,39 @@ export const CaseAssignment = () => {
                                 </td>
                                 <td
                                   className="filing-date"
-                                  data-sort-value={theCase.sortableDateFiled}
+                                  data-sort-value={theCase.dateFiled}
                                   data-sort-active={true}
                                 >
                                   <span className="mobile-title">Filing Date:</span>
                                   {formatDate(theCase.dateFiled)}
                                 </td>
                                 <td data-testid={`attorney-list-${idx}`} className="attorney-list">
-                                  <span className="mobile-title">Assigned Attorney:</span>
-                                  {theCase.assignments?.map((attorney, key: number) => (
-                                    <div key={key}>
-                                      {attorney}
-                                      <br />
+                                  <div className="table-flex-container">
+                                    <span className="mobile-title">Assigned Attorney:</span>
+                                    <div className="attorney-list-container">
+                                      {theCase.assignments?.map((attorney, key: number) => (
+                                        <div key={key}>
+                                          {attorney}
+                                          <br />
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
+                                    <div className="table-column-toolbar">
+                                      <ToggleModalButton
+                                        className="case-assignment-modal-toggle"
+                                        buttonIndex={`${idx}`}
+                                        toggleAction="open"
+                                        toggleProps={{
+                                          bCase: theCase,
+                                        }}
+                                        modalId={`${modalId}`}
+                                        modalRef={modalRef}
+                                        title="edit assignments"
+                                      >
+                                        <Icon name="edit"></Icon>
+                                      </ToggleModalButton>
+                                    </div>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -415,7 +463,6 @@ export const CaseAssignment = () => {
         <AssignAttorneyModal
           ref={modalRef}
           attorneyList={attorneyList}
-          bCase={bCase}
           modalId={`${modalId}`}
           callBack={updateCase}
         ></AssignAttorneyModal>

@@ -1,0 +1,70 @@
+@use '@/styles/abstracts/colors';
+
+.usa-header > * {
+  background-color: colors.$navy;
+}
+
+.cams-header .usa-banner > * {
+  vertical-align: middle;
+  line-height: normal;
+}
+
+.cams-header {
+  background-color: colors.$navy;
+  border-bottom: 3px solid colors.$gold;
+  width: 100%;
+  padding: 15px 50px;
+  position: relative;
+
+  .usa-nav-container {
+    margin: 0;
+    max-width: none;
+
+    .usa-navbar {
+      max-width: 125px;
+
+      .cams-logo.usa-logo {
+        margin: 0px;
+        .doj-logo {
+          height: 125px;
+          width: 120px;
+        }
+      }
+    }
+  }
+
+  .site-title {
+    display: flex;
+    height: 125px;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+    padding: 0 30px;
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 2.5rem;
+
+    .sub-title {
+      display: block;
+      font-size: 1.5rem;
+    }
+  }
+
+  .usa-nav.cams-nav-bar {
+    a {
+      vertical-align: middle;
+      color: white;
+      font-weight: bold;
+      text-decoration: none;
+      padding-right: 15px;
+    }
+    a:hover {
+      color: colors.$gold;
+      text-decoration: underline;
+    }
+    .usa-current::after {
+      background-color: colors.$gold;
+    }
+  }
+
+}

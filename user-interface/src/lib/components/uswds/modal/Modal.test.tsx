@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ToggleModalButton } from './ToggleModalButton';
@@ -60,9 +60,7 @@ describe('Test Modal component', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(button);
-    });
+    fireEvent.click(button);
 
     expect(modal).toHaveClass('is-visible');
     expect(modal).not.toHaveClass('is-hidden');
@@ -76,15 +74,11 @@ describe('Test Modal component', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(button);
-    });
+    fireEvent.click(button);
 
     expect(modal).toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
-    });
+    fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
 
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -98,16 +92,12 @@ describe('Test Modal component', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(openButton);
-    });
+    fireEvent.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
 
     const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
-    act(() => {
-      fireEvent.click(closeButton);
-    });
+    fireEvent.click(closeButton);
 
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -121,16 +111,12 @@ describe('Test Modal component', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(openButton);
-    });
+    fireEvent.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
 
     const overlay = screen.getByTestId(`modal-overlay-${modalId}`);
-    act(() => {
-      fireEvent.click(overlay);
-    });
+    fireEvent.click(overlay);
 
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -144,16 +130,12 @@ describe('Test Modal component', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(openButton);
-    });
+    fireEvent.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
 
     const cancelButton = screen.getByTestId(`toggle-modal-button-cancel`);
-    act(() => {
-      fireEvent.click(cancelButton);
-    });
+    fireEvent.click(cancelButton);
 
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -167,15 +149,11 @@ describe('Test Modal component', () => {
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
-    act(() => {
-      fireEvent.click(openButton);
-    });
+    fireEvent.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(submitButton);
-    });
+    fireEvent.click(submitButton);
 
     expect(submitButtonOnClick).toHaveBeenCalled();
   });
@@ -184,9 +162,7 @@ describe('Test Modal component', () => {
     const button = screen.getByTestId('toggle-modal-button-open-test');
     const modalContent = screen.getByTestId(`modal-content-${modalId}`);
 
-    act(() => {
-      fireEvent.click(button);
-    });
+    fireEvent.click(button);
 
     expect(onOpenModal).toHaveBeenCalled();
     expect(modalContent).toHaveFocus();
@@ -237,15 +213,11 @@ describe('Test Modal component with force action', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(button);
-    });
+    fireEvent.click(button);
 
     expect(modal).toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
-    });
+    fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
 
     expect(modal).not.toHaveClass('is-hidden');
     expect(modal).toHaveClass('is-visible');
@@ -257,9 +229,7 @@ describe('Test Modal component with force action', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(openButton);
-    });
+    fireEvent.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
 
@@ -278,16 +248,12 @@ describe('Test Modal component with force action', () => {
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
 
-    act(() => {
-      fireEvent.click(openButton);
-    });
+    fireEvent.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
 
     const overlay = screen.getByTestId(`modal-overlay-${modalId}`);
-    act(() => {
-      fireEvent.click(overlay);
-    });
+    fireEvent.click(overlay);
 
     expect(modal).not.toHaveClass('is-hidden');
     expect(modal).toHaveClass('is-visible');

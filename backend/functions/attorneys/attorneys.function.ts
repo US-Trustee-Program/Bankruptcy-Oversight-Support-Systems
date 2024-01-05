@@ -16,7 +16,6 @@ const MODULE_NAME = 'ATTORNEYS-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   attorneysRequest: HttpRequest,
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);

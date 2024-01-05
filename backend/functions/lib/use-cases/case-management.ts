@@ -1,22 +1,23 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import {
+  CaseDetailInterface,
   CaseDetailsDbResult,
   CaseListDbResult,
-  CaseDetailInterface,
 } from '../adapters/types/cases';
-import { getCasesGateway } from '../factory';
+import { getCasesGateway, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
-import { CaseAssignment } from './case.assignment';
-import { CaseAttorneyAssignment } from '../adapters/types/case.attorney.assignment';
+import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
-import { getOffice } from '../adapters/gateways/offices.gateway';
+import { CaseAssignment } from '../adapters/types/case.assignment';
+import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
 export class CaseManagement {
   casesGateway: CasesInterface;
+  officesGateway: OfficesGatewayInterface;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
     if (!casesGateway) {
@@ -24,6 +25,7 @@ export class CaseManagement {
     } else {
       this.casesGateway = casesGateway;
     }
+    this.officesGateway = getOfficesGateway(applicationContext);
   }
 
   async getCases(applicationContext: ApplicationContext): Promise<CaseListDbResult> {
@@ -32,7 +34,7 @@ export class CaseManagement {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const caseAssignment = new CaseAssignment(applicationContext);
+      const caseAssignment = new CaseAssignmentUseCase(applicationContext);
       const cases = await this.casesGateway.getCases(applicationContext, {
         startingMonth: startingMonth || undefined,
       });
@@ -68,14 +70,14 @@ export class CaseManagement {
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
-    const caseAssignment = new CaseAssignment(applicationContext);
+    const caseAssignment = new CaseAssignmentUseCase(applicationContext);
     caseDetails.assignments = await this.getCaseAssigneeNames(
       applicationContext,
       caseAssignment,
       caseDetails,
     );
 
-    caseDetails.officeName = getOffice(caseDetails.courtDivision);
+    caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivision);
 
     return {
       success: true,
@@ -88,17 +90,14 @@ export class CaseManagement {
 
   private async getCaseAssigneeNames(
     applicationContext: ApplicationContext,
-    caseAssignment: CaseAssignment,
+    caseAssignment: CaseAssignmentUseCase,
     c: CaseDetailInterface,
   ) {
     try {
-      const assignments: CaseAttorneyAssignment[] = await caseAssignment.findAssignmentsByCaseId(
-        c.caseId,
-      );
-      const assigneeNames = assignments.map((a) => {
+      const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(c.caseId);
+      return assignments.map((a) => {
         return a.name;
       });
-      return assigneeNames;
     } catch (e) {
       throw new AssignmentError(MODULE_NAME, {
         message:

@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailNavigation, { NavState, mapNavState, setCurrentNav } from './CaseDetailNavigation';
 import { BrowserRouter } from 'react-router-dom';
-import React from 'react';
 
 describe('Navigation tests', () => {
   const activeNavClass = 'usa-current';

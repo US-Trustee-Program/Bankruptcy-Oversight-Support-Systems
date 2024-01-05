@@ -1,3 +1,3 @@
-export enum CaseAssignmentRole {
-  TrialAttorney = 1,
-}
+export const CaseAssignmentRole = {
+  TrialAttorney: 'TrialAttorney',
+} as const;

@@ -40,6 +40,13 @@
         "wait for element [data-testid='alert-container'] to be visible"
       ],
       "timeout": 20000
+    },
+    {
+      "url": "http://localhost:3000/review-orders",
+      "actions": [
+        "wait for element [data-testid='review-orders-screen'] to be visible"
+      ],
+      "timeout": 20000
     }
   ],
   "standard": "WCAG2AA"

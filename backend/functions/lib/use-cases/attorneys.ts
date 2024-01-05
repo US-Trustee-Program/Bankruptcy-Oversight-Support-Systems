@@ -2,7 +2,7 @@ import { AttorneyGatewayInterface } from './attorney.gateway.interface';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
 import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
-import { CaseAssignment } from './case.assignment';
+import { CaseAssignmentUseCase } from './case.assignment';
 import { Attorney } from '../adapters/types/attorney.class';
 import { getFullName } from '../../../../common/src/name-helper';
 import log from '../adapters/services/logger.service';
@@ -24,7 +24,7 @@ export default class AttorneysList {
     applicationContext: ApplicationContext,
     fields: { officeId?: string },
   ): Promise<AttorneyListDbResult> {
-    const assignmentsUseCase = new CaseAssignment(applicationContext);
+    const assignmentsUseCase = new CaseAssignmentUseCase(applicationContext);
     const attorneys = await this.gateway.getAttorneys(applicationContext, fields);
 
     const attorneysWithCaseLoad = [];

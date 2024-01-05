@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Checkbox from './Checkbox';
@@ -20,9 +20,7 @@ describe('Test Checkbox component', async () => {
     );
 
     const checkbox = screen.getByTestId('checkbox-checkbox123');
-    act(() => {
-      fireEvent.click(checkbox);
-    });
+    fireEvent.click(checkbox);
     expect(checkboxOnClick).toHaveBeenCalled();
   });
 });

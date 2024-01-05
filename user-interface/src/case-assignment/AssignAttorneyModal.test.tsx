@@ -1,12 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import AssignAttorneyModal from './AssignAttorneyModal';
+import AssignAttorneyModal, { AssignAttorneyModalRefType } from './AssignAttorneyModal';
 import React from 'react';
-import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import Api from '@/lib/models/api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
-import { ModalRefType } from '../lib/components/uswds/modal/modal-refs';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { getFullName } from '@common/name-helper';
 
@@ -37,14 +35,8 @@ describe('Test Assign Attorney Modal Component', () => {
     attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mobnext];
   });
 
-  test('Should open modal with submit disabled, and enable button when item is checked, and disable when there are no more items checked.', async () => {
-    const bCase: Chapter15Type = {
-      caseId: '123',
-      caseTitle: 'Test Case',
-      dateFiled: '01/01/2024',
-    };
-
-    const modalRef = React.createRef<ModalRefType>();
+  test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
+    const modalRef = React.createRef<AssignAttorneyModalRefType>();
     const callback = vi.fn();
     const modalId = 'some-modal-id';
     render(
@@ -57,7 +49,6 @@ describe('Test Assign Attorney Modal Component', () => {
             <AssignAttorneyModal
               ref={modalRef}
               attorneyList={attorneyList}
-              bCase={bCase}
               modalId={modalId}
               callBack={callback}
             ></AssignAttorneyModal>
@@ -69,46 +60,46 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
 
-    act(() => {
-      fireEvent.click(button);
-    });
+    fireEvent.click(button);
 
-    expect(modal).toHaveClass('is-visible');
-    expect(submitButton).toBeDisabled();
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-visible');
+      expect(submitButton).toBeDisabled();
+    });
 
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
 
-    act(() => {
-      fireEvent.click(checkbox1);
+    fireEvent.click(checkbox1);
+
+    await waitFor(() => {
+      expect(checkbox1).toBeChecked();
+      expect(submitButton).toBeEnabled();
     });
 
-    expect(checkbox1).toBeChecked();
-    expect(submitButton).toBeEnabled();
+    fireEvent.click(checkbox2);
 
-    act(() => {
-      fireEvent.click(checkbox2);
+    await waitFor(() => {
+      expect(checkbox2).toBeChecked();
+      expect(submitButton).toBeEnabled();
     });
 
-    expect(submitButton).toBeEnabled();
+    fireEvent.click(checkbox1);
 
-    act(() => {
-      fireEvent.click(checkbox1);
+    await waitFor(() => {
+      expect(checkbox1).not.toBeChecked();
+      expect(submitButton).toBeEnabled();
     });
 
-    expect(checkbox1).not.toBeChecked();
-    expect(submitButton).toBeEnabled();
+    fireEvent.click(checkbox2);
 
-    act(() => {
-      fireEvent.click(checkbox2);
+    await waitFor(() => {
+      expect(checkbox2).not.toBeChecked();
+      expect(submitButton).toBeDisabled();
     });
-
-    expect(checkbox2).not.toBeChecked();
-    expect(submitButton).toBeDisabled();
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
       return Promise.resolve({
         message: 'post mock',
@@ -118,12 +109,7 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     const callback = vi.fn();
 
-    const bCase: Chapter15Type = {
-      caseId: '123',
-      caseTitle: 'Test Case',
-      dateFiled: '01/01/2024',
-    };
-    const modalRef = React.createRef<ModalRefType>();
+    const modalRef = React.createRef<AssignAttorneyModalRefType>();
 
     const modalId = 'some-modal-id';
     render(
@@ -136,7 +122,6 @@ describe('Test Assign Attorney Modal Component', () => {
             <AssignAttorneyModal
               ref={modalRef}
               attorneyList={attorneyList}
-              bCase={bCase}
               modalId={modalId}
               callBack={callback}
             ></AssignAttorneyModal>
@@ -144,49 +129,51 @@ describe('Test Assign Attorney Modal Component', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+
+    modalRef.current?.show({
+      bCase: {
+        caseId: '123',
+        caseTitle: 'Test Case',
+        dateFiled: '01/01/2024',
+      },
+    });
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId('toggle-modal-button-submit');
-    act(() => {
-      fireEvent.click(button);
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-visible');
     });
 
-    expect(modal).toHaveClass('is-visible');
     const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
     const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-
     const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
-    act(() => {
-      fireEvent.click(checkbox1);
-      fireEvent.click(checkbox2);
-      fireEvent.click(checkbox3);
-    });
 
-    act(() => {
-      fireEvent.click(submitButton);
+    fireEvent.click(checkbox1);
+    fireEvent.click(checkbox2);
+    fireEvent.click(checkbox3);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith(
+        '/case-assignments',
+        expect.objectContaining({
+          attorneyList: expect.arrayContaining([
+            getFullName(mark),
+            getFullName(shara),
+            getFullName(brian),
+          ]),
+          caseId: '123',
+          role: 'TrialAttorney',
+        }),
+      );
     });
-    expect(postSpy).toHaveBeenCalledWith(
-      '/case-assignments',
-      expect.objectContaining({
-        attorneyList: expect.arrayContaining([
-          getFullName(mark),
-          getFullName(shara),
-          getFullName(brian),
-        ]),
-        caseId: '123',
-        role: 'TrialAttorney',
-      }),
-    );
   });
 
   describe('Feature flag chapter-twelve-enabled', () => {
-    const bCase: Chapter15Type = {
-      caseId: '123',
-      caseTitle: 'Test Case',
-      dateFiled: '01/01/2024',
-    };
-    const modalRef = React.createRef<ModalRefType>();
+    const modalRef = React.createRef<AssignAttorneyModalRefType>();
     const modalId = 'some-modal-id';
     const caseLoadLabelTestId = 'case-load-label';
     const caseLoadTableHeaderTestId = 'case-load-table-header';
@@ -204,7 +191,6 @@ describe('Test Assign Attorney Modal Component', () => {
               <AssignAttorneyModal
                 ref={modalRef}
                 attorneyList={attorneyList}
-                bCase={bCase}
                 modalId={modalId}
                 callBack={() => {
                   return;
@@ -217,16 +203,16 @@ describe('Test Assign Attorney Modal Component', () => {
       const button = screen.getByTestId('toggle-modal-button');
       const modal = screen.getByTestId(`modal-${modalId}`);
 
-      act(() => {
-        fireEvent.click(button);
-      });
+      fireEvent.click(button);
 
       const expectedLabel = 'Case Load';
 
-      expect(modal).toHaveClass('is-visible');
-      const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
-      expect(caseLoadLabel).toBeInTheDocument();
-      expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      await waitFor(() => {
+        expect(modal).toHaveClass('is-visible');
+        const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
+        expect(caseLoadLabel).toBeInTheDocument();
+        expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      });
 
       const caseLoadTableLabel = screen.getByTestId(caseLoadTableHeaderTestId);
       expect(caseLoadTableLabel).toBeInTheDocument();
@@ -245,7 +231,6 @@ describe('Test Assign Attorney Modal Component', () => {
               <AssignAttorneyModal
                 ref={modalRef}
                 attorneyList={attorneyList}
-                bCase={bCase}
                 modalId={modalId}
                 callBack={() => {
                   return;
@@ -258,16 +243,16 @@ describe('Test Assign Attorney Modal Component', () => {
       const button = screen.getByTestId('toggle-modal-button');
       const modal = screen.getByTestId(`modal-${modalId}`);
 
-      act(() => {
-        fireEvent.click(button);
-      });
+      fireEvent.click(button);
 
       const expectedLabel = 'Chapter 15 Cases';
 
-      expect(modal).toHaveClass('is-visible');
-      const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
-      expect(caseLoadLabel).toBeInTheDocument();
-      expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      await waitFor(() => {
+        expect(modal).toHaveClass('is-visible');
+        const caseLoadLabel = screen.getByTestId(caseLoadLabelTestId);
+        expect(caseLoadLabel).toBeInTheDocument();
+        expect(caseLoadLabel.innerHTML).toEqual(expectedLabel);
+      });
 
       const caseLoadTableLabel = screen.getByTestId(caseLoadTableHeaderTestId);
       expect(caseLoadTableLabel).toBeInTheDocument();

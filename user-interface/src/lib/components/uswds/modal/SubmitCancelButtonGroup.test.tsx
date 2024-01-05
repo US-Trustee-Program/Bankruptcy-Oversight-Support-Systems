@@ -117,7 +117,6 @@ describe('Submit cancel button group tests', () => {
     );
 
     const submit = screen.getByTestId('toggle-modal-button-submit');
-    console.log(submit);
     expect(submit).toBeDisabled();
   });
 
