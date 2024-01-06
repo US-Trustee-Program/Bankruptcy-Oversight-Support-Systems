@@ -34,15 +34,7 @@ export class OrdersUseCase {
     return this.ordersRepo.updateOrder(context, id, data);
   }
 
-  // TODO: Implement updateOrder logic. Write transaction state to Cosmos. Partial?
-  // public async updateOrder(context: ApplicationContext, order: Order): Promise<Order>
-
-  // TODO: Consider a function to record orders in cosmos which triggers on a schedule.
   /*
-
-  Data Sync Function
-
-  Use max TX_ID from AO_TX table in the query to return all records since the last sync. Keep the max TX_ID state in the Cosmos DB.
 
   Lifecycle: pending -> order confirmed -> "transfering" -> order complete -> DONE.
                      -> order rejected -> DONE.

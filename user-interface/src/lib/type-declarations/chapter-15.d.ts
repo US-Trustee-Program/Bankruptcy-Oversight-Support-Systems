@@ -110,6 +110,7 @@ export interface CaseStaffAssignmentHistoryResponseData extends ResponseData {
 }
 
 export type Order = CaseDocketEntry & {
+  id: string;
   caseId: string;
   caseTitle: string;
   chapter: string;
@@ -136,6 +137,18 @@ export interface OfficeDetails {
   state: string;
   courtDivisionName: string;
   region: string;
+}
+
+export interface OrderTransfer {
+  id: string;
+  sequenceNumber: number;
+  caseId: string;
+  newCaseId?: string;
+  newCourtName?: string;
+  newCourtDivisionName?: string;
+  newCourtDivisionCode?: string;
+  newRegionId?: string;
+  status: OrderStatus;
 }
 
 export interface OfficesResponseData extends ResponseData {

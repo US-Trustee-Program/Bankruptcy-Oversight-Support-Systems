@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
@@ -9,10 +9,15 @@ import {
   OfficesResponseData,
   Order,
   OrderResponseData,
+  OrderTransfer,
 } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { InputRef } from '@/lib/type-declarations/input-fields';
+import Input from '@/lib/components/uswds/Input';
+import Select from '@/lib/components/uswds/Select';
 
 const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -23,12 +28,15 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   return aKey > bKey ? 1 : -1;
 }
 
+type EmptyObject = Record<string, never>;
+
 export default function ReviewOrders() {
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
-  const [courtSelection, setCourtSelection] = useState<OfficeDetails>();
-  const [caseSelection, setCaseSelection] = useState<string>('');
+  const [orderSelection, setOrderSelection] = useState<OrderTransfer | EmptyObject>({});
   const [orderList, setOrderList] = useState<Array<Order>>([]);
   const [_isOrderListLoading, setIsOrderListLoading] = useState(false);
+  const courtSelectionRef = useRef<InputRef>(null);
+  const caseIdRef = useRef<InputRef>(null);
 
   const regionNumber = '02';
 
@@ -71,15 +79,74 @@ export default function ReviewOrders() {
   orderType.set('transfer', 'Transfer');
   orderType.set('consolidation', 'Consolidation');
 
-  function handleCourtSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
-    const office = officesList.find((o) => o.divisionCode === ev.target.value);
-    if (office) setCourtSelection(office);
-    else setCourtSelection(undefined);
+  function getCurrentOrderTransfer(
+    order: Order,
+    existingOrderTransfer: OrderTransfer | EmptyObject,
+  ): OrderTransfer | EmptyObject {
+    if (order.id === existingOrderTransfer.id) {
+      return { ...existingOrderTransfer };
+    } else {
+      const { id, sequenceNumber, caseId, status } = order;
+      return { id, sequenceNumber, caseId, status };
+    }
   }
 
-  function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    console.log('id', ev.target.id);
-    setCaseSelection(ev.target.value);
+  function handleCourtSelection(ev: React.ChangeEvent<HTMLSelectElement>, order: Order) {
+    const orderTransfer = getCurrentOrderTransfer(order, orderSelection);
+    const office = officesList.find((o) => o.divisionCode === ev.target.value);
+    // TODO: Need to add court IDS to the OrderTransfer
+    orderTransfer.newRegionId = office?.region;
+    orderTransfer.newCourtName = office?.courtName;
+    orderTransfer.newCourtDivisionName = office?.courtDivisionName;
+    setOrderSelection(orderTransfer);
+  }
+
+  function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>, order: Order) {
+    // TODO: Add filter to the input component to limit the format?
+    // TODO: Validate the case ID is in format NN-NNNNN.
+    const orderTransfer = getCurrentOrderTransfer(order, orderSelection);
+    orderTransfer.newCaseId = ev.target.value;
+    setOrderSelection(orderTransfer);
+  }
+
+  function approveOrder(): void {
+    if (
+      !(
+        orderSelection?.newCaseId &&
+        orderSelection?.newCourtDivisionName &&
+        orderSelection?.newCourtName
+      )
+    ) {
+      return;
+    }
+
+    orderSelection.status = 'approved';
+    // TODO: Need to make sure the division code prefix is added HERE.
+    // orderSelection.newCaseId = ''
+
+    api
+      .patch(`/orders/${orderSelection.id}`, orderSelection)
+      .then(() => {
+        setOrderList(
+          orderList.map((order) => {
+            return order.id === orderSelection.id ? { ...order, ...orderSelection } : order;
+          }),
+        );
+      })
+      .then(() => {
+        setOrderSelection({});
+        // TODO: Need to alert the user there was a success.
+      })
+      .catch((e) => {
+        // TODO: Need to alert the user there was a failure.
+        console.error('The order update failed', e);
+      });
+  }
+
+  function cancelUpdate(): void {
+    setOrderSelection({});
+    courtSelectionRef.current?.clearValue();
+    caseIdRef.current?.clearValue();
   }
 
   return (
@@ -146,20 +213,21 @@ export default function ReviewOrders() {
                             </div>
                             <label>New Court</label>
                             <div className="usa-combo-box">
-                              <select
+                              <Select
                                 className="usa-select new-court__select"
-                                id={`court-selection-${order.caseId}`}
+                                id={`court-selection-${order.id}`}
                                 data-testid={`court-selection-${idx}`}
-                                onChange={handleCourtSelection}
+                                onChange={(ev) => handleCourtSelection(ev, order)}
                                 aria-label="New court options"
+                                ref={courtSelectionRef}
+                                value={orderSelection.newCourtDivisionCode}
                               >
-                                <option value=""></option>
                                 {officesList.map((court, index) => (
                                   <option value={court.divisionCode} key={index}>
                                     {court.courtName} ({court.courtDivisionName})
                                   </option>
                                 ))}
-                              </select>
+                              </Select>
                             </div>
                           </div>
                           <div className="grid-col-1"></div>
@@ -169,13 +237,14 @@ export default function ReviewOrders() {
                           <div className="grid-col-4">
                             <label>New Case</label>
                             <div>
-                              <input
-                                id={`new-case-input-${idx}`}
+                              <Input
+                                id={`new-case-input-${order.id}`}
                                 data-testid={`new-case-input-${idx}`}
                                 className="usa-input"
-                                value={caseSelection}
-                                onChange={handleCaseInputChange}
+                                value={orderSelection?.newCaseId ?? ''}
+                                onChange={(ev) => handleCaseInputChange(ev, order)}
                                 aria-label="New case ID"
+                                ref={caseIdRef}
                               />
                             </div>
                           </div>
@@ -186,14 +255,33 @@ export default function ReviewOrders() {
                           <div className="grid-col-1"></div>
                           <div className="grid-col-10">
                             <span data-testid={`preview-description-${idx}`}>
-                              <CaseSelection
-                                fromCourt={{
-                                  region: order.regionId,
-                                  courtDivisionName: order.courtDivisionName,
-                                }}
-                                toCourt={courtSelection}
-                              ></CaseSelection>
+                              {orderSelection?.newRegionId &&
+                                orderSelection?.newCourtDivisionName && (
+                                  <CaseSelection
+                                    fromCourt={{
+                                      region: order.regionId,
+                                      courtDivisionName: order.courtDivisionName,
+                                    }}
+                                    toCourt={{
+                                      region: orderSelection.newRegionId,
+                                      courtDivisionName: orderSelection.newCourtDivisionName,
+                                    }}
+                                  ></CaseSelection>
+                                )}
                             </span>
+                          </div>
+                          <div className="grid-col-1"></div>
+                        </div>
+                        <div className="button-bar grid-row grid-gap-lg">
+                          <div className="grid-col-1"></div>
+                          <div className="grid-col-6"></div>
+                          <div className="grid-col-2">
+                            <Button onClick={cancelUpdate} uswdsStyle={UswdsButtonStyle.Outline}>
+                              Cancel
+                            </Button>
+                          </div>
+                          <div className="grid-col-2">
+                            <Button onClick={approveOrder}>Approve</Button>
                           </div>
                           <div className="grid-col-1"></div>
                         </div>
@@ -218,7 +306,7 @@ interface CaseSelectionAttributes {
 
 interface CaseSelectionProps {
   fromCourt: CaseSelectionAttributes;
-  toCourt?: CaseSelectionAttributes;
+  toCourt: CaseSelectionAttributes;
 }
 
 function CaseSelection(props: CaseSelectionProps) {
@@ -226,18 +314,14 @@ function CaseSelection(props: CaseSelectionProps) {
 
   return (
     <>
-      {fromCourt && toCourt && (
-        <>
-          USTP Office: transfer from
-          <span className="from-location transfer-highlight__span">
-            {fromCourt.region} - {fromCourt.courtDivisionName}
-          </span>
-          to
-          <span className="to-location transfer-highlight__span">
-            {toCourt.region} - {toCourt.courtDivisionName}
-          </span>
-        </>
-      )}
+      USTP Office: transfer from
+      <span className="from-location transfer-highlight__span">
+        {fromCourt.region} - {fromCourt.courtDivisionName}
+      </span>
+      to
+      <span className="to-location transfer-highlight__span">
+        {toCourt.region} - {toCourt.courtDivisionName}
+      </span>
     </>
   );
 }

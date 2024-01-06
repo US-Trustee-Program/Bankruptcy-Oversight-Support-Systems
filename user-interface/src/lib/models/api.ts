@@ -1,4 +1,4 @@
-import { httpGet, httpPost } from '../utils/http.adapter';
+import { httpGet, httpPatch, httpPost } from '../utils/http.adapter';
 import config from '../../configuration/apiConfiguration';
 import { ResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
@@ -73,6 +73,22 @@ export default class Api {
         return Promise.reject(new Error(`${response.status} Error - ${path} - ${data.message}`));
       }
     } catch (e) {
+      return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
+    }
+  }
+
+  public static async patch(path: string, body: object): Promise<ResponseData> {
+    try {
+      const response = await httpPatch({ url: Api._host + path, body });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return data;
+      } else {
+        return Promise.reject(new Error(data.message));
+      }
+    } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
     }
   }
