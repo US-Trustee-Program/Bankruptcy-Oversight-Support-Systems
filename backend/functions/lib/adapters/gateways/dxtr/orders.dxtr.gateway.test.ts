@@ -154,7 +154,7 @@ describe('DxtrOrdersGateway', () => {
       querySpy.mockResolvedValue(mockOrdersResults);
       querySpy.mockResolvedValueOnce(mockDocumentsResults);
 
-      await gateway.getOrders(applicationContext);
+      await gateway.getOrderSync(applicationContext, 0);
       expect(querySpy).toHaveBeenCalled(); //"CS.CS_CHAPTER IN ('15')"
 
       applicationContext.featureFlags = {
@@ -165,7 +165,7 @@ describe('DxtrOrdersGateway', () => {
       querySpy.mockResolvedValue(mockOrdersResults);
       querySpy.mockResolvedValueOnce(mockDocumentsResults);
 
-      await gateway.getOrders(applicationContext);
+      await gateway.getOrderSync(applicationContext, 0);
       expect(querySpy).toHaveBeenCalled(); // "CS.CS_CHAPTER IN ('15','11','12')"
     });
 

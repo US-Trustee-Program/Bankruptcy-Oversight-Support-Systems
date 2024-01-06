@@ -8,8 +8,8 @@ import { CamsResponse } from '../controller-types';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
-type GetOrdersResponse = CamsResponse<Array<Order>>;
-type PatchOrderResponse = CamsResponse<string>;
+export type GetOrdersResponse = CamsResponse<Array<Order>>;
+export type PatchOrderResponse = CamsResponse<string>;
 
 export class OrdersController {
   private readonly useCase: OrdersUseCase;
