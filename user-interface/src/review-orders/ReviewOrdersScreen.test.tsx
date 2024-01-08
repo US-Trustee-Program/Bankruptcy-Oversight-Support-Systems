@@ -131,26 +131,28 @@ describe('Review Orders screen', () => {
     const accordionGroup = screen.getByTestId('accordion-group');
     expect(accordionGroup).toBeInTheDocument();
 
-    let idx = 0;
     for (const order of ordersResponse.body) {
       await waitFor(async () => {
-        const heading = screen.getByTestId(`accordion-heading-${idx}`);
+        const heading = screen.getByTestId(`accordion-heading-${order.id}`);
         expect(heading).toBeInTheDocument();
         expect(heading).toBeVisible();
         expect(heading?.textContent).toContain(order.caseTitle);
         expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
         expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
-        const content = screen.getByTestId(`accordion-content-${idx}`);
+        const content = screen.getByTestId(`accordion-content-${order.id}`);
         expect(content).toBeInTheDocument();
         expect(content).not.toBeVisible();
         expect(content?.textContent).toContain(order.summaryText);
         expect(content?.textContent).toContain(order.fullText);
 
-        const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
+        const form = screen.getByTestId(`order-form-${order.id}`);
+        expect(form).toBeInTheDocument();
+
+        console.log(screen.debug(form));
+        const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
         expect(newCaseIdText).toHaveValue(order.newCaseId);
       });
-      idx++;
     }
   });
 
@@ -161,23 +163,23 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    const idx = 0;
+    const order = ordersResponse.body[0];
 
     await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${idx}`);
+      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
       expect(heading).toBeInTheDocument();
       expect(heading).toBeVisible();
 
-      const content = screen.getByTestId(`accordion-content-${idx}`);
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).not.toBeVisible();
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).toBeVisible();
     });
@@ -190,24 +192,24 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    const idx = 0;
+    const order = ordersResponse.body[0];
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).not.toBeVisible();
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).toBeVisible();
     });
 
-    const selection = screen.getByTestId(`court-selection-${idx}`);
+    const selection = screen.getByTestId(`court-selection-${order.id}`);
     expect(selection).toBeInTheDocument();
     if (selection) {
       fireEvent.click(selection);
@@ -215,7 +217,7 @@ describe('Review Orders screen', () => {
     }
 
     await waitFor(async () => {
-      const preview = screen.getByTestId(`preview-description-${idx}`);
+      const preview = screen.getByTestId(`preview-description-${order.id}`);
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
@@ -231,24 +233,24 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    const idx = 0;
+    const order = ordersResponse.body[0];
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).not.toBeVisible();
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).toBeVisible();
     });
 
-    const selection = screen.getByTestId(`court-selection-${idx}`);
+    const selection = screen.getByTestId(`court-selection-${order.id}`);
     expect(selection).toBeInTheDocument();
     if (selection) {
       fireEvent.click(selection);
@@ -256,7 +258,7 @@ describe('Review Orders screen', () => {
     }
 
     await waitFor(async () => {
-      const preview = screen.getByTestId(`preview-description-${idx}`);
+      const preview = screen.getByTestId(`preview-description-${order.id}`);
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
@@ -271,7 +273,7 @@ describe('Review Orders screen', () => {
     }
 
     await waitFor(async () => {
-      const preview = screen.queryByTestId(`preview-description-${idx}`);
+      const preview = screen.queryByTestId(`preview-description-${order.id}`);
       expect(preview).toBeInTheDocument();
       expect(preview?.textContent).toEqual('');
     });
@@ -284,27 +286,26 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    const idx = 0;
-    const order = ordersResponse.body[idx];
+    const order = ordersResponse.body[0];
 
     await waitFor(async () => {
-      screen.getByTestId(`accordion-content-${idx}`);
+      screen.getByTestId(`accordion-content-${order.id}`);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
+      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
     const newValue = '081-22-33333';
-    const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
+    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
     fireEvent.change(newCaseIdText, { target: { value: newValue } });
 
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
+      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
       expect(newCaseIdText).toHaveValue(newValue);
     });
   });

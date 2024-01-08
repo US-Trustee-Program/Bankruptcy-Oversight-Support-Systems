@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 interface AccordionGroupProps extends PropsWithChildren {
-  children: Array<ReactElement>;
+  children: ReactElement | Array<ReactElement>;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
