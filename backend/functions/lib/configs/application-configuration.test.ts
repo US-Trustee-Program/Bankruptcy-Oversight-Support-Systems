@@ -12,6 +12,18 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env = env;
   });
 
+  test('should default dbMock to false', () => {
+    process.env.DATABASE_MOCK = undefined;
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.dbMock).toBeFalsy();
+  });
+
+  test('should set dbMock to true if DATABASE_MOCK env var is true', () => {
+    process.env.DATABASE_MOCK = 'true';
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.dbMock).toBeTruthy();
+  });
+
   test('Should contain client id in config when MSSQL_CLIENT_ID is set', async () => {
     const expectedClientId = '12345';
     process.env.MSSQL_CLIENT_ID = expectedClientId;
