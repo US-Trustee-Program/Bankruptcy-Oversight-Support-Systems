@@ -1,23 +1,21 @@
 import React, {
-  Children,
   PropsWithChildren,
   ChangeEventHandler,
   forwardRef,
   useImperativeHandle,
   useState,
-  cloneElement,
   ReactElement,
   ForwardRefRenderFunction,
 } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 
-interface SelectOptionProps
-  extends React.DetailedHTMLProps<
-    React.OptionHTMLAttributes<HTMLOptionElement>,
-    HTMLOptionElement
-  > {
-  value: string;
-}
+// interface SelectOptionProps
+//   extends React.DetailedHTMLProps<
+//     React.OptionHTMLAttributes<HTMLOptionElement>,
+//     HTMLOptionElement
+//   > {
+//   value: string;
+// }
 
 export interface SelectProps extends PropsWithChildren {
   children: Array<ReactElement>;
@@ -31,14 +29,17 @@ export interface SelectProps extends PropsWithChildren {
   value?: string;
 }
 
+const BLANK = '';
+
 const SelectComponent: ForwardRefRenderFunction<InputRef, SelectProps> = (
   { children, ...props },
   ref,
 ) => {
-  const [selectedValue, setSelectedValue] = useState<string | undefined>(props.value);
+  const [selectedValue, setSelectedValue] = useState<string>(props.value || BLANK);
 
   function clearValue() {
-    setSelectedValue(undefined);
+    setSelectedValue(BLANK);
+    //props.onChange()
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLSelectElement>) {
@@ -48,17 +49,17 @@ const SelectComponent: ForwardRefRenderFunction<InputRef, SelectProps> = (
     }
   }
 
-  const renderChildren = () => {
-    return Children.map(children, (child) => {
-      if (React.isValidElement(child) && child.type === 'option') {
-        const optionProps = child.props as SelectOptionProps;
-        return cloneElement(child as React.ReactElement<SelectOptionProps>, {
-          ...optionProps,
-        });
-      }
-      return child;
-    });
-  };
+  // const renderChildren = () => {
+  //   return Children.map(children, (child) => {
+  //     if (React.isValidElement(child) && child.type === 'option') {
+  //       const optionProps = child.props as SelectOptionProps;
+  //       return cloneElement(child as React.ReactElement<SelectOptionProps>, {
+  //         ...optionProps,
+  //       });
+  //     }
+  //     return child;
+  //   });
+  // };
 
   useImperativeHandle(ref, () => ({ clearValue }));
 
@@ -73,10 +74,10 @@ const SelectComponent: ForwardRefRenderFunction<InputRef, SelectProps> = (
         data-testid={props.id}
         disabled={props.disabled}
         aria-label={props.ariaLabel}
-        value={selectedValue || ''}
+        value={selectedValue}
       >
-        <option value=""></option>
-        {renderChildren()}
+        <option value={BLANK}></option>
+        {children}
       </select>
     </div>
   );
