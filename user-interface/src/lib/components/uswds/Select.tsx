@@ -84,3 +84,7 @@ const SelectComponent: ForwardRefRenderFunction<InputRef, SelectProps> = (
 };
 const Select = forwardRef(SelectComponent);
 export default Select;
+
+export interface SelectRef {
+  clearValue: () => void;
+}

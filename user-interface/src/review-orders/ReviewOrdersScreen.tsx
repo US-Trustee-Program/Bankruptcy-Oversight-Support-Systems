@@ -11,6 +11,16 @@ import {
 } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 
+// TODO: Consider moving statusType and orderType to a common lib.
+export const statusType = new Map();
+statusType.set('pending', 'Pending Review');
+statusType.set('approved', 'Approved');
+statusType.set('rejected', 'Rejected');
+
+export const orderType = new Map();
+orderType.set('transfer', 'Transfer');
+orderType.set('consolidation', 'Consolidation');
+
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
   const bKey = b.courtName + '-' + b.courtDivisionName;
@@ -55,15 +65,6 @@ export default function ReviewOrders() {
     getOrders();
     getOffices();
   }, []);
-
-  const statusType = new Map();
-  statusType.set('pending', 'Pending Review');
-  statusType.set('approved', 'Approved');
-  statusType.set('rejected', 'Rejected');
-
-  const orderType = new Map();
-  orderType.set('transfer', 'Transfer');
-  orderType.set('consolidation', 'Consolidation');
 
   return (
     <div data-testid="review-orders-screen" className="review-orders-screen">
