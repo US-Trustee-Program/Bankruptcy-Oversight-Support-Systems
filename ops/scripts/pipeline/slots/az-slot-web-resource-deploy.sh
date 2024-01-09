@@ -15,7 +15,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-deploy.sh -h -g resourceGroupName --webappName webappName --apiName functionappName --slotName staging"
+        echo "USAGE: az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiName functionappName --slotName staging"
         exit 0
         ;;
     --resourceGroup)
@@ -49,3 +49,6 @@ az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg
 
 echo "Modifying app settings for deployment slot..."
 az webapp config appsettings set --resource-group "${app_rg}"  --name "${webapp_name}" --slot "${slot_name}" --settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
+
+# shellcheck disable=SC2086
+az webapp traffic-routing set --distribution ${slot_name}=0 --name "${webapp_name}" --resource-group "${app_rg}"

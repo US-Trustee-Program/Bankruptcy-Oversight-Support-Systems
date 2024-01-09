@@ -15,7 +15,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-deploy.sh -h -g resourceGroupName --webappName webappName --apiName functionappName --slot staging"
+        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --storageAccName apiStorageAccountName"
         exit 0
         ;;
     --resourceGroup)
@@ -92,3 +92,6 @@ az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" -
 
 echo "Setting KeyVaultReferenceIdentity..."
 az functionapp update --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
+
+# shellcheck disable=SC2086
+az webapp traffic-routing set --distribution ${slot_name}=0 --name "${api_name}" --resource-group "${app_rg}"

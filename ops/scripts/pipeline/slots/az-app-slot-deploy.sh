@@ -15,7 +15,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName"
+        echo "USAGE: az-app-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName"
         shift
         ;;
     -g | --resourceGroup)

@@ -15,8 +15,7 @@ param databaseContainers array = [
   {
     name: 'assignments'
     partitionKey1: '/caseId'
-    partitionKey2: '/documentType'
-    partitionKeys: ['/caseId', '/documentType']
+    partitionKeys: ['/caseId']
   }
 ]
 

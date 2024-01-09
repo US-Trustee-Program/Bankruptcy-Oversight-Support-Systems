@@ -42,6 +42,7 @@ CAMS_SERVER_PROTOCOL=http[s]
 CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 CAMS_PA11Y={a string: true | false}
 CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly}
+CAMS_INFO_SHA={expect commit sha used to build current version}
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.
