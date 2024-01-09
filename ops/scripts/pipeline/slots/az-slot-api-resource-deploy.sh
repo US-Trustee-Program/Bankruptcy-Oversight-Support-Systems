@@ -82,13 +82,17 @@ az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --al
 
 echo "Assigning managed Identities..."
 # Identities occasionally come through with improper id for usage here, this constructs that
-sql_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$sql_id_name'].id" -o tsv)
 kv_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$kv_id_name'].id" -o tsv)
 cosmos_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$cosmos_id_name'].id" -o tsv)
-
+identities="$kv_ref_id $cosmos_ref_id"
+# In USTP we do not use managed ID for SQL, we might not have this
+if [[ ${sql_id_name} != null && ${sql_id_name} != '' ]]; then
+    sql_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$sql_id_name'].id" -o tsv)
+    identities="$identities $sql_ref_id"
+fi
 
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
-az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $kv_ref_id $sql_ref_id $cosmos_ref_id
+az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $identities
 
 echo "Setting KeyVaultReferenceIdentity..."
 az functionapp update --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
