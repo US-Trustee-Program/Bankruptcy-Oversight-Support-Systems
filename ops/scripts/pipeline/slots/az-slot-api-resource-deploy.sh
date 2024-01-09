@@ -12,7 +12,7 @@
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-sql_ref_id=''
+sql_id_name=''
 
 while [[ $# -gt 0 ]]; do
     case $1 in
