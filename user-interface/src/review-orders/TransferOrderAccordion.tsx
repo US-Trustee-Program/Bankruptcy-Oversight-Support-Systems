@@ -41,19 +41,21 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
   );
 
   function handleCourtSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
+    const updated = { ...orderTransfer };
     const office = officesList.find((o) => o.divisionCode === ev.target.value);
     // TODO: Need to add court IDS to the OrderTransfer
-    orderTransfer.newRegionId = office?.region;
-    orderTransfer.newCourtName = office?.courtName;
-    orderTransfer.newCourtDivisionName = office?.courtDivisionName;
-    setOrderTransfer(orderTransfer);
+    updated.newRegionId = office?.region;
+    updated.newCourtName = office?.courtName;
+    updated.newCourtDivisionName = office?.courtDivisionName;
+    setOrderTransfer(updated);
   }
 
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const updated = { ...orderTransfer };
     // TODO: Add filter to the input component to limit the format?
     // TODO: Validate the case ID is in format NN-NNNNN.
-    orderTransfer.newCaseId = ev.target.value;
-    setOrderTransfer(orderTransfer);
+    updated.newCaseId = ev.target.value;
+    setOrderTransfer(updated);
   }
 
   function approveOrder(): void {
