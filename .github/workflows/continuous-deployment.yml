@@ -51,6 +51,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ vars.SLOT_NAME }}
+      slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -94,7 +95,7 @@ jobs:
 
           echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
           echo "Slot deployment is enabled: ${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}"
-          echo "Other debug output ${{ github.ref == 'refs/heads/main'}} ${{ inputs.enableSlotDeployment == 'true' }}"
+          echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
 
           # Set to true to attempt to create a new virtual network
           execVnetDeploy=${{ inputs.deployVnet || 'true' }}
@@ -409,7 +410,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/main.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ inputs.enableSlotDeployment == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ inputs.enableSlotDeployment == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
+            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
           echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
@@ -417,14 +418,9 @@ jobs:
           cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
           echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
 
-          keyVaultId=$(cat ./outputs.json | jq -r .keyVaultId.value)
-          echo "keyVaultId=${keyVaultId}" >> $GITHUB_OUTPUT
-          sqlManagedId=$(cat ./outputs.json | jq -r .sqlManagedId.value)
-          echo "sqlManagedId=${sqlManagedId}" >> $GITHUB_OUTPUT
           keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
           echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
-          sqlManagedIdName=$(cat ./outputs.json | jq -r .sqlManagedIdName.value)
-          echo "sqlManagedIdName=${sqlManagedIdName}" >> $GITHUB_OUTPUT
+
       - name: Deploy database
         id: azure-db-deploy
         run: |
@@ -444,7 +440,7 @@ jobs:
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
 
       - name: Create Webapp Slot Resource
-        if: ((github.ref == 'refs/heads/main') || (inputs.enableSlotDeployment == 'true'))
+        if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
         run: |
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
             --webappName ${{ needs.build-info.outputs.webappName }} \
@@ -453,7 +449,7 @@ jobs:
             --slotName ${{ needs.build-info.outputs.slotName }}
 
       - name: Create API Slot Resource
-        if: ((github.ref == 'refs/heads/main') || (inputs.enableSlotDeployment == 'true' ))
+        if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
         run: |
           slotStorageAccountName=ustpslot${{ needs.build-info.outputs.environmentHash }}
 
@@ -464,7 +460,7 @@ jobs:
             --idResourceGroup ${{ secrets.AZURE_RG }} \
             --slotName ${{ needs.build-info.outputs.slotName }} \
             --kvIdName ${{ steps.azure-deploy.outputs.keyVaultManagedIdName }} \
-            --sqlIdName ${{ steps.azure-deploy.outputs.sqlManagedIdName }} \
+            --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --cosmosIdName ${{ steps.azure-db-deploy.outputs.cosmosDbManagedIdName }} \
             --storageAccName ${slotStorageAccountName:0:24}
 
@@ -472,7 +468,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'false'
+    if: needs.build-info.outputs.slotDeploymentEnabled == 'false'
     steps:
       - uses: actions/checkout@main
 
@@ -495,7 +491,6 @@ jobs:
 
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
-        if: ((github.ref == 'refs/heads/main') ||  (inputs.enableSlotDeployment == 'false'))
         continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
@@ -516,7 +511,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'false'
+    if: needs.build-info.outputs.slotDeploymentEnabled == 'false'
     steps:
       - uses: actions/checkout@main
 
@@ -656,7 +651,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true'
+    if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
     steps:
       - uses: actions/checkout@main
 
@@ -701,7 +696,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-info, deploy]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true'
+    if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
     steps:
       - uses: actions/checkout@main
 
@@ -744,7 +739,7 @@ jobs:
           --settings "INFO_SHA=${{ github.sha }}"
 
   smoke-test-application-slots:
-    if: ((github.ref == 'refs/heads/main') || (inputs.enableSlotDeployment == 'true' ))
+    if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp-slot, deploy-service-slot]
     environment: ${{ needs.build-info.outputs.environment }}

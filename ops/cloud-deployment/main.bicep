@@ -213,10 +213,3 @@ resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdenti
 }
 output keyVaultId string = identityKeyVaultAppConfig.id
 output keyVaultManagedIdName string = identityKeyVaultAppConfig.name
-
-resource identitySQL 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: sqlServerIdentityName
-  scope: resourceGroup(sqlServerIdentityResourceGroupName)
-}
-output sqlManagedId string = identitySQL.id
-output sqlManagedIdName string = identitySQL.name

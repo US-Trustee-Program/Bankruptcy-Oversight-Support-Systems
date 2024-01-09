@@ -398,4 +398,3 @@ output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output createdSqlServerVnetRule bool = createSqlServerVnetRule
 output keyVaultId string = functionApp.properties.keyVaultReferenceIdentity
-output sqlManagedId string = sqlIdentity.id
