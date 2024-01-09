@@ -1,14 +1,15 @@
+import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Input from '@/lib/components/uswds/Input';
-import Select from '@/lib/components/uswds/Select';
+import Select, { SelectRef } from '@/lib/components/uswds/Select';
 import api from '@/lib/models/api';
 import { OfficeDetails, Order, OrderTransfer } from '@/lib/type-declarations/chapter-15';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -32,6 +33,9 @@ interface TransferOrderAccorionProps {
 export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
   const { order, statusType, orderType, officesList } = props;
 
+  const courtSelectionRef = useRef<SelectRef>(null);
+  const caseIdRef = useRef<InputRef>(null);
+
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
   );
@@ -54,11 +58,7 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
 
   function approveOrder(): void {
     if (
-      !(
-        orderTransfer?.newCaseId &&
-        orderTransfer?.newCourtDivisionName &&
-        orderTransfer?.newCourtName
-      )
+      !(orderTransfer.newCaseId && orderTransfer.newCourtDivisionName && orderTransfer.newCourtName)
     ) {
       return;
     }
@@ -81,6 +81,8 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
 
   function cancelUpdate(): void {
     setOrderTransfer(getOrderTransferFromOrder(order));
+    courtSelectionRef.current?.clearValue();
+    caseIdRef.current?.clearValue();
   }
 
   return (
@@ -158,7 +160,7 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
                   data-testid={`court-selection-${order.id}`}
                   onChange={handleCourtSelection}
                   aria-label="New court options"
-                  // ref={courtSelectionRef}
+                  ref={courtSelectionRef}
                   value={orderTransfer.newCourtDivisionCode}
                 >
                   {officesList.map((court, index) => (
@@ -183,7 +185,7 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
                   value={orderTransfer.newCaseId || ''}
                   onChange={handleCaseInputChange}
                   aria-label="New case ID"
-                  // ref={caseIdRef}
+                  ref={caseIdRef}
                 />
               </div>
             </div>
@@ -194,7 +196,7 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
               <span data-testid={`preview-description-${order.id}`}>
-                {orderTransfer?.newRegionId && orderTransfer?.newCourtDivisionName && (
+                {orderTransfer.newRegionId && orderTransfer.newCourtDivisionName && (
                   <CaseSelection
                     fromCourt={{
                       region: order.regionId,
