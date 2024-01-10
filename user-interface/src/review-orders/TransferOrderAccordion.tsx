@@ -216,12 +216,14 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 </div>
                 <div className="form-row">
                   <div className="select-container court-select-container">
-                    <label htmlFor={`court-selection-${order.id}`}>New Court</label>
-                    <div className="usa-combo-box">
+                    <label>New Court</label>
+                    <div
+                      className="usa-combo-box"
+                      data-testid={`court-selection-usa-combo-box-${order.id}`}
+                    >
                       <SearchableSelect
                         id={`court-selection-${order.id}`}
                         className="new-court__select"
-                        data-testid={`court-selection-${order.id}`}
                         closeMenuOnSelect={true}
                         label="Filter by Summary"
                         aria-label="New court options"
