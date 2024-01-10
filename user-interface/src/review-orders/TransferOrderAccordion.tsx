@@ -5,12 +5,15 @@ import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Input from '@/lib/components/uswds/Input';
-import api from '@/lib/models/api';
+import Api from '../lib/models/api';
+import MockApi from '../lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, Order, OrderTransfer } from '@/lib/type-declarations/chapter-15';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
+import { AlertDetails } from '@/review-orders/ReviewOrdersScreen';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -23,13 +26,44 @@ export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   };
 }
 
+export function getOfficeList(officesList: Array<OfficeDetails>) {
+  const mapOutput = officesList.map((court) => {
+    return {
+      value: court.divisionCode,
+      label: `${court.courtName} ${court.courtDivisionName}`,
+    };
+  });
+  mapOutput.splice(0, 0, { value: '', label: ' ' });
+  return mapOutput;
+}
+
+export function isValidOrderTransfer(transfer: OrderTransfer) {
+  return transfer.newCaseId && transfer.newCourtDivisionName;
+}
+
+export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
+  // TODO: Move this logic into a CaseIdInput component based on Input.
+  const allowedCharsPattern = /[0-9]/g;
+  const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
+  if (filteredInput.length > 7) {
+    filteredInput.splice(7);
+  }
+  if (filteredInput.length > 2) {
+    filteredInput.splice(2, 0, '-');
+  }
+  const joinedInput = filteredInput?.join('') || '';
+  const caseIdPattern = /^\d{2}-\d{5}$/;
+  const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
+  return { newCaseId, joinedInput };
+}
+
 interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
   officesList: Array<OfficeDetails>;
   regionsMap: Map<string, string>;
-  onOrderUpdate: (order: Order) => void;
+  onOrderUpdate: (alertDetails: AlertDetails, order?: Order) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
 }
@@ -42,13 +76,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
 
+  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
   );
-
-  function isValidOrderTransfer(transfer: OrderTransfer) {
-    return transfer.newCaseId && transfer.newCourtDivisionName;
-  }
 
   function handleCourtSelection(selection: SearchableSelectOption) {
     const updated = { ...orderTransfer };
@@ -63,19 +95,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    // TODO: Move this logic into a CaseIdInput component based on Input.
-    const allowedCharsPattern = /[0-9]/g;
-    const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
-    if (filteredInput.length > 7) {
-      filteredInput.splice(7);
-    }
-    if (filteredInput.length > 2) {
-      filteredInput.splice(2, 0, '-');
-    }
-    const joinedInput = filteredInput?.join('') || '';
+    const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
     caseIdRef.current?.setValue(joinedInput);
-    const caseIdPattern = /^\d{2}-\d{5}$/;
-    const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
+
     const updated = { ...orderTransfer };
     updated.newCaseId = newCaseId;
     approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
@@ -95,11 +117,18 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     api
       .patch(`/orders/${orderTransfer.id}`, orderTransfer)
       .then(() => {
-        // TODO: Need to alert the user there was a success.
-        props.onOrderUpdate({ ...order, ...orderTransfer });
+        props.onOrderUpdate(
+          {
+            message: `Transfer of case to ${orderTransfer.newCaseId} in ${orderTransfer.newCourtName} ${orderTransfer.newCourtDivisionName} was ${orderTransfer.status}.`,
+            type: UswdsAlertStyle.Success,
+            timeOut: 8,
+          },
+          { ...order, ...orderTransfer },
+        );
       })
-      .catch((_e) => {
-        // TODO: Need to alert the user there was a failure.
+      .catch((reason) => {
+        // TODO: make the error message more meaningful
+        props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
       });
   }
 
@@ -111,16 +140,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     approveButtonRef.current?.disableButton(true);
   }
 
-  function getOfficeList(officesList: Array<OfficeDetails>) {
-    const mapOutput = officesList.map((court) => {
-      return {
-        value: court.divisionCode,
-        label: `${court.courtName} ${court.courtDivisionName}`,
-      };
-    });
-    mapOutput.splice(0, 0, { value: '', label: ' ' });
-    return mapOutput;
-  }
   return (
     <Accordion
       key={order.id}

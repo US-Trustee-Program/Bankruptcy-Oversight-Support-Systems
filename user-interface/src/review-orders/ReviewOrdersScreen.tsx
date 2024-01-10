@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
@@ -10,6 +10,14 @@ import {
   OrderResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
+import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+
+export interface AlertDetails {
+  message: string;
+  type: UswdsAlertStyle;
+  timeOut: number;
+  // success: boolean;
+}
 
 // TODO: Consider moving statusType and orderType to a common lib.
 export const statusType = new Map();
@@ -33,6 +41,12 @@ export default function ReviewOrders() {
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
   const [_isOrderListLoading, setIsOrderListLoading] = useState(false);
+  const alertRef = useRef<AlertRefType>(null);
+  const [reviewOrderAlert, setReviewOrderAlert] = useState<AlertDetails>({
+    message: '',
+    type: UswdsAlertStyle.Success,
+    timeOut: 8,
+  });
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
   const regionNumber = '02';
@@ -70,12 +84,17 @@ export default function ReviewOrders() {
       .catch(() => {});
   }
 
-  function handleOrderUpdate(updatedOrder: Order) {
-    setOrderList(
-      orderList.map((order) => {
-        return order.id === updatedOrder.id ? updatedOrder : order;
-      }),
-    );
+  function handleOrderUpdate(alertDetails: AlertDetails, updatedOrder?: Order) {
+    if (updatedOrder) {
+      setOrderList(
+        orderList.map((order) => {
+          return order.id === updatedOrder.id ? updatedOrder : order;
+        }),
+      );
+    }
+
+    setReviewOrderAlert(alertDetails);
+    alertRef.current?.show();
   }
 
   useEffect(() => {
@@ -85,6 +104,14 @@ export default function ReviewOrders() {
 
   return (
     <div data-testid="review-orders-screen" className="review-orders-screen">
+      <Alert
+        message={reviewOrderAlert.message}
+        type={reviewOrderAlert.type}
+        role="status"
+        slim={true}
+        ref={alertRef}
+        timeout={reviewOrderAlert.timeOut}
+      />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">

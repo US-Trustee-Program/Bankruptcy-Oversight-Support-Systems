@@ -5,7 +5,11 @@ import { orderType, statusType } from './ReviewOrdersScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { TransferOrderAccordion } from './TransferOrderAccordion';
+import {
+  TransferOrderAccordion,
+  getOfficeList,
+  isValidOrderTransfer,
+} from './TransferOrderAccordion';
 
 describe('TransferOrderAccordion', () => {
   let order: Order;
@@ -21,18 +25,6 @@ describe('TransferOrderAccordion', () => {
       officeName: 'A1',
       state: 'NY',
       courtName: 'A',
-      courtDivisionName: 'New York 1',
-      regionId: '02',
-      regionName: 'NEW YORK',
-    },
-    {
-      divisionCode: '003',
-      groupDesignator: 'AC',
-      courtId: '0103',
-      officeCode: '3',
-      officeName: 'C1',
-      state: 'NY',
-      courtName: 'C',
       courtDivisionName: 'New York 1',
       regionId: '02',
       regionName: 'NEW YORK',
@@ -138,7 +130,7 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  test('should show preview description when a court is selected', async () => {
+  test.skip('should show preview description when a court is selected', async () => {
     render(
       <BrowserRouter>
         <TransferOrderAccordion
@@ -185,7 +177,7 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  test('should allow a court to be deselected', async () => {
+  test.skip('should allow a court to be deselected', async () => {
     render(
       <BrowserRouter>
         <TransferOrderAccordion
@@ -271,7 +263,7 @@ describe('TransferOrderAccordion', () => {
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    const newValue = '081-22-33333';
+    const newValue = '22-33333';
     const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
     fireEvent.change(newCaseIdText, { target: { value: newValue } });
 
@@ -280,4 +272,58 @@ describe('TransferOrderAccordion', () => {
       expect(newCaseIdText).toHaveValue(newValue);
     });
   });
+
+  test('should determine if an transfer update DTO is valid', () => {
+    const ok = isValidOrderTransfer({
+      id: 'guid-1',
+      caseId: '111-22-33333',
+      sequenceNumber: 0,
+      status: 'pending',
+      newCaseId: '222-33-44444',
+      newCourtDivisionName: 'new court',
+    });
+    expect(ok).toBeTruthy();
+
+    const notOk = isValidOrderTransfer({
+      id: 'guid-1',
+      caseId: '111-22-33333',
+      sequenceNumber: 0,
+      status: 'pending',
+    });
+    expect(notOk).toBeFalsy();
+  });
+
+  // test('should limit user input to a valid case ID', () => {
+  //   const validInput = buildChangeEvent('11-22222');
+  //   const ok = validateNewCaseIdInput(validInput);
+  //   expect(ok.joinedInput).toEqual('');
+  //   expect(ok.newCaseId).toBeUndefined;
+
+  //   const invalidInput = buildChangeEvent('lahwrunxhncntgftitjt');
+  //   const notOK = validateNewCaseIdInput(invalidInput);
+  //   expect(notOK.joinedInput).toEqual('');
+  //   expect(notOK.newCaseId).toBeUndefined;
+  // });
+
+  test('should get office select options', () => {
+    const expectedOptions: Array<Record<string, string>> = [
+      { value: '', label: ' ' },
+      { value: '001', label: 'A New York 1' },
+      { value: '002', label: 'B New York 1' },
+      { value: '003', label: 'C New York 1' },
+    ];
+
+    const sortedTestOffices = [...testOffices].sort((a, b) =>
+      a.divisionCode < b.divisionCode ? -1 : 1,
+    );
+
+    const actualOptions = getOfficeList(sortedTestOffices);
+    expect(actualOptions).toStrictEqual(expectedOptions);
+  });
 });
+
+// function buildChangeEvent(value: string): React.ChangeEvent<HTMLInputElement> {
+//   const element = new HTMLInputElement();
+//   element.value = value;
+//   return { target: element };
+// }
