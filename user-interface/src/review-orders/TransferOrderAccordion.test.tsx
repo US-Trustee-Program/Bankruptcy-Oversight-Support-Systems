@@ -145,6 +145,8 @@ describe('TransferOrderAccordion', () => {
       </BrowserRouter>,
     );
 
+    expect(order.status).toBe('pending');
+
     await waitFor(async () => {
       const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
@@ -158,14 +160,29 @@ describe('TransferOrderAccordion', () => {
       const content = screen.getByTestId(`accordion-content-${order.id}`);
       expect(content).toBeInTheDocument();
       expect(content).toBeVisible();
+
+      const selectionComboBox = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
+      expect(selectionComboBox).toBeInTheDocument();
+      expect(selectionComboBox).toBeVisible();
     });
 
-    const selection = screen.getByTestId(`court-selection-${order.id}`);
+    /**
+     * SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
+     *--/
+    await waitFor(async () => {
+      const selection = document.querySelector(`#court-selection-${order.id}`);
+      expect(selection).toBeInTheDocument();
+      if (selection) {
+        fireEvent.click(selection);
+        fireEvent.change(selection, { target: { value: '001' } });
+      }
+    });
+    */
+    const selection = document.querySelector(`#court-selection-${order.id}`);
     expect(selection).toBeInTheDocument();
-    if (selection) {
-      fireEvent.click(selection);
-      fireEvent.change(selection, { target: { value: '001' } });
-    }
+    const selectionInput = selection?.querySelector('input');
+    expect(selectionInput).toBeInTheDocument();
+    fireEvent.change(selectionInput!, { label: 'New York 1', value: '001' });
 
     await waitFor(async () => {
       const preview = screen.getByTestId(`preview-description-${order.id}`);
