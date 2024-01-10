@@ -29,6 +29,7 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function ReviewOrders() {
+  const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
   const [_isOrderListLoading, setIsOrderListLoading] = useState(false);
@@ -57,8 +58,24 @@ export default function ReviewOrders() {
       .then((data) => {
         const response = data as OfficesResponseData;
         setOfficesList(response.body.sort(officeSorter));
+        setRegionsMap(
+          response.body.reduce((regionsMap, office) => {
+            if (!regionsMap.has(office.regionId)) {
+              regionsMap.set(office.regionId, office.regionName);
+            }
+            return regionsMap;
+          }, new Map()),
+        );
       })
       .catch(() => {});
+  }
+
+  function handleOrderUpdate(updatedOrder: Order) {
+    setOrderList(
+      orderList.map((order) => {
+        return order.id === updatedOrder.id ? updatedOrder : order;
+      }),
+    );
   }
 
   useEffect(() => {
@@ -81,12 +98,11 @@ export default function ReviewOrders() {
                   <TransferOrderAccordion
                     key={`accordion-${order.id}`}
                     order={order}
+                    regionsMap={regionsMap}
                     officesList={officesList}
                     orderType={orderType}
                     statusType={statusType}
-                    onOrderUpdate={() => {
-                      console.log('TBD: handleOrderUpdate');
-                    }}
+                    onOrderUpdate={handleOrderUpdate}
                   ></TransferOrderAccordion>
                 );
               }) || <></>}

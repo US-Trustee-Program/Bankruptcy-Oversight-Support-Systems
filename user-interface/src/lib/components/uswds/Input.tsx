@@ -21,12 +21,22 @@ export interface InputProps {
   inputmode?: 'search' | 'text' | 'email' | 'tel' | 'url' | 'none' | 'numeric' | 'decimal';
 }
 
+const BLANK = '';
+
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string | undefined>(props.value);
 
+  function resetValue() {
+    setInputValue(props.value || BLANK);
+  }
+
   function clearValue() {
-    setInputValue('');
+    setInputValue(BLANK);
+  }
+
+  function setValue(value: string) {
+    setInputValue(value);
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -40,7 +50,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputValue(props.value);
   }, [props.value]);
 
-  useImperativeHandle(ref, () => ({ clearValue }));
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue }));
 
   return (
     <input

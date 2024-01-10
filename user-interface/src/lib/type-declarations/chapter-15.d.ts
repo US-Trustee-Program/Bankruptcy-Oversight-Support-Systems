@@ -121,6 +121,10 @@ export type Order = CaseDocketEntry & {
   orderDate: string;
   status: 'pending' | 'approved' | 'rejected';
   newCaseId?: string;
+  newCourtName?: string;
+  newCourtDivisionName?: string;
+  newDivisionCode?: string;
+  newRegionId?: string;
 };
 
 export interface OrderResponseData extends ResponseData {
@@ -136,7 +140,13 @@ export interface OfficeDetails {
   officeName: string;
   state: string;
   courtDivisionName: string;
-  region: string;
+  regionId: string;
+  regionName: string;
+}
+
+export interface RegionDetails {
+  regionId: string;
+  regionName: string;
 }
 
 export interface OrderTransfer {
@@ -146,8 +156,9 @@ export interface OrderTransfer {
   newCaseId?: string;
   newCourtName?: string;
   newCourtDivisionName?: string;
-  newCourtDivisionCode?: string;
+  newDivisionCode?: string;
   newRegionId?: string;
+  newRegionName?: string;
   status: OrderStatus;
 }
 

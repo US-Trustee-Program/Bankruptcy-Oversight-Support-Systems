@@ -45,13 +45,12 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         });
       }
 
-      const { newCaseId, newCourtName, newCourtDivisionName, status } = data;
+      // ONLY gather the mutable properties, however many there are.
+      const { id: _id, sequenceNumber: _sn, caseId: _cid, ...mutableProperties } = data;
+
       const updatedOrder = {
         ...existingOrder,
-        newCaseId,
-        newCourtName,
-        newCourtDivisionName,
-        status,
+        ...mutableProperties,
       };
 
       await this.cosmosDbClient
