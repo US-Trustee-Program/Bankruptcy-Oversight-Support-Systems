@@ -11,6 +11,11 @@ import {
   isValidOrderTransfer,
 } from './TransferOrderAccordion';
 
+vi.mock(
+  '../lib/components/SearchableSelect',
+  () => import('../lib/components/SearchableSelect.mock'),
+);
+
 describe('TransferOrderAccordion', () => {
   let order: Order;
   const regionMap = new Map();
@@ -130,7 +135,7 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  test.skip('should show preview description when a court is selected', async () => {
+  test('should show preview description when a court is selected', async () => {
     render(
       <BrowserRouter>
         <TransferOrderAccordion
@@ -168,24 +173,14 @@ describe('TransferOrderAccordion', () => {
 
     /**
      * SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
-     *--/
-    await waitFor(async () => {
-      const selection = document.querySelector(`#court-selection-${order.id}`);
-      expect(selection).toBeInTheDocument();
-      if (selection) {
-        fireEvent.click(selection);
-        fireEvent.change(selection, { target: { value: '001' } });
-      }
-    });
-    */
-    const selection = document.querySelector(`#court-selection-${order.id}`);
-    expect(selection).toBeInTheDocument();
-    const selectionInput = selection?.querySelector('input');
-    expect(selectionInput).toBeInTheDocument();
-    fireEvent.change(selectionInput!, { label: 'New York 1', value: '001' });
+     */
+    const selectInput = document.querySelector(`input#court-selection-${order.id}`);
+    expect(selectInput).toBeInTheDocument();
+    fireEvent.change(selectInput!, { target: { value: 'random value' } });
 
+    let preview: HTMLElement;
     await waitFor(async () => {
-      const preview = screen.getByTestId(`preview-description-${order.id}`);
+      preview = screen.getByTestId(`preview-description-${order.id}`);
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
@@ -194,7 +189,7 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  test.skip('should allow a court to be deselected', async () => {
+  test('should allow a court to be deselected', async () => {
     render(
       <BrowserRouter>
         <TransferOrderAccordion
@@ -205,7 +200,7 @@ describe('TransferOrderAccordion', () => {
           onOrderUpdate={() => {}}
           onExpand={() => {}}
           regionsMap={regionMap}
-        />{' '}
+        />
       </BrowserRouter>,
     );
 
@@ -224,15 +219,13 @@ describe('TransferOrderAccordion', () => {
       expect(content).toBeVisible();
     });
 
-    const selection = screen.getByTestId(`court-selection-${order.id}`);
+    let selection = document.querySelector(`input#court-selection-${order.id}`);
     expect(selection).toBeInTheDocument();
-    if (selection) {
-      fireEvent.click(selection);
-      fireEvent.change(selection, { target: { value: '001' } });
-    }
+    fireEvent.change(selection!, { target: { value: 'random value' } });
 
+    let preview: HTMLElement;
     await waitFor(async () => {
-      const preview = screen.getByTestId(`preview-description-${order.id}`);
+      preview = screen.getByTestId(`preview-description-${order.id}`);
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
@@ -240,16 +233,13 @@ describe('TransferOrderAccordion', () => {
       );
     });
 
+    selection = document.querySelector(`input#court-selection-${order.id}`);
     expect(selection).toBeInTheDocument();
-    if (selection) {
-      fireEvent.click(selection);
-      fireEvent.change(selection, { target: { value: '' } });
-    }
+    fireEvent.change(selection!, { target: { value: '' } });
 
     await waitFor(async () => {
       const preview = screen.queryByTestId(`preview-description-${order.id}`);
-      expect(preview).toBeInTheDocument();
-      expect(preview?.textContent).toEqual('');
+      expect(preview).not.toBeInTheDocument();
     });
   });
 

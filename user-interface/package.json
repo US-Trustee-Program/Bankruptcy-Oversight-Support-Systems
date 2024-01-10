@@ -70,11 +70,6 @@
   "overrides": {
     "semver": "^7.5.4"
   },
-  "jest": {
-    "moduleNameMapper": {
-      "^SearchableSelect$": "<rootDir>/src/lib/components/SearchableSelect.mock.tsx"
-    }
-  },
   "scripts": {
     "clean": "rm -rf build & rm -rf node_modules",
     "start": "vite",
