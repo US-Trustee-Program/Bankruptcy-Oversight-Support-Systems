@@ -11,11 +11,14 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 
 const testNewOrderTransferData: OrderTransfer = {
   id: 'test-id-0',
-  sequenceNumber: '2',
+  sequenceNumber: 2,
   caseId: '111-11-11111',
   newCaseId: '000-01-12345',
   newCourtName: 'New Court Name',
   newCourtDivisionName: 'New Division',
+  newDivisionCode: '081',
+  newRegionId: '02',
+  newRegionName: 'NEW YORK',
   status: 'approved',
 };
 

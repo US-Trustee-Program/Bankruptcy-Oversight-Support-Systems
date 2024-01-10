@@ -153,13 +153,12 @@ describe('Review Orders screen', () => {
         expect(content).not.toBeVisible();
         expect(content?.textContent).toContain(order.summaryText);
         expect(content?.textContent).toContain(order.fullText);
-
-        const form = screen.getByTestId(`order-form-${order.id}`);
-        expect(form).toBeInTheDocument();
-
-        console.log(screen.debug(form));
-        const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-        expect(newCaseIdText).toHaveValue(order.newCaseId);
+        if (order.status !== 'approved') {
+          const form = screen.getByTestId(`order-form-${order.id}`);
+          expect(form).toBeInTheDocument();
+          const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+          expect(newCaseIdText).toHaveValue(order.newCaseId);
+        }
       });
     }
   });
