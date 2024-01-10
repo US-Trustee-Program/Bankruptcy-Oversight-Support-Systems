@@ -1,14 +1,25 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { SearchableSelectProps } from './SearchableSelect';
+import { SearchableSelectOption, SearchableSelectProps } from './SearchableSelect';
 import { InputRef } from '../type-declarations/input-fields';
 
 function SearchableSelectComponentMock(props: SearchableSelectProps, ref: React.Ref<InputRef>) {
-  function handleChange() {
-    const option: Record<string, string> = (props.options as Array<Record<string, string>>)[0];
-    return {
-      label: option.courtDivisionName,
-      value: option.divisionCode,
-    };
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const value = event?.target.value;
+
+    if (value.length > 0 && props.options?.length) {
+      const option: SearchableSelectOption = props.options[1];
+      const transformedValue = {
+        label: option?.label,
+        value: option?.value,
+      };
+
+      props.onChange?.(transformedValue);
+    } else {
+      props.onChange?.({
+        label: '',
+        value: '',
+      });
+    }
   }
 
   function clearValue() {}
@@ -23,7 +34,7 @@ function SearchableSelectComponentMock(props: SearchableSelectProps, ref: React.
     };
   });
 
-  return <input id={props.id} className="new-court__select" onChange={() => handleChange}></input>;
+  return <input id={props.id} className="new-court__select" onChange={handleChange}></input>;
 }
 
 const SearchableSelectMock = forwardRef(SearchableSelectComponentMock);

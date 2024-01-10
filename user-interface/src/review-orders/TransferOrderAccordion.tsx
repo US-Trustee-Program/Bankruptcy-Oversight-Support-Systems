@@ -82,6 +82,14 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     getOrderTransferFromOrder(order),
   );
 
+  function isValidOrderTransfer(transfer: OrderTransfer) {
+    return transfer.newCaseId && transfer.newCourtDivisionName;
+  }
+
+  function isCourtSelected(orderTransfer: OrderTransfer) {
+    return orderTransfer.newRegionId && orderTransfer.newCourtDivisionName;
+  }
+
   function handleCourtSelection(selection: SearchableSelectOption) {
     const updated = { ...orderTransfer };
     const office = officesList.find((o) => o.divisionCode === selection?.value);
@@ -237,7 +245,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               </div>
               <div className="grid-col-1"></div>
             </div>
-            {orderTransfer.newRegionId && orderTransfer.newCourtDivisionName && (
+            {isCourtSelected(orderTransfer) && (
               <div className="preview-results grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
                 <div className="grid-col-10">
@@ -248,8 +256,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                         courtDivisionName: order.courtDivisionName,
                       }}
                       toCourt={{
-                        region: orderTransfer.newRegionId,
-                        courtDivisionName: orderTransfer.newCourtDivisionName,
+                        region: orderTransfer.newRegionId || '',
+                        courtDivisionName: orderTransfer.newCourtDivisionName || '',
                       }}
                     ></CaseSelection>
                   </span>
