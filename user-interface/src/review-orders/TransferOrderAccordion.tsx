@@ -42,34 +42,29 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
 
-  // const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
   );
 
-  // function handleRegionSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
-  //   setSelectedRegionId(ev.target.value ? ev.target.value : null);
-  // }
+  function isValidOrderTransfer(transfer: OrderTransfer) {
+    return transfer.newCaseId && transfer.newCourtDivisionName;
+  }
 
   function handleCourtSelection(selection: SearchableSelectOption) {
     const updated = { ...orderTransfer };
-    const office = officesList.find((o) => o.divisionCode === selection?.key);
+    const office = officesList.find((o) => o.divisionCode === selection?.value);
     updated.newRegionId = office?.regionId;
     updated.newRegionName = office?.regionName;
     updated.newCourtName = office?.courtName;
     updated.newCourtDivisionName = office?.courtDivisionName;
     updated.newDivisionCode = office?.divisionCode;
-    if (updated.newCaseId && updated.newCourtDivisionName) {
-      approveButtonRef.current?.disableButton(false);
-    } else {
-      approveButtonRef.current?.disableButton(true);
-    }
+    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
     setOrderTransfer(updated);
   }
 
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    // TODO: Move this logic into a CaseIdInput component based on Input.
     const allowedCharsPattern = /[0-9]/g;
-
     const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
     if (filteredInput.length > 7) {
       filteredInput.splice(7);
@@ -77,22 +72,15 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     if (filteredInput.length > 2) {
       filteredInput.splice(2, 0, '-');
     }
-
     const joinedInput = filteredInput?.join('') || '';
     caseIdRef.current?.setValue(joinedInput);
-
     const caseIdPattern = /^\d{2}-\d{5}$/;
     const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
 
     if (!newCaseId) return;
-
     const updated = { ...orderTransfer };
     updated.newCaseId = newCaseId;
-    if (updated.newCaseId && updated.newCourtDivisionName) {
-      approveButtonRef.current?.disableButton(false);
-    } else {
-      approveButtonRef.current?.disableButton(true);
-    }
+    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
     setOrderTransfer(updated);
   }
 
@@ -120,7 +108,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
 
   function cancelUpdate(): void {
     setOrderTransfer(getOrderTransferFromOrder(order));
-    // setSelectedRegionId(null);
     regionSelectionRef.current?.clearValue();
     courtSelectionRef.current?.clearValue();
     caseIdRef.current?.resetValue();
@@ -153,7 +140,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         <div className="grid-row grid-gap-lg">
           <div className="grid-col-1"></div>
           <div className="order-legal-statement grid-col-10">
-            <Link to="#">
+            <Link
+              to={`/case-detail/${order.caseId}/court-docket?document=${order.documentNumber}`}
+              target="_blank"
+            >
               {order.documentNumber && (
                 <span className="document-number">#{order.documentNumber} - </span>
               )}
@@ -199,55 +189,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   to
                 </div>
                 <div className="form-row">
-                  {/* <div className="select-container region-select-container">
-                    <label>New Region</label>
-                    <div className="usa-combo-box">
-                      <Select
-                        className="usa-select new-region__select"
-                        id={`region-selection-${order.id}`}
-                        data-testid={`region-selection-${order.id}`}
-                        onChange={handleRegionSelection}
-                        aria-label="New region options"
-                        ref={regionSelectionRef}
-                        value={orderTransfer.newRegionId}
-                      >
-                        {Array.from(regionsMap, ([regionId, regionName]) => (
-                          <option value={regionId} key={regionId}>
-                            {regionName} ({regionId})
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div> */}
-                  {/* <div className="select-container court-select-container">
-                    <label>New Court</label>
-                    <div className="usa-combo-box">
-                      <Select
-                        className="usa-select new-court__select"
-                        id={`court-selection-${order.id}`}
-                        data-testid={`court-selection-${order.id}`}
-                        onChange={handleCourtSelection}
-                        aria-label="New court options"
-                        ref={courtSelectionRef}
-                        value={orderTransfer.newDivisionCode}
-                        disabled={!selectedRegionId}
-                      >
-                        {officesList
-                          .filter((office) => {
-                            if (selectedRegionId) {
-                              return office.regionId === selectedRegionId;
-                            }
-                            return false;
-                          })
-                          .map((court, index) => (
-                            <option value={court.divisionCode} key={index}>
-                              {court.courtName} ({court.courtDivisionName})
-                            </option>
-                          ))}
-                      </Select>
-                    </div>
-                  </div> */}
-
                   <div className="select-container court-select-container">
                     <label>New Court</label>
                     <div className="usa-combo-box">

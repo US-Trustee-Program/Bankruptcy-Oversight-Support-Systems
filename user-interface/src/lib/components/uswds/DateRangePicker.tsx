@@ -30,6 +30,16 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
   const [startDateValue, setStartDateValue] = useState<string | undefined>(undefined);
   const [endDateValue, setEndDateValue] = useState<string | undefined>(undefined);
 
+  function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
+    if (props.onStartDateChange) props.onStartDateChange(ev);
+  }
+
+  function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    setInternalDateRange({ ...internalDateRange, end: ev.target.value || maxDate });
+    if (props.onEndDateChange) props.onEndDateChange(ev);
+  }
+
   function clearValue() {
     setInternalDateRange(internalDateRange);
     setStartDateValue('');
@@ -42,19 +52,19 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
     }, 250);
   }
 
-  function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
-    if (props.onStartDateChange) props.onStartDateChange(ev);
+  function resetValue() {
+    throw new Error('Not implemented');
   }
 
-  function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInternalDateRange({ ...internalDateRange, end: ev.target.value || maxDate });
-    if (props.onEndDateChange) props.onEndDateChange(ev);
+  function setValue() {
+    throw new Error('Not implemented');
   }
 
   useImperativeHandle(ref, () => {
     return {
       clearValue,
+      resetValue,
+      setValue,
     };
   });
 
