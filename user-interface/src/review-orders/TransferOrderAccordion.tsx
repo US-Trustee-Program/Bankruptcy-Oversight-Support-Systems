@@ -76,8 +76,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     caseIdRef.current?.setValue(joinedInput);
     const caseIdPattern = /^\d{2}-\d{5}$/;
     const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
-
-    if (!newCaseId) return;
     const updated = { ...orderTransfer };
     updated.newCaseId = newCaseId;
     approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
@@ -100,9 +98,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         // TODO: Need to alert the user there was a success.
         props.onOrderUpdate({ ...order, ...orderTransfer });
       })
-      .catch((e) => {
+      .catch((_e) => {
         // TODO: Need to alert the user there was a failure.
-        console.error('The order update failed', e);
       });
   }
 
@@ -114,6 +111,16 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     approveButtonRef.current?.disableButton(true);
   }
 
+  function getOfficeList(officesList: Array<OfficeDetails>) {
+    const mapOutput = officesList.map((court) => {
+      return {
+        value: court.divisionCode,
+        label: `${court.courtName} ${court.courtDivisionName}`,
+      };
+    });
+    mapOutput.splice(0, 0, { value: '', label: ' ' });
+    return mapOutput;
+  }
   return (
     <Accordion
       key={order.id}
@@ -190,7 +197,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 </div>
                 <div className="form-row">
                   <div className="select-container court-select-container">
-                    <label>New Court</label>
+                    <label htmlFor={`court-selection-${order.id}`}>New Court</label>
                     <div className="usa-combo-box">
                       <SearchableSelect
                         id={`court-selection-${order.id}`}
@@ -201,12 +208,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                         aria-label="New court options"
                         ref={courtSelectionRef}
                         onChange={handleCourtSelection}
-                        options={officesList.map((court) => {
-                          return {
-                            value: court.divisionCode,
-                            label: `${court.courtName} ${court.courtDivisionName}`,
-                          };
-                        })}
+                        options={getOfficeList(officesList)}
                       />
                     </div>
                   </div>
@@ -237,7 +239,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             <div className="case-selection grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-4">
-                <label>New Case</label>
+                <label htmlFor={`new-case-input-${order.id}`}>New Case</label>
                 <div>
                   <Input
                     id={`new-case-input-${order.id}`}
