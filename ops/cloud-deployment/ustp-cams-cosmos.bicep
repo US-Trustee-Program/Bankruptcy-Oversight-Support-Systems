@@ -10,12 +10,10 @@ param databaseContainers array = [
   {
     name: 'healthcheck'
     partitionKey1: '/id'
-    partitionKeys: ['/id']
   }
   {
     name: 'assignments'
     partitionKey1: '/caseId'
-    partitionKeys: ['/caseId']
   }
 ]
 
@@ -145,4 +143,3 @@ module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.b
 
 output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
 output cosmosDbPrincipalId string = cosmosDbUserManagedIdentity.outputs.principalId
-output cosmosDbManagedIdName string = cosmosDbUserManagedIdentity.outputs.name
