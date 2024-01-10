@@ -158,7 +158,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'A District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '002',
@@ -169,7 +170,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'B District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '003',
@@ -180,7 +182,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'C District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '004',
@@ -191,7 +194,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'D District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
   ];
 

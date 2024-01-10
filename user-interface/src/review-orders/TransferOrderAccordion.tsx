@@ -1,15 +1,16 @@
+import './TransferOrderAccordion.scss';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Input from '@/lib/components/uswds/Input';
-import Select, { SelectRef } from '@/lib/components/uswds/Select';
 import api from '@/lib/models/api';
 import { OfficeDetails, Order, OrderTransfer } from '@/lib/type-declarations/chapter-15';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -22,39 +23,76 @@ export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   };
 }
 
-interface TransferOrderAccorionProps {
+interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
   officesList: Array<OfficeDetails>;
+  regionsMap: Map<string, string>;
   onOrderUpdate: (order: Order) => void;
+  onExpand?: (id: string) => void;
+  expandedId?: string;
 }
 
-export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
-  const { order, statusType, orderType, officesList } = props;
+export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
+  const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
 
-  const courtSelectionRef = useRef<SelectRef>(null);
+  const regionSelectionRef = useRef<InputRef>(null);
+  const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
+  const approveButtonRef = useRef<ButtonRef>(null);
 
+  // const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
   );
 
-  function handleCourtSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
+  // function handleRegionSelection(ev: React.ChangeEvent<HTMLSelectElement>) {
+  //   setSelectedRegionId(ev.target.value ? ev.target.value : null);
+  // }
+
+  function handleCourtSelection(selection: SearchableSelectOption) {
     const updated = { ...orderTransfer };
-    const office = officesList.find((o) => o.divisionCode === ev.target.value);
-    // TODO: Need to add court IDS to the OrderTransfer
-    updated.newRegionId = office?.region;
+    const office = officesList.find((o) => o.divisionCode === selection?.key);
+    updated.newRegionId = office?.regionId;
+    updated.newRegionName = office?.regionName;
     updated.newCourtName = office?.courtName;
     updated.newCourtDivisionName = office?.courtDivisionName;
+    updated.newDivisionCode = office?.divisionCode;
+    if (updated.newCaseId && updated.newCourtDivisionName) {
+      approveButtonRef.current?.disableButton(false);
+    } else {
+      approveButtonRef.current?.disableButton(true);
+    }
     setOrderTransfer(updated);
   }
 
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const allowedCharsPattern = /[0-9]/g;
+
+    const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
+    if (filteredInput.length > 7) {
+      filteredInput.splice(7);
+    }
+    if (filteredInput.length > 2) {
+      filteredInput.splice(2, 0, '-');
+    }
+
+    const joinedInput = filteredInput?.join('') || '';
+    caseIdRef.current?.setValue(joinedInput);
+
+    const caseIdPattern = /^\d{2}-\d{5}$/;
+    const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
+
+    if (!newCaseId) return;
+
     const updated = { ...orderTransfer };
-    // TODO: Add filter to the input component to limit the format?
-    // TODO: Validate the case ID is in format NN-NNNNN.
-    updated.newCaseId = ev.target.value;
+    updated.newCaseId = newCaseId;
+    if (updated.newCaseId && updated.newCourtDivisionName) {
+      approveButtonRef.current?.disableButton(false);
+    } else {
+      approveButtonRef.current?.disableButton(true);
+    }
     setOrderTransfer(updated);
   }
 
@@ -66,8 +104,7 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
     }
 
     orderTransfer.status = 'approved';
-    // TODO: Need to make sure the division code prefix is added HERE.
-    // orderSelection.newCaseId = ''
+    orderTransfer.newCaseId = orderTransfer.newDivisionCode + '-' + orderTransfer.newCaseId;
 
     api
       .patch(`/orders/${orderTransfer.id}`, orderTransfer)
@@ -83,12 +120,20 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
 
   function cancelUpdate(): void {
     setOrderTransfer(getOrderTransferFromOrder(order));
+    // setSelectedRegionId(null);
+    regionSelectionRef.current?.clearValue();
     courtSelectionRef.current?.clearValue();
-    caseIdRef.current?.clearValue();
+    caseIdRef.current?.resetValue();
+    approveButtonRef.current?.disableButton(true);
   }
 
   return (
-    <Accordion key={order.id} id={`order-list-${order.id}`}>
+    <Accordion
+      key={order.id}
+      id={`order-list-${order.id}`}
+      expandedId={expandedId}
+      onExpand={onExpand}
+    >
       <section
         className="accordion-heading grid-row grid-gap-lg"
         data-testid={`accordion-heading-${order.id}`}
@@ -119,115 +164,171 @@ export function TransferOrderAccordion(props: TransferOrderAccorionProps) {
           </div>
           <div className="grid-col-1"></div>
         </div>
-        <section className="order-form" data-testid={`order-form-${order.id}`}>
-          <div className="court-selection grid-row grid-gap-lg">
+        {order.status === 'approved' && (
+          <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
-            <div className="transfer-from-to__div grid-col-10">
-              <div className="transfer-text">
-                Transfer
-                <span className="transfer-highlight__span">{order.caseId}</span>
-                from
-                <span className="transfer-highlight__span">
-                  {order.courtName} ({order.courtDivisionName})
-                </span>
-                to
-              </div>
-              <label>New Court</label>
-              <div className="usa-combo-box">
-                {/* <div className="ustp-icon-input">
-                  <select
-                    className={`usa-select usa-tooltip usa-select new-court__select`}
-                    id={`court-selection-${order.id}`}
-                    onChange={(ev) => handleCourtSelection(ev, order)}
-                    data-testid={`court-selection-${idx}`}
-                    aria-label={'New court options'}
-                    value={
-                      orderSelection.id === order.id
-                        ? orderSelection.newCourtDivisionCode
-                        : ''
-                    }
-                  >
-                    <option value={''}></option>
-                    {officesList.map((court, index) => (
-                      <option value={court.divisionCode} key={index}>
-                        {court.courtName} ({court.courtDivisionName})
-                      </option>
-                    ))}
-                  </select>
-                </div> */}
-
-                <Select
-                  className="usa-select new-court__select"
-                  id={`court-selection-${order.id}`}
-                  data-testid={`court-selection-${order.id}`}
-                  onChange={handleCourtSelection}
-                  aria-label="New court options"
-                  ref={courtSelectionRef}
-                  value={orderTransfer.newCourtDivisionCode}
-                >
-                  {officesList.map((court, index) => (
-                    <option value={court.divisionCode} key={index}>
-                      {court.courtName} ({court.courtDivisionName})
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-            <div className="grid-col-1"></div>
-          </div>
-          <div className="case-selection grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
-            <div className="grid-col-4">
-              <label>New Case</label>
-              <div>
-                <Input
-                  id={`new-case-input-${order.id}`}
-                  data-testid={`new-case-input-${order.id}`}
-                  className="usa-input"
-                  value={orderTransfer.newCaseId || ''}
-                  onChange={handleCaseInputChange}
-                  aria-label="New case ID"
-                  ref={caseIdRef}
-                />
-              </div>
-            </div>
-            <div className="grid-col-6"></div>
-            <div className="grid-col-1"></div>
-          </div>
-          <div className="preview-results grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
-            <div className="grid-col-10">
-              <span data-testid={`preview-description-${order.id}`}>
-                {orderTransfer.newRegionId && orderTransfer.newCourtDivisionName && (
-                  <CaseSelection
-                    fromCourt={{
-                      region: order.regionId,
-                      courtDivisionName: order.courtDivisionName,
-                    }}
-                    toCourt={{
-                      region: orderTransfer.newRegionId,
-                      courtDivisionName: orderTransfer.newCourtDivisionName,
-                    }}
-                  ></CaseSelection>
-                )}
+            <div className="transfer-text grid-col-10">
+              Transferred
+              <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
+              from
+              <span className="transfer-highlight__span">
+                {order.courtName} ({order.courtDivisionName})
+              </span>
+              to case ID
+              <span className="transfer-highlight__span">{getCaseNumber(order.newCaseId)}</span>
+              and court
+              <span className="transfer-highlight__span">
+                {order.newCourtName} ({order.newCourtDivisionName})
               </span>
             </div>
             <div className="grid-col-1"></div>
           </div>
-          <div className="button-bar grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
-            <div className="grid-col-6"></div>
-            <div className="grid-col-2">
-              <Button onClick={cancelUpdate} uswdsStyle={UswdsButtonStyle.Outline}>
-                Cancel
-              </Button>
+        )}
+        {order.status !== 'approved' && (
+          <section className="order-form" data-testid={`order-form-${order.id}`}>
+            <div className="court-selection grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="transfer-from-to__div grid-col-10">
+                <div className="transfer-text">
+                  Transfer
+                  <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
+                  from
+                  <span className="transfer-highlight__span">
+                    {order.courtName} ({order.courtDivisionName})
+                  </span>
+                  to
+                </div>
+                <div className="form-row">
+                  {/* <div className="select-container region-select-container">
+                    <label>New Region</label>
+                    <div className="usa-combo-box">
+                      <Select
+                        className="usa-select new-region__select"
+                        id={`region-selection-${order.id}`}
+                        data-testid={`region-selection-${order.id}`}
+                        onChange={handleRegionSelection}
+                        aria-label="New region options"
+                        ref={regionSelectionRef}
+                        value={orderTransfer.newRegionId}
+                      >
+                        {Array.from(regionsMap, ([regionId, regionName]) => (
+                          <option value={regionId} key={regionId}>
+                            {regionName} ({regionId})
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div> */}
+                  {/* <div className="select-container court-select-container">
+                    <label>New Court</label>
+                    <div className="usa-combo-box">
+                      <Select
+                        className="usa-select new-court__select"
+                        id={`court-selection-${order.id}`}
+                        data-testid={`court-selection-${order.id}`}
+                        onChange={handleCourtSelection}
+                        aria-label="New court options"
+                        ref={courtSelectionRef}
+                        value={orderTransfer.newDivisionCode}
+                        disabled={!selectedRegionId}
+                      >
+                        {officesList
+                          .filter((office) => {
+                            if (selectedRegionId) {
+                              return office.regionId === selectedRegionId;
+                            }
+                            return false;
+                          })
+                          .map((court, index) => (
+                            <option value={court.divisionCode} key={index}>
+                              {court.courtName} ({court.courtDivisionName})
+                            </option>
+                          ))}
+                      </Select>
+                    </div>
+                  </div> */}
+
+                  <div className="select-container court-select-container">
+                    <label>New Court</label>
+                    <div className="usa-combo-box">
+                      <SearchableSelect
+                        id={`court-selection-${order.id}`}
+                        className="new-court__select"
+                        data-testid={`court-selection-${order.id}`}
+                        closeMenuOnSelect={true}
+                        label="Filter by Summary"
+                        aria-label="New court options"
+                        ref={courtSelectionRef}
+                        onChange={handleCourtSelection}
+                        options={officesList.map((court) => {
+                          return {
+                            value: court.divisionCode,
+                            label: `${court.courtName} ${court.courtDivisionName}`,
+                          };
+                        })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid-col-1"></div>
             </div>
-            <div className="grid-col-2">
-              <Button onClick={approveOrder}>Approve</Button>
+            {orderTransfer.newRegionId && orderTransfer.newCourtDivisionName && (
+              <div className="preview-results grid-row grid-gap-lg">
+                <div className="grid-col-1"></div>
+                <div className="grid-col-10">
+                  <span data-testid={`preview-description-${order.id}`}>
+                    <CaseSelection
+                      fromCourt={{
+                        region: order.regionId,
+                        courtDivisionName: order.courtDivisionName,
+                      }}
+                      toCourt={{
+                        region: orderTransfer.newRegionId,
+                        courtDivisionName: orderTransfer.newCourtDivisionName,
+                      }}
+                    ></CaseSelection>
+                  </span>
+                </div>
+                <div className="grid-col-1"></div>
+              </div>
+            )}
+            <div className="case-selection grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-4">
+                <label>New Case</label>
+                <div>
+                  <Input
+                    id={`new-case-input-${order.id}`}
+                    data-testid={`new-case-input-${order.id}`}
+                    className="usa-input"
+                    value={orderTransfer.newCaseId || ''}
+                    onChange={handleCaseInputChange}
+                    aria-label="New case ID"
+                    ref={caseIdRef}
+                  />
+                </div>
+              </div>
+              <div className="grid-col-6"></div>
+              <div className="grid-col-1"></div>
             </div>
-            <div className="grid-col-1"></div>
-          </div>
-        </section>
+            <div className="button-bar grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-6"></div>
+              <div className="grid-col-2">
+                <Button onClick={cancelUpdate} uswdsStyle={UswdsButtonStyle.Outline}>
+                  Cancel
+                </Button>
+              </div>
+              <div className="grid-col-2">
+                <Button onClick={approveOrder} disabled={true} ref={approveButtonRef}>
+                  Approve
+                </Button>
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+          </section>
+        )}
       </section>
     </Accordion>
   );

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
-import ReviewOrders, { orderType, statusType } from './ReviewOrdersScreen';
+import { orderType, statusType } from './ReviewOrdersScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -9,6 +9,9 @@ import { TransferOrderAccordion } from './TransferOrderAccordion';
 
 describe('TransferOrderAccordion', () => {
   let order: Order;
+  const regionMap = new Map();
+  regionMap.set('02', 'NEW YORK');
+
   const testOffices: OfficeDetails[] = [
     {
       divisionCode: '001',
@@ -19,7 +22,8 @@ describe('TransferOrderAccordion', () => {
       state: 'NY',
       courtName: 'A',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '003',
@@ -30,7 +34,8 @@ describe('TransferOrderAccordion', () => {
       state: 'NY',
       courtName: 'C',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '003',
@@ -41,7 +46,8 @@ describe('TransferOrderAccordion', () => {
       state: 'NY',
       courtName: 'C',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '002',
@@ -52,7 +58,8 @@ describe('TransferOrderAccordion', () => {
       state: 'NY',
       courtName: 'B',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
   ];
   beforeAll(async () => {
@@ -70,6 +77,8 @@ describe('TransferOrderAccordion', () => {
           orderType={orderType}
           statusType={statusType}
           onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
         />
       </BrowserRouter>,
     );
@@ -97,7 +106,15 @@ describe('TransferOrderAccordion', () => {
   test('should expand and show detail when a header is clicked', async () => {
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
       </BrowserRouter>,
     );
 
@@ -124,7 +141,15 @@ describe('TransferOrderAccordion', () => {
   test('should show preview description when a court is selected', async () => {
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
       </BrowserRouter>,
     );
 
@@ -163,7 +188,15 @@ describe('TransferOrderAccordion', () => {
   test('should allow a court to be deselected', async () => {
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
       </BrowserRouter>,
     );
 
@@ -214,7 +247,15 @@ describe('TransferOrderAccordion', () => {
   test('should allow the new case ID to be entered', async () => {
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
       </BrowserRouter>,
     );
 

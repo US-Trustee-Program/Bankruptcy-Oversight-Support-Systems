@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // refactor - let's find a way to avoid using any
-import './MultiSelect.scss';
-import ReactSelect from 'react-select';
+import './SearchableSelect.scss';
+import ReactSelect, { SingleValue } from 'react-select';
 import { forwardRef, useImperativeHandle } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 
-export declare type MultiSelectOptionList<Option> = readonly Option[];
+export type SearchableSelectOption = SingleValue<Record<string, string>>;
 
-export interface MultiSelectProps {
-  onChange?: (newValue: MultiSelectOptionList<Record<string, string>>) => void;
+export interface SearchableSelectProps {
+  onChange: (newValue: SearchableSelectOption) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
   options?: Record<string, string>[];
@@ -17,8 +17,8 @@ export interface MultiSelectProps {
   id: string;
 }
 
-function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>) {
-  const multiSelectRef = React.useRef(null);
+function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<InputRef>) {
+  const searchableSelectRef = React.useRef(null);
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
       ...provided,
@@ -74,8 +74,8 @@ function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>)
   };
 
   function clearValue() {
-    if (multiSelectRef.current && Object.hasOwn(multiSelectRef.current, 'clearValue')) {
-      (multiSelectRef.current as InputRef).clearValue();
+    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'clearValue')) {
+      (searchableSelectRef.current as InputRef).clearValue();
     }
   }
 
@@ -99,17 +99,17 @@ function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>)
     <ReactSelect
       aria-label={props.label}
       options={props.options}
-      isMulti
       closeMenuOnSelect={props.closeMenuOnSelect}
       onChange={props.onChange}
-      className={`${props.className || ''} cams-multi-select`}
+      className={`${props.className || ''} cams-searchable-select`}
       styles={customStyles}
       id={props.id}
       data-testid={props.id}
-      ref={multiSelectRef}
+      ref={searchableSelectRef}
+      isSearchable={true}
     ></ReactSelect>
   );
 }
 
-const MultiSelect = forwardRef(MultiSelectComponent);
-export default MultiSelect;
+const SearchableSelect = forwardRef(SearchableSelectComponent);
+export default SearchableSelect;

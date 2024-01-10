@@ -14,15 +14,23 @@ export type Order = CaseDocketEntry & {
   orderDate: string;
   status: OrderStatus;
   newCaseId?: string;
+  newCourtName?: string;
+  newCourtDivisionName?: string;
+  newDivisionCode?: string;
+  newRegionId?: string;
+  newRegionName?: string;
 };
 
 export type OrderTransfer = {
   id: string;
-  sequenceNumber: string;
+  sequenceNumber: number;
   caseId: string;
   newCaseId: string;
   newCourtName: string;
   newCourtDivisionName: string;
+  newDivisionCode: string;
+  newRegionId: string;
+  newRegionName: string;
   status: OrderStatus;
 };
 

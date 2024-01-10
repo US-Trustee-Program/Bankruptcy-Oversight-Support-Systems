@@ -32,7 +32,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'A',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -43,7 +44,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -54,7 +56,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '002',
@@ -65,7 +68,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'B',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
     ];
     const expectedOffices: OfficeDetails[] = [
@@ -78,7 +82,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'A',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '002',
@@ -89,7 +94,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'B',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -100,7 +106,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -111,7 +118,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
     ];
     const actualOffices = testOffices.sort(officeSorter);

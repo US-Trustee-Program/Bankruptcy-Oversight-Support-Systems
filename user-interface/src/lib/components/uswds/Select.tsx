@@ -9,14 +9,6 @@ import React, {
 } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 
-// interface SelectOptionProps
-//   extends React.DetailedHTMLProps<
-//     React.OptionHTMLAttributes<HTMLOptionElement>,
-//     HTMLOptionElement
-//   > {
-//   value: string;
-// }
-
 export interface SelectProps extends PropsWithChildren {
   children: Array<ReactElement>;
   id: string;
@@ -37,9 +29,16 @@ const SelectComponent: ForwardRefRenderFunction<InputRef, SelectProps> = (
 ) => {
   const [selectedValue, setSelectedValue] = useState<string>(props.value || BLANK);
 
+  function resetValue() {
+    setSelectedValue(props.value || BLANK);
+  }
+
   function clearValue() {
     setSelectedValue(BLANK);
-    //props.onChange()
+  }
+
+  function setValue(value: string) {
+    setSelectedValue(value);
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLSelectElement>) {
@@ -49,42 +48,24 @@ const SelectComponent: ForwardRefRenderFunction<InputRef, SelectProps> = (
     }
   }
 
-  // const renderChildren = () => {
-  //   return Children.map(children, (child) => {
-  //     if (React.isValidElement(child) && child.type === 'option') {
-  //       const optionProps = child.props as SelectOptionProps;
-  //       return cloneElement(child as React.ReactElement<SelectOptionProps>, {
-  //         ...optionProps,
-  //       });
-  //     }
-  //     return child;
-  //   });
-  // };
-
-  useImperativeHandle(ref, () => ({ clearValue }));
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue }));
 
   return (
-    <div className="ustp-icon-input">
-      <select
-        className={`usa-select usa-tooltip ${props.className}`}
-        id={props.id}
-        name={props.name}
-        title={props.title}
-        onChange={handleOnChange}
-        data-testid={props.id}
-        disabled={props.disabled}
-        aria-label={props.ariaLabel}
-        value={selectedValue}
-      >
-        <option value={BLANK}></option>
-        {children}
-      </select>
-    </div>
+    <select
+      className={`usa-select usa-tooltip ${props.className}`}
+      id={props.id}
+      name={props.name}
+      title={props.title}
+      onChange={handleOnChange}
+      data-testid={props.id}
+      disabled={props.disabled}
+      aria-label={props.ariaLabel}
+      value={selectedValue}
+    >
+      <option value={BLANK}></option>
+      {children}
+    </select>
   );
 };
 const Select = forwardRef(SelectComponent);
 export default Select;
-
-export interface SelectRef {
-  clearValue: () => void;
-}
