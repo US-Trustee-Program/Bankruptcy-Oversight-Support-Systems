@@ -178,7 +178,7 @@ export class OrdersUseCase {
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
     await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
-    context.logger.info(MODULE_NAME, 'Updated rutime state in repo (Cosmos)', finalSyncState);
+    context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
 
     return {
       initialSyncState,
