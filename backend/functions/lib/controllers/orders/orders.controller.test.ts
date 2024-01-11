@@ -3,10 +3,29 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
-import { OrdersUseCase } from '../../use-cases/orders/orders';
+import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { OrderTransfer } from '../../use-cases/orders/orders.model';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+
+const syncResponse: SyncOrdersStatus = {
+  options: {
+    txIdOverride: 10,
+  },
+  initialSyncState: {
+    documentType: 'ORDERS_SYNC_STATE',
+    txId: 464,
+    id: '28e35739-58cd-400b-9d4b-26969773618b',
+  },
+  finalSyncState: {
+    documentType: 'ORDERS_SYNC_STATE',
+    txId: 464,
+    id: '28e35739-58cd-400b-9d4b-26969773618b',
+  },
+  length: 13,
+  startingTxId: 10,
+  maxTxId: 464,
+};
 
 describe('orders controller tests', () => {
   const id = '12345';
@@ -53,11 +72,13 @@ describe('orders controller tests', () => {
   });
 
   test('should sync orders', async () => {
-    const syncOrdersSpy = jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockResolvedValue();
+    const syncOrdersSpy = jest
+      .spyOn(OrdersUseCase.prototype, 'syncOrders')
+      .mockResolvedValue(syncResponse);
 
     const controller = new OrdersController(applicationContext);
     await controller.syncOrders(applicationContext);
-    expect(syncOrdersSpy).toHaveBeenCalledWith(applicationContext);
+    expect(syncOrdersSpy).toHaveBeenCalledWith(applicationContext, undefined);
   });
 
   test('should rethrow CamsError if CamsError is ecountered', async () => {

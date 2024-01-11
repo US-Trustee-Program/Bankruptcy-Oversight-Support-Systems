@@ -2,7 +2,7 @@ import { LoggerImpl } from '../lib/adapters/utils/application-context-creator';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';
-import timerTrigger from './orders-sync.function';
+import httpTrigger from './orders-manual-sync.function';
 const context = require('azure-function-context-mock');
 
 const syncResponse: SyncOrdersStatus = {
@@ -26,19 +26,27 @@ const syncResponse: SyncOrdersStatus = {
 
 describe('Orders Sync Function tests', () => {
   test('Should call orders controller method syncOrders', async () => {
+    const request = {
+      params: {},
+      method: 'POST',
+    };
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')
       .mockResolvedValue(syncResponse);
-    await timerTrigger(context);
+    await httpTrigger(context, request);
     expect(syncOrders).toHaveBeenCalled();
   });
 
   test('Should log a camsError if syncOrders throws a CamsError', async () => {
+    const request = {
+      params: {},
+      method: 'POST',
+    };
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')
       .mockRejectedValue(new CamsError('TEST_MODULE', { message: 'error' }));
     const camsError = jest.spyOn(LoggerImpl.prototype, 'camsError').mockImplementation(() => {});
-    await timerTrigger(context);
+    await httpTrigger(context, request);
     expect(syncOrders).toHaveBeenCalled();
     expect(camsError).toHaveBeenCalled();
   });
