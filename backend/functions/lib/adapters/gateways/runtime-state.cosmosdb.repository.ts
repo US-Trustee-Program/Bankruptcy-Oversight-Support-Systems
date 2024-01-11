@@ -9,6 +9,7 @@ import {
   RuntimeState,
   RuntimeStateDocumentType,
 } from '../../use-cases/gateways.types';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
 
@@ -35,7 +36,12 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
         .container(this.containerName)
         .items.query(query)
         .fetchAll();
-      // TODO: Need to check for ONE record. Error if 0 or >1.
+
+      if (results.length !== 1) {
+        throw new CamsError(MODULE_NAME, {
+          message: 'Initial state was not found or was ambiguous.',
+        });
+      }
       return results[0];
     } catch (e) {
       log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
@@ -57,6 +63,26 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
         .container(this.containerName)
         .item(syncState.id)
         .replace(syncState);
+    } catch (e) {
+      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      if (e instanceof AggregateAuthenticationError) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError: e,
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  async createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T> {
+    try {
+      const response = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.create(syncState);
+      return response.resource;
     } catch (e) {
       log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {

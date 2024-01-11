@@ -16,7 +16,6 @@ export interface AlertDetails {
   message: string;
   type: UswdsAlertStyle;
   timeOut: number;
-  // success: boolean;
 }
 
 // TODO: Consider moving statusType and orderType to a common lib.
