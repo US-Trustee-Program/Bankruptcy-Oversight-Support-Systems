@@ -184,7 +184,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer from02 - Court Division 1to02 - New York 1',
+        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
       );
     });
   });
@@ -229,7 +229,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer from02 - Court Division 1to02 - New York 1',
+        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
       );
     });
 

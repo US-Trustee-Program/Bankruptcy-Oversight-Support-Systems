@@ -36,8 +36,6 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     JOIN [dbo].[AO_COURT] c on a.COURT_ID = c.COURT_ID
     JOIN [dbo].[AO_GRP_DES] d on a.GRP_DES = d.GRP_DES
     JOIN [dbo].[AO_REGION] r on d.REGION_ID = r.REGION_ID
-    WHERE 1 = 1
-      AND a.GRP_DES in ('AL', 'BR', 'BU', 'LI', 'NH', 'NY', 'RO', 'UT')
     ORDER BY a.GRP_DES, a.OFFICE_CODE`;
 
     const queryResult: QueryResults = await executeQuery(
