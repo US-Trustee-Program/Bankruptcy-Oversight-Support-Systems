@@ -10,6 +10,18 @@ dotenv.config();
 
 initializeApplicationInsights();
 
+/**
+ * Used to invoke the orders sync process between DXTR and CAMS CosmosDB from an accessable HTTP endpoint.
+ *
+ * This endpoint can be invoked from the CLI with the following cURL command. Modify the `txIdOverride` to a
+ * specific AO_TX.TX_ID to start the sync from or omit it from the request body to use the last runtime state
+ * stored in CosmosDB.
+ *
+ * curl -v -d '{"txIdOverride": 0}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
+ *
+ * @param functionContext
+ * @param ordersRequest
+ */
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   ordersRequest: HttpRequest,
