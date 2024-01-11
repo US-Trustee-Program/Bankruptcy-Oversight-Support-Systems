@@ -10,16 +10,16 @@
   "urls": [
     "http://localhost:3000/",
     {
-      "url": "http://localhost:3000/case-assignment",
+      "url": "http://localhost:3000/case-assignment/",
       "actions": [
         "wait for element [data-testid='toggle-modal-button-0'] to be visible",
         "click element [data-testid='toggle-modal-button-0']"
       ],
       "timeout": 20000
     },
-    "http://localhost:3000/case-detail/101-23-44461",
+    "http://localhost:3000/case-detail/101-23-44461/",
     {
-      "url": "http://localhost:3000/case-detail/101-23-44461/court-docket",
+      "url": "http://localhost:3000/case-detail/101-23-44461/court-docket/",
       "actions": [
         "wait for element [id='searchable-docket'] to be visible",
         "set field #basic-search-field to Motion",
@@ -35,14 +35,14 @@
       }
     },
     {
-      "url": "http://localhost:3000/case-detail/123-12-12345/court-docket",
+      "url": "http://localhost:3000/case-detail/123-12-12345/court-docket/",
       "actions": [
         "wait for element [data-testid='alert-container'] to be visible"
       ],
       "timeout": 20000
     },
     {
-      "url": "http://localhost:3000/review-orders",
+      "url": "http://localhost:3000/review-orders/",
       "actions": [
         "wait for element [data-testid='review-orders-screen'] to be visible"
       ],

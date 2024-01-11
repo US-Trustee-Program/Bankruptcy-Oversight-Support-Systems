@@ -254,7 +254,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(limits.documentRange.last).toEqual(0);
     });
 
-    test('should the document range should be 0 if the docket entries do not have a document number', () => {
+    test('the document range should be 0 if the docket entries do not have a document number', () => {
       const limits = findDocketLimits([
         {
           sequenceNumber: 2,

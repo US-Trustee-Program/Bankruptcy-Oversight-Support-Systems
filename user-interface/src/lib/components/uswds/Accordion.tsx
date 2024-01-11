@@ -7,9 +7,10 @@ import {
   useState,
   useEffect,
 } from 'react';
+import './Accordion.scss';
 
 interface AccordionGroupProps extends PropsWithChildren {
-  children: Array<ReactElement>;
+  children: ReactElement | Array<ReactElement>;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
@@ -72,7 +73,7 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
       </h4>
       <div
         id={`accordion-${props.id}`}
-        className="usa-accordion__content usa-prose"
+        className="usa-accordion__content usa-prose no-overflow"
         data-testid={`accordion-content-${props.id}`}
         hidden={!expanded}
       >

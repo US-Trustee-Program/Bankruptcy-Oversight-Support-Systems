@@ -1,0 +1,24 @@
+.accordion-content {
+  .transfer-text {
+    padding-top: 1rem;
+  }
+  .preview-results {
+    padding-bottom: 1rem;
+  }
+  .form-row {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+
+    .select-container {
+      flex-grow: 1;
+    }
+
+    label {
+      white-space: nowrap;
+    }
+    select {
+      width: 100%;
+    }
+  }
+}
