@@ -231,14 +231,14 @@ export class DxtrOrdersGateway implements OrdersGateway {
       JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
       JOIN (
         SELECT C.CS_CASEID
-        FROM [dbo].[AO_TX] AS T
-        JOIN [dbo].[AO_DE] AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO
-        JOIN [dbo].[AO_CS] AS C ON T.CS_CASEID=C.CS_CASEID
-        WHERE TX.TX_CODE = 'CTO'
-          AND CS.CS_CHAPTER IN (@chapters)
+          FROM [dbo].[AO_TX] AS T
+          JOIN [dbo].[AO_DE] AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO
+          JOIN [dbo].[AO_CS] AS C ON T.CS_CASEID=C.CS_CASEID
+          JOIN [dbo].[AO_GRP_DES] AS G ON C.GRP_DES=G.GRP_DES
+        WHERE T.TX_CODE = 'CTO'
+          AND C.CS_CHAPTER IN (@chapters)
           AND G.REGION_ID IN (@regions)
-          AND TX.TX_ID > @txId
-        ORDER BY T.TX_DATE DESC
+          AND T.TX_ID > @txId
       ) AS CS2 ON CS2.CS_CASEID = CS.CS_CASEID
       WHERE DC.COURT_STATUS != 'unk'
       AND DE.DE_SEQNO=TX.DE_SEQNO
