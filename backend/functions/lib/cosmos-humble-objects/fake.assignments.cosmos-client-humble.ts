@@ -21,7 +21,7 @@ interface QueryOptions {
   parameters: QueryParams[];
 }
 
-export default class FakeCosmosClientHumble {
+export default class FakeAssignmentsCosmosClientHumble {
   private caseAssignments: CaseAssignment[] = [];
   private itemQueryParams: QueryParams[] = [];
 
@@ -77,7 +77,7 @@ export default class FakeCosmosClientHumble {
               };
             },
           },
-          item: (id: string) => {
+          item: (_id: string) => {
             return {
               replace: (assignment: CaseAssignment) => {
                 if (assignment.caseId === THROW_PERMISSIONS_ERROR_CASE_ID) {
@@ -86,7 +86,6 @@ export default class FakeCosmosClientHumble {
                 if (assignment.caseId === THROW_UNKNOWN_ERROR_CASE_ID) {
                   throw new UnknownError(MODULE_NAME);
                 }
-                console.log(id);
                 return {
                   item: assignment,
                 };

@@ -2,6 +2,7 @@ import { Order } from '../../use-cases/orders/orders.model';
 
 export const ORDERS: Order[] = [
   {
+    id: 'test-id-0',
     caseId: '111-11-11111',
     caseTitle: 'Foreign Business Entity',
     chapter: '15',

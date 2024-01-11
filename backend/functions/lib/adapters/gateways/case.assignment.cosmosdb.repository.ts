@@ -1,6 +1,6 @@
 import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getCosmosDbClient } from '../../factory';
+import { getCosmosConfig, getAssignmentsCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
@@ -19,7 +19,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getCosmosDbClient(applicationContext);
+    this.cosmosDbClient = getAssignmentsCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
     this.applicationContext = applicationContext;
   }

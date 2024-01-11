@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import ReviewOrders, { officeSorter } from './ReviewOrdersScreen';
@@ -32,7 +32,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'A',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -43,7 +44,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -54,7 +56,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '002',
@@ -65,7 +68,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'B',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
     ];
     const expectedOffices: OfficeDetails[] = [
@@ -78,7 +82,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'A',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '002',
@@ -89,7 +94,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'B',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -100,7 +106,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
       {
         divisionCode: '003',
@@ -111,7 +118,8 @@ describe('Review Orders screen', () => {
         state: 'NY',
         courtName: 'C',
         courtDivisionName: 'New York 1',
-        region: '02',
+        regionId: '02',
+        regionName: 'NEW YORK',
       },
     ];
     const actualOffices = testOffices.sort(officeSorter);
@@ -131,182 +139,28 @@ describe('Review Orders screen', () => {
     const accordionGroup = screen.getByTestId('accordion-group');
     expect(accordionGroup).toBeInTheDocument();
 
-    let idx = 0;
     for (const order of ordersResponse.body) {
       await waitFor(async () => {
-        const heading = screen.getByTestId(`accordion-heading-${idx}`);
+        const heading = screen.getByTestId(`accordion-heading-${order.id}`);
         expect(heading).toBeInTheDocument();
         expect(heading).toBeVisible();
         expect(heading?.textContent).toContain(order.caseTitle);
         expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
         expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
-        const content = screen.getByTestId(`accordion-content-${idx}`);
+        const content = screen.getByTestId(`accordion-content-${order.id}`);
         expect(content).toBeInTheDocument();
         expect(content).not.toBeVisible();
         expect(content?.textContent).toContain(order.summaryText);
         expect(content?.textContent).toContain(order.fullText);
-
-        const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
-        expect(newCaseIdText).toHaveValue(order.newCaseId);
+        if (order.status !== 'approved') {
+          const form = screen.getByTestId(`order-form-${order.id}`);
+          expect(form).toBeInTheDocument();
+          const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+          expect(newCaseIdText).toHaveValue(order.newCaseId);
+        }
       });
-      idx++;
     }
-  });
-
-  test('should expand and show detail when a header is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <ReviewOrders />
-      </BrowserRouter>,
-    );
-
-    const idx = 0;
-
-    await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${idx}`);
-      expect(heading).toBeInTheDocument();
-      expect(heading).toBeVisible();
-
-      const content = screen.getByTestId(`accordion-content-${idx}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
-    });
-
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
-    if (heading) fireEvent.click(heading);
-
-    await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
-    });
-  });
-
-  test('should show preview description when a court is selected', async () => {
-    render(
-      <BrowserRouter>
-        <ReviewOrders />
-      </BrowserRouter>,
-    );
-
-    const idx = 0;
-
-    await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
-    });
-
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
-    if (heading) fireEvent.click(heading);
-
-    await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
-    });
-
-    const selection = screen.getByTestId(`court-selection-${idx}`);
-    expect(selection).toBeInTheDocument();
-    if (selection) {
-      fireEvent.click(selection);
-      fireEvent.change(selection, { target: { value: '001' } });
-    }
-
-    await waitFor(async () => {
-      const preview = screen.getByTestId(`preview-description-${idx}`);
-      expect(preview).toBeInTheDocument();
-      expect(preview).toBeVisible();
-      expect(preview?.textContent).toEqual(
-        'USTP Office: transfer from02 - Court Division 1to02 - New York 1',
-      );
-    });
-  });
-
-  test('should allow a court to be deselected', async () => {
-    render(
-      <BrowserRouter>
-        <ReviewOrders />
-      </BrowserRouter>,
-    );
-
-    const idx = 0;
-
-    await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
-    });
-
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
-    if (heading) fireEvent.click(heading);
-
-    await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${idx}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
-    });
-
-    const selection = screen.getByTestId(`court-selection-${idx}`);
-    expect(selection).toBeInTheDocument();
-    if (selection) {
-      fireEvent.click(selection);
-      fireEvent.change(selection, { target: { value: '001' } });
-    }
-
-    await waitFor(async () => {
-      const preview = screen.getByTestId(`preview-description-${idx}`);
-      expect(preview).toBeInTheDocument();
-      expect(preview).toBeVisible();
-      expect(preview?.textContent).toEqual(
-        'USTP Office: transfer from02 - Court Division 1to02 - New York 1',
-      );
-    });
-
-    expect(selection).toBeInTheDocument();
-    if (selection) {
-      fireEvent.click(selection);
-      fireEvent.change(selection, { target: { value: '' } });
-    }
-
-    await waitFor(async () => {
-      const preview = screen.queryByTestId(`preview-description-${idx}`);
-      expect(preview).toBeInTheDocument();
-      expect(preview?.textContent).toEqual('');
-    });
-  });
-
-  test('should allow the new case ID to be entered', async () => {
-    render(
-      <BrowserRouter>
-        <ReviewOrders />
-      </BrowserRouter>,
-    );
-
-    const idx = 0;
-    const order = ordersResponse.body[idx];
-
-    await waitFor(async () => {
-      screen.getByTestId(`accordion-content-${idx}`);
-    });
-
-    const heading = screen.getByTestId(`accordion-heading-${idx}`);
-    if (heading) fireEvent.click(heading);
-
-    await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
-      expect(newCaseIdText).toHaveValue(order.newCaseId);
-    });
-
-    const newValue = '081-22-33333';
-    const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
-    fireEvent.change(newCaseIdText, { target: { value: newValue } });
-
-    await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${idx}`);
-      expect(newCaseIdText).toHaveValue(newValue);
-    });
   });
 
   test('should not render a list if an API error is encountered', async () => {

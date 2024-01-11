@@ -5,12 +5,13 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
-import { Order } from '../../../use-cases/orders/orders.model';
+import { Order, OrderSync } from '../../../use-cases/orders/orders.model';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
 
 const MODULENAME = 'ORDERS-DXTR-GATEWAY';
 
 export interface DxtrOrder extends Order {
+  txId: number;
   dxtrCaseId: string;
   rawRec: string;
 }
@@ -25,9 +26,14 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 }
 
 export class DxtrOrdersGateway implements OrdersGateway {
-  async getOrders(context: ApplicationContext): Promise<Array<Order>> {
+  async getOrderSync(context: ApplicationContext, txId: number): Promise<OrderSync> {
     try {
-      const rawOrders = await this._getOrders(context);
+      const orderSync = {
+        orders: [],
+        maxTxId: txId,
+      };
+
+      const rawOrders = await this._getOrders(context, txId);
       const documents = await this._getDocuments(context);
       const mappedDocuments = documents.reduce((map, document) => {
         const { dxtrCaseId } = document;
@@ -36,8 +42,10 @@ export class DxtrOrdersGateway implements OrdersGateway {
         return map;
       }, new Map());
 
-      return rawOrders
+      orderSync.orders = rawOrders
         .map((rawOrder) => {
+          if (orderSync.maxTxId < rawOrder.txId) orderSync.maxTxId = rawOrder.txId;
+
           if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
             rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
           }
@@ -46,27 +54,49 @@ export class DxtrOrdersGateway implements OrdersGateway {
           }
           delete rawOrder.dxtrCaseId;
           delete rawOrder.rawRec;
+          delete rawOrder.txId;
           return rawOrder satisfies Order;
         })
         .sort(dxtrOrdersSorter);
+
+      return orderSync;
     } catch (originalError) {
       throw new CamsError(MODULENAME, { originalError });
     }
   }
 
-  async _getOrders(context: ApplicationContext): Promise<Array<DxtrOrder>> {
+  async _getOrders(context: ApplicationContext, txId: number): Promise<Array<DxtrOrder>> {
     const input: DbTableFieldSpec[] = [];
 
     // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
-    const chapters: string[] = ["'15'"];
-    if (context.featureFlags['chapter-eleven-enabled']) chapters.push("'11'");
-    if (context.featureFlags['chapter-twelve-enabled']) chapters.push("'12'");
+    const chapters: string[] = ['15'];
+    if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
+    if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
 
     // TODO: This filter will be applied to Cosmos order documents based on user context in the future. This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
-    const regions: string[] = ["'02'"];
+    const regions: string[] = ['02'];
+
+    input.push({
+      name: 'chapters',
+      type: mssql.VarChar,
+      value: chapters.join(','),
+    });
+
+    input.push({
+      name: 'regions',
+      type: mssql.VarChar,
+      value: regions.join(','),
+    });
+
+    input.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: txId,
+    });
 
     const query = `
-      SELECT TOP 20
+      SELECT
+        TX.TX_ID AS txId,
         CS.CS_CASEID AS dxtrCaseId,
         CS.CS_DIV+'-'+CS.CASE_ID as caseId,
         CS.CS_SHORT_TITLE as caseTitle,
@@ -96,9 +126,10 @@ export class DxtrOrdersGateway implements OrdersGateway {
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       WHERE TX.TX_CODE = 'CTO'
-      AND CS.CS_CHAPTER IN (${chapters.join(',')})
-      AND G.REGION_ID IN (${regions.join(',')})
-      ORDER BY TX.TX_DATE DESC
+        AND CS.CS_CHAPTER IN (@chapters)
+        AND G.REGION_ID IN (@regions)
+        AND TX.TX_ID > @txId
+      ORDER BY TX.TX_ID ASC
       `;
 
     const queryResult: QueryResults = await executeQuery(

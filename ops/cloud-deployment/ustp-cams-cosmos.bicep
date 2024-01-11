@@ -15,6 +15,14 @@ param databaseContainers array = [
     name: 'assignments'
     partitionKey1: '/caseId'
   }
+  {
+    name: 'orders'
+    partitionKey1: '/caseId'
+  }
+  {
+    name: 'runtime-state'
+    partitionKey1: '/documentType'
+  }
 ]
 
 @description('Allowed subnet resource id')
@@ -110,7 +118,7 @@ module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
   ]
 }
 
-module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts){
+module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${accountName}-availability-alert-module'
   params: {
     alertName: '${accountName}-availability-alert'
@@ -127,7 +135,7 @@ module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep
     actionGroupResourceGroupName: actionGroupResourceGroupName
   }
 }
-module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)){
+module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)) {
   name: '${accountName}-cosmos-diagnostic-setting-module'
   scope: resourceGroup(resourceGroupName)
   params: {

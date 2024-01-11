@@ -1,4 +1,5 @@
-import { FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND } from './constants';
+import { BadRequestError } from './bad-request';
+import { BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND } from './constants';
 import { ForbiddenError } from './forbidden-error';
 import { NotFoundError } from './not-found-error';
 import { ServerConfigError } from './server-config-error';
@@ -6,6 +7,14 @@ import { UnknownError } from './unknown-error';
 
 describe('Common errors', () => {
   const testModuleName = 'Test';
+
+  test('BadRequestError contructor', async () => {
+    const error = new BadRequestError(testModuleName);
+    expect(error.status).toBe(BAD_REQUEST);
+    expect(error.module).toBe(testModuleName);
+    expect(error.message).toBe('Bad request');
+  });
+
   test('ForbiddenError contructor', async () => {
     const error = new ForbiddenError(testModuleName);
     expect(error.status).toBe(FORBIDDEN);

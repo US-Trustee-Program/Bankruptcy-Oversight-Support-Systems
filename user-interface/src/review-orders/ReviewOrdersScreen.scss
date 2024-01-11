@@ -30,7 +30,7 @@
     .order-form {
       .court-selection {
         display: flex;
-        padding-bottom: 2rem;
+        padding-bottom: 1rem;
         > div {
           display: flex;
           flex-direction: column;
@@ -41,7 +41,7 @@
           padding-bottom: 0.5rem;
 
           .transfer-text {
-            padding-bottom: 2rem;
+            padding-bottom: 1rem;
           }
           .new-court__select {
             min-width: 300px;
