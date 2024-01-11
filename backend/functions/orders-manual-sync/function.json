@@ -16,5 +16,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/backend/functions/orders-manual-sync/orders-sync.function.js"
+  "scriptFile": "../dist/backend/functions/orders-manual-sync/orders-manual-sync.function.js"
 }

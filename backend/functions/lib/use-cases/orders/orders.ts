@@ -7,6 +7,21 @@ import {
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order, OrderTransfer } from './orders.model';
 
+const MODULE_NAME = 'ORDERS_USE_CASE';
+
+export interface SyncOrdersOptions {
+  txIdOverride?: number;
+}
+
+export interface SyncOrdersStatus {
+  options?: SyncOrdersOptions;
+  initialSyncState: OrderSyncState;
+  finalSyncState: OrderSyncState;
+  length: number;
+  startingTxId: number;
+  maxTxId: number;
+}
+
 export class OrdersUseCase {
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
@@ -114,27 +129,66 @@ export class OrdersUseCase {
   // TODO: Document how to setup local environment `local.settings.json` to run the API.
 
   */
-  public async syncOrders(context: ApplicationContext): Promise<void> {
+  public async syncOrders(
+    context: ApplicationContext,
+    options: SyncOrdersOptions,
+  ): Promise<SyncOrdersStatus> {
+    const ustpSeedTxId = 167933444;
     let initialSyncState: OrderSyncState;
+
+    context.logger.info(MODULE_NAME, 'Sync orders use case called.', options);
+
     try {
       initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
         context,
         'ORDERS_SYNC_STATE',
       );
+      context.logger.info(
+        MODULE_NAME,
+        'Got initial runtime state from repo (Cosmos).',
+        initialSyncState,
+      );
     } catch (error) {
+      context.logger.info(
+        MODULE_NAME,
+        'Failed to get initial runtime state from repo (Cosmos).',
+        error,
+      );
       if (error.message === 'Initial state was not found or was ambiguous.') {
-        initialSyncState = { documentType: 'ORDERS_SYNC_STATE', txId: 167933444 };
+        initialSyncState = {
+          documentType: 'ORDERS_SYNC_STATE',
+          txId: options.txIdOverride || ustpSeedTxId,
+        };
         initialSyncState = await this.runtimeStateRepo.createState(context, initialSyncState);
+        context.logger.info(
+          MODULE_NAME,
+          'Wrote new runtime state to repo (Cosmos).',
+          initialSyncState,
+        );
       } else {
         throw error;
       }
     }
 
-    const txId = initialSyncState.txId;
-    const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, txId);
+    const startingTxId = options.txIdOverride || initialSyncState.txId;
+    context.logger.info(MODULE_NAME, `Starting from txId ${startingTxId}.`);
+    const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, startingTxId);
+    context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', { maxTxId, orders });
+
     await this.ordersRepo.putOrders(context, orders);
+    context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
     await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
+    context.logger.info(MODULE_NAME, 'Updated rutime state in repo (Cosmos)', finalSyncState);
+
+    return {
+      options,
+      initialSyncState,
+      finalSyncState,
+      length: orders.length,
+      startingTxId,
+      maxTxId,
+    };
   }
 }
