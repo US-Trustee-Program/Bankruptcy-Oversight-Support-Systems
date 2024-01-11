@@ -169,7 +169,7 @@ export class OrdersUseCase {
     }
 
     const startingTxId = options?.txIdOverride || initialSyncState.txId;
-    context.logger.info(MODULE_NAME, `Starting from txId ${startingTxId}.`);
+    //context.logger.info(MODULE_NAME, `Starting from txId ${startingTxId}.`);
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, startingTxId);
     context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', { maxTxId, orders });
 
