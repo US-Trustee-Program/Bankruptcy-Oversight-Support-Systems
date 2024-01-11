@@ -118,8 +118,8 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       FORMAT(D.DE_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
       ISNULL(D.DO_SUMMARY_TEXT, 'SUMMARY NOT AVAILABLE') as summaryText,
       ISNULL(D.DT_TEXT, 'TEXT NOT AVAILABLE') as fullText
-    FROM AO_DE AS D
-    JOIN AO_CS AS C ON C.CS_CASEID=D.CS_CASEID AND C.COURT_ID=D.COURT_ID
+    FROM [dbo].[AO_DE] AS D
+    JOIN [dbo].[AO_CS] AS C ON C.CS_CASEID=D.CS_CASEID AND C.COURT_ID=D.COURT_ID
     WHERE C.CS_DIV=@courtDiv AND C.CASE_ID=@dxtrCaseId
     ORDER BY DE_SEQNO
     `;
@@ -317,12 +317,12 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
               THEN DC.deleted_lt
               --- 4. Use Y (pdf not present)---
               ELSE 'Y'  END
-      FROM AO_CS AS C
-        JOIN AO_DE AS DE
+      FROM [dbo].[AO_CS] AS C
+        JOIN [dbo].[AO_DE] AS DE
           ON C.CS_CASEID = DE.CS_CASEID AND C.COURT_ID = DE.COURT_ID
-        JOIN AO_DC AS DC ON C.CS_CASEID = DC.CS_CASEID AND C.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
-        JOIN AO_CS_DIV DIV ON C.CS_DIV = DIV.CS_DIV
-        JOIN AO_PDF_PATH AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
+        JOIN [dbo].[AO_DC] AS DC ON C.CS_CASEID = DC.CS_CASEID AND C.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
+        JOIN [dbo].[AO_CS_DIV] DIV ON C.CS_DIV = DIV.CS_DIV
+        JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
       WHERE C.CS_DIV=@courtDiv AND C.CASE_ID=@dxtrCaseId
       AND DC.COURT_STATUS != 'unk'
     `;

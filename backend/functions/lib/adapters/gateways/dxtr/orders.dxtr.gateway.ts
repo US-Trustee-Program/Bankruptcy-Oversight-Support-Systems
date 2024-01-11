@@ -8,7 +8,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { Order, OrderSync } from '../../../use-cases/orders/orders.model';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
 
-const MODULENAME = 'ORDERS-DXTR-GATEWAY';
+const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
 export interface DxtrOrder extends Order {
   txId: number;
@@ -33,14 +33,48 @@ export class DxtrOrdersGateway implements OrdersGateway {
         maxTxId: txId,
       };
 
-      const rawOrders = await this._getOrders(context, txId);
-      const documents = await this._getDocuments(context);
+      // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
+      const chapters: string[] = ['15'];
+      if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
+      if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
+
+      // TODO: This filter will be applied to Cosmos order documents based on user context in the future. This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
+      const regions: string[] = ['02'];
+
+      const params: DbTableFieldSpec[] = [];
+
+      params.push({
+        name: 'chapters',
+        type: mssql.VarChar,
+        value: chapters.join(','),
+      });
+
+      params.push({
+        name: 'regions',
+        type: mssql.VarChar,
+        value: regions.join(','),
+      });
+
+      params.push({
+        name: 'txId',
+        type: mssql.BigInt,
+        value: txId,
+      });
+
+      const rawOrders = await this._getOrders(context, params);
+      context.logger.info(MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
+      const documents = await this._getDocuments(context, params);
+      context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
       const mappedDocuments = documents.reduce((map, document) => {
         const { dxtrCaseId } = document;
         delete document.dxtrCaseId;
         map.set(dxtrCaseId, document);
         return map;
       }, new Map());
+      context.logger.info(
+        MODULE_NAME,
+        `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
+      );
 
       orderSync.orders = rawOrders
         .map((rawOrder) => {
@@ -58,42 +92,21 @@ export class DxtrOrdersGateway implements OrdersGateway {
           return rawOrder satisfies Order;
         })
         .sort(dxtrOrdersSorter);
+      context.logger.info(
+        MODULE_NAME,
+        `Processed ${orderSync.orders.length} orders and their documents from DXTR. New maxTxId is ${orderSync.maxTxId}.`,
+      );
 
       return orderSync;
     } catch (originalError) {
-      throw new CamsError(MODULENAME, { originalError });
+      throw new CamsError(MODULE_NAME, { originalError });
     }
   }
 
-  async _getOrders(context: ApplicationContext, txId: number): Promise<Array<DxtrOrder>> {
-    const input: DbTableFieldSpec[] = [];
-
-    // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
-    const chapters: string[] = ['15'];
-    if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
-    if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
-
-    // TODO: This filter will be applied to Cosmos order documents based on user context in the future. This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
-    const regions: string[] = ['02'];
-
-    input.push({
-      name: 'chapters',
-      type: mssql.VarChar,
-      value: chapters.join(','),
-    });
-
-    input.push({
-      name: 'regions',
-      type: mssql.VarChar,
-      value: regions.join(','),
-    });
-
-    input.push({
-      name: 'txId',
-      type: mssql.BigInt,
-      value: txId,
-    });
-
+  async _getOrders(
+    context: ApplicationContext,
+    params: DbTableFieldSpec[],
+  ): Promise<Array<DxtrOrder>> {
     const query = `
       SELECT
         TX.TX_ID AS txId,
@@ -113,16 +126,16 @@ export class DxtrOrdersGateway implements OrdersGateway {
         FORMAT(DE.DE_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
         'pending' as status,
         TX.REC AS rawRec
-      FROM AO_TX AS TX
-      JOIN AO_DE AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID = DE.COURT_ID
-      JOIN AO_CS AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID = CS.COURT_ID
-      JOIN AO_GRP_DES AS G
+      FROM [dbo].[AO_TX] AS TX
+      JOIN [dbo].[AO_DE] AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID = DE.COURT_ID
+      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID = CS.COURT_ID
+      JOIN [dbo].[AO_GRP_DES] AS G
         ON CS.GRP_DES = G.GRP_DES
-      JOIN AO_COURT AS C
+      JOIN [dbo].[AO_COURT] AS C
         ON CS.COURT_ID = C.COURT_ID
-      JOIN AO_CS_DIV AS CSD
+      JOIN [dbo].[AO_CS_DIV] AS CSD
         ON CS.CS_DIV = CSD.CS_DIV
-      JOIN AO_OFFICE AS O
+      JOIN [dbo].[AO_OFFICE] AS O
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       WHERE TX.TX_CODE = 'CTO'
@@ -136,18 +149,20 @@ export class DxtrOrdersGateway implements OrdersGateway {
       context,
       context.config.dxtrDbConfig,
       query,
-      input,
+      params,
     );
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrOrder>).recordset;
     } else {
-      return Promise.reject(new CamsError(MODULENAME, { message: queryResult.message }));
+      return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
     }
   }
 
-  async _getDocuments(context: ApplicationContext): Promise<Array<DxtrOrderDocument>> {
-    const input: DbTableFieldSpec[] = [];
+  async _getDocuments(
+    context: ApplicationContext,
+    params: DbTableFieldSpec[],
+  ): Promise<Array<DxtrOrderDocument>> {
     // NOTE: This query is a derivative of the original SQL query in `case-docket.dxtr.gateway.ts`.
     const query = `
       SELECT
@@ -204,20 +219,22 @@ export class DxtrOrdersGateway implements OrdersGateway {
             THEN DC.deleted_lt
             --- 4. Use Y (pdf not present)---
             ELSE 'Y'  END
-      FROM AO_CS AS CS
-      JOIN AO_TX AS TX ON TX.CS_CASEID=CS.CS_CASEID
-      JOIN AO_DE AS DE
+      FROM [dbo].[AO_CS] AS CS
+      JOIN [dbo].[AO_TX] AS TX ON TX.CS_CASEID=CS.CS_CASEID
+      JOIN [dbo].[AO_DE] AS DE
         ON CS.CS_CASEID = DE.CS_CASEID AND CS.COURT_ID = DE.COURT_ID
-      JOIN AO_DC AS DC ON CS.CS_CASEID = DC.CS_CASEID AND CS.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
-      JOIN AO_CS_DIV DIV ON CS.CS_DIV = DIV.CS_DIV
-      JOIN AO_PDF_PATH AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
+      JOIN [dbo].[AO_DC] AS DC ON CS.CS_CASEID = DC.CS_CASEID AND CS.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
+      JOIN [dbo].[AO_CS_DIV] DIV ON CS.CS_DIV = DIV.CS_DIV
+      JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
       JOIN (
-        SELECT TOP 20
-          C.CS_CASEID
-        FROM AO_TX AS T
-        JOIN AO_DE AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO
-        JOIN AO_CS AS C ON T.CS_CASEID=C.CS_CASEID
-        WHERE T.TX_CODE='CTO'
+        SELECT C.CS_CASEID
+        FROM [dbo].[AO_TX] AS T
+        JOIN [dbo].[AO_DE] AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO
+        JOIN [dbo].[AO_CS] AS C ON T.CS_CASEID=C.CS_CASEID
+        WHERE TX.TX_CODE = 'CTO'
+          AND CS.CS_CHAPTER IN (@chapters)
+          AND G.REGION_ID IN (@regions)
+          AND TX.TX_ID > @txId
         ORDER BY T.TX_DATE DESC
       ) AS CS2 ON CS2.CS_CASEID = CS.CS_CASEID
       WHERE DC.COURT_STATUS != 'unk'
@@ -229,13 +246,13 @@ export class DxtrOrdersGateway implements OrdersGateway {
       context,
       context.config.dxtrDbConfig,
       query,
-      input,
+      params,
     );
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrOrderDocument>).recordset;
     } else {
-      return Promise.reject(new CamsError(MODULENAME, { message: queryResult.message }));
+      return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
     }
   }
 }
