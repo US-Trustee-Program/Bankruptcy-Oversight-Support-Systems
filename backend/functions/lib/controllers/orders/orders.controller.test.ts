@@ -78,7 +78,7 @@ describe('orders controller tests', () => {
 
     const controller = new OrdersController(applicationContext);
     await controller.syncOrders(applicationContext);
-    expect(syncOrdersSpy).toHaveBeenCalledWith(applicationContext);
+    expect(syncOrdersSpy).toHaveBeenCalledWith(applicationContext, undefined);
   });
 
   test('should rethrow CamsError if CamsError is ecountered', async () => {
