@@ -10,21 +10,21 @@ import { UnknownError } from '../../common-errors/unknown-error';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
-    txIdOverride: 10,
+    txIdOverride: '10',
   },
   initialSyncState: {
     documentType: 'ORDERS_SYNC_STATE',
-    txId: 464,
+    txId: '464',
     id: '28e35739-58cd-400b-9d4b-26969773618b',
   },
   finalSyncState: {
     documentType: 'ORDERS_SYNC_STATE',
-    txId: 464,
+    txId: '464',
     id: '28e35739-58cd-400b-9d4b-26969773618b',
   },
   length: 13,
-  startingTxId: 10,
-  maxTxId: 464,
+  startingTxId: '10',
+  maxTxId: '464',
 };
 
 describe('orders controller tests', () => {

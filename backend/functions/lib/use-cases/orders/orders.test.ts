@@ -6,6 +6,8 @@ import { getOrdersGateway, getOrdersRepository, getRuntimeStateRepository } from
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
+import { OrderSyncState } from '../gateways.types';
+import { CamsError } from '../../common-errors/cams-error';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -43,7 +45,7 @@ describe('Orders use case', () => {
   });
 
   test('should retrieve orders from legacy and persist to new system', async () => {
-    const startState = { documentType: 'ORDERS_SYNC_STATE', txId: 1234, id: 'guid-1' };
+    const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
     jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
       resources: [startState],
@@ -51,12 +53,12 @@ describe('Orders use case', () => {
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
       orders: ORDERS,
-      maxTxId: 3000,
+      maxTxId: '3000',
     });
 
     const endState = {
       ...startState,
-      txId: 3000,
+      txId: '3000',
     };
 
     const mockPutOrders = jest
@@ -71,5 +73,76 @@ describe('Orders use case', () => {
 
     expect(mockPutOrders).toHaveBeenCalledWith(mockContext, ORDERS);
     expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
+  });
+
+  test('should handle a missing order runtime state when a starting transaction ID is provided', async () => {
+    const id = 'guid-id';
+    const txId = '1234';
+    const initialState: OrderSyncState = { documentType: 'ORDERS_SYNC_STATE', txId };
+
+    const mockGetState = jest
+      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'getState')
+      .mockRejectedValue(
+        new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
+          message: 'Initial state was not found or was ambiguous.',
+        }),
+      );
+
+    const mockCreateState = jest
+      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'createState')
+      .mockResolvedValue({ ...initialState, id });
+
+    const mockGetOrderSync = jest
+      .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
+      .mockResolvedValue({
+        orders: ORDERS,
+        maxTxId: '3000',
+      });
+
+    const endState = {
+      ...initialState,
+      txId: '3000',
+      id,
+    };
+
+    const mockPutOrders = jest
+      .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
+      .mockImplementation(async () => {});
+
+    const mockUpdateState = jest
+      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
+      .mockImplementation(jest.fn());
+
+    await useCase.syncOrders(mockContext, { txIdOverride: txId });
+
+    expect(mockGetState).toHaveBeenCalled();
+    expect(mockCreateState).toHaveBeenCalledWith(mockContext, initialState);
+    expect(mockGetOrderSync).toHaveBeenCalled();
+    expect(mockPutOrders).toHaveBeenCalled();
+    expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
+  });
+
+  test('should throw an error with a missing order runtime state and no starting transaction ID is provided', async () => {
+    const mockGetState = jest
+      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'getState')
+      .mockRejectedValue(
+        new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
+          message: 'Initial state was not found or was ambiguous.',
+        }),
+      );
+
+    await expect(useCase.syncOrders(mockContext)).rejects.toThrow(
+      'A transaction ID is required to seed the order sync run. Aborting.',
+    );
+    expect(mockGetState).toHaveBeenCalled();
+  });
+
+  test('should throw any other error when attempting to retrieve initial runtime state', async () => {
+    const mockGetState = jest
+      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'getState')
+      .mockRejectedValue(new Error('TEST'));
+
+    await expect(useCase.syncOrders(mockContext)).rejects.toThrow('TEST');
+    expect(mockGetState).toHaveBeenCalled();
   });
 });

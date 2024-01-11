@@ -1,4 +1,3 @@
-import './TransferOrderAccordion.scss';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
@@ -14,6 +13,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { AlertDetails } from '@/review-orders/ReviewOrdersScreen';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import './TransferOrderAccordion.scss';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -135,7 +135,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       .then(() => {
         props.onOrderUpdate(
           {
-            message: `Transfer of case to ${orderTransfer.newCaseId} in ${orderTransfer.newCourtName} ${orderTransfer.newCourtDivisionName} was ${orderTransfer.status}.`,
+            message: `Transfer of case to ${getCaseNumber(orderTransfer.newCaseId)} in ${
+              orderTransfer.newCourtName
+            } ${orderTransfer.newCourtDivisionName} was ${orderTransfer.status}.`,
             type: UswdsAlertStyle.Success,
             timeOut: 8,
           },

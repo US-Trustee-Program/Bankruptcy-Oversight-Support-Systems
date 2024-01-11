@@ -46,7 +46,12 @@ export class HumbleItems<T> {
     this.container = container;
   }
   create(item: T) {
-    this.container.map.set(crypto.randomUUID().toString(), item);
+    const id = crypto.randomUUID().toString();
+    this.container.map.set(id, item);
+    return {
+      ...item,
+      id,
+    };
   }
   query(query: QueryOptions) {
     return new HumbleQuery(this, query);
