@@ -28,7 +28,7 @@ export interface OrdersRepository {
 export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE';
 
 export type RuntimeState = {
-  id: string;
+  id?: string;
   documentType: RuntimeStateDocumentType;
 };
 
@@ -43,4 +43,5 @@ export interface RuntimeStateRepository {
     documentType: RuntimeStateDocumentType,
   ): Promise<T>;
   updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T);
+  createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T>;
 }

@@ -115,12 +115,22 @@ export class OrdersUseCase {
 
   */
   public async syncOrders(context: ApplicationContext): Promise<void> {
-    const initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
-      context,
-      'ORDERS_SYNC_STATE',
-    );
-    const { txId } = initialSyncState;
+    let initialSyncState: OrderSyncState;
+    try {
+      initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
+        context,
+        'ORDERS_SYNC_STATE',
+      );
+    } catch (error) {
+      if (error.message === 'Initial state was not found or was ambiguous.') {
+        initialSyncState = { documentType: 'ORDERS_SYNC_STATE', txId: 167933444 };
+        initialSyncState = await this.runtimeStateRepo.createState(context, initialSyncState);
+      } else {
+        throw error;
+      }
+    }
 
+    const txId = initialSyncState.txId;
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, txId);
     await this.ordersRepo.putOrders(context, orders);
 
