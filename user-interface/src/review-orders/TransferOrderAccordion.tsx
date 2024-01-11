@@ -41,6 +41,14 @@ export function isValidOrderTransfer(transfer: OrderTransfer) {
   return transfer.newCaseId && transfer.newCourtDivisionName;
 }
 
+function safeToInt(s: string) {
+  try {
+    return parseInt(s).toString();
+  } catch {
+    return s;
+  }
+}
+
 export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
   // TODO: Move this logic into a CaseIdInput component based on Input.
   const allowedCharsPattern = /[0-9]/g;
@@ -323,11 +331,11 @@ function CaseSelection(props: CaseSelectionProps) {
     <>
       USTP Office: transfer from
       <span className="from-location transfer-highlight__span">
-        {fromCourt.region} - {fromCourt.courtDivisionName}
+        Region {safeToInt(fromCourt.region)} - {fromCourt.courtDivisionName}
       </span>
       to
       <span className="to-location transfer-highlight__span">
-        {toCourt.region} - {toCourt.courtDivisionName}
+        Region {safeToInt(toCourt.region)} - {toCourt.courtDivisionName}
       </span>
     </>
   );
