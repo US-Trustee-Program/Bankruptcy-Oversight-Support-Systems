@@ -136,8 +136,6 @@ export class OrdersUseCase {
     const ustpSeedTxId = 167933444;
     let initialSyncState: OrderSyncState;
 
-    context.logger.info(MODULE_NAME, 'Sync orders use case called.', options);
-
     try {
       initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
         context,
@@ -183,7 +181,6 @@ export class OrdersUseCase {
     context.logger.info(MODULE_NAME, 'Updated rutime state in repo (Cosmos)', finalSyncState);
 
     return {
-      options,
       initialSyncState,
       finalSyncState,
       length: orders.length,
