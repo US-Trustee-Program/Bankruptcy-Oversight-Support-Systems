@@ -17,7 +17,7 @@ initializeApplicationInsights();
  * specific AO_TX.TX_ID to start the sync from or omit it from the request body to use the last runtime state
  * stored in CosmosDB.
  *
- * curl -v -d '{"txIdOverride": 0}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
+ * curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
  *
  * @param functionContext
  * @param ordersRequest

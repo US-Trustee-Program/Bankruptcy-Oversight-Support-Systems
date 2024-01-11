@@ -10,7 +10,7 @@ describe('Runtime State Repo', () => {
   const expected: OrderSyncState = {
     id: crypto.randomUUID().toString(),
     documentType: 'ORDERS_SYNC_STATE',
-    txId: 0,
+    txId: '0',
   };
 
   let context: ApplicationContext;

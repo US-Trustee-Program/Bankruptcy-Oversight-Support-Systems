@@ -11,7 +11,7 @@ import { CamsError } from '../../common-errors/cams-error';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
-  txIdOverride?: number;
+  txIdOverride?: string;
 }
 
 export interface SyncOrdersStatus {
@@ -19,8 +19,8 @@ export interface SyncOrdersStatus {
   initialSyncState: OrderSyncState;
   finalSyncState: OrderSyncState;
   length: number;
-  startingTxId: number;
-  maxTxId: number;
+  startingTxId: string;
+  maxTxId: string;
 }
 
 export class OrdersUseCase {

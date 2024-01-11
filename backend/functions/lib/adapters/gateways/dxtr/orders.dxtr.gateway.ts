@@ -12,7 +12,9 @@ import log from '../../services/logger.service';
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
 export interface DxtrOrder extends Order {
-  txId: number;
+  // txId will be encoded as a string, not a number, because it is
+  // of type BIGINT in MS-SQL Server.
+  txId: string;
   dxtrCaseId: string;
   rawRec: string;
 }
@@ -27,7 +29,7 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 }
 
 export class DxtrOrdersGateway implements OrdersGateway {
-  async getOrderSync(context: ApplicationContext, txId: number): Promise<OrderSync> {
+  async getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync> {
     try {
       const orderSync = {
         orders: [],
@@ -43,28 +45,15 @@ export class DxtrOrdersGateway implements OrdersGateway {
       const regions: string[] = ['02'];
 
       const params: DbTableFieldSpec[] = [];
-
-      params.push({
-        name: 'chapters',
-        type: mssql.VarChar,
-        value: chapters.join(','),
-      });
-
-      params.push({
-        name: 'regions',
-        type: mssql.VarChar,
-        value: regions.join(','),
-      });
-
       params.push({
         name: 'txId',
         type: mssql.BigInt,
         value: txId,
       });
 
-      const rawOrders = await this._getOrders(context, params);
+      const rawOrders = await this._getOrders(context, txId, chapters, regions);
       log.info(context, MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
-      const documents = await this._getDocuments(context, params);
+      const documents = await this._getDocuments(context, txId, chapters, regions);
       log.info(context, MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
       const mappedDocuments = documents.reduce((map, document) => {
         const { dxtrCaseId } = document;
@@ -108,8 +97,17 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
   async _getOrders(
     context: ApplicationContext,
-    params: DbTableFieldSpec[],
+    txId: string,
+    chapters: string[],
+    regions: string[],
   ): Promise<Array<DxtrOrder>> {
+    const params: DbTableFieldSpec[] = [];
+    params.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: txId,
+    });
+
     const query = `
       SELECT
         TX.TX_ID AS txId,
@@ -130,8 +128,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
         'pending' as status,
         TX.REC AS rawRec
       FROM [dbo].[AO_TX] AS TX
-      JOIN [dbo].[AO_DE] AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID = DE.COURT_ID
-      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID = CS.COURT_ID
+      JOIN [dbo].[AO_DE] AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID=DE.COURT_ID
+      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID=CS.COURT_ID
       JOIN [dbo].[AO_GRP_DES] AS G
         ON CS.GRP_DES = G.GRP_DES
       JOIN [dbo].[AO_COURT] AS C
@@ -142,11 +140,13 @@ export class DxtrOrdersGateway implements OrdersGateway {
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       WHERE TX.TX_CODE = 'CTO'
-        AND CS.CS_CHAPTER IN (@chapters)
-        AND G.REGION_ID IN (@regions)
+        AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
+        AND G.REGION_ID IN ('${regions.join("','")}')
         AND TX.TX_ID > @txId
       ORDER BY TX.TX_ID ASC
       `;
+
+    console.log(query);
 
     const queryResult: QueryResults = await executeQuery(
       context,
@@ -164,8 +164,17 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
   async _getDocuments(
     context: ApplicationContext,
-    params: DbTableFieldSpec[],
+    txId: string,
+    chapters: string[],
+    regions: string[],
   ): Promise<Array<DxtrOrderDocument>> {
+    const params: DbTableFieldSpec[] = [];
+    params.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: txId,
+    });
+
     // NOTE: This query is a derivative of the original SQL query in `case-docket.dxtr.gateway.ts`.
     const query = `
       SELECT
@@ -230,20 +239,22 @@ export class DxtrOrdersGateway implements OrdersGateway {
       JOIN [dbo].[AO_CS_DIV] DIV ON CS.CS_DIV = DIV.CS_DIV
       JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
       JOIN (
-        SELECT C.CS_CASEID
+        SELECT C.CS_CASEID, C.COURT_ID
           FROM [dbo].[AO_TX] AS T
-          JOIN [dbo].[AO_DE] AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO
-          JOIN [dbo].[AO_CS] AS C ON T.CS_CASEID=C.CS_CASEID
+          JOIN [dbo].[AO_DE] AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO AND T.COURT_ID = D.COURT_ID
+          JOIN [dbo].[AO_CS] AS C ON T.CS_CASEID=C.CS_CASEID AND T.COURT_ID=C.COURT_ID
           JOIN [dbo].[AO_GRP_DES] AS G ON C.GRP_DES=G.GRP_DES
         WHERE T.TX_CODE = 'CTO'
-          AND C.CS_CHAPTER IN (@chapters)
-          AND G.REGION_ID IN (@regions)
+          AND C.CS_CHAPTER IN ('${chapters.join("','")}')
+          AND G.REGION_ID IN ('${regions.join("','")}')
           AND T.TX_ID > @txId
-      ) AS CS2 ON CS2.CS_CASEID = CS.CS_CASEID
+      ) AS CS2 ON CS2.CS_CASEID=CS.CS_CASEID AND CS2.COURT_ID=CS.COURT_ID
       WHERE DC.COURT_STATUS != 'unk'
       AND DE.DE_SEQNO=TX.DE_SEQNO
       AND TX.TX_CODE='CTO'
     `;
+
+    console.log(query);
 
     const queryResult: QueryResults = await executeQuery(
       context,
