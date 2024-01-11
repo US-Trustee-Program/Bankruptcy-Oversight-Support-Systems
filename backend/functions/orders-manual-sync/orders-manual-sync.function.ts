@@ -12,14 +12,14 @@ initializeApplicationInsights();
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  _ordersRequest: HttpRequest,
+  ordersRequest: HttpRequest,
 ): Promise<void> {
   const context = await applicationContextCreator(functionContext);
 
   const ordersController = new OrdersController(context);
   try {
-    await ordersController.syncOrders(context);
-    functionContext.res = httpSuccess({});
+    const results = await ordersController.syncOrders(context, ordersRequest.body);
+    functionContext.res = httpSuccess(results);
   } catch (camsError) {
     context.logger.camsError(camsError);
     functionContext.res = httpError(camsError);
