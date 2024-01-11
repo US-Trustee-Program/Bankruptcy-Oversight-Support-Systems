@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { getOrdersGateway, getOrdersRepository, getRuntimeStateRepository } from '../../factory';
-import { OrdersUseCase } from '../../use-cases/orders/orders';
+import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { CamsResponse } from '../controller-types';
 
@@ -54,9 +54,13 @@ export class OrdersController {
     }
   }
 
-  public async syncOrders(context: ApplicationContext): Promise<void> {
+  public async syncOrders(
+    context: ApplicationContext,
+    options?: SyncOrdersOptions,
+  ): Promise<SyncOrdersStatus> {
     try {
-      await this.useCase.syncOrders(context);
+      const result = await this.useCase.syncOrders(context, options);
+      return result;
     } catch (originalError) {
       throw originalError instanceof CamsError
         ? originalError
