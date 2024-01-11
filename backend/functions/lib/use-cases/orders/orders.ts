@@ -6,11 +6,12 @@ import {
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order, OrderTransfer } from './orders.model';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
-  txIdOverride?: number;
+  txIdOverride?: string;
 }
 
 export interface SyncOrdersStatus {
@@ -18,8 +19,8 @@ export interface SyncOrdersStatus {
   initialSyncState: OrderSyncState;
   finalSyncState: OrderSyncState;
   length: number;
-  startingTxId: number;
-  maxTxId: number;
+  startingTxId: string;
+  maxTxId: string;
 }
 
 export class OrdersUseCase {
@@ -49,91 +50,10 @@ export class OrdersUseCase {
     return this.ordersRepo.updateOrder(context, id, data);
   }
 
-  /*
-
-  Lifecycle: pending -> order confirmed -> "transfering" -> order complete -> DONE.
-                     -> order rejected -> DONE.
-
-  Cosmos Document Design
-
-  collection: orders
-  partition key: caseId
-  index on: caseId, status, documentType/orderType, court?, region? office? other?
-
-  {
-    //
-    // READ ONLY attributes originating from DXTR.
-    //
-    "caseId": "081-21-45763",
-    "caseTitle": "Sanchez Group",
-    "chapter": "15",
-    "courtName": "Southern District of New York",
-    "courtDivisionName": "Manhattan",
-    "regionId": "02",
-    "orderType": "transfer",
-    "orderDate": "2021-04-03",
-    "sequenceNumber": 1,
-    "documentNumber": 1,
-    "summaryText": "Order Re: Transfer Case",
-    "fullText": "Caritas volaticus voluptatem combibo degenero theatrum. Iste adeo versus pauci decimus. Impedit cubicularis odio crebro. Id desparatus adeptio accusamus vulnus adfectus. Terga conqueror sapiente clementia appello. Magni cum verecundia repellat speculum tantum. Absum iusto vespillo adicio. Attonbitus inflammatio collum copia adulescens bis.",
-    "dateFiled": "2021-04-03",
-    "documents": [
-      {
-        "fileUri": "https://en.wikipedia.org/api/rest_v1/page/pdf/0208-307899-1-1-0.pdf",
-        "fileSize": 1514596,
-        "fileLabel": "1",
-        "fileExt": "pdf"
-      }
-    ],
-
-    //
-    // Originate from DXTR with default values. Mutated by the CAMS workflow lifecycle in Cosmos.
-    //
-    "status": "pending",
-    "newCaseId": "23-50607"
-
-    //
-    // Originate from CAMS
-    //
-
-    * current in flight region/court/office? ==> start with "departing", end with "destination". use this for index?
-
-    new court
-    new region
-    user
-    timestamp
-
-    * MAYBE need a change log.... __OR is this recorded to HISTORY/AUDIT collection??__ (yes)
-      {
-        start state
-        end state
-        user
-        timestamp
-        data: {
-          ...changed attributes??
-        }
-      }
-
-    //
-    // meta
-    //
-
-    documentType: "transfer" // SAME AS orderType??
-
-  }
-
-  // TODO: Document how to trigger the sync function.
-
-  curl -v -d "{}" -H "Content-Type: application/json" http://localhost:7071/admin/functions/orders-sync
-
-  // TODO: Document how to setup local environment `local.settings.json` to run the API.
-
-  */
   public async syncOrders(
     context: ApplicationContext,
     options: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
-    const ustpSeedTxId = 167933444;
     let initialSyncState: OrderSyncState;
 
     try {
@@ -153,9 +73,15 @@ export class OrdersUseCase {
         error,
       );
       if (error.message === 'Initial state was not found or was ambiguous.') {
+        if (options?.txIdOverride === undefined) {
+          throw new CamsError(MODULE_NAME, {
+            message: 'A transaction ID is required to seed the order sync run. Aborting.',
+          });
+        }
+        // const ustpSeedTxId = 167933444;
         initialSyncState = {
           documentType: 'ORDERS_SYNC_STATE',
-          txId: options.txIdOverride || ustpSeedTxId,
+          txId: options.txIdOverride,
         };
         initialSyncState = await this.runtimeStateRepo.createState(context, initialSyncState);
         context.logger.info(
@@ -168,8 +94,7 @@ export class OrdersUseCase {
       }
     }
 
-    const startingTxId = options?.txIdOverride || initialSyncState.txId;
-    //context.logger.info(MODULE_NAME, `Starting from txId ${startingTxId}.`);
+    const startingTxId = options?.txIdOverride ?? initialSyncState.txId;
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, startingTxId);
     context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', { maxTxId, orders });
 
@@ -181,6 +106,7 @@ export class OrdersUseCase {
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
 
     return {
+      options,
       initialSyncState,
       finalSyncState,
       length: orders.length,

@@ -15,7 +15,7 @@ export interface CaseHistoryGateway {
 }
 
 export interface OrdersGateway {
-  getOrderSync(context: ApplicationContext, txId: number): Promise<OrderSync>;
+  getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync>;
 }
 
 export interface OrdersRepository {
@@ -34,7 +34,7 @@ export type RuntimeState = {
 
 export type OrderSyncState = RuntimeState & {
   documentType: 'ORDERS_SYNC_STATE';
-  txId: number;
+  txId: string;
 };
 
 export interface RuntimeStateRepository {
