@@ -72,12 +72,12 @@ export class OrdersUseCase {
         'Failed to get initial runtime state from repo (Cosmos).',
         error,
       );
-      if (options?.txIdOverride === undefined) {
-        throw new CamsError(MODULE_NAME, {
-          message: 'A transaction ID is required to seed the order sync run. Aborting.',
-        });
-      }
       if (error.message === 'Initial state was not found or was ambiguous.') {
+        if (options?.txIdOverride === undefined) {
+          throw new CamsError(MODULE_NAME, {
+            message: 'A transaction ID is required to seed the order sync run. Aborting.',
+          });
+        }
         // const ustpSeedTxId = 167933444;
         initialSyncState = {
           documentType: 'ORDERS_SYNC_STATE',
