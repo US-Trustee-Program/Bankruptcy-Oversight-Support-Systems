@@ -45,7 +45,7 @@ describe('Orders use case', () => {
   });
 
   test('should retrieve orders from legacy and persist to new system', async () => {
-    const startState = { documentType: 'ORDERS_SYNC_STATE', txId: 1234, id: 'guid-1' };
+    const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
     jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
       resources: [startState],
@@ -53,12 +53,12 @@ describe('Orders use case', () => {
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
       orders: ORDERS,
-      maxTxId: 3000,
+      maxTxId: '3000',
     });
 
     const endState = {
       ...startState,
-      txId: 3000,
+      txId: '3000',
     };
 
     const mockPutOrders = jest
@@ -77,7 +77,7 @@ describe('Orders use case', () => {
 
   test('should handle a missing order runtime state when a starting transaction ID is provided', async () => {
     const id = 'guid-id';
-    const txId = 1234;
+    const txId = '1234';
     const initialState: OrderSyncState = { documentType: 'ORDERS_SYNC_STATE', txId };
 
     const mockGetState = jest
@@ -96,12 +96,12 @@ describe('Orders use case', () => {
       .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
       .mockResolvedValue({
         orders: ORDERS,
-        maxTxId: 3000,
+        maxTxId: '3000',
       });
 
     const endState = {
       ...initialState,
-      txId: 3000,
+      txId: '3000',
       id,
     };
 

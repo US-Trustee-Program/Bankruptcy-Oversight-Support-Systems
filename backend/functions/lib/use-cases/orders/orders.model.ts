@@ -36,5 +36,5 @@ export type OrderTransfer = {
 
 export type OrderSync = {
   orders: Order[];
-  maxTxId: number;
+  maxTxId: string;
 };
