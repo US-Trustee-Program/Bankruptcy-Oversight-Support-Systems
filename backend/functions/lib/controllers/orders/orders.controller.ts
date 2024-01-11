@@ -59,7 +59,8 @@ export class OrdersController {
     options?: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
     try {
-      return this.useCase.syncOrders(context, options);
+      const result = await this.useCase.syncOrders(context, options);
+      return result;
     } catch (originalError) {
       throw originalError instanceof CamsError
         ? originalError
