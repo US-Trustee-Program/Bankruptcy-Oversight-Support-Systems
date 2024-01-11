@@ -7,6 +7,7 @@ import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { Order, OrderSync } from '../../../use-cases/orders/orders.model';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
+import log from '../../services/logger.service';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
@@ -62,16 +63,17 @@ export class DxtrOrdersGateway implements OrdersGateway {
       });
 
       const rawOrders = await this._getOrders(context, params);
-      context.logger.info(MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
+      log.info(context, MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
       const documents = await this._getDocuments(context, params);
-      context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
+      log.info(context, MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
       const mappedDocuments = documents.reduce((map, document) => {
         const { dxtrCaseId } = document;
         delete document.dxtrCaseId;
         map.set(dxtrCaseId, document);
         return map;
       }, new Map());
-      context.logger.info(
+      log.info(
+        context,
         MODULE_NAME,
         `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
       );
@@ -92,7 +94,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
           return rawOrder satisfies Order;
         })
         .sort(dxtrOrdersSorter);
-      context.logger.info(
+      log.info(
+        context,
         MODULE_NAME,
         `Processed ${orderSync.orders.length} orders and their documents from DXTR. New maxTxId is ${orderSync.maxTxId}.`,
       );
