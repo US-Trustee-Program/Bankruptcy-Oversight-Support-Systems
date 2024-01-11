@@ -146,8 +146,6 @@ export class DxtrOrdersGateway implements OrdersGateway {
       ORDER BY TX.TX_ID ASC
       `;
 
-    console.log(query);
-
     const queryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
@@ -253,8 +251,6 @@ export class DxtrOrdersGateway implements OrdersGateway {
       AND DE.DE_SEQNO=TX.DE_SEQNO
       AND TX.TX_CODE='CTO'
     `;
-
-    console.log(query);
 
     const queryResult: QueryResults = await executeQuery(
       context,
