@@ -7,6 +7,7 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { createHash } from 'node:crypto';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 
@@ -94,10 +95,13 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
       //   .container(this.containerName)
       //   .items.batch(operations);
       for (const order of orders) {
+        order.id = createHash('sha256')
+          .update(order.caseId + '-' + order.sequenceNumber)
+          .digest('hex');
         const _result = await this.cosmosDbClient
           .database(this.cosmosConfig.databaseName)
           .container(this.containerName)
-          .items.create(order);
+          .items.upsert(order);
 
         // TODO: Revisit how we deal with failures. How are we going to recover?
         // if (result.statusCode !== 201) {
