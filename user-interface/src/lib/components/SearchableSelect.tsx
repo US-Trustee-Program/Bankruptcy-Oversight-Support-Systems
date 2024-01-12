@@ -2,23 +2,33 @@
 // refactor - let's find a way to avoid using any
 import './SearchableSelect.scss';
 import ReactSelect, { SingleValue } from 'react-select';
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 
 export type SearchableSelectOption = SingleValue<Record<string, string>>;
 
 export interface SearchableSelectProps {
-  onChange: (newValue: SearchableSelectOption) => void;
+  id: string;
+  onChange?: (newValue: SearchableSelectOption) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
-  options?: Record<string, string>[];
-  label: string;
-  id: string;
+  options: Record<string, string>[];
+  label?: string;
+  value?: string;
 }
 
 function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<InputRef>) {
   const searchableSelectRef = React.useRef(null);
+  const [initialValue, setInitialValue] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    if (props.value !== undefined) {
+      setValue(props.value);
+    }
+    setInitialValue(props.value == undefined ? null : props.value);
+  }, [props.value]);
+
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
       ...provided,
@@ -80,11 +90,29 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
   }
 
   function resetValue() {
-    throw new Error('Not implemented');
+    type SelectRef = {
+      setValue: (option: Record<string, string>, foo: string) => void;
+    };
+
+    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
+      const option = props.options.find((option) => option.value == initialValue);
+      if (option) {
+        (searchableSelectRef.current as SelectRef).setValue(option, 'select-option');
+      }
+    }
   }
 
-  function setValue() {
-    throw new Error('Not implemented');
+  function setValue(value: string) {
+    type SelectRef = {
+      setValue: (option: Record<string, string>, foo: string) => void;
+    };
+
+    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
+      const option = props.options.find((option) => option.value == value);
+      if (option) {
+        (searchableSelectRef.current as SelectRef).setValue(option, 'select-option');
+      }
+    }
   }
 
   useImperativeHandle(ref, () => {
