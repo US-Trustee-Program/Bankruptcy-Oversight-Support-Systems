@@ -25,7 +25,7 @@ const BLANK = '';
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string | undefined>(props.value);
+  const [inputValue, setInputValue] = useState<string | number | undefined>(props.value);
 
   function resetValue() {
     setInputValue(props.value || BLANK);
