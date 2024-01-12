@@ -56,7 +56,7 @@ az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-n
 
 # Gives some extra time for prior management operation to complete before starting deployment
 sleep 10s
-az webapp deploy -g "${app_rg}" --src-path "${artifact_path}" -n "${app_name}" --type zip
+az webapp deployment source config-zip -g "${app_rg}" --src "${artifact_path}" -n "${app_name}"
 
 # Alternative workaround to set Azure app service container runtime
 az webapp config set -g "${app_rg}" -n "${app_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
