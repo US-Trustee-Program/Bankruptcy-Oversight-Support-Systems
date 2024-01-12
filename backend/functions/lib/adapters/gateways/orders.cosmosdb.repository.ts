@@ -7,7 +7,7 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { createHash } from 'node:crypto';
+import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 
@@ -82,34 +82,18 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   async putOrders(context: ApplicationContext, orders: Order[]) {
     if (!orders.length) return;
     try {
-      // TODO: Revisit batch creation.
-      // const operations = orders.map((order) => {
-      //   return {
-      //     operationType: 'Create',
-      //     partitionKey: '/caseId',
-      //     resourceBody: order,
-      //   };
-      // });
-      // const results = await this.cosmosDbClient
-      //   .database(this.cosmosConfig.databaseName)
-      //   .container(this.containerName)
-      //   .items.batch(operations);
       for (const order of orders) {
-        order.id = createHash('sha256')
-          .update(order.caseId + '-' + order.sequenceNumber)
-          .digest('hex');
-        const _result = await this.cosmosDbClient
-          .database(this.cosmosConfig.databaseName)
-          .container(this.containerName)
-          .items.upsert(order);
-
-        // TODO: Revisit how we deal with failures. How are we going to recover?
-        // if (result.statusCode !== 201) {
-        //   throw new CamsError(MODULE_NAME, {
-        //     message: 'Failed to create order in Cosmos.',
-        //     data: result,
-        //   });
-        // }
+        order.id = order.caseId + '_' + order.sequenceNumber;
+        try {
+          const _result = await this.cosmosDbClient
+            .database(this.cosmosConfig.databaseName)
+            .container(this.containerName)
+            .items.create(order);
+        } catch (e) {
+          if (!isPreExistingDocumentError(e)) {
+            throw e;
+          }
+        }
       }
     } catch (originalError) {
       log.error(
