@@ -107,7 +107,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
     delete errorTestNewOrderData.id;
 
-    const mockRead = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+    const mockRead = jest.spyOn(HumbleItems.prototype, 'upsert').mockImplementation(() => {
       throw new UnknownError('TEST_MODULE', { message: 'unknown error' });
     });
 
@@ -125,7 +125,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     delete testNewOrderData2.id;
     const ordersList = [testNewOrderData2];
 
-    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+    const mockCreate = jest.spyOn(HumbleItems.prototype, 'upsert').mockImplementation(() => {
       throw new AggregateAuthenticationError([
         new ForbiddenError('TEST_MODULE', { message: 'forbidden' }),
       ]);
@@ -159,7 +159,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     delete positiveTestNewOrderData2.id;
     const ordersList = [positiveTestNewOrderData1, positiveTestNewOrderData2];
 
-    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+    const mockCreate = jest.spyOn(HumbleItems.prototype, 'upsert').mockImplementation(() => {
       return;
     });
 
@@ -176,7 +176,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
     expect(fetchAll).toHaveBeenCalled();
 
-    const create = jest.spyOn(HumbleItems.prototype, 'create').mockImplementationOnce(() => {
+    const create = jest.spyOn(HumbleItems.prototype, 'upsert').mockImplementationOnce(() => {
       throw new AggregateAuthenticationError([], 'Mock AggregateAuthenticationError');
     });
     await expect(repository.putOrders(applicationContext, [testNewOrderData])).rejects.toThrow(

@@ -53,6 +53,14 @@ export class HumbleItems<T> {
       id,
     };
   }
+  upsert(item: T) {
+    const id = crypto.randomUUID().toString();
+    this.container.map.set(id, item);
+    return {
+      ...item,
+      id,
+    };
+  }
   query(query: QueryOptions) {
     return new HumbleQuery(this, query);
   }
