@@ -137,7 +137,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           {
             message: `Transfer of case to ${getCaseNumber(orderTransfer.newCaseId)} in ${
               orderTransfer.newCourtName
-            } ${orderTransfer.newCourtDivisionName} was ${orderTransfer.status}.`,
+            } (${orderTransfer.newCourtDivisionName}) was ${orderTransfer.status}.`,
             type: UswdsAlertStyle.Success,
             timeOut: 8,
           },
@@ -169,15 +169,38 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         className="accordion-heading grid-row grid-gap-lg"
         data-testid={`accordion-heading-${order.id}`}
       >
-        <div className="grid-col-1 case-id text-no-wrap">{getCaseNumber(order.caseId)}</div>
-        <div className="grid-col-4 case-title text-no-wrap">{order.caseTitle}</div>
-        <div className="grid-col-1 order-date text-no-wrap">{formatDate(order.orderDate)}</div>
+        <div
+          className="grid-col-1 case-id text-no-wrap"
+          aria-label={`Case ID ${getCaseNumber(order.caseId).split('').join(' ')}`}
+        >
+          {getCaseNumber(order.caseId)}
+        </div>
+        <div
+          className="grid-col-4 case-title text-no-wrap"
+          aria-label={`Case title ${order.caseTitle}`}
+        >
+          {order.caseTitle}
+        </div>
+        <div
+          className="grid-col-1 order-date text-no-wrap"
+          title="Order date"
+          aria-label={`Order date ${formatDate(order.orderDate)}`}
+        >
+          {formatDate(order.orderDate)}
+        </div>
         <div className="grid-col-2"></div>
         <div className="grid-col-2 order-type text-no-wrap">
-          <span>{orderType.get(order.orderType)}</span>
+          <span aria-label={`Order type ${orderType.get(order.orderType)}`}>
+            {orderType.get(order.orderType)}
+          </span>
         </div>
         <div className="grid-col-2 order-status text-no-wrap">
-          <span className={order.status}>{statusType.get(order.status)}</span>
+          <span
+            className={order.status}
+            aria-label={`Order status ${statusType.get(order.status)}`}
+          >
+            {statusType.get(order.status)}
+          </span>
         </div>
       </section>
       <section className="accordion-content" data-testid={`accordion-content-${order.id}`}>
@@ -187,13 +210,16 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             <Link
               to={`/case-detail/${order.caseId}/court-docket?document=${order.documentNumber}`}
               target="_blank"
+              title={`Open case ${order.caseId} docket in new window`}
             >
               {order.documentNumber && (
                 <span className="document-number">#{order.documentNumber} - </span>
               )}
               {formatDate(order.orderDate)} - {order.summaryText}
             </Link>
-            <p className="measure-6">{order.fullText}</p>
+            <p tabIndex={0} className="measure-6">
+              {order.fullText}
+            </p>
             {order.documents && <DocketEntryDocumentList documents={order.documents} />}
           </div>
           <div className="grid-col-1"></div>
@@ -201,7 +227,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         {order.status === 'approved' && (
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
-            <div className="transfer-text grid-col-10">
+            <div className="transfer-text grid-col-10" tabIndex={0}>
               Transferred
               <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
               from
@@ -223,7 +249,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             <div className="court-selection grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="transfer-from-to__div grid-col-10">
-                <div className="transfer-text">
+                <div className="transfer-text" tabIndex={0}>
                   Transfer
                   <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
                   from
@@ -234,7 +260,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 </div>
                 <div className="form-row">
                   <div className="select-container court-select-container">
-                    <label>New Court</label>
+                    <label htmlFor={`court-selection-${order.id}`}>New Court</label>
                     <div
                       className="usa-combo-box"
                       data-testid={`court-selection-usa-combo-box-${order.id}`}
@@ -243,8 +269,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                         id={`court-selection-${order.id}`}
                         className="new-court__select"
                         closeMenuOnSelect={true}
-                        label="Filter by Summary"
-                        aria-label="New court options"
+                        label="Select new court"
                         ref={courtSelectionRef}
                         onChange={handleCourtSelection}
                         options={getOfficeList(officesList)}
