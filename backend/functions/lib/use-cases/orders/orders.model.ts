@@ -12,6 +12,7 @@ export type Order = CaseDocketEntry & {
   regionId: string;
   orderType: 'transfer';
   orderDate: string;
+  sequenceNumber: number;
   status: OrderStatus;
   newCaseId?: string;
   newCourtName?: string;

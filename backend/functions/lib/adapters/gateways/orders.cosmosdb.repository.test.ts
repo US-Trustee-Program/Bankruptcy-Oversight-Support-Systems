@@ -8,6 +8,7 @@ import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-
 import { UnknownError } from '../../common-errors/unknown-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
+import { createPreExistingDocumentError } from '../../testing/cosmos-errors';
 
 const testNewOrderTransferData: OrderTransfer = {
   id: 'test-id-0',
@@ -107,14 +108,30 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
     delete errorTestNewOrderData.id;
 
-    const mockRead = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
       throw new UnknownError('TEST_MODULE', { message: 'unknown error' });
     });
 
     await expect(repository.putOrders(applicationContext, [errorTestNewOrderData])).rejects.toThrow(
       `unknown error`,
     );
-    expect(mockRead).toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalled();
+  });
+
+  test('should ignore an existing document error when putting an order', async () => {
+    const errorTestNewOrderData: Order = {
+      ...testNewOrderData,
+    };
+    delete errorTestNewOrderData.id;
+
+    const mockCreate = jest
+      .spyOn(HumbleItems.prototype, 'create')
+      .mockRejectedValue(createPreExistingDocumentError());
+
+    await expect(
+      repository.putOrders(applicationContext, [errorTestNewOrderData]),
+    ).resolves.toBeUndefined();
+    expect(mockCreate).toHaveBeenCalled();
   });
 
   test('When putting an order, Should throw ServerConfigError if an AggregateAuthenticationError error occurs', async () => {
