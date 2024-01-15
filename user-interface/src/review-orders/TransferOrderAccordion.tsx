@@ -309,7 +309,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     id={`new-case-input-${order.id}`}
                     data-testid={`new-case-input-${order.id}`}
                     className="usa-input"
-                    value={orderTransfer.newCaseId || ''}
+                    value={order.newCaseId || ''}
                     onChange={handleCaseInputChange}
                     aria-label="New case ID"
                     ref={caseIdRef}
