@@ -2,7 +2,7 @@ import { ApplicationContext } from '../lib/adapters/types/basic';
 import log from '../lib/adapters/services/logger.service';
 
 import * as dotenv from 'dotenv';
-import { getCosmosDbClient } from '../lib/factory';
+import { getAssignmentsCosmosDbClient } from '../lib/factory';
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ export default class HealthcheckCosmosDb {
   constructor(applicationContext: ApplicationContext) {
     try {
       this.applicationContext = applicationContext;
-      this.cosmosDbClient = getCosmosDbClient(this.applicationContext);
+      this.cosmosDbClient = getAssignmentsCosmosDbClient(this.applicationContext);
     } catch (e) {
       log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
     }

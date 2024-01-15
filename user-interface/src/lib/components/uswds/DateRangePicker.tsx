@@ -27,20 +27,8 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
     start: minDate,
     end: maxDate,
   });
-  const [startDateValue, setStartDateValue] = useState<string | undefined>(undefined);
-  const [endDateValue, setEndDateValue] = useState<string | undefined>(undefined);
-
-  function clearValue() {
-    setInternalDateRange(internalDateRange);
-    setStartDateValue('');
-    setEndDateValue('');
-
-    // debounce to solve some funky weirdness with the date type input handling keyboard events after a reset.
-    debounce(() => {
-      setStartDateValue(undefined);
-      setEndDateValue(undefined);
-    }, 250);
-  }
+  const [startDateValue, setStartDateValue] = useState<string | null>(null);
+  const [endDateValue, setEndDateValue] = useState<string | null>(null);
 
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
@@ -52,9 +40,31 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
     if (props.onEndDateChange) props.onEndDateChange(ev);
   }
 
+  function clearValue() {
+    setInternalDateRange(internalDateRange);
+    setStartDateValue('');
+    setEndDateValue('');
+
+    // debounce to solve some funky weirdness with the date type input handling keyboard events after a reset.
+    debounce(() => {
+      setStartDateValue(null);
+      setEndDateValue(null);
+    }, 250);
+  }
+
+  function resetValue() {
+    throw new Error('Not implemented');
+  }
+
+  function setValue() {
+    throw new Error('Not implemented');
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
+      resetValue,
+      setValue,
     };
   });
 
@@ -81,7 +91,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
             min={minDate}
             max={internalDateRange.end}
             data-testid={id + '-date-start'}
-            value={startDateValue}
+            value={startDateValue === null ? undefined : startDateValue}
           />
         </div>
       </div>
@@ -101,7 +111,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
             min={internalDateRange.start}
             max={maxDate}
             data-testid={id + '-date-end'}
-            value={endDateValue}
+            value={endDateValue === null ? undefined : endDateValue}
           />
         </div>
       </div>

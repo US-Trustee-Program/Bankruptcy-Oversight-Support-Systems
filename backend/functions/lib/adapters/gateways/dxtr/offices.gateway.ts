@@ -22,20 +22,20 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     const input: DbTableFieldSpec[] = [];
 
     const query = `
-    SELECT TOP (1000) a.[CS_DIV] AS divisionCode
+    SELECT a.[CS_DIV] AS divisionCode
       ,a.[GRP_DES] AS groupDesignator
       ,a.[COURT_ID] AS courtId
       ,a.[OFFICE_CODE] AS officeCode
       ,a.[STATE] AS state
       ,c.COURT_NAME AS courtName
       ,b.OFFICE_NAME AS courtDivisionName
-      ,d.REGION_ID as region
+      ,d.REGION_ID AS regionId
+      ,r.REGION_NAME AS regionName
     FROM [dbo].[AO_CS_DIV] a
     JOIN [dbo].[AO_OFFICE] b on a.COURT_ID = b.COURT_ID and a.OFFICE_CODE = b.OFFICE_CODE
     JOIN [dbo].[AO_COURT] c on a.COURT_ID = c.COURT_ID
     JOIN [dbo].[AO_GRP_DES] d on a.GRP_DES = d.GRP_DES
-    WHERE 1 = 1
-      AND a.GRP_DES in ('AL', 'BR', 'BU', 'LI', 'NH', 'NY', 'RO', 'UT')
+    JOIN [dbo].[AO_REGION] r on d.REGION_ID = r.REGION_ID
     ORDER BY a.GRP_DES, a.OFFICE_CODE`;
 
     const queryResult: QueryResults = await executeQuery(

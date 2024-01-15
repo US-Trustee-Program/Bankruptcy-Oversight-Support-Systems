@@ -22,21 +22,35 @@ export interface IconInputProps {
 
 function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string | undefined>(undefined);
-  function clearValue() {
-    setInputValue('');
-  }
+  const [inputValue, setInputValue] = useState<string | null>(null);
+
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInputValue(ev.target.value);
     if (props.onChange) {
       props.onChange(ev);
     }
   }
+
+  function clearValue() {
+    setInputValue('');
+  }
+
+  function resetValue() {
+    throw new Error('Not implemented');
+  }
+
+  function setValue() {
+    throw new Error('Not implemented');
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
+      resetValue,
+      setValue,
     };
   });
+
   return (
     <div className="ustp-icon-input">
       <input
@@ -54,7 +68,7 @@ function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
         max={props.max}
         pattern={props.pattern}
         inputMode={props.inputmode}
-        value={inputValue}
+        value={inputValue === null ? undefined : inputValue}
       />
       <Icon className={`usa-icon ${props.className}`} name={props.icon}></Icon>
     </div>

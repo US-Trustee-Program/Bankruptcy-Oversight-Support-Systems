@@ -79,9 +79,19 @@ function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>)
     }
   }
 
+  function resetValue() {
+    throw new Error('Not implemented');
+  }
+
+  function setValue() {
+    throw new Error('Not implemented');
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
+      resetValue,
+      setValue,
     };
   });
 

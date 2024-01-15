@@ -7,7 +7,8 @@ export const OFFICES = [
     state: 'CA',
     courtName: 'Central District of California',
     courtDivisionName: 'Los Angeles',
-    region: '02',
+    regionId: '02',
+    regionName: 'NEW YORK',
   },
   {
     divisionCode: '102',
@@ -17,7 +18,8 @@ export const OFFICES = [
     state: 'TX',
     courtName: 'Northern District of Texas',
     courtDivisionName: 'Dallas',
-    region: '02',
+    regionId: '02',
+    regionName: 'NEW YORK',
   },
   {
     divisionCode: '084',
@@ -27,7 +29,8 @@ export const OFFICES = [
     state: 'FL',
     courtName: 'Southern District of Florida',
     courtDivisionName: 'Miami',
-    region: '02',
+    regionId: '02',
+    regionName: 'NEW YORK',
   },
   {
     divisionCode: '105',
@@ -37,6 +40,7 @@ export const OFFICES = [
     state: 'WA',
     courtName: 'Western District of Washington',
     courtDivisionName: 'Seattle',
-    region: '02',
+    regionId: '02',
+    regionName: 'NEW YORK',
   },
 ];

@@ -8,7 +8,7 @@ export interface FeatureFlagSet {
 }
 
 export const defaultFeatureFlags: FeatureFlagSet = {
-  'chapter-twelve-enabled': false,
-  'chapter-eleven-enabled': false,
+  'chapter-twelve-enabled': true,
+  'chapter-eleven-enabled': true,
   'transfer-orders-enabled': true,
 };

@@ -150,11 +150,34 @@ contents of that file must be:
 
 ```
 {
+    "IsEncrypted": false,
+    "Values": {
+     "FUNCTIONS_WORKER_RUNTIME": "node",
+     "AzureWebJobsStorage": "--REDACTED--"
+    },
+    "ConnectionStrings": {},
     "Host": {
-        "CORS": "*"
+     "CORS": "*"
     }
 }
 ```
+
+A sufficiently priveleged user can retrieve the `AzureWebJobsStorage` connection string with the following Azure CLI command:
+```sh
+az functionapp config appsettings list -g rg-cams-app -n ustp-cams-node-api --query "[?name=='AzureWebJobsStorage']"
+```
+
+##### Running Timer Functions Locally
+
+Admin Endpoint Pattern: `http://localhost:{port}/admin/functions/{function_name}`
+
+Use `curl` or your favorite API testing tool to `POST` a HTTP request to following local Azure Function admin endpoints:
+```sh
+# For the `orders-sync` function:
+curl -v -d "{}" -H "Content-Type: application/json" http://localhost:7071/admin/functions/orders-sync
+```
+
+See: [Code and test Azure Functions locally](https://learn.microsoft.com/en-us/azure/azure-functions/functions-develop-local)
 
 ## These Docs
 

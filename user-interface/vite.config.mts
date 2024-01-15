@@ -69,6 +69,7 @@ export default defineConfig({
         'src/ApplicationInsightsService.tsx',
         'build',
         'src/lib/models/*mock*.ts',
+        'src/lib/components/**/*.mock.tsx',
         'src/lib/components/utils/http.adapter.ts',
         'src/lib/components/**/*Examples.tsx',
         '**/*.d.ts',

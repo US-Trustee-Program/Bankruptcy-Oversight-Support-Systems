@@ -158,7 +158,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'A District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '002',
@@ -169,7 +170,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'B District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '003',
@@ -180,7 +182,8 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'C District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
     {
       divisionCode: '004',
@@ -191,12 +194,14 @@ export default class Chapter15MockApi extends Api {
       state: 'NY',
       courtName: 'D District of New York',
       courtDivisionName: 'New York 1',
-      region: '02',
+      regionId: '02',
+      regionName: 'NEW YORK',
     },
   ];
 
   static orders: Array<Order> = [
     {
+      id: 'guid-0',
       caseId: '081-01-00001',
       caseTitle: 'Case 1',
       chapter: '15',
@@ -222,6 +227,7 @@ export default class Chapter15MockApi extends Api {
       ],
     },
     {
+      id: 'guid-1',
       caseId: '081-01-00002',
       caseTitle: 'Case 2',
       chapter: '15',
@@ -247,6 +253,7 @@ export default class Chapter15MockApi extends Api {
       ],
     },
     {
+      id: 'guid-2',
       caseId: '081-01-00003',
       caseTitle: 'Case 3',
       chapter: '15',
