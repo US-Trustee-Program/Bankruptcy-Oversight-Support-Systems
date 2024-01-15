@@ -7,7 +7,11 @@ describe('Integration Test for the cases Azure Function to call get cases', () =
   let slotName;
   beforeAll(() => {
     functionUrl = process.env.CASES_FUNCTION_URL;
-    slotName = process.env.SLOT_NAME ?? 'self';
+    if (process.env.IS_SLOTS == 'true') {
+      slotName = 'staging';
+    } else {
+      slotName = 'self';
+    }
   });
 
   test('cases azure function should return success when retrieving cases', async () => {

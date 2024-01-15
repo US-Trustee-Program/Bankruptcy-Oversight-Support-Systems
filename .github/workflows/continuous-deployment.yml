@@ -802,7 +802,7 @@ jobs:
           pushd backend/functions
           npm ci
           export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-          export SLOT_NAME="${{ env.slotName }}"
+          export IS_SLOTS="true"
           npm run test:integration
           popd
       - name: Disable GHA runner access
