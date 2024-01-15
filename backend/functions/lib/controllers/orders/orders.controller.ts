@@ -41,6 +41,7 @@ export class OrdersController {
     id: string,
     data: OrderTransfer,
   ): Promise<PatchOrderResponse> {
+    // TODO: Need to sanitize id and data.
     try {
       const result = await this.useCase.updateOrder(context, id, data);
       return {
