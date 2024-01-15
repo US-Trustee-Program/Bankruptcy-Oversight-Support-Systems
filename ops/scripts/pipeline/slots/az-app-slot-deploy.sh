@@ -2,7 +2,7 @@
 
 # Title:        az-app-deploy.sh
 # Description:  Helper script to deploy webapp build artifact to existing Azure site
-# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
+# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName --networkRg networkRgName --vnet vnetName --subnet subnetName --slotName slotName
 #
 # Exitcodes
 # ==========
@@ -32,6 +32,17 @@ while [[ $# -gt 0 ]]; do
         artifact_path="${2}"
         shift 2
         ;;
+
+    # --networkRg)
+    #     network_rg="${2}"
+    #     shift 2
+    #     ;;
+
+    # --vnet)
+    #     vnet_name="${2}"
+    #     shift 2
+    #     ;;
+
     --slotName)
         slot_name="${2}"
         shift 2
@@ -49,15 +60,22 @@ fi
 
 function on_exit() {
     # always try to remove temporary access
-    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
+    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
 
 }
 trap on_exit EXIT
 
 # allow build agent access to execute deployment
-agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
-ruleName="agent-${app_name:0:26}"
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
+agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
+rule_name="agent-${app_name:0:26}"
+echo "Adding rule: ${rule_name} to webapp"
+az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
+
+# TODO CAMS 160
+#app_id=$(az webapp show -g $app_rg -n $app_name --query "[id]" -o tsv)
+#subnet="snet-${app_name}"
+#echo "Creating private endpoint: pep-${app_name}-${slot_name}"
+#az network private-endpoint create --connection-name pep-connection-$app_name-$slot_name --name pep-$app_name-$slot_name --private-connection-resource-id $app_id -g $network_rg --vnet-name $vnet_name --group-id sites-$slot_name --subnet $subnet
 
 # Gives some extra time for prior management operation to complete before starting deployment
 sleep 10

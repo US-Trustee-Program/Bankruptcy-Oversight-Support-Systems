@@ -2,7 +2,7 @@
 
 # Title:        az-func-deploy.sh
 # Description:  Helper script to deploy function build artifact to existing Azure site
-# Usage:        ./az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName
+# Usage:        ./az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --networkRg networkRgName --vnet vnet --subnet subnetName --slotName slotName
 #
 # Exitcodes
 # ==========
@@ -40,6 +40,16 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    # --networkRg)
+    #     network_rg="${2}"
+    #     shift 2
+    #     ;;
+
+    # --vnet)
+    #     vnet_name="${2}"
+    #     shift 2
+    #     ;;
+
     --slotName)
         slot_name="${2}"
         shift 2
@@ -56,12 +66,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# set ruleName in case of exit or other scenarios
-ruleName="agent-${app_name:0:26}" # rule name has a 32 character limit
+# set rule_name in case of exit or other scenarios
+rule_name="agent-${app_name:0:26}" # rule name has a 32 character limit
 
 function on_exit() {
     # always try to remove temporary access
-    config_cmd="az functionapp config access-restriction remove -g ${app_rg} -n ${app_name} --slot ${slot_name} --rule-name ${ruleName} --scm-site true 1>/dev/null"
+    config_cmd="az functionapp config access-restriction remove -g ${app_rg} -n ${app_name} --slot ${slot_name} --rule-name ${rule_name} --scm-site true 1>/dev/null"
     eval "${config_cmd}"
 
 }
@@ -73,9 +83,15 @@ if [ ! -f "$artifact_path" ]; then
 fi
 
 # allow build agent access to execute deployment
-agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
+agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
+echo "Adding rule: ${rule_name} to webapp"
+az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 
-az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
+# TODO CAMS-160
+#app_id=$(az functionapp show -g $app_rg -n $app_name --query "[id]" -o tsv)
+#subnet="snet-${app_name}-pep"
+#echo "Creating private endpoint: pep-${app_name}-${slot_name}"
+#az network private-endpoint create --connection-name pep-connection-$app_name-$slot_name --name pep-$app_name-$slot_name --private-connection-resource-id $app_id -g $network_rg --vnet-name $vnet_name --group-id sites-$slot_name --subnet $subnet
 
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"

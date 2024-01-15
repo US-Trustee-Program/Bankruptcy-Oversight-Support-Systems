@@ -36,19 +36,40 @@ while [[ $# -gt 0 ]]; do
         slot_name="${2}"
         shift 2
         ;;
+
+    --subscription)
+        subscription_id="${2}"
+        shift 2
+        ;;
+    --network-rg)
+        network_resource_group="${2}"
+        shift 2
+        ;;
+    --vnet)
+        vnet_name="${2}"
+        shift 2
+        ;;
+    --subnet)
+        subnet_name="${2}"
+        shift 2
+        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
     esac
 done
 
-
 # WebApp Slot Deployment and configuration
 echo "Creating deployment slot for webapp: ${webapp_name}..."
 az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
 
 echo "Modifying app settings for deployment slot..."
-az webapp config appsettings set --resource-group "${app_rg}"  --name "${webapp_name}" --slot "${slot_name}" --settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
+az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
 
 # shellcheck disable=SC2086
 az webapp traffic-routing set --distribution ${slot_name}=0 --name "${webapp_name}" --resource-group "${app_rg}"
+
+# enable vnet integration for webapp
+az webapp vnet-integration add --name "${webapp_name}" --resource-group "${app_rg}" --slot "${slot_name}" \
+    --subnet "/subscriptions/${subscription_id}/resourceGroups/${network_resource_group}/providers/Microsoft.Network/virtualNetworks/${vnet_name}/subnets/${subnet_name}" \
+    --vnet "/subscriptions/${subscription_id}/resourceGroups/${network_resource_group}/providers/Microsoft.Network/virtualNetworks/${vnet_name}"

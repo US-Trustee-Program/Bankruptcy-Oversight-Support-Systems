@@ -369,6 +369,7 @@ jobs:
     outputs:
       cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
+      vnetName: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
@@ -415,6 +416,18 @@ jobs:
           cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
           echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
 
+          vnetName=$(cat ./outputs.json | jq -r .vnetName.value)
+          echo "vnetName=${vnetName}" >> $GITHUB_OUTPUT
+
+          webappSubnetName=$(cat ./outputs.json | jq -r .webappSubnetName.value)
+          echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
+
+          webappPrivateEndpointSubnetName=$(cat ./outputs.json | jq -r .webappPrivateEndpointSubnetName.value)
+          echo "webappPrivateEndpointSubnetName=${webappPrivateEndpointSubnetName}" >> $GITHUB_OUTPUT
+
+          apiPrivateEndpointSubnetName=$(cat ./outputs.json | jq -r .apiPrivateEndpointSubnetName.value)
+          echo "apiPrivateEndpointSubnetName=${apiPrivateEndpointSubnetName}" >> $GITHUB_OUTPUT
+
           cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
           echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
 
@@ -446,7 +459,11 @@ jobs:
             --webappName ${{ needs.build-info.outputs.webappName }} \
             --apiName ${{ needs.build-info.outputs.apiName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --slotName ${{ needs.build-info.outputs.slotName }}
+            --slotName ${{ needs.build-info.outputs.slotName }} \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
+            --network-rg ${{ steps.rgNetwork.outputs.out }} \
+            --vnet ${{ steps.azure-deploy.outputs.vnetName }} \
+            --subnet ${{ steps.azure-deploy.outputs.webappSubnetName }}
 
       - name: Create API Slot Resource
         if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
