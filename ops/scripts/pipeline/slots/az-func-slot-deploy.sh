@@ -106,5 +106,5 @@ echo "Deployment completed"
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "$slot_name" --settings ${app_settings} --query "[].name" --output tsv
+    eval "az functionapp config appsettings set -g '${app_rg}' -n '${app_name}' --slot '$slot_name' --settings ${app_settings} --query '[].name' --output tsv"
 fi
