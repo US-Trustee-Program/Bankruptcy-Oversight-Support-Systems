@@ -369,7 +369,6 @@ jobs:
     outputs:
       cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
-      vnetName: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
@@ -839,7 +838,7 @@ jobs:
       - name: Swap Deployment Slot
         run: |
           az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
-
+          az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
     needs:
@@ -866,7 +865,8 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Swap Deployment Slot
         run: |
-          az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
 
   smoke-test-application-post-swap:
     runs-on: ubuntu-latest
