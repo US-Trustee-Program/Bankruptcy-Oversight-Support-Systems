@@ -34,7 +34,7 @@ describe('Orders use case', () => {
   });
 
   test('should return list of orders for the API from the repo', async () => {
-    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
+    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: ORDERS,
     });
     const result = await useCase.getOrders(mockContext);
@@ -100,7 +100,7 @@ describe('Orders use case', () => {
   test('should retrieve orders from legacy and persist to new system', async () => {
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
+    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [startState],
     });
 
