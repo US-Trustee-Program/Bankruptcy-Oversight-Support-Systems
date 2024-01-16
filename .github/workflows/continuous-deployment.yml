@@ -866,7 +866,7 @@ jobs:
       - name: Swap Deployment Slot
         run: |
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
-          az functionapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
 
   smoke-test-application-post-swap:
     runs-on: ubuntu-latest
