@@ -35,6 +35,22 @@ export type OrderTransfer = {
   status: OrderStatus;
 };
 
+export interface Transfer {
+  caseId: string;
+  otherCaseId: string;
+  orderDate: string;
+  divisionName: string;
+  courtName: string;
+}
+
+export type TransferIn = Transfer & {
+  documentType: 'TRANSFER_IN';
+};
+
+export type TransferOut = Transfer & {
+  documentType: 'TRANSFER_OUT';
+};
+
 export type OrderSync = {
   orders: Order[];
   maxTxId: string;

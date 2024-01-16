@@ -32,6 +32,32 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     return response;
   }
 
+  async getOrder(context: ApplicationContext, id: string, caseId: string): Promise<Order> {
+    try {
+      const { resource } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .item(id, caseId)
+        .read();
+
+      return resource;
+    } catch (originalError) {
+      log.error(
+        context,
+        MODULE_NAME,
+        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
+      );
+      if (originalError instanceof AggregateAuthenticationError) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Failed to authenticate to Azure',
+          originalError,
+        });
+      } else {
+        throw originalError;
+      }
+    }
+  }
+
   async updateOrder(context: ApplicationContext, id: string, data: OrderTransfer) {
     try {
       const { resource: existingOrder } = await this.cosmosDbClient
