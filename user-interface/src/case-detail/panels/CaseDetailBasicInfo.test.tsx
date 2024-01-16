@@ -138,12 +138,12 @@ describe('Case detail basic information panel', () => {
 
       const newCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(newCaseOrderDate).toBeInTheDocument();
-      expect(newCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_IN.orderDate));
+      expect(newCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_OUT.orderDate));
 
       const newCaseCourt = screen.queryByTestId('case-detail-transfer-court-0');
       expect(newCaseCourt).toBeInTheDocument();
       expect(newCaseCourt?.textContent).toEqual(
-        `${TRANSFER_IN.divisionName} - ${TRANSFER_IN.courtName}`,
+        `${TRANSFER_OUT.divisionName} - ${TRANSFER_OUT.courtName}`,
       );
     });
 
@@ -164,12 +164,12 @@ describe('Case detail basic information panel', () => {
 
       const oldCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(oldCaseOrderDate).toBeInTheDocument();
-      expect(oldCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_OUT.orderDate));
+      expect(oldCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_IN.orderDate));
 
       const oldCaseCourt = screen.queryByTestId('case-detail-transfer-court-0');
       expect(oldCaseCourt).toBeInTheDocument();
       expect(oldCaseCourt?.textContent).toEqual(
-        `${TRANSFER_OUT.divisionName} - ${TRANSFER_OUT.courtName}`,
+        `${TRANSFER_IN.divisionName} - ${TRANSFER_IN.courtName}`,
       );
 
       const newCaseIdLink = screen.queryByTestId('case-detail-transfer-link-1');
