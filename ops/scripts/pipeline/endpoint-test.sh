@@ -61,9 +61,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-webCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${webapp_name}.azurewebsites${host_suffix}"
+webCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f https://${webapp_name}.azurewebsites${host_suffix}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-apiCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
+apiCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
 
 if [[ -z ${slot_name} ]]; then
     ./dev-add-allowed-ip.sh -g "$app_rg" -s "$stack_name" -p "$priority" --is-cicd
