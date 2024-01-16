@@ -31,7 +31,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
       query,
       parameters: [
         {
-          name: 'caseId',
+          name: '@caseId',
           value: caseId,
         },
       ],
