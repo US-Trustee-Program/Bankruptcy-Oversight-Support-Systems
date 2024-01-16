@@ -2,17 +2,25 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
 import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
-import { getOrdersGateway, getOrdersRepository, getRuntimeStateRepository } from '../../factory';
+import {
+  getOrdersGateway,
+  getOrdersRepository,
+  getRuntimeStateRepository,
+  getCasesRepository,
+} from '../../factory';
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
+import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
+import { Order, TransferIn, TransferOut } from './orders.model';
 
 describe('Orders use case', () => {
   let mockContext;
   let ordersGateway;
   let ordersRepo;
+  let casesRepo;
   let runtimeStateRepo;
   let useCase;
 
@@ -21,7 +29,8 @@ describe('Orders use case', () => {
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
-    useCase = new OrdersUseCase(ordersRepo, ordersGateway, runtimeStateRepo);
+    casesRepo = getCasesRepository(mockContext);
+    useCase = new OrdersUseCase(casesRepo, ordersRepo, ordersGateway, runtimeStateRepo);
   });
 
   test('should return list of orders for the API from the repo', async () => {
@@ -33,15 +42,59 @@ describe('Orders use case', () => {
     expect(mockRead).toHaveBeenCalled();
   });
 
-  test('should update an order', async () => {
-    const order = { id: 'mock-guid' };
-    const updateOrder = jest
+  // test('should update an order', async () => {
+  //   const order = { id: 'mock-guid' };
+  //   const updateOrder = jest
+  //     .spyOn(OrdersCosmosDbRepository.prototype, 'updateOrder')
+  //     .mockResolvedValue(order);
+  //
+  //   const result = await useCase.updateOrder(mockContext, order);
+  //   expect(result).toEqual(order);
+  //   expect(updateOrder).toHaveBeenCalled();
+  // });
+
+  test('should add transfer records for both cases when a transfer order is completed', async () => {
+    const order: Order = { ...ORDERS[0] };
+
+    const transferIn: TransferIn = {
+      caseId: order.newCaseId,
+      otherCaseId: order.caseId,
+      divisionName: order.courtDivisionName,
+      courtName: order.courtName,
+      orderDate: order.orderDate,
+      documentType: 'TRANSFER_IN',
+    };
+
+    const transferOut: TransferOut = {
+      caseId: order.caseId,
+      otherCaseId: order.newCaseId,
+      divisionName: order.newCourtDivisionName,
+      courtName: order.newCourtName,
+      orderDate: order.orderDate,
+      documentType: 'TRANSFER_OUT',
+    };
+
+    const updateOrderFn = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'updateOrder')
+      .mockResolvedValue({ id: 'mock-guid' });
+
+    const getOrderFn = jest
+      .spyOn(OrdersCosmosDbRepository.prototype, 'getOrder')
       .mockResolvedValue(order);
 
-    const result = await useCase.updateOrder(mockContext, order);
-    expect(result).toEqual(order);
-    expect(updateOrder).toHaveBeenCalled();
+    const transferOutFn = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'createTransferOut')
+      .mockResolvedValue(transferOut);
+
+    const transferInFn = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'createTransferIn')
+      .mockResolvedValue(transferIn);
+
+    await useCase.updateOrder(mockContext, order.id, order);
+    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, order);
+    expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
+    expect(transferOutFn).toHaveBeenCalledWith(mockContext, transferOut);
+    expect(transferInFn).toHaveBeenCalledWith(mockContext, transferIn);
   });
 
   test('should retrieve orders from legacy and persist to new system', async () => {
