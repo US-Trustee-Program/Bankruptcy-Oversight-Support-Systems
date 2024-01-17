@@ -19,9 +19,16 @@ export default class Api {
     return path;
   }
 
-  public static async post(path: string, body: object): Promise<ResponseData> {
+  public static async post(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseData> {
     try {
-      const response = await httpPost({ url: Api._host + path, body });
+      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
+      const pathStr = Api.createPath(path, apiOptions);
+
+      const response = await httpPost({ url: Api._host + pathStr, body });
 
       const data = await response.json();
 
@@ -37,7 +44,7 @@ export default class Api {
 
   public static async list(path: string, options: ObjectKeyVal = {}): Promise<ResponseData> {
     try {
-      const apiOptions = options;
+      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api._host + pathStr });
 
@@ -58,7 +65,7 @@ export default class Api {
 
   public static async get(path: string, options?: ObjectKeyVal): Promise<ResponseData> {
     try {
-      const apiOptions = options ? options : {};
+      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api._host + pathStr });
 
@@ -77,9 +84,30 @@ export default class Api {
     }
   }
 
-  public static async patch(path: string, body: object): Promise<ResponseData> {
+  public static getQueryStringsToPassthrough(options: ObjectKeyVal): ObjectKeyVal {
+    const queryParams = new URLSearchParams(window.location.search);
+
+    // Add to this list if there are query params that should be passed to backend api request
+    const params = ['x-ms-routing-name'];
+
+    params.forEach((key) => {
+      const value = queryParams.get(key);
+      if (value) {
+        options[key] = value;
+      }
+    });
+    return options;
+  }
+
+  public static async patch(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseData> {
     try {
-      const response = await httpPatch({ url: Api._host + path, body });
+      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
+      const pathStr = Api.createPath(path, apiOptions);
+      const response = await httpPatch({ url: Api._host + pathStr, body });
 
       const data = await response.json();
 

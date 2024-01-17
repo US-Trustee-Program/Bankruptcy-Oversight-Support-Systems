@@ -10,6 +10,7 @@ param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
 param linkVnetIds array = []
 
+@description('Set to true to deploy web module resources. This should be set to false for Azure slot deployments.')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
 param webappResourceGroupName string
@@ -22,9 +23,11 @@ param webappPlanName string = 'plan-${webappName}'
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param webappPlanType string
 
+@description('Set to true to deploy api module resources. This should be set to false for Azure slot deployments.')
 param deployFunctions bool = true
 param apiName string = '${appName}-node-api'
 param apiFunctionsResourceGroupName string
@@ -37,11 +40,14 @@ param apiPlanName string = 'plan-${apiName}'
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param apiPlanType string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
+@description('Name of deployment slot for frontend and backend')
+param slotName string = 'staging'
 param azHostSuffix string = '.net'
 
 @secure()
@@ -139,7 +145,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
     createAlerts: createAlerts
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
-    targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix}'
+    targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix} ${apiName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
     ustpIssueCollectorHash: ustpIssueCollectorHash
     camsReactSelectHash: camsReactSelectHash
   }
@@ -157,7 +163,7 @@ var funcParams = [
     privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
   }
 ]
-module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions) {
+module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
   name: '${appName}-function-module-${i}'
   scope: resourceGroup(apiFunctionsResourceGroupName)
   params: {
@@ -192,10 +198,21 @@ module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams
   ]
 }]
 
-output webappName string = ustpWebapp.outputs.webappName
-output functionAppName string = deployFunctions ? ustpFunctions[0].outputs.functionAppName : ''
+
+// main.bicep outputs
+
 output vnetName string = virtualNetworkName
+output webappSubnetName string = webappSubnetName
+output webappPrivateEndpointSubnetName string = webappPrivateEndpointSubnetName
+output apiPrivateEndpointSubnetName string = apiPrivateEndpointSubnetName
 
 // Allowed subnet name that should have access to CosmosDb
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
 output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
+
+resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: idKeyvaultAppConfiguration
+  scope: resourceGroup(kvAppConfigResourceGroupName)
+}
+output keyVaultId string = identityKeyVaultAppConfig.id
+output keyVaultManagedIdName string = identityKeyVaultAppConfig.name

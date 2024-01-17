@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-delete-branch-resources.sh
 # Description:  Clean up USTP CAMS Azure resources provisioned for a development branch deployment by hash id.
