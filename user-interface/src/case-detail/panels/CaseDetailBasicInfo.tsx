@@ -2,6 +2,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType, Transfer } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatDate } from '@/lib/utils/datetime';
+import { Link } from 'react-router-dom';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -14,7 +15,7 @@ export interface CaseDetailBasicInfoProps {
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
   const { caseDetail, showReopenDate } = props;
   return (
-    <>
+    <div className="grid-row grid-gap-lg">
       <span className="case-card-list grid-col-6">
         <div className="date-information padding-bottom-4 case-card">
           <h3>Dates</h3>
@@ -239,20 +240,21 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
       <span className="case-card-list grid-col-6">
         <ul className="usa-list usa-list--unstyled">
           {!!caseDetail.transfers?.length && caseDetail.transfers.length > 0 && (
-            <div className="transfers">
+            <div className="transfers case-card">
               <h3>Transferred Case</h3>
               {caseDetail.transfers?.map((transfer: Transfer, idx: number) => {
                 return (
                   <li key={idx} className="transfer">
                     <div>
                       <span className="case-detail-item-name">ID:</span>
-                      {/* TODO: Make this a link to the case in CAMS */}
-                      <span
+                      {/* TODO: link does not seem to be working properly */}
+                      <Link
+                        to={`/case-detail/${transfer.otherCaseId}/`}
                         className="case-detail-item-value"
                         data-testid={`case-detail-transfer-link-${idx}`}
                       >
                         {transfer.otherCaseId}
-                      </span>
+                      </Link>
                     </div>
                     <div>
                       <span className="case-detail-item-name">Order Date:</span>
@@ -281,6 +283,6 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           )}
         </ul>
       </span>
-    </>
+    </div>
   );
 }
