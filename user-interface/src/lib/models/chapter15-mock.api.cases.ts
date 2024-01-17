@@ -145,7 +145,7 @@ export default class Chapter15MockApi extends Api {
       email: 'testemail@email.com',
     },
     debtorTypeLabel: 'Corporate Business',
-    petitionLabel: 'Voluntary Petition',
+    petitionLabel: 'Voluntary',
     transfers: [
       {
         caseId: '101-23-12345',

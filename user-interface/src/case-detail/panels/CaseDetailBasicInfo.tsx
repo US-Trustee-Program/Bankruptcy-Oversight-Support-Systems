@@ -1,7 +1,7 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType, Transfer } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
-import { formatDate } from '@/lib/utils/datetime';
+import { formatDate, sortDatesRev } from '@/lib/utils/datetime';
 import { Link } from 'react-router-dom';
 
 const informationUnavailable = 'Information is not available.';
@@ -14,6 +14,11 @@ export interface CaseDetailBasicInfoProps {
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
   const { caseDetail, showReopenDate } = props;
+
+  function sortTransfers(a: Transfer, b: Transfer) {
+    return sortDatesRev(a.orderDate, b.orderDate);
+  }
+
   return (
     <div className="grid-row grid-gap-lg">
       <span className="case-card-list grid-col-6">
@@ -236,54 +241,62 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           )}
         </div>
       </span>
-      {/* TODO: Figure out how to get this displayed on the right side */}
       <span className="case-card-list grid-col-6">
-        <ul className="usa-list usa-list--unstyled">
-          {!!caseDetail.transfers?.length && caseDetail.transfers.length > 0 && (
-            <div className="transfers case-card">
+        {!!caseDetail.transfers?.length && caseDetail.transfers.length > 0 && (
+          <>
+            <div>
               <h3>Transferred Case</h3>
-              {caseDetail.transfers?.map((transfer: Transfer, idx: number) => {
-                return (
-                  <li key={idx} className="transfer">
-                    <div>
-                      <span className="case-detail-item-name">ID:</span>
-                      <Link
-                        to={`/case-detail/${transfer.otherCaseId}/`}
-                        className="usa-link case-detail-item-value"
-                        data-testid={`case-detail-transfer-link-${idx}`}
-                        title={`Open case ${transfer.otherCaseId}`}
-                        target="_self"
-                        reloadDocument={true}
-                      >
-                        {transfer.otherCaseId}
-                      </Link>
-                    </div>
-                    <div>
-                      <span className="case-detail-item-name">Order Date:</span>
-                      <span
-                        className="case-detail-item-value"
-                        data-testid={`case-detail-transfer-order-${idx}`}
-                      >
-                        {formatDate(transfer.orderDate)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="case-detail-item-name">
-                        {transfer.transferType === 'TRANSFER_IN' ? 'Previous' : 'New'} Division:
-                      </span>
-                      <span
-                        className="case-detail-item-value"
-                        data-testid={`case-detail-transfer-court-${idx}`}
-                      >
-                        {transfer.divisionName} - {transfer.courtName}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
             </div>
-          )}
-        </ul>
+            <ul className="usa-list usa-list--unstyled">
+              <div className="transfers case-card">
+                {caseDetail.transfers
+                  ?.sort(sortTransfers)
+                  .map((transfer: Transfer, idx: number) => {
+                    return (
+                      <li key={idx} className="transfer">
+                        <h4>
+                          Transferred {transfer.transferType === 'TRANSFER_IN' ? 'from' : 'to'}
+                        </h4>
+                        <div>
+                          <span className="case-detail-item-name">Case Number:</span>
+                          <Link
+                            to={`/case-detail/${transfer.otherCaseId}/`}
+                            className="usa-link case-detail-item-value"
+                            data-testid={`case-detail-transfer-link-${idx}`}
+                            title={`Open case ${transfer.otherCaseId}`}
+                            target="_self"
+                            reloadDocument={true}
+                          >
+                            {getCaseNumber(transfer.otherCaseId)}
+                          </Link>
+                        </div>
+                        <div className="transfer-court">
+                          <span className="case-detail-item-name">
+                            {transfer.transferType === 'TRANSFER_IN' ? 'Previous' : 'New'} Court:
+                          </span>
+                          <span
+                            className="case-detail-item-value"
+                            data-testid={`case-detail-transfer-court-${idx}`}
+                          >
+                            {transfer.courtName} - {transfer.divisionName}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="case-detail-item-name">Order Date:</span>
+                          <span
+                            className="case-detail-item-value"
+                            data-testid={`case-detail-transfer-order-${idx}`}
+                          >
+                            {formatDate(transfer.orderDate)}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+              </div>
+            </ul>
+          </>
+        )}
       </span>
     </div>
   );
