@@ -7,6 +7,7 @@ param planName string
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param planType string = 'P1v2'
 
@@ -25,6 +26,13 @@ var planTypeToSkuMap = {
     tier: 'Basic'
     size: 'B2'
     family: 'B'
+    capacity: 1
+  }
+  S1: {
+    name: 'S1'
+    tier: 'Standard'
+    size: 'S1'
+    family: 'S'
     capacity: 1
   }
 }
@@ -175,7 +183,6 @@ module appInsights './lib/app-insights/app-insights.bicep' = if (deployAppInsigh
     workspaceResourceId: analyticsWorkspaceId
   }
 }
-
 module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${webappName}-healthcheck-alert-rule-module'
   params: {
@@ -262,6 +269,7 @@ var applicationSettings = concat([
     }
   ] : []
 )
+
 var ipSecurityRestrictionsRules = concat([ {
       ipAddress: 'Any'
       action: 'Deny'
