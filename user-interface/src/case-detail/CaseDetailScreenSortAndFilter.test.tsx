@@ -58,7 +58,7 @@ describe('Case Detail sort, search, and filter tests', () => {
     dateFiled: '01-04-1962',
     judgeName: 'some judge',
     debtorTypeLabel: 'Corporate Business',
-    petitionLabel: 'Voluntary Petition',
+    petitionLabel: 'Voluntary',
     closedDate: '01-08-1963',
     dismissedDate: '01-08-1964',
     assignments: [],

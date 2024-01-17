@@ -2,14 +2,27 @@
 .App {
   .body {
     .case-detail {
+      h4 {
+        margin-block-start: 0;
+        margin-block-end: 0;
+      }
+
       .link-icon {
         margin-left: .25rem;
         vertical-align: middle;
       }
       .case-card-list {
         .case-card {
+          li.transfer {
+            margin-bottom: 1rem;
+          }
           .case-detail-item-name {
             padding-right: 0.5rem;
+          }
+          .transfer-court {
+            span {
+              white-space: nowrap;
+            }
           }
         }
       }
