@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Title:        az-func-deploy.sh
-# Description:  Helper script to deploy function build artifact to existing Azure site
-# Usage:        ./az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --networkRg networkRgName --vnet vnet --subnet subnetName --slotName slotName
+# Title:        az-func-slot-deploy.sh
+# Description:  Helper script to deploy function build artifact to existing Azure slot
+# Usage:        ./az-func-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --networkRg networkRgName --vnet vnet --subnet subnetName --slotName slotName
 #
 # Exitcodes
 # ==========
@@ -39,16 +39,6 @@ while [[ $# -gt 0 ]]; do
         artifact_path="${2}"
         shift 2
         ;;
-
-    # --networkRg)
-    #     network_rg="${2}"
-    #     shift 2
-    #     ;;
-
-    # --vnet)
-    #     vnet_name="${2}"
-    #     shift 2
-    #     ;;
 
     --slotName)
         slot_name="${2}"
@@ -87,12 +77,6 @@ agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ip
 echo "Adding rule: ${rule_name} to webapp"
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 
-# TODO CAMS-160
-#app_id=$(az functionapp show -g $app_rg -n $app_name --query "[id]" -o tsv)
-#subnet="snet-${app_name}-pep"
-#echo "Creating private endpoint: pep-${app_name}-${slot_name}"
-#az network private-endpoint create --connection-name pep-connection-$app_name-$slot_name --name pep-$app_name-$slot_name --private-connection-resource-id $app_id -g $network_rg --vnet-name $vnet_name --group-id sites-$slot_name --subnet $subnet
-
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"
 if [[ ${enable_debug} == 'true' ]]; then
@@ -102,7 +86,7 @@ echo "Deployment started"
 eval "${cmd}"
 echo "Deployment completed"
 
-# configure Application Settings # TODO CAMS-160 Can possibly be moved to Deploy job
+# configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings

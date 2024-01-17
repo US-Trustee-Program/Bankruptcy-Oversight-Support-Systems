@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Title:        az-app-deploy.sh
-# Description:  Helper script to deploy webapp build artifact to existing Azure site
-# Usage:        ./az-app-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
+# Title:        az-slot-web-resource-deploy.sh
+# Description:  Helper script to provision Azure slot deployment resources for Azure webapp
+# Usage:        ./az-slot-web-resource-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
 #
 # Exitcodes
 # ==========
