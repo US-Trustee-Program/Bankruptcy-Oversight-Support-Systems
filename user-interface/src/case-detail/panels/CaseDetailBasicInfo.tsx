@@ -247,11 +247,13 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                   <li key={idx} className="transfer">
                     <div>
                       <span className="case-detail-item-name">ID:</span>
-                      {/* TODO: link does not seem to be working properly */}
                       <Link
                         to={`/case-detail/${transfer.otherCaseId}/`}
-                        className="case-detail-item-value"
+                        className="usa-link case-detail-item-value"
                         data-testid={`case-detail-transfer-link-${idx}`}
+                        title={`Open case ${transfer.otherCaseId}`}
+                        target="_self"
+                        reloadDocument={true}
                       >
                         {transfer.otherCaseId}
                       </Link>
