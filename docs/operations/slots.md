@@ -1,6 +1,6 @@
 # Slot Deployments
 
-We needed a way to eliminate or at least greatly reduce downtime between deployments. Azure provides deployment
+Azure provides deployment
 slots for both App Services and Functions App resources. This provides a way to leave production uninterrupted
 until the deployment has been validated, at which time a swap may be performed.
 
@@ -17,7 +17,7 @@ with the newly deployed backend.
 
 The challenge we came acress when implementing slots was correctly hitting the endpoint for the appropriate slot. For the react app, we have a baked in URL at build time which points the frontend to a corresponding backend. This is problematic adequately test the integration of the webapp and backend of the new code deployed to the slot environment. We needed a solution which could handle the different endpoints properly without rebuilding the application.
 
-#### Options
+### Options
 
 There are many options for how to ensure the validation of the staged client is interacting with the staged API.
 They generally involve tradeoffs so determining which method to use is not simple.
@@ -37,7 +37,7 @@ They generally involve tradeoffs so determining which method to use is not simpl
     is likely a better option.
   - Issues with this: we still have a baked in host name for .env values which is not resolved here
 
-##### Implementation
+### Implementation
 
 - `x-ms-routing-name` cookie. A request to `https://api-hostname.azurewebsites.us/?x-ms-routing-name=staging` will trigger
   the creation of a cookie so subsequent requests will be routed to the staged API. This does require that at least
