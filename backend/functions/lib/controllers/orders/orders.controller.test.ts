@@ -48,7 +48,7 @@ describe('orders controller tests', () => {
   });
 
   test('should get orders', async () => {
-    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
+    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: ORDERS,
     });
     const controller = new OrdersController(applicationContext);

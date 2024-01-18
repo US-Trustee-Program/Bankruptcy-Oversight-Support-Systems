@@ -3,9 +3,10 @@ import {
   OrdersGateway,
   OrdersRepository,
   RuntimeStateRepository,
+  CasesRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { Order, OrderTransfer } from './orders.model';
+import { Order, OrderTransfer, TransferIn, TransferOut } from './orders.model';
 import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
@@ -24,15 +25,18 @@ export interface SyncOrdersStatus {
 }
 
 export class OrdersUseCase {
+  private readonly casesRepo: CasesRepository;
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository;
 
   constructor(
+    casesRepo: CasesRepository,
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
     runtimeRepo: RuntimeStateRepository,
   ) {
+    this.casesRepo = casesRepo;
     this.ordersRepo = ordersRepo;
     this.ordersGateway = ordersGateway;
     this.runtimeStateRepo = runtimeRepo;
@@ -47,7 +51,30 @@ export class OrdersUseCase {
     id: string,
     data: OrderTransfer,
   ): Promise<string> {
-    return this.ordersRepo.updateOrder(context, id, data);
+    await this.ordersRepo.updateOrder(context, id, data);
+    const order = await this.ordersRepo.getOrder(context, id, data.caseId);
+
+    const transferIn: TransferIn = {
+      caseId: order.newCaseId,
+      otherCaseId: order.caseId,
+      divisionName: order.courtDivisionName,
+      courtName: order.courtName,
+      orderDate: order.orderDate,
+      documentType: 'TRANSFER_IN',
+    };
+
+    const transferOut: TransferOut = {
+      caseId: order.caseId,
+      otherCaseId: order.newCaseId,
+      divisionName: order.newCourtDivisionName,
+      courtName: order.newCourtName,
+      orderDate: order.orderDate,
+      documentType: 'TRANSFER_OUT',
+    };
+
+    await this.casesRepo.createTransferIn(context, transferIn);
+    await this.casesRepo.createTransferOut(context, transferOut);
+    return id;
   }
 
   public async syncOrders(

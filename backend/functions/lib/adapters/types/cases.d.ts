@@ -1,3 +1,5 @@
+import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
+
 export interface CaseListRecordSet {
   caseList: CaseDetailInterface[];
   initialized?: boolean;
@@ -58,6 +60,7 @@ export interface CaseDetailInterface {
   debtor?: Party;
   debtorAttorney?: DebtorAttorney;
   debtorTypeLabel?: string;
+  transfers?: Array<TransferIn | TransferOut>;
 }
 
 export interface DxtrTransactionRecord {

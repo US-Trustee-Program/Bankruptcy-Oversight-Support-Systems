@@ -14,7 +14,7 @@ export class HumbleQuery<T> {
     this.items = items;
     this.query = query;
   }
-  fetchAll(): { resources: Array<T> } {
+  async fetchAll(): Promise<{ resources: Array<T> }> {
     return { resources: [...this.items.container.map.values()] };
   }
 }
@@ -26,17 +26,22 @@ export class HumbleItem<T> {
     this.container = container;
     this.id = id;
   }
-  read() {
+  async read(): Promise<{ resource: T }> {
     if (this.container.map.has(this.id)) {
       return {
         resource: this.container.map.get(this.id),
       };
     }
+    // TODO: We should probably make this function work for real and throw a reasonable error.
+    // throw Error('Not found');
   }
-  replace(item: T) {
+  async replace(item: T): Promise<{ id: string }> {
     if (this.container.map.has(this.id)) {
       this.container.map.set(this.id, item);
+      return { id: this.id };
     }
+    // TODO: We should probably make this function work for real and throw a reasonable error.
+    // throw Error('Not found');
   }
 }
 
@@ -45,21 +50,17 @@ export class HumbleItems<T> {
   constructor(container: HumbleContainer<T>) {
     this.container = container;
   }
-  create(item: T) {
+  async create(item: T) {
     const id = crypto.randomUUID().toString();
-    this.container.map.set(id, item);
-    return {
-      ...item,
-      id,
-    };
+    const itemWithId = { ...item, id };
+    this.container.map.set(id, itemWithId);
+    return this.container.map.get(id);
   }
-  upsert(item: T) {
+  async upsert(item: T) {
     const id = item['id'] || crypto.randomUUID().toString();
-    this.container.map.set(id, item);
-    return {
-      ...item,
-      id,
-    };
+    const itemWithId = { ...item, id };
+    this.container.map.set(id, itemWithId);
+    return this.container.map.get(id);
   }
   query(query: QueryOptions) {
     return new HumbleQuery(this, query);

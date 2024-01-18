@@ -4,7 +4,7 @@ import {
   CaseDetailsDbResult,
   CaseListDbResult,
 } from '../adapters/types/cases';
-import { getCasesGateway, getOfficesGateway } from '../factory';
+import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
@@ -12,18 +12,23 @@ import { CamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
 import { CaseAssignment } from '../adapters/types/case.assignment';
 import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
+import { CasesRepository } from './gateways.types';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
 export class CaseManagement {
   casesGateway: CasesInterface;
+  casesRepo: CasesRepository;
   officesGateway: OfficesGatewayInterface;
 
-  constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
-    if (!casesGateway) {
-      this.casesGateway = getCasesGateway(applicationContext);
-    } else {
-      this.casesGateway = casesGateway;
+  constructor(
+    applicationContext: ApplicationContext,
+    casesGateway?: CasesInterface,
+    casesRepo?: CasesRepository,
+  ) {
+    if (!casesGateway || !casesRepo) {
+      this.casesRepo = casesRepo ? casesRepo : getCasesRepository(applicationContext);
+      this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
     }
     this.officesGateway = getOfficesGateway(applicationContext);
   }
@@ -70,6 +75,8 @@ export class CaseManagement {
     caseId: string,
   ): Promise<CaseDetailsDbResult> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
+    caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
+
     const caseAssignment = new CaseAssignmentUseCase(applicationContext);
     caseDetails.assignments = await this.getCaseAssigneeNames(
       applicationContext,
