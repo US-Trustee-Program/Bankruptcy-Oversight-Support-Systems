@@ -41,14 +41,14 @@ export class CasesCosmosDbRepository implements CasesRepository {
   }
 
   async createTransferIn(context: ApplicationContext, transferIn: TransferIn): Promise<TransferIn> {
-    return this.create(context, transferIn);
+    return this.create<TransferIn>(context, transferIn);
   }
 
   async createTransferOut(
     context: ApplicationContext,
     transferOut: TransferOut,
   ): Promise<TransferOut> {
-    return this.create(context, transferOut);
+    return this.create<TransferOut>(context, transferOut);
   }
 
   private async create<T>(context: ApplicationContext, itemToCreate: T): Promise<T> {

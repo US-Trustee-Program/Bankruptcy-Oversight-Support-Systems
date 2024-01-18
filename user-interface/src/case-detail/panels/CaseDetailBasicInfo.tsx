@@ -1,7 +1,7 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType, Transfer } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
-import { formatDate, sortDatesRev } from '@/lib/utils/datetime';
+import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { Link } from 'react-router-dom';
 
 const informationUnavailable = 'Information is not available.';
@@ -16,7 +16,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
   const { caseDetail, showReopenDate } = props;
 
   function sortTransfers(a: Transfer, b: Transfer) {
-    return sortDatesRev(a.orderDate, b.orderDate);
+    return sortDatesReverse(a.orderDate, b.orderDate);
   }
 
   return (

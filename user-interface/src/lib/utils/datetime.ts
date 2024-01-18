@@ -44,6 +44,6 @@ export function sortDates(dateA: Date | string, dateB: Date | string): number {
   }
 }
 
-export function sortDatesRev(dateA: Date | string, dateB: Date | string): number {
+export function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
   return sortDates(dateA, dateB) * -1;
 }
