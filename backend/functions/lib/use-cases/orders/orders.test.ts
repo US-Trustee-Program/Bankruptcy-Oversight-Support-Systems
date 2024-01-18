@@ -42,17 +42,6 @@ describe('Orders use case', () => {
     expect(mockRead).toHaveBeenCalled();
   });
 
-  // test('should update an order', async () => {
-  //   const order = { id: 'mock-guid' };
-  //   const updateOrder = jest
-  //     .spyOn(OrdersCosmosDbRepository.prototype, 'updateOrder')
-  //     .mockResolvedValue(order);
-  //
-  //   const result = await useCase.updateOrder(mockContext, order);
-  //   expect(result).toEqual(order);
-  //   expect(updateOrder).toHaveBeenCalled();
-  // });
-
   test('should add transfer records for both cases when a transfer order is completed', async () => {
     const order: Order = { ...ORDERS[0] };
 
