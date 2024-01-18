@@ -1,3 +1,4 @@
+import { ServerConfigError } from '../../common-errors/server-config-error';
 import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { throwAggregateAuthenticationError } from '../../testing/mock.cosmos-client-humble.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -23,7 +24,7 @@ describe('Runtime State Repo', () => {
   });
 
   test('should get a runtime state document', async () => {
-    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
+    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [expected],
     });
     const actual = await repo.getState(context, 'ORDERS_SYNC_STATE');
@@ -32,7 +33,7 @@ describe('Runtime State Repo', () => {
   });
 
   test('should throw an error if a runtime state document cannot be found or more than one is found', async () => {
-    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockReturnValue({
+    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
     await expect(repo.getState(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(
@@ -42,7 +43,7 @@ describe('Runtime State Repo', () => {
   });
 
   test('should create a runtime state document', async () => {
-    const create = jest.spyOn(HumbleItems.prototype, 'create').mockReturnValue({
+    const create = jest.spyOn(HumbleItems.prototype, 'create').mockResolvedValue({
       resource: expected,
     });
     const toCreate = { ...expected };
@@ -54,49 +55,44 @@ describe('Runtime State Repo', () => {
   });
 
   test('should update a runtime state document', async () => {
+    const stateToCreate = { ...expected };
+    delete stateToCreate.id;
+    const created = await repo.createState(context, stateToCreate);
+
     const replace = jest.spyOn(HumbleItem.prototype, 'replace');
-    await repo.updateState(context, expected);
+    await repo.updateState(context, created);
     expect(replace).toHaveBeenCalled();
   });
 
   test('should throw a ServerConfigError if AggregateAuthenticationError is encountered', async () => {
-    const authErrorMessage = 'Failed to authenticate to Azure';
-
-    const fetchAll = jest
+    const serverConfigError = new ServerConfigError('TEST', {
+      message: 'Failed to authenticate to Azure',
+    });
+    jest
       .spyOn(HumbleQuery.prototype, 'fetchAll')
       .mockImplementation(throwAggregateAuthenticationError<{ resources: OrderSyncState[] }>());
-    await expect(repo.getState(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(authErrorMessage);
-    expect(fetchAll).toHaveBeenCalled();
 
-    const replace = jest
+    jest
       .spyOn(HumbleItem.prototype, 'replace')
-      .mockImplementation(throwAggregateAuthenticationError<void>());
-    await expect(repo.updateState(context, expected)).rejects.toThrow(authErrorMessage);
-    expect(replace).toHaveBeenCalled();
+      .mockImplementation(throwAggregateAuthenticationError());
 
-    const create = jest
+    jest
       .spyOn(HumbleItems.prototype, 'create')
       .mockImplementation(throwAggregateAuthenticationError<void>());
-    await expect(repo.createState(context, expected)).rejects.toThrow(authErrorMessage);
-    expect(create).toHaveBeenCalled();
+
+    await expect(repo.getState(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(serverConfigError);
+    await expect(repo.updateState(context, expected)).rejects.toThrow(serverConfigError);
+    await expect(repo.createState(context, expected)).rejects.toThrow(serverConfigError);
   });
 
   test('should throw any other error encountered', async () => {
     const someError = new Error('Some other unknown error');
-    const throwErrorFn = () => {
-      throw someError;
-    };
+    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockRejectedValue(someError);
+    jest.spyOn(HumbleItem.prototype, 'replace').mockRejectedValue(someError);
+    jest.spyOn(HumbleItems.prototype, 'create').mockRejectedValue(someError);
 
-    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementation(throwErrorFn);
-    await expect(repo.getState(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(someError.message);
-    expect(fetchAll).toHaveBeenCalled();
-
-    const replace = jest.spyOn(HumbleItem.prototype, 'replace').mockImplementation(throwErrorFn);
-    await expect(repo.updateState(context, expected)).rejects.toThrow(someError.message);
-    expect(replace).toHaveBeenCalled();
-
-    const create = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(throwErrorFn);
-    await expect(repo.createState(context, expected)).rejects.toThrow(someError.message);
-    expect(create).toHaveBeenCalled();
+    await expect(repo.getState(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(someError);
+    await expect(repo.updateState(context, expected)).rejects.toThrow(someError);
+    await expect(repo.createState(context, expected)).rejects.toThrow(someError);
   });
 });

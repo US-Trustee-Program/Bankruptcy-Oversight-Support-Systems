@@ -16,6 +16,10 @@ param databaseContainers array = [
     partitionKey1: '/caseId'
   }
   {
+    name: 'cases'
+    partitionKey1: '/caseId'
+  }
+  {
     name: 'orders'
     partitionKey1: '/caseId'
   }

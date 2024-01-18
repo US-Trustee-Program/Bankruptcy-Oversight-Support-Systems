@@ -145,7 +145,25 @@ export default class Chapter15MockApi extends Api {
       email: 'testemail@email.com',
     },
     debtorTypeLabel: 'Corporate Business',
-    petitionLabel: 'Voluntary Petition',
+    petitionLabel: 'Voluntary',
+    transfers: [
+      {
+        caseId: '101-23-12345',
+        otherCaseId: '001-19-12446',
+        orderDate: '01-04-2023',
+        divisionName: 'Old Division',
+        courtName: 'Ye Olde Court',
+        transferType: 'TRANSFER_IN',
+      },
+      {
+        caseId: '101-23-12345',
+        otherCaseId: '222-24-00001',
+        orderDate: '01-12-2024',
+        divisionName: 'New Division',
+        courtName: 'New Hotness Court',
+        transferType: 'TRANSFER_OUT',
+      },
+    ],
   };
 
   static offices: Array<OfficeDetails> = [
