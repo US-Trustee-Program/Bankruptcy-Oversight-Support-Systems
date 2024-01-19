@@ -404,7 +404,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               </div>
               <ConfirmationModal
                 ref={rejectModalRef}
-                id={order.id}
+                id={`reject-${order.id}`}
                 sequenceNumber={order.sequenceNumber}
                 fromCaseId={order.caseId}
                 toCaseId={orderTransfer.newCaseId}
@@ -418,7 +418,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               ></ConfirmationModal>
               <ConfirmationModal
                 ref={approveModalRef}
-                id={order.id}
+                id={`approval-${order.id}`}
                 sequenceNumber={order.sequenceNumber}
                 fromCaseId={order.caseId}
                 toCaseId={orderTransfer.newCaseId}
@@ -580,9 +580,12 @@ function ConfirmationModalComponent(
           .
           {status === 'rejected' && (
             <div>
-              <label className="usa-label">Reason for rejection</label>
+              <label htmlFor={`rejection-reason-${id}`} className="usa-label">
+                Reason for rejection
+              </label>
               <div>
                 <textarea
+                  id={`rejection-reason-${id}`}
                   ref={reasonRef}
                   className="rejection-reason-input usa-textarea"
                   defaultValue={reason}
