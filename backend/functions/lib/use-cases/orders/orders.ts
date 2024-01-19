@@ -54,26 +54,29 @@ export class OrdersUseCase {
     await this.ordersRepo.updateOrder(context, id, data);
     const order = await this.ordersRepo.getOrder(context, id, data.caseId);
 
-    const transferIn: TransferIn = {
-      caseId: order.newCaseId,
-      otherCaseId: order.caseId,
-      divisionName: order.courtDivisionName,
-      courtName: order.courtName,
-      orderDate: order.orderDate,
-      documentType: 'TRANSFER_IN',
-    };
+    if (order.status === 'approved') {
+      const transferIn: TransferIn = {
+        caseId: order.newCaseId,
+        otherCaseId: order.caseId,
+        divisionName: order.courtDivisionName,
+        courtName: order.courtName,
+        orderDate: order.orderDate,
+        documentType: 'TRANSFER_IN',
+      };
 
-    const transferOut: TransferOut = {
-      caseId: order.caseId,
-      otherCaseId: order.newCaseId,
-      divisionName: order.newCourtDivisionName,
-      courtName: order.newCourtName,
-      orderDate: order.orderDate,
-      documentType: 'TRANSFER_OUT',
-    };
+      const transferOut: TransferOut = {
+        caseId: order.caseId,
+        otherCaseId: order.newCaseId,
+        divisionName: order.newCourtDivisionName,
+        courtName: order.newCourtName,
+        orderDate: order.orderDate,
+        documentType: 'TRANSFER_OUT',
+      };
 
-    await this.casesRepo.createTransferIn(context, transferIn);
-    await this.casesRepo.createTransferOut(context, transferOut);
+      await this.casesRepo.createTransferIn(context, transferIn);
+      await this.casesRepo.createTransferOut(context, transferOut);
+    }
+
     return id;
   }
 

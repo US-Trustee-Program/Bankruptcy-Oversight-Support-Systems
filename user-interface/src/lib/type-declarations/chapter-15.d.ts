@@ -126,6 +126,7 @@ export type Order = CaseDocketEntry & {
   newCourtDivisionName?: string;
   newDivisionCode?: string;
   newRegionId?: string;
+  reason?: string;
 };
 
 export interface OrderResponseData extends ResponseData {
@@ -161,6 +162,7 @@ export interface OrderTransfer {
   newRegionId?: string;
   newRegionName?: string;
   status: OrderStatus;
+  reason?: string;
 }
 
 export interface OfficesResponseData extends ResponseData {

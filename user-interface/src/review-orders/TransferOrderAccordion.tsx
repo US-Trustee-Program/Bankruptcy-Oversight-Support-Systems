@@ -44,11 +44,10 @@ export function isValidOrderTransfer(transfer: OrderTransfer) {
 }
 
 function safeToInt(s: string) {
-  try {
-    return parseInt(s).toString();
-  } catch {
-    return s;
-  }
+  const intVal = parseInt(s);
+  if (isNaN(intVal)) return s;
+
+  return intVal.toString();
 }
 
 export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -67,14 +66,6 @@ export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) 
   return { newCaseId, joinedInput };
 }
 
-type OrderRejection = {
-  id: string;
-  rejectionMessage: string;
-  staleCaseId: string;
-  staleCourtName: string;
-  staleCourtDivisionName: string;
-};
-
 interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
@@ -82,7 +73,6 @@ interface TransferOrderAccordionProps {
   officesList: Array<OfficeDetails>;
   regionsMap: Map<string, string>;
   onOrderUpdate: (alertDetails: AlertDetails, order?: Order) => void;
-  onOrderRejection: (alertDetails: AlertDetails) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
 }
@@ -95,7 +85,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
 
-  //const approveModalRef = useRef(null);
+  const approveModalRef = useRef<ModalRefType>(null);
   const rejectModalRef = useRef<ModalRefType>(null);
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
@@ -146,8 +136,17 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       return;
     }
 
+    approveModalRef.current?.show({});
+  }
+
+  function confirmOrderApproval(): void {
     orderTransfer.status = 'approved';
     orderTransfer.newCaseId = orderTransfer.newDivisionCode + '-' + orderTransfer.newCaseId;
+
+    const updatedOrder: Order = {
+      ...order,
+      ...orderTransfer,
+    };
 
     api
       .patch(`/orders/${orderTransfer.id}`, orderTransfer)
@@ -160,7 +159,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             type: UswdsAlertStyle.Success,
             timeOut: 8,
           },
-          { ...order, ...orderTransfer },
+          updatedOrder,
         );
       })
       .catch((reason) => {
@@ -177,25 +176,27 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     approveButtonRef.current?.disableButton(true);
   }
 
-  function approveOrderRejection(rejection: OrderRejection) {
-    const { id, rejectionMessage, staleCaseId, staleCourtName, staleCourtDivisionName } = rejection;
+  function approveOrderRejection(rejection: OrderTransfer) {
+    const updatedOrder: Order = {
+      ...order,
+      ...rejection,
+    };
 
     api
-      .patch(`/orders/${id}`, {
-        id,
-        rejectionMessage,
-        status: 'rejected',
-      })
+      .patch(`/orders/${rejection.id}`, rejection)
       .then(() => {
-        props.onOrderRejection({
-          message: `Transfer of case to ${getCaseNumber(staleCaseId)} in ${staleCourtName} (${staleCourtDivisionName}) was rejected.`,
-          type: UswdsAlertStyle.Success,
-          timeOut: 8,
-        });
+        props.onOrderUpdate(
+          {
+            message: `Transfer of case ${getCaseNumber(order.caseId)} was rejected.`,
+            type: UswdsAlertStyle.Success,
+            timeOut: 8,
+          },
+          updatedOrder,
+        );
       })
       .catch((reason) => {
         // TODO: make the error message more meaningful
-        props.onOrderRejection({
+        props.onOrderUpdate({
           message: reason.message,
           type: UswdsAlertStyle.Error,
           timeOut: 8,
@@ -290,7 +291,23 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <div className="grid-col-1"></div>
             </div>
           )}
-          {order.status !== 'approved' && (
+          {order.status === 'rejected' && (
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="transfer-text grid-col-10" tabIndex={0}>
+                Rejected transfer of
+                <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
+                {order.reason && order.reason.length && (
+                  <>
+                    for the following reason:
+                    <blockquote>{order.reason}</blockquote>
+                  </>
+                )}
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+          )}
+          {order.status !== 'approved' && order.status !== 'rejected' && (
             <section className="order-form" data-testid={`order-form-${order.id}`}>
               <div className="court-selection grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
@@ -385,18 +402,34 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 </div>
                 <div className="grid-col-1"></div>
               </div>
-              <RejectModal
+              <ConfirmationModal
                 ref={rejectModalRef}
                 id={order.id}
+                sequenceNumber={order.sequenceNumber}
                 fromCaseId={order.caseId}
                 toCaseId={orderTransfer.newCaseId}
                 fromDivisionName={order.courtDivisionName}
                 toDivisionName={orderTransfer.newCourtDivisionName}
                 fromCourtName={order.courtName}
                 toCourtName={orderTransfer.newCourtName}
-                cancelCallback={cancelUpdate}
-                rejectCallback={approveOrderRejection}
-              ></RejectModal>
+                status="rejected"
+                onCancel={cancelUpdate}
+                onConfirm={approveOrderRejection}
+              ></ConfirmationModal>
+              <ConfirmationModal
+                ref={approveModalRef}
+                id={order.id}
+                sequenceNumber={order.sequenceNumber}
+                fromCaseId={order.caseId}
+                toCaseId={orderTransfer.newCaseId}
+                fromDivisionName={order.courtDivisionName}
+                toDivisionName={orderTransfer.newCourtDivisionName}
+                fromCourtName={order.courtName}
+                toCourtName={orderTransfer.newCourtName}
+                status="approved"
+                onCancel={cancelUpdate}
+                onConfirm={confirmOrderApproval}
+              ></ConfirmationModal>
             </section>
           )}
         </section>
@@ -415,7 +448,7 @@ interface CaseSelectionProps {
   toCourt: CaseSelectionAttributes;
 }
 
-function CaseSelection(props: CaseSelectionProps) {
+export function CaseSelection(props: CaseSelectionProps) {
   const { fromCourt, toCourt } = props;
 
   return (
@@ -432,56 +465,70 @@ function CaseSelection(props: CaseSelectionProps) {
   );
 }
 
-interface RejectModalProps {
+interface ConfirmationModalProps {
   id: string;
+  sequenceNumber: number;
   fromCaseId: string;
   toCaseId?: string;
   fromDivisionName: string;
   toDivisionName?: string;
   fromCourtName: string;
   toCourtName?: string;
-  cancelCallback: () => void;
-  rejectCallback: (rejection: OrderRejection) => void;
+  status: 'rejected' | 'approved';
+  onCancel: () => void;
+  onConfirm: (confirmation: OrderTransfer) => void;
 }
 
-function RejectModalComponent(props: RejectModalProps, rejectModalRef: React.Ref<ModalRefType>) {
+function ConfirmationModalComponent(
+  props: ConfirmationModalProps,
+  ConfirmationModalRef: React.Ref<ModalRefType>,
+) {
   const {
     id,
+    sequenceNumber,
     fromCaseId,
     toCaseId,
     fromDivisionName,
     toDivisionName,
     fromCourtName,
     toCourtName,
-    cancelCallback,
-    rejectCallback,
-  }: RejectModalProps = props;
+    status,
+    onCancel,
+    onConfirm,
+  }: ConfirmationModalProps = props;
 
   const modalRef = useRef<ModalRefType>(null);
-  const [rejectionMessage] = useState<string>('');
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const [reason] = useState<string>('');
 
-  function approveReject() {
-    const rejectData: OrderRejection = {
+  const title = status === 'approved' ? 'Approve' : 'Reject';
+
+  function confirmAction() {
+    const confirmationData: OrderTransfer = {
       id,
-      rejectionMessage,
-      staleCaseId: toCaseId ?? '',
-      staleCourtName: toCourtName ?? '',
-      staleCourtDivisionName: toDivisionName ?? '',
+      sequenceNumber,
+      caseId: fromCaseId,
+      status,
     };
 
-    rejectCallback(rejectData);
+    if (status === 'rejected') {
+      confirmationData['reason'] = reasonRef.current?.value;
+    }
+
+    onConfirm(confirmationData);
   }
 
   const actionButtonGroup = {
-    modalId: `reject-modal-${id}`,
+    modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
     submitButton: {
-      label: 'Reject',
-      onClick: approveReject,
+      label: title,
+      onClick: confirmAction,
+      className: status === 'rejected' ? 'usa-button--secondary' : '',
     },
     cancelButton: {
       label: 'Go back',
-      onClick: cancelCallback,
+      onClick: onCancel,
     },
   };
 
@@ -497,7 +544,7 @@ function RejectModalComponent(props: RejectModalProps, rejectModalRef: React.Ref
     }
   }
 
-  useImperativeHandle(rejectModalRef, () => ({
+  useImperativeHandle(ConfirmationModalRef, () => ({
     show,
     hide,
   }));
@@ -505,12 +552,12 @@ function RejectModalComponent(props: RejectModalProps, rejectModalRef: React.Ref
   return (
     <Modal
       ref={modalRef}
-      modalId={`reject-modal-${id}`}
-      className="reject-modal"
-      heading="Reject case transfer?"
+      modalId={`confirm-modal-${id}`}
+      className="confirm-modal"
+      heading={`${title} case transfer?`}
       content={
         <>
-          This will stop the transfer of case
+          This will {status === 'approved' ? 'approve' : 'stop'} the transfer of case
           <span className="transfer-highlight__span">{getCaseNumber(fromCaseId)}</span>
           in
           <span className="transfer-highlight__span">
@@ -531,14 +578,18 @@ function RejectModalComponent(props: RejectModalProps, rejectModalRef: React.Ref
             </>
           )}
           .
-          <div>
-            <label className="usa-label">Reason for rejection</label>
+          {status === 'rejected' && (
             <div>
-              <textarea className="rejection-reason-input usa-textarea">
-                {rejectionMessage}
-              </textarea>
+              <label className="usa-label">Reason for rejection</label>
+              <div>
+                <textarea
+                  ref={reasonRef}
+                  className="rejection-reason-input usa-textarea"
+                  defaultValue={reason}
+                ></textarea>
+              </div>
             </div>
-          </div>
+          )}
         </>
       }
       actionButtonGroup={actionButtonGroup}
@@ -546,4 +597,4 @@ function RejectModalComponent(props: RejectModalProps, rejectModalRef: React.Ref
   );
 }
 
-const RejectModal = forwardRef(RejectModalComponent);
+const ConfirmationModal = forwardRef(ConfirmationModalComponent);
