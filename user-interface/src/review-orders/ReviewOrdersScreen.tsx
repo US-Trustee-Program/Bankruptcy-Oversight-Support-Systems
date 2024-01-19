@@ -96,11 +96,6 @@ export default function ReviewOrders() {
     alertRef.current?.show();
   }
 
-  function handleOrderRejection(alertDetails: AlertDetails) {
-    setReviewOrderAlert(alertDetails);
-    alertRef.current?.show();
-  }
-
   useEffect(() => {
     getOrders();
     getOffices();
@@ -134,7 +129,6 @@ export default function ReviewOrders() {
                     orderType={orderType}
                     statusType={statusType}
                     onOrderUpdate={handleOrderUpdate}
-                    onOrderRejection={handleOrderRejection}
                   ></TransferOrderAccordion>
                 );
               }) || <></>}

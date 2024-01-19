@@ -20,6 +20,7 @@ export type Order = CaseDocketEntry & {
   newDivisionCode?: string;
   newRegionId?: string;
   newRegionName?: string;
+  reason?: string;
 };
 
 export type OrderTransfer = {
@@ -33,6 +34,7 @@ export type OrderTransfer = {
   newRegionId: string;
   newRegionName: string;
   status: OrderStatus;
+  reason?: string;
 };
 
 export interface Transfer {

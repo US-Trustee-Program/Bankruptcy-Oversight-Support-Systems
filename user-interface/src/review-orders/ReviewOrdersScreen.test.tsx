@@ -153,7 +153,7 @@ describe('Review Orders screen', () => {
         expect(content).not.toBeVisible();
         expect(content?.textContent).toContain(order.summaryText);
         expect(content?.textContent).toContain(order.fullText);
-        if (order.status !== 'approved') {
+        if (order.status !== 'approved' && order.status !== 'rejected') {
           const form = screen.getByTestId(`order-form-${order.id}`);
           expect(form).toBeInTheDocument();
           const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);

@@ -6,9 +6,11 @@ import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
+  CaseSelection,
   TransferOrderAccordion,
   getOfficeList,
   isValidOrderTransfer,
+  validateNewCaseIdInput,
 } from './TransferOrderAccordion';
 
 vi.mock(
@@ -329,8 +331,65 @@ describe('TransferOrderAccordion', () => {
   });
 });
 
-// function buildChangeEvent(value: string): React.ChangeEvent<HTMLInputElement> {
-//   const element = new HTMLInputElement();
-//   element.value = value;
-//   return { target: element };
-// }
+describe('Test CaseSelection component', () => {
+  test('Should display message as expected using toCourt and fromCourt', async () => {
+    render(
+      <CaseSelection
+        fromCourt={{
+          region: '1',
+          courtDivisionName: 'Division Name 1',
+        }}
+        toCourt={{
+          region: '002',
+          courtDivisionName: 'Division Name 2',
+        }}
+      ></CaseSelection>,
+    );
+
+    expect(document.body).toHaveTextContent(
+      'USTP Office: transfer fromRegion 1 - Division Name 1toRegion 2 - Division Name 2',
+    );
+  });
+
+  test('Should properly display region as a non-numeric string when one is supplied', async () => {
+    render(
+      <CaseSelection
+        fromCourt={{
+          region: 'ABC',
+          courtDivisionName: 'Division Name 1',
+        }}
+        toCourt={{
+          region: 'BCD',
+          courtDivisionName: 'Division Name 2',
+        }}
+      ></CaseSelection>,
+    );
+
+    expect(document.body).toHaveTextContent(
+      'USTP Office: transfer fromRegion ABC - Division Name 1toRegion BCD - Division Name 2',
+    );
+  });
+});
+
+describe('Test validateNewCaseIdInput function', () => {
+  test('When supplied a valud with a length greater than 7, it should truncate value to 7 digits', async () => {
+    const testValue = '1234567890';
+    const resultValue = '12-34567';
+
+    const expectedResult = {
+      newCaseId: resultValue,
+      joinedInput: resultValue,
+    };
+
+    const testEvent = {
+      target: {
+        value: testValue,
+      },
+    };
+
+    const returnedValue = validateNewCaseIdInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    console.log(returnedValue);
+    console.log(expectedResult);
+    expect(returnedValue).toEqual(expectedResult);
+  });
+});
