@@ -255,7 +255,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     return (
                       <li key={idx} className="transfer">
                         <h4>
-                          Transferred {transfer.transferType === 'TRANSFER_IN' ? 'from' : 'to'}
+                          Transferred {transfer.documentType === 'TRANSFER_IN' ? 'from' : 'to'}:
                         </h4>
                         <div>
                           <span className="case-detail-item-name">Case Number:</span>
@@ -263,7 +263,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                             to={`/case-detail/${transfer.otherCaseId}/`}
                             className="usa-link case-detail-item-value"
                             data-testid={`case-detail-transfer-link-${idx}`}
-                            title={`Open case ${transfer.otherCaseId}`}
+                            title={`Open case ${getCaseNumber(transfer.otherCaseId)}`}
                             target="_self"
                             reloadDocument={true}
                           >
@@ -272,7 +272,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                         </div>
                         <div className="transfer-court">
                           <span className="case-detail-item-name">
-                            {transfer.transferType === 'TRANSFER_IN' ? 'Previous' : 'New'} Court:
+                            {transfer.documentType === 'TRANSFER_IN' ? 'Previous' : 'New'} Court:
                           </span>
                           <span
                             className="case-detail-item-value"
