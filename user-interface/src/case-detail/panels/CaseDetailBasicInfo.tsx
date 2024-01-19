@@ -19,8 +19,6 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
     return sortDatesReverse(a.orderDate, b.orderDate);
   }
 
-  console.log(caseDetail.transfers);
-
   return (
     <div className="grid-row grid-gap-lg">
       <span className="case-card-list grid-col-6">
