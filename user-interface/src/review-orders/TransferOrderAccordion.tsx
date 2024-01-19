@@ -275,14 +275,31 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="transfer-text grid-col-10" tabIndex={0}>
-                Transferred
-                <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
+                Transferred{' '}
+                <Link
+                  to={`/case-detail/${order.caseId}/`}
+                  className="usa-link case-detail-item-value"
+                  data-testid={`approved-transfer-original-case-link-${order.caseId}`}
+                  title={`Open case ${order.caseId}`}
+                  target="_blank"
+                  reloadDocument={true}
+                >
+                  {getCaseNumber(order.caseId)}
+                </Link>{' '}
                 from
                 <span className="transfer-highlight__span">
                   {order.courtName} ({order.courtDivisionName})
                 </span>
-                to case ID
-                <span className="transfer-highlight__span">{getCaseNumber(order.newCaseId)}</span>
+                to{' '}
+                <Link
+                  to={`/case-detail/${order.newCaseId}/`}
+                  className="usa-link case-detail-item-value"
+                  data-testid={`approved-transfer-new-case-link-${order.newCaseId}`}
+                  title={`Open case ${order.newCaseId}`}
+                  target="_blank"
+                >
+                  {getCaseNumber(order.newCaseId)}
+                </Link>{' '}
                 and court
                 <span className="transfer-highlight__span">
                   {order.newCourtName} ({order.newCourtDivisionName})
@@ -295,14 +312,25 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="transfer-text grid-col-10" tabIndex={0}>
-                Rejected transfer of
-                <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
+                Rejected transfer of{' '}
+                <Link
+                  to={`/case-detail/${order.caseId}/`}
+                  className="usa-link case-detail-item-value"
+                  data-testid={`rejected-transfer-case-link-${order.caseId}`}
+                  title={`Open case ${order.caseId}`}
+                  target="_blank"
+                  reloadDocument={true}
+                >
+                  {getCaseNumber(order.caseId)}
+                </Link>
                 {order.reason && order.reason.length && (
                   <>
+                    {' '}
                     for the following reason:
                     <blockquote>{order.reason}</blockquote>
                   </>
                 )}
+                {!order.reason && <>.</>}
               </div>
               <div className="grid-col-1"></div>
             </div>
@@ -313,8 +341,17 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 <div className="grid-col-1"></div>
                 <div className="transfer-from-to__div grid-col-10">
                   <div className="transfer-text" tabIndex={0}>
-                    Transfer
-                    <span className="transfer-highlight__span">{getCaseNumber(order.caseId)}</span>
+                    Transfer{' '}
+                    <Link
+                      to={`/case-detail/${order.caseId}/`}
+                      className="usa-link case-detail-item-value"
+                      data-testid={`pending-transfer-original-case-link-${order.caseId}`}
+                      title={`Open case ${order.caseId}`}
+                      target="_blank"
+                      reloadDocument={true}
+                    >
+                      {getCaseNumber(order.caseId)}
+                    </Link>{' '}
                     from
                     <span className="transfer-highlight__span">
                       {order.courtName} ({order.courtDivisionName})
