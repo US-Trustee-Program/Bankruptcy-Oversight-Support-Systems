@@ -44,6 +44,7 @@ describe('Orders use case', () => {
 
   test('should add transfer records for both cases when a transfer order is completed', async () => {
     const order: Order = { ...ORDERS[0] };
+    order.status = 'approved';
 
     const transferIn: TransferIn = {
       caseId: order.newCaseId,
