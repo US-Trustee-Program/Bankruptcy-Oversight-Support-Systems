@@ -173,5 +173,5 @@ export interface Transfer {
   orderDate: string;
   divisionName: string;
   courtName: string;
-  transferType: 'TRANSFER_IN' | 'TRANSFER_OUT';
+  documentType: 'TRANSFER_IN' | 'TRANSFER_OUT';
 }
