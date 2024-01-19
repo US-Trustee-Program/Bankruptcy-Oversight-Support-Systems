@@ -1,7 +1,7 @@
 import { httpGet, httpPatch, httpPost } from '../utils/http.adapter';
-import config from '../../configuration/apiConfiguration';
 import { ResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
+import config from '../../configuration/apiConfiguration';
 
 export default class Api {
   private static _host = `${config.protocol || 'https'}://${config.server}:${config.port}${
@@ -25,7 +25,7 @@ export default class Api {
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
-      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
+      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
       const response = await httpPost({ url: Api._host + pathStr, body });
@@ -44,7 +44,7 @@ export default class Api {
 
   public static async list(path: string, options: ObjectKeyVal = {}): Promise<ResponseData> {
     try {
-      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
+      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api._host + pathStr });
 
@@ -65,7 +65,7 @@ export default class Api {
 
   public static async get(path: string, options?: ObjectKeyVal): Promise<ResponseData> {
     try {
-      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
+      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api._host + pathStr });
 
@@ -84,28 +84,13 @@ export default class Api {
     }
   }
 
-  public static getQueryStringsToPassthrough(options: ObjectKeyVal): ObjectKeyVal {
-    const queryParams = new URLSearchParams(window.location.search);
-
-    // Add to this list if there are query params that should be passed to backend api request
-    const params = ['x-ms-routing-name'];
-
-    params.forEach((key) => {
-      const value = queryParams.get(key);
-      if (value) {
-        options[key] = value;
-      }
-    });
-    return options;
-  }
-
   public static async patch(
     path: string,
     body: object,
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
-      const apiOptions = this.getQueryStringsToPassthrough(options ?? {});
+      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPatch({ url: Api._host + pathStr, body });
 
@@ -119,5 +104,23 @@ export default class Api {
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
     }
+  }
+
+  public static getQueryStringsToPassthrough(
+    search: string,
+    options: ObjectKeyVal = {},
+  ): ObjectKeyVal {
+    const queryParams = new URLSearchParams(search);
+
+    // Add to this list if there are query params that should be passed to backend api request
+    const params = ['x-ms-routing-name'];
+
+    params.forEach((key) => {
+      const value = queryParams.get(key);
+      if (value) {
+        options[key] = value;
+      }
+    });
+    return options;
   }
 }
