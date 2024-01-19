@@ -302,7 +302,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 </Link>{' '}
                 and court
                 <span className="transfer-highlight__span">
-                  {order.newCourtName} ({order.newCourtDivisionName})
+                  {order.newCourtName} ({order.newCourtDivisionName}).
                 </span>
               </div>
               <div className="grid-col-1"></div>
