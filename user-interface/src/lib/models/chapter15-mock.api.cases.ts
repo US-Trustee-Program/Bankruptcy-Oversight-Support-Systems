@@ -153,7 +153,7 @@ export default class Chapter15MockApi extends Api {
         orderDate: '01-04-2023',
         divisionName: 'Old Division',
         courtName: 'Ye Olde Court',
-        transferType: 'TRANSFER_IN',
+        documentType: 'TRANSFER_IN',
       },
       {
         caseId: '101-23-12345',
@@ -161,7 +161,7 @@ export default class Chapter15MockApi extends Api {
         orderDate: '01-12-2024',
         divisionName: 'New Division',
         courtName: 'New Hotness Court',
-        transferType: 'TRANSFER_OUT',
+        documentType: 'TRANSFER_OUT',
       },
     ],
   };

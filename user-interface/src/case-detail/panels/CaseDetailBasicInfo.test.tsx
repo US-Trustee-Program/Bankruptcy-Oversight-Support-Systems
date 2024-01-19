@@ -50,7 +50,7 @@ const TRANSFER_IN: Transfer = {
   orderDate: '01-04-2023',
   divisionName: 'Old Division',
   courtName: 'Ye Olde Court',
-  transferType: 'TRANSFER_IN',
+  documentType: 'TRANSFER_IN',
 };
 const TRANSFER_OUT: Transfer = {
   caseId: TEST_CASE_ID,
@@ -58,7 +58,7 @@ const TRANSFER_OUT: Transfer = {
   orderDate: '01-12-2024',
   divisionName: 'New Division',
   courtName: 'New Hotness Court',
-  transferType: 'TRANSFER_OUT',
+  documentType: 'TRANSFER_OUT',
 };
 
 describe('Case detail basic information panel', () => {
