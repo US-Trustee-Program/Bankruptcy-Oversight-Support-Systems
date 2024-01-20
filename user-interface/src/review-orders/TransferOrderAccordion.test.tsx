@@ -9,9 +9,12 @@ import {
   CaseSelection,
   TransferOrderAccordion,
   getOfficeList,
+  //getOrderTransferFromOrder,
   isValidOrderTransfer,
   validateNewCaseIdInput,
 } from './TransferOrderAccordion';
+//import * as transferModule from './TransferOrderAccordion';
+import React from 'react';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -190,6 +193,112 @@ describe('TransferOrderAccordion', () => {
       );
     });
   });
+
+  /*
+  test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
+    vi.spyOn(transferModule, 'updateOrderTransfer').mockReturnValue({
+      id: 'guid-1',
+      sequenceNumber: 1,
+      caseId: '11-22222',
+      newCaseId: '22-11111',
+      newCourtName: 'New Test Court',
+      newCourtDivisionName: 'New Division Name',
+      newDivisionCode: '001',
+      newRegionId: '02',
+      newRegionName: 'NEW YORK',
+      status: 'pending',
+      reason: 'Test Reason',
+    });
+
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
+      </BrowserRouter>,
+    );
+
+    expect(order.status).toBe('pending');
+
+    await waitFor(async () => {
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
+      expect(content).toBeInTheDocument();
+    });
+
+    let heading: HTMLElement;
+    await waitFor(async () => {
+      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    }).then(() => {
+      fireEvent.click(heading);
+    });
+
+    let dropdownSelect: HTMLElement;
+    await waitFor(async () => {
+      dropdownSelect = screen.getByTestId(`court-selection-usa-combo-box-guid-0`);
+      expect(dropdownSelect).toBeInTheDocument();
+      dropdownSelectDiv = document.querySelector('#court-selection-')
+      const valuePlaceholder = dropdownSelect.children[0].querySelector('div');
+      expect(valuePlaceholder).toHaveTextContent('Select...');
+
+      //const unselectedValue = await screen.findByText('Select...');
+      //expect(unselectedValue).toBeInTheDocument();
+    }).then(() => {
+      fireEvent.click(dropdownSelect!);
+    });
+
+    await waitFor(async () => {
+      const dropdownSelectItem = document.querySelector('div#react-select-2-option-1');
+      if (dropdownSelectItem) {
+        fireEvent.click(dropdownSelectItem);
+      }
+    });
+
+    await waitFor(() => {
+      const unselectedValue = screen.queryByText('Select...');
+      expect(unselectedValue).not.toBeInTheDocument();
+    });
+
+    let dropdownInput: HTMLElement;
+    await waitFor(async () => {
+      const _content = screen.getByTestId(`accordion-content-${order.id}`);
+      dropdownInput = screen.getByTestId(`court-selection-${order.id}`);
+    }).then(() => {
+      const selection = {
+        value: '002',
+      };
+      const _orderTransfer = getOrderTransferFromOrder(order);
+
+      expect(dropdownInput).toBeInTheDocument();
+      fireEvent.change(dropdownInput!, { target: { selection } });
+    });
+
+    //
+    // SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
+    //
+    const selectInput = document.querySelector(`input#court-selection-${order.id}`);
+    expect(selectInput).toBeInTheDocument();
+    fireEvent.change(selectInput!, { target: { value: 'random value' } });
+
+    await waitFor(() => {
+      const approveButton = screen.getByTestId(`button-accordian-approve-button-${order.id}`);
+      expect(approveButton).toBeEnabled();
+      fireEvent.click(approveButton);
+    });
+
+    let confirmModal: HTMLElement;
+    await waitFor(async () => {
+      confirmModal = screen.getByTestId(`confirm-modal-${order.id}`);
+      expect(confirmModal).toBeInTheDocument();
+      expect(confirmModal).toBeVisible();
+    });
+  });
+  */
 
   test('should allow a court to be deselected', async () => {
     render(
