@@ -66,6 +66,20 @@ export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) 
   return { newCaseId, joinedInput };
 }
 
+export function updateOrderTransfer(
+  selection: SearchableSelectOption,
+  orderTransfer: OrderTransfer,
+  officesList: Array<OfficeDetails>,
+) {
+  const updated = { ...orderTransfer };
+  const office = officesList.find((o) => o.divisionCode === selection?.value);
+  updated.newRegionId = office?.regionId;
+  updated.newRegionName = office?.regionName;
+  updated.newCourtName = office?.courtName;
+  updated.newCourtDivisionName = office?.courtDivisionName;
+  updated.newDivisionCode = office?.divisionCode;
+  return updated;
+}
 interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
@@ -101,19 +115,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   function isCourtSelected(orderTransfer: OrderTransfer) {
     return orderTransfer.newRegionId && orderTransfer.newCourtDivisionName;
   }
-
   function handleCourtSelection(selection: SearchableSelectOption) {
-    const updated = { ...orderTransfer };
-    const office = officesList.find((o) => o.divisionCode === selection?.value);
-    updated.newRegionId = office?.regionId;
-    updated.newRegionName = office?.regionName;
-    updated.newCourtName = office?.courtName;
-    updated.newCourtDivisionName = office?.courtDivisionName;
-    updated.newDivisionCode = office?.divisionCode;
-    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
-    setOrderTransfer(updated);
+    const updatedSelection = updateOrderTransfer(selection, orderTransfer, officesList);
+    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updatedSelection));
+    setOrderTransfer(updatedSelection);
   }
-
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
     caseIdRef.current?.setValue(joinedInput);
@@ -385,18 +391,31 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <div className="button-bar grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
                 <div className="grid-col-2">
-                  <Button onClick={rejectOrder} uswdsStyle={UswdsButtonStyle.Secondary}>
+                  <Button
+                    id={`accordion-reject-button-${order.id}`}
+                    onClick={rejectOrder}
+                    uswdsStyle={UswdsButtonStyle.Secondary}
+                  >
                     Reject
                   </Button>
                 </div>
                 <div className="grid-col-4"></div>
                 <div className="grid-col-2">
-                  <Button onClick={cancelUpdate} uswdsStyle={UswdsButtonStyle.Outline}>
+                  <Button
+                    id={`accordion-cancel-button-${order.id}`}
+                    onClick={cancelUpdate}
+                    uswdsStyle={UswdsButtonStyle.Outline}
+                  >
                     Cancel
                   </Button>
                 </div>
                 <div className="grid-col-2">
-                  <Button onClick={approveOrder} disabled={true} ref={approveButtonRef}>
+                  <Button
+                    id={`accordian-approve-button-${order.id}`}
+                    onClick={approveOrder}
+                    disabled={true}
+                    ref={approveButtonRef}
+                  >
                     Approve
                   </Button>
                 </div>
@@ -555,6 +574,7 @@ function ConfirmationModalComponent(
       modalId={`confirm-modal-${id}`}
       className="confirm-modal"
       heading={`${title} case transfer?`}
+      data-testid={`confirm-modal-${id}`}
       content={
         <>
           This will {status === 'approved' ? 'approve' : 'stop'} the transfer of case
