@@ -133,6 +133,8 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
       styles={customStyles}
       id={props.id}
       data-testid={props.id}
+      inputId={`${props.id}-input`}
+      name={props.id}
       ref={searchableSelectRef}
       isSearchable={true}
     ></ReactSelect>

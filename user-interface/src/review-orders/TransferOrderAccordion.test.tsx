@@ -12,6 +12,7 @@ import { orderType, statusType } from './ReviewOrdersScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import selectEvent from 'react-select-event';
 import {
   CaseSelection,
   TransferOrderAccordion,
@@ -22,7 +23,6 @@ import {
 } from './TransferOrderAccordion';
 import * as transferModule from './TransferOrderAccordion';
 import React from 'react';
-import selectEvent from 'react-select-event';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -231,6 +231,9 @@ describe('TransferOrderAccordion', () => {
         />{' '}
       </BrowserRouter>,
     );
+
+    const form = screen.getByTestId(`order-form-${order.id}`);
+    expect(form).toBeInTheDocument();
 
     expect(order.status).toBe('pending');
 
