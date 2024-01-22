@@ -488,7 +488,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const party = await testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
+      const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
 
       expect(party).toBeNull();
     });
@@ -508,7 +508,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const party = await testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
+      const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
@@ -534,7 +534,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const party = await testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
+      const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
@@ -558,7 +558,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
+      const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
         applicationContext,
         queryResult,
       );
@@ -581,7 +581,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
+      const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
         applicationContext,
         queryResult,
       );
@@ -611,7 +611,7 @@ describe('Test DXTR Gateway', () => {
       };
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-      const attorney = await testCasesDxtrGateway.debtorAttorneyQueryCallback(
+      const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
         applicationContext,
         queryResult,
       );
@@ -625,6 +625,83 @@ describe('Test DXTR Gateway', () => {
         phone: '9876543210',
         email: 'someone@email.com',
       });
+    });
+  });
+
+  describe('debtorTypeLabelCallback', () => {
+    test('should return UNKNOWN when no results are returned', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.debtorTypeLabelCallback(applicationContext, queryResult);
+
+      expect(label).toEqual('Debtor type information is not available.');
+    });
+
+    test('should return expected debtor type label', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              txRecord: '1081231056523-10565            15IB00-0000000',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.debtorTypeLabelCallback(applicationContext, queryResult);
+
+      expect(label).toEqual('Individual Business');
+    });
+  });
+
+  describe('petitionLabelCallback', () => {
+    test('should return UNKNOWN when no results are returned', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.petitionLabelCallback(applicationContext, queryResult);
+
+      expect(label).toEqual('');
+    });
+
+    test('should return expected petition label', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              txRecord:
+                '1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411VP000000',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.petitionLabelCallback(applicationContext, queryResult);
+
+      expect(label).toEqual('Voluntary');
     });
   });
 });
