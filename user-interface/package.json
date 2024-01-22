@@ -43,6 +43,7 @@
     "jsdom": "^23.2.0",
     "pa11y-ci": "^3.1.0",
     "prettier": "^3.2.2",
+    "react-select-event": "^5.5.1",
     "sass": "^1.69.7",
     "vite": "^5.0.11",
     "vite-plugin-checker": "^0.6.2",

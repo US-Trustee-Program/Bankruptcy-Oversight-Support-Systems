@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  getByLabelText,
+  // getByTestId,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import { orderType, statusType } from './ReviewOrdersScreen';
@@ -9,12 +16,13 @@ import {
   CaseSelection,
   TransferOrderAccordion,
   getOfficeList,
-  //getOrderTransferFromOrder,
+  getOrderTransferFromOrder,
   isValidOrderTransfer,
   validateNewCaseIdInput,
 } from './TransferOrderAccordion';
-//import * as transferModule from './TransferOrderAccordion';
+import * as transferModule from './TransferOrderAccordion';
 import React from 'react';
+import selectEvent from 'react-select-event';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -64,10 +72,11 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
   ];
+
   beforeAll(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    order = ordersResponse.body[0];
+    order = { ...ordersResponse.body[0] };
   });
 
   test('should render an order', async () => {
@@ -194,8 +203,7 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  /*
-  test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
+  test.only('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
     vi.spyOn(transferModule, 'updateOrderTransfer').mockReturnValue({
       id: 'guid-1',
       sequenceNumber: 1,
@@ -238,18 +246,31 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    let dropdownSelect: HTMLElement;
-    await waitFor(async () => {
-      dropdownSelect = screen.getByTestId(`court-selection-usa-combo-box-guid-0`);
-      expect(dropdownSelect).toBeInTheDocument();
-      dropdownSelectDiv = document.querySelector('#court-selection-')
-      const valuePlaceholder = dropdownSelect.children[0].querySelector('div');
-      expect(valuePlaceholder).toHaveTextContent('Select...');
+    // A New York 1
+    const formElement = screen.getByTestId(`order-form-${order.id}`);
+    // const formElement = document.getElementById(`court-selection-${order.id}`);
+    if (!formElement) {
+      expect(true).toBeFalsy();
+    } else {
+      const labelText = getByLabelText(formElement, 'New Court');
+      console.log('Label Output: ', labelText);
+      await waitFor(async () => {
+        selectEvent.openMenu(getByLabelText(formElement, 'New Court'));
+      });
 
+      await fireEvent.mouseDown(screen.getByText('A New York 1'));
+    }
+    let _dropdownSelect: HTMLElement;
+    await waitFor(async () => {
+      // dropdownSelect = screen.getByTestId(`court-selection-usa-combo-box-guid-0`);
+      // expect(dropdownSelect).toBeInTheDocument();
+      // dropdownSelectDiv = document.querySelector('#court-selection-');
+      // const valuePlaceholder = dropdownSelect.children[0].querySelector('div');
+      // expect(valuePlaceholder).toHaveTextContent('Select...');
       //const unselectedValue = await screen.findByText('Select...');
       //expect(unselectedValue).toBeInTheDocument();
     }).then(() => {
-      fireEvent.click(dropdownSelect!);
+      // fireEvent.click(dropdownSelect!);
     });
 
     await waitFor(async () => {
@@ -298,7 +319,6 @@ describe('TransferOrderAccordion', () => {
       expect(confirmModal).toBeVisible();
     });
   });
-  */
 
   test('should allow a court to be deselected', async () => {
     render(

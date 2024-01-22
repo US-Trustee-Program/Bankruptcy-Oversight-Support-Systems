@@ -30,6 +30,7 @@ export function getOrderTransferFromOrder(order: Order): OrderTransfer {
 
 export function getOfficeList(officesList: Array<OfficeDetails>) {
   const mapOutput = officesList.map((court) => {
+    console.log(`${court.courtName} ${court.courtDivisionName}`);
     return {
       value: court.divisionCode,
       label: `${court.courtName} ${court.courtDivisionName}`,
@@ -314,7 +315,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             </div>
           )}
           {order.status !== 'approved' && order.status !== 'rejected' && (
-            <section className="order-form" data-testid={`order-form-${order.id}`}>
+            <form className="order-form" data-testid={`order-form-${order.id}`} id="transfer-form">
               <div className="court-selection grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
                 <div className="transfer-from-to__div grid-col-10">
@@ -449,7 +450,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 onCancel={cancelUpdate}
                 onConfirm={confirmOrderApproval}
               ></ConfirmationModal>
-            </section>
+            </form>
           )}
         </section>
       </Accordion>
