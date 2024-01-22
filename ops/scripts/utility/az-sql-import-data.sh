@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Title:        import-data.sh
-# Description:  Load data from file to an existing SQL server database table.
+# Description:  Load data from file to an existing SQL server database table. Specify a directory containing collection of data files to load
 # Prequisite:
 #       - Installation of bcp, see https://learn.microsoft.com/en-us/sql/tools/bcp-utility and https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/install-microsoft-odbc-driver-sql-server-macos?view=sql-server-ver16#microsoft-odbc-18
 # Assumptions:
@@ -9,8 +9,9 @@
 #       - Data file must be in a valid format. Pipe delimiter is prefered but logic available to convert comma delimters (that are not between quotes) into pipe characters.
 # Other Notes:
 #       - For future refactoring or managing csv, the following might be of interest: https://csvkit.readthedocs.io/en/latest/index.html
+#       - Create a file named 'secret' containing the password to be used to connect to the sql server
 #
-# Usage:        import-data.sh -S <server> -D <database> -T <table>  -u <user>  --delimiter "|" -f <filepathToCsv>
+# Usage:         ops/scripts/utility/az-sql-import-data.sh -d <data directory> -S <server> -D <database name> -u <user>
 #
 # Exitcodes
 # ==========
@@ -22,17 +23,28 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 bcp -v # check that utility is installed
 
-delimiter="|" # default delimiter is a pipe
-filepath=""
+delimiter="," # default delimiter is a comma but prefer pipes
+ext=".csv"
+dirpath="."
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo 'USAGE: import-data.sh -S <server> -D <database> -T <table>  -u <user>  --delimiter "|" -f <filepathToCsv>'
+        echo 'USAGE: ops/scripts/utility/az-sql-import-data.sh -d <data directory> -S <server> -D <database name> -u <user>'
         exit 0
         ;;
 
     --delimiter)
         delimiter="${2}"
+        shift 2
+        ;;
+
+    --ext) # expected data file extension
+        ext="${2}"
+        shift 2
+        ;;
+
+    -d | --dirpath) # path to the directory containing the data files to load
+        dirpath="${2}"
         shift 2
         ;;
 
@@ -43,16 +55,6 @@ while [[ $# -gt 0 ]]; do
 
     -D | --database)
         database="${2}"
-        shift 2
-        ;;
-
-    -T | --table)
-        table="${2}"
-        shift 2
-        ;;
-
-    -f | --filepath)
-        filepath="${2}"
         shift 2
         ;;
 
@@ -67,41 +69,78 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -z "${filepath}" ]; then
-    echo "Error: No file found at ${filepath}"
+if [[ -z "${server}" ]]; then
+    echo "Error: Missing server"
     exit 11
 fi
-
-targetFilepath=${filepath}
-
-# Check and handle non pipeline delimited files
-if [[ "${delimiter}" == "|" ]]; then
-    echo "Handle data file at ${filepath} as a pipe delimited file."
-elif [[ "${delimiter}" == "," ]]; then
-    echo "Convert delimiter [${delimiter}] to pipes"
-    sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' <./"${filepath}" 1>"${filepath}"-tmp-1
-    targetFilepath=${filepath}-tmp-1
-    delimiter="|"
-else
-    echo "Error: Unsupported delimiter [${delimiter}]"
+if [[ -z "${database}" ]]; then
+    echo "Error: Missing database"
     exit 12
 fi
+if [[ -z "${user}" ]]; then
+    echo "Error: Missing user"
+    exit 13
+fi
 
-# Clean up possible quotes right after/before pipe delimiter
-sed -Ee :1 -e 's/(\|{1}"{1})|("{1}\|{1})/|/;t1' <./"${targetFilepath}" 1>"${filepath}"-tmp-2
-targetFilepath=${filepath}-tmp-2
+function import_data_from_file_func() {
+    local targetDataFilepath=$1
+    local targetTable=$2
 
-echo "Executing bcp command"
-# bcp ${table} in ${targetFilepath} \
-#     -S ${server} -d ${database} -U ${user} \      # Database connection parameters. Password will be prompted
-#     -e err-${database}-${table}.out \             # Output file with detail of errors
-#     -c \                                          # Perform bcp operation using a character type. See docs for more details.
-#     -t "|" \                                      # Choose a pipe (|) as the delimiter
-#     -r "0x0a"                                     # Specify row terminator in hexadecimall format
-bcp "${table}" in "${targetFilepath}" -S "${server}" -d "${database}" -U "${user}" -e err-"${database}"-"${table}".out -c -t "|" -r "0x0a"
-echo "Completed exported command execution"
+    if [[ -z "${targetDataFilepath}" ]]; then
+        echo "Error: Missing file path to data"
+        exit 21
+    fi
+    if [[ -z "${targetTable}" ]]; then
+        echo "Error: Missing database table name ${targetDataFilepath}"
+        exit 22
+    fi
 
-echo "Cleaning up temporary files"
-rm ./"${filepath}"-tmp-*
+    local currentDataFile=${targetDataFilepath} # stores the path to the modified data file used to import the data
+
+    echo "Starting data import for ${targetDataFilepath} into table ${targetTable}"
+
+    # Check and handle non pipeline delimited files
+    if [[ "${delimiter}" == "|" ]]; then
+        echo "Handle data file at ${filepath} as a pipe delimited file."
+    elif [[ "${delimiter}" == "," ]]; then
+        echo "Convert delimiter [${delimiter}] to pipes"
+        sed -Ee :1 -e 's/^(([^",]|"[^"]*")*),/\1|/;t1' <./"${filepath}" 1>"${filepath}"-tmp-1
+        currentDataFile=${filepath}-tmp-1
+    else
+        echo "Error: Unsupported delimiter [${delimiter}]"
+        exit 12
+    fi
+
+    # Clean up possible quotes right after/before pipe delimiter
+    sed -Ee :1 -e 's/(\|{1}"{1})|("{1}\|{1})/|/;t1' <./"${currentDataFile}" 1>"${filepath}"-tmp-2
+    currentDataFile=${filepath}-tmp-2
+
+    # Remove NULL string between delimiters. If NULL exists in the data file, bcp throws a right truncated error on the column
+    sed -Ee :1 -e 's/\|NULL/|/;t1' <./"${currentDataFile}" 1>"${filepath}"-tmp-3
+    currentDataFile=${filepath}-tmp-3
+
+    #shellcheck disable=SC2155
+    local p=$(cat ./secret) # NOTE: SQL pw read from local file
+
+    echo "Executing bcp command"
+    # bcp ${targetTable} in ${currentDataFile} \
+    #     -S ${server} -d ${database} -U ${user} \      # Database connection parameters. Password will be prompted
+    #     -e err-${database}-${targetTable}.out \             # Output file with detail of errors
+    #     -c \                                          # Perform bcp operation using a character type. See docs for more details.
+    #     -t "|" \                                      # Choose a pipe (|) as the delimiter
+    #     -r "0x0D0A"                                     # Specify row terminator in hexadecimall format CR (0x0D) LF (0x0a)
+    bcp "${targetTable}" in "${currentDataFile}" -S "${server}" -d "${database}" -U "${user}" -e err-"${database}"-"${targetTable}".out -c -t "|" -r "0x0D0A" -P "${p}"
+    echo "Completed exported command execution"
+
+    echo "Cleaning up temporary files"
+    rm ./"${filepath}"-tmp-*
+}
+
+# shellcheck disable=SC2231
+for filepath in ${dirpath}/*${ext}; do # NOTE: expects a hard code file extension csv
+    table=$(echo "${filepath}" | sed "s/${ext}//" | sed "s/${dirpath}\///" | tr '[:lower:]' '[:upper:]')
+
+    import_data_from_file_func "${filepath}" "${table}"
+done
 
 echo "DONE"
