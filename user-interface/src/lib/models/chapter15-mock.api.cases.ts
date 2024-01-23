@@ -230,7 +230,11 @@ export default class Chapter15MockApi extends Api {
       orderType: 'transfer',
       orderDate: '01-01-2024',
       status: 'pending',
-      newCaseId: '',
+      newCaseId: '101-23-12345',
+      newCourtName: 'A',
+      newCourtDivisionName: 'New York 1',
+      newDivisionCode: '101',
+      newRegionId: '02',
       sequenceNumber: 1,
       documentNumber: 1,
       dateFiled: '01/01/2024',
@@ -288,6 +292,7 @@ export default class Chapter15MockApi extends Api {
       dateFiled: '01/03/2024',
       summaryText: 'Summary Text 3',
       fullText: 'Full Text 3',
+      reason: 'order rejected because its bad.',
       documents: [
         {
           fileUri: 'file3',
