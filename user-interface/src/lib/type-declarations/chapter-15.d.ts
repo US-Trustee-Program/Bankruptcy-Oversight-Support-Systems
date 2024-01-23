@@ -1,5 +1,7 @@
 import { ResponseData } from './api';
 
+export type OrderStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Chapter15Type {
   caseId: string;
   chapter?: string;
