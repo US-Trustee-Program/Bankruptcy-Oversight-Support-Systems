@@ -7,6 +7,7 @@ import {
   Order,
 } from '../type-declarations/chapter-15';
 import Api from './api';
+import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -363,5 +364,14 @@ export default class Chapter15MockApi extends Api {
     }
 
     return Promise.resolve(response as Chapter15CaseDetailsResponseData);
+  }
+
+  public static async patch(_path: string, data: object, _options?: ObjectKeyVal) {
+    const response = {
+      message: '',
+      count: 1,
+      body: data,
+    };
+    return Promise.resolve(response);
   }
 }

@@ -6,7 +6,12 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import Input from '@/lib/components/uswds/Input';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
-import { OfficeDetails, Order, OrderTransfer } from '@/lib/type-declarations/chapter-15';
+import {
+  OfficeDetails,
+  Order,
+  OrderStatus,
+  OrderTransfer,
+} from '@/lib/type-declarations/chapter-15';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -98,9 +103,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
-
-  const approveModalRef = useRef<ModalRefType>(null);
-  const rejectModalRef = useRef<ModalRefType>(null);
+  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -109,6 +112,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   );
 
   function isValidOrderTransfer(transfer: OrderTransfer) {
+    console.log('IS_VALID_ORDER_TRANSFER: ', transfer);
     return transfer.newCaseId && transfer.newCourtDivisionName;
   }
 
@@ -131,8 +135,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   function rejectOrder(): void {
-    // open rejection modal
-    rejectModalRef.current?.show({});
+    confirmationModalRef.current?.show({ status: 'rejected' });
   }
 
   function approveOrder(): void {
@@ -141,8 +144,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     ) {
       return;
     }
-
-    approveModalRef.current?.show({});
+    confirmationModalRef.current?.show({ status: 'approved' });
   }
 
   function confirmOrderApproval(): void {
@@ -182,14 +184,25 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     approveButtonRef.current?.disableButton(true);
   }
 
-  function approveOrderRejection(rejection: OrderTransfer) {
-    const updatedOrder: Order = {
-      ...order,
-      ...rejection,
+  function confirmAction(status: OrderStatus, reason?: string): void {
+    if (status === 'rejected') {
+      approveOrderRejection(reason);
+    } else if (status === 'approved') {
+      confirmOrderApproval();
+    }
+  }
+
+  function approveOrderRejection(rejectionReason?: string) {
+    const rejection: OrderTransfer = {
+      id: order.id,
+      caseId: order.caseId,
+      sequenceNumber: order.sequenceNumber,
+      reason: rejectionReason,
+      status: 'rejected',
     };
 
     api
-      .patch(`/orders/${rejection.id}`, rejection)
+      .patch(`/orders/${order.id}`, rejection)
       .then(() => {
         props.onOrderUpdate(
           {
@@ -197,7 +210,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             type: UswdsAlertStyle.Success,
             timeOut: 8,
           },
-          updatedOrder,
+          {
+            ...order,
+            ...rejection,
+          },
         );
       })
       .catch((reason) => {
@@ -448,7 +464,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 </div>
                 <div className="grid-col-2">
                   <Button
-                    id={`accordian-approve-button-${order.id}`}
+                    id={`accordion-approve-button-${order.id}`}
                     onClick={approveOrder}
                     disabled={true}
                     ref={approveButtonRef}
@@ -459,6 +475,19 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 <div className="grid-col-1"></div>
               </div>
               <ConfirmationModal
+                ref={confirmationModalRef}
+                id={`confirmation-modal-${order.id}`}
+                sequenceNumber={order.sequenceNumber}
+                fromCaseId={order.caseId}
+                toCaseId={orderTransfer.newCaseId}
+                fromDivisionName={order.courtDivisionName}
+                toDivisionName={orderTransfer.newCourtDivisionName}
+                fromCourtName={order.courtName}
+                toCourtName={orderTransfer.newCourtName}
+                onCancel={cancelUpdate}
+                onConfirm={confirmAction}
+              ></ConfirmationModal>
+              {/* <ConfirmationModal
                 ref={rejectModalRef}
                 id={`reject-${order.id}`}
                 sequenceNumber={order.sequenceNumber}
@@ -485,7 +514,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 status="approved"
                 onCancel={cancelUpdate}
                 onConfirm={confirmOrderApproval}
-              ></ConfirmationModal>
+              ></ConfirmationModal> */}
             </section>
           )}
         </section>
@@ -530,14 +559,26 @@ interface ConfirmationModalProps {
   toDivisionName?: string;
   fromCourtName: string;
   toCourtName?: string;
-  status: 'rejected' | 'approved';
   onCancel: () => void;
-  onConfirm: (confirmation: OrderTransfer) => void;
+  onConfirm: (status: OrderStatus, reason?: string) => void;
 }
+
+type ShowOptionParams = {
+  status: OrderStatus;
+};
+
+type ShowOptions = {
+  status: OrderStatus;
+  title: string;
+};
+
+type ConfirmationModalImperative = ModalRefType & {
+  show: (options: ShowOptionParams) => void;
+};
 
 function ConfirmationModalComponent(
   props: ConfirmationModalProps,
-  ConfirmationModalRef: React.Ref<ModalRefType>,
+  ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
 ) {
   const {
     id,
@@ -548,7 +589,6 @@ function ConfirmationModalComponent(
     toDivisionName,
     fromCourtName,
     toCourtName,
-    status,
     onCancel,
     onConfirm,
   }: ConfirmationModalProps = props;
@@ -556,31 +596,29 @@ function ConfirmationModalComponent(
   const modalRef = useRef<ModalRefType>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [reason] = useState<string>('');
-
-  const title = status === 'approved' ? 'Approve' : 'Reject';
+  const [options, setOptions] = useState<ShowOptions>({
+    status: 'pending',
+    title: '',
+  });
 
   function confirmAction() {
     const confirmationData: OrderTransfer = {
       id,
       sequenceNumber,
       caseId: fromCaseId,
-      status,
+      status: options.status,
     };
-
-    if (status === 'rejected') {
-      confirmationData['reason'] = reasonRef.current?.value;
-    }
-
-    onConfirm(confirmationData);
+    confirmationData.reason = reasonRef.current?.value;
+    onConfirm(confirmationData.status, confirmationData.reason);
   }
 
   const actionButtonGroup = {
     modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
     submitButton: {
-      label: title,
+      label: options.title,
       onClick: confirmAction,
-      className: status === 'rejected' ? 'usa-button--secondary' : '',
+      className: options.status === 'rejected' ? 'usa-button--secondary' : '',
     },
     cancelButton: {
       label: 'Go back',
@@ -588,7 +626,14 @@ function ConfirmationModalComponent(
     },
   };
 
-  function show() {
+  function show(options: ShowOptionParams) {
+    const title = options.status === 'approved' ? 'Approve' : 'Reject';
+
+    setOptions({
+      status: options.status,
+      title,
+    });
+
     if (modalRef.current?.show) {
       modalRef.current?.show({});
     }
@@ -610,7 +655,7 @@ function ConfirmationModalComponent(
       ref={modalRef}
       modalId={`confirm-modal-${id}`}
       className="confirm-modal"
-      heading={`${title} case transfer?`}
+      heading={`${options.title} case transfer?`}
       data-testid={`confirm-modal-${id}`}
       content={
         <>
@@ -635,7 +680,7 @@ function ConfirmationModalComponent(
             </>
           )}
           .
-          {status === 'rejected' && (
+          {options.status === 'rejected' && (
             <div>
               <label htmlFor={`rejection-reason-${id}`} className="usa-label">
                 Reason for rejection

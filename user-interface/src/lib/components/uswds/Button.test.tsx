@@ -8,12 +8,14 @@ describe('Test button component', () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
-          <Button uswdsStyle={UswdsButtonStyle.Cool}>Button text</Button>
+          <Button id="test" uswdsStyle={UswdsButtonStyle.Cool}>
+            Button text
+          </Button>
         </BrowserRouter>
       </React.StrictMode>,
     );
 
-    const button = screen.getByTestId('button');
+    const button = screen.getByTestId('button-test');
     expect(button).toHaveClass('usa-button--accent-cool');
   });
 
@@ -21,12 +23,14 @@ describe('Test button component', () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
-          <Button buttonState={UswdsButtonState.Focus}>Button text</Button>
+          <Button id="test" buttonState={UswdsButtonState.Focus}>
+            Button text
+          </Button>
         </BrowserRouter>
       </React.StrictMode>,
     );
 
-    const button = screen.getByTestId('button');
+    const button = screen.getByTestId('button-test');
     expect(button).toHaveClass('usa-focus');
   });
 
@@ -34,12 +38,14 @@ describe('Test button component', () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
-          <Button disabled={true}>Button text</Button>
+          <Button id="test" disabled={true}>
+            Button text
+          </Button>
         </BrowserRouter>
       </React.StrictMode>,
     );
 
-    const button = screen.getByTestId('button');
+    const button = screen.getByTestId('button-test');
     expect(button).toHaveAttribute('disabled');
     expect(button).toHaveAttribute('aria-disabled');
   });
@@ -49,12 +55,14 @@ describe('Test button component', () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
-          <Button ref={buttonRef}>Button text</Button>
+          <Button id="test" ref={buttonRef}>
+            Button text
+          </Button>
         </BrowserRouter>
       </React.StrictMode>,
     );
 
-    const button = screen.getByTestId('button');
+    const button = screen.getByTestId('button-test');
 
     expect(button).not.toHaveAttribute('disabled');
 
