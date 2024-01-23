@@ -33,6 +33,7 @@ export interface ButtonProps {
 
 const ButtonComponent = (
   {
+    id,
     uswdsStyle,
     buttonState,
     className,
@@ -60,10 +61,11 @@ const ButtonComponent = (
 
   return (
     <button
+      id={id}
       type="button"
       className={classes.join(' ')}
       onClick={onClick}
-      data-testid="button"
+      data-testid={`button-${id}`}
       aria-disabled={isDisabled}
       disabled={isDisabled}
       title={title}

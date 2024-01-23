@@ -53,7 +53,7 @@ function SubmitCancelButtonGroupComponent(
             onClick={submitButton.onClick ?? close}
             disabled={submitButton.disabled ?? false}
           >
-            {submitButton.label}
+            {submitButton.label.length > 0 ? submitButton.label : 'Submit'}
           </ToggleModalButton>
         </li>
         {cancelButton && (
@@ -67,7 +67,7 @@ function SubmitCancelButtonGroupComponent(
               className={cancelButton.className ?? ' padding-105 text-center '}
               onClick={cancelButton.onClick ?? close}
             >
-              {cancelButton.label}
+              {cancelButton.label.length > 0 ? cancelButton.label : 'Go back'}
             </ToggleModalButton>
           </li>
         )}

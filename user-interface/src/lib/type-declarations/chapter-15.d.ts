@@ -1,5 +1,7 @@
 import { ResponseData } from './api';
 
+export type OrderStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Chapter15Type {
   caseId: string;
   chapter?: string;
@@ -126,6 +128,7 @@ export type Order = CaseDocketEntry & {
   newCourtDivisionName?: string;
   newDivisionCode?: string;
   newRegionId?: string;
+  reason?: string;
 };
 
 export interface OrderResponseData extends ResponseData {
@@ -161,6 +164,7 @@ export interface OrderTransfer {
   newRegionId?: string;
   newRegionName?: string;
   status: OrderStatus;
+  reason?: string;
 }
 
 export interface OfficesResponseData extends ResponseData {

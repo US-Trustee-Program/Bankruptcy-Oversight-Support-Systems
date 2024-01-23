@@ -82,25 +82,47 @@ describe('Specific tests for the API model', () => {
     expect(Api.get('/some/path', {})).rejects.toThrow('400 Error - /some/path - mock get 400');
   });
 
-  test('should return expected result when "get" response is ok', () => {
-    const mockHttpGet = vi.fn().mockImplementation(() => ({
+  test('should throw error when "get" response is not ok', () => {
+    const mockHttpGet = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock get ok' }),
       status: 200,
       ok: false,
-    }));
+    });
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
     expect(Api.get('/some/path', {})).rejects.toThrow('mock get ok');
   });
 
-  test('should return data when response is Ok', () => {
-    const mockHttpPost = vi.fn().mockImplementation(() => ({
-      json: () => 'mock post',
+  test('should throw all other "get" errors as "500" errors', () => {
+    const error = new Error('something bad happened');
+    const rethrownError = new Error(`500 Error - Server Error ${(error as Error).message}`);
+    const mockHttpGet = vi.fn().mockRejectedValue(error);
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.get('/some/path', {})).rejects.toThrow(rethrownError);
+  });
+
+  test('should return expected result when "get" response is ok', () => {
+    const payload = { foo: 'mock get' };
+    const mockHttpGet = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve(payload),
+      status: 200,
       ok: true,
-    }));
+    });
+    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
+
+    expect(Api.get('/some/path', {})).resolves.toEqual(payload);
+  });
+
+  test('should return data when response is Ok', () => {
+    const payload = { foo: 'mock post' };
+    const mockHttpPost = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve(payload),
+      ok: true,
+    });
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
-    expect(Api.post('/some/path', {})).resolves.toBe('mock post');
+    expect(Api.post('/some/path', {})).resolves.toEqual(payload);
   });
 
   test('call to Get with a server error should reject with a 500', () => {
@@ -120,5 +142,61 @@ describe('Specific tests for the API model', () => {
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
     expect(Api.list('/some/path', {})).resolves.toBe('mock get');
+  });
+
+  test('should throw error when "patch" response is not ok', () => {
+    const mockHttpPatch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ message: 'mock get ok' }),
+      status: 200,
+      ok: false,
+    });
+    vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
+
+    expect(Api.patch('/some/path', {})).rejects.toThrow('mock get ok');
+  });
+
+  test('should throw all other "patch" errors as "500" errors', () => {
+    const error = new Error('something bad happened');
+    const rethrownError = new Error(`500 Error - Server Error ${(error as Error).message}`);
+    const mockHttpPatch = vi.fn().mockRejectedValue(error);
+    vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
+
+    expect(Api.patch('/some/path', {})).rejects.toThrow(rethrownError);
+  });
+
+  test('should return expected result when "patch" response is ok', () => {
+    const payload = { foo: 'mock patch' };
+    const mockHttpPatch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve(payload),
+      status: 200,
+      ok: true,
+    });
+    vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
+
+    expect(Api.patch('/some/path', {})).resolves.toEqual(payload);
+  });
+
+  test('should pass select query string key values to the api', () => {
+    const key = 'x-ms-routing-name';
+    const value = 'theValue';
+    const search = `${key}=${value}`;
+    const options = Api.getQueryStringsToPassthrough(search, {});
+    expect(options[key]).toEqual(value);
+  });
+
+  test('should pass select query string key values to the api along with options', () => {
+    const key = 'x-ms-routing-name';
+    const value = 'theValue';
+    const search = `${key}=${value}`;
+
+    const passedOptions = {
+      foo: 'bar',
+    };
+    const expectedOptions = {
+      ...passedOptions,
+      [key]: value,
+    };
+    const options = Api.getQueryStringsToPassthrough(search, passedOptions);
+    expect(options).toEqual(expectedOptions);
   });
 });
