@@ -189,7 +189,6 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  // TODO: This test is passing:  duplicate this test for the Reject case.
   test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
     const orderUpdateSpy = vi
       .fn()
@@ -237,6 +236,67 @@ describe('TransferOrderAccordion', () => {
       expect(approveButton).toBeEnabled();
     });
     fireEvent.click(approveButton!);
+
+    let confirmModal: HTMLElement;
+    await waitFor(async () => {
+      confirmModal = screen.getByTestId('toggle-modal-button-submit');
+      expect(confirmModal).toBeInTheDocument();
+      expect(confirmModal).toBeVisible();
+    });
+    fireEvent.click(confirmModal!);
+
+    await waitFor(async () => {
+      expect(orderUpdateSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should display modal and when Reject is clicked', async () => {
+    const orderUpdateSpy = vi
+      .fn()
+      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={orderUpdateSpy}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
+      </BrowserRouter>,
+    );
+
+    expect(order.status).toBe('pending');
+
+    await waitFor(async () => {
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
+      expect(content).toBeInTheDocument();
+    });
+
+    let heading: HTMLElement;
+    await waitFor(async () => {
+      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    }).then(() => {
+      fireEvent.click(heading);
+    });
+
+    const selectButton = document.querySelector('#test-select-button-1');
+    expect(selectButton).toBeInTheDocument();
+    fireEvent.click(selectButton!);
+
+    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
+    expect(caseIdInput).toBeInTheDocument();
+    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+
+    let rejectButton;
+    await waitFor(() => {
+      rejectButton = screen.getByTestId(`button-accordion-reject-button-${order.id}`);
+      expect(rejectButton).toBeEnabled();
+    });
+    fireEvent.click(rejectButton!);
 
     let confirmModal: HTMLElement;
     await waitFor(async () => {
