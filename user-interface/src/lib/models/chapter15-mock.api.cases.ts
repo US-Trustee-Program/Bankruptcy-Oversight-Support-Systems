@@ -7,6 +7,7 @@ import {
   Order,
 } from '../type-declarations/chapter-15';
 import Api from './api';
+import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -229,7 +230,11 @@ export default class Chapter15MockApi extends Api {
       orderType: 'transfer',
       orderDate: '01-01-2024',
       status: 'pending',
-      newCaseId: '',
+      newCaseId: '101-23-12345',
+      newCourtName: 'A',
+      newCourtDivisionName: 'New York 1',
+      newDivisionCode: '101',
+      newRegionId: '02',
       sequenceNumber: 1,
       documentNumber: 1,
       dateFiled: '01/01/2024',
@@ -287,6 +292,7 @@ export default class Chapter15MockApi extends Api {
       dateFiled: '01/03/2024',
       summaryText: 'Summary Text 3',
       fullText: 'Full Text 3',
+      reason: 'order rejected because its bad.',
       documents: [
         {
           fileUri: 'file3',
@@ -363,5 +369,14 @@ export default class Chapter15MockApi extends Api {
     }
 
     return Promise.resolve(response as Chapter15CaseDetailsResponseData);
+  }
+
+  public static async patch(_path: string, data: object, _options?: ObjectKeyVal) {
+    const response = {
+      message: '',
+      count: 1,
+      body: data,
+    };
+    return Promise.resolve(response);
   }
 }
