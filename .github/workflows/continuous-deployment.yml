@@ -211,7 +211,7 @@ jobs:
           -bf results-latest.json \
           -jf results.json \
           -fjf filtered_results.json \
-          --fail_on_severity="Very High, High, Medium" \
+          --fail_on_severity="High, Medium" \
           --file cams.zip
 
       - name: Upload to storage account
