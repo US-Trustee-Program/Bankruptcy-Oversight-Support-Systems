@@ -7,6 +7,7 @@ import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import HealthcheckSqlDb from './healthcheck.db.sql';
+import HealthcheckInfo from './healthcheck.info';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
@@ -33,6 +34,9 @@ const httpTrigger: AzureFunction = async function (
     'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,
   );
 
+  const healthcheckInfo = new HealthcheckInfo(applicationContext);
+  const info = healthcheckInfo.getServiceInfo();
+
   const respBody = {
     database: {
       cosmosDbWriteStatus: checkCosmosDbWrite,
@@ -40,6 +44,7 @@ const httpTrigger: AzureFunction = async function (
       cosmosDbDeleteStatus: checkCosmosDbDelete,
       sqlDbReadStatus: checkSqlDbReadAccess,
     },
+    info,
   };
 
   // Add boolean flag for any other checks here

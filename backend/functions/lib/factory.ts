@@ -16,6 +16,7 @@ import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
 import {
+  CasesRepository,
   OrdersGateway,
   OrdersRepository,
   RuntimeStateRepository,
@@ -28,6 +29,8 @@ import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gatewa
 import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import FakeRuntimeStateCosmosClientHumble from './cosmos-humble-objects/fake.runtime.cosmos-client-humble';
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
+import FakeCasesCosmosClientHumble from './cosmos-humble-objects/fake.cases.cosmos-client-humble';
+import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -108,6 +111,10 @@ export const getOrdersRepository = (applicationContext: ApplicationContext): Ord
   return new OrdersCosmosDbRepository(applicationContext);
 };
 
+export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
+  return new CasesCosmosDbRepository(applicationContext);
+};
+
 export const getRuntimeCosmosDbClient = (
   applicationContext: ApplicationContext,
 ): CosmosClientHumble | FakeRuntimeStateCosmosClientHumble => {
@@ -122,4 +129,14 @@ export const getRuntimeStateRepository = (
   applicationContext: ApplicationContext,
 ): RuntimeStateRepository => {
   return new RuntimeStateCosmosDbRepository(applicationContext);
+};
+
+export const getCasesCosmosDbClient = (
+  applicationContext: ApplicationContext,
+): CosmosClientHumble | FakeCasesCosmosClientHumble => {
+  if (applicationContext.config.get('dbMock')) {
+    return new FakeCasesCosmosClientHumble();
+  } else {
+    return new CosmosClientHumble(applicationContext.config);
+  }
 };

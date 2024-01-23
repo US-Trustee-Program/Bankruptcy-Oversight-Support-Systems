@@ -7,6 +7,7 @@ param planName string
 @allowed([
   'P1v2'
   'B2'
+  'S1'
 ])
 param planType string = 'P1v2'
 
@@ -23,6 +24,13 @@ var planTypeToSkuMap = {
     tier: 'Basic'
     size: 'B2'
     family: 'B'
+    capacity: 1
+  }
+  S1: {
+    name: 'S1'
+    tier: 'Standard'
+    size: 'S1'
+    family: 'S'
     capacity: 1
   }
 }
@@ -197,7 +205,6 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateLinkServiceId: functionApp.id
   }
 }
-
 /*
   Storage resource for Azure functions
 */
@@ -299,7 +306,6 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     sqlIdentity
   ]
 }
-
 var applicationSettings = concat([
     {
       name: 'AzureWebJobsStorage'
@@ -361,7 +367,6 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     appSettings: applicationSettings
   }
 }
-
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
 module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
@@ -392,3 +397,4 @@ resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
 output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output createdSqlServerVnetRule bool = createSqlServerVnetRule
+output keyVaultId string = functionApp.properties.keyVaultReferenceIdentity

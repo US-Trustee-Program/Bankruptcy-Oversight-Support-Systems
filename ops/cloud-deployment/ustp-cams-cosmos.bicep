@@ -16,6 +16,10 @@ param databaseContainers array = [
     partitionKey1: '/caseId'
   }
   {
+    name: 'cases'
+    partitionKey1: '/caseId'
+  }
+  {
     name: 'orders'
     partitionKey1: '/caseId'
   }
@@ -151,3 +155,4 @@ module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.b
 
 output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
 output cosmosDbPrincipalId string = cosmosDbUserManagedIdentity.outputs.principalId
+output cosmosDbManagedIdName string = cosmosDbUserManagedIdentity.outputs.name

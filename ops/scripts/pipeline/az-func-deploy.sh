@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-func-deploy.sh
 # Description:  Helper script to deploy function build artifact to existing Azure site

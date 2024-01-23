@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Title:        az-app-deploy.sh
 # Description:  Helper script to deploy webapp build artifact to existing Azure site
@@ -10,7 +10,6 @@
 # 1   Script interrupted
 # 2   Unknown flag or switch passed as parameter to script
 # 10+ Validation check errors
-
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 while [[ $# -gt 0 ]]; do
@@ -19,7 +18,6 @@ while [[ $# -gt 0 ]]; do
         echo "USAGE: az-func-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName"
         shift
         ;;
-
     -g | --resourceGroup)
         app_rg="${2}"
         shift 2
@@ -34,7 +32,6 @@ while [[ $# -gt 0 ]]; do
         artifact_path="${2}"
         shift 2
         ;;
-
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -44,11 +41,6 @@ done
 if [ ! -f "${artifact_path}" ]; then
     echo "Error: missing build artifact ${artifact_path}"
     exit 10
-fi
-
-if ! tar -xf "${artifact_path}"; then
-    echo "Error: extracting build artifact ${artifact_path}"
-    exit 11
 fi
 
 function on_exit() {
@@ -62,18 +54,9 @@ agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipi
 ruleName="agent-${app_name:0:26}"
 az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
 
-if ! pushd build; then
-    echo "Error: unable to change working directory"
-    exit 12
-fi
-
 # Gives some extra time for prior management operation to complete before starting deployment
-sleep 15s
-
-az webapp up --html --os-type linux -n "${app_name}"
+sleep 10s
+az webapp deployment source config-zip -g "${app_rg}" --src "${artifact_path}" -n "${app_name}"
 
 # Alternative workaround to set Azure app service container runtime
 az webapp config set -g "${app_rg}" -n "${app_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
-sleep 15s
-
-popd

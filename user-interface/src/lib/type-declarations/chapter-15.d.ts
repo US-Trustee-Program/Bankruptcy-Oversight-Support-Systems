@@ -46,6 +46,7 @@ interface CaseDetailType {
   debtorAttorney?: DebtorAttorney;
   debtorTypeLabel: string;
   petitionLabel: string;
+  transfers?: Transfer[];
 }
 
 export interface CaseStaffAssignment {
@@ -164,4 +165,13 @@ export interface OrderTransfer {
 
 export interface OfficesResponseData extends ResponseData {
   body: OfficeDetails[];
+}
+
+export interface Transfer {
+  caseId: string;
+  otherCaseId: string;
+  orderDate: string;
+  divisionName: string;
+  courtName: string;
+  documentType: 'TRANSFER_IN' | 'TRANSFER_OUT';
 }
