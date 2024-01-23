@@ -1,6 +1,3 @@
-ci:
-  skip: [pretty-format-java]
-
 repos:
   -   repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v4.5.0
@@ -30,11 +27,6 @@ repos:
       -   id: detect-secrets
           args: [ '--baseline', '.secrets.baseline' ]
           exclude: package.lock.json
-  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.12.0
-    hooks:
-      - id: pretty-format-java
-        args: [ --autofix ]
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.27.3
     hooks:
