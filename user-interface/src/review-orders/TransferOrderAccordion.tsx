@@ -112,7 +112,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   );
 
   function isValidOrderTransfer(transfer: OrderTransfer) {
-    console.log('IS_VALID_ORDER_TRANSFER: ', transfer);
     return transfer.newCaseId && transfer.newCourtDivisionName;
   }
 
@@ -132,19 +131,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     updated.newCaseId = newCaseId;
     approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
     setOrderTransfer(updated);
-  }
-
-  function rejectOrder(): void {
-    confirmationModalRef.current?.show({ status: 'rejected' });
-  }
-
-  function approveOrder(): void {
-    if (
-      !(orderTransfer.newCaseId && orderTransfer.newCourtDivisionName && orderTransfer.newCourtName)
-    ) {
-      return;
-    }
-    confirmationModalRef.current?.show({ status: 'approved' });
   }
 
   function confirmOrderApproval(): void {
@@ -177,11 +163,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   function cancelUpdate(): void {
-    setOrderTransfer(getOrderTransferFromOrder(order));
     regionSelectionRef.current?.clearValue();
     courtSelectionRef.current?.clearValue();
     caseIdRef.current?.resetValue();
     approveButtonRef.current?.disableButton(true);
+    setOrderTransfer(getOrderTransferFromOrder(order));
   }
 
   function confirmAction(status: OrderStatus, reason?: string): void {
@@ -446,7 +432,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 <div className="grid-col-2">
                   <Button
                     id={`accordion-reject-button-${order.id}`}
-                    onClick={rejectOrder}
+                    onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
                     uswdsStyle={UswdsButtonStyle.Secondary}
                   >
                     Reject
@@ -465,7 +451,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 <div className="grid-col-2">
                   <Button
                     id={`accordion-approve-button-${order.id}`}
-                    onClick={approveOrder}
+                    onClick={() => confirmationModalRef.current?.show({ status: 'approved' })}
                     disabled={true}
                     ref={approveButtonRef}
                   >
@@ -487,34 +473,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 onCancel={cancelUpdate}
                 onConfirm={confirmAction}
               ></ConfirmationModal>
-              {/* <ConfirmationModal
-                ref={rejectModalRef}
-                id={`reject-${order.id}`}
-                sequenceNumber={order.sequenceNumber}
-                fromCaseId={order.caseId}
-                toCaseId={orderTransfer.newCaseId}
-                fromDivisionName={order.courtDivisionName}
-                toDivisionName={orderTransfer.newCourtDivisionName}
-                fromCourtName={order.courtName}
-                toCourtName={orderTransfer.newCourtName}
-                status="rejected"
-                onCancel={cancelUpdate}
-                onConfirm={approveOrderRejection}
-              ></ConfirmationModal>
-              <ConfirmationModal
-                ref={approveModalRef}
-                id={`approval-${order.id}`}
-                sequenceNumber={order.sequenceNumber}
-                fromCaseId={order.caseId}
-                toCaseId={orderTransfer.newCaseId}
-                fromDivisionName={order.courtDivisionName}
-                toDivisionName={orderTransfer.newCourtDivisionName}
-                fromCourtName={order.courtName}
-                toCourtName={orderTransfer.newCourtName}
-                status="approved"
-                onCancel={cancelUpdate}
-                onConfirm={confirmOrderApproval}
-              ></ConfirmationModal> */}
             </section>
           )}
         </section>
@@ -589,7 +547,6 @@ function ConfirmationModalComponent(
     toDivisionName,
     fromCourtName,
     toCourtName,
-    onCancel,
     onConfirm,
   }: ConfirmationModalProps = props;
 
@@ -622,7 +579,7 @@ function ConfirmationModalComponent(
     },
     cancelButton: {
       label: 'Go back',
-      onClick: onCancel,
+      onClick: hide,
     },
   };
 
@@ -659,7 +616,7 @@ function ConfirmationModalComponent(
       data-testid={`confirm-modal-${id}`}
       content={
         <>
-          This will {status === 'approved' ? 'approve' : 'stop'} the transfer of case
+          This will {options.status === 'approved' ? 'approve' : 'stop'} the transfer of case
           <span className="transfer-highlight__span">{getCaseNumber(fromCaseId)}</span>
           in
           <span className="transfer-highlight__span">
@@ -688,6 +645,7 @@ function ConfirmationModalComponent(
               <div>
                 <textarea
                   id={`rejection-reason-${id}`}
+                  data-testid={`rejection-reason-input-${id}`}
                   ref={reasonRef}
                   className="rejection-reason-input usa-textarea"
                   defaultValue={reason}
