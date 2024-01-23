@@ -52,6 +52,7 @@ function SubmitCancelButtonGroupComponent(
             className={submitButton.className ?? ''}
             onClick={submitButton.onClick ?? close}
             disabled={submitButton.disabled ?? false}
+            title={`tmb-${modalId}-submit`}
           >
             {submitButton.label}
           </ToggleModalButton>
@@ -66,6 +67,7 @@ function SubmitCancelButtonGroupComponent(
               uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
               className={cancelButton.className ?? ' padding-105 text-center '}
               onClick={cancelButton.onClick ?? close}
+              title={`tmb-${modalId}-cancel`}
             >
               {cancelButton.label}
             </ToggleModalButton>
