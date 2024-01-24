@@ -399,6 +399,93 @@ describe('TransferOrderAccordion', () => {
       );
     });
   });
+  test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
+    const orderUpdateSpy = vi
+      .fn()
+      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={orderUpdateSpy}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
+      </BrowserRouter>,
+    );
+
+    expect(order.status).toBe('pending');
+
+    await waitFor(async () => {
+      const content = screen.getByTestId(`accordion-content-${order.id}`);
+      expect(content).toBeInTheDocument();
+    });
+
+    let heading: HTMLElement;
+    await waitFor(async () => {
+      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    }).then(() => {
+      fireEvent.click(heading);
+    });
+
+    const selectButton = document.querySelector('#test-select-button-1');
+    expect(selectButton).toBeInTheDocument();
+    fireEvent.click(selectButton!);
+
+    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
+    expect(caseIdInput).toBeInTheDocument();
+    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+
+    let rejectButton;
+    await waitFor(() => {
+      rejectButton = screen.getByTestId(`button-accordion-reject-button-${order.id}`);
+      expect(rejectButton).toBeEnabled();
+    });
+    fireEvent.click(rejectButton!);
+
+    let rejectionReasonInput: HTMLElement;
+    const rejectionValue = 'order has been rejected';
+
+    await waitFor(async () => {
+      rejectionReasonInput = screen.getByTestId(
+        `rejection-reason-input-confirmation-modal-${order.id}`,
+      );
+      fireEvent.change(rejectionReasonInput!, { target: { value: rejectionValue } });
+      expect(rejectionReasonInput).toHaveValue(rejectionValue);
+    });
+    let goBack: HTMLElement;
+    await waitFor(async () => {
+      goBack = screen.getByTestId('toggle-modal-button-cancel');
+      expect(goBack).toBeInTheDocument();
+      expect(goBack).toBeVisible();
+    });
+    fireEvent.click(goBack!);
+
+    fireEvent.click(rejectButton!);
+
+    expect(rejectionReasonInput!).toHaveValue('');
+    // Try again, now with the close button on the modal.
+    let modalCloseButton: HTMLElement;
+    await waitFor(async () => {
+      modalCloseButton = screen.getByTestId(
+        `modal-x-button-confirm-modal-confirmation-modal-${order.id}`,
+      );
+      expect(modalCloseButton).toBeInTheDocument();
+      expect(modalCloseButton).toBeVisible();
+    });
+
+    await waitFor(async () => {
+      fireEvent.change(rejectionReasonInput!, { target: { value: rejectionValue } });
+      expect(rejectionReasonInput).toHaveValue(rejectionValue);
+    });
+    fireEvent.click(modalCloseButton!);
+    fireEvent.click(rejectButton!);
+    expect(rejectionReasonInput!).toHaveValue('');
+  });
 
   test('should throw error durring Approval when API returns an error', async () => {
     const errorMessage = 'Some random error';
