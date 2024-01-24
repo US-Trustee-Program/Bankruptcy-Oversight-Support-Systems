@@ -99,7 +99,6 @@ interface TransferOrderAccordionProps {
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
 
-  const regionSelectionRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
@@ -163,7 +162,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   function cancelUpdate(): void {
-    regionSelectionRef.current?.clearValue();
     courtSelectionRef.current?.clearValue();
     caseIdRef.current?.resetValue();
     approveButtonRef.current?.disableButton(true);
@@ -399,8 +397,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           courtDivisionName: order.courtDivisionName,
                         }}
                         toCourt={{
-                          region: orderTransfer.newRegionId || '',
-                          courtDivisionName: orderTransfer.newCourtDivisionName || '',
+                          region: orderTransfer.newRegionId,
+                          courtDivisionName: orderTransfer.newCourtDivisionName,
                         }}
                       ></CaseSelection>
                     </span>
@@ -417,7 +415,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       id={`new-case-input-${order.id}`}
                       data-testid={`new-case-input-${order.id}`}
                       className="usa-input"
-                      value={order.newCaseId || ''}
+                      value={order.newCaseId}
                       onChange={handleCaseInputChange}
                       aria-label="New case ID"
                       ref={caseIdRef}
@@ -438,8 +436,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     Reject
                   </Button>
                 </div>
-                <div className="grid-col-4"></div>
-                <div className="grid-col-2">
+                <div className="grid-col-6"></div>
+                <div className="grid-col-2 text-no-wrap">
                   <Button
                     id={`accordion-cancel-button-${order.id}`}
                     onClick={cancelUpdate}
@@ -447,8 +445,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   >
                     Cancel
                   </Button>
-                </div>
-                <div className="grid-col-2">
                   <Button
                     id={`accordion-approve-button-${order.id}`}
                     onClick={() => confirmationModalRef.current?.show({ status: 'approved' })}
@@ -488,7 +484,7 @@ interface CaseSelectionAttributes {
 
 interface CaseSelectionProps {
   fromCourt: CaseSelectionAttributes;
-  toCourt: CaseSelectionAttributes;
+  toCourt: Partial<CaseSelectionAttributes>;
 }
 
 export function CaseSelection(props: CaseSelectionProps) {
@@ -500,10 +496,14 @@ export function CaseSelection(props: CaseSelectionProps) {
       <span className="from-location transfer-highlight__span">
         Region {safeToInt(fromCourt.region)} - {fromCourt.courtDivisionName}
       </span>
-      to
-      <span className="to-location transfer-highlight__span">
-        Region {safeToInt(toCourt.region)} - {toCourt.courtDivisionName}
-      </span>
+      {toCourt.region && toCourt.courtDivisionName && (
+        <>
+          to
+          <span className="to-location transfer-highlight__span">
+            Region {safeToInt(toCourt.region)} - {toCourt.courtDivisionName}
+          </span>
+        </>
+      )}
     </>
   );
 }
@@ -569,6 +569,10 @@ function ConfirmationModalComponent(
     onConfirm(confirmationData.status, confirmationData.reason);
   }
 
+  function clearReason() {
+    if (reasonRef.current) reasonRef.current.value = '';
+  }
+
   const actionButtonGroup = {
     modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
@@ -579,7 +583,10 @@ function ConfirmationModalComponent(
     },
     cancelButton: {
       label: 'Go back',
-      onClick: hide,
+      onClick: () => {
+        clearReason();
+        hide();
+      },
     },
   };
 
@@ -614,6 +621,7 @@ function ConfirmationModalComponent(
       className="confirm-modal"
       heading={`${options.title} case transfer?`}
       data-testid={`confirm-modal-${id}`}
+      onClose={clearReason}
       content={
         <>
           This will {options.status === 'approved' ? 'approve' : 'stop'} the transfer of case
