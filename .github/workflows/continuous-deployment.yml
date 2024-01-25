@@ -213,6 +213,8 @@ jobs:
       - name: pipeline-scan
         id: pipeline-scan
         run: |
+          ls -l
+
           curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
           unzip -o pipeline-scan-LATEST.zip
           java -jar pipeline-scan.jar --version
@@ -222,6 +224,7 @@ jobs:
           -bf results-latest.json \
           -jf results.json \
           -fjf filtered_results.json \
+          -pf Veracode_Medium_+_SCA_+_OWASP.json \
           --fail_on_severity="Medium" \
           --file cams.zip
 
