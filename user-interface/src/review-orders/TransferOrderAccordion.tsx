@@ -468,10 +468,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <div className="case-verification grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
                 <div className="grid-col-10">
-                  <LoadingSpinner
-                    id="loading-spinner-1"
-                    caption="Perpetually loading cases..."
-                  ></LoadingSpinner>
                   {loadingCaseSummary && (
                     <LoadingSpinner
                       id="loading-spinner"

@@ -1,6 +1,7 @@
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { SyntheticEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 interface CaseTableProps {
   id: string;
@@ -42,7 +43,11 @@ export function CaseTable(props: CaseTableProps) {
                   ></input>
                 </th>
               )}
-              <td scope="row">{getCaseNumber(bCase.caseId)}</td>
+              <td scope="row">
+                <Link target="_blank" to={`/case-detail/${bCase.caseId}`}>
+                  {getCaseNumber(bCase.caseId)}
+                </Link>
+              </td>
               <td scope="row">{bCase.caseTitle}</td>
               <td scope="row"></td>
               <td scope="row">{bCase.courtName}</td>
