@@ -25,7 +25,7 @@ const BLANK = '';
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string | undefined>(props.value);
+  const [inputValue, setInputValue] = useState<string>(props.value || BLANK);
 
   function resetValue() {
     setInputValue(props.value || BLANK);
@@ -47,7 +47,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   }
 
   useEffect(() => {
-    setInputValue(props.value);
+    setInputValue(props.value || BLANK);
   }, [props.value]);
 
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue }));
