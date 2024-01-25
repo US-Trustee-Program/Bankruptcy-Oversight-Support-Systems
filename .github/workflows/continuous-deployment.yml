@@ -196,7 +196,7 @@ jobs:
           --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
           --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
           -c baseline \
-          -n results-latest.json \
+          -n results-branch-test.json \
           -f ./results-latest.json
 
       - name: Download veracode policy file
