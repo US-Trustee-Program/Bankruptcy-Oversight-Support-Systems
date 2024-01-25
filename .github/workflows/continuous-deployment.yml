@@ -190,35 +190,31 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch pipeline-scan tool
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip -o pipeline-scan-LATEST.zip
+          java -jar pipeline-scan.jar --version
+
       - name: Download baseline file
         run: |
           az storage blob download \
           --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
           --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
           -c baseline \
-          -n results-branch-test.json \
+          -n results-latest.json \
           -f ./results-latest.json
 
-      - name: Download veracode policy file
+      - name: Download Veracode policy file
         run: |
-          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
-          unzip -o pipeline-scan-LATEST.zip
           java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} \
           -vkey ${{ secrets.VERACODE_API_KEY }} \
-          --request_policy="Veracode Medium + SCA + OWASP"
+          --request_policy="${{ secrets.VERACODE_SAST_POLICY }}"
 
-          ls
-
-      - name: pipeline-scan
+      - name: Execute pipeline-scan
         id: pipeline-scan
         run: |
-          ls -l
-
-          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
-          unzip -o pipeline-scan-LATEST.zip
-          java -jar pipeline-scan.jar --version
-
           java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
           -bf results-latest.json \
