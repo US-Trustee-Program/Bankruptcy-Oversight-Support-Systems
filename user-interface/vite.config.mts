@@ -3,7 +3,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteTsconfigPaths from 'vite-tsconfig-paths';
 import envCompatible from 'vite-plugin-env-compatible';
-import checker from 'vite-plugin-checker';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import svgr from 'vite-plugin-svgr';
@@ -32,13 +31,6 @@ export default defineConfig({
           dest: 'assets/styles/img',
         },
       ],
-    }),
-    checker({
-      overlay: { initialIsOpen: false },
-      typescript: true,
-      eslint: {
-        lintCommand: 'eslint "./src/**/*.{ts,tsx}"',
-      },
     }),
     envCompatible(),
     // svgr options: https://react-svgr.com/docs/options/
