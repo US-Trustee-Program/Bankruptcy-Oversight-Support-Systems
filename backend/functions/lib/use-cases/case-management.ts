@@ -95,8 +95,17 @@ export class CaseManagement {
     };
   }
 
-  private async getCaseAssigneeNames(
+  public async getCaseSummary(
     applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface> {
+    const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
+    caseSummary.officeName = this.officesGateway.getOffice(caseSummary.courtDivision);
+    return caseSummary;
+  }
+
+  private async getCaseAssigneeNames(
+    _applicationContext: ApplicationContext,
     caseAssignment: CaseAssignmentUseCase,
     c: CaseDetailInterface,
   ) {

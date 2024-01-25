@@ -52,12 +52,14 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
 
   useEffect(() => {
     if (isVisible === IsVisible.True) {
-      setContainerClasses(`${isInlineClass} visible`);
+      setContainerClasses(
+        `${props.className?.length ? props.className : ''} ${isInlineClass} visible`,
+      );
       if (!!props.timeout && props.timeout > 0) {
         setTimeout(hide, props.timeout * 1000);
       }
     } else {
-      setContainerClasses(isInlineClass);
+      setContainerClasses(`${props.className?.length ? props.className : ''} ${isInlineClass}`);
     }
   }, [isVisible === IsVisible.True]);
 
