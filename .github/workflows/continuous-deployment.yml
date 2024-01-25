@@ -164,7 +164,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Package source code for scan
-        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*"
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
       - name: Veracode Upload And Scan
         uses: veracode/veracode-uploadandscan-action@0.2.6
