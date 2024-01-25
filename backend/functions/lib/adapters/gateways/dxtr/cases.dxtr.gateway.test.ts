@@ -7,6 +7,7 @@ import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
 import { CaseDetailInterface } from '../../types/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
@@ -227,6 +228,16 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockCaseResults);
     });
 
+    // First for the debtor type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
+    // Second time for the petition type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
     });
@@ -237,16 +248,6 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryDebtorAttorney);
-    });
-
-    // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
-
-    // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
@@ -275,6 +276,79 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.debtor).toEqual(expectedParty);
     expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
+  });
+
+  test('should return a single case summary when supplied a caseId', async () => {
+    const testCase = generateTestCase();
+    const cases = [testCase];
+    const mockCaseResults: QueryResults = {
+      success: true,
+      results: {
+        recordset: cases,
+      },
+      message: '',
+    };
+
+    const mockDebtorTypeTransactionResults = {
+      success: true,
+      results: {
+        recordset: [
+          {
+            txRecord:
+              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
+            txCode: '1',
+          },
+        ],
+      },
+      message: '',
+    };
+    const expectedDebtorTypeLabel = 'Corporate Business';
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockCaseResults);
+    });
+
+    // First for the debtor type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
+    // Second time for the petition type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
+    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+    const actualResult = await testCasesDxtrGateway.getCaseSummary(
+      applicationContext,
+      testCase.caseId,
+    );
+
+    expect(actualResult.regionId).toEqual(testCase.regionId);
+    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
+    expect(actualResult.courtName).toEqual(testCase.courtName);
+    expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
+    expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
+  });
+
+  test('should throw an error if a case summary is not found', async () => {
+    const expectedError = new NotFoundError('CASES-DXTR-GATEWAY', {
+      message: 'Case summary not found for case ID.',
+    });
+    querySpy.mockResolvedValue({
+      results: {
+        recordsets: [[]],
+        recordset: [],
+        output: {},
+        rowsAffected: [0],
+      },
+      message: '',
+      success: true,
+    });
+    const gateway: CasesDxtrGateway = new CasesDxtrGateway();
+    await expect(gateway.getCaseSummary(applicationContext, '000-00-00000')).rejects.toThrow(
+      expectedError,
+    );
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -353,6 +427,16 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockCaseResults);
     });
 
+    // First for the debtor type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
+    // Second time for the petition type.
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockDebtorTypeTransactionResults);
+    });
+
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
     });
@@ -363,16 +447,6 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryDebtorAttorney);
-    });
-
-    // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
-
-    // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();

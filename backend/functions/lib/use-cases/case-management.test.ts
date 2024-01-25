@@ -9,6 +9,7 @@ import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { CaseAssignment } from '../adapters/types/case.assignment';
+import { describe } from 'node:test';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -317,5 +318,31 @@ describe('Case detail tests', () => {
     expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);
     expect(actualCaseDetail.body.caseDetails.closedDate).toEqual(closedDate);
     expect(actualCaseDetail.body.caseDetails.assignments).toEqual(assignments);
+  });
+});
+
+describe('Case summary tests', () => {
+  test('should return summary with office name', async () => {
+    const caseSummary: CaseDetailInterface = {
+      caseId: '000-00-00000',
+      courtDivision: 'TheDiv',
+      chapter: '15',
+      caseTitle: 'BankRuptCo',
+      dateFiled: '2024-01-01',
+    };
+    const officeName = 'OfficeName';
+
+    const context = await applicationContextCreator(functionContext);
+    const useCase = new CaseManagement(context);
+    jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
+    jest.spyOn(useCase.officesGateway, 'getOffice').mockReturnValue(officeName);
+
+    const expected: CaseDetailInterface = {
+      ...caseSummary,
+      officeName,
+    };
+
+    const actual = await useCase.getCaseSummary(context, '000-00-00000');
+    expect(actual).toEqual(expected);
   });
 });
