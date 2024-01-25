@@ -22,7 +22,49 @@ const cases: Array<CaseDetailType> = [
     assignments: [], // GAP
     debtor: {
       name: 'DebtorName',
-    }, // GAP
+      ssn: '11-1111',
+    },
+  },
+  {
+    // courtDivision: '081', // <-- GAP
+    caseId: '081-85-86221',
+    caseTitle: 'Smith-Moyer',
+    dateFiled: '2022-10-03',
+    // dxtrId: '313826', // GAP
+    chapter: '15',
+    // courtId: '0208', // GAP
+    courtName: 'Southern District of New York',
+    courtDivisionName: 'Manhattan',
+    judgeName: 'Kimberly X. Willis',
+    regionId: '02',
+    debtorTypeLabel: 'Individual Business',
+    petitionLabel: 'Voluntary',
+    officeName: 'New York',
+    assignments: [], // GAP
+    debtor: {
+      name: 'DebtorName',
+      taxId: '22-22222',
+    },
+  },
+  {
+    // courtDivision: '081', // <-- GAP
+    caseId: '081-85-86221',
+    caseTitle: 'Smith-Moyer',
+    dateFiled: '2022-10-03',
+    // dxtrId: '313826', // GAP
+    chapter: '15',
+    // courtId: '0208', // GAP
+    courtName: 'Southern District of New York',
+    courtDivisionName: 'Manhattan',
+    judgeName: 'Kimberly X. Willis',
+    regionId: '02',
+    debtorTypeLabel: 'Individual Business',
+    petitionLabel: 'Voluntary',
+    officeName: 'New York',
+    assignments: [], // GAP
+    debtor: {
+      name: 'DebtorName',
+    },
   },
 ];
 

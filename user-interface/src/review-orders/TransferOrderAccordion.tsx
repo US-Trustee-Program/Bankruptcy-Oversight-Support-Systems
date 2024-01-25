@@ -8,6 +8,7 @@ import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
   CaseDetailType,
+  Chapter15CaseSummaryResponseData,
   OfficeDetails,
   Order,
   OrderStatus,
@@ -137,7 +138,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     await api
       .get(`/cases/${caseId}/summary`)
       .then((response) => {
-        setNewCaseSummary(response.body as CaseDetailType);
+        const typedResponse = response as Chapter15CaseSummaryResponseData;
+        setNewCaseSummary(typedResponse.body);
         setValidationState(ValidationStates.found);
         result = true;
       })
@@ -486,6 +488,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       type={UswdsAlertStyle.Error}
                       role="status"
                       className="validation-alert"
+                      id="validation-not-found"
                     ></Alert>
                   )}
                 </div>
