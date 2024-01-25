@@ -77,7 +77,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       bCase.reopenedDate = getMonthDayYearStringFromDate(transactionDates.reopenedDates[0]);
     }
 
-    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
     bCase.debtorAttorney = await this.queryDebtorAttorney(
       applicationContext,
       bCase.dxtrId,
@@ -147,6 +146,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (!bCase) {
       throw new NotFoundError(MODULENAME, { message: 'Case summary not found for case ID.' });
     }
+    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
 
     bCase.debtorTypeLabel = await this.queryDebtorTypeLabel(
       applicationContext,

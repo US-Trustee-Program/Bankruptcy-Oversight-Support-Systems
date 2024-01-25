@@ -228,6 +228,10 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockCaseResults);
     });
 
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryParties);
+    });
+
     // First for the debtor type.
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockDebtorTypeTransactionResults);
@@ -240,10 +244,6 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryParties);
     });
 
     querySpy.mockImplementationOnce(async () => {
@@ -289,6 +289,14 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const mockQueryParties: QueryResults = {
+      success: true,
+      results: {
+        recordset: [{ partyName: 'John Q. Smith' }],
+      },
+      message: '',
+    };
+
     const mockDebtorTypeTransactionResults = {
       success: true,
       results: {
@@ -306,6 +314,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryParties);
     });
 
     // First for the debtor type.
@@ -427,6 +439,10 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockCaseResults);
     });
 
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryParties);
+    });
+
     // First for the debtor type.
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockDebtorTypeTransactionResults);
@@ -439,10 +455,6 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryParties);
     });
 
     querySpy.mockImplementationOnce(async () => {

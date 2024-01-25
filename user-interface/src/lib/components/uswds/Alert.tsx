@@ -3,6 +3,7 @@ import './Alert.scss';
 import React from 'react';
 
 export interface AlertProps {
+  id?: string;
   message: string;
   type: UswdsAlertStyle;
   role: 'status' | 'alert';
@@ -69,7 +70,11 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }));
 
   return (
-    <div className={`usa-alert-container ${containerClasses}`} data-testid={'alert-container'}>
+    <div
+      className={`usa-alert-container ${containerClasses}`}
+      data-testid={`alert-container${props.id ? '-' + props.id : ''}`}
+      id={props.id}
+    >
       <div
         className={`${classes} ${
           isVisible === IsVisible.True
