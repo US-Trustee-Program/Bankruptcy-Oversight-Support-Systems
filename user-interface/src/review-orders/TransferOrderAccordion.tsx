@@ -23,6 +23,7 @@ import './TransferOrderAccordion.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
+import { CaseTable } from './CaseTable';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -473,26 +474,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     </>
                   )}
                   {!loadingCaseSummary && validationState === ValidationStates.found && (
-                    <table className="usa-table usa-table--borderless">
-                      <thead>
-                        <tr>
-                          <th scope="col">Case Number</th>
-                          <th scope="col">Case Title</th>
-                          <th scope="col">SSN/EIN</th>
-                          <th scope="col">Court</th>
-                          <th scope="col">Filed Date</th>
-                          <th scope="col">Chapter</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <td scope="row">{getCaseNumber(newCaseSummary?.caseId)}</td>
-                        <td scope="row">{newCaseSummary?.caseTitle}</td>
-                        <td scope="row"></td>
-                        <td scope="row">{newCaseSummary?.courtName}</td>
-                        <td scope="row">{newCaseSummary?.dateFiled}</td>
-                        <td scope="row">{newCaseSummary?.chapter}</td>
-                      </tbody>
-                    </table>
+                    <CaseTable id="validated-cases" cases={[newCaseSummary!]}></CaseTable>
                   )}
                   {!loadingCaseSummary && validationState === ValidationStates.notFound && (
                     <Alert
