@@ -199,6 +199,17 @@ jobs:
           -n results-latest.json \
           -f ./results-latest.json
 
+      - name: Download veracode policy file
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip -o pipeline-scan-LATEST.zip
+          java -jar pipeline-scan.jar \
+          -vid ${{ secrets.VERACODE_API_ID }} \
+          -vkey ${{ secrets.VERACODE_API_KEY }} \
+          --request_policy="Veracode Medium + SCA + OWASP"
+
+          ls
+
       - name: pipeline-scan
         id: pipeline-scan
         run: |
