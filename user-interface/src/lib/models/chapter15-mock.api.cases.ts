@@ -230,7 +230,7 @@ export default class Chapter15MockApi extends Api {
       orderType: 'transfer',
       orderDate: '01-01-2024',
       status: 'pending',
-      newCaseId: '101-23-12345',
+      newCaseId: '23-54321',
       newCourtName: 'A',
       newCourtDivisionName: 'New York 1',
       newDivisionCode: '101',
@@ -332,11 +332,19 @@ export default class Chapter15MockApi extends Api {
     let response: ResponseData;
     if (path.match(/\/cases\/123-12-12345\/docket/)) {
       return Promise.reject(new Error());
+    } else if (path.match(/\/cases\/001-77-77777\/summary/)) {
+      return Promise.reject({ message: 'Case summary not found for the case ID.' });
     } else if (path.match(/\/cases\/[\d-]+\/docket/)) {
       response = {
         message: '',
         count: 1,
         body: Chapter15MockApi.caseDocketEntries,
+      };
+    } else if (path.match(/\/cases\/[\d-]+\/summary/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: Chapter15MockApi.caseDetails,
       };
     } else if (path.match(/\/cases\/[\d-]+/)) {
       response = {
