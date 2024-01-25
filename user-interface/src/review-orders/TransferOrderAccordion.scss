@@ -28,4 +28,10 @@
     background: rgba(0,0,0,.05);
     padding: 1rem;
   }
+  .case-verification {
+    padding: 0.5rem 0;
+    .validation-alert {
+      max-width: 450px;
+    }
+  }
 }
