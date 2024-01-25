@@ -16,6 +16,7 @@ export function CaseTable(props: CaseTableProps) {
     const bCase = cases[idx];
     if (onSelect) onSelect(bCase);
   }
+
   return (
     <table className="usa-table usa-table--borderless" id={id} data-testid={id}>
       <thead>
@@ -31,6 +32,7 @@ export function CaseTable(props: CaseTableProps) {
       </thead>
       <tbody>
         {cases.map((bCase, idx) => {
+          const taxId = bCase.debtor.ssn || bCase.debtor.taxId || '';
           return (
             <tr key={`${id}-row-${idx}`}>
               {onSelect && (
@@ -49,7 +51,7 @@ export function CaseTable(props: CaseTableProps) {
                 </Link>
               </td>
               <td scope="row">{bCase.caseTitle}</td>
-              <td scope="row"></td>
+              <td scope="row">{taxId}</td>
               <td scope="row">{bCase.courtName}</td>
               <td scope="row">{bCase.dateFiled}</td>
               <td scope="row">{bCase.chapter}</td>

@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OfficeDetails, Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import {
+  CaseDetailType,
+  OfficeDetails,
+  Order,
+  OrderResponseData,
+} from '@/lib/type-declarations/chapter-15';
 import { AlertDetails, orderType, statusType } from './ReviewOrdersScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -14,6 +19,8 @@ import {
 } from './TransferOrderAccordion';
 import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Api from '@/lib/models/api';
+import { describe } from 'vitest';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -740,8 +747,27 @@ describe('TransferOrderAccordion', () => {
     expect(caseIdInput).toBeInTheDocument();
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
-    fireEvent.change(caseIdInput!, { target: { value: '99-99999' } });
-    expect(caseIdInput).toHaveValue('99-99999');
+    const caseLookup: CaseDetailType = {
+      caseId: '',
+      chapter: '',
+      caseTitle: '',
+      officeName: '',
+      dateFiled: '',
+      assignments: [],
+      debtor: {
+        name: 'DebtorName',
+        ssn: '111-11-1111',
+      },
+      debtorTypeLabel: '',
+      petitionLabel: '',
+    };
+
+    vi.spyOn(Api, 'get').mockImplementation((_path: string) => {
+      return Promise.resolve({ message: '', count: 1, body: caseLookup });
+    });
+
+    fireEvent.change(caseIdInput!, { target: { value: '23-12345' } });
+    expect(caseIdInput).toHaveValue('23-12345');
 
     let cancelButton: HTMLElement;
     await waitFor(async () => {
@@ -906,6 +932,94 @@ describe('TransferOrderAccordion', () => {
     await waitFor(async () => {
       const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
       expect(newCaseIdText).toHaveValue(newValue);
+    });
+  });
+
+  test('should show a case summary when a case is found', async () => {
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
+      </BrowserRouter>,
+    );
+
+    await waitFor(async () => {
+      screen.getByTestId(`accordion-content-${order.id}`);
+    });
+
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    if (heading) fireEvent.click(heading);
+
+    await waitFor(async () => {
+      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+      expect(newCaseIdText).toHaveValue(order.newCaseId);
+    });
+
+    const selectButton = document.querySelector('#test-select-button-1');
+    expect(selectButton).toBeInTheDocument();
+    fireEvent.click(selectButton!);
+
+    const newValue = '22-33333';
+    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+    fireEvent.change(newCaseIdText, { target: { value: newValue } });
+
+    await waitFor(async () => {
+      const validatedCases = screen.getByTestId(`validated-cases`);
+      expect(validatedCases).toBeInTheDocument();
+
+      const alert = screen.queryByTestId(`alert-container-validation-not-found`);
+      expect(alert).not.toBeInTheDocument();
+    });
+  });
+
+  test('should show not found message when a case is not found', async () => {
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          officesList={testOffices}
+          orderType={orderType}
+          statusType={statusType}
+          onOrderUpdate={() => {}}
+          onExpand={() => {}}
+          regionsMap={regionMap}
+        />{' '}
+      </BrowserRouter>,
+    );
+
+    await waitFor(async () => {
+      screen.getByTestId(`accordion-content-${order.id}`);
+    });
+
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    if (heading) fireEvent.click(heading);
+
+    await waitFor(async () => {
+      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+      expect(newCaseIdText).toHaveValue(order.newCaseId);
+    });
+
+    const selectButton = document.querySelector('#test-select-button-1');
+    expect(selectButton).toBeInTheDocument();
+    fireEvent.click(selectButton!);
+
+    const newValue = '77-77777';
+    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+    fireEvent.change(newCaseIdText, { target: { value: newValue } });
+
+    await waitFor(async () => {
+      const validatedCases = screen.queryByTestId(`validated-cases`);
+      expect(validatedCases).not.toBeInTheDocument();
+
+      const alert = screen.queryByTestId(`alert-container-validation-not-found`);
+      expect(alert).toBeInTheDocument();
     });
   });
 
