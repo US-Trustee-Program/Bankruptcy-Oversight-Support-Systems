@@ -22,8 +22,8 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import Icon from '@/lib/components/uswds/Icon';
 import { CaseTable } from './CaseTable';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -468,10 +468,15 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <div className="case-verification grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
                 <div className="grid-col-10">
+                  <LoadingSpinner
+                    id="loading-spinner-1"
+                    caption="Perpetually loading cases..."
+                  ></LoadingSpinner>
                   {loadingCaseSummary && (
-                    <>
-                      <Icon name="hourglass_empty" /> Loading...
-                    </>
+                    <LoadingSpinner
+                      id="loading-spinner"
+                      caption="Loading cases..."
+                    ></LoadingSpinner>
                   )}
                   {!loadingCaseSummary && validationState === ValidationStates.found && (
                     <CaseTable id="validated-cases" cases={[newCaseSummary!]}></CaseTable>
