@@ -11,4 +11,9 @@ export interface CasesInterface {
     applicationContext: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseDetailInterface[]>;
+
+  getCaseSummary(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface>;
 }

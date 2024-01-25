@@ -26,6 +26,7 @@ import {
 import { removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionLabel } from '../petition-gateway';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -57,9 +58,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailInterface> {
-    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
-
-    const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
+    const bCase = await this.getCaseSummary(applicationContext, caseId);
 
     const transactionDates = await this.queryTransactions(
       applicationContext,
@@ -80,18 +79,6 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
     bCase.debtorAttorney = await this.queryDebtorAttorney(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-
-    bCase.debtorTypeLabel = await this.queryDebtorTypeLabel(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-
-    bCase.petitionLabel = await this.queryPetitionLabel(
       applicationContext,
       bCase.dxtrId,
       bCase.courtId,
@@ -148,6 +135,32 @@ export default class CasesDxtrGateway implements CasesInterface {
         this.casesQueryCallback,
       ),
     );
+  }
+
+  async getCaseSummary(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface> {
+    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
+    const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
+
+    if (!bCase) {
+      throw new NotFoundError(MODULENAME, { message: 'Case summary not found for case ID.' });
+    }
+
+    bCase.debtorTypeLabel = await this.queryDebtorTypeLabel(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
+
+    bCase.petitionLabel = await this.queryPetitionLabel(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+    );
+
+    return bCase;
   }
 
   private async queryCase(

@@ -7,6 +7,7 @@ import Input from '@/lib/components/uswds/Input';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
+  CaseDetailType,
   OfficeDetails,
   Order,
   OrderStatus,
@@ -17,10 +18,11 @@ import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { AlertDetails } from '@/review-orders/ReviewOrdersScreen';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import Icon from '@/lib/components/uswds/Icon';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -85,6 +87,13 @@ export function updateOrderTransfer(
   updated.newDivisionCode = office?.divisionCode;
   return updated;
 }
+
+enum ValidationStates {
+  notValidated,
+  found,
+  notFound,
+}
+
 interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
@@ -109,9 +118,35 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
   );
+  const [validationState, setValidationState] = useState<ValidationStates>(
+    ValidationStates.notValidated,
+  );
+  const [newCaseSummary, setNewCaseSummary] = useState<CaseDetailType | null>(null);
+  const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
 
-  function isValidOrderTransfer(transfer: OrderTransfer) {
-    return transfer.newCaseId && transfer.newCourtDivisionName;
+  async function isValidOrderTransfer(transfer: OrderTransfer) {
+    if (!(transfer.newCaseId && transfer.newDivisionCode)) {
+      return false;
+    }
+
+    setLoadingCaseSummary(true);
+
+    let result = false;
+    const caseId = `${transfer.newDivisionCode}-${transfer.newCaseId}`;
+    await api
+      .get(`/cases/${caseId}/summary`)
+      .then((response) => {
+        setNewCaseSummary(response.body as CaseDetailType);
+        setValidationState(ValidationStates.found);
+        result = true;
+      })
+      .catch((_reason) => {
+        setValidationState(ValidationStates.notFound);
+        result = false;
+      });
+
+    setLoadingCaseSummary(false);
+    return result;
   }
 
   function isCourtSelected(orderTransfer: OrderTransfer) {
@@ -119,7 +154,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
   function handleCourtSelection(selection: SearchableSelectOption) {
     const updatedSelection = updateOrderTransfer(selection, orderTransfer, officesList);
-    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updatedSelection));
+    isValidOrderTransfer(updatedSelection).then((valid) => {
+      approveButtonRef.current?.disableButton(!valid);
+    });
     setOrderTransfer(updatedSelection);
   }
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -128,7 +165,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
 
     const updated = { ...orderTransfer };
     updated.newCaseId = newCaseId;
-    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
+    isValidOrderTransfer(updated).then((valid) => {
+      approveButtonRef.current?.disableButton(!valid);
+    });
     setOrderTransfer(updated);
   }
 
@@ -423,6 +462,50 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   </div>
                 </div>
                 <div className="grid-col-6"></div>
+                <div className="grid-col-1"></div>
+              </div>
+              <div className="case-verification grid-row grid-gap-lg">
+                <div className="grid-col-1"></div>
+                <div className="grid-col-10">
+                  {loadingCaseSummary && (
+                    <>
+                      <Icon name="hourglass_empty" /> Loading...
+                    </>
+                  )}
+                  {!loadingCaseSummary && validationState === ValidationStates.found && (
+                    <table className="usa-table usa-table--borderless">
+                      <thead>
+                        <tr>
+                          <th scope="col">Case Number</th>
+                          <th scope="col">Case Title</th>
+                          <th scope="col">SSN/EIN</th>
+                          <th scope="col">Court</th>
+                          <th scope="col">Filed Date</th>
+                          <th scope="col">Chapter</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <td scope="row">{getCaseNumber(newCaseSummary?.caseId)}</td>
+                        <td scope="row">{newCaseSummary?.caseTitle}</td>
+                        <td scope="row"></td>
+                        <td scope="row">{newCaseSummary?.courtName}</td>
+                        <td scope="row">{newCaseSummary?.dateFiled}</td>
+                        <td scope="row">{newCaseSummary?.chapter}</td>
+                      </tbody>
+                    </table>
+                  )}
+                  {!loadingCaseSummary && validationState === ValidationStates.notFound && (
+                    <Alert
+                      inline={true}
+                      show={true}
+                      slim={true}
+                      message="We couldn't find a case with that number"
+                      type={UswdsAlertStyle.Error}
+                      role="status"
+                      className="validation-alert"
+                    ></Alert>
+                  )}
+                </div>
                 <div className="grid-col-1"></div>
               </div>
               <div className="button-bar grid-row grid-gap-lg">
