@@ -42,9 +42,9 @@
       "timeout": 20000
     },
     {
-      "url": "http://localhost:3000/review-orders/",
+      "url": "http://localhost:3000/data-verification/",
       "actions": [
-        "wait for element [data-testid='review-orders-screen'] to be visible"
+        "wait for element [data-testid='data-verification-screen'] to be visible"
       ],
       "timeout": 20000
     }

@@ -11,7 +11,7 @@ import CaseAssignment from './case-assignment/CaseAssignmentScreen';
 import CaseDetail from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
-import ReviewOrders from './review-orders/ReviewOrdersScreen';
+import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
@@ -52,7 +52,7 @@ function App() {
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetail />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (
-              <Route path="/review-orders" element={<ReviewOrders />}></Route>
+              <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
             )}
             <Route path="*" element={<NotFound />}></Route>
           </Routes>
