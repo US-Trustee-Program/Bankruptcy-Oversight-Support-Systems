@@ -96,7 +96,7 @@ enum ValidationStates {
   notFound,
 }
 
-interface TransferOrderAccordionProps {
+export interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
