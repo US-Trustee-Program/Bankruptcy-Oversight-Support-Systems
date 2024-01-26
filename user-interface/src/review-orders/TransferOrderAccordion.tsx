@@ -208,6 +208,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     caseIdRef.current?.resetValue();
     approveButtonRef.current?.disableButton(true);
     setOrderTransfer(getOrderTransferFromOrder(order));
+    setNewCaseSummary(null);
+    setValidationState(ValidationStates.notValidated);
+    setLoadingCaseSummary(false);
   }
 
   function confirmAction(status: OrderStatus, reason?: string): void {
