@@ -13,6 +13,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
   CaseSelection,
   TransferOrderAccordion,
+  TransferOrderAccordionProps,
   getOfficeList,
   isValidOrderTransfer,
   validateNewCaseIdInput,
@@ -70,6 +71,25 @@ describe('TransferOrderAccordion', () => {
     },
   ];
 
+  function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
+    const defaultProps: TransferOrderAccordionProps = {
+      order: order,
+      officesList: testOffices,
+      orderType,
+      statusType,
+      onOrderUpdate: () => {},
+      onExpand: () => {},
+      regionsMap: regionMap,
+    };
+
+    const renderProps = { ...defaultProps, ...props };
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion {...renderProps} />
+      </BrowserRouter>,
+    );
+  }
+
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
@@ -81,19 +101,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should render an order', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     expect(heading).toBeInTheDocument();
@@ -116,19 +124,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should expand and show detail when a header is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
       const heading = screen.getByTestId(`accordion-heading-${order.id}`);
@@ -153,19 +149,9 @@ describe('TransferOrderAccordion', () => {
   test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
     const rejectedOrder: Order = { ...order, reason: '', status: 'rejected' };
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={rejectedOrder}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      order: rejectedOrder,
+    });
 
     await waitFor(async () => {
       const heading = screen.getByTestId(`accordion-heading-${order.id}`);
@@ -185,19 +171,9 @@ describe('TransferOrderAccordion', () => {
   test('should expand and show order reject details with reason when a rejected header is clicked that does have a reason defined', async () => {
     const rejectedOrder: Order = { ...order, reason: 'order is bad', status: 'rejected' };
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={rejectedOrder}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      order: rejectedOrder,
+    });
 
     await waitFor(async () => {
       const heading = screen.getByTestId(`accordion-heading-${order.id}`);
@@ -217,19 +193,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should show preview description when a court is selected', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     expect(order.status).toBe('pending');
 
@@ -271,19 +235,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -332,19 +286,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -406,24 +350,15 @@ describe('TransferOrderAccordion', () => {
       );
     });
   });
+
   test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -501,19 +436,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -568,19 +493,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -633,19 +548,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -711,19 +616,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -788,19 +683,9 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
@@ -845,19 +730,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should allow a court to be deselected', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
       const content = screen.getByTestId(`accordion-content-${order.id}`);
@@ -899,19 +772,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should allow the new case ID to be entered', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
       screen.getByTestId(`accordion-content-${order.id}`);
@@ -936,19 +797,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should show a case summary when a case is found', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
       screen.getByTestId(`accordion-content-${order.id}`);
@@ -980,19 +829,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should show not found message when a case is not found', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
       screen.getByTestId(`accordion-content-${order.id}`);
@@ -1073,19 +910,23 @@ describe('TransferOrderAccordion', () => {
 });
 
 describe('Test CaseSelection component', () => {
-  test('Should display message as expected using toCourt and fromCourt', async () => {
+  function renderWithProps(props: { region1: string; region2: string }) {
     render(
       <CaseSelection
         fromCourt={{
-          region: '1',
+          region: props.region1,
           courtDivisionName: 'Division Name 1',
         }}
         toCourt={{
-          region: '002',
+          region: props.region2,
           courtDivisionName: 'Division Name 2',
         }}
       ></CaseSelection>,
     );
+  }
+
+  test('Should display message as expected using toCourt and fromCourt', async () => {
+    renderWithProps({ region1: '1', region2: '002' });
 
     expect(document.body).toHaveTextContent(
       'USTP Office: transfer fromRegion 1 - Division Name 1toRegion 2 - Division Name 2',
@@ -1093,18 +934,7 @@ describe('Test CaseSelection component', () => {
   });
 
   test('Should properly display region as a non-numeric string when one is supplied', async () => {
-    render(
-      <CaseSelection
-        fromCourt={{
-          region: 'ABC',
-          courtDivisionName: 'Division Name 1',
-        }}
-        toCourt={{
-          region: 'BCD',
-          courtDivisionName: 'Division Name 2',
-        }}
-      ></CaseSelection>,
-    );
+    renderWithProps({ region1: 'ABC', region2: 'BCD' });
 
     expect(document.body).toHaveTextContent(
       'USTP Office: transfer fromRegion ABC - Division Name 1toRegion BCD - Division Name 2',
