@@ -18,7 +18,7 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
-import { AlertDetails } from '@/review-orders/ReviewOrdersScreen';
+import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';

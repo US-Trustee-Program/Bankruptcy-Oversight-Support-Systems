@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
-import './ReviewOrdersScreen.scss';
+import './DataVerificationScreen.scss';
 import {
   OfficeDetails,
   OfficesResponseData,
@@ -36,7 +36,7 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   return aKey > bKey ? 1 : -1;
 }
 
-export default function ReviewOrders() {
+export default function DataVerificationScreen() {
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -103,9 +103,9 @@ export default function ReviewOrders() {
   }, []);
 
   return (
-    <div data-testid="review-orders-screen" className="review-orders-screen">
+    <div data-testid="data-verification-screen" className="data-verification-screen">
       <Alert
-        id="review-orders-alert"
+        id="data-verification-alert"
         message={reviewOrderAlert.message}
         type={reviewOrderAlert.type}
         role="status"
@@ -116,7 +116,7 @@ export default function ReviewOrders() {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
-          <h1>Review Court Orders</h1>
+          <h1>Data Verification</h1>
           <h2>Region {regionNumber}</h2>
           {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
           <section className="order-list-container">
