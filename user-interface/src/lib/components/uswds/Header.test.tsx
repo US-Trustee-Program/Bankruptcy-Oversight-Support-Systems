@@ -56,7 +56,7 @@ describe('Header', () => {
     });
   });
 
-  test('should highlight review orders link when URL is /data-verification', async () => {
+  test('should highlight data verification link when URL is /data-verification', async () => {
     const casesUrl = '/data-verification';
 
     render(
@@ -82,17 +82,17 @@ describe('Header', () => {
     );
 
     const casesLink = await screen.findByTestId('header-cases-link');
-    const reviewLink = await screen.findByTestId('header-data-verification-link');
+    const verificationLink = await screen.findByTestId('header-data-verification-link');
     expect(casesLink).toBeInTheDocument();
-    expect(reviewLink).toBeInTheDocument();
+    expect(verificationLink).toBeInTheDocument();
 
     await waitFor(() => {
       expect(casesLink).not.toHaveClass('usa-current current');
-      expect(reviewLink).not.toHaveClass('usa-current current');
+      expect(verificationLink).not.toHaveClass('usa-current current');
     });
   });
 
-  test('should activate review orders link when clicked', async () => {
+  test('should activate data verification link when clicked', async () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
@@ -108,8 +108,8 @@ describe('Header', () => {
     expect(casesLink).toBeInTheDocument();
     expect(casesLink).not.toHaveClass('usa-current current');
 
-    const ordersLink = await screen.findByTestId('header-data-verification-link');
-    expect(ordersLink).toBeInTheDocument();
-    expect(ordersLink).toHaveClass('usa-current current');
+    const verificationLink = await screen.findByTestId('header-data-verification-link');
+    expect(verificationLink).toBeInTheDocument();
+    expect(verificationLink).toHaveClass('usa-current current');
   });
 });
