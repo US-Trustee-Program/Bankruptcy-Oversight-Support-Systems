@@ -2,7 +2,7 @@
   .order-list-container {
     .order-type {
       span {
-        background-color: #5C5C5C;
+        background-color: #5c5c5c;
         color: white;
         padding: 2px 8px 2px 8px;
         border-radius: 2px;
@@ -24,7 +24,7 @@
         background: #008817;
       }
       span.rejected {
-        background: #D83933;
+        background: #d83933;
       }
     }
     .order-form {
@@ -47,7 +47,6 @@
             min-width: 300px;
           }
         }
-
       }
     }
     .transfer-highlight__span {
@@ -55,20 +54,24 @@
       font-weight: bold;
     }
   }
+  .data-verification-accordion-header {
+    padding: 1rem 3.5rem 1rem 1.25rem;
+    font-weight: bold;
+  }
 }
 
 @media screen and (max-width: 1024px) {
   .data-verification-screen {
-      .order-list-container {
-        .order-form {
-          .court-selection {
-            display: block;
+    .order-list-container {
+      .order-form {
+        .court-selection {
+          display: block;
 
-            .new-court__select {
-              min-width: none;
-            }
+          .new-court__select {
+            min-width: none;
           }
-       }
+        }
+      }
     }
   }
 }
