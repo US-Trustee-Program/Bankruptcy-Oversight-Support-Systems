@@ -84,7 +84,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
               : 'usa-alert__unset'
         }`}
         role={props.role}
-        data-testid={`alert`}
+        data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
         <div className="usa-alert__body">
           {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}
