@@ -3,7 +3,7 @@ import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BrowserRouter } from 'react-router-dom';
-import ReviewOrders from './ReviewOrdersScreen';
+import DataVerificationScreen from './DataVerificationScreen';
 
 describe('Review Orders screen - Alert', () => {
   beforeEach(async () => {
@@ -40,16 +40,16 @@ describe('Review Orders screen - Alert', () => {
 
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <DataVerificationScreen />
       </BrowserRouter>,
     );
 
     await waitFor(async () => {
-      const alertContainer = screen.getByTestId('alert-container-review-orders-alert');
+      const alertContainer = screen.getByTestId('alert-container-data-verification-alert');
       expect(alertContainer).toBeInTheDocument();
       expect(alertContainer).toHaveClass('visible');
 
-      const alert = screen.getByTestId('alert-review-orders-alert');
+      const alert = screen.getByTestId('alert-data-verification-alert');
       expect(alert).toHaveClass('usa-alert__visible');
       expect(alert).toHaveTextContent(mockAlertMessage);
     });

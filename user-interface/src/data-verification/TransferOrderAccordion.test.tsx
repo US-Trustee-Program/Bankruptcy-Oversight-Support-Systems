@@ -6,7 +6,7 @@ import {
   Order,
   OrderResponseData,
 } from '@/lib/type-declarations/chapter-15';
-import { AlertDetails, orderType, statusType } from './ReviewOrdersScreen';
+import { AlertDetails, orderType, statusType } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
