@@ -79,4 +79,40 @@ export class CasesLocalGateway implements CasesInterface {
     }
     return caseDetail;
   }
+
+  getCaseSummary(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface> {
+    // TODO: remove unnecessary stuff
+    const gatewayHelper = new GatewayHelper();
+    let caseDetail;
+
+    try {
+      const cases = gatewayHelper.getAllCasesMockExtract();
+      caseDetail = cases.find((bCase) => {
+        return bCase.caseId === caseId;
+      });
+
+      caseDetail.dateFiled = caseDetail.dateFiled
+        ? getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled))
+        : undefined;
+      caseDetail.courtDivision = '081';
+      caseDetail.courtDivisionName = 'Manhattan';
+      caseDetail.courtName = 'Southern District of New York';
+      caseDetail.regionId = '02';
+      caseDetail.debtorTypeLabel = 'Corporate Debtor';
+      caseDetail.petitionLabel = 'Voluntary';
+    } catch (err) {
+      log.error(
+        applicationContext,
+        MODULE_NAME,
+        `Failed to read mock case detail for ${caseId}.`,
+        err,
+      );
+      const message = (err as Error).message;
+      return Promise.reject(message);
+    }
+    return caseDetail;
+  }
 }

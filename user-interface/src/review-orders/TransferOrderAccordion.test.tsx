@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OfficeDetails, Order, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import {
+  CaseDetailType,
+  OfficeDetails,
+  Order,
+  OrderResponseData,
+} from '@/lib/type-declarations/chapter-15';
 import { AlertDetails, orderType, statusType } from './ReviewOrdersScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -8,17 +13,61 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import {
   CaseSelection,
   TransferOrderAccordion,
+  TransferOrderAccordionProps,
   getOfficeList,
   isValidOrderTransfer,
   validateNewCaseIdInput,
 } from './TransferOrderAccordion';
 import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Api from '@/lib/models/api';
+import { describe } from 'vitest';
 
 vi.mock(
   '../lib/components/SearchableSelect',
   () => import('../lib/components/SearchableSelect.mock'),
 );
+
+function findAccordionHeading(id: string) {
+  const heading = screen.getByTestId(`accordion-heading-${id}`);
+  expect(heading).toBeInTheDocument();
+  expect(heading).toBeVisible();
+  return heading;
+}
+
+function findAccordionContent(id: string, visible: boolean) {
+  const content = screen.getByTestId(`accordion-content-${id}`);
+  expect(content).toBeInTheDocument();
+  if (visible) {
+    expect(content).toBeVisible();
+  } else {
+    expect(content).not.toBeVisible();
+  }
+  return content;
+}
+
+function selectCourtInAccordion(index: string) {
+  const selectButton = document.querySelector(`#test-select-button-${index}`);
+  expect(selectButton).toBeInTheDocument();
+  fireEvent.click(selectButton!);
+
+  return selectButton;
+}
+
+function findCaseNumberInputInAccordion(id: string) {
+  const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
+  expect(caseIdInput).toBeInTheDocument();
+  return caseIdInput;
+}
+
+function enterCaseNumberInAccordion(caseIdInput: Element | null | undefined, value: string) {
+  if (!caseIdInput) throw Error();
+
+  fireEvent.change(caseIdInput!, { target: { value } });
+  expect(caseIdInput).toHaveValue(value);
+
+  return caseIdInput;
+}
 
 describe('TransferOrderAccordion', () => {
   let order: Order;
@@ -63,6 +112,25 @@ describe('TransferOrderAccordion', () => {
     },
   ];
 
+  function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
+    const defaultProps: TransferOrderAccordionProps = {
+      order: order,
+      officesList: testOffices,
+      orderType,
+      statusType,
+      onOrderUpdate: () => {},
+      onExpand: () => {},
+      regionsMap: regionMap,
+    };
+
+    const renderProps = { ...defaultProps, ...props };
+    render(
+      <BrowserRouter>
+        <TransferOrderAccordion {...renderProps} />
+      </BrowserRouter>,
+    );
+  }
+
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
@@ -74,135 +142,77 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should render an order', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-    expect(heading).toBeInTheDocument();
-    expect(heading).toBeVisible();
+    const heading = findAccordionHeading(order.id);
+
     expect(heading?.textContent).toContain(order.caseTitle);
     expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
     expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
-    const content = screen.getByTestId(`accordion-content-${order.id}`);
-    expect(content).toBeInTheDocument();
-    expect(content).not.toBeVisible();
+    const content = findAccordionContent(order.id, false);
+
     expect(content?.textContent).toContain(order.summaryText);
     expect(content?.textContent).toContain(order.fullText);
 
     const form = screen.getByTestId(`order-form-${order.id}`);
     expect(form).toBeInTheDocument();
 
-    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-    expect(newCaseIdText).toHaveValue(order.newCaseId);
+    findCaseNumberInputInAccordion(order.id);
   });
 
   test('should expand and show detail when a header is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    let heading;
+    renderWithProps();
 
     await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-      expect(heading).toBeInTheDocument();
-      expect(heading).toBeVisible();
-
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
+      heading = findAccordionHeading(order.id);
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
+      findAccordionContent(order.id, true);
     });
   });
 
   test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
+    let heading;
     const rejectedOrder: Order = { ...order, reason: '', status: 'rejected' };
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={rejectedOrder}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
-
-    await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-      expect(heading).toBeInTheDocument();
+    renderWithProps({
+      order: rejectedOrder,
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    await waitFor(async () => {
+      heading = findAccordionHeading(order.id);
+    });
+
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      const content = findAccordionContent(order.id, true);
       expect(content).toHaveTextContent(`Rejected transfer of ${getCaseNumber(order.caseId)}.`);
     });
   });
 
   test('should expand and show order reject details with reason when a rejected header is clicked that does have a reason defined', async () => {
+    let heading;
     const rejectedOrder: Order = { ...order, reason: 'order is bad', status: 'rejected' };
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={rejectedOrder}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
-
-    await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-      expect(heading).toBeInTheDocument();
+    renderWithProps({
+      order: rejectedOrder,
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    await waitFor(async () => {
+      heading = findAccordionHeading(order.id);
+    });
+
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      const content = findAccordionContent(order.id, true);
       expect(content).toHaveTextContent(
         `Rejected transfer of ${getCaseNumber(order.caseId)} for the following reason:order is bad`,
       );
@@ -210,43 +220,25 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should show preview description when a court is selected', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
+      findAccordionContent(order.id, true);
     });
 
     /**
      * SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
      */
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -260,45 +252,31 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let approveButton;
     await waitFor(() => {
@@ -321,45 +299,31 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should properly reject when API returns a successful reponse and a reason is supplied', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -399,46 +363,33 @@ describe('TransferOrderAccordion', () => {
       );
     });
   });
+
   test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -488,47 +439,33 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should throw error durring Approval when API returns an error', async () => {
+    let heading: HTMLElement;
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let approveButton;
     await waitFor(() => {
@@ -555,47 +492,33 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should throw error durring Rejection when API returns an error', async () => {
+    let heading: HTMLElement;
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -622,46 +545,32 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should leave input fields and data in place when closing the modal without approving', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     const newUserInput = '24-12345';
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: newUserInput } });
+    const caseIdInput = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(caseIdInput, newUserInput);
 
     let approveButton;
     await waitFor(() => {
@@ -700,48 +609,52 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should clear input values and disable submission button when the Cancel button is clicked within the accordion', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
+    const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
-    fireEvent.change(caseIdInput!, { target: { value: '99-99999' } });
-    expect(caseIdInput).toHaveValue('99-99999');
+    const caseLookup: CaseDetailType = {
+      caseId: '',
+      chapter: '',
+      caseTitle: '',
+      officeName: '',
+      dateFiled: '',
+      assignments: [],
+      debtor: {
+        name: 'DebtorName',
+        ssn: '111-11-1111',
+      },
+      debtorTypeLabel: '',
+      petitionLabel: '',
+    };
+
+    vi.spyOn(Api, 'get').mockImplementation((_path: string) => {
+      return Promise.resolve({ message: '', count: 1, body: caseLookup });
+    });
+
+    enterCaseNumberInAccordion(caseIdInput, '23-12345');
 
     let cancelButton: HTMLElement;
     await waitFor(async () => {
@@ -758,45 +671,31 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should display modal and when Reject is clicked', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
 
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={orderUpdateSpy}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps({
+      onOrderUpdate: orderUpdateSpy,
+    });
 
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const caseIdInput = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(caseIdInput, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -819,38 +718,20 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should allow a court to be deselected', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
+      findAccordionContent(order.id, true);
     });
 
-    let selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -862,9 +743,7 @@ describe('TransferOrderAccordion', () => {
       );
     });
 
-    selectButton = document.querySelector('#test-select-button-0');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('0');
 
     await waitFor(async () => {
       const preview = screen.queryByTestId(`preview-description-${order.id}`);
@@ -873,39 +752,87 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should allow the new case ID to be entered', async () => {
-    render(
-      <BrowserRouter>
-        <TransferOrderAccordion
-          order={order}
-          officesList={testOffices}
-          orderType={orderType}
-          statusType={statusType}
-          onOrderUpdate={() => {}}
-          onExpand={() => {}}
-          regionsMap={regionMap}
-        />{' '}
-      </BrowserRouter>,
-    );
+    renderWithProps();
 
     await waitFor(async () => {
-      screen.getByTestId(`accordion-content-${order.id}`);
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
+    let newCaseIdText;
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+      newCaseIdText = findCaseNumberInputInAccordion(order.id);
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
     const newValue = '22-33333';
-    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-    fireEvent.change(newCaseIdText, { target: { value: newValue } });
+    enterCaseNumberInAccordion(newCaseIdText, newValue);
 
     await waitFor(async () => {
       const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
       expect(newCaseIdText).toHaveValue(newValue);
+    });
+  });
+
+  test('should show a case summary when a case is found', async () => {
+    renderWithProps();
+
+    await waitFor(async () => {
+      findAccordionContent(order.id, false);
+    });
+
+    const heading = findAccordionHeading(order.id);
+    if (heading) fireEvent.click(heading);
+
+    let newCaseIdText;
+    await waitFor(async () => {
+      newCaseIdText = findCaseNumberInputInAccordion(order.id);
+      expect(newCaseIdText).toHaveValue(order.newCaseId);
+    });
+
+    selectCourtInAccordion('1');
+
+    const newValue = '22-33333';
+    enterCaseNumberInAccordion(newCaseIdText, newValue);
+
+    await waitFor(async () => {
+      const validatedCases = screen.getByTestId(`validated-cases`);
+      expect(validatedCases).toBeInTheDocument();
+
+      const alert = screen.queryByTestId(`alert-container-validation-not-found`);
+      expect(alert).not.toBeInTheDocument();
+    });
+  });
+
+  test('should show not found message when a case is not found', async () => {
+    renderWithProps();
+
+    await waitFor(async () => {
+      findAccordionContent(order.id, false);
+    });
+
+    const heading = findAccordionHeading(order.id);
+    if (heading) fireEvent.click(heading);
+
+    let newCaseIdText;
+    await waitFor(async () => {
+      newCaseIdText = findCaseNumberInputInAccordion(order.id);
+      expect(newCaseIdText).toHaveValue(order.newCaseId);
+    });
+
+    selectCourtInAccordion('1');
+
+    const newValue = '77-77777';
+    enterCaseNumberInAccordion(newCaseIdText, newValue);
+
+    await waitFor(async () => {
+      const validatedCases = screen.queryByTestId(`validated-cases`);
+      expect(validatedCases).not.toBeInTheDocument();
+
+      const alert = screen.queryByTestId(`alert-container-validation-not-found`);
+      expect(alert).toBeInTheDocument();
     });
   });
 
@@ -959,19 +886,23 @@ describe('TransferOrderAccordion', () => {
 });
 
 describe('Test CaseSelection component', () => {
-  test('Should display message as expected using toCourt and fromCourt', async () => {
+  function renderWithProps(props: { region1: string; region2: string }) {
     render(
       <CaseSelection
         fromCourt={{
-          region: '1',
+          region: props.region1,
           courtDivisionName: 'Division Name 1',
         }}
         toCourt={{
-          region: '002',
+          region: props.region2,
           courtDivisionName: 'Division Name 2',
         }}
       ></CaseSelection>,
     );
+  }
+
+  test('Should display message as expected using toCourt and fromCourt', async () => {
+    renderWithProps({ region1: '1', region2: '002' });
 
     expect(document.body).toHaveTextContent(
       'USTP Office: transfer fromRegion 1 - Division Name 1toRegion 2 - Division Name 2',
@@ -979,18 +910,7 @@ describe('Test CaseSelection component', () => {
   });
 
   test('Should properly display region as a non-numeric string when one is supplied', async () => {
-    render(
-      <CaseSelection
-        fromCourt={{
-          region: 'ABC',
-          courtDivisionName: 'Division Name 1',
-        }}
-        toCourt={{
-          region: 'BCD',
-          courtDivisionName: 'Division Name 2',
-        }}
-      ></CaseSelection>,
-    );
+    renderWithProps({ region1: 'ABC', region2: 'BCD' });
 
     expect(document.body).toHaveTextContent(
       'USTP Office: transfer fromRegion ABC - Division Name 1toRegion BCD - Division Name 2',

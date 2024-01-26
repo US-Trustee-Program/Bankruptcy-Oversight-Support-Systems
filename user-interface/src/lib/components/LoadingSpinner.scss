@@ -1,0 +1,34 @@
+
+.loading-spinner {
+  display: flex;
+  align-content: center;
+
+  .loading-spinner-caption {
+    padding-left: 0;
+    line-height: 2.5rem;
+  }
+
+  .animate-spin {
+    height: 2.5rem;
+    width: 2.5rem;
+    padding: 0.5rem;
+    animation: spin 1s linear infinite;
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .opacity-25 {
+      opacity: .25;
+      color: black;
+    }
+    .opacity-75 {
+      opacity: .75;
+      color: black;
+    }
+  }
+}

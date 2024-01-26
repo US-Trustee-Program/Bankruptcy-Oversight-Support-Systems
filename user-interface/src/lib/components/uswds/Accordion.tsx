@@ -10,7 +10,7 @@ import {
 import './Accordion.scss';
 
 interface AccordionGroupProps extends PropsWithChildren {
-  children: ReactElement | Array<ReactElement>;
+  children?: ReactElement | Array<ReactElement>;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
@@ -21,6 +21,7 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
   }
 
   const renderChildren = () => {
+    if (!props.children) return;
     return Children.map(props.children, (child) => {
       return cloneElement(child, {
         onExpand: expandAccordion,
