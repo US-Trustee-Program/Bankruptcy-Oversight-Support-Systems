@@ -56,8 +56,8 @@ describe('Header', () => {
     });
   });
 
-  test('should highlight review orders link when URL is /review-orders', async () => {
-    const casesUrl = '/review-orders';
+  test('should highlight data verification link when URL is /data-verification', async () => {
+    const casesUrl = '/data-verification';
 
     render(
       <MemoryRouter initialEntries={[casesUrl]}>
@@ -65,7 +65,7 @@ describe('Header', () => {
       </MemoryRouter>,
     );
 
-    const link = await screen.findByTestId('header-review-orders-link');
+    const link = await screen.findByTestId('header-data-verification-link');
     expect(link).toBeInTheDocument();
     await waitFor(() => {
       expect(link).toHaveClass('usa-current current');
@@ -82,17 +82,17 @@ describe('Header', () => {
     );
 
     const casesLink = await screen.findByTestId('header-cases-link');
-    const reviewLink = await screen.findByTestId('header-review-orders-link');
+    const verificationLink = await screen.findByTestId('header-data-verification-link');
     expect(casesLink).toBeInTheDocument();
-    expect(reviewLink).toBeInTheDocument();
+    expect(verificationLink).toBeInTheDocument();
 
     await waitFor(() => {
       expect(casesLink).not.toHaveClass('usa-current current');
-      expect(reviewLink).not.toHaveClass('usa-current current');
+      expect(verificationLink).not.toHaveClass('usa-current current');
     });
   });
 
-  test('should activate review orders link when clicked', async () => {
+  test('should activate data verification link when clicked', async () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
@@ -101,15 +101,15 @@ describe('Header', () => {
       </React.StrictMode>,
     );
 
-    const linkToClick = await screen.findByTestId('header-review-orders-link');
+    const linkToClick = await screen.findByTestId('header-data-verification-link');
     fireEvent.click(linkToClick);
 
     const casesLink = await screen.findByTestId('header-cases-link');
     expect(casesLink).toBeInTheDocument();
     expect(casesLink).not.toHaveClass('usa-current current');
 
-    const ordersLink = await screen.findByTestId('header-review-orders-link');
-    expect(ordersLink).toBeInTheDocument();
-    expect(ordersLink).toHaveClass('usa-current current');
+    const verificationLink = await screen.findByTestId('header-data-verification-link');
+    expect(verificationLink).toBeInTheDocument();
+    expect(verificationLink).toHaveClass('usa-current current');
   });
 });

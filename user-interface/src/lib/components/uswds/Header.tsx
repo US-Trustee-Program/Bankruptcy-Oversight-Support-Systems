@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 export enum NavState {
   DEFAULT,
   CASES,
-  REVIEW_ORDERS,
+  DATA_VERIFICATION,
 }
 
 function mapNavState(path: string) {
@@ -17,8 +17,8 @@ function mapNavState(path: string) {
       return NavState.CASES;
     case 'case-detail':
       return NavState.CASES;
-    case 'review-orders':
-      return NavState.REVIEW_ORDERS;
+    case 'data-verification':
+      return NavState.DATA_VERIFICATION;
     default:
       return NavState.DEFAULT;
   }
@@ -83,14 +83,16 @@ export const Header = () => {
               {transferOrdersFlag && (
                 <li className="usa-nav__primary-item">
                   <NavLink
-                    to="/review-orders"
-                    data-testid="header-review-orders-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.REVIEW_ORDERS)}
+                    to="/data-verification"
+                    data-testid="header-data-verification-link"
+                    className={
+                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                    }
                     onClick={() => {
-                      return setActiveNav(NavState.REVIEW_ORDERS);
+                      return setActiveNav(NavState.DATA_VERIFICATION);
                     }}
                   >
-                    Review Orders
+                    Data Verification
                   </NavLink>
                 </li>
               )}

@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
-import ReviewOrders, { officeSorter } from './ReviewOrdersScreen';
+import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -129,11 +129,11 @@ describe('Review Orders screen', () => {
   test('should render a list of orders', async () => {
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <DataVerificationScreen />
       </BrowserRouter>,
     );
 
-    const ordersScreen = screen.getByTestId('review-orders-screen');
+    const ordersScreen = screen.getByTestId('data-verification-screen');
     expect(ordersScreen).toBeInTheDocument();
 
     const accordionGroup = screen.getByTestId('accordion-group');
@@ -168,7 +168,7 @@ describe('Review Orders screen', () => {
 
     render(
       <BrowserRouter>
-        <ReviewOrders />
+        <DataVerificationScreen />
       </BrowserRouter>,
     );
 
