@@ -9,10 +9,6 @@ import {
   GetOrdersResponse,
   PatchOrderResponse,
 } from '../lib/controllers/orders/orders.controller';
-import { OrderTransfer } from '../lib/use-cases/orders/orders.model';
-import { BadRequestError } from '../lib/common-errors/bad-request';
-
-const MODULE_NAME = 'ORDERS_FUNCTION';
 
 dotenv.config();
 
@@ -50,15 +46,8 @@ async function updateOrder(
 ): Promise<PatchOrderResponse> {
   const context = await applicationContextCreator(functionContext);
   const ordersController = new OrdersController(context);
-  const data = ordersRequest.body;
   const id = ordersRequest.params['id'];
-  if (id !== data.id) {
-    const camsError = new BadRequestError(MODULE_NAME, {
-      message: 'Cannot update order. ID of order does not match ID of request.',
-    });
-    throw camsError;
-  }
-  return ordersController.updateOrder(context, id, data as OrderTransfer);
+  return ordersController.suggestCases(context, id);
 }
 
 export default httpTrigger;
