@@ -156,7 +156,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Package source code for scan
-        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*"
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
       - name: Veracode Upload And Scan
         uses: veracode/veracode-uploadandscan-action@0.2.6
@@ -175,12 +175,18 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Package source code for scan
-        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*"
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch pipeline-scan tool
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip -o pipeline-scan-LATEST.zip
+          java -jar pipeline-scan.jar --version
 
       - name: Download baseline file
         run: |
@@ -191,18 +197,22 @@ jobs:
           -n results-latest.json \
           -f ./results-latest.json
 
-      - name: pipeline-scan
+      - name: Download Veracode policy file
+        run: |
+          java -jar pipeline-scan.jar \
+          -vid ${{ secrets.VERACODE_API_ID }} \
+          -vkey ${{ secrets.VERACODE_API_KEY }} \
+          --request_policy="${{ secrets.VERACODE_SAST_POLICY }}"
+
+      - name: Execute pipeline-scan
         id: pipeline-scan
         run: |
-          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
-          unzip -o pipeline-scan-LATEST.zip
-          java -jar pipeline-scan.jar --version
-
           java -jar pipeline-scan.jar \
           -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
           -bf results-latest.json \
           -jf results.json \
           -fjf filtered_results.json \
+          -pf Veracode_Medium_+_SCA_+_OWASP.json \
           --file cams.zip
 
       - name: Upload to storage account
