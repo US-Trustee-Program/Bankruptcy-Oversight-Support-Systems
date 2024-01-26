@@ -28,6 +28,47 @@ vi.mock(
   () => import('../lib/components/SearchableSelect.mock'),
 );
 
+function findAccordionHeading(id: string) {
+  const heading = screen.getByTestId(`accordion-heading-${id}`);
+  expect(heading).toBeInTheDocument();
+  expect(heading).toBeVisible();
+  return heading;
+}
+
+function findAccordionContent(id: string, visible: boolean) {
+  const content = screen.getByTestId(`accordion-content-${id}`);
+  expect(content).toBeInTheDocument();
+  if (visible) {
+    expect(content).toBeVisible();
+  } else {
+    expect(content).not.toBeVisible();
+  }
+  return content;
+}
+
+function selectCourtInAccordion(index: string) {
+  const selectButton = document.querySelector(`#test-select-button-${index}`);
+  expect(selectButton).toBeInTheDocument();
+  fireEvent.click(selectButton!);
+
+  return selectButton;
+}
+
+function findCaseNumberInputInAccordion(id: string) {
+  const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
+  expect(caseIdInput).toBeInTheDocument();
+  return caseIdInput;
+}
+
+function enterCaseNumberInAccordion(caseIdInput: Element | null | undefined, value: string) {
+  if (!caseIdInput) throw Error();
+
+  fireEvent.change(caseIdInput!, { target: { value } });
+  expect(caseIdInput).toHaveValue(value);
+
+  return caseIdInput;
+}
+
 describe('TransferOrderAccordion', () => {
   let order: Order;
   const regionMap = new Map();
@@ -103,50 +144,41 @@ describe('TransferOrderAccordion', () => {
   test('should render an order', async () => {
     renderWithProps();
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-    expect(heading).toBeInTheDocument();
-    expect(heading).toBeVisible();
+    const heading = findAccordionHeading(order.id);
+
     expect(heading?.textContent).toContain(order.caseTitle);
     expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
     expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
-    const content = screen.getByTestId(`accordion-content-${order.id}`);
-    expect(content).toBeInTheDocument();
-    expect(content).not.toBeVisible();
+    const content = findAccordionContent(order.id, false);
+
     expect(content?.textContent).toContain(order.summaryText);
     expect(content?.textContent).toContain(order.fullText);
 
     const form = screen.getByTestId(`order-form-${order.id}`);
     expect(form).toBeInTheDocument();
 
-    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-    expect(newCaseIdText).toHaveValue(order.newCaseId);
+    findCaseNumberInputInAccordion(order.id);
   });
 
   test('should expand and show detail when a header is clicked', async () => {
+    let heading;
     renderWithProps();
 
     await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-      expect(heading).toBeInTheDocument();
-      expect(heading).toBeVisible();
-
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
+      heading = findAccordionHeading(order.id);
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
+      findAccordionContent(order.id, true);
     });
   });
 
   test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
+    let heading;
     const rejectedOrder: Order = { ...order, reason: '', status: 'rejected' };
 
     renderWithProps({
@@ -154,21 +186,19 @@ describe('TransferOrderAccordion', () => {
     });
 
     await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-      expect(heading).toBeInTheDocument();
+      heading = findAccordionHeading(order.id);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      const content = findAccordionContent(order.id, true);
       expect(content).toHaveTextContent(`Rejected transfer of ${getCaseNumber(order.caseId)}.`);
     });
   });
 
   test('should expand and show order reject details with reason when a rejected header is clicked that does have a reason defined', async () => {
+    let heading;
     const rejectedOrder: Order = { ...order, reason: 'order is bad', status: 'rejected' };
 
     renderWithProps({
@@ -176,16 +206,13 @@ describe('TransferOrderAccordion', () => {
     });
 
     await waitFor(async () => {
-      const heading = screen.getByTestId(`accordion-heading-${order.id}`);
-      expect(heading).toBeInTheDocument();
+      heading = findAccordionHeading(order.id);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      const content = findAccordionContent(order.id, true);
       expect(content).toHaveTextContent(
         `Rejected transfer of ${getCaseNumber(order.caseId)} for the following reason:order is bad`,
       );
@@ -198,26 +225,20 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
+      findAccordionContent(order.id, true);
     });
 
     /**
      * SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
      */
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -231,6 +252,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
@@ -242,24 +264,19 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let approveButton;
     await waitFor(() => {
@@ -282,6 +299,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should properly reject when API returns a successful reponse and a reason is supplied', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
@@ -293,24 +311,19 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -352,6 +365,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
@@ -363,24 +377,19 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -430,6 +439,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should throw error durring Approval when API returns an error', async () => {
+    let heading: HTMLElement;
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
@@ -443,24 +453,19 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let approveButton;
     await waitFor(() => {
@@ -487,6 +492,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should throw error durring Rejection when API returns an error', async () => {
+    let heading: HTMLElement;
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
@@ -500,24 +506,19 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const input = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(input, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -544,6 +545,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should leave input fields and data in place when closing the modal without approving', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
@@ -555,25 +557,20 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     const newUserInput = '24-12345';
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: newUserInput } });
+    const caseIdInput = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(caseIdInput, newUserInput);
 
     let approveButton;
     await waitFor(() => {
@@ -612,6 +609,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should clear input values and disable submission button when the Cancel button is clicked within the accordion', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
@@ -623,23 +621,18 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
+    const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
     const caseLookup: CaseDetailType = {
@@ -661,8 +654,7 @@ describe('TransferOrderAccordion', () => {
       return Promise.resolve({ message: '', count: 1, body: caseLookup });
     });
 
-    fireEvent.change(caseIdInput!, { target: { value: '23-12345' } });
-    expect(caseIdInput).toHaveValue('23-12345');
+    enterCaseNumberInAccordion(caseIdInput, '23-12345');
 
     let cancelButton: HTMLElement;
     await waitFor(async () => {
@@ -679,6 +671,7 @@ describe('TransferOrderAccordion', () => {
   });
 
   test('should display modal and when Reject is clicked', async () => {
+    let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
@@ -690,24 +683,19 @@ describe('TransferOrderAccordion', () => {
     expect(order.status).toBe('pending');
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
+      findAccordionContent(order.id, false);
     });
 
-    let heading: HTMLElement;
     await waitFor(async () => {
-      heading = screen.getByTestId(`accordion-heading-${order.id}`);
+      heading = findAccordionHeading(order.id);
     }).then(() => {
       fireEvent.click(heading);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
-    const caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-    expect(caseIdInput).toBeInTheDocument();
-    fireEvent.change(caseIdInput!, { target: { value: '24-12345' } });
+    const caseIdInput = findCaseNumberInputInAccordion(order.id);
+    enterCaseNumberInAccordion(caseIdInput, '24-12345');
 
     let rejectButton;
     await waitFor(() => {
@@ -733,23 +721,17 @@ describe('TransferOrderAccordion', () => {
     renderWithProps();
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).not.toBeVisible();
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const content = screen.getByTestId(`accordion-content-${order.id}`);
-      expect(content).toBeInTheDocument();
-      expect(content).toBeVisible();
+      findAccordionContent(order.id, true);
     });
 
-    let selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -761,9 +743,7 @@ describe('TransferOrderAccordion', () => {
       );
     });
 
-    selectButton = document.querySelector('#test-select-button-0');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('0');
 
     await waitFor(async () => {
       const preview = screen.queryByTestId(`preview-description-${order.id}`);
@@ -775,20 +755,20 @@ describe('TransferOrderAccordion', () => {
     renderWithProps();
 
     await waitFor(async () => {
-      screen.getByTestId(`accordion-content-${order.id}`);
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
+    let newCaseIdText;
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+      newCaseIdText = findCaseNumberInputInAccordion(order.id);
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
     const newValue = '22-33333';
-    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-    fireEvent.change(newCaseIdText, { target: { value: newValue } });
+    enterCaseNumberInAccordion(newCaseIdText, newValue);
 
     await waitFor(async () => {
       const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
@@ -800,24 +780,22 @@ describe('TransferOrderAccordion', () => {
     renderWithProps();
 
     await waitFor(async () => {
-      screen.getByTestId(`accordion-content-${order.id}`);
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
+    let newCaseIdText;
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+      newCaseIdText = findCaseNumberInputInAccordion(order.id);
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     const newValue = '22-33333';
-    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-    fireEvent.change(newCaseIdText, { target: { value: newValue } });
+    enterCaseNumberInAccordion(newCaseIdText, newValue);
 
     await waitFor(async () => {
       const validatedCases = screen.getByTestId(`validated-cases`);
@@ -832,24 +810,22 @@ describe('TransferOrderAccordion', () => {
     renderWithProps();
 
     await waitFor(async () => {
-      screen.getByTestId(`accordion-content-${order.id}`);
+      findAccordionContent(order.id, false);
     });
 
-    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
+    let newCaseIdText;
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
+      newCaseIdText = findCaseNumberInputInAccordion(order.id);
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    const selectButton = document.querySelector('#test-select-button-1');
-    expect(selectButton).toBeInTheDocument();
-    fireEvent.click(selectButton!);
+    selectCourtInAccordion('1');
 
     const newValue = '77-77777';
-    const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-    fireEvent.change(newCaseIdText, { target: { value: newValue } });
+    enterCaseNumberInAccordion(newCaseIdText, newValue);
 
     await waitFor(async () => {
       const validatedCases = screen.queryByTestId(`validated-cases`);
