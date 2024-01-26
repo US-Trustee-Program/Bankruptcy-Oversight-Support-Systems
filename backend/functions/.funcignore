@@ -13,3 +13,4 @@ README.md
 .env
 .eslint*
 *.test.*
+node_modules/azure-functions-core-tools
