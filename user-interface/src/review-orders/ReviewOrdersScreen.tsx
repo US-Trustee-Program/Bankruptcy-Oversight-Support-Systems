@@ -105,6 +105,7 @@ export default function ReviewOrders() {
   return (
     <div data-testid="review-orders-screen" className="review-orders-screen">
       <Alert
+        id="review-orders-alert"
         message={reviewOrderAlert.message}
         type={reviewOrderAlert.type}
         role="status"
@@ -132,7 +133,7 @@ export default function ReviewOrders() {
                     onOrderUpdate={handleOrderUpdate}
                   ></TransferOrderAccordion>
                 );
-              }) || <></>}
+              })}
             </AccordionGroup>
           </section>
         </div>
