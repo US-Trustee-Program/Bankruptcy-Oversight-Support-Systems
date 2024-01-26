@@ -221,7 +221,7 @@ jobs:
           -jf results.json \
           -fjf filtered_results.json \
           -pf Veracode_Medium_+_SCA_+_OWASP.json \
-          --fail_on_severity "Very High,High,Medium"
+          --fail_on_severity "Very High,High,Medium" \
           --file cams.zip
 
       - name: Upload to storage account
