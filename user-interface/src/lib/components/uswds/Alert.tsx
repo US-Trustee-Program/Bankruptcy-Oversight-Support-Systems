@@ -3,6 +3,7 @@ import './Alert.scss';
 import React from 'react';
 
 export interface AlertProps {
+  id?: string;
   message: string;
   type: UswdsAlertStyle;
   role: 'status' | 'alert';
@@ -52,12 +53,14 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
 
   useEffect(() => {
     if (isVisible === IsVisible.True) {
-      setContainerClasses(`${isInlineClass} visible`);
+      setContainerClasses(
+        `${props.className?.length ? props.className : ''} ${isInlineClass} visible`,
+      );
       if (!!props.timeout && props.timeout > 0) {
         setTimeout(hide, props.timeout * 1000);
       }
     } else {
-      setContainerClasses(isInlineClass);
+      setContainerClasses(`${props.className?.length ? props.className : ''} ${isInlineClass}`);
     }
   }, [isVisible === IsVisible.True]);
 
@@ -67,7 +70,11 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }));
 
   return (
-    <div className={`usa-alert-container ${containerClasses}`} data-testid={'alert-container'}>
+    <div
+      className={`usa-alert-container ${containerClasses}`}
+      data-testid={`alert-container${props.id ? '-' + props.id : ''}`}
+      id={props.id}
+    >
       <div
         className={`${classes} ${
           isVisible === IsVisible.True
@@ -77,7 +84,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
               : 'usa-alert__unset'
         }`}
         role={props.role}
-        data-testid={`alert`}
+        data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
         <div className="usa-alert__body">
           {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}

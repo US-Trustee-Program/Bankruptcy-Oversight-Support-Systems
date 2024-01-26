@@ -102,6 +102,10 @@ export interface Chapter15CaseListResponseData extends ResponseData {
   };
 }
 
+export interface Chapter15CaseSummaryResponseData extends ResponseData {
+  body: CaseDetailType;
+}
+
 export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
     caseDetails: CaseDetailType;

@@ -36,6 +36,14 @@ export class MockCasesGateway implements CasesInterface {
     throw new Error('not implemented');
   }
 
+  async getCaseSummary(
+    _applicationContext: ApplicationContext,
+    _caseId: string,
+  ): Promise<CaseDetailInterface> {
+    // const bCase = this.caseList.filter((aCase) => )
+    throw new Error('not implemented');
+  }
+
   private subtractMonths(date) {
     date.setMonth(date.getMonth() + this.startingMonth);
     return date;

@@ -7,6 +7,8 @@ import Input from '@/lib/components/uswds/Input';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
+  CaseDetailType,
+  Chapter15CaseSummaryResponseData,
   OfficeDetails,
   Order,
   OrderStatus,
@@ -17,10 +19,12 @@ import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { AlertDetails } from '@/review-orders/ReviewOrdersScreen';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { CaseTable } from './CaseTable';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -85,7 +89,14 @@ export function updateOrderTransfer(
   updated.newDivisionCode = office?.divisionCode;
   return updated;
 }
-interface TransferOrderAccordionProps {
+
+enum ValidationStates {
+  notValidated,
+  found,
+  notFound,
+}
+
+export interface TransferOrderAccordionProps {
   order: Order;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
@@ -109,9 +120,36 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
   );
+  const [validationState, setValidationState] = useState<ValidationStates>(
+    ValidationStates.notValidated,
+  );
+  const [newCaseSummary, setNewCaseSummary] = useState<CaseDetailType | null>(null);
+  const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
 
-  function isValidOrderTransfer(transfer: OrderTransfer) {
-    return transfer.newCaseId && transfer.newCourtDivisionName;
+  async function isValidOrderTransfer(transfer: OrderTransfer) {
+    if (!(transfer.newCaseId && transfer.newDivisionCode)) {
+      return false;
+    }
+
+    setLoadingCaseSummary(true);
+
+    let result = false;
+    const caseId = `${transfer.newDivisionCode}-${transfer.newCaseId}`;
+    await api
+      .get(`/cases/${caseId}/summary`)
+      .then((response) => {
+        const typedResponse = response as Chapter15CaseSummaryResponseData;
+        setNewCaseSummary(typedResponse.body);
+        setValidationState(ValidationStates.found);
+        result = true;
+      })
+      .catch((_reason) => {
+        setValidationState(ValidationStates.notFound);
+        result = false;
+      });
+
+    setLoadingCaseSummary(false);
+    return result;
   }
 
   function isCourtSelected(orderTransfer: OrderTransfer) {
@@ -119,7 +157,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
   function handleCourtSelection(selection: SearchableSelectOption) {
     const updatedSelection = updateOrderTransfer(selection, orderTransfer, officesList);
-    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updatedSelection));
+    isValidOrderTransfer(updatedSelection).then((valid) => {
+      approveButtonRef.current?.disableButton(!valid);
+    });
     setOrderTransfer(updatedSelection);
   }
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -128,7 +168,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
 
     const updated = { ...orderTransfer };
     updated.newCaseId = newCaseId;
-    approveButtonRef.current?.disableButton(!isValidOrderTransfer(updated));
+    isValidOrderTransfer(updated).then((valid) => {
+      approveButtonRef.current?.disableButton(!valid);
+    });
     setOrderTransfer(updated);
   }
 
@@ -166,6 +208,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     caseIdRef.current?.resetValue();
     approveButtonRef.current?.disableButton(true);
     setOrderTransfer(getOrderTransferFromOrder(order));
+    setNewCaseSummary(null);
+    setValidationState(ValidationStates.notValidated);
+    setLoadingCaseSummary(false);
   }
 
   function confirmAction(status: OrderStatus, reason?: string): void {
@@ -423,6 +468,33 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   </div>
                 </div>
                 <div className="grid-col-6"></div>
+                <div className="grid-col-1"></div>
+              </div>
+              <div className="case-verification grid-row grid-gap-lg">
+                <div className="grid-col-1"></div>
+                <div className="grid-col-10">
+                  {loadingCaseSummary && (
+                    <LoadingSpinner
+                      id="loading-spinner"
+                      caption="Loading cases..."
+                    ></LoadingSpinner>
+                  )}
+                  {!loadingCaseSummary && validationState === ValidationStates.found && (
+                    <CaseTable id="validated-cases" cases={[newCaseSummary!]}></CaseTable>
+                  )}
+                  {!loadingCaseSummary && validationState === ValidationStates.notFound && (
+                    <Alert
+                      inline={true}
+                      show={true}
+                      slim={true}
+                      message="We couldn't find a case with that number"
+                      type={UswdsAlertStyle.Error}
+                      role="status"
+                      className="validation-alert"
+                      id="validation-not-found"
+                    ></Alert>
+                  )}
+                </div>
                 <div className="grid-col-1"></div>
               </div>
               <div className="button-bar grid-row grid-gap-lg">

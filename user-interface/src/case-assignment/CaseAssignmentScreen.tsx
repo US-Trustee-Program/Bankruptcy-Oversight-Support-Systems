@@ -15,6 +15,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import Icon from '@/lib/components/uswds/Icon';
 import { Link } from 'react-router-dom';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 const modalId = 'assign-attorney-modal';
 
@@ -205,7 +206,7 @@ export const CaseAssignment = () => {
             />
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <h2 data-testid="case-list-subtitle">{subTitle}</h2>
-            {isLoading && <p data-testid="loading-indicator">Loading...</p>}
+            {isLoading && <LoadingSpinner id="loading-indicator" caption="Loading cases..." />}
             {caseListLoadError && (
               <div>
                 We are having trouble reviewing case information at this time. Please refresh your
