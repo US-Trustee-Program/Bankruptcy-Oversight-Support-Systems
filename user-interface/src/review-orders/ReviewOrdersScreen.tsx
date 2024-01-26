@@ -11,6 +11,7 @@ import {
 } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export interface AlertDetails {
   message: string;
@@ -39,7 +40,7 @@ export default function ReviewOrders() {
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
-  const [_isOrderListLoading, setIsOrderListLoading] = useState(false);
+  const [isOrderListLoading, setIsOrderListLoading] = useState(false);
   const alertRef = useRef<AlertRefType>(null);
   const [reviewOrderAlert, setReviewOrderAlert] = useState<AlertDetails>({
     message: '',
@@ -116,7 +117,7 @@ export default function ReviewOrders() {
         <div className="grid-col-10">
           <h1>Review Court Orders</h1>
           <h2>Region {regionNumber}</h2>
-
+          {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
           <section className="order-list-container">
             <AccordionGroup>
               {orderList.map((order: Order) => {
