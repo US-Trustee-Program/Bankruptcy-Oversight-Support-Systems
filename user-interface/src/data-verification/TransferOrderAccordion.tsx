@@ -25,6 +25,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseTable } from './CaseTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -255,6 +256,16 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
+  function selectCaseInputEntry(_event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
+    // implement display of Enter Case
+    throw new Error('Function not implemented.');
+  }
+
+  function selectSuggestedCaseEntry(_event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
+    // implement display of Suggested Cases
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <>
       <Accordion
@@ -317,6 +328,13 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               {order.documents && <DocketEntryDocumentList documents={order.documents} />}
             </div>
             <div className="grid-col-1"></div>
+          </div>
+          <div className="button-group-section">
+            <label>Choose an option</label>
+            <ButtonGroup id={`button-group-${order.id}`} className="entry-option-button-group">
+              <Button onClick={selectCaseInputEntry}>Enter Case</Button>
+              <Button onClick={selectSuggestedCaseEntry}>Suggested Cases</Button>
+            </ButtonGroup>
           </div>
           {order.status === 'approved' && (
             <div className="grid-row grid-gap-lg">

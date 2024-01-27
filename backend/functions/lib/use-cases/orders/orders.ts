@@ -8,6 +8,8 @@ import {
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order, OrderTransfer, TransferIn, TransferOut } from './orders.model';
 import { CamsError } from '../../common-errors/cams-error';
+import { CaseDetailInterface } from '../../adapters/types/cases';
+import { CasesInterface } from '../cases.interface';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -26,17 +28,20 @@ export interface SyncOrdersStatus {
 
 export class OrdersUseCase {
   private readonly casesRepo: CasesRepository;
+  private readonly casesGateway: CasesInterface;
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository;
 
   constructor(
     casesRepo: CasesRepository,
+    casesGateway: CasesInterface,
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
     runtimeRepo: RuntimeStateRepository,
   ) {
     this.casesRepo = casesRepo;
+    this.casesGateway = casesGateway;
     this.ordersRepo = ordersRepo;
     this.ordersGateway = ordersGateway;
     this.runtimeStateRepo = runtimeRepo;
@@ -44,6 +49,13 @@ export class OrdersUseCase {
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
     return this.ordersRepo.getOrders(context);
+  }
+
+  public async getSuggestedCases(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<Array<CaseDetailInterface>> {
+    return this.casesGateway.getSuggestedCases(context, caseId);
   }
 
   public async updateOrder(
