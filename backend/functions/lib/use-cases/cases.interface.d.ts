@@ -16,4 +16,9 @@ export interface CasesInterface {
     applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<CaseDetailInterface>;
+
+  getSuggestedCases(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface[]>;
 }

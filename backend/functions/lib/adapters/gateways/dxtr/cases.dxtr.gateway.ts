@@ -26,6 +26,7 @@ import { removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionLabel } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
@@ -133,6 +134,113 @@ export default class CasesDxtrGateway implements CasesInterface {
         this.casesQueryCallback,
       ),
     );
+  }
+
+  public async getSuggestedCases(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface[]> {
+    const input: DbTableFieldSpec[] = [];
+    const bCase = await this.getCaseSummary(applicationContext, caseId);
+
+    input.push({
+      name: 'taxId',
+      type: mssql.VarChar,
+      value: bCase.debtor.taxId,
+    });
+
+    input.push({
+      name: 'ssn',
+      type: mssql.VarChar,
+      value: bCase.debtor.ssn,
+    });
+
+    input.push({
+      name: 'caseTitle',
+      type: mssql.VarChar,
+      value: bCase.caseTitle,
+    });
+
+    input.push({
+      name: 'debtorName',
+      type: mssql.VarChar,
+      value: bCase.debtor.name,
+    });
+
+    input.push({
+      name: 'chapter',
+      type: mssql.VarChar,
+      value: bCase.chapter,
+    });
+
+    // TODO:    Look for cases with transfer petition types: TI, or TV in AO_TX table.
+
+    const CASE_SUGGESTION_QUERY = `SELECT
+        cs.CS_DIV as courtDivision,
+        cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+        cs.CS_SHORT_TITLE as caseTitle,
+        FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+        cs.CS_CASEID as dxtrId,
+        cs.CS_CHAPTER as chapter,
+        cs.COURT_ID as courtId,
+        court.COURT_NAME as courtName,
+        office.OFFICE_NAME as courtDivisionName,
+        TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
+        TRIM(CONCAT(
+          PY_FIRST_NAME,
+          ' ',
+          PY_MIDDLE_NAME,
+          ' ',
+          PY_LAST_NAME,
+          ' ',
+          PY_GENERATION
+        )) as partyName,
+        grp_des.REGION_ID as regionId
+        FROM [dbo].[AO_CS] AS cs
+        JOIN [dbo].[AO_GRP_DES] AS grp_des
+          ON cs.GRP_DES = grp_des.GRP_DES
+        JOIN [dbo].[AO_COURT] AS court
+          ON cs.COURT_ID = court.COURT_ID
+        JOIN [dbo].[AO_CS_DIV] AS cs_div
+          ON cs.CS_DIV = cs_div.CS_DIV
+        JOIN [dbo].[AO_OFFICE] AS office
+          ON cs.COURT_ID = office.COURT_ID
+          AND cs_div.OFFICE_CODE = office.OFFICE_CODE
+        JOIN [dbo].[AO_PY] AS party
+          ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
+        WHERE (
+            party.PY_TAXID = @taxId OR party.PY_SSN = @ssn
+            OR cs.CS_SHORT_TITLE = @caseTitle
+            OR TRIM(CONCAT(
+              PY_FIRST_NAME,
+              ' ',
+              PY_MIDDLE_NAME,
+              ' ',
+              PY_LAST_NAME,
+              ' ',
+              PY_GENERATION
+            )) = @debtorName
+          )
+          AND cs.CS_CHAPTER = @chapter
+        ORDER BY
+          cs.CS_DATE_FILED DESC`;
+
+    const queryResult: QueryResults = await executeQuery(
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
+      CASE_SUGGESTION_QUERY,
+      input,
+    );
+
+    if (queryResult.success) {
+      const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
+      for (const sCase of suggestedCases) {
+        sCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
+      }
+      return Promise.resolve(suggestedCases);
+    } else {
+      throw new CamsError(MODULENAME, { message: queryResult.message });
+    }
   }
 
   async getCaseSummary(

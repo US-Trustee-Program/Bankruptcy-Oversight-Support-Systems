@@ -1,8 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
+import { CaseDetailInterface } from '../../adapters/types/cases';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import {
   getCasesRepository,
+  getCasesGateway,
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
@@ -14,6 +16,7 @@ import { CamsResponse } from '../controller-types';
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
 export type GetOrdersResponse = CamsResponse<Array<Order>>;
+export type GetSuggestedCasesResponse = CamsResponse<Array<CaseDetailInterface>>;
 export type PatchOrderResponse = CamsResponse<string>;
 
 export class OrdersController {
@@ -22,6 +25,7 @@ export class OrdersController {
   constructor(context: ApplicationContext) {
     this.useCase = new OrdersUseCase(
       getCasesRepository(context),
+      getCasesGateway(context),
       getOrdersRepository(context),
       getOrdersGateway(context),
       getRuntimeStateRepository(context),
@@ -34,6 +38,23 @@ export class OrdersController {
       return {
         success: true,
         body: orders,
+      };
+    } catch (originalError) {
+      throw originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    }
+  }
+
+  public async getSuggestedCases(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<GetSuggestedCasesResponse> {
+    try {
+      const suggestedCases = await this.useCase.getSuggestedCases(context, caseId);
+      return {
+        success: true,
+        body: suggestedCases,
       };
     } catch (originalError) {
       throw originalError instanceof CamsError
