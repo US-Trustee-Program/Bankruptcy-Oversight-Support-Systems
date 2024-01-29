@@ -32,15 +32,17 @@ export function CaseTable(props: CaseTableProps) {
       </thead>
       <tbody>
         {cases.map((bCase, idx) => {
-          const taxId = bCase.debtor.ssn || bCase.debtor.taxId || '';
+          const taxId = bCase.debtor?.ssn || bCase.debtor?.taxId || '';
+          const key = `${id}-row-${idx}`;
           return (
-            <tr key={`${id}-row-${idx}`}>
+            <tr key={key} data-testid={key}>
               {onSelect && (
                 <th scope="col">
                   <input
                     type="radio"
                     onClick={handleCaseSelection}
                     value={idx}
+                    name="case-selection"
                     data-testid={`${id}-radio-${idx}`}
                   ></input>
                 </th>

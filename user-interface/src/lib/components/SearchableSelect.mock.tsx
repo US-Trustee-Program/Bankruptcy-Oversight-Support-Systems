@@ -74,15 +74,14 @@ export function MockSearchableSelectComponent(
     <>
       {props.options.map((option: SearchableSelectOption, idx: number) => {
         return (
-          <>
-            <button
-              id={`test-select-button-${idx}`}
-              onClick={() => {
-                props.onChange && props.onChange(option);
-              }}
-              data-value={option}
-            ></button>
-          </>
+          <button
+            id={`test-select-button-${idx}`}
+            key={idx}
+            onClick={() => {
+              props.onChange && props.onChange(option);
+            }}
+            data-value={option}
+          ></button>
         );
       })}
     </>

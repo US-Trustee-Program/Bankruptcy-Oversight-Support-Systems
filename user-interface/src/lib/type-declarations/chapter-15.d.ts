@@ -38,11 +38,13 @@ interface CaseDetailType {
   dateFiled: string;
   judgeName?: string;
   courtName?: string;
+  courtDivision?: string;
   courtDivisionName?: string;
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
   regionId?: string;
+  regionName?: string;
   assignments: string[];
   debtor: Debtor;
   debtorAttorney?: DebtorAttorney;

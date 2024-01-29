@@ -52,6 +52,7 @@ export interface CaseDetailInterface {
   courtId?: string;
   courtName?: string;
   regionId?: string;
+  regionName?: string;
   officeName?: string;
   petitionLabel?: string;
   courtDivisionName?: string;

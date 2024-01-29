@@ -114,6 +114,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         C.COURT_NAME as courtName,
         O.OFFICE_NAME as courtDivisionName,
         G.REGION_ID as regionId,
+        R.REGION_NAME AS regionName,
         'transfer' AS orderType,
         FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
         DE.DE_SEQNO AS sequenceNumber,
@@ -135,6 +136,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
       JOIN [dbo].[AO_OFFICE] AS O
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
+      JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
       WHERE TX.TX_CODE = 'CTO'
         AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
         AND G.REGION_ID IN ('${regions.join("','")}')
