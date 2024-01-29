@@ -1,4 +1,4 @@
-import { ResponseData } from '../type-declarations/api';
+import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import {
   CaseDetailType,
   CaseDocketEntry,
@@ -122,6 +122,7 @@ export default class Chapter15MockApi extends Api {
     caseId: '101-23-12345',
     chapter: '15',
     regionId: '02',
+    regionName: 'NEW YORK',
     officeName: 'New York',
     courtName: 'Southern District of New York',
     courtDivisionName: 'Manhattan',
@@ -328,8 +329,10 @@ export default class Chapter15MockApi extends Api {
     return Promise.resolve(response);
   }
 
-  public static async get(path: string): Promise<Chapter15CaseDetailsResponseData> {
-    let response: ResponseData;
+  public static async get(
+    path: string,
+  ): Promise<Chapter15CaseDetailsResponseData | SimpleResponseData> {
+    let response: ResponseData | SimpleResponseData;
     if (path.match(/\/cases\/123-12-12345\/docket/)) {
       return Promise.reject(new Error());
     } else if (path.match(/\/cases\/001-77-77777\/summary/)) {
@@ -360,6 +363,12 @@ export default class Chapter15MockApi extends Api {
         count: 1,
         body: Chapter15MockApi.orders,
       };
+    } else if (path.match(/\/orders-suggestions\/[\d-]+/)) {
+      response = {
+        success: true,
+        body: [Chapter15MockApi.caseDetails],
+      };
+      return Promise.resolve(response as SimpleResponseData);
     } else if (path.match(/\/offices/)) {
       response = {
         message: '',

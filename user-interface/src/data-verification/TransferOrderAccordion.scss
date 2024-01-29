@@ -1,6 +1,7 @@
 .accordion-content {
   .transfer-text {
     padding-top: 1rem;
+    font-size: 1.5rem;
   }
   .preview-results {
     padding-bottom: 1rem;
@@ -32,6 +33,28 @@
     padding: 0.5rem 0;
     .validation-alert {
       max-width: 450px;
+    }
+  }
+  .button-group-section {
+    label {
+      font-weight: bold;
+    }
+  }
+  #loading-spinner {
+    margin: 2rem 0;
+  }
+  .transfer-instructions {
+    margin-top: 2rem;
+  }
+  .alert-container {
+    margin: 3rem 0;
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+
+    #suggested-cases-not-found {
+      display: inline-block;
+      max-width: 620px;
     }
   }
 }

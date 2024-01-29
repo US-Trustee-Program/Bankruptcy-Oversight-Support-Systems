@@ -26,6 +26,7 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseTable } from './CaseTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
+import { SimpleResponseData } from '@/lib/type-declarations/api';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -111,12 +112,12 @@ export interface TransferOrderAccordionProps {
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
 
+  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+
   const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
-
-  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
@@ -126,6 +127,40 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   );
   const [newCaseSummary, setNewCaseSummary] = useState<CaseDetailType | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
+  const [toggleView, setToggleView] = useState<'default' | 'suggestions'>('default');
+  const [suggestedCases, setSuggestedCases] = useState<CaseDetailType[] | null>(null);
+
+  async function getTransferredCaseSuggestions(caseId: string): Promise<CaseDetailType[] | null> {
+    const suggestions = await api
+      .get(`/orders-suggestions/${caseId}/`)
+      .then((response: SimpleResponseData) => {
+        console.log('trying to get orders-suggestions, got', response);
+        return response.body as CaseDetailType[];
+      })
+      .catch((_reason: Error) => {
+        console.log(_reason);
+      });
+    return suggestions ?? null;
+  }
+
+  function selectCaseInputEntry(_event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
+    setToggleView('default');
+    approveButtonRef.current?.disableButton(true);
+  }
+
+  async function selectSuggestedCaseEntry(
+    _event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+  ): Promise<void> {
+    setLoadingSuggestions(true);
+    setToggleView('suggestions');
+    if (!suggestedCases) {
+      const suggestedCases = await getTransferredCaseSuggestions(order.caseId);
+      setSuggestedCases(suggestedCases);
+    }
+    setLoadingSuggestions(false);
+    approveButtonRef.current?.disableButton(true);
+  }
 
   async function isValidOrderTransfer(transfer: OrderTransfer) {
     if (!(transfer.newCaseId && transfer.newDivisionCode)) {
@@ -156,6 +191,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   function isCourtSelected(orderTransfer: OrderTransfer) {
     return orderTransfer.newRegionId && orderTransfer.newCourtDivisionName;
   }
+
   function handleCourtSelection(selection: SearchableSelectOption) {
     const updatedSelection = updateOrderTransfer(selection, orderTransfer, officesList);
     isValidOrderTransfer(updatedSelection).then((valid) => {
@@ -163,6 +199,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     });
     setOrderTransfer(updatedSelection);
   }
+
   function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
     caseIdRef.current?.setValue(joinedInput);
@@ -173,6 +210,20 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       approveButtonRef.current?.disableButton(!valid);
     });
     setOrderTransfer(updated);
+  }
+
+  function handleSuggestedCaseSelection(bCase: CaseDetailType) {
+    if (bCase) {
+      const newOrderTransfer = { ...orderTransfer };
+      newOrderTransfer.newCaseId = bCase.caseId;
+      newOrderTransfer.newDivisionCode = bCase.courtDivision;
+      newOrderTransfer.newCourtDivisionName = bCase.courtDivisionName;
+      newOrderTransfer.newCourtName = bCase.courtName;
+      newOrderTransfer.newRegionId = bCase.regionId;
+      newOrderTransfer.newRegionName = bCase.regionName;
+      setOrderTransfer(newOrderTransfer);
+      approveButtonRef.current?.disableButton(false);
+    }
   }
 
   function confirmOrderApproval(): void {
@@ -256,16 +307,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
-  function selectCaseInputEntry(_event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
-    // implement display of Enter Case
-    throw new Error('Function not implemented.');
-  }
-
-  function selectSuggestedCaseEntry(_event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
-    // implement display of Suggested Cases
-    throw new Error('Function not implemented.');
-  }
-
   return (
     <>
       <Accordion
@@ -329,17 +370,14 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             </div>
             <div className="grid-col-1"></div>
           </div>
-          <div className="button-group-section">
-            <label>Choose an option</label>
-            <ButtonGroup id={`button-group-${order.id}`} className="entry-option-button-group">
-              <Button onClick={selectCaseInputEntry}>Enter Case</Button>
-              <Button onClick={selectSuggestedCaseEntry}>Suggested Cases</Button>
-            </ButtonGroup>
-          </div>
           {order.status === 'approved' && (
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="transfer-text grid-col-10" tabIndex={0}>
+              <div
+                className="transfer-text grid-col-10"
+                tabIndex={0}
+                data-testid={`action-text-${order.id}`}
+              >
                 Transferred{' '}
                 <Link
                   to={`/case-detail/${order.caseId}/`}
@@ -401,161 +439,267 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
             </div>
           )}
           {order.status !== 'approved' && order.status !== 'rejected' && (
-            <section className="order-form" data-testid={`order-form-${order.id}`}>
-              <div className="court-selection grid-row grid-gap-lg">
-                <div className="grid-col-1"></div>
-                <div className="transfer-from-to__div grid-col-10">
-                  <div className="transfer-text" tabIndex={0}>
-                    Transfer{' '}
-                    <Link
-                      to={`/case-detail/${order.caseId}/`}
-                      className="usa-link case-detail-item-value"
-                      data-testid={`pending-transfer-original-case-link-${order.caseId}`}
-                      title={`Open case ${order.caseId}`}
-                      target="_blank"
-                      reloadDocument={true}
-                    >
-                      {getCaseNumber(order.caseId)}
-                    </Link>{' '}
-                    from
-                    <span className="transfer-highlight__span">
-                      {order.courtName} ({order.courtDivisionName})
-                    </span>
-                    to
-                  </div>
-                  <div className="form-row">
-                    <div className="select-container court-select-container">
-                      <label htmlFor={`court-selection-${order.id}`}>New Court</label>
-                      <div
-                        className="usa-combo-box"
-                        data-testid={`court-selection-usa-combo-box-${order.id}`}
-                      >
-                        <SearchableSelect
-                          id={`court-selection-${order.id}`}
-                          className="new-court__select"
-                          closeMenuOnSelect={true}
-                          label="Select new court"
-                          ref={courtSelectionRef}
-                          onChange={handleCourtSelection}
-                          options={getOfficeList(officesList)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid-col-1"></div>
-              </div>
-              {isCourtSelected(orderTransfer) && (
-                <div className="preview-results grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    <span data-testid={`preview-description-${order.id}`}>
-                      <CaseSelection
-                        fromCourt={{
-                          region: order.regionId,
-                          courtDivisionName: order.courtDivisionName,
-                        }}
-                        toCourt={{
-                          region: orderTransfer.newRegionId,
-                          courtDivisionName: orderTransfer.newCourtDivisionName,
-                        }}
-                      ></CaseSelection>
-                    </span>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-              )}
-              <div className="case-selection grid-row grid-gap-lg">
-                <div className="grid-col-1"></div>
-                <div className="grid-col-4">
-                  <label htmlFor={`new-case-input-${order.id}`}>New Case</label>
-                  <div>
-                    <Input
-                      id={`new-case-input-${order.id}`}
-                      data-testid={`new-case-input-${order.id}`}
-                      className="usa-input"
-                      value={order.newCaseId}
-                      onChange={handleCaseInputChange}
-                      aria-label="New case ID"
-                      ref={caseIdRef}
-                    />
-                  </div>
-                </div>
-                <div className="grid-col-6"></div>
-                <div className="grid-col-1"></div>
-              </div>
-              <div className="case-verification grid-row grid-gap-lg">
+            <>
+              <div className="button-group-section grid-row grid-gap-lg">
                 <div className="grid-col-1"></div>
                 <div className="grid-col-10">
-                  {loadingCaseSummary && (
-                    <LoadingSpinner
-                      id="loading-spinner"
-                      caption="Loading cases..."
-                    ></LoadingSpinner>
-                  )}
-                  {!loadingCaseSummary && validationState === ValidationStates.found && (
-                    <CaseTable id="validated-cases" cases={[newCaseSummary!]}></CaseTable>
-                  )}
-                  {!loadingCaseSummary && validationState === ValidationStates.notFound && (
-                    <Alert
-                      inline={true}
-                      show={true}
-                      slim={true}
-                      message="We couldn't find a case with that number"
-                      type={UswdsAlertStyle.Error}
-                      role="status"
-                      className="validation-alert"
-                      id="validation-not-found"
-                    ></Alert>
-                  )}
+                  <label>Choose an option:</label>
+                  <ButtonGroup
+                    id={`button-group-${order.id}`}
+                    className="entry-option-button-group"
+                    defaultButtonId="buttonEnterCase"
+                  >
+                    <Button id="buttonEnterCase" onClick={selectCaseInputEntry}>
+                      Enter Case
+                    </Button>
+                    <Button id="buttonnSuggestedCases" onClick={selectSuggestedCaseEntry}>
+                      Suggested Cases
+                    </Button>
+                  </ButtonGroup>
                 </div>
                 <div className="grid-col-1"></div>
               </div>
-              <div className="button-bar grid-row grid-gap-lg">
-                <div className="grid-col-1"></div>
-                <div className="grid-col-2">
-                  <Button
-                    id={`accordion-reject-button-${order.id}`}
-                    onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
-                    uswdsStyle={UswdsButtonStyle.Secondary}
-                  >
-                    Reject
-                  </Button>
+              <section className="order-form" data-testid={`order-form-${order.id}`}>
+                {toggleView === 'default' && (
+                  <div className="case-entry-form">
+                    <div className="court-selection grid-row grid-gap-lg">
+                      <div className="grid-col-1"></div>
+                      <div className="transfer-from-to__div grid-col-10">
+                        <div className="transfer-text" tabIndex={0}>
+                          Transfer{' '}
+                          <Link
+                            to={`/case-detail/${order.caseId}/`}
+                            className="usa-link case-detail-item-value"
+                            data-testid={`pending-transfer-original-case-link-${order.caseId}`}
+                            title={`Open case ${order.caseId}`}
+                            target="_blank"
+                            reloadDocument={true}
+                          >
+                            {getCaseNumber(order.caseId)}
+                          </Link>{' '}
+                          from
+                          <span className="transfer-highlight__span">
+                            {order.courtName} ({order.courtDivisionName})
+                          </span>
+                          to
+                        </div>
+                        <div className="form-row">
+                          <div className="select-container court-select-container">
+                            <label htmlFor={`court-selection-${order.id}`}>New Court</label>
+                            <div
+                              className="usa-combo-box"
+                              data-testid={`court-selection-usa-combo-box-${order.id}`}
+                            >
+                              <SearchableSelect
+                                id={`court-selection-${order.id}`}
+                                className="new-court__select"
+                                closeMenuOnSelect={true}
+                                label="Select new court"
+                                ref={courtSelectionRef}
+                                onChange={handleCourtSelection}
+                                options={getOfficeList(officesList)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid-col-1"></div>
+                    </div>
+                    {isCourtSelected(orderTransfer) && (
+                      <div className="preview-results grid-row grid-gap-lg">
+                        <div className="grid-col-1"></div>
+                        <div className="grid-col-10">
+                          <span data-testid={`preview-description-${order.id}`}>
+                            <CaseSelection
+                              fromCourt={{
+                                region: order.regionId,
+                                courtDivisionName: order.courtDivisionName,
+                              }}
+                              toCourt={{
+                                region: orderTransfer.newRegionId,
+                                courtDivisionName: orderTransfer.newCourtDivisionName,
+                              }}
+                            ></CaseSelection>
+                          </span>
+                        </div>
+                        <div className="grid-col-1"></div>
+                      </div>
+                    )}
+                    <div className="case-selection grid-row grid-gap-lg">
+                      <div className="grid-col-1"></div>
+                      <div className="grid-col-4">
+                        <label htmlFor={`new-case-input-${order.id}`}>New Case</label>
+                        <div>
+                          <Input
+                            id={`new-case-input-${order.id}`}
+                            data-testid={`new-case-input-${order.id}`}
+                            className="usa-input"
+                            value={order.newCaseId}
+                            onChange={handleCaseInputChange}
+                            aria-label="New case ID"
+                            ref={caseIdRef}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid-col-6"></div>
+                      <div className="grid-col-1"></div>
+                    </div>
+                    <div className="case-verification grid-row grid-gap-lg">
+                      <div className="grid-col-1"></div>
+                      <div className="grid-col-10">
+                        {loadingCaseSummary && (
+                          <LoadingSpinner
+                            id="loading-spinner"
+                            caption="Loading cases..."
+                          ></LoadingSpinner>
+                        )}
+                        {!loadingCaseSummary && validationState === ValidationStates.found && (
+                          <CaseTable id="validated-cases" cases={[newCaseSummary!]}></CaseTable>
+                        )}
+                        {!loadingCaseSummary && validationState === ValidationStates.notFound && (
+                          <Alert
+                            inline={true}
+                            show={true}
+                            slim={true}
+                            message="We couldn't find a case with that number"
+                            type={UswdsAlertStyle.Error}
+                            role="status"
+                            className="validation-alert"
+                            id="validation-not-found"
+                          />
+                        )}
+                      </div>
+                      <div className="grid-col-1"></div>
+                    </div>
+                  </div>
+                )}
+                {toggleView === 'suggestions' && (
+                  <div className="suggestions-form">
+                    {loadingSuggestions && (
+                      <div className="grid-row grid-gap-lg">
+                        <div className="grid-col-1"></div>
+                        <div className="grid-col-10">
+                          <LoadingSpinner
+                            id="loading-spinner"
+                            caption="Loading suggestions..."
+                          ></LoadingSpinner>
+                        </div>
+                      </div>
+                    )}
+                    {!loadingSuggestions && (
+                      <>
+                        <div className="grid-row grid-gap-lg transfer-instructions">
+                          <div className="grid-col-1"></div>
+                          <div className="grid-col-10">
+                            These cases have similar information to the case being transferred.
+                            Select one of the cases below to set up the transfer. If the correct
+                            case {"isn't"}
+                            listed, please enter the Case Number on the Enter Case tab instead.
+                          </div>
+                          <div className="grid-col-1"></div>
+                        </div>
+                        <div className="grid-row grid-gap-lg transfer-description">
+                          <div className="grid-col-1"></div>
+                          <div className="transfer-from-to__div grid-col-10">
+                            <div className="transfer-text" tabIndex={0}>
+                              Transfer{' '}
+                              <Link
+                                to={`/case-detail/${order.caseId}/`}
+                                className="usa-link case-detail-item-value"
+                                data-testid={`pending-transfer-original-case-link-${order.caseId}`}
+                                title={`Open case ${order.caseId}`}
+                                target="_blank"
+                                reloadDocument={true}
+                              >
+                                {getCaseNumber(order.caseId)}
+                              </Link>{' '}
+                              from
+                              <span className="transfer-highlight__span">
+                                {order.courtName} ({order.courtDivisionName})
+                              </span>
+                              to
+                            </div>
+                          </div>
+                          <div className="grid-col-1"></div>
+                        </div>
+                        <div className="grid-row grid-gap-lg suggestion-list">
+                          <div className="grid-col-1"></div>
+                          <div className="grid-col-10">
+                            {suggestedCases && suggestedCases?.length > 0 && (
+                              <CaseTable
+                                id="suggested-cases"
+                                cases={suggestedCases!}
+                                onSelect={handleSuggestedCaseSelection}
+                              ></CaseTable>
+                            )}
+                            {suggestedCases && suggestedCases.length < 1 && (
+                              <div className="alert-container">
+                                <Alert
+                                  inline={true}
+                                  show={true}
+                                  slim={true}
+                                  title="No Matching Cases"
+                                  message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
+                                  type={UswdsAlertStyle.Warning}
+                                  role="status"
+                                  className="suggested-cases-alert"
+                                  id="suggested-cases-not-found"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid-col-1"></div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                <div className="button-bar grid-row grid-gap-lg">
+                  <div className="grid-col-1"></div>
+                  <div className="grid-col-2">
+                    <Button
+                      id={`accordion-reject-button-${order.id}`}
+                      onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
+                      uswdsStyle={UswdsButtonStyle.Secondary}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                  <div className="grid-col-6"></div>
+                  <div className="grid-col-2 text-no-wrap">
+                    <Button
+                      id={`accordion-cancel-button-${order.id}`}
+                      onClick={cancelUpdate}
+                      uswdsStyle={UswdsButtonStyle.Outline}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      id={`accordion-approve-button-${order.id}`}
+                      onClick={() => confirmationModalRef.current?.show({ status: 'approved' })}
+                      disabled={true}
+                      ref={approveButtonRef}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                  <div className="grid-col-1"></div>
                 </div>
-                <div className="grid-col-6"></div>
-                <div className="grid-col-2 text-no-wrap">
-                  <Button
-                    id={`accordion-cancel-button-${order.id}`}
-                    onClick={cancelUpdate}
-                    uswdsStyle={UswdsButtonStyle.Outline}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    id={`accordion-approve-button-${order.id}`}
-                    onClick={() => confirmationModalRef.current?.show({ status: 'approved' })}
-                    disabled={true}
-                    ref={approveButtonRef}
-                  >
-                    Approve
-                  </Button>
-                </div>
-                <div className="grid-col-1"></div>
-              </div>
-              <ConfirmationModal
-                ref={confirmationModalRef}
-                id={`confirmation-modal-${order.id}`}
-                sequenceNumber={order.sequenceNumber}
-                fromCaseId={order.caseId}
-                toCaseId={orderTransfer.newCaseId}
-                fromDivisionName={order.courtDivisionName}
-                toDivisionName={orderTransfer.newCourtDivisionName}
-                fromCourtName={order.courtName}
-                toCourtName={orderTransfer.newCourtName}
-                onCancel={cancelUpdate}
-                onConfirm={confirmAction}
-              ></ConfirmationModal>
-            </section>
+                <ConfirmationModal
+                  ref={confirmationModalRef}
+                  id={`confirmation-modal-${order.id}`}
+                  sequenceNumber={order.sequenceNumber}
+                  fromCaseId={order.caseId}
+                  toCaseId={orderTransfer.newCaseId}
+                  fromDivisionName={order.courtDivisionName}
+                  toDivisionName={orderTransfer.newCourtDivisionName}
+                  fromCourtName={order.courtName}
+                  toCourtName={orderTransfer.newCourtName}
+                  onCancel={cancelUpdate}
+                  onConfirm={confirmAction}
+                ></ConfirmationModal>
+              </section>
+            </>
           )}
         </section>
       </Accordion>
@@ -719,7 +863,7 @@ function ConfirmationModalComponent(
           {toCaseId && (
             <>
               to case
-              <span className="transfer-highlight__span">{toCaseId}</span>
+              <span className="transfer-highlight__span">{getCaseNumber(toCaseId)}</span>
             </>
           )}
           {toCourtName && (

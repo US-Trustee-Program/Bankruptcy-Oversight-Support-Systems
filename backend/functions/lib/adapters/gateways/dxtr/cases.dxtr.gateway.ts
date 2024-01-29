@@ -195,7 +195,8 @@ export default class CasesDxtrGateway implements CasesInterface {
           ' ',
           PY_GENERATION
         )) as partyName,
-        grp_des.REGION_ID as regionId
+        grp_des.REGION_ID as regionId,
+        R.REGION_NAME AS regionName
         FROM [dbo].[AO_CS] AS cs
         JOIN [dbo].[AO_GRP_DES] AS grp_des
           ON cs.GRP_DES = grp_des.GRP_DES
@@ -208,6 +209,7 @@ export default class CasesDxtrGateway implements CasesInterface {
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
         JOIN [dbo].[AO_PY] AS party
           ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
+        JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
         WHERE (
             party.PY_TAXID = @taxId OR party.PY_SSN = @ssn
             OR cs.CS_SHORT_TITLE = @caseTitle
@@ -300,7 +302,8 @@ export default class CasesDxtrGateway implements CasesInterface {
         court.COURT_NAME as courtName,
         office.OFFICE_NAME as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
-        grp_des.REGION_ID as regionId
+        grp_des.REGION_ID as regionId,
+        R.REGION_NAME AS regionName
         FROM [dbo].[AO_CS] AS cs
         JOIN [dbo].[AO_GRP_DES] AS grp_des
           ON cs.GRP_DES = grp_des.GRP_DES
@@ -311,6 +314,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         JOIN [dbo].[AO_OFFICE] AS office
           ON cs.COURT_ID = office.COURT_ID
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
+        JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
         WHERE cs.CASE_ID = @dxtrCaseId
         AND cs.CS_DIV = @courtDiv
         ORDER BY

@@ -5,10 +5,11 @@ export interface ButtonProps {
   id: string;
   children: ReactElement | Array<ReactElement>;
   className?: string;
+  defaultButtonId: string;
 }
 
-export default function ButtonGroup({ id, className, children }: ButtonProps) {
-  const [activeButtonId, setActiveButtonId] = useState<string>('');
+export default function ButtonGroup({ id, className, children, defaultButtonId }: ButtonProps) {
+  const [activeButtonId, setActiveButtonId] = useState<string>(defaultButtonId || '');
 
   const buttonClick = (
     ev: React.MouseEvent<HTMLButtonElement>,
@@ -35,14 +36,14 @@ export default function ButtonGroup({ id, className, children }: ButtonProps) {
       if (isValidElement(child)) {
         const typedChild = child as React.ReactElement;
 
-        const childId = `${id}-${typedChild.props.id ?? idx}`;
+        const childId = `${typedChild.props.id ?? idx}`;
 
         let childClassName: string =
           activeButtonId === childId ? UswdsButtonStyle.Default : UswdsButtonStyle.Outline;
         if (typedChild.props.className) childClassName += ` ${typedChild.props.className}`;
 
         return (
-          <li className="usa-button-group__item">
+          <li key={idx} className="usa-button-group__item">
             {createElement(
               typedChild.type,
               {

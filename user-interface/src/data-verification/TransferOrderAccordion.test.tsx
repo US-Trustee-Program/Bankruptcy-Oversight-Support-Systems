@@ -46,6 +46,17 @@ function findAccordionContent(id: string, visible: boolean) {
   return content;
 }
 
+function findActionText(id: string, visible: boolean) {
+  const content = screen.getByTestId(`action-text-${id}`);
+  expect(content).toBeInTheDocument();
+  if (visible) {
+    expect(content).toBeVisible();
+  } else {
+    expect(content).not.toBeVisible();
+  }
+  return content;
+}
+
 function selectCourtInAccordion(index: string) {
   const selectButton = document.querySelector(`#test-select-button-${index}`);
   expect(selectButton).toBeInTheDocument();
@@ -215,6 +226,34 @@ describe('TransferOrderAccordion', () => {
       const content = findAccordionContent(order.id, true);
       expect(content).toHaveTextContent(
         `Rejected transfer of ${getCaseNumber(order.caseId)} for the following reason:order is bad`,
+      );
+    });
+  });
+
+  test('should expand and show order transfer information when an order has been approved', async () => {
+    let heading;
+    const approvedOrder: Order = {
+      ...order,
+      newCourtName: 'New Court',
+      newCourtDivisionName: 'New Division',
+      newCaseId: '23-67890',
+      status: 'approved',
+    };
+
+    renderWithProps({
+      order: approvedOrder,
+    });
+
+    await waitFor(async () => {
+      heading = findAccordionHeading(order.id);
+    });
+
+    if (heading) fireEvent.click(heading);
+
+    await waitFor(async () => {
+      const actionText = findActionText(order.id, true);
+      expect(actionText).toHaveTextContent(
+        `Transferred ${getCaseNumber(approvedOrder.caseId)} from${approvedOrder.courtName} (${approvedOrder.courtDivisionName})to ${getCaseNumber(approvedOrder.newCaseId)} and court${approvedOrder.newCourtName} (${approvedOrder.newCourtDivisionName}).`,
       );
     });
   });
@@ -901,6 +940,10 @@ describe('Test CaseSelection component', () => {
     );
   }
 
+  beforeEach(async () => {
+    vi.stubEnv('CAMS_PA11Y', 'true');
+  });
+
   test('Should display message as expected using toCourt and fromCourt', async () => {
     renderWithProps({ region1: '1', region2: '002' });
 
@@ -919,6 +962,10 @@ describe('Test CaseSelection component', () => {
 });
 
 describe('Test validateNewCaseIdInput function', () => {
+  beforeEach(async () => {
+    vi.stubEnv('CAMS_PA11Y', 'true');
+  });
+
   test('When supplied a value with a length greater than 7, it should truncate value to 7 digits', async () => {
     const testValue = '1234567890';
     const resultValue = '12-34567';
