@@ -123,10 +123,9 @@ export default function DataVerificationScreen() {
             {!isOrderListLoading && (
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-1 text-no-wrap">Case ID</div>
+                  <div className="grid-col-2 text-no-wrap">Case Number</div>
                   <div className="grid-col-4 text-no-wrap">Case Title</div>
-                  <div className="grid-col-1 text-no-wrap">Order Date</div>
-                  <div className="grid-col-2"></div>
+                  <div className="grid-col-2 text-no-wrap">Order Date</div>
                   <div className="grid-col-2 text-no-wrap">Order Type</div>
                   <div className="grid-col-2 text-no-wrap">Order Status</div>
                 </div>
