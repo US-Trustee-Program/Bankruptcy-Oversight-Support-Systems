@@ -136,8 +136,11 @@ describe('Review Orders screen', () => {
     const ordersScreen = screen.getByTestId('data-verification-screen');
     expect(ordersScreen).toBeInTheDocument();
 
-    const accordionGroup = screen.getByTestId('accordion-group');
-    expect(accordionGroup).toBeInTheDocument();
+    let accordionGroup;
+    await waitFor(() => {
+      accordionGroup = screen.getByTestId('accordion-group');
+      expect(accordionGroup).toBeInTheDocument();
+    });
 
     for (const order of ordersResponse.body) {
       await waitFor(async () => {

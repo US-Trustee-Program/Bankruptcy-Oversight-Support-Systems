@@ -268,25 +268,21 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           data-testid={`accordion-heading-${order.id}`}
         >
           <div
-            className="grid-col-1 case-id text-no-wrap"
-            aria-label={`Case ID ${getCaseNumber(order.caseId).split('').join(' ')}`}
+            className="grid-col-2 case-id text-no-wrap"
+            aria-label={`Case number ${getCaseNumber(order.caseId).split('').join(' ')}`}
           >
             {getCaseNumber(order.caseId)}
           </div>
-          <div
-            className="grid-col-4 case-title text-no-wrap"
-            aria-label={`Case title ${order.caseTitle}`}
-          >
+          <div className="grid-col-4 case-title" aria-label={`Case title ${order.caseTitle}`}>
             {order.caseTitle}
           </div>
           <div
-            className="grid-col-1 order-date text-no-wrap"
+            className="grid-col-2 order-date text-no-wrap"
             title="Order date"
             aria-label={`Order date ${formatDate(order.orderDate)}`}
           >
             {formatDate(order.orderDate)}
           </div>
-          <div className="grid-col-2"></div>
           <div className="grid-col-2 order-type text-no-wrap">
             <span aria-label={`Order type ${orderType.get(order.orderType)}`}>
               {orderType.get(order.orderType)}
