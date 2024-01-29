@@ -119,8 +119,8 @@ export default function DataVerificationScreen() {
           <h1>Data Verification</h1>
           <h2>Region {regionNumber}</h2>
           {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
-          <section className="order-list-container">
-            {!isOrderListLoading && (
+          {!isOrderListLoading && (
+            <section className="order-list-container">
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
                   <div className="grid-col-2 text-no-wrap">Case Number</div>
@@ -130,23 +130,23 @@ export default function DataVerificationScreen() {
                   <div className="grid-col-2 text-no-wrap">Order Status</div>
                 </div>
               </div>
-            )}
-            <AccordionGroup>
-              {orderList.map((order: Order) => {
-                return (
-                  <TransferOrderAccordion
-                    key={`accordion-${order.id}`}
-                    order={order}
-                    regionsMap={regionsMap}
-                    officesList={officesList}
-                    orderType={orderType}
-                    statusType={statusType}
-                    onOrderUpdate={handleOrderUpdate}
-                  ></TransferOrderAccordion>
-                );
-              })}
-            </AccordionGroup>
-          </section>
+              <AccordionGroup>
+                {orderList.map((order: Order) => {
+                  return (
+                    <TransferOrderAccordion
+                      key={`accordion-${order.id}`}
+                      order={order}
+                      regionsMap={regionsMap}
+                      officesList={officesList}
+                      orderType={orderType}
+                      statusType={statusType}
+                      onOrderUpdate={handleOrderUpdate}
+                    ></TransferOrderAccordion>
+                  );
+                })}
+              </AccordionGroup>
+            </section>
+          )}
         </div>
         <div className="grid-col-1"></div>
       </div>
