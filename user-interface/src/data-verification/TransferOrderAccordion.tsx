@@ -23,7 +23,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { CaseTable } from './CaseTable';
+import { CaseTable, CaseTableImperative } from './CaseTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
 
@@ -117,6 +117,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const caseIdRef = useRef<InputRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
+  const suggestedCasesRef = useRef<CaseTableImperative>(null);
 
   const [orderTransfer, setOrderTransfer] = useState<OrderTransfer>(
     getOrderTransferFromOrder(order),
@@ -132,12 +133,12 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
 
   async function getTransferredCaseSuggestions(caseId: string): Promise<CaseDetailType[] | null> {
     const suggestions = await api
-      .get(`/orders-suggestions/${caseId}/`)
+      .get(`/orders-suggestionsx/${caseId}/`)
       .then((response) => {
         return response.body as CaseDetailType[];
       })
-      .catch((_reason: Error) => {
-        console.log(_reason);
+      .catch((reason: Error) => {
+        props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
       });
     return suggestions ?? null;
   }
@@ -260,6 +261,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     setOrderTransfer(getOrderTransferFromOrder(order));
     setNewCaseSummary(null);
     setValidationState(ValidationStates.notValidated);
+    if (suggestedCasesRef.current) suggestedCasesRef.current.clearSelection();
     setLoadingCaseSummary(false);
   }
 
@@ -450,7 +452,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     <Button id="buttonEnterCase" onClick={selectCaseInputEntry}>
                       Enter Case
                     </Button>
-                    <Button id="buttonnSuggestedCases" onClick={selectSuggestedCaseEntry}>
+                    <Button id="buttonSuggestedCases" onClick={selectSuggestedCaseEntry}>
                       Suggested Cases
                     </Button>
                   </ButtonGroup>
@@ -628,6 +630,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 id="suggested-cases"
                                 cases={suggestedCases!}
                                 onSelect={handleSuggestedCaseSelection}
+                                ref={suggestedCasesRef}
                               ></CaseTable>
                             )}
                             {suggestedCases && suggestedCases.length < 1 && (
