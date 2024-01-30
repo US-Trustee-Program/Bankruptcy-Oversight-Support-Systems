@@ -61,6 +61,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     name="case-selection"
                     data-testid={`${id}-radio-${idx}`}
                     checked={idx === selectedIdx}
+                    title={`select ${bCase.caseTitle}`}
                   ></input>
                 </th>
               )}
