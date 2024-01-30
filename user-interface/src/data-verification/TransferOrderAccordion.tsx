@@ -26,7 +26,6 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseTable } from './CaseTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
-import { SimpleResponseData } from '@/lib/type-declarations/api';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -134,8 +133,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   async function getTransferredCaseSuggestions(caseId: string): Promise<CaseDetailType[] | null> {
     const suggestions = await api
       .get(`/orders-suggestions/${caseId}/`)
-      .then((response: SimpleResponseData) => {
-        console.log('trying to get orders-suggestions, got', response);
+      .then((response) => {
         return response.body as CaseDetailType[];
       })
       .catch((_reason: Error) => {
