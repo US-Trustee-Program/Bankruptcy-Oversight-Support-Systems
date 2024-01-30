@@ -1,19 +1,17 @@
-import {
-  CaseDetailType,
-  OfficeDetails,
-  Order,
-  OrderResponseData,
-} from '@/lib/type-declarations/chapter-15';
-import { orderType, statusType } from './DataVerificationScreen';
+import { CaseDetailType, OfficeDetails, Order } from '@/lib/type-declarations/chapter-15';
+import { AlertDetails, orderType, statusType } from './DataVerificationScreen';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { BrowserRouter } from 'react-router-dom';
 import { screen, fireEvent, render, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
+import { MockInstance } from 'vitest';
 
 describe('Test suggested cases', () => {
+  let apiSpy: MockInstance;
   let order: Order;
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
+
   const testOffices: OfficeDetails[] = [
     {
       divisionCode: '001',
@@ -53,6 +51,21 @@ describe('Test suggested cases', () => {
     },
   ];
 
+  const caseLookup: CaseDetailType = {
+    caseId: '',
+    chapter: '',
+    caseTitle: '',
+    officeName: '',
+    dateFiled: '2024-01-01',
+    assignments: [],
+    debtor: {
+      name: 'DebtorName',
+      ssn: '111-11-1111',
+    },
+    debtorTypeLabel: '',
+    petitionLabel: '',
+  };
+
   function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
     const defaultProps: TransferOrderAccordionProps = {
       order: order,
@@ -73,55 +86,22 @@ describe('Test suggested cases', () => {
   }
 
   beforeEach(async () => {
+    apiSpy = vi
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValue({ success: true, body: [caseLookup] });
     vi.stubEnv('CAMS_PA11Y', 'true');
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    order = ordersResponse.body[0];
+    order = Chapter15MockApi.orders[0];
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
-    order = {
-      id: '',
-      caseId: '',
-      caseTitle: '',
-      chapter: '',
-      courtName: '',
-      courtDivisionName: '',
-      regionId: '',
-      orderType: 'transfer',
-      orderDate: '',
-      status: 'pending',
-      sequenceNumber: 0,
-      dateFiled: '',
-      summaryText: '',
-      fullText: '',
-    };
+    vi.resetAllMocks();
   });
 
   test('should call the api to get suggested cases', async () => {
-    const caseLookup: CaseDetailType = {
-      caseId: '',
-      chapter: '',
-      caseTitle: '',
-      officeName: '',
-      dateFiled: '',
-      assignments: [],
-      debtor: {
-        name: 'DebtorName',
-        ssn: '111-11-1111',
-      },
-      debtorTypeLabel: '',
-      petitionLabel: '',
-    };
-
-    const apiSpy = vi
-      .spyOn(Chapter15MockApi, 'get')
-      .mockResolvedValue({ success: true, body: [caseLookup] });
-
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonnSuggestedCases');
+    const button = document.querySelector('#buttonSuggestedCases');
     fireEvent.click(button!);
 
     await waitFor(() => {
@@ -133,14 +113,12 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonnSuggestedCases');
+    const button = document.querySelector('#buttonSuggestedCases');
     fireEvent.click(button!);
 
     await waitFor(() => {
       const case0 = screen.getByTestId('suggested-cases-row-0');
       expect(case0).toBeInTheDocument();
-      const case2 = screen.getByTestId('suggested-cases-row-2');
-      expect(case2).toBeInTheDocument();
     });
   });
 
@@ -148,7 +126,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonnSuggestedCases');
+    const button = document.querySelector('#buttonSuggestedCases');
     fireEvent.click(button!);
 
     let case0;
@@ -169,13 +147,13 @@ describe('Test suggested cases', () => {
     });
   });
 
-  test.only('should show no suggested cases message when no suggestions are available', async () => {
+  test('should show no suggested cases message when no suggestions are available', async () => {
     const apiSpy = vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({ success: true, body: [] });
 
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonnSuggestedCases');
+    const button = document.querySelector('#buttonSuggestedCases');
     fireEvent.click(button!);
 
     await waitFor(() => {
@@ -184,6 +162,87 @@ describe('Test suggested cases', () => {
 
     const alertContainer = screen.getByTestId('alert-container-suggested-cases-not-found');
     expect(alertContainer).toBeInTheDocument();
-    expect(alertContainer).toHaveClass('visible');
+    await waitFor(() => {
+      expect(alertContainer).toHaveClass('visible');
+    });
+  });
+
+  test('should disable approve button when button group is toggled', async () => {
+    renderWithProps();
+
+    // select the suggestions button
+    const suggestedButton = document.querySelector('#buttonSuggestedCases');
+    fireEvent.click(suggestedButton!);
+
+    let case0;
+    await waitFor(() => {
+      case0 = screen.getByTestId('suggested-cases-radio-0');
+      expect(case0).toBeInTheDocument();
+    });
+
+    let approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+    expect(approveButton).toBeDisabled();
+
+    if (!case0) throw Error();
+
+    fireEvent.click(case0);
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+
+    const defaultButton = document.querySelector('#buttonEnterCase');
+    fireEvent.click(defaultButton!);
+
+    approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+    expect(approveButton).toBeDisabled();
+  });
+
+  test('should clear radio button selection when the cancel button is pressed', async () => {
+    renderWithProps();
+
+    // select the suggestions button
+    const suggestedButton = document.querySelector('#buttonSuggestedCases');
+    fireEvent.click(suggestedButton!);
+
+    let case0;
+    await waitFor(() => {
+      case0 = screen.getByTestId('suggested-cases-radio-0');
+      expect(case0).toBeInTheDocument();
+    });
+
+    let approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+    expect(approveButton).toBeDisabled();
+
+    if (!case0) throw Error();
+
+    fireEvent.click(case0);
+    expect(case0).toBeChecked();
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+
+    const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
+    fireEvent.click(cancelButton!);
+
+    expect(case0).not.toBeChecked();
+
+    approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+    expect(approveButton).toBeDisabled();
+  });
+
+  test('should pass an error message back to the parent component when the suggestion query fails', async () => {
+    const onOrderUpdate = vi.fn((_alertDetails: AlertDetails, _order?: Order) => {});
+    renderWithProps({ onOrderUpdate });
+
+    vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('MockError'));
+
+    const suggestedButton = document.querySelector('#buttonSuggestedCases');
+    fireEvent.click(suggestedButton!);
+
+    await waitFor(async () => {
+      expect(onOrderUpdate).toHaveBeenCalled();
+    });
   });
 });

@@ -1,7 +1,11 @@
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { SyntheticEvent } from 'react';
+import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+export type CaseTableImperative = {
+  clearSelection: () => void;
+};
 
 interface CaseTableProps {
   id: string;
@@ -9,13 +13,25 @@ interface CaseTableProps {
   onSelect?: (bCase: CaseDetailType) => void;
 }
 
-export function CaseTable(props: CaseTableProps) {
+function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
   const { id, cases, onSelect } = props;
+
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
   function handleCaseSelection(e: SyntheticEvent<HTMLInputElement>) {
     const idx = parseInt(e.currentTarget.value);
+    setSelectedIdx(idx);
     const bCase = cases[idx];
     if (onSelect) onSelect(bCase);
   }
+
+  function clearSelection() {
+    setSelectedIdx(null);
+  }
+
+  useImperativeHandle(CaseTableRef, () => ({
+    clearSelection,
+  }));
 
   return (
     <table className="usa-table usa-table--borderless" id={id} data-testid={id}>
@@ -40,10 +56,11 @@ export function CaseTable(props: CaseTableProps) {
                 <th scope="col">
                   <input
                     type="radio"
-                    onClick={handleCaseSelection}
+                    onChange={handleCaseSelection}
                     value={idx}
                     name="case-selection"
                     data-testid={`${id}-radio-${idx}`}
+                    checked={idx === selectedIdx}
                   ></input>
                 </th>
               )}
@@ -64,3 +81,5 @@ export function CaseTable(props: CaseTableProps) {
     </table>
   );
 }
+
+export const CaseTable = forwardRef(_CaseTable);
