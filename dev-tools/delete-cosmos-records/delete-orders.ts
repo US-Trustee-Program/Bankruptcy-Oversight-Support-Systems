@@ -13,7 +13,7 @@ export default function deleteOrders() {
   dotenv.config();
 
   const COSMOS_ENDPOINT = process.env.COSMOS_ENDPOINT || '';
-  const COSMOS_DATABASE_NAME = process.env.COSMOS_DATABASE_NAME || '';
+  const COSMOS_DATABASE_NAME = process.env.COSMOS_DATABASE_NAME || 'cams';
   const COSMOS_CONTAINER_NAME = 'orders';
 
   const options = {
