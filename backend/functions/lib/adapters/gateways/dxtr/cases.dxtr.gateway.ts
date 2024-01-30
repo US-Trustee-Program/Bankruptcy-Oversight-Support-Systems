@@ -173,8 +173,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: bCase.chapter,
     });
 
-    // TODO:    Look for cases with transfer petition types: TI, or TV in AO_TX table.
-
     const CASE_SUGGESTION_QUERY = `SELECT
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
@@ -235,10 +233,32 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     if (queryResult.success) {
-      const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
-      for (const sCase of suggestedCases) {
+      const tempSuggestedCases = this.casesQueryCallback(applicationContext, queryResult);
+      const suggestedCases = tempSuggestedCases.map(async (sCase) => {
+        // TODO:    Look for cases with transfer petition types: TI, or TV in AO_TX table.
+        /*
+        const query = `select
+          REC as txRecord,
+          TX_CODE as txCode
+          FROM [dbo].[AO_TX]
+          WHERE CS_CASEID = @dxtrId
+          AND COURT_ID = @courtId
+          AND TX_TYPE = '1'
+        `;
+        */
+
+        /*
+        sCase.petitionLabel = await this.queryPetitionLabel(
+          applicationContext,
+          sCase.caseId,
+          sCase.courtId,
+        );
+        return ['TI', 'TV'].includes(sCase.petitionLabel);
+        */
+
         sCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
-      }
+        return sCase;
+      });
       return Promise.resolve(suggestedCases);
     } else {
       throw new CamsError(MODULENAME, { message: queryResult.message });
