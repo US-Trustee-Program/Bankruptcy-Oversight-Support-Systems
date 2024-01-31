@@ -23,9 +23,9 @@ type LoggerProvider = Console['log'] | Context['log'];
 type LogType = 'debug' | 'info' | 'warn' | 'error';
 
 export class LoggerImpl implements LoggerHelper {
-  private logger: LoggerProvider;
+  private provider: LoggerProvider;
   constructor(provider: LoggerProvider = console.log) {
-    this.logger = provider;
+    this.provider = provider;
   }
   private sanitize(input: string): string {
     return input.replace(/[\r\n]+/g, ' ').trim();
@@ -34,7 +34,7 @@ export class LoggerImpl implements LoggerHelper {
     const logString = `[${logType.toUpperCase()}] [${moduleName}] ${message} ${
       undefined != data ? JSON.stringify(data) : ''
     }`;
-    this.logger(this.sanitize(logString.trim()));
+    this.provider(this.sanitize(logString.trim()));
   }
 
   info(moduleName: string, message: string, data?: unknown) {
