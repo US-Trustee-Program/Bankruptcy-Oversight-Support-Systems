@@ -16,8 +16,8 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
   };
 });
 
-describe('Orders Function tests', () => {
-  test('should return a list of orders', async () => {
+describe('Orders suggestions function tests', () => {
+  test('should return a list of suggested cases', async () => {
     getSuggestedCases = jest.fn().mockImplementation(() => {
       return Promise.resolve({ success: true, body: CASE_SUMMARIES });
     });
@@ -36,7 +36,7 @@ describe('Orders Function tests', () => {
     expect(context.res.body).toEqual(expectedResponseBody);
   });
 
-  test('should return error response when error is encountered on get list', async () => {
+  test('should return error response when error is encountered', async () => {
     const id = '1234567890';
     getSuggestedCases = jest.fn().mockImplementation(() => {
       throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
