@@ -27,6 +27,7 @@ const httpTrigger: AzureFunction = async function (
   const caseId = casesRequest?.params?.caseId;
 
   try {
+    applicationContext.logger.info(MODULE_NAME, caseId); // testing logging
     let responseBody: CaseDetailsDbResult | CaseListDbResult;
 
     if (caseId) {
