@@ -133,7 +133,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
 
   async function getTransferredCaseSuggestions(caseId: string): Promise<CaseDetailType[] | null> {
     const suggestions = await api
-      .get(`/orders-suggestionsx/${caseId}/`)
+      .get(`/orders-suggestions/${caseId}/`)
       .then((response) => {
         return response.body as CaseDetailType[];
       })
