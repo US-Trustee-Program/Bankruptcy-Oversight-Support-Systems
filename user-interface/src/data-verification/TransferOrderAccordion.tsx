@@ -214,7 +214,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   function handleSuggestedCaseSelection(bCase: CaseDetailType) {
     if (bCase) {
       const newOrderTransfer = { ...orderTransfer };
-      newOrderTransfer.newCaseId = bCase.caseId;
+      // Remove the division prefix to be consistent with case entry view.
+      newOrderTransfer.newCaseId = getCaseNumber(bCase.caseId);
       newOrderTransfer.newDivisionCode = bCase.courtDivision;
       newOrderTransfer.newCourtDivisionName = bCase.courtDivisionName;
       newOrderTransfer.newCourtName = bCase.courtName;
