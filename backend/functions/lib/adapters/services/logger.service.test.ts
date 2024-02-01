@@ -9,7 +9,7 @@ describe('Basic logger service tests', () => {
     logger = new LoggerImpl(mockLog);
   });
 
-  test('logMessage() should throw an error if context doesnt contain a log method.', async () => {
+  test('should default to using console.log if a logger provider is not provided.', async () => {
     const consoleSpy = jest.spyOn(console, 'log');
     logger = new LoggerImpl();
 
