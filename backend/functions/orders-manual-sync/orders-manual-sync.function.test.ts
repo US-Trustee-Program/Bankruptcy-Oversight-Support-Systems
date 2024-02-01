@@ -1,4 +1,4 @@
-import { LoggerImpl } from '../lib/adapters/utils/application-context-creator';
+import { LoggerImpl } from '../lib/adapters/services/logger.service';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';

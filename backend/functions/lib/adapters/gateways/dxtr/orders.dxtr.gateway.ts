@@ -1,5 +1,4 @@
 import * as mssql from 'mssql';
-
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
@@ -7,7 +6,6 @@ import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { Order, OrderSync } from '../../../use-cases/orders/orders.model';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
-import log from '../../services/logger.service';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
@@ -52,17 +50,16 @@ export class DxtrOrdersGateway implements OrdersGateway {
       });
 
       const rawOrders = await this._getOrders(context, txId, chapters, regions);
-      log.info(context, MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
+      context.logger.info(MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
       const documents = await this._getDocuments(context, txId, chapters, regions);
-      log.info(context, MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
+      context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
       const mappedDocuments = documents.reduce((map, document) => {
         const { dxtrCaseId } = document;
         delete document.dxtrCaseId;
         map.set(dxtrCaseId, document);
         return map;
       }, new Map());
-      log.info(
-        context,
+      context.logger.info(
         MODULE_NAME,
         `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
       );
@@ -83,8 +80,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
           return rawOrder satisfies Order;
         })
         .sort(dxtrOrdersSorter);
-      log.info(
-        context,
+      context.logger.info(
         MODULE_NAME,
         `Processed ${orderSync.orders.length} orders and their documents from DXTR. New maxTxId is ${orderSync.maxTxId}.`,
       );

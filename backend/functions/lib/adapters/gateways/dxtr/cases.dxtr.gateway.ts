@@ -15,7 +15,6 @@ import {
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
-import log from '../../services/logger.service';
 import { handleQueryResult } from '../gateway-helper';
 import {
   decomposeCaseId,
@@ -539,7 +538,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     let debtor: Party;
-    log.debug(applicationContext, MODULENAME, `Party results received from DXTR:`, queryResult);
+    applicationContext.logger.debug(MODULENAME, `Party results received from DXTR:`, queryResult);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
       debtor = { name: removeExtraSpaces(record.name) };
@@ -557,8 +556,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const closedDates: Date[] = [];
     const dismissedDates: Date[] = [];
     const reopenedDates: Date[] = [];
-    log.debug(
-      applicationContext,
+    applicationContext.logger.debug(
       MODULENAME,
       `Transaction results received from DXTR:`,
       queryResult,
@@ -583,8 +581,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   debtorTypeLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    log.debug(
-      applicationContext,
+    applicationContext.logger.debug(
       MODULENAME,
       `Transaction results received from DXTR:`,
       queryResult,
@@ -595,8 +592,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   petitionLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    log.debug(
-      applicationContext,
+    applicationContext.logger.debug(
       MODULENAME,
       `Transaction results received from DXTR:`,
       queryResult,
@@ -607,13 +603,13 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    log.debug(applicationContext, MODULENAME, `Case results received from DXTR:`, queryResult);
+    applicationContext.logger.debug(MODULENAME, `Case results received from DXTR:`, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseDetailInterface>).recordset[0];
   }
 
   casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    log.debug(applicationContext, MODULENAME, `Results received from DXTR `, queryResult);
+    applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseDetailInterface[]>).recordset;
   }

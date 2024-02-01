@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { getCosmosConfig, getOrdersCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
-import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
@@ -17,9 +16,9 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   private containerName = 'orders';
   private cosmosConfig: CosmosConfig;
 
-  constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getOrdersCosmosDbClient(applicationContext);
-    this.cosmosConfig = getCosmosConfig(applicationContext);
+  constructor(context: ApplicationContext) {
+    this.cosmosDbClient = getOrdersCosmosDbClient(context);
+    this.cosmosConfig = getCosmosConfig(context);
   }
 
   async getOrders(context: ApplicationContext): Promise<Order[]> {
@@ -42,8 +41,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
 
       return resource;
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -86,11 +84,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .item(id)
         .replace(updatedOrder);
 
-      log.debug(context, MODULE_NAME, `Order updated ${id}`);
+      context.logger.debug(MODULE_NAME, `Order updated ${id}`);
       return { id };
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -122,8 +119,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         }
       }
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -147,8 +143,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .fetchAll();
       return results;
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
