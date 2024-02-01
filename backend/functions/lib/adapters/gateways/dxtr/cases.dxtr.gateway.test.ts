@@ -766,10 +766,11 @@ describe('Test DXTR Gateway', () => {
 
       const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
 
-      expect(label).toEqual('');
+      expect(label.petitionLabel).toEqual('');
+      expect(label.petitionCode).toEqual('UNKNOWN');
     });
 
-    test('should return expected petition label', async () => {
+    test('should return expected VP petition', async () => {
       const queryResult: QueryResults = {
         success: true,
         results: {
@@ -787,7 +788,82 @@ describe('Test DXTR Gateway', () => {
 
       const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
 
-      expect(label).toEqual('Voluntary');
+      expect(label.petitionLabel).toEqual('Voluntary');
+      expect(label.petitionCode).toEqual('VP');
+      expect(label.isVoluntary).toBeTruthy();
+      expect(label.isTransfer).toBeFalsy();
+    });
+
+    test('should return expected IP petition', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              txRecord:
+                '1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411IP000000',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
+
+      expect(label.petitionLabel).toEqual('Involuntary');
+      expect(label.petitionCode).toEqual('IP');
+      expect(label.isVoluntary).toBeFalsy();
+      expect(label.isTransfer).toBeFalsy();
+    });
+
+    test('should return expected TI petition', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              txRecord:
+                '1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411TI000000',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
+
+      expect(label.petitionLabel).toEqual('Involuntary');
+      expect(label.petitionCode).toEqual('TI');
+      expect(label.isVoluntary).toBeFalsy();
+      expect(label.isTransfer).toBeTruthy();
+    });
+
+    test('should return expected TV petition', async () => {
+      const queryResult: QueryResults = {
+        success: true,
+        results: {
+          recordset: [
+            {
+              txRecord:
+                '1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411TV000000',
+            },
+          ],
+        },
+        message: '',
+      };
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
+
+      expect(label.petitionLabel).toEqual('Voluntary');
+      expect(label.petitionCode).toEqual('TV');
+      expect(label.isVoluntary).toBeTruthy();
+      expect(label.isTransfer).toBeTruthy();
     });
   });
 });

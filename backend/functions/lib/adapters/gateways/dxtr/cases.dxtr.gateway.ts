@@ -174,6 +174,18 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: bCase.chapter,
     });
 
+    input.push({
+      name: 'dateFiled',
+      type: mssql.Date,
+      value: bCase.dateFiled,
+    });
+
+    input.push({
+      name: 'originalCourt',
+      type: mssql.VarChar,
+      value: bCase.courtId,
+    });
+
     const CASE_SUGGESTION_QUERY = `SELECT
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
@@ -195,7 +207,9 @@ export default class CasesDxtrGateway implements CasesInterface {
           PY_GENERATION
         )) as partyName,
         grp_des.REGION_ID as regionId,
-        R.REGION_NAME AS regionName
+        R.REGION_NAME AS regionName,
+        TX.petitionCode,
+        TX.debtorTypeCode
         FROM [dbo].[AO_CS] AS cs
         JOIN [dbo].[AO_GRP_DES] AS grp_des
           ON cs.GRP_DES = grp_des.GRP_DES
@@ -209,9 +223,19 @@ export default class CasesDxtrGateway implements CasesInterface {
         JOIN [dbo].[AO_PY] AS party
           ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
         JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
-        WHERE (
-            party.PY_TAXID = @taxId OR party.PY_SSN = @ssn
-            OR cs.CS_SHORT_TITLE = @caseTitle
+        JOIN (
+          SELECT DISTINCT
+          T1.COURT_ID,
+          T1.CS_CASEID,
+          substring(REC,108,2) AS petitionCode,
+          substring(REC,34,2) AS debtorTypeCode
+          FROM [dbo].[AO_CS] AS C1
+          JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
+          JOIN [dbo].[AO_PY] AS P1
+          ON P1.CS_CASEID = C1.CS_CASEID AND P1.COURT_ID = C1.COURT_ID AND P1.PY_ROLE = 'db'
+          WHERE (
+            P1.PY_TAXID = @taxId OR P1.PY_SSN = @ssn
+            OR c1.CS_SHORT_TITLE = @caseTitle
             OR TRIM(CONCAT(
               PY_FIRST_NAME,
               ' ',
@@ -222,7 +246,10 @@ export default class CasesDxtrGateway implements CasesInterface {
               PY_GENERATION
             )) = @debtorName
           )
-          AND cs.CS_CHAPTER = @chapter
+          AND C1.CS_CHAPTER = @chapter
+          AND C1.CS_DATE_FILED >= @datefiled
+          AND C1.COURT_ID != @originalCourt
+        ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
@@ -234,21 +261,25 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
+    const transferPetitionCode = ['TI', 'TV'];
+
     if (queryResult.success) {
       const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
       for (const sCase of suggestedCases) {
-        // TODO:    Look for cases with transfer petition types: TI, or TV in AO_TX table.
-        // TODO: Should we just get the petition CODE from the query above??
+        // TODO: Refactor the use of queryPetitionInfo if and when we can get the petitionCode back on the caseSummary query.
+        // TODO: Once we have a petitionCode we can just augment the label with the sync lookup function.
         const petitionInfo = await this.queryPetitionInfo(
           applicationContext,
           sCase.caseId,
           sCase.courtId,
         );
+        sCase.petitionCode = petitionInfo.petitionCode;
         sCase.petitionLabel = petitionInfo.petitionLabel;
-        sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
+        if (transferPetitionCode.includes(petitionInfo.petitionCode)) {
+          sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
+        }
       }
-      // return suggestedCases.filter((sc) => ['TI', 'TV'].includes(sc.petitionLabel));
-      return suggestedCases;
+      return suggestedCases.filter((sc) => transferPetitionCode.includes(sc.petitionCode));
     } else {
       throw new CamsError(MODULENAME, { message: queryResult.message });
     }
@@ -301,6 +332,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: dxtrCaseId,
     });
 
+    // TODO: Refactor the petitionType, debtorType lookup to be a subquery due to AO_TX duplication observed in USTP data.
     const CASE_DETAIL_QUERY = `SELECT
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
@@ -313,7 +345,9 @@ export default class CasesDxtrGateway implements CasesInterface {
         office.OFFICE_NAME as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
         grp_des.REGION_ID as regionId,
-        R.REGION_NAME AS regionName
+        R.REGION_NAME AS regionName,
+        TX.petitionCode,
+        TX.debtorTypeCode
         FROM [dbo].[AO_CS] AS cs
         JOIN [dbo].[AO_GRP_DES] AS grp_des
           ON cs.GRP_DES = grp_des.GRP_DES
@@ -325,8 +359,17 @@ export default class CasesDxtrGateway implements CasesInterface {
           ON cs.COURT_ID = office.COURT_ID
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
         JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
-        WHERE cs.CASE_ID = @dxtrCaseId
-        AND cs.CS_DIV = @courtDiv
+        JOIN (
+          SELECT DISTINCT
+          T1.COURT_ID,
+          T1.CS_CASEID,
+          substring(REC,108,2) AS petitionCode,
+          substring(REC,34,2) AS debtorTypeCode
+          FROM [dbo].[AO_CS] AS C1
+          JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
+          WHERE C1.CASE_ID = @dxtrCaseId
+          AND C1.CS_DIV = @courtDiv
+        ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
