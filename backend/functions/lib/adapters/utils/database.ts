@@ -1,5 +1,4 @@
 import { ConnectionError, MSSQLError } from 'mssql';
-import log from '../services/logger.service';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { getSqlConnection } from '../../factory';
@@ -32,7 +31,7 @@ export async function executeQuery(
       success: true,
     };
 
-    log.info(applicationContext, MODULE_NAME, 'Closing connection.');
+    applicationContext.logger.info(MODULE_NAME, 'Closing connection.');
 
     sqlConnection.close();
 
@@ -54,14 +53,14 @@ export async function executeQuery(
         }, errorMessages);
       }
       errorMessages.push(error.message);
-      log.error(applicationContext, MODULE_NAME, 'ConnectionError', { errorMessages });
+      applicationContext.logger.error(MODULE_NAME, 'ConnectionError', { errorMessages });
     } else if (isMssqlError(error)) {
-      log.error(applicationContext, MODULE_NAME, 'MssqlError', {
+      applicationContext.logger.error(MODULE_NAME, 'MssqlError', {
         name: error.name,
         originalError: error.originalError,
       });
     } else {
-      log.error(applicationContext, MODULE_NAME, error.message, error);
+      applicationContext.logger.error(MODULE_NAME, error.message, error);
     }
 
     // TODO May want to refactor to throw CamsError and remove returning QueryResults

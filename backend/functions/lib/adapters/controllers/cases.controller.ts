@@ -1,5 +1,4 @@
 import { ApplicationContext } from '../types/basic';
-import log from '../services/logger.service';
 import { CaseManagement } from '../../use-cases/case-management';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
@@ -18,7 +17,7 @@ export class CasesController {
   }
 
   public async getCases() {
-    log.info(this.applicationContext, MODULE_NAME, 'Getting all cases');
+    this.applicationContext.logger.info(MODULE_NAME, 'Getting all cases');
     return await this.caseManagement.getCases(this.applicationContext);
   }
 }

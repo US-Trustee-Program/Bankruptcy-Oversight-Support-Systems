@@ -2,7 +2,6 @@ import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignm
 import { ApplicationContext } from '../types/basic';
 import { getCosmosConfig, getAssignmentsCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
-import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -30,10 +29,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
-      log.debug(this.applicationContext, MODULE_NAME, `New item created ${item.id}`);
+      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new ForbiddenError(MODULE_NAME, {
           message:
@@ -58,10 +57,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(history);
-      log.debug(this.applicationContext, MODULE_NAME, `New history created ${item.id}`);
+      this.applicationContext.logger.debug(MODULE_NAME, `New history created ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new ForbiddenError(MODULE_NAME, {
           message:
@@ -87,10 +86,10 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .container(this.containerName)
         .item(caseAssignment.id)
         .replace(caseAssignment);
-      log.debug(this.applicationContext, MODULE_NAME, `Assignment updated ${item.id}`);
+      this.applicationContext.logger.debug(MODULE_NAME, `Assignment updated ${item.id}`);
       return item.id;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
         throw new ForbiddenError(MODULE_NAME, {
           message:
@@ -168,7 +167,7 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         .fetchAll();
       return results;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',
