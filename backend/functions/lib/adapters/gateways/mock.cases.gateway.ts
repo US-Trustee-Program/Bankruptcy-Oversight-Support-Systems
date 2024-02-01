@@ -121,8 +121,7 @@ export class CasesLocalGateway implements CasesInterface {
     try {
       return gatewayHelper.getAllCasesMockExtract();
     } catch (err) {
-      log.error(
-        applicationContext,
+      applicationContext.logger.error(
         MODULE_NAME,
         `Failed to read mock case detail for ${caseId}.`,
         err,
