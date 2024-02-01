@@ -26,6 +26,7 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
+import { CaseNumber } from '@/lib/components/CaseNumber';
 
 export function getOrderTransferFromOrder(order: Order): OrderTransfer {
   const { id, caseId, status, newCaseId, sequenceNumber } = order;
@@ -380,30 +381,19 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                 data-testid={`action-text-${order.id}`}
               >
                 Transferred{' '}
-                <Link
-                  to={`/case-detail/${order.caseId}/`}
-                  className="usa-link case-detail-item-value"
+                <CaseNumber
+                  caseNumber={order.caseId}
                   data-testid={`approved-transfer-original-case-link-${order.caseId}`}
-                  title={`Open case ${order.caseId}`}
-                  target="_blank"
-                  reloadDocument={true}
-                >
-                  {getCaseNumber(order.caseId)}
-                </Link>{' '}
+                ></CaseNumber>{' '}
                 from
                 <span className="transfer-highlight__span">
                   {order.courtName} ({order.courtDivisionName})
                 </span>
                 to{' '}
-                <Link
-                  to={`/case-detail/${order.newCaseId}/`}
-                  className="usa-link case-detail-item-value"
+                <CaseNumber
+                  caseNumber={order.newCaseId!}
                   data-testid={`approved-transfer-new-case-link-${order.newCaseId}`}
-                  title={`Open case ${order.newCaseId}`}
-                  target="_blank"
-                >
-                  {getCaseNumber(order.newCaseId)}
-                </Link>{' '}
+                ></CaseNumber>{' '}
                 and court
                 <span className="transfer-highlight__span">
                   {order.newCourtName} ({order.newCourtDivisionName}).
@@ -415,18 +405,16 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           {order.status === 'rejected' && (
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="transfer-text grid-col-10" tabIndex={0}>
+              <div
+                className="transfer-text grid-col-10"
+                tabIndex={0}
+                data-testid={`accordion-content-reject-message-${order.caseId}`}
+              >
                 Rejected transfer of{' '}
-                <Link
-                  to={`/case-detail/${order.caseId}/`}
-                  className="usa-link case-detail-item-value"
+                <CaseNumber
+                  caseNumber={order.caseId}
                   data-testid={`rejected-transfer-case-link-${order.caseId}`}
-                  title={`Open case ${order.caseId}`}
-                  target="_blank"
-                  reloadDocument={true}
-                >
-                  {getCaseNumber(order.caseId)}
-                </Link>
+                ></CaseNumber>
                 {order.reason && order.reason.length && (
                   <>
                     {' '}
@@ -468,16 +456,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       <div className="transfer-from-to__div grid-col-10">
                         <div className="transfer-text" tabIndex={0}>
                           Transfer{' '}
-                          <Link
-                            to={`/case-detail/${order.caseId}/`}
-                            className="usa-link case-detail-item-value"
+                          <CaseNumber
+                            caseNumber={order.caseId}
                             data-testid={`pending-transfer-original-case-link-${order.caseId}`}
-                            title={`Open case ${order.caseId}`}
-                            target="_blank"
-                            reloadDocument={true}
-                          >
-                            {getCaseNumber(order.caseId)}
-                          </Link>{' '}
+                          ></CaseNumber>{' '}
                           from
                           <span className="transfer-highlight__span">
                             {order.courtName} ({order.courtDivisionName})
@@ -604,16 +586,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           <div className="transfer-from-to__div grid-col-10">
                             <div className="transfer-text" tabIndex={0}>
                               Transfer{' '}
-                              <Link
-                                to={`/case-detail/${order.caseId}/`}
-                                className="usa-link case-detail-item-value"
+                              <CaseNumber
+                                caseNumber={order.caseId}
                                 data-testid={`pending-transfer-original-case-link-${order.caseId}`}
-                                title={`Open case ${order.caseId}`}
-                                target="_blank"
-                                reloadDocument={true}
-                              >
-                                {getCaseNumber(order.caseId)}
-                              </Link>{' '}
+                              ></CaseNumber>{' '}
                               from
                               <span className="transfer-highlight__span">
                                 {order.courtName} ({order.courtDivisionName})
