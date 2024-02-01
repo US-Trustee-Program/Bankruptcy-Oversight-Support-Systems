@@ -435,98 +435,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  private async queryDebtorTypeLabel(
-    applicationContext: ApplicationContext,
-    dxtrId: string,
-    courtId: string,
-  ): Promise<string> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
-
-    const query = `select
-      REC as txRecord,
-      TX_CODE as txCode
-      FROM [dbo].[AO_TX]
-      WHERE CS_CASEID = @dxtrId
-      AND COURT_ID = @courtId
-      AND TX_TYPE = '1'
-    `;
-
-    applicationContext.logger.info('Debtor type query::::::::::', query);
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
-
-    return Promise.resolve(
-      handleQueryResult<string>(
-        applicationContext,
-        queryResult,
-        MODULENAME,
-        this.debtorTypeLabelCallback,
-      ),
-    );
-  }
-
-  private async queryPetitionInfo(
-    applicationContext: ApplicationContext,
-    dxtrId: string,
-    courtId: string,
-  ): Promise<PetitionInfo> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
-
-    const query = `select
-      REC as txRecord,
-      TX_CODE as txCode
-      FROM [dbo].[AO_TX]
-      WHERE CS_CASEID = @dxtrId
-      AND COURT_ID = @courtId
-      AND TX_TYPE = '1'
-    `;
-
-    applicationContext.logger.info('Petition info query::::::::::', query);
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
-
-    return Promise.resolve(
-      handleQueryResult<PetitionInfo>(
-        applicationContext,
-        queryResult,
-        MODULENAME,
-        this.petitionInfoCallback,
-      ),
-    );
-  }
-
   private async queryParties(
     applicationContext: ApplicationContext,
     dxtrId: string,
@@ -654,7 +562,6 @@ export default class CasesDxtrGateway implements CasesInterface {
         PY_ROLE = 'db'
     `;
 
-    context.logger.info('Debtor attorney query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
