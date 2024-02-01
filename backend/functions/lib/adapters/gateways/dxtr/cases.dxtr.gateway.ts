@@ -24,7 +24,7 @@ import {
 } from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
-import { getPetitionLabel } from '../petition-gateway';
+import { PetitionInfo, getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 
@@ -119,6 +119,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (doChapter11Enable) queries.push(sqlSelectList(rowsToReturn, '11'));
     const query = sqlUnion(queries);
 
+    applicationContext.logger.info('Cases query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -225,6 +226,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
+    applicationContext.logger.info('Suggested cases query::::::::::', CASE_SUGGESTION_QUERY);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -233,33 +235,20 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     if (queryResult.success) {
-      const tempSuggestedCases = this.casesQueryCallback(applicationContext, queryResult);
-      const suggestedCases = tempSuggestedCases.map(async (sCase) => {
+      const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
+      for (const sCase of suggestedCases) {
         // TODO:    Look for cases with transfer petition types: TI, or TV in AO_TX table.
-        /*
-        const query = `select
-          REC as txRecord,
-          TX_CODE as txCode
-          FROM [dbo].[AO_TX]
-          WHERE CS_CASEID = @dxtrId
-          AND COURT_ID = @courtId
-          AND TX_TYPE = '1'
-        `;
-        */
-
-        /*
-        sCase.petitionLabel = await this.queryPetitionLabel(
+        // TODO: Should we just get the petition CODE from the query above??
+        const petitionInfo = await this.queryPetitionInfo(
           applicationContext,
           sCase.caseId,
           sCase.courtId,
         );
-        return ['TI', 'TV'].includes(sCase.petitionLabel);
-        */
-
-        sCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
-        return sCase;
-      });
-      return Promise.resolve(suggestedCases);
+        sCase.petitionLabel = petitionInfo.petitionLabel;
+        sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
+      }
+      // return suggestedCases.filter((sc) => ['TI', 'TV'].includes(sc.petitionLabel));
+      return suggestedCases;
     } else {
       throw new CamsError(MODULENAME, { message: queryResult.message });
     }
@@ -283,11 +272,12 @@ export default class CasesDxtrGateway implements CasesInterface {
       bCase.courtId,
     );
 
-    bCase.petitionLabel = await this.queryPetitionLabel(
+    const { petitionLabel } = await this.queryPetitionInfo(
       applicationContext,
       bCase.dxtrId,
       bCase.courtId,
     );
+    bCase.petitionLabel = petitionLabel;
 
     return bCase;
   }
@@ -340,6 +330,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
+    applicationContext.logger.info('Case details query::::::::::', CASE_DETAIL_QUERY);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -403,6 +394,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       AND TX_TYPE = 'O'
       AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @reopenedDate)`;
 
+    applicationContext.logger.info('Transactions query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -448,6 +440,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       AND TX_TYPE = '1'
     `;
 
+    applicationContext.logger.info('Debtor type query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -465,11 +458,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  private async queryPetitionLabel(
+  private async queryPetitionInfo(
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<string> {
+  ): Promise<PetitionInfo> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -493,6 +486,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       AND TX_TYPE = '1'
     `;
 
+    applicationContext.logger.info('Petition info query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -501,11 +495,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return Promise.resolve(
-      handleQueryResult<string>(
+      handleQueryResult<PetitionInfo>(
         applicationContext,
         queryResult,
         MODULENAME,
-        this.petitionLabelCallback,
+        this.petitionInfoCallback,
       ),
     );
   }
@@ -567,6 +561,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         PY_ROLE = @debtorPartyCode
     `;
 
+    applicationContext.logger.info('Parties query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -583,6 +578,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       ),
     );
   }
+
   private async queryDebtorAttorney(
     context: ApplicationContext,
     dxtrId: string,
@@ -635,6 +631,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         PY_ROLE = 'db'
     `;
 
+    context.logger.info('Debtor attorney query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
@@ -652,7 +649,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  debtorAttorneyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+  debtorAttorneyQueryCallback(_context: ApplicationContext, queryResult: QueryResults) {
     let debtorAttorney: DebtorAttorney;
 
     (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
@@ -723,7 +720,10 @@ export default class CasesDxtrGateway implements CasesInterface {
     return getDebtorTypeLabel(key);
   }
 
-  petitionLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+  petitionInfoCallback(
+    applicationContext: ApplicationContext,
+    queryResult: QueryResults,
+  ): PetitionInfo {
     applicationContext.logger.debug(
       MODULENAME,
       `Transaction results received from DXTR:`,
@@ -731,7 +731,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
     const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
     const key = resultset.length ? parsePetitionType(resultset[0]) : 'UNKNOWN';
-    return getPetitionLabel(key);
+    return getPetitionInfo(key);
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {

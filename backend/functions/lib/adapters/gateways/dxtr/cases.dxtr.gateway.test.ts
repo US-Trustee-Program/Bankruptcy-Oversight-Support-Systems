@@ -764,7 +764,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const label = testCasesDxtrGateway.petitionLabelCallback(applicationContext, queryResult);
+      const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
 
       expect(label).toEqual('');
     });
@@ -785,7 +785,7 @@ describe('Test DXTR Gateway', () => {
 
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
-      const label = testCasesDxtrGateway.petitionLabelCallback(applicationContext, queryResult);
+      const label = testCasesDxtrGateway.petitionInfoCallback(applicationContext, queryResult);
 
       expect(label).toEqual('Voluntary');
     });

@@ -37,16 +37,14 @@ export function parseTransactionDate(record: DxtrTransactionRecord): Date {
 export function parseDebtorType(record: DxtrTransactionRecord): string {
   const codeLength = 2;
   const codeIndex = 33;
-  const debtorTypeKey = record.txRecord.slice(codeIndex, codeIndex + codeLength);
-  return debtorTypeKey;
+  return record.txRecord.slice(codeIndex, codeIndex + codeLength);
 }
 
 // 1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411VP000000                                 NNNNN
 export function parsePetitionType(record: DxtrTransactionRecord): string {
   const codeLength = 2;
   const codeIndex = 107;
-  const petitionKey = record.txRecord.slice(codeIndex, codeIndex + codeLength);
-  return petitionKey;
+  return record.txRecord.slice(codeIndex, codeIndex + codeLength);
 }
 
 export function decomposeCaseId(caseId: string) {
