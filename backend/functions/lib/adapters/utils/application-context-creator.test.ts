@@ -1,5 +1,5 @@
 import { CamsError } from '../../common-errors/cams-error';
-import { LoggerImpl } from './application-context-creator';
+import { LoggerImpl } from '../services/logger.service';
 
 const log = jest.spyOn(console, 'log').mockImplementation(() => {});
 

@@ -1,4 +1,3 @@
-import log from '../services/logger.service';
 import { getProperty } from '../../testing/mock-data';
 import { ApplicationContext } from '../types/basic';
 import { QueryResults } from '../types/database';
@@ -26,7 +25,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     }
 
     if (attorneyOptions.officeId.length > 0) {
-      log.info(applicationContext, MODULE_NAME, `${attorneyOptions.officeId}`);
+      applicationContext.logger.info(MODULE_NAME, `${attorneyOptions.officeId}`);
       input.push({
         name: 'officeId',
         value: attorneyOptions.officeId,
@@ -42,7 +41,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
     let results: AttorneyListDbResult;
 
     if (queryResult.success) {
-      log.info(applicationContext, MODULE_NAME, 'Attorney List DB query successful');
+      applicationContext.logger.info(MODULE_NAME, 'Attorney List DB query successful');
       const body: AttorneyListRecordSet = { attorneyList: [] };
       body.attorneyList = queryResult.results as [];
       const rowsAffected = (queryResult.results as Array<object>).length;
@@ -53,7 +52,7 @@ class AttorneyLocalGateway implements AttorneyGatewayInterface {
         body,
       };
     } else {
-      log.warn(applicationContext, MODULE_NAME, 'Attorney List DB query unsuccessful');
+      applicationContext.logger.warn(MODULE_NAME, 'Attorney List DB query unsuccessful');
       results = {
         success: false,
         message: queryResult.message,

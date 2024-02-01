@@ -1,6 +1,5 @@
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { getSqlConnection } from '../lib/factory';
-import log from '../lib/adapters/services/logger.service';
 
 const MODULE_NAME = 'HEALTHCHECK-SQL-DB';
 
@@ -20,7 +19,7 @@ export default class HealthcheckSqlDb {
       sqlConnection.close();
       return results.recordset.length > 0;
     } catch (error) {
-      log.error(this.applicationContext, MODULE_NAME, error.message, error);
+      this.applicationContext.logger.error(MODULE_NAME, error.message, error);
     }
     return false;
   }

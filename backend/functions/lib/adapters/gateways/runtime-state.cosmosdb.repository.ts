@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { getCosmosConfig, getRuntimeCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
-import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import {
@@ -44,7 +43,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
       }
       return results[0];
     } catch (e) {
-      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',
@@ -64,7 +63,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
         .item(syncState.id)
         .replace(syncState);
     } catch (e) {
-      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',
@@ -84,7 +83,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
         .items.create(syncState);
       return response.resource;
     } catch (e) {
-      log.error(context, MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',

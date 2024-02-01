@@ -6,7 +6,6 @@ import {
   CaseAssignment,
   CaseAssignmentHistory,
 } from '../adapters/types/case.assignment';
-import log from '../adapters/services/logger.service';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
@@ -24,7 +23,7 @@ export class CaseAssignmentUseCase {
     newAssignments: string[],
     role: string,
   ): Promise<AttorneyAssignmentResponseInterface> {
-    log.info(applicationContext, MODULE_NAME, 'New assignments:', newAssignments);
+    applicationContext.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
 
     const listOfAssignments: CaseAssignment[] = [];
     const attorneys = [...new Set(newAssignments)];
@@ -79,8 +78,7 @@ export class CaseAssignmentUseCase {
     };
     await this.assignmentRepository.createAssignmentHistory(history);
 
-    log.info(
-      applicationContext,
+    applicationContext.logger.info(
       MODULE_NAME,
       `Updated assignments for case number ${caseId}.`,
       listOfAssignmentIdsCreated,

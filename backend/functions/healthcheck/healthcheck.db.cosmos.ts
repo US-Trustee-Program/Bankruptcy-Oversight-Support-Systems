@@ -1,5 +1,4 @@
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import log from '../lib/adapters/services/logger.service';
 
 import * as dotenv from 'dotenv';
 import { getAssignmentsCosmosDbClient } from '../lib/factory';
@@ -21,7 +20,7 @@ export default class HealthcheckCosmosDb {
       this.applicationContext = applicationContext;
       this.cosmosDbClient = getAssignmentsCosmosDbClient(this.applicationContext);
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
+      applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
   }
 
@@ -35,7 +34,7 @@ export default class HealthcheckCosmosDb {
         .fetchAll();
       return results.length > 0;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
@@ -47,10 +46,10 @@ export default class HealthcheckCosmosDb {
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
         .items.create({});
-      log.debug(this.applicationContext, MODULE_NAME, `New item created ${item.id}`);
+      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${item.id}`);
       return item.id != undefined;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
@@ -66,7 +65,7 @@ export default class HealthcheckCosmosDb {
 
       if (results.length > 0) {
         for (const item of results) {
-          log.debug(this.applicationContext, MODULE_NAME, `Invoking delete on item ${item.id}`);
+          this.applicationContext.logger.debug(MODULE_NAME, `Invoking delete on item ${item.id}`);
 
           await this.cosmosDbClient
             .database(this.databaseName)
@@ -77,7 +76,7 @@ export default class HealthcheckCosmosDb {
       }
       return true;
     } catch (e) {
-      log.error(this.applicationContext, MODULE_NAME, `${e.name}: ${e.message}`);
+      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }

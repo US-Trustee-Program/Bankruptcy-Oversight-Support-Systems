@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { getCasesCosmosDbClient, getCosmosConfig } from '../../factory';
 import { CosmosConfig } from '../types/database';
-import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
@@ -65,8 +64,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
         }
       }
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -90,8 +88,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
         .fetchAll();
       return results;
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );

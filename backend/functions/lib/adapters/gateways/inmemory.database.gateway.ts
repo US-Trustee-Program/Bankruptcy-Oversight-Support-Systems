@@ -1,4 +1,3 @@
-import log from '../services/logger.service';
 import { ApplicationContext, ObjectKeyVal, RecordObj } from '../types/basic.js';
 import { DbResult, QueryResults } from '../types/database.js';
 import { getProperty, mockData } from '../../testing/mock-data';
@@ -11,7 +10,7 @@ const runQuery = async (
   mockData: ObjectKeyVal[],
   input: { name: string; value: string }[],
 ): Promise<QueryResults> => {
-  log.info(applicationContext, MODULE_NAME, `Mocking query for ${tableName}`, input);
+  applicationContext.logger.info(MODULE_NAME, `Mocking query for ${tableName}`, input);
 
   const queryResult = mockData.filter((obj: object) => {
     let result = true;
@@ -50,7 +49,7 @@ const runQuery = async (
 const getAll = async (applicationContext: ApplicationContext, table: string): Promise<DbResult> => {
   let list: ObjectKeyVal[] = [];
 
-  log.info(applicationContext, MODULE_NAME, `Get all from ${table}`);
+  applicationContext.logger.info(MODULE_NAME, `Get all from ${table}`);
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     list = mockData[table];
@@ -77,7 +76,7 @@ const getRecord = async (
   let list: ObjectKeyVal[] = [];
   let record: ObjectKeyVal = {};
 
-  log.info(applicationContext, MODULE_NAME, `Fetch record ${id} from ${table}`);
+  applicationContext.logger.info(MODULE_NAME, `Fetch record ${id} from ${table}`);
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     list = mockData[table];
@@ -98,7 +97,7 @@ const getRecord = async (
     success: true,
   };
 
-  log.info(applicationContext, MODULE_NAME, `record from ${table} found`, results);
+  applicationContext.logger.info(MODULE_NAME, `record from ${table} found`, results);
 
   return results;
 };
@@ -108,7 +107,7 @@ const createRecord = async (
   table: string,
   fields: RecordObj[],
 ): Promise<DbResult> => {
-  log.info(applicationContext, MODULE_NAME, `Create record for ${table}`, fields);
+  applicationContext.logger.info(MODULE_NAME, `Create record for ${table}`, fields);
 
   const newRecord: ObjectKeyVal = {};
 
@@ -155,22 +154,22 @@ const updateRecord = async (
   id: number,
   fields: RecordObj[],
 ): Promise<DbResult> => {
-  log.info(applicationContext, MODULE_NAME, `Update record for ${table}`, fields);
+  applicationContext.logger.info(MODULE_NAME, `Update record for ${table}`, fields);
 
   const newRecord: ObjectKeyVal = {};
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     for (let i = 0; i < mockData[table].length; i++) {
-      log.info(applicationContext, MODULE_NAME, `Searching for ${id}`);
+      applicationContext.logger.info(MODULE_NAME, `Searching for ${id}`);
       const oldRecord = mockData[table][i];
       if (oldRecord[`${table}_id`] == id) {
-        log.info(applicationContext, MODULE_NAME, 'record found', oldRecord);
+        applicationContext.logger.info(MODULE_NAME, 'record found', oldRecord);
         newRecord[`${table}_id`] = id;
         fields.map((field) => {
           newRecord[field.fieldName] = field.fieldValue as string;
         });
 
-        log.info(applicationContext, MODULE_NAME, `New record: `, newRecord);
+        applicationContext.logger.info(MODULE_NAME, `New record: `, newRecord);
         mockData[table][i] = newRecord;
       }
     }
@@ -195,7 +194,7 @@ const deleteRecord = async (
   table: string,
   id: number,
 ): Promise<DbResult> => {
-  log.info(applicationContext, MODULE_NAME, `Delete record ${id} for ${table}`);
+  applicationContext.logger.info(MODULE_NAME, `Delete record ${id} for ${table}`);
 
   if (Object.prototype.hasOwnProperty.call(mockData, table)) {
     const data = mockData[table].filter((rec) => rec[`${table}_id`] != id);

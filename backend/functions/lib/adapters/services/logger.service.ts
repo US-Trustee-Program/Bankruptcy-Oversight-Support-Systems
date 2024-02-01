@@ -1,68 +1,42 @@
 import { CamsError } from '../../common-errors/cams-error';
-import { ApplicationContext } from '../types/basic';
+import { Context } from '@azure/functions';
+import { LoggerHelper } from '../types/basic';
 
-export default class log {
-  public static sanitize(input: string): string {
+type LoggerProvider = Console['log'] | Context['log'];
+type LogType = 'debug' | 'info' | 'warn' | 'error';
+
+export class LoggerImpl implements LoggerHelper {
+  private provider: LoggerProvider;
+  constructor(provider: LoggerProvider = console.log) {
+    this.provider = provider;
+  }
+  private sanitize(input: string): string {
     return input.replace(/[\r\n]+/g, ' ').trim();
   }
-
-  private static logMessage(
-    applicationContext: ApplicationContext,
-    logType: string,
-    moduleName: string,
-    message: string,
-    data?: unknown,
-  ) {
+  private logMessage(logType: LogType, moduleName: string, message: string, data?: unknown) {
     const logString = `[${logType.toUpperCase()}] [${moduleName}] ${message} ${
       undefined != data ? JSON.stringify(data) : ''
     }`;
-    if (
-      Object.prototype.hasOwnProperty.call(applicationContext, 'log') &&
-      typeof applicationContext.log === 'function'
-    ) {
-      applicationContext.log(log.sanitize(logString.trim()));
-    } else {
-      throw new Error('Context does not contain a log function');
-    }
+    this.provider(this.sanitize(logString.trim()));
   }
 
-  public static info(
-    applicationContext: ApplicationContext,
-    moduleName: string,
-    message: string,
-    data?: unknown,
-  ) {
-    log.logMessage(applicationContext, 'info', moduleName, message, data);
+  info(moduleName: string, message: string, data?: unknown) {
+    this.logMessage('info', moduleName, message, data);
   }
 
-  public static warn(
-    applicationContext: ApplicationContext,
-    moduleName: string,
-    message: string,
-    data?: unknown,
-  ) {
-    log.logMessage(applicationContext, 'warn', moduleName, message, data);
+  warn(moduleName: string, message: string, data?: unknown) {
+    this.logMessage('warn', moduleName, message, data);
   }
 
-  public static error(
-    applicationContext: ApplicationContext,
-    moduleName: string,
-    message: string,
-    data?: unknown,
-  ) {
-    log.logMessage(applicationContext, 'error', moduleName, message, data);
+  error(moduleName: string, message: string, data?: unknown) {
+    this.logMessage('error', moduleName, message, data);
   }
 
-  public static debug(
-    applicationContext: ApplicationContext,
-    moduleName: string,
-    message: string,
-    data?: unknown,
-  ) {
-    log.logMessage(applicationContext, 'debug', moduleName, message, data);
+  debug(moduleName: string, message: string, data?: unknown) {
+    this.logMessage('debug', moduleName, message, data);
   }
 
-  public static camsError(applicationContext: ApplicationContext, camsError: CamsError) {
-    log.logMessage(applicationContext, 'error', camsError.module, camsError.message, camsError);
+  camsError(camsError: CamsError) {
+    this.logMessage('error', camsError.module, camsError.message, camsError);
   }
 }

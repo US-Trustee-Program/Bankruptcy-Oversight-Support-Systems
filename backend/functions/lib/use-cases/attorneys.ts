@@ -5,7 +5,6 @@ import { getAttorneyGateway } from '../factory';
 import { CaseAssignmentUseCase } from './case.assignment';
 import { Attorney } from '../adapters/types/attorney.class';
 import { getFullName } from '../../../../common/src/name-helper';
-import log from '../adapters/services/logger.service';
 
 const MODULE_NAME = 'ATTORNEYS-USE-CASE';
 
@@ -34,7 +33,7 @@ export default class AttorneysList {
       try {
         attorney.caseLoad = await assignmentsUseCase.getCaseLoad(getFullName(attorney));
       } catch (e) {
-        log.error(applicationContext, MODULE_NAME, 'Unable to retrieve attorney case load.', e);
+        applicationContext.logger.error(MODULE_NAME, 'Unable to retrieve attorney case load.', e);
       }
       attorneysWithCaseLoad.push(attorney.getAsObjectKeyVal());
     }
