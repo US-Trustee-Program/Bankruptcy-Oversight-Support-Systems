@@ -1,7 +1,6 @@
+import { CaseNumber } from '@/lib/components/CaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 export type CaseTableImperative = {
   clearSelection: () => void;
@@ -66,9 +65,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                 </th>
               )}
               <td scope="row">
-                <Link target="_blank" to={`/case-detail/${bCase.caseId}`}>
-                  {getCaseNumber(bCase.caseId)}
-                </Link>
+                <CaseNumber caseNumber={bCase.caseId} />
               </td>
               <td scope="row">{bCase.caseTitle}</td>
               <td scope="row">{taxId}</td>
