@@ -261,21 +261,13 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    const transferPetitionCode = ['TI', 'TV'];
-
     if (queryResult.success) {
+      const transferPetitionCode = ['TI', 'TV'];
       const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
       for (const sCase of suggestedCases) {
-        // TODO: Refactor the use of queryPetitionInfo if and when we can get the petitionCode back on the caseSummary query.
-        // TODO: Once we have a petitionCode we can just augment the label with the sync lookup function.
-        const petitionInfo = await this.queryPetitionInfo(
-          applicationContext,
-          sCase.caseId,
-          sCase.courtId,
-        );
-        sCase.petitionCode = petitionInfo.petitionCode;
-        sCase.petitionLabel = petitionInfo.petitionLabel;
-        if (transferPetitionCode.includes(petitionInfo.petitionCode)) {
+        sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
+        sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
+        if (transferPetitionCode.includes(sCase.petitionCode)) {
           sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
         }
       }
@@ -296,20 +288,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       throw new NotFoundError(MODULENAME, { message: 'Case summary not found for case ID.' });
     }
     bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
-
-    bCase.debtorTypeLabel = await this.queryDebtorTypeLabel(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-
-    const { petitionLabel } = await this.queryPetitionInfo(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-    bCase.petitionLabel = petitionLabel;
-
+    bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
+    bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
   }
 
