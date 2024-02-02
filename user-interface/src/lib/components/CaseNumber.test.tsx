@@ -1,0 +1,43 @@
+import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { CaseNumber, CaseNumberProps } from './CaseNumber';
+
+describe('CaseNumber component', () => {
+  const testId = 'the-case-number';
+  const linkTestId = testId + '-link';
+  const caseNumber = '000-11-22222';
+  const expectedTextContent = '11-22222';
+  const defaultProps: CaseNumberProps = { caseNumber, 'data-testid': testId };
+
+  function renderWithProps(props: CaseNumberProps) {
+    render(
+      <BrowserRouter>
+        <CaseNumber {...props} />
+      </BrowserRouter>,
+    );
+  }
+
+  test('should render the case number as a link to the detail screen by default', () => {
+    renderWithProps(defaultProps);
+
+    const link = screen.getByTestId(linkTestId);
+    expect(link).toBeInTheDocument();
+    expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseNumber}/`);
+    expect(link.attributes.getNamedItem('title')?.value).toEqual(`Open case ${caseNumber}`);
+
+    const span = screen.getByTestId(testId);
+    expect(span).toBeInTheDocument();
+    expect(span).toHaveTextContent(expectedTextContent);
+  });
+
+  test('should render the case number as a span if specified', () => {
+    renderWithProps({ ...defaultProps, renderAs: 'span' });
+
+    const link = screen.queryByTestId(linkTestId);
+    expect(link).not.toBeInTheDocument();
+
+    const span = screen.getByTestId(testId);
+    expect(span).toBeInTheDocument();
+    expect(span).toHaveTextContent(expectedTextContent);
+  });
+});

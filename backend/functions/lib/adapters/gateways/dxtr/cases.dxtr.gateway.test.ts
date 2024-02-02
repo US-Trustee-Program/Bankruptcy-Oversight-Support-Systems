@@ -24,7 +24,8 @@ function generateTestCase(overlay = {}) {
     courtDivision: '081',
     courtName: 'Fancy Court Name',
     courtDivisionName: 'Manhattan',
-    debtorTypeLabel: 'Corporate Business',
+    debtorTypeCode: 'CB',
+    petitionCode: 'VP',
   };
   return {
     ...defaultReturn,
@@ -35,6 +36,7 @@ function generateTestCase(overlay = {}) {
 describe('Test DXTR Gateway', () => {
   let applicationContext;
   const querySpy = jest.spyOn(database, 'executeQuery');
+
   beforeEach(async () => {
     const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
@@ -44,8 +46,9 @@ describe('Test DXTR Gateway', () => {
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
     querySpy.mockImplementation(jest.fn());
   });
+
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   test('should call executeQuery with the default starting month and return expected results', async () => {
@@ -201,19 +204,6 @@ describe('Test DXTR Gateway', () => {
       phone: '101-345-8765',
     };
 
-    const mockDebtorTypeTransactionResults = {
-      success: true,
-      results: {
-        recordset: [
-          {
-            txRecord:
-              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-            txCode: '1',
-          },
-        ],
-      },
-      message: '',
-    };
     const expectedDebtorTypeLabel = 'Corporate Business';
 
     const mockQueryDebtorAttorney: QueryResults = {
@@ -230,16 +220,6 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryParties);
-    });
-
-    // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
-
-    // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
@@ -421,36 +401,12 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    const mockDebtorTypeTransactionResults = {
-      success: true,
-      results: {
-        recordset: [
-          {
-            txRecord:
-              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-            txCode: '1',
-          },
-        ],
-      },
-      message: '',
-    };
-
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryParties);
-    });
-
-    // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
-
-    // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
@@ -486,13 +442,6 @@ describe('Test DXTR Gateway', () => {
     );
     // getDebtorAttorneys
     expect(querySpy.mock.calls[3][3]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
-    );
-    // getDebtorTypeLabel
-    expect(querySpy.mock.calls[4][3]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
@@ -595,7 +544,6 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-      //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
       });
@@ -621,7 +569,6 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-      //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
         address1: '123 Main St',
@@ -711,83 +658,6 @@ describe('Test DXTR Gateway', () => {
         phone: '9876543210',
         email: 'someone@email.com',
       });
-    });
-  });
-
-  describe('debtorTypeLabelCallback', () => {
-    test('should return UNKNOWN when no results are returned', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
-      const label = testCasesDxtrGateway.debtorTypeLabelCallback(applicationContext, queryResult);
-
-      expect(label).toEqual('Debtor type information is not available.');
-    });
-
-    test('should return expected debtor type label', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [
-            {
-              txRecord: '1081231056523-10565            15IB00-0000000',
-            },
-          ],
-        },
-        message: '',
-      };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
-      const label = testCasesDxtrGateway.debtorTypeLabelCallback(applicationContext, queryResult);
-
-      expect(label).toEqual('Individual Business');
-    });
-  });
-
-  describe('petitionLabelCallback', () => {
-    test('should return UNKNOWN when no results are returned', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
-      const label = testCasesDxtrGateway.petitionLabelCallback(applicationContext, queryResult);
-
-      expect(label).toEqual('');
-    });
-
-    test('should return expected petition label', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [
-            {
-              txRecord:
-                '1081231056523-10565            15IB00-0000000     000000000000000000230411999992304119999923041110308230411VP000000',
-            },
-          ],
-        },
-        message: '',
-      };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
-      const label = testCasesDxtrGateway.petitionLabelCallback(applicationContext, queryResult);
-
-      expect(label).toEqual('Voluntary');
     });
   });
 });

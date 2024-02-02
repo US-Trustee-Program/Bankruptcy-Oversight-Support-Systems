@@ -16,23 +16,19 @@ import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import { handleQueryResult } from '../gateway-helper';
-import {
-  decomposeCaseId,
-  parseDebtorType,
-  parsePetitionType,
-  parseTransactionDate,
-} from './dxtr.gateway.helper';
+import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
-import { getPetitionLabel } from '../petition-gateway';
+import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
 const MANHATTAN_GROUP_DESIGNATOR = 'NY';
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
-const reopenedDate = 'OCO';
+const reopenedDateTxCode = 'OCO';
 
 function sqlSelectList(top: string, chapter: string) {
   // THIS SETS US UP FOR SQL INJECTION IF WE EVER ACCEPT top OR chapter FROM USER INPUT.
@@ -135,6 +131,145 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
+  public async getSuggestedCases(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface[]> {
+    const input: DbTableFieldSpec[] = [];
+    const bCase = await this.getCaseSummary(applicationContext, caseId);
+
+    input.push({
+      name: 'taxId',
+      type: mssql.VarChar,
+      value: bCase.debtor.taxId,
+    });
+
+    input.push({
+      name: 'ssn',
+      type: mssql.VarChar,
+      value: bCase.debtor.ssn,
+    });
+
+    input.push({
+      name: 'caseTitle',
+      type: mssql.VarChar,
+      value: bCase.caseTitle,
+    });
+
+    input.push({
+      name: 'debtorName',
+      type: mssql.VarChar,
+      value: bCase.debtor.name,
+    });
+
+    input.push({
+      name: 'chapter',
+      type: mssql.VarChar,
+      value: bCase.chapter,
+    });
+
+    input.push({
+      name: 'dateFiled',
+      type: mssql.Date,
+      value: bCase.dateFiled,
+    });
+
+    input.push({
+      name: 'originalCourt',
+      type: mssql.VarChar,
+      value: bCase.courtId,
+    });
+
+    const CASE_SUGGESTION_QUERY = `SELECT
+        cs.CS_DIV as courtDivision,
+        cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+        cs.CS_SHORT_TITLE as caseTitle,
+        FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+        cs.CS_CASEID as dxtrId,
+        cs.CS_CHAPTER as chapter,
+        cs.COURT_ID as courtId,
+        court.COURT_NAME as courtName,
+        office.OFFICE_NAME as courtDivisionName,
+        TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
+        TRIM(CONCAT(
+          PY_FIRST_NAME,
+          ' ',
+          PY_MIDDLE_NAME,
+          ' ',
+          PY_LAST_NAME,
+          ' ',
+          PY_GENERATION
+        )) as partyName,
+        grp_des.REGION_ID as regionId,
+        R.REGION_NAME AS regionName,
+        TX.petitionCode,
+        TX.debtorTypeCode
+        FROM [dbo].[AO_CS] AS cs
+        JOIN [dbo].[AO_GRP_DES] AS grp_des
+          ON cs.GRP_DES = grp_des.GRP_DES
+        JOIN [dbo].[AO_COURT] AS court
+          ON cs.COURT_ID = court.COURT_ID
+        JOIN [dbo].[AO_CS_DIV] AS cs_div
+          ON cs.CS_DIV = cs_div.CS_DIV
+        JOIN [dbo].[AO_OFFICE] AS office
+          ON cs.COURT_ID = office.COURT_ID
+          AND cs_div.OFFICE_CODE = office.OFFICE_CODE
+        JOIN [dbo].[AO_PY] AS party
+          ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
+        JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
+        JOIN (
+          SELECT DISTINCT
+          T1.COURT_ID,
+          T1.CS_CASEID,
+          substring(REC,108,2) AS petitionCode,
+          substring(REC,34,2) AS debtorTypeCode
+          FROM [dbo].[AO_CS] AS C1
+          JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
+          JOIN [dbo].[AO_PY] AS P1
+          ON P1.CS_CASEID = C1.CS_CASEID AND P1.COURT_ID = C1.COURT_ID AND P1.PY_ROLE = 'db'
+          WHERE (
+            P1.PY_TAXID = @taxId OR P1.PY_SSN = @ssn
+            OR c1.CS_SHORT_TITLE = @caseTitle
+            OR TRIM(CONCAT(
+              PY_FIRST_NAME,
+              ' ',
+              PY_MIDDLE_NAME,
+              ' ',
+              PY_LAST_NAME,
+              ' ',
+              PY_GENERATION
+            )) = @debtorName
+          )
+          AND C1.CS_CHAPTER = @chapter
+          AND C1.CS_DATE_FILED >= @datefiled
+          AND C1.COURT_ID != @originalCourt
+        ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
+        ORDER BY
+          cs.CS_DATE_FILED DESC`;
+
+    const queryResult: QueryResults = await executeQuery(
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
+      CASE_SUGGESTION_QUERY,
+      input,
+    );
+
+    if (queryResult.success) {
+      const transferPetitionCode = ['TI', 'TV'];
+      const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
+      for (const sCase of suggestedCases) {
+        sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
+        sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
+        if (transferPetitionCode.includes(sCase.petitionCode)) {
+          sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
+        }
+      }
+      return suggestedCases.filter((sc) => transferPetitionCode.includes(sc.petitionCode));
+    } else {
+      throw new CamsError(MODULENAME, { message: queryResult.message });
+    }
+  }
+
   async getCaseSummary(
     applicationContext: ApplicationContext,
     caseId: string,
@@ -146,19 +281,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       throw new NotFoundError(MODULENAME, { message: 'Case summary not found for case ID.' });
     }
     bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
-
-    bCase.debtorTypeLabel = await this.queryDebtorTypeLabel(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-
-    bCase.petitionLabel = await this.queryPetitionLabel(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
-
+    bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
+    bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
   }
 
@@ -192,7 +316,10 @@ export default class CasesDxtrGateway implements CasesInterface {
         court.COURT_NAME as courtName,
         office.OFFICE_NAME as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
-        grp_des.REGION_ID as regionId
+        grp_des.REGION_ID as regionId,
+        R.REGION_NAME AS regionName,
+        TX.petitionCode,
+        TX.debtorTypeCode
         FROM [dbo].[AO_CS] AS cs
         JOIN [dbo].[AO_GRP_DES] AS grp_des
           ON cs.GRP_DES = grp_des.GRP_DES
@@ -203,8 +330,18 @@ export default class CasesDxtrGateway implements CasesInterface {
         JOIN [dbo].[AO_OFFICE] AS office
           ON cs.COURT_ID = office.COURT_ID
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
-        WHERE cs.CASE_ID = @dxtrCaseId
-        AND cs.CS_DIV = @courtDiv
+        JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
+        JOIN (
+          SELECT DISTINCT
+          T1.COURT_ID,
+          T1.CS_CASEID,
+          substring(REC,108,2) AS petitionCode,
+          substring(REC,34,2) AS debtorTypeCode
+          FROM [dbo].[AO_CS] AS C1
+          JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
+          WHERE C1.CASE_ID = @dxtrCaseId
+          AND C1.CS_DIV = @courtDiv
+        ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
@@ -259,7 +396,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     input.push({
       name: 'reopenedDate',
       type: mssql.VarChar,
-      value: reopenedDate,
+      value: reopenedDateTxCode,
     });
 
     const query = `select
@@ -284,96 +421,6 @@ export default class CasesDxtrGateway implements CasesInterface {
         queryResult,
         MODULENAME,
         this.transactionQueryCallback,
-      ),
-    );
-  }
-
-  private async queryDebtorTypeLabel(
-    applicationContext: ApplicationContext,
-    dxtrId: string,
-    courtId: string,
-  ): Promise<string> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
-
-    const query = `select
-      REC as txRecord,
-      TX_CODE as txCode
-      FROM [dbo].[AO_TX]
-      WHERE CS_CASEID = @dxtrId
-      AND COURT_ID = @courtId
-      AND TX_TYPE = '1'
-    `;
-
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
-
-    return Promise.resolve(
-      handleQueryResult<string>(
-        applicationContext,
-        queryResult,
-        MODULENAME,
-        this.debtorTypeLabelCallback,
-      ),
-    );
-  }
-
-  private async queryPetitionLabel(
-    applicationContext: ApplicationContext,
-    dxtrId: string,
-    courtId: string,
-  ): Promise<string> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
-
-    const query = `select
-      REC as txRecord,
-      TX_CODE as txCode
-      FROM [dbo].[AO_TX]
-      WHERE CS_CASEID = @dxtrId
-      AND COURT_ID = @courtId
-      AND TX_TYPE = '1'
-    `;
-
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
-
-    return Promise.resolve(
-      handleQueryResult<string>(
-        applicationContext,
-        queryResult,
-        MODULENAME,
-        this.petitionLabelCallback,
       ),
     );
   }
@@ -451,6 +498,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       ),
     );
   }
+
   private async queryDebtorAttorney(
     context: ApplicationContext,
     dxtrId: string,
@@ -520,7 +568,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  debtorAttorneyQueryCallback(context: ApplicationContext, queryResult: QueryResults) {
+  debtorAttorneyQueryCallback(_context: ApplicationContext, queryResult: QueryResults) {
     let debtorAttorney: DebtorAttorney;
 
     (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
@@ -578,28 +626,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     sortDates(reopenedDates);
 
     return { closedDates, dismissedDates, reopenedDates } as TransactionDates;
-  }
-
-  debtorTypeLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(
-      MODULENAME,
-      `Transaction results received from DXTR:`,
-      queryResult,
-    );
-    const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
-    const key = resultset.length ? parseDebtorType(resultset[0]) : 'UNKNOWN';
-    return getDebtorTypeLabel(key);
-  }
-
-  petitionLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(
-      MODULENAME,
-      `Transaction results received from DXTR:`,
-      queryResult,
-    );
-    const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
-    const key = resultset.length ? parsePetitionType(resultset[0]) : 'UNKNOWN';
-    return getPetitionLabel(key);
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {

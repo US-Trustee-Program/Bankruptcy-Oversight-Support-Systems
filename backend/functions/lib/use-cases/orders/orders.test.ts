@@ -7,6 +7,7 @@ import {
   getOrdersRepository,
   getRuntimeStateRepository,
   getCasesRepository,
+  getCasesGateway,
 } from '../../factory';
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
@@ -23,6 +24,7 @@ describe('Orders use case', () => {
   let casesRepo;
   let runtimeStateRepo;
   let useCase;
+  let casesGateway;
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
@@ -30,7 +32,14 @@ describe('Orders use case', () => {
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
     casesRepo = getCasesRepository(mockContext);
-    useCase = new OrdersUseCase(casesRepo, ordersRepo, ordersGateway, runtimeStateRepo);
+    casesGateway = getCasesGateway(mockContext);
+    useCase = new OrdersUseCase(
+      casesRepo,
+      casesGateway,
+      ordersRepo,
+      ordersGateway,
+      runtimeStateRepo,
+    );
   });
 
   test('should return list of orders for the API from the repo', async () => {

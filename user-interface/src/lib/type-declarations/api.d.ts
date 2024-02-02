@@ -1,3 +1,7 @@
+export interface SimpleResponseData {
+  success: boolean;
+  body: Array<object>;
+}
 export interface ResponseData {
   message: string;
   count: number;
