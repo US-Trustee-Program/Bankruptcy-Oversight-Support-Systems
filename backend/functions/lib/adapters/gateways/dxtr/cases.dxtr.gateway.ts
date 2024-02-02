@@ -180,6 +180,12 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: bCase.courtId,
     });
 
+    input.push({
+      name: 'originalDivision',
+      type: mssql.VarChar,
+      value: bCase.courtDivision,
+    });
+
     const CASE_SUGGESTION_QUERY = `SELECT
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
@@ -242,7 +248,8 @@ export default class CasesDxtrGateway implements CasesInterface {
           )
           AND C1.CS_CHAPTER = @chapter
           AND C1.CS_DATE_FILED >= @datefiled
-          AND C1.COURT_ID != @originalCourt
+          AND (C1.COURT_ID != @originalCourt
+              OR C1.CS_DIV != @originalDivision)
         ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;
