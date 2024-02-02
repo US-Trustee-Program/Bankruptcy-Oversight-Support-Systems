@@ -24,7 +24,6 @@ function generateTestCase(overlay = {}) {
     courtDivision: '081',
     courtName: 'Fancy Court Name',
     courtDivisionName: 'Manhattan',
-    // debtorTypeLabel: 'Corporate Business',
     debtorTypeCode: 'CB',
     petitionCode: 'VP',
   };
@@ -545,7 +544,6 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-      //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
       });
@@ -571,7 +569,6 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-      //store object as constant
       expect(party).toEqual({
         name: 'John Q. Smith',
         address1: '123 Main St',
