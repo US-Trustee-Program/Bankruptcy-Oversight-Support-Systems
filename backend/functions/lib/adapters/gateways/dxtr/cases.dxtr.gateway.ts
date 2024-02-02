@@ -16,15 +16,10 @@ import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import { handleQueryResult } from '../gateway-helper';
-import {
-  decomposeCaseId,
-  parseDebtorType,
-  parsePetitionType,
-  parseTransactionDate,
-} from './dxtr.gateway.helper';
+import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
-import { PetitionInfo, getPetitionInfo } from '../petition-gateway';
+import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 
@@ -637,31 +632,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     sortDates(reopenedDates);
 
     return { closedDates, dismissedDates, reopenedDates } as TransactionDates;
-  }
-
-  debtorTypeLabelCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(
-      MODULENAME,
-      `Transaction results received from DXTR:`,
-      queryResult,
-    );
-    const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
-    const key = resultset.length ? parseDebtorType(resultset[0]) : 'UNKNOWN';
-    return getDebtorTypeLabel(key);
-  }
-
-  petitionInfoCallback(
-    applicationContext: ApplicationContext,
-    queryResult: QueryResults,
-  ): PetitionInfo {
-    applicationContext.logger.debug(
-      MODULENAME,
-      `Transaction results received from DXTR:`,
-      queryResult,
-    );
-    const resultset = (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset;
-    const key = resultset.length ? parsePetitionType(resultset[0]) : 'UNKNOWN';
-    return getPetitionInfo(key);
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
