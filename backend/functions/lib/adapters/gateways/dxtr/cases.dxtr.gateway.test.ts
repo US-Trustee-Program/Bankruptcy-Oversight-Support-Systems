@@ -24,7 +24,9 @@ function generateTestCase(overlay = {}) {
     courtDivision: '081',
     courtName: 'Fancy Court Name',
     courtDivisionName: 'Manhattan',
-    debtorTypeLabel: 'Corporate Business',
+    // debtorTypeLabel: 'Corporate Business',
+    debtorTypeCode: 'CB',
+    petitionCode: 'VP',
   };
   return {
     ...defaultReturn,
@@ -35,6 +37,7 @@ function generateTestCase(overlay = {}) {
 describe('Test DXTR Gateway', () => {
   let applicationContext;
   const querySpy = jest.spyOn(database, 'executeQuery');
+
   beforeEach(async () => {
     const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
@@ -44,8 +47,9 @@ describe('Test DXTR Gateway', () => {
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
     querySpy.mockImplementation(jest.fn());
   });
+
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   test('should call executeQuery with the default starting month and return expected results', async () => {
@@ -201,19 +205,6 @@ describe('Test DXTR Gateway', () => {
       phone: '101-345-8765',
     };
 
-    const mockDebtorTypeTransactionResults = {
-      success: true,
-      results: {
-        recordset: [
-          {
-            txRecord:
-              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-            txCode: '1',
-          },
-        ],
-      },
-      message: '',
-    };
     const expectedDebtorTypeLabel = 'Corporate Business';
 
     const mockQueryDebtorAttorney: QueryResults = {
@@ -230,16 +221,6 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryParties);
-    });
-
-    // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
-
-    // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
@@ -421,36 +402,12 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    const mockDebtorTypeTransactionResults = {
-      success: true,
-      results: {
-        recordset: [
-          {
-            txRecord:
-              '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-            txCode: '1',
-          },
-        ],
-      },
-      message: '',
-    };
-
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockQueryParties);
-    });
-
-    // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
-
-    // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
     querySpy.mockImplementationOnce(async () => {
@@ -486,13 +443,6 @@ describe('Test DXTR Gateway', () => {
     );
     // getDebtorAttorneys
     expect(querySpy.mock.calls[3][3]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
-    );
-    // getDebtorTypeLabel
-    expect(querySpy.mock.calls[4][3]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),

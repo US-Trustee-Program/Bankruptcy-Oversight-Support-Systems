@@ -28,7 +28,7 @@ const MODULENAME = 'CASES-DXTR-GATEWAY';
 const MANHATTAN_GROUP_DESIGNATOR = 'NY';
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
-const reopenedDate = 'OCO';
+const reopenedDateTxCode = 'OCO';
 
 function sqlSelectList(top: string, chapter: string) {
   // THIS SETS US UP FOR SQL INJECTION IF WE EVER ACCEPT top OR chapter FROM USER INPUT.
@@ -400,7 +400,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     input.push({
       name: 'reopenedDate',
       type: mssql.VarChar,
-      value: reopenedDate,
+      value: reopenedDateTxCode,
     });
 
     const query = `select
