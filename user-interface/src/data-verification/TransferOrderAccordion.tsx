@@ -576,7 +576,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           <div className="grid-col-10">
                             These cases have similar information to the case being transferred.
                             Select one of the cases below to set up the transfer. If the correct
-                            case {"isn't"}
+                            case {"isn't "}
                             listed, please enter the Case Number on the Enter Case tab instead.
                           </div>
                           <div className="grid-col-1"></div>
