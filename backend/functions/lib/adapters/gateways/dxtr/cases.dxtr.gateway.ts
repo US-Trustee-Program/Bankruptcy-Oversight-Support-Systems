@@ -305,7 +305,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: dxtrCaseId,
     });
 
-    // TODO: Refactor the petitionType, debtorType lookup to be a subquery due to AO_TX duplication observed in USTP data.
     const CASE_DETAIL_QUERY = `SELECT
         cs.CS_DIV as courtDivision,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
