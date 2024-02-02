@@ -2,7 +2,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDetailType, Transfer } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
-import { Link } from 'react-router-dom';
+import { CaseNumber } from '@/lib/components/CaseNumber';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -259,16 +259,11 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                         </h4>
                         <div>
                           <span className="case-detail-item-name">Case Number:</span>
-                          <Link
-                            to={`/case-detail/${transfer.otherCaseId}/`}
+                          <CaseNumber
+                            caseNumber={transfer.otherCaseId}
                             className="usa-link case-detail-item-value"
                             data-testid={`case-detail-transfer-link-${idx}`}
-                            title={`Open case ${getCaseNumber(transfer.otherCaseId)}`}
-                            target="_self"
-                            reloadDocument={true}
-                          >
-                            {getCaseNumber(transfer.otherCaseId)}
-                          </Link>
+                          />
                         </div>
                         <div className="transfer-court">
                           <span className="case-detail-item-name">

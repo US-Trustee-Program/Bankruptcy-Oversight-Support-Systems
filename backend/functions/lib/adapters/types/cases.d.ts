@@ -52,13 +52,16 @@ export interface CaseDetailInterface {
   courtId?: string;
   courtName?: string;
   regionId?: string;
+  regionName?: string;
   officeName?: string;
+  petitionCode?: string;
   petitionLabel?: string;
   courtDivisionName?: string;
   assignments?: string[];
   judgeName?: string;
   debtor?: Party;
   debtorAttorney?: DebtorAttorney;
+  debtorTypeCode?: string;
   debtorTypeLabel?: string;
   transfers?: Array<TransferIn | TransferOut>;
 }

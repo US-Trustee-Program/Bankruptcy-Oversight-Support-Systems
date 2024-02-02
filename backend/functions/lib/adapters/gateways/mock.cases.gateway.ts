@@ -112,4 +112,22 @@ export class CasesLocalGateway implements CasesInterface {
     }
     return caseDetail;
   }
+
+  public async getSuggestedCases(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseDetailInterface[]> {
+    const gatewayHelper = new GatewayHelper();
+    try {
+      return gatewayHelper.getAllCasesMockExtract();
+    } catch (err) {
+      applicationContext.logger.error(
+        MODULE_NAME,
+        `Failed to read mock case detail for ${caseId}.`,
+        err,
+      );
+      const message = (err as Error).message;
+      return Promise.reject(message);
+    }
+  }
 }

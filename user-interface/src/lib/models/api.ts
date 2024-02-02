@@ -1,5 +1,5 @@
 import { httpGet, httpPatch, httpPost } from '../utils/http.adapter';
-import { ResponseData } from '../type-declarations/api';
+import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import config from '../../configuration/apiConfiguration';
 
@@ -63,7 +63,10 @@ export default class Api {
     }
   }
 
-  public static async get(path: string, options?: ObjectKeyVal): Promise<ResponseData> {
+  public static async get(
+    path: string,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseData | SimpleResponseData> {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);

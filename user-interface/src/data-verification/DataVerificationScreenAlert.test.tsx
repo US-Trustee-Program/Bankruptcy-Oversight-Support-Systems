@@ -24,7 +24,6 @@ describe('Review Orders screen - Alert', () => {
 
     vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
       (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        console.log('CALLED MOCK.  DONT MOCK ME.');
         props.onOrderUpdate(
           {
             message: mockAlertMessage,

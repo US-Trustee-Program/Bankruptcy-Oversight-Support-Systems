@@ -12,7 +12,7 @@ import {
 import { OrderTransfer } from '../lib/use-cases/orders/orders.model';
 import { BadRequestError } from '../lib/common-errors/bad-request';
 
-const MODULE_NAME = 'ORDERS_CONTROLLER';
+const MODULE_NAME = 'ORDERS_FUNCTION';
 
 dotenv.config();
 
