@@ -34,7 +34,7 @@
     "@opentelemetry/instrumentation": "0.41.2"
   },
   "scripts": {
-    "clean": "rm -rf ./dist & rm -rf ./node_modules",
+    "clean": "rm -rf ./dist & rm -rf ./node_modules & rm -rf ./coverage",
     "build": "tsc --build tsconfig.build.json",
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",

@@ -114,7 +114,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (doChapter11Enable) queries.push(sqlSelectList(rowsToReturn, '11'));
     const query = sqlUnion(queries);
 
-    applicationContext.logger.info('Cases query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -248,7 +247,6 @@ export default class CasesDxtrGateway implements CasesInterface {
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
-    applicationContext.logger.info('Suggested cases query::::::::::', CASE_SUGGESTION_QUERY);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -348,7 +346,6 @@ export default class CasesDxtrGateway implements CasesInterface {
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
-    applicationContext.logger.info('Case details query::::::::::', CASE_DETAIL_QUERY);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -412,7 +409,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       AND TX_TYPE = 'O'
       AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @reopenedDate)`;
 
-    applicationContext.logger.info('Transactions query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
@@ -487,7 +483,6 @@ export default class CasesDxtrGateway implements CasesInterface {
         PY_ROLE = @debtorPartyCode
     `;
 
-    applicationContext.logger.info('Parties query::::::::::', query);
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
       applicationContext.config.dxtrDbConfig,
