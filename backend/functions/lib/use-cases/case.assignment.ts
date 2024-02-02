@@ -1,5 +1,5 @@
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
-import { getAssignmentRepository } from '../factory';
+import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
 import {
   AttorneyAssignmentResponseInterface,
@@ -7,14 +7,17 @@ import {
   CaseAssignmentHistory,
 } from '../adapters/types/case.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+import { CasesRepository } from './gateways.types';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
+  private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
     this.assignmentRepository = getAssignmentRepository(applicationContext);
+    this.casesRepository = getCasesRepository(applicationContext);
   }
 
   public async createTrialAttorneyAssignments(
@@ -76,7 +79,7 @@ export class CaseAssignmentUseCase {
       previousAssignments: existingAssignmentRecords,
       newAssignments: newAssignmentRecords,
     };
-    await this.assignmentRepository.createAssignmentHistory(history);
+    await this.casesRepository.createCaseHistory(applicationContext, history);
 
     applicationContext.logger.info(
       MODULE_NAME,

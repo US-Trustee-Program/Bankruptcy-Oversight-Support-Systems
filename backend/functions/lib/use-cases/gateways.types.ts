@@ -32,6 +32,8 @@ export interface CasesRepository {
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<TransferIn | TransferOut>>;
+  getCaseHistory(context: ApplicationContext, caseId: string);
+  createCaseHistory(context: ApplicationContext, history: CaseAssignmentHistory);
 }
 
 // TODO: Move these models to a top level models file?

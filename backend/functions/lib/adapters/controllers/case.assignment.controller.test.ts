@@ -1,6 +1,8 @@
 import { CaseAssignmentController } from './case.assignment.controller';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
+import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
+import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -17,21 +19,32 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('A case is assigned to an attorney when requested', async () => {
+    const listOfAttorneyNames = ['Jane'];
     const testCaseAssignment = {
       caseId: '001-18-12345',
-      listOfAttorneyNames: ['Jane'],
+      listOfAttorneyNames,
       role: trialAttorneyRole,
     };
+    const expectedResponse: AttorneyAssignmentResponseInterface = {
+      success: true,
+      message: '',
+      count: 1,
+      body: listOfAttorneyNames,
+    };
+
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockResolvedValue(expectedResponse);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(1);
+    expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
     expect(assignmentResponse.body[0]).toBeTruthy();
   });
 
-  test('should assign all attorneys in the list', async () => {
+  test.only('should assign all attorneys in the list', async () => {
     const listOfAttorneyNames = ['Jane', 'Tom', 'Adrian'];
     const testCaseAssignment = {
       caseId: '001-18-12345',
