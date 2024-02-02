@@ -20,9 +20,12 @@ export class CaseHistoryController {
     this.useCase = new CaseHistoryUseCase(applicationContext);
   }
 
-  public async getCaseHistory(request: GetCaseHistoryRequest): Promise<GetCaseHistoryResponse> {
+  public async getCaseHistory(
+    context: ApplicationContext,
+    request: GetCaseHistoryRequest,
+  ): Promise<GetCaseHistoryResponse> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(request.caseId);
+      const caseHistory = await this.useCase.getCaseHistory(context, request.caseId);
       return {
         success: true,
         body: caseHistory,

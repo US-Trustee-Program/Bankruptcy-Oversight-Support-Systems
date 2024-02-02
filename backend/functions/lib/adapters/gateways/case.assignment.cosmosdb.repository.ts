@@ -112,22 +112,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     throw new Error('Method not implemented.');
   }
 
-  async getAssignmentHistory(caseId: string): Promise<CaseAssignmentHistory[]> {
-    const query =
-      'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT_HISTORY" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
-    const querySpec = {
-      query,
-      parameters: [
-        {
-          name: '@caseId',
-          value: caseId,
-        },
-      ],
-    };
-    const response = await this.queryData(querySpec);
-    return response as CaseAssignmentHistory[];
-  }
-
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
     const query =
       'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT" AND c.caseId = @caseId AND NOT IS_DEFINED(c.unassignedOn)';

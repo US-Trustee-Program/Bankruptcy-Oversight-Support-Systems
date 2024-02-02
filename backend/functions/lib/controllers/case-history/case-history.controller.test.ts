@@ -18,7 +18,7 @@ describe('Test case-history controller', () => {
   test('should return a case history when getCaseHistory is called', async () => {
     const caseId = NORMAL_CASE_ID;
     const controller = new CaseHistoryController(applicationContext);
-    const result = await controller.getCaseHistory({ caseId });
+    const result = await controller.getCaseHistory(applicationContext, { caseId });
     expect(result.success).toBeTruthy();
     expect(result['body']).toEqual(CASE_HISTORY);
   });
@@ -26,7 +26,9 @@ describe('Test case-history controller', () => {
   test('should throw a NotFoundError when a history is not found', async () => {
     const caseId = NOT_FOUND_ERROR_CASE_ID;
     const controller = new CaseHistoryController(applicationContext);
-    await expect(controller.getCaseHistory({ caseId })).rejects.toThrow('Not found');
+    await expect(controller.getCaseHistory(applicationContext, { caseId })).rejects.toThrow(
+      'Not found',
+    );
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
@@ -36,6 +38,8 @@ describe('Test case-history controller', () => {
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
-    await expect(controller.getCaseHistory({ caseId })).rejects.toThrow(expectedMessage);
+    await expect(controller.getCaseHistory(applicationContext, { caseId })).rejects.toThrow(
+      expectedMessage,
+    );
   });
 });

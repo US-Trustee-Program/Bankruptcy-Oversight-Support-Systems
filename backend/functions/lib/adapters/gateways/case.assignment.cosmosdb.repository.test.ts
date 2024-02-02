@@ -1,9 +1,8 @@
 import { CaseAssignmentCosmosDbRepository } from './case.assignment.cosmosdb.repository';
 import { randomUUID } from 'crypto';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
-import { CaseAssignment, CaseAssignmentHistory } from '../types/case.assignment';
+import { CaseAssignment } from '../types/case.assignment';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
@@ -343,45 +342,5 @@ describe('Test case assignment cosmosdb repository tests', () => {
     await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
       'Unable to update assignment. Please try again later. If the problem persists, please contact USTP support.',
     );
-  });
-
-  describe('Test case history cosmosdb repository tests', () => {
-    test('should return case history for attorney assignments', async () => {
-      const caseId = '123-11-1234';
-      const actualAssignmentsOne = await repository.getAssignmentHistory(caseId);
-
-      expect(actualAssignmentsOne.length).toEqual(2);
-      expect(actualAssignmentsOne).toEqual(CASE_HISTORY);
-    });
-
-    test('should throw a permissions error when user doesnt have permission to create assignment history', async () => {
-      const caseId = THROW_PERMISSIONS_ERROR_CASE_ID;
-      const testCaseAssignmentHistory: CaseAssignmentHistory = {
-        caseId,
-        documentType: 'ASSIGNMENT_HISTORY',
-        occurredAtTimestamp: new Date().toISOString(),
-        previousAssignments: [],
-        newAssignments: [],
-      };
-
-      await expect(repository.createAssignmentHistory(testCaseAssignmentHistory)).rejects.toThrow(
-        'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-      );
-    });
-
-    test('should throw UnknownError if an unknown error occurs', async () => {
-      const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
-      const testCaseAssignmentHistory: CaseAssignmentHistory = {
-        caseId,
-        documentType: 'ASSIGNMENT_HISTORY',
-        occurredAtTimestamp: new Date().toISOString(),
-        previousAssignments: [],
-        newAssignments: [],
-      };
-
-      await expect(repository.createAssignmentHistory(testCaseAssignmentHistory)).rejects.toThrow(
-        'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-      );
-    });
   });
 });
