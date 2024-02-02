@@ -99,25 +99,20 @@ export const CaseAssignment = () => {
         });
         alertRef.current?.show();
         setCaseListLoadError(true);
-        console.error((reason as Error).message);
       });
   };
 
   const fetchAttorneys = () => {
-    AttorneysApi.getAttorneys()
-      .then((response) => {
-        const attorneys = response.map((atty) => {
-          const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
-          if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
-          if (atty.generation !== undefined) attorney.generation = atty.generation;
-          if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
-          return attorney;
-        });
-        setAttorneyList(attorneys);
-      })
-      .catch((reason) => {
-        console.error((reason as Error).message);
+    AttorneysApi.getAttorneys().then((response) => {
+      const attorneys = response.map((atty) => {
+        const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
+        if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
+        if (atty.generation !== undefined) attorney.generation = atty.generation;
+        if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
+        return attorney;
       });
+      setAttorneyList(attorneys);
+    });
   };
 
   function updateCase({
