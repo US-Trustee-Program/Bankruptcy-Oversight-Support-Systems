@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 export CAMS_PA11Y=true
 npm run build
@@ -12,7 +12,8 @@ if ! timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'; then
 fi
 
 echo "Starting pa11y accessibility test"
-ERRORS=$(pa11y-ci -j | jq .errors)
+pa11y-ci -j | tee accessibility-output.json
+ERRORS=$(jq .errors < accessibility-output.json)
 if [ "${ERRORS}" -eq 0 ]; then
   echo "pa11y found no errors."
 else
