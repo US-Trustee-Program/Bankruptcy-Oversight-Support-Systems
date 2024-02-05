@@ -33,7 +33,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.2.2",
     "c8": "^9.1.0",
-    "dependency-cruiser": "^15.5.0",
+    "dependency-cruiser": "^16.2.0",
     "esbuild": "^0.19.12",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
