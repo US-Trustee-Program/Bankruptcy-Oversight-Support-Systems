@@ -10,6 +10,7 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { CaseAssignment } from '../adapters/types/case.assignment';
 import { describe } from 'node:test';
+import { CASE_SUMMARIES } from '../testing/mock-data/case-summaries.mock';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -41,7 +42,9 @@ jest.mock('./case.assignment', () => {
     CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
         findAssignmentsByCaseId: (caseId: string) => {
-          if (caseId === caseIdWithAssignments) {
+          if (caseId === 'ThrowError') {
+            throw new Error('TestError');
+          } else if (caseId === caseIdWithAssignments) {
             return Promise.resolve(assignments);
           } else {
             return Promise.resolve([]);
@@ -55,11 +58,15 @@ jest.mock('./case.assignment', () => {
 describe('Case list tests', () => {
   let applicationContext;
   beforeEach(async () => {
-    applicationContext = await applicationContextCreator(functionContext);
     process.env = {
       STARTING_MONTH: '-6',
       DATABASE_MOCK: 'true',
     };
+    applicationContext = await applicationContextCreator(functionContext);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('Calling getCases should return valid data', async () => {
@@ -200,6 +207,21 @@ describe('Case list tests', () => {
       expect(e.message).toEqual('some error message');
       expect(e).not.toBeInstanceOf(UnknownError);
     }
+  });
+
+  test('should throw error if assignee names lookup throws an error', async () => {
+    const caseThatWillThrowError: CaseDetailInterface = {
+      ...CASE_SUMMARIES[0],
+      caseId: 'ThrowError',
+    };
+    jest.spyOn(MockCasesGateway.prototype, 'getCases').mockResolvedValue([caseThatWillThrowError]);
+
+    const mockCasesGateway: CasesInterface = new MockCasesGateway();
+    const chapterCaseList: CaseManagement = new CaseManagement(
+      applicationContext,
+      mockCasesGateway,
+    );
+    await expect(chapterCaseList.getCases(applicationContext)).rejects.toThrow();
   });
 
   test('should call getCases with undefined if STARTING_MONTH exists as a string that is not a number', async () => {
