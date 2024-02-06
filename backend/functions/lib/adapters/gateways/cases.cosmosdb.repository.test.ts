@@ -5,6 +5,12 @@ import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
 import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { throwAggregateAuthenticationError } from '../../testing/mock.cosmos-client-humble.helpers';
 import { ServerConfigError } from '../../common-errors/server-config-error';
+import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
+import {
+  THROW_PERMISSIONS_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../../testing/testing-constants';
+import { CaseAssignmentHistory } from '../types/case.history';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
@@ -99,5 +105,56 @@ describe('Runtime State Repo', () => {
     await expect(repo.getTransfers(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(someError);
     await expect(repo.createTransferIn(context, transferIn)).rejects.toThrow(someError);
     await expect(repo.createTransferOut(context, transferOut)).rejects.toThrow(someError);
+  });
+});
+
+describe('Test case history cosmosdb repository tests', () => {
+  let context: ApplicationContext;
+  let repo: CasesCosmosDbRepository;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    repo = new CasesCosmosDbRepository(context);
+    jest.clearAllMocks();
+  });
+
+  test('should return case history for attorney assignments', async () => {
+    const caseId = CASE_HISTORY[0].caseId;
+    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({ resources: CASE_HISTORY });
+
+    const actualAssignmentsOne = await repo.getCaseHistory(context, caseId);
+
+    expect(actualAssignmentsOne.length).toEqual(2);
+    expect(actualAssignmentsOne).toEqual(CASE_HISTORY);
+  });
+
+  test('should throw a permissions error when user doesnt have permission to create assignment history', async () => {
+    const caseId = THROW_PERMISSIONS_ERROR_CASE_ID;
+    const testCaseAssignmentHistory: CaseAssignmentHistory = {
+      caseId,
+      documentType: 'AUDIT_ASSIGNMENT',
+      occurredAtTimestamp: new Date().toISOString(),
+      before: [],
+      after: [],
+    };
+
+    await expect(repo.createCaseHistory(context, testCaseAssignmentHistory)).rejects.toThrow(
+      'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+    );
+  });
+
+  test('should throw UnknownError if an unknown error occurs', async () => {
+    const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
+    const testCaseAssignmentHistory: CaseAssignmentHistory = {
+      caseId,
+      documentType: 'AUDIT_ASSIGNMENT',
+      occurredAtTimestamp: new Date().toISOString(),
+      before: [],
+      after: [],
+    };
+
+    await expect(repo.createCaseHistory(context, testCaseAssignmentHistory)).rejects.toThrow(
+      'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+    );
   });
 });

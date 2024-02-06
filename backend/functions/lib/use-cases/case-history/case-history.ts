@@ -1,16 +1,16 @@
-import { getAssignmentRepository } from '../../factory';
+import { getCasesRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentHistory } from '../../adapters/types/case.assignment';
-import { CaseAssignmentRepositoryInterface } from '../../interfaces/case.assignment.repository.interface';
+import { CaseHistory } from '../../adapters/types/case.history';
+import { CasesRepository } from '../gateways.types';
 
 export class CaseHistoryUseCase {
-  private assignmentRepository: CaseAssignmentRepositoryInterface;
+  private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
-    this.assignmentRepository = getAssignmentRepository(applicationContext);
+    this.casesRepository = getCasesRepository(applicationContext);
   }
 
-  public async getCaseHistory(caseId: string): Promise<CaseAssignmentHistory[]> {
-    return this.assignmentRepository.getAssignmentHistory(caseId);
+  public async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
+    return this.casesRepository.getCaseHistory(context, caseId);
   }
 }

@@ -63,7 +63,7 @@ export class HumbleItems<T> {
     return this.container.map.get(id);
   }
   query(query: QueryOptions) {
-    return new HumbleQuery(this, query);
+    return new HumbleQuery<T>(this, query);
   }
 }
 

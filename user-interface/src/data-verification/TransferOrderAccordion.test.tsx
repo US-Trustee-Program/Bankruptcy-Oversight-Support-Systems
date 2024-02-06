@@ -6,7 +6,7 @@ import {
   Order,
   OrderResponseData,
 } from '@/lib/type-declarations/chapter-15';
-import { AlertDetails, orderType, statusType } from './DataVerificationScreen';
+import { AlertDetails } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -22,6 +22,7 @@ import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
+import { orderType, transferStatusType } from '@/lib/utils/labels';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -128,7 +129,7 @@ describe('TransferOrderAccordion', () => {
       order: order,
       officesList: testOffices,
       orderType,
-      statusType,
+      statusType: transferStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},
       regionsMap: regionMap,

@@ -93,25 +93,31 @@ export default class CasesDxtrGateway implements CasesInterface {
     const date = new Date();
     date.setMonth(date.getMonth() + (options.startingMonth || -6));
     const dateFiledFrom = getYearMonthDayStringFromDate(date);
+
     input.push({
       name: 'top',
       type: mssql.Int,
       value: rowsToReturn,
     });
+
     input.push({
       name: 'dateFiledFrom',
       type: mssql.Date,
       value: dateFiledFrom,
     });
+
     input.push({
       name: 'groupDesignator',
       type: mssql.Char,
       value: MANHATTAN_GROUP_DESIGNATOR,
     });
+
     const queries = [];
     queries.push(sqlSelectList(rowsToReturn, '15'));
+
     if (doChapter12Enable) queries.push(sqlSelectList(rowsToReturn, '12'));
     if (doChapter11Enable) queries.push(sqlSelectList(rowsToReturn, '11'));
+
     const query = sqlUnion(queries);
 
     const queryResult: QueryResults = await executeQuery(
