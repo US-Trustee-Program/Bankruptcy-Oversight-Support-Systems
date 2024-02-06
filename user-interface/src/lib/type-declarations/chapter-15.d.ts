@@ -63,7 +63,7 @@ export interface CaseStaffAssignment {
   unassignedOn?: string;
 }
 
-export interface CaseStaffAssignmentHistory {
+export interface CaseAssignmentHistory {
   id?: string;
   documentType: 'AUDIT_ASSIGNMENT';
   caseId: string;
@@ -114,8 +114,8 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   };
 }
 
-export interface CaseStaffAssignmentHistoryResponseData extends ResponseData {
-  body: CaseStaffAssignmentHistory[];
+export interface CaseAssignmentHistoryResponseData extends ResponseData {
+  body: CaseAssignmentHistory[];
 }
 
 export type Order = CaseDocketEntry & {
