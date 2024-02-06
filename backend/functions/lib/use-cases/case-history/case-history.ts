@@ -1,6 +1,6 @@
 import { getCasesRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentHistory } from '../../adapters/types/case.assignment';
+import { CaseHistory } from '../../adapters/types/case.history';
 import { CasesRepository } from '../gateways.types';
 
 export class CaseHistoryUseCase {
@@ -10,10 +10,7 @@ export class CaseHistoryUseCase {
     this.casesRepository = getCasesRepository(applicationContext);
   }
 
-  public async getCaseHistory(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseAssignmentHistory[]> {
+  public async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
     return this.casesRepository.getCaseHistory(context, caseId);
   }
 }

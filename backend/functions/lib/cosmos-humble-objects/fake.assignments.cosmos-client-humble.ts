@@ -69,7 +69,7 @@ export default class FakeAssignmentsCosmosClientHumble {
                       });
                     });
                     return { resources: result };
-                  } else if (query.query.includes('"ASSIGNMENT_HISTORY"')) {
+                  } else if (query.query.includes('"AUDIT_ASSIGNMENT"')) {
                     const gatewayHelper = new GatewayHelper();
                     return { resources: gatewayHelper.getCaseHistoryMockExtract() };
                   }

@@ -1,13 +1,13 @@
-import { CaseAssignmentHistory } from '../../adapters/types/case.assignment';
+import { CaseAssignmentHistory } from '../../adapters/types/case.history';
 
 export const CASE_HISTORY: CaseAssignmentHistory[] = [
   {
     id: 'da2ba8c0-b38b-4b4b-a4d7-986e0fdb671a',
     caseId: '081-22-84687',
-    documentType: 'ASSIGNMENT_HISTORY',
+    documentType: 'AUDIT_ASSIGNMENT',
     occurredAtTimestamp: '2023-12-14T21:39:18.909Z',
-    previousAssignments: [],
-    newAssignments: [
+    before: [],
+    after: [
       {
         id: '2265215f-88e8-4cc7-a2d1-2d5ebaaabe73',
         documentType: 'ASSIGNMENT',
@@ -37,9 +37,9 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
   {
     id: '72515281-2ac9-49f6-b40c-affcc12ec059',
     caseId: '081-22-84687',
-    documentType: 'ASSIGNMENT_HISTORY',
+    documentType: 'AUDIT_ASSIGNMENT',
     occurredAtTimestamp: '2023-12-14T21:39:26.755Z',
-    previousAssignments: [
+    before: [
       {
         id: '2265215f-88e8-4cc7-a2d1-2d5ebaaabe73',
         documentType: 'ASSIGNMENT',
@@ -65,7 +65,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         assignedOn: '2023-12-14T21:39:18.909Z',
       },
     ],
-    newAssignments: [
+    after: [
       {
         documentType: 'ASSIGNMENT',
         caseId: '081-22-84687',

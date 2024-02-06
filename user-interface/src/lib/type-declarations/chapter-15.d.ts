@@ -65,7 +65,7 @@ export interface CaseStaffAssignment {
 
 export interface CaseStaffAssignmentHistory {
   id?: string;
-  documentType: 'ASSIGNMENT_HISTORY';
+  documentType: 'AUDIT_ASSIGNMENT';
   caseId: string;
   occurredAtTimestamp: string;
   previousAssignments: CaseStaffAssignment[];
@@ -185,3 +185,21 @@ export interface Transfer {
   courtName: string;
   documentType: 'TRANSFER_IN' | 'TRANSFER_OUT';
 }
+
+type AbstractCaseHistory<B, A> = {
+  id?: string;
+  caseId: string;
+  occurredAtTimestamp: string;
+  before: B;
+  after: A;
+};
+
+type CaseAssignmentHistory = AbstractCaseHistory<CaseStaffAssignment[], CaseStaffAssignment[]> & {
+  documentType: 'AUDIT_ASSIGNMENT';
+};
+
+type CaseTransferHistory = AbstractCaseHistory<Order | null, Order> & {
+  documentType: 'AUDIT_TRANSFER';
+};
+
+export type CaseHistory = CaseAssignmentHistory | CaseTransferHistory;

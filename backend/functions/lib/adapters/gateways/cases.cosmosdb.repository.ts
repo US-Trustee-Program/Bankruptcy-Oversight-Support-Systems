@@ -6,9 +6,8 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
-import { CaseAssignmentHistory } from '../types/case.assignment';
-import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { CaseAssignmentHistory } from '../types/case.history';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
@@ -28,7 +27,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
     caseId: string,
   ): Promise<Array<TransferIn | TransferOut>> {
     // TODO: validate caseId
-    const query = 'SELECT * FROM c WHERE c.caseId = @caseId';
+    const query = "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'TRANSFER_%'";
     const querySpec = {
       query,
       parameters: [
@@ -58,7 +57,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
     caseId: string,
   ): Promise<Array<CaseAssignmentHistory>> {
     const query =
-      'SELECT * FROM c WHERE c.documentType = "ASSIGNMENT_HISTORY" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
+      'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
     const querySpec = {
       query,
       parameters: [
@@ -77,6 +76,9 @@ export class CasesCosmosDbRepository implements CasesRepository {
     history: CaseAssignmentHistory,
   ): Promise<string> {
     try {
+      if (!history.occurredAtTimestamp) {
+        history.occurredAtTimestamp = new Date().toISOString();
+      }
       const item = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
@@ -85,21 +87,12 @@ export class CasesCosmosDbRepository implements CasesRepository {
       return item.id;
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
-      if (e.status === 403) {
-        throw new ForbiddenError(MODULE_NAME, {
-          message:
-            'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-          originalError: e,
-          status: 500,
-        });
-      } else {
-        throw new UnknownError(MODULE_NAME, {
-          message:
-            'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-          originalError: e,
-          status: 500,
-        });
-      }
+      throw new UnknownError(MODULE_NAME, {
+        message:
+          'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+        originalError: e,
+        status: 500,
+      });
     }
   }
 

@@ -4,10 +4,10 @@ import { ApplicationContext } from '../adapters/types/basic';
 import {
   AttorneyAssignmentResponseInterface,
   CaseAssignment,
-  CaseAssignmentHistory,
 } from '../adapters/types/case.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { CasesRepository } from './gateways.types';
+import { CaseAssignmentHistory } from '../adapters/types/case.history';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -74,10 +74,10 @@ export class CaseAssignmentUseCase {
     const newAssignmentRecords = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     const history: CaseAssignmentHistory = {
       caseId,
-      documentType: 'ASSIGNMENT_HISTORY',
+      documentType: 'AUDIT_ASSIGNMENT',
       occurredAtTimestamp: currentDate,
-      previousAssignments: existingAssignmentRecords,
-      newAssignments: newAssignmentRecords,
+      before: existingAssignmentRecords,
+      after: newAssignmentRecords,
     };
     await this.casesRepository.createCaseHistory(applicationContext, history);
 

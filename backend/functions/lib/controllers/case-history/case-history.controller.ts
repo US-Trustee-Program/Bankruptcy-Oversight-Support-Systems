@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CaseAssignmentHistory } from '../../adapters/types/case.assignment';
+import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsResponse } from '../controller-types';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
@@ -11,7 +11,7 @@ type GetCaseHistoryRequest = {
   caseId: string;
 };
 
-type GetCaseHistoryResponse = CamsResponse<Array<CaseAssignmentHistory>>;
+type GetCaseHistoryResponse = CamsResponse<Array<CaseHistory>>;
 
 export class CaseHistoryController {
   private readonly useCase: CaseHistoryUseCase;

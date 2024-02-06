@@ -1,4 +1,4 @@
-import { CaseAssignment, CaseAssignmentHistory } from '../adapters/types/case.assignment';
+import { CaseAssignment } from '../adapters/types/case.assignment';
 
 export interface CaseAssignmentRepositoryInterface {
   createAssignment(caseAssignment: CaseAssignment): Promise<string>;
@@ -6,5 +6,4 @@ export interface CaseAssignmentRepositoryInterface {
   getAssignment(assignmentId: string): Promise<CaseAssignment>;
   findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]>;
   findAssignmentsByAssigneeName(attorney: string): Promise<CaseAssignment[]>;
-  createAssignmentHistory(history: CaseAssignmentHistory): Promise<string>;
 }

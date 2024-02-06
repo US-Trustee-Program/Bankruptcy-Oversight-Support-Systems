@@ -6,7 +6,8 @@ import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CaseAssignment, CaseAssignmentHistory } from '../types/case.assignment';
+import { CaseAssignment } from '../types/case.assignment';
+import { CaseAssignmentHistory } from '../types/case.history';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 
@@ -44,34 +45,6 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
         throw new UnknownError(MODULE_NAME, {
           message:
             'Unable to create assignment. Please try again later. If the problem persists, please contact USTP support.',
-          originalError: e,
-          status: 500,
-        });
-      }
-    }
-  }
-
-  async createAssignmentHistory(history: CaseAssignmentHistory): Promise<string> {
-    try {
-      const { item } = await this.cosmosDbClient
-        .database(this.cosmosConfig.databaseName)
-        .container(this.containerName)
-        .items.create(history);
-      this.applicationContext.logger.debug(MODULE_NAME, `New history created ${item.id}`);
-      return item.id;
-    } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
-      if (e.status === 403) {
-        throw new ForbiddenError(MODULE_NAME, {
-          message:
-            'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-          originalError: e,
-          status: 500,
-        });
-      } else {
-        throw new UnknownError(MODULE_NAME, {
-          message:
-            'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
           originalError: e,
           status: 500,
         });

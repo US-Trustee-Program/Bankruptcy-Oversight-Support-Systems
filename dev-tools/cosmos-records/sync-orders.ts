@@ -23,4 +23,7 @@ export function syncOrders() {
     .catch((error) => console.log('Unable to sync orders. Reason:', error.message));
 }
 
+// if (require.main === module) {
+//   syncOrders();
+// }
 syncOrders();
