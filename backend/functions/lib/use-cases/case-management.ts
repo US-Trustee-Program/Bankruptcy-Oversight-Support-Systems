@@ -39,13 +39,12 @@ export class CaseManagement {
       if (startingMonth > 0) {
         startingMonth = 0 - startingMonth;
       }
-      const caseAssignment = new CaseAssignmentUseCase(applicationContext);
       const cases = await this.casesGateway.getCases(applicationContext, {
         startingMonth: startingMonth || undefined,
       });
 
-      for (const c of cases) {
-        c.assignments = await this.getCaseAssigneeNames(applicationContext, caseAssignment, c);
+      for (const bCase of cases) {
+        bCase.assignments = await this.getCaseAssigneeNames(applicationContext, bCase);
       }
 
       return {
@@ -76,14 +75,7 @@ export class CaseManagement {
   ): Promise<CaseDetailsDbResult> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
     caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
-
-    const caseAssignment = new CaseAssignmentUseCase(applicationContext);
-    caseDetails.assignments = await this.getCaseAssigneeNames(
-      applicationContext,
-      caseAssignment,
-      caseDetails,
-    );
-
+    caseDetails.assignments = await this.getCaseAssigneeNames(applicationContext, caseDetails);
     caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivision);
 
     return {
@@ -104,13 +96,12 @@ export class CaseManagement {
     return caseSummary;
   }
 
-  private async getCaseAssigneeNames(
-    _applicationContext: ApplicationContext,
-    caseAssignment: CaseAssignmentUseCase,
-    c: CaseDetailInterface,
-  ) {
+  private async getCaseAssigneeNames(context: ApplicationContext, bCase: CaseDetailInterface) {
+    const caseAssignment = new CaseAssignmentUseCase(context);
     try {
-      const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(c.caseId);
+      const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(
+        bCase.caseId,
+      );
       return assignments.map((a) => {
         return a.name;
       });

@@ -104,7 +104,7 @@ export class OrdersUseCase {
 
   public async syncOrders(
     context: ApplicationContext,
-    options: SyncOrdersOptions,
+    options?: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
     let initialSyncState: OrderSyncState;
 
