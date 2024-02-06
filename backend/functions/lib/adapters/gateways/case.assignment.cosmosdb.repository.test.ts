@@ -6,6 +6,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
+  NOT_FOUND_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
 
 describe('Test case assignment cosmosdb repository tests', () => {
@@ -184,6 +185,16 @@ describe('Test case assignment cosmosdb repository tests', () => {
     } catch (e) {
       expect((e as Error).message).toEqual('Failed to authenticate to Azure');
     }
+  });
+
+  test('Should throw AggregateAuthentication Error for authentication errors from credentials', async () => {
+    let exceptionTriggered = false;
+    try {
+      await repository.findAssignmentsByCaseId(NOT_FOUND_ERROR_CASE_ID);
+    } catch (e) {
+      exceptionTriggered = true;
+    }
+    expect(exceptionTriggered).toBeTruthy();
   });
 
   test('should find all assignments for a given attorney', async () => {

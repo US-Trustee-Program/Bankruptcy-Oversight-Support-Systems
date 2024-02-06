@@ -10,7 +10,7 @@ import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
-import { CaseAssignmentHistory } from '../types/case.assignment';
+import { CaseAssignmentHistory } from '../types/case.history';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
@@ -132,10 +132,10 @@ describe('Test case history cosmosdb repository tests', () => {
     const caseId = THROW_PERMISSIONS_ERROR_CASE_ID;
     const testCaseAssignmentHistory: CaseAssignmentHistory = {
       caseId,
-      documentType: 'ASSIGNMENT_HISTORY',
+      documentType: 'AUDIT_ASSIGNMENT',
       occurredAtTimestamp: new Date().toISOString(),
-      previousAssignments: [],
-      newAssignments: [],
+      before: [],
+      after: [],
     };
 
     await expect(repo.createCaseHistory(context, testCaseAssignmentHistory)).rejects.toThrow(
@@ -147,10 +147,10 @@ describe('Test case history cosmosdb repository tests', () => {
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     const testCaseAssignmentHistory: CaseAssignmentHistory = {
       caseId,
-      documentType: 'ASSIGNMENT_HISTORY',
+      documentType: 'AUDIT_ASSIGNMENT',
       occurredAtTimestamp: new Date().toISOString(),
-      previousAssignments: [],
-      newAssignments: [],
+      before: [],
+      after: [],
     };
 
     await expect(repo.createCaseHistory(context, testCaseAssignmentHistory)).rejects.toThrow(

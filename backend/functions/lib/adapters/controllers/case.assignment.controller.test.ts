@@ -1,8 +1,6 @@
 import { CaseAssignmentController } from './case.assignment.controller';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
-import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
-import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -11,11 +9,15 @@ describe('Case Assignment Creation Tests', () => {
   const trialAttorneyRole = 'TrialAttorney';
   let applicationContext;
   beforeEach(async () => {
-    applicationContext = await applicationContextCreator(functionContext);
     process.env = {
       ...env,
       DATABASE_MOCK: 'true',
     };
+    applicationContext = await applicationContextCreator(functionContext);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   test('A case is assigned to an attorney when requested', async () => {
@@ -25,26 +27,23 @@ describe('Case Assignment Creation Tests', () => {
       listOfAttorneyNames,
       role: trialAttorneyRole,
     };
-    const expectedResponse: AttorneyAssignmentResponseInterface = {
-      success: true,
-      message: '',
-      count: 1,
-      body: listOfAttorneyNames,
-    };
-
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockResolvedValue(expectedResponse);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
     expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
-    expect(assignmentResponse.body[0]).toBeTruthy();
+    expect(assignmentResponse).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'Trial attorney assignments created.',
+        count: listOfAttorneyNames.length,
+        body: expect.any(Array<string>),
+      }),
+    );
   });
 
-  test.only('should assign all attorneys in the list', async () => {
+  test('should assign all attorneys in the list', async () => {
     const listOfAttorneyNames = ['Jane', 'Tom', 'Adrian'];
     const testCaseAssignment = {
       caseId: '001-18-12345',
@@ -57,6 +56,14 @@ describe('Case Assignment Creation Tests', () => {
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
     expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
+    expect(assignmentResponse).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'Trial attorney assignments created.',
+        count: listOfAttorneyNames.length,
+        body: expect.any(Array<string>),
+      }),
+    );
   });
 
   test('should create only one assignment per attorney', async () => {
@@ -67,11 +74,20 @@ describe('Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
+    const expectedNumberOfAssignees = Array.from(new Set(listOfAttorneyNames)).length;
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(3);
+    expect(assignmentResponse.body.length).toBe(expectedNumberOfAssignees);
+    expect(assignmentResponse).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'Trial attorney assignments created.',
+        count: expectedNumberOfAssignees,
+        body: expect.any(Array<string>),
+      }),
+    );
   });
 
   test('should throw a CAMS permission error', async () => {
