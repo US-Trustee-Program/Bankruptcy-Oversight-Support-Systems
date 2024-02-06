@@ -99,8 +99,6 @@ describe('Orders use case', () => {
     const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
     const transferOutFn = jest.spyOn(casesRepo, 'createTransferOut');
     const transferInFn = jest.spyOn(casesRepo, 'createTransferIn');
-    // const transferOutFn = jest.spyOn(casesRepo, 'createTransferOut').mockResolvedValue(transferOut);
-    // const transferInFn = jest.spyOn(casesRepo, 'createTransferIn').mockResolvedValue(transferIn);
 
     await useCase.updateOrder(mockContext, order.id, orderTransfer);
     expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
@@ -128,7 +126,7 @@ describe('Orders use case', () => {
 
     const mockPutOrders = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
-      .mockImplementation(async () => {});
+      .mockResolvedValue(ORDERS);
 
     const mockUpdateState = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
@@ -172,7 +170,7 @@ describe('Orders use case', () => {
 
     const mockPutOrders = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
-      .mockImplementation(async () => {});
+      .mockResolvedValue(ORDERS);
 
     const mockUpdateState = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
