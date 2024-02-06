@@ -150,10 +150,10 @@ export class OrdersUseCase {
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, startingTxId);
     context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', { maxTxId, orders });
 
-    await this.ordersRepo.putOrders(context, orders);
+    const writtenOrders = await this.ordersRepo.putOrders(context, orders);
     context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
 
-    for (const order of orders) {
+    for (const order of writtenOrders) {
       const caseHistory: CaseHistory = {
         caseId: order.caseId,
         documentType: 'AUDIT_TRANSFER',

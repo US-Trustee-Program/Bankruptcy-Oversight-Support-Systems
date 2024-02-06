@@ -21,7 +21,7 @@ export interface OrdersGateway {
 export interface OrdersRepository {
   getOrders(context: ApplicationContext): Promise<Order[]>;
   getOrder(context: ApplicationContext, id: string, caseId: string): Promise<Order>;
-  putOrders(context: ApplicationContext, orders: Order[]);
+  putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
   updateOrder(context: ApplicationContext, id: string, data: OrderTransfer);
 }
 

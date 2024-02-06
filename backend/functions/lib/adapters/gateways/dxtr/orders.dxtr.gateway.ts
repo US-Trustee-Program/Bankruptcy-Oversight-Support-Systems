@@ -29,6 +29,7 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 export class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync> {
     try {
+      let maxTxIdasInt: number = parseInt(txId);
       const orderSync = {
         orders: [],
         maxTxId: txId,
@@ -66,7 +67,11 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
       orderSync.orders = rawOrders
         .map((rawOrder) => {
-          if (orderSync.maxTxId < rawOrder.txId) orderSync.maxTxId = rawOrder.txId;
+          const txIdAsInt = parseInt(rawOrder.txId);
+          if (maxTxIdasInt < txIdAsInt) {
+            orderSync.maxTxId = rawOrder.txId;
+            maxTxIdasInt = txIdAsInt;
+          }
 
           if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
             rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);

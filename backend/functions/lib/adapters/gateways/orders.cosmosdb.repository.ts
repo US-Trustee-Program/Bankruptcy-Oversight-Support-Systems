@@ -102,8 +102,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async putOrders(context: ApplicationContext, orders: Order[]) {
-    if (!orders.length) return;
+  async putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
+    const writtenOrders: Order[] = [];
+    if (!orders.length) return writtenOrders;
+
     try {
       for (const order of orders) {
         order.id = order.caseId + '_' + order.sequenceNumber;
@@ -112,6 +114,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
             .database(this.cosmosConfig.databaseName)
             .container(this.containerName)
             .items.create(order);
+          writtenOrders.push(order);
         } catch (e) {
           if (!isPreExistingDocumentError(e)) {
             throw e;
@@ -132,6 +135,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         throw originalError;
       }
     }
+    return writtenOrders;
   }
 
   private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
