@@ -11,7 +11,7 @@ export function syncOrders() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      txIdOverride: 0,
+      // txIdOverride: 0,
     }),
   })
     .then((response) => {
