@@ -1,23 +1,77 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import {
-  CaseStaffAssignmentHistory,
-  CaseStaffAssignment,
-} from '@/lib/type-declarations/chapter-15';
-
-const EXPECTED_DATE_TIME = '01/01/2024';
-
-vi.mock('../../lib/utils/datetime', () => {
-  return {
-    formatDate: (): string => EXPECTED_DATE_TIME,
-  };
-});
+import { CaseStaffAssignment, CaseHistory, Order } from '@/lib/type-declarations/chapter-15';
+import MockApi from '@/lib/models/chapter15-mock.api.cases';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
+  const pendingOrder: Order = {
+    ...MockApi.orders[0],
+  };
+  const approvedOrder: Order = {
+    ...MockApi.orders[0],
+    status: 'approved',
+  };
+  const assignmentBefore: CaseStaffAssignment[] = [
+    {
+      caseId,
+      documentType: 'ASSIGNMENT',
+      name: 'Alfred',
+      role: 'TrialAttorney',
+      assignedOn: '2023-12-25T00:00:00.000Z',
+    },
+    {
+      caseId,
+      documentType: 'ASSIGNMENT',
+      name: 'Bradford',
+      role: 'TrialAttorney',
+      assignedOn: '2023-12-25T00:00:00.000Z',
+    },
+  ];
+  const assignmentAfter: CaseStaffAssignment[] = [
+    {
+      caseId,
+      documentType: 'ASSIGNMENT',
+      name: 'Charles',
+      role: 'TrialAttorney',
+      assignedOn: '2023-12-25T00:00:00.000Z',
+    },
+    {
+      caseId,
+      documentType: 'ASSIGNMENT',
+      name: 'Daniel',
+      role: 'TrialAttorney',
+      assignedOn: '2023-12-25T00:00:00.000Z',
+    },
+    {
+      caseId,
+      documentType: 'ASSIGNMENT',
+      name: 'Edward',
+      role: 'TrialAttorney',
+      assignedOn: '2023-12-25T00:00:00.000Z',
+    },
+  ];
+  const caseHistory: CaseHistory[] = [
+    {
+      id: '1234567890',
+      documentType: 'AUDIT_ASSIGNMENT',
+      caseId,
+      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      before: assignmentBefore,
+      after: assignmentAfter,
+    },
+    {
+      id: '1234567890',
+      documentType: 'AUDIT_TRANSFER',
+      caseId,
+      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      before: pendingOrder,
+      after: approvedOrder,
+    },
+  ];
 
   test('should display loading indicator if loading', async () => {
-    const caseHistory: CaseStaffAssignmentHistory[] = [];
+    const caseHistory: CaseHistory[] = [];
 
     render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={true} />);
 
@@ -26,7 +80,7 @@ describe('audit history tests', () => {
   });
 
   test('should display no assignments message if no history exists', async () => {
-    const caseHistory: CaseStaffAssignmentHistory[] = [];
+    const caseHistory: CaseHistory[] = [];
 
     render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
 
@@ -38,58 +92,8 @@ describe('audit history tests', () => {
   });
 
   test('should display assignment history when history exists', async () => {
-    const previousAssignments: CaseStaffAssignment[] = [
-      {
-        caseId,
-        documentType: 'ASSIGNMENT',
-        name: 'Alfred',
-        role: 'TrialAttorney',
-        assignedOn: '2023-12-25T00:00:00.000Z',
-      },
-      {
-        caseId,
-        documentType: 'ASSIGNMENT',
-        name: 'Bradford',
-        role: 'TrialAttorney',
-        assignedOn: '2023-12-25T00:00:00.000Z',
-      },
-    ];
-    const newAssignments: CaseStaffAssignment[] = [
-      {
-        caseId,
-        documentType: 'ASSIGNMENT',
-        name: 'Charles',
-        role: 'TrialAttorney',
-        assignedOn: '2023-12-25T00:00:00.000Z',
-      },
-      {
-        caseId,
-        documentType: 'ASSIGNMENT',
-        name: 'Daniel',
-        role: 'TrialAttorney',
-        assignedOn: '2023-12-25T00:00:00.000Z',
-      },
-      {
-        caseId,
-        documentType: 'ASSIGNMENT',
-        name: 'Edward',
-        role: 'TrialAttorney',
-        assignedOn: '2023-12-25T00:00:00.000Z',
-      },
-    ];
-    const caseHistory: CaseStaffAssignmentHistory[] = [
-      {
-        id: '1234567890',
-        documentType: 'ASSIGNMENT_HISTORY',
-        caseId,
-        occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
-        previousAssignments,
-        newAssignments,
-      },
-    ];
-
-    const expectedPrevious = previousAssignments.map((n) => n.name).join(', ');
-    const expectedNew = newAssignments.map((n) => n.name).join(', ');
+    const expectedPrevious = assignmentBefore.map((n) => n.name).join(', ');
+    const expectedNew = assignmentAfter.map((n) => n.name).join(', ');
 
     render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
 
@@ -103,18 +107,18 @@ describe('audit history tests', () => {
 
     const dateElement = screen.queryByTestId('change-date-0');
     expect(dateElement).toBeInTheDocument();
-    expect(dateElement).toHaveTextContent(EXPECTED_DATE_TIME);
+    expect(dateElement).toHaveTextContent('12/25/2023');
   });
 
   test('should display (none) when no assignments exist.', async () => {
-    const caseHistory: CaseStaffAssignmentHistory[] = [
+    const caseHistory: CaseHistory[] = [
       {
         id: '',
-        documentType: 'ASSIGNMENT_HISTORY',
+        documentType: 'AUDIT_ASSIGNMENT',
         caseId,
         occurredAtTimestamp: '',
-        previousAssignments: [],
-        newAssignments: [],
+        before: [],
+        after: [],
       },
     ];
 
@@ -127,5 +131,50 @@ describe('audit history tests', () => {
     const newElement = screen.queryByTestId('new-assignment-0');
     expect(newElement).toBeInTheDocument();
     expect(newElement).toHaveTextContent('(none)');
+  });
+
+  test('should display a row for pending transfer', async () => {
+    const caseHistory: CaseHistory[] = [
+      {
+        id: '',
+        documentType: 'AUDIT_TRANSFER',
+        caseId,
+        occurredAtTimestamp: '2024-01-31T12:00:00Z',
+        before: pendingOrder,
+        after: approvedOrder,
+      },
+      {
+        id: '',
+        documentType: 'AUDIT_TRANSFER',
+        caseId,
+        occurredAtTimestamp: '2024-01-29T12:00:00Z',
+        before: null,
+        after: pendingOrder,
+      },
+    ];
+
+    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+
+    const previousElement1 = screen.queryByTestId('previous-order-0');
+    expect(previousElement1).toBeInTheDocument();
+    expect(previousElement1).toHaveTextContent('Pending Review');
+
+    const newElement1 = screen.queryByTestId('new-order-0');
+    expect(newElement1).toBeInTheDocument();
+    expect(newElement1).toHaveTextContent('Approved');
+
+    const changeDate1 = screen.queryByTestId('change-date-0');
+    expect(changeDate1).toHaveTextContent('01/31/2024');
+
+    const previousElement2 = screen.queryByTestId('previous-order-1');
+    expect(previousElement2).toBeInTheDocument();
+    expect(previousElement2).toHaveTextContent('(none)');
+
+    const newElement2 = screen.queryByTestId('new-order-1');
+    expect(newElement2).toBeInTheDocument();
+    expect(newElement2).toHaveTextContent('Pending Review');
+
+    const changeDate2 = screen.queryByTestId('change-date-1');
+    expect(changeDate2).toHaveTextContent('01/29/2024');
   });
 });

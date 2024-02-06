@@ -4,9 +4,10 @@
   "description": "Custom tools used to aid development.",
   "scripts": {
     "clean": "rm -rf ./node_modules",
-    "delete-cosmos-records": "ts-node delete-cosmos-records/index.ts",
-    "delete-orders": "ts-node delete-cosmos-records/delete-orders.ts",
-    "sync-orders": "ts-node delete-cosmos-records/sync-orders.ts",
+    "delete-all": "ts-node cosmos-records/index.ts",
+    "delete-assignments": "ts-node cosmos-records/delete-assignments.ts",
+    "delete-orders": "ts-node cosmos-records/delete-orders.ts",
+    "sync-orders": "ts-node cosmos-records/sync-orders.ts",
     "reload-orders": "npm run delete-orders; npm run sync-orders",
     "test-data:sql": "mkdir -p data; ts-node test-data/index.ts sql > data/test-data.sql",
     "test-data:json": "mkdir -p data; ts-node test-data/index.ts json > data/test-data.json",

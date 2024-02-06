@@ -6,6 +6,8 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { CaseAssignmentHistory } from '../types/case.history';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
@@ -25,7 +27,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
     caseId: string,
   ): Promise<Array<TransferIn | TransferOut>> {
     // TODO: validate caseId
-    const query = 'SELECT * FROM c WHERE c.caseId = @caseId';
+    const query = "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'TRANSFER_%'";
     const querySpec = {
       query,
       parameters: [
@@ -48,6 +50,50 @@ export class CasesCosmosDbRepository implements CasesRepository {
     transferOut: TransferOut,
   ): Promise<TransferOut> {
     return this.create<TransferOut>(context, transferOut);
+  }
+
+  async getCaseHistory(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<Array<CaseAssignmentHistory>> {
+    const query =
+      'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
+    const querySpec = {
+      query,
+      parameters: [
+        {
+          name: '@caseId',
+          value: caseId,
+        },
+      ],
+    };
+    const response = await this.queryData<CaseAssignmentHistory>(context, querySpec);
+    return response;
+  }
+
+  async createCaseHistory(
+    context: ApplicationContext,
+    history: CaseAssignmentHistory,
+  ): Promise<string> {
+    try {
+      if (!history.occurredAtTimestamp) {
+        history.occurredAtTimestamp = new Date().toISOString();
+      }
+      const item = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.create(history);
+      context.logger.debug(MODULE_NAME, `New history created ${item.id}`);
+      return item.id;
+    } catch (e) {
+      context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
+      throw new UnknownError(MODULE_NAME, {
+        message:
+          'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+        originalError: e,
+        status: 500,
+      });
+    }
   }
 
   private async create<T>(context: ApplicationContext, itemToCreate: T): Promise<T> {

@@ -8,6 +8,8 @@ import { CaseDetailInterface } from '../../types/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
+import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
 
 const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
@@ -449,12 +451,18 @@ describe('Test DXTR Gateway', () => {
     );
   });
 
-  describe('Feature flag chapter-twelve-enabled', () => {
+  describe.each([
+    ['chapter-eleven-enabled', '11'],
+    ['chapter-twelve-enabled', '12'],
+  ])('Feature flag - chapter enabled', (featureFlagKey, chapterNumber) => {
     test('should return a chapter column in the result set when true.', async () => {
       const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
       featureFlagSpy.mockImplementation(async () => {
-        return { 'chapter-twelve-enabled': true };
+        const featureFlags = {};
+        featureFlags[featureFlagKey] = true;
+        return featureFlags;
       });
+
       applicationContext = await applicationContextCreator(context);
 
       const cases = [
@@ -477,7 +485,7 @@ describe('Test DXTR Gateway', () => {
       const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
       await testCasesDxtrGateway.getCases(applicationContext, {});
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
-      expect(querySpy.mock.calls[0][2]).toContain("CS_CHAPTER = '12'");
+      expect(querySpy.mock.calls[0][2]).toContain(`CS_CHAPTER = '${chapterNumber}'`);
     });
 
     test('should not return a chapter column in the result set when false.', async () => {
@@ -658,6 +666,108 @@ describe('Test DXTR Gateway', () => {
         phone: '9876543210',
         email: 'someone@email.com',
       });
+    });
+  });
+
+  describe('getSuggestedCases tests', () => {
+    test('should return decorated transferred cases', async () => {
+      // Test case summary
+      const testCase = generateTestCase();
+      const mockTestCaseSummaryResponse = {
+        success: true,
+        results: {
+          recordset: [testCase],
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
+
+      const mockParties = {
+        success: true,
+        results: {
+          recordset: [DEBTORS.get('081-22-23587')],
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockParties);
+
+      // Get suggested case data
+      const mockSuggestedCases = [
+        {
+          ...CASE_SUMMARIES[0],
+          debtorTypeCode: 'CB',
+          petitionCode: 'TV',
+          petitionLabel: undefined,
+          debtorTypeLabel: undefined,
+        },
+        {
+          ...CASE_SUMMARIES[1],
+          debtorTypeCode: 'CB',
+          petitionCode: 'VP',
+          petitionLabel: undefined,
+          debtorTypeLabel: undefined,
+        },
+      ];
+      const mockSuggestedCasesResponse = {
+        success: true,
+        results: {
+          recordset: mockSuggestedCases,
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
+      querySpy.mockResolvedValueOnce(mockParties);
+      querySpy.mockResolvedValueOnce(mockParties);
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+      const actual = await testCasesDxtrGateway.getSuggestedCases(
+        applicationContext,
+        testCase.caseId,
+      );
+
+      expect(actual[0].debtorTypeLabel).toEqual('Corporate Business');
+      expect(actual[0].petitionLabel).toEqual('Voluntary');
+      expect(actual.length).toBe(1);
+    });
+
+    test('should throw CamsError when query fails to return valid response', async () => {
+      // Test case summary
+      const testCase = generateTestCase();
+      const mockTestCaseSummaryResponse = {
+        success: true,
+        results: {
+          recordset: [testCase],
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
+
+      const mockParties = {
+        success: true,
+        results: {
+          recordset: [DEBTORS.get('081-22-23587')],
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockParties);
+
+      // Get suggested case data
+      const mockSuggestedCasesResponse = {
+        success: false,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
+      querySpy.mockResolvedValueOnce(mockParties);
+      querySpy.mockResolvedValueOnce(mockParties);
+
+      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
+
+      await expect(
+        testCasesDxtrGateway.getSuggestedCases(applicationContext, testCase.caseId),
+      ).rejects.toThrow(CamsError);
     });
   });
 });
