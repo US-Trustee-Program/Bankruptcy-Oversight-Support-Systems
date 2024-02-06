@@ -11,7 +11,7 @@ export function syncOrders() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      // txIdOverride: 0,
+      txIdOverride: 0,
     }),
   })
     .then((response) => {
@@ -23,7 +23,4 @@ export function syncOrders() {
     .catch((error) => console.log('Unable to sync orders. Reason:', error.message));
 }
 
-// if (require.main === module) {
-//   syncOrders();
-// }
 syncOrders();

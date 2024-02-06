@@ -37,12 +37,7 @@ describe('orders controller tests', () => {
     sequenceNumber: 123,
     caseId: ORDERS[0].caseId,
     newCaseId: '081-23-12344',
-    newCourtName: 'New Court',
-    newCourtDivisionName: 'New Division',
     status: 'rejected',
-    newDivisionCode: '081',
-    newRegionId: '02',
-    newRegionName: 'NEW YORK',
   };
   let applicationContext: ApplicationContext;
 

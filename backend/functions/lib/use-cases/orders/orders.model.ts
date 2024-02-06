@@ -23,7 +23,16 @@ export type Order = CaseDocketEntry & {
   reason?: string;
 };
 
-export type OrderTransfer = {
+type OrderTransferRejection = {
+  id: string;
+  sequenceNumber: number;
+  caseId: string;
+  newCaseId?: string;
+  status: 'rejected';
+  reason?: string;
+};
+
+type OrderTransferApproval = {
   id: string;
   sequenceNumber: number;
   caseId: string;
@@ -33,9 +42,10 @@ export type OrderTransfer = {
   newDivisionCode: string;
   newRegionId: string;
   newRegionName: string;
-  status: OrderStatus;
-  reason?: string;
+  status: 'approved';
 };
+
+export type OrderTransfer = OrderTransferRejection | OrderTransferApproval;
 
 export interface Transfer {
   caseId: string;

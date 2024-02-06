@@ -99,12 +99,36 @@ describe('Orders use case', () => {
     const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
     const transferOutFn = jest.spyOn(casesRepo, 'createTransferOut');
     const transferInFn = jest.spyOn(casesRepo, 'createTransferIn');
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
     await useCase.updateOrder(mockContext, order.id, orderTransfer);
     expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
     expect(transferOutFn).toHaveBeenCalledWith(mockContext, transferOut);
     expect(transferInFn).toHaveBeenCalledWith(mockContext, transferIn);
+    expect(auditFn).toHaveBeenCalled();
+  });
+
+  test('should add audit records when a transfer order is rejected', async () => {
+    const order: Order = { ...ORDERS[0], status: 'rejected' };
+    const orderTransfer: OrderTransfer = {
+      id: order.id,
+      sequenceNumber: order.sequenceNumber,
+      caseId: order.caseId,
+      status: 'rejected',
+    };
+
+    const updateOrderFn = jest
+      .spyOn(ordersRepo, 'updateOrder')
+      .mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
+
+    await useCase.updateOrder(mockContext, order.id, orderTransfer);
+    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
+    expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
+    expect(auditFn).toHaveBeenCalled();
   });
 
   test('should retrieve orders from legacy and persist to new system', async () => {

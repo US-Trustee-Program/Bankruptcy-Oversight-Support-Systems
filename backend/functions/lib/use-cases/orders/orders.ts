@@ -89,15 +89,15 @@ export class OrdersUseCase {
 
       await this.casesRepo.createTransferIn(context, transferIn);
       await this.casesRepo.createTransferOut(context, transferOut);
-
-      const caseHistory: CaseHistory = {
-        caseId: order.caseId,
-        documentType: 'AUDIT_TRANSFER',
-        before: initialOrder,
-        after: order,
-      };
-      await this.casesRepo.createCaseHistory(context, caseHistory);
     }
+
+    const caseHistory: CaseHistory = {
+      caseId: order.caseId,
+      documentType: 'AUDIT_TRANSFER',
+      before: initialOrder,
+      after: order,
+    };
+    await this.casesRepo.createCaseHistory(context, caseHistory);
 
     return id;
   }
