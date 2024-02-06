@@ -29,11 +29,7 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 export class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync> {
     try {
-      let maxTxIdasInt: number = parseInt(txId);
-      const orderSync = {
-        orders: [],
-        maxTxId: txId,
-      };
+      let maxTxId: number = parseInt(txId);
 
       // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
       const chapters: string[] = ['15'];
@@ -65,13 +61,10 @@ export class DxtrOrdersGateway implements OrdersGateway {
         `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
       );
 
-      orderSync.orders = rawOrders
+      const orders = rawOrders
         .map((rawOrder) => {
-          const txIdAsInt = parseInt(rawOrder.txId);
-          if (maxTxIdasInt < txIdAsInt) {
-            orderSync.maxTxId = rawOrder.txId;
-            maxTxIdasInt = txIdAsInt;
-          }
+          const txId = parseInt(rawOrder.txId);
+          if (maxTxId < txId) maxTxId = txId;
 
           if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
             rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
@@ -87,10 +80,15 @@ export class DxtrOrdersGateway implements OrdersGateway {
         .sort(dxtrOrdersSorter);
       context.logger.info(
         MODULE_NAME,
-        `Processed ${orderSync.orders.length} orders and their documents from DXTR. New maxTxId is ${orderSync.maxTxId}.`,
+        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
       );
 
-      return orderSync;
+      // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
+      // autoincrementing PK as a string, not an integer value.
+      return {
+        orders,
+        maxTxId: maxTxId.toString(),
+      };
     } catch (originalError) {
       throw new CamsError(MODULE_NAME, { originalError });
     }

@@ -10,7 +10,7 @@ import {
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
-  CaseAssignmentHistory,
+  CaseHistory,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
@@ -164,7 +164,7 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
   caseDocketEntries?: CaseDocketEntry[];
-  caseAssignmentHistory?: CaseAssignmentHistory[];
+  caseHistory?: CaseHistory[];
 }
 
 export default function CaseDetail(props: CaseDetailProps) {
@@ -178,7 +178,7 @@ export default function CaseDetail(props: CaseDetailProps) {
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
-  const [caseAssignmentHistory, setCaseAssignmentHistory] = useState<CaseAssignmentHistory[]>([]);
+  const [caseHistory, setCaseHistory] = useState<CaseHistory[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
@@ -233,12 +233,12 @@ export default function CaseDetail(props: CaseDetailProps) {
       .then((data) => {
         const response = data as CaseAssignmentHistoryResponseData;
         if (response) {
-          setCaseAssignmentHistory(response.body);
+          setCaseHistory(response.body);
           setIsAuditHistoryLoading(false);
         }
       })
       .catch(() => {
-        setCaseAssignmentHistory([]);
+        setCaseHistory([]);
         setIsAuditHistoryLoading(false);
       });
   }
@@ -310,8 +310,8 @@ export default function CaseDetail(props: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
-    if (props.caseAssignmentHistory) {
-      setCaseAssignmentHistory(props.caseAssignmentHistory);
+    if (props.caseHistory) {
+      setCaseHistory(props.caseHistory);
     } else {
       fetchCaseAssignmentHistory();
     }
@@ -505,7 +505,7 @@ export default function CaseDetail(props: CaseDetailProps) {
                       path="audit-history"
                       element={
                         <CaseDetailAuditHistory
-                          caseHistory={caseAssignmentHistory}
+                          caseHistory={caseHistory}
                           isAuditHistoryLoading={isAuditHistoryLoading}
                         />
                       }

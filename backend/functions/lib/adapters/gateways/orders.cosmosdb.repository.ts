@@ -22,7 +22,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   }
 
   async getOrders(context: ApplicationContext): Promise<Order[]> {
-    const query = 'SELECT * FROM c';
+    const query = 'SELECT * FROM c ORDER BY c.orderDate ASC';
     const querySpec = {
       query,
       parameters: [],
