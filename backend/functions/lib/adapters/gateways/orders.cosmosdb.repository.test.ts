@@ -141,7 +141,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
     await expect(
       repository.putOrders(applicationContext, [errorTestNewOrderData]),
-    ).resolves.toBeUndefined();
+    ).resolves.toHaveLength(0);
     expect(mockCreate).toHaveBeenCalled();
   });
 
