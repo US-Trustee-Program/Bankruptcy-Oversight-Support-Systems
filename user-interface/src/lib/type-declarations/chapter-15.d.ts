@@ -68,8 +68,8 @@ export interface CaseAssignmentHistory {
   documentType: 'AUDIT_ASSIGNMENT';
   caseId: string;
   occurredAtTimestamp: string;
-  previousAssignments: CaseStaffAssignment[];
-  newAssignments: CaseStaffAssignment[];
+  before: CaseStaffAssignment[];
+  after: CaseStaffAssignment[];
 }
 
 export interface CaseDocketSummaryFacet {
