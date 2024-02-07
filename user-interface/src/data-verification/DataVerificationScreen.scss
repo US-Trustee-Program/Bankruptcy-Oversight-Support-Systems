@@ -8,25 +8,6 @@
         border-radius: 2px;
       }
     }
-    .order-status {
-      span {
-        color: white;
-        padding: 2px 8px 2px 8px;
-        border-radius: 2px;
-      }
-      span.pending {
-        // pa11y failed background color #C2850C for contrast.
-        // The backgound color #a26b00 was specified by pa11y.
-        // background: #C2850C;
-        background: #a26b00;
-      }
-      span.approved {
-        background: #008817;
-      }
-      span.rejected {
-        background: #d83933;
-      }
-    }
     .order-form {
       .court-selection {
         display: flex;
@@ -40,9 +21,6 @@
         div.transfer-from-to__div {
           padding-bottom: 0.5rem;
 
-          .transfer-text {
-            padding-bottom: 1rem;
-          }
           .new-court__select {
             min-width: 300px;
           }
@@ -52,6 +30,54 @@
     .transfer-highlight__span {
       padding: 0 0.3rem;
       font-weight: bold;
+    }
+  }
+  .order-status {
+    span,
+    div.filter {
+      display: inline-block;
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 0.125rem;
+    }
+    div.filter {
+      display: inline-flex;
+      align-items: center;
+      flex-flow: row;
+      flex-direction: row;
+      justify-content: center;
+      svg {
+        display: none;
+        padding-left: 0.125rem;
+      }
+    }
+    .pending {
+      // pa11y failed background color #C2850C for contrast.
+      // The backgound color #a26b00 was specified by pa11y.
+      // background: #C2850C;
+      background: #a26b00;
+    }
+    .approved {
+      background: #008817;
+    }
+    .rejected {
+      background: #d83933;
+    }
+    .filter {
+      margin: 0 0.5rem;
+    }
+    .filter:hover {
+      cursor: pointer;
+    }
+    .inactive {
+      background: #5c5c5c;
+      font-weight: normal;
+    }
+    .active {
+      font-weight: bold;
+      svg.active {
+        display: inline;
+      }
     }
   }
   .data-verification-accordion-header {
