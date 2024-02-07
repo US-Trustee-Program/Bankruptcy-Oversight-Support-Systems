@@ -1,5 +1,4 @@
 import * as mssql from 'mssql';
-
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
@@ -7,7 +6,6 @@ import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { Order, OrderSync } from '../../../use-cases/orders/orders.model';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
-import log from '../../services/logger.service';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
@@ -31,10 +29,7 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 export class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync> {
     try {
-      const orderSync = {
-        orders: [],
-        maxTxId: txId,
-      };
+      let maxTxId: number = parseInt(txId);
 
       // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
       const chapters: string[] = ['15'];
@@ -52,24 +47,24 @@ export class DxtrOrdersGateway implements OrdersGateway {
       });
 
       const rawOrders = await this._getOrders(context, txId, chapters, regions);
-      log.info(context, MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
+      context.logger.info(MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
       const documents = await this._getDocuments(context, txId, chapters, regions);
-      log.info(context, MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
+      context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
       const mappedDocuments = documents.reduce((map, document) => {
         const { dxtrCaseId } = document;
         delete document.dxtrCaseId;
         map.set(dxtrCaseId, document);
         return map;
       }, new Map());
-      log.info(
-        context,
+      context.logger.info(
         MODULE_NAME,
         `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
       );
 
-      orderSync.orders = rawOrders
+      const orders = rawOrders
         .map((rawOrder) => {
-          if (orderSync.maxTxId < rawOrder.txId) orderSync.maxTxId = rawOrder.txId;
+          const txId = parseInt(rawOrder.txId);
+          if (maxTxId < txId) maxTxId = txId;
 
           if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
             rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
@@ -83,13 +78,17 @@ export class DxtrOrdersGateway implements OrdersGateway {
           return rawOrder satisfies Order;
         })
         .sort(dxtrOrdersSorter);
-      log.info(
-        context,
+      context.logger.info(
         MODULE_NAME,
-        `Processed ${orderSync.orders.length} orders and their documents from DXTR. New maxTxId is ${orderSync.maxTxId}.`,
+        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
       );
 
-      return orderSync;
+      // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
+      // autoincrementing PK as a string, not an integer value.
+      return {
+        orders,
+        maxTxId: maxTxId.toString(),
+      };
     } catch (originalError) {
       throw new CamsError(MODULE_NAME, { originalError });
     }
@@ -118,6 +117,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         C.COURT_NAME as courtName,
         O.OFFICE_NAME as courtDivisionName,
         G.REGION_ID as regionId,
+        R.REGION_NAME AS regionName,
         'transfer' AS orderType,
         FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
         DE.DE_SEQNO AS sequenceNumber,
@@ -139,6 +139,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
       JOIN [dbo].[AO_OFFICE] AS O
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
+      JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
       WHERE TX.TX_CODE = 'CTO'
         AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
         AND G.REGION_ID IN ('${regions.join("','")}')

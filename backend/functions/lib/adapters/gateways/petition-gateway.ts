@@ -5,7 +5,22 @@ const petitionLabelMap = new Map<string, string>([
   ['VP', 'Voluntary'],
 ]);
 
-export function getPetitionLabel(id: string | undefined): string {
-  if (petitionLabelMap.has(id)) return petitionLabelMap.get(id);
-  return ''; // Unknown case.
+const voluntaryCodes = ['VP', 'TV'];
+const transferCodes = ['TV', 'TI'];
+
+// TODO: Maybe this should go somewhere more appropriate with the case model or such.
+export interface PetitionInfo {
+  petitionCode: string;
+  petitionLabel: string;
+  isVoluntary: boolean;
+  isTransfer: boolean;
+}
+
+export function getPetitionInfo(petitionCode: string | undefined): PetitionInfo {
+  return {
+    petitionCode,
+    petitionLabel: petitionLabelMap.has(petitionCode) ? petitionLabelMap.get(petitionCode) : '',
+    isVoluntary: voluntaryCodes.includes(petitionCode),
+    isTransfer: transferCodes.includes(petitionCode),
+  };
 }

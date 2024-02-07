@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { getCosmosConfig, getOrdersCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
-import log from '../services/logger.service';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
@@ -17,13 +16,13 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   private containerName = 'orders';
   private cosmosConfig: CosmosConfig;
 
-  constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getOrdersCosmosDbClient(applicationContext);
-    this.cosmosConfig = getCosmosConfig(applicationContext);
+  constructor(context: ApplicationContext) {
+    this.cosmosDbClient = getOrdersCosmosDbClient(context);
+    this.cosmosConfig = getCosmosConfig(context);
   }
 
   async getOrders(context: ApplicationContext): Promise<Order[]> {
-    const query = 'SELECT * FROM c';
+    const query = 'SELECT * FROM c ORDER BY c.orderDate ASC';
     const querySpec = {
       query,
       parameters: [],
@@ -42,8 +41,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
 
       return resource;
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -86,11 +84,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .item(id)
         .replace(updatedOrder);
 
-      log.debug(context, MODULE_NAME, `Order updated ${id}`);
+      context.logger.debug(MODULE_NAME, `Order updated ${id}`);
       return { id };
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -105,8 +102,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async putOrders(context: ApplicationContext, orders: Order[]) {
-    if (!orders.length) return;
+  async putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
+    const writtenOrders: Order[] = [];
+    if (!orders.length) return writtenOrders;
+
     try {
       for (const order of orders) {
         order.id = order.caseId + '_' + order.sequenceNumber;
@@ -115,6 +114,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
             .database(this.cosmosConfig.databaseName)
             .container(this.containerName)
             .items.create(order);
+          writtenOrders.push(order);
         } catch (e) {
           if (!isPreExistingDocumentError(e)) {
             throw e;
@@ -122,8 +122,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         }
       }
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );
@@ -136,6 +135,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         throw originalError;
       }
     }
+    return writtenOrders;
   }
 
   private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
@@ -147,8 +147,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .fetchAll();
       return results;
     } catch (originalError) {
-      log.error(
-        context,
+      context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
       );

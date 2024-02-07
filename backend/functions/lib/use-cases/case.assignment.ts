@@ -1,21 +1,23 @@
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
-import { getAssignmentRepository } from '../factory';
+import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
 import {
   AttorneyAssignmentResponseInterface,
   CaseAssignment,
-  CaseAssignmentHistory,
 } from '../adapters/types/case.assignment';
-import log from '../adapters/services/logger.service';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+import { CasesRepository } from './gateways.types';
+import { CaseAssignmentHistory } from '../adapters/types/case.history';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
   private assignmentRepository: CaseAssignmentRepositoryInterface;
+  private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
     this.assignmentRepository = getAssignmentRepository(applicationContext);
+    this.casesRepository = getCasesRepository(applicationContext);
   }
 
   public async createTrialAttorneyAssignments(
@@ -24,7 +26,7 @@ export class CaseAssignmentUseCase {
     newAssignments: string[],
     role: string,
   ): Promise<AttorneyAssignmentResponseInterface> {
-    log.info(applicationContext, MODULE_NAME, 'New assignments:', newAssignments);
+    applicationContext.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
 
     const listOfAssignments: CaseAssignment[] = [];
     const attorneys = [...new Set(newAssignments)];
@@ -72,15 +74,14 @@ export class CaseAssignmentUseCase {
     const newAssignmentRecords = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
     const history: CaseAssignmentHistory = {
       caseId,
-      documentType: 'ASSIGNMENT_HISTORY',
+      documentType: 'AUDIT_ASSIGNMENT',
       occurredAtTimestamp: currentDate,
-      previousAssignments: existingAssignmentRecords,
-      newAssignments: newAssignmentRecords,
+      before: existingAssignmentRecords,
+      after: newAssignmentRecords,
     };
-    await this.assignmentRepository.createAssignmentHistory(history);
+    await this.casesRepository.createCaseHistory(applicationContext, history);
 
-    log.info(
-      applicationContext,
+    applicationContext.logger.info(
       MODULE_NAME,
       `Updated assignments for case number ${caseId}.`,
       listOfAssignmentIdsCreated,

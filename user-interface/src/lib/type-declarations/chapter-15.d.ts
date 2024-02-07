@@ -38,11 +38,13 @@ interface CaseDetailType {
   dateFiled: string;
   judgeName?: string;
   courtName?: string;
+  courtDivision?: string;
   courtDivisionName?: string;
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
   regionId?: string;
+  regionName?: string;
   assignments: string[];
   debtor: Debtor;
   debtorAttorney?: DebtorAttorney;
@@ -61,13 +63,13 @@ export interface CaseStaffAssignment {
   unassignedOn?: string;
 }
 
-export interface CaseStaffAssignmentHistory {
+export interface CaseAssignmentHistory {
   id?: string;
-  documentType: 'ASSIGNMENT_HISTORY';
+  documentType: 'AUDIT_ASSIGNMENT';
   caseId: string;
   occurredAtTimestamp: string;
-  previousAssignments: CaseStaffAssignment[];
-  newAssignments: CaseStaffAssignment[];
+  before: CaseStaffAssignment[];
+  after: CaseStaffAssignment[];
 }
 
 export interface CaseDocketSummaryFacet {
@@ -112,8 +114,8 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   };
 }
 
-export interface CaseStaffAssignmentHistoryResponseData extends ResponseData {
-  body: CaseStaffAssignmentHistory[];
+export interface CaseAssignmentHistoryResponseData extends ResponseData {
+  body: CaseAssignmentHistory[];
 }
 
 export type Order = CaseDocketEntry & {
@@ -183,3 +185,21 @@ export interface Transfer {
   courtName: string;
   documentType: 'TRANSFER_IN' | 'TRANSFER_OUT';
 }
+
+type AbstractCaseHistory<B, A> = {
+  id?: string;
+  caseId: string;
+  occurredAtTimestamp: string;
+  before: B;
+  after: A;
+};
+
+type CaseAssignmentHistory = AbstractCaseHistory<CaseStaffAssignment[], CaseStaffAssignment[]> & {
+  documentType: 'AUDIT_ASSIGNMENT';
+};
+
+type CaseTransferHistory = AbstractCaseHistory<Order | null, Order> & {
+  documentType: 'AUDIT_TRANSFER';
+};
+
+export type CaseHistory = CaseAssignmentHistory | CaseTransferHistory;

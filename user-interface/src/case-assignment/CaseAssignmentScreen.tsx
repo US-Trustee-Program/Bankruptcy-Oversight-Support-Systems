@@ -14,8 +14,8 @@ import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import Icon from '@/lib/components/uswds/Icon';
-import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { CaseNumber } from '@/lib/components/CaseNumber';
 
 const modalId = 'assign-attorney-modal';
 
@@ -99,7 +99,6 @@ export const CaseAssignment = () => {
         });
         alertRef.current?.show();
         setCaseListLoadError(true);
-        console.error((reason as Error).message);
       });
   };
 
@@ -116,7 +115,15 @@ export const CaseAssignment = () => {
         setAttorneyList(attorneys);
       })
       .catch((reason) => {
-        console.error((reason as Error).message);
+        isFetching = false;
+        setIsLoading(false);
+        setAssignmentAlert({
+          message: reason.message,
+          type: UswdsAlertStyle.Error,
+          timeOut: 0,
+        });
+        alertRef.current?.show();
+        setCaseListLoadError(true);
       });
   };
 
@@ -286,9 +293,10 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <Link className="usa-link" to={`/case-detail/${theCase.caseId}`}>
-                                    {getCaseNumber(theCase.caseId)}
-                                  </Link>
+                                  <CaseNumber
+                                    caseNumber={theCase.caseId}
+                                    openLinkIn="same-window"
+                                  />
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>
@@ -397,9 +405,10 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <Link className="usa-link" to={`/case-detail/${theCase.caseId}`}>
-                                    {getCaseNumber(theCase.caseId)}
-                                  </Link>
+                                  <CaseNumber
+                                    caseNumber={theCase.caseId}
+                                    openLinkIn="same-window"
+                                  />
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>

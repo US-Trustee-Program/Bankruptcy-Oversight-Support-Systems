@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
-import log from '../services/logger.service';
 import { AssignmentError } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -35,7 +34,7 @@ export class CaseAssignmentController {
         params.role,
       );
     } catch (exception) {
-      log.error(this.applicationContext, MODULE_NAME, exception.message);
+      this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
         throw exception;
       }

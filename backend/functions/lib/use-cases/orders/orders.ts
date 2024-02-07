@@ -8,6 +8,9 @@ import {
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Order, OrderTransfer, TransferIn, TransferOut } from './orders.model';
 import { CamsError } from '../../common-errors/cams-error';
+import { CaseDetailInterface } from '../../adapters/types/cases';
+import { CasesInterface } from '../cases.interface';
+import { CaseHistory } from '../../adapters/types/case.history';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -26,17 +29,20 @@ export interface SyncOrdersStatus {
 
 export class OrdersUseCase {
   private readonly casesRepo: CasesRepository;
+  private readonly casesGateway: CasesInterface;
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository;
 
   constructor(
     casesRepo: CasesRepository,
+    casesGateway: CasesInterface,
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
     runtimeRepo: RuntimeStateRepository,
   ) {
     this.casesRepo = casesRepo;
+    this.casesGateway = casesGateway;
     this.ordersRepo = ordersRepo;
     this.ordersGateway = ordersGateway;
     this.runtimeStateRepo = runtimeRepo;
@@ -46,11 +52,19 @@ export class OrdersUseCase {
     return this.ordersRepo.getOrders(context);
   }
 
+  public async getSuggestedCases(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<Array<CaseDetailInterface>> {
+    return this.casesGateway.getSuggestedCases(context, caseId);
+  }
+
   public async updateOrder(
     context: ApplicationContext,
     id: string,
     data: OrderTransfer,
   ): Promise<string> {
+    const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     await this.ordersRepo.updateOrder(context, id, data);
     const order = await this.ordersRepo.getOrder(context, id, data.caseId);
 
@@ -77,12 +91,20 @@ export class OrdersUseCase {
       await this.casesRepo.createTransferOut(context, transferOut);
     }
 
+    const caseHistory: CaseHistory = {
+      caseId: order.caseId,
+      documentType: 'AUDIT_TRANSFER',
+      before: initialOrder,
+      after: order,
+    };
+    await this.casesRepo.createCaseHistory(context, caseHistory);
+
     return id;
   }
 
   public async syncOrders(
     context: ApplicationContext,
-    options: SyncOrdersOptions,
+    options?: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
     let initialSyncState: OrderSyncState;
 
@@ -128,8 +150,18 @@ export class OrdersUseCase {
     const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, startingTxId);
     context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', { maxTxId, orders });
 
-    await this.ordersRepo.putOrders(context, orders);
+    const writtenOrders = await this.ordersRepo.putOrders(context, orders);
     context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
+
+    for (const order of writtenOrders) {
+      const caseHistory: CaseHistory = {
+        caseId: order.caseId,
+        documentType: 'AUDIT_TRANSFER',
+        before: null,
+        after: order,
+      };
+      await this.casesRepo.createCaseHistory(context, caseHistory);
+    }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
     await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);

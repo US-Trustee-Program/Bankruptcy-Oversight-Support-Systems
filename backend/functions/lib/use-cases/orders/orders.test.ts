@@ -7,22 +7,25 @@ import {
   getOrdersRepository,
   getRuntimeStateRepository,
   getCasesRepository,
+  getCasesGateway,
 } from '../../factory';
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
-import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
-import { Order, TransferIn, TransferOut } from './orders.model';
+import { Order, OrderTransfer, TransferIn, TransferOut } from './orders.model';
+import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 
 describe('Orders use case', () => {
+  const CASE_ID = '000-11-22222';
   let mockContext;
   let ordersGateway;
   let ordersRepo;
   let casesRepo;
   let runtimeStateRepo;
-  let useCase;
+  let casesGateway;
+  let useCase: OrdersUseCase;
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
@@ -30,7 +33,14 @@ describe('Orders use case', () => {
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
     casesRepo = getCasesRepository(mockContext);
-    useCase = new OrdersUseCase(casesRepo, ordersRepo, ordersGateway, runtimeStateRepo);
+    casesGateway = getCasesGateway(mockContext);
+    useCase = new OrdersUseCase(
+      casesRepo,
+      casesGateway,
+      ordersRepo,
+      ordersGateway,
+      runtimeStateRepo,
+    );
   });
 
   test('should return list of orders for the API from the repo', async () => {
@@ -42,9 +52,28 @@ describe('Orders use case', () => {
     expect(mockRead).toHaveBeenCalled();
   });
 
+  test('should return list of suggested cases for an order', async () => {
+    const suggestedCases = [CASE_SUMMARIES[0]];
+    const gateway = jest.spyOn(casesGateway, 'getSuggestedCases').mockResolvedValue(suggestedCases);
+    const result = await useCase.getSuggestedCases(mockContext, CASE_ID);
+    expect(result).toEqual(suggestedCases);
+    expect(gateway).toHaveBeenCalled();
+  });
+
   test('should add transfer records for both cases when a transfer order is completed', async () => {
-    const order: Order = { ...ORDERS[0] };
-    order.status = 'approved';
+    const order: Order = { ...ORDERS[0], status: 'approved' };
+    const orderTransfer: OrderTransfer = {
+      id: order.id,
+      sequenceNumber: order.sequenceNumber,
+      caseId: order.caseId,
+      newCaseId: order.newCaseId,
+      newCourtName: order.newCourtName,
+      newCourtDivisionName: order.newCourtDivisionName,
+      newDivisionCode: order.newDivisionCode,
+      newRegionId: order.newRegionId,
+      newRegionName: order.newRegionName,
+      status: 'approved',
+    };
 
     const transferIn: TransferIn = {
       caseId: order.newCaseId,
@@ -65,26 +94,41 @@ describe('Orders use case', () => {
     };
 
     const updateOrderFn = jest
-      .spyOn(OrdersCosmosDbRepository.prototype, 'updateOrder')
+      .spyOn(ordersRepo, 'updateOrder')
       .mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+    const transferOutFn = jest.spyOn(casesRepo, 'createTransferOut');
+    const transferInFn = jest.spyOn(casesRepo, 'createTransferIn');
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
-    const getOrderFn = jest
-      .spyOn(OrdersCosmosDbRepository.prototype, 'getOrder')
-      .mockResolvedValue(order);
-
-    const transferOutFn = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'createTransferOut')
-      .mockResolvedValue(transferOut);
-
-    const transferInFn = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'createTransferIn')
-      .mockResolvedValue(transferIn);
-
-    await useCase.updateOrder(mockContext, order.id, order);
-    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, order);
+    await useCase.updateOrder(mockContext, order.id, orderTransfer);
+    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
     expect(transferOutFn).toHaveBeenCalledWith(mockContext, transferOut);
     expect(transferInFn).toHaveBeenCalledWith(mockContext, transferIn);
+    expect(auditFn).toHaveBeenCalled();
+  });
+
+  test('should add audit records when a transfer order is rejected', async () => {
+    const order: Order = { ...ORDERS[0], status: 'rejected' };
+    const orderTransfer: OrderTransfer = {
+      id: order.id,
+      sequenceNumber: order.sequenceNumber,
+      caseId: order.caseId,
+      status: 'rejected',
+    };
+
+    const updateOrderFn = jest
+      .spyOn(ordersRepo, 'updateOrder')
+      .mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
+
+    await useCase.updateOrder(mockContext, order.id, orderTransfer);
+    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
+    expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
+    expect(auditFn).toHaveBeenCalled();
   });
 
   test('should retrieve orders from legacy and persist to new system', async () => {
@@ -106,7 +150,7 @@ describe('Orders use case', () => {
 
     const mockPutOrders = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
-      .mockImplementation(async () => {});
+      .mockResolvedValue(ORDERS);
 
     const mockUpdateState = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
@@ -150,7 +194,7 @@ describe('Orders use case', () => {
 
     const mockPutOrders = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
-      .mockImplementation(async () => {});
+      .mockResolvedValue(ORDERS);
 
     const mockUpdateState = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')

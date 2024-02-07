@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
@@ -136,9 +136,15 @@ describe('Review Orders screen', () => {
     const ordersScreen = screen.getByTestId('data-verification-screen');
     expect(ordersScreen).toBeInTheDocument();
 
-    const accordionGroup = screen.getByTestId('accordion-group');
-    expect(accordionGroup).toBeInTheDocument();
-
+    let accordionGroup;
+    await waitFor(() => {
+      accordionGroup = screen.getByTestId('accordion-group');
+      expect(accordionGroup).toBeInTheDocument();
+    });
+    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
+    const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
+    fireEvent.click(approvedOrderFilter);
+    fireEvent.click(rejectedOrderFilter);
     for (const order of ordersResponse.body) {
       await waitFor(async () => {
         const heading = screen.getByTestId(`accordion-heading-${order.id}`);

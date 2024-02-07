@@ -44,6 +44,13 @@ export class MockCasesGateway implements CasesInterface {
     throw new Error('not implemented');
   }
 
+  public async getSuggestedCases(
+    _applicationContext: ApplicationContext,
+    _caseId: string,
+  ): Promise<CaseDetailInterface[]> {
+    throw new Error('not implemented');
+  }
+
   private subtractMonths(date) {
     date.setMonth(date.getMonth() + this.startingMonth);
     return date;

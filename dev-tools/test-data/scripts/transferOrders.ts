@@ -28,9 +28,11 @@ async function main() {
       DE_DATE_FILED: orderDate,
       DE_DOCUMENT_NUM: nextDocketSequenceNumber,
       DE_TYPE: 'order',
-      DO_SELECT_TEXT: 'Order Re: Transfer Case',
-      DO_SUMMARY_TEXT: 'Order Re: Transfer Case',
-      DT_TEXT: faker.lorem.sentences(8),
+      DO_SELECT_TEXT: 'Order Transferring Venue',
+      DO_SUMMARY_TEXT: 'Order Transferring Venue',
+      DT_TEXT:
+        'Order that this case is transferred from this Court to the U.S. Bankruptcy Court for the Central District of Illinois. ' +
+        faker.lorem.sentences(8),
     });
     const FILE_NAME = `${courtId}-${csCaseId}-${nextDocketSequenceNumber}-${nextDocketSequenceNumber}-0.pdf`;
     const documentEntry = new AO_DC_Record({
