@@ -8,25 +8,6 @@
         border-radius: 2px;
       }
     }
-    .order-status {
-      span {
-        color: white;
-        padding: 2px 8px 2px 8px;
-        border-radius: 2px;
-      }
-      span.pending {
-        // pa11y failed background color #C2850C for contrast.
-        // The backgound color #a26b00 was specified by pa11y.
-        // background: #C2850C;
-        background: #a26b00;
-      }
-      span.approved {
-        background: #008817;
-      }
-      span.rejected {
-        background: #d83933;
-      }
-    }
     .order-form {
       .court-selection {
         display: flex;
@@ -52,6 +33,45 @@
     .transfer-highlight__span {
       padding: 0 0.3rem;
       font-weight: bold;
+    }
+  }
+  .order-status {
+    span {
+      color: white;
+      padding: 2px 8px 2px 8px;
+      border-radius: 2px;
+      svg {
+        visibility: hidden;
+      }
+    }
+    span.pending {
+      // pa11y failed background color #C2850C for contrast.
+      // The backgound color #a26b00 was specified by pa11y.
+      // background: #C2850C;
+      background: #a26b00;
+    }
+    span.approved {
+      background: #008817;
+    }
+    span.rejected {
+      background: #d83933;
+    }
+    span.filter {
+      margin: 0 0.5rem;
+      padding-left: calc(1em + 5px);
+    }
+    span.filter:hover {
+      cursor: pointer;
+    }
+    span.inactive {
+      background: #5c5c5c;
+      font-weight: normal;
+    }
+    span.active {
+      font-weight: bold;
+      svg.active {
+        visibility: visible;
+      }
     }
   }
   .data-verification-accordion-header {
