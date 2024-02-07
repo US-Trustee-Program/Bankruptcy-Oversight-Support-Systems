@@ -103,16 +103,28 @@ export const CaseAssignment = () => {
   };
 
   const fetchAttorneys = () => {
-    AttorneysApi.getAttorneys().then((response) => {
-      const attorneys = response.map((atty) => {
-        const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
-        if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
-        if (atty.generation !== undefined) attorney.generation = atty.generation;
-        if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
-        return attorney;
+    AttorneysApi.getAttorneys()
+      .then((response) => {
+        const attorneys = response.map((atty) => {
+          const attorney = new Attorney(atty.firstName, atty.lastName, atty.office);
+          if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
+          if (atty.generation !== undefined) attorney.generation = atty.generation;
+          if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
+          return attorney;
+        });
+        setAttorneyList(attorneys);
+      })
+      .catch((reason) => {
+        isFetching = false;
+        setIsLoading(false);
+        setAssignmentAlert({
+          message: reason.message,
+          type: UswdsAlertStyle.Error,
+          timeOut: 0,
+        });
+        alertRef.current?.show();
+        setCaseListLoadError(true);
       });
-      setAttorneyList(attorneys);
-    });
   };
 
   function updateCase({
