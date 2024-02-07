@@ -52,6 +52,7 @@ jobs:
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ vars.SLOT_NAME }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
+      deployBicep: ${{ steps.build-info.outputs.deployBicep }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -79,7 +80,8 @@ jobs:
           echo "Resource group appended with the following: ${resourceGroupSuffix}"
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-
+          # Check if bicep changes
+          echo "deployBicep=$(./ops/scripts/pipeline/check-git-diff.sh)" >> $GITHUB_OUTPUT
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
@@ -367,7 +369,7 @@ jobs:
         security-sca-scan-common,
       ]
     environment: ${{ needs.build-info.outputs.environment }}
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && needs.build-info.outputs.deployBicep == 'true'
     outputs:
       cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
