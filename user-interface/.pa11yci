@@ -42,6 +42,8 @@
       "url": "http://localhost:3000/data-verification/",
       "actions": [
         "wait for element [data-testid='data-verification-screen'] to be visible",
+        "click element div.approved",
+        "click element div.rejected",
         "click element [data-testid='accordion-button-order-list-guid-0']",
         "click element #buttonSuggestedCases",
         "click element [data-testid='suggested-cases-radio-0']",
