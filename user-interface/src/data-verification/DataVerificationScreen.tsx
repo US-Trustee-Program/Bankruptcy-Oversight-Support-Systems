@@ -197,6 +197,7 @@ function Filter(props: FilterProps) {
       className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big`}
       aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
       onClick={() => callback(filterType)}
+      data-testid={`order-status-filter-${filterType}`}
     >
       {label}
       <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
