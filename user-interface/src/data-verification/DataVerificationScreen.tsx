@@ -31,7 +31,7 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function DataVerificationScreen() {
-  const [filters, setFilters] = useState<FilterType[]>([]);
+  const [filters, setFilters] = useState<FilterType[]>(['pending']);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -158,19 +158,21 @@ export default function DataVerificationScreen() {
                 </div>
               </div>
               <AccordionGroup>
-                {orderList.map((order: Order) => {
-                  return (
-                    <TransferOrderAccordion
-                      key={`accordion-${order.id}`}
-                      order={order}
-                      regionsMap={regionsMap}
-                      officesList={officesList}
-                      orderType={orderType}
-                      statusType={transferStatusType}
-                      onOrderUpdate={handleOrderUpdate}
-                    ></TransferOrderAccordion>
-                  );
-                })}
+                {orderList
+                  .filter((o) => filters.includes(o.status))
+                  .map((order: Order) => {
+                    return (
+                      <TransferOrderAccordion
+                        key={`accordion-${order.id}`}
+                        order={order}
+                        regionsMap={regionsMap}
+                        officesList={officesList}
+                        orderType={orderType}
+                        statusType={transferStatusType}
+                        onOrderUpdate={handleOrderUpdate}
+                      ></TransferOrderAccordion>
+                    );
+                  })}
               </AccordionGroup>
             </section>
           )}
