@@ -21,9 +21,6 @@
         div.transfer-from-to__div {
           padding-bottom: 0.5rem;
 
-          .transfer-text {
-            padding-bottom: 1rem;
-          }
           .new-court__select {
             min-width: 300px;
           }
@@ -36,41 +33,50 @@
     }
   }
   .order-status {
-    span {
+    span,
+    div.filter {
+      display: inline-block;
       color: white;
-      padding: 2px 8px 2px 8px;
-      border-radius: 2px;
+      padding: 0.125rem 0.5rem;
+      border-radius: 0.125rem;
+    }
+    div.filter {
+      display: inline-flex;
+      align-items: center;
+      flex-flow: row;
+      flex-direction: row;
+      justify-content: center;
       svg {
-        visibility: hidden;
+        display: none;
+        padding-left: 0.125rem;
       }
     }
-    span.pending {
+    .pending {
       // pa11y failed background color #C2850C for contrast.
       // The backgound color #a26b00 was specified by pa11y.
       // background: #C2850C;
       background: #a26b00;
     }
-    span.approved {
+    .approved {
       background: #008817;
     }
-    span.rejected {
+    .rejected {
       background: #d83933;
     }
-    span.filter {
+    .filter {
       margin: 0 0.5rem;
-      padding-left: calc(1em + 5px);
     }
-    span.filter:hover {
+    .filter:hover {
       cursor: pointer;
     }
-    span.inactive {
+    .inactive {
       background: #5c5c5c;
       font-weight: normal;
     }
-    span.active {
+    .active {
       font-weight: bold;
       svg.active {
-        visibility: visible;
+        display: inline;
       }
     }
   }

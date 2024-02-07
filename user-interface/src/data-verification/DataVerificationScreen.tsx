@@ -193,13 +193,13 @@ interface FilterProps {
 function Filter(props: FilterProps) {
   const { label, filterType, filters, callback } = props;
   return (
-    <span
-      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'}`}
+    <div
+      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big`}
       aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
       onClick={() => callback(filterType)}
     >
       {label}
       <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
-    </span>
+    </div>
   );
 }
