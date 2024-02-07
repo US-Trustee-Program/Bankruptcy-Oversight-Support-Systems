@@ -13,12 +13,15 @@ import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
+import Icon from '@/lib/components/uswds/Icon';
 
 export interface AlertDetails {
   message: string;
   type: UswdsAlertStyle;
   timeOut: number;
 }
+
+type FilterType = 'pending' | 'approved' | 'rejected';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -28,6 +31,7 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function DataVerificationScreen() {
+  const [filters, setFilters] = useState<FilterType[]>([]);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -88,6 +92,18 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
+  function handleSetFilter(filterString: FilterType) {
+    if (filters.includes(filterString)) {
+      setFilters(
+        filters.filter((filter) => {
+          return filter !== filterString;
+        }),
+      );
+    } else {
+      setFilters([...filters, filterString]);
+    }
+  }
+
   useEffect(() => {
     getOrders();
     getOffices();
@@ -112,6 +128,26 @@ export default function DataVerificationScreen() {
           {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
           {!isOrderListLoading && (
             <section className="order-list-container">
+              <div className="filters order-status">
+                <Filter
+                  label="Pending Review"
+                  filterType="pending"
+                  filters={filters}
+                  callback={handleSetFilter}
+                />
+                <Filter
+                  label="Approved"
+                  filterType="approved"
+                  filters={filters}
+                  callback={handleSetFilter}
+                />
+                <Filter
+                  label="Rejected"
+                  filterType="rejected"
+                  filters={filters}
+                  callback={handleSetFilter}
+                />
+              </div>
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
                   <div className="grid-col-2 text-no-wrap">Case Number</div>
@@ -142,5 +178,26 @@ export default function DataVerificationScreen() {
         <div className="grid-col-1"></div>
       </div>
     </div>
+  );
+}
+
+interface FilterProps {
+  label: string;
+  filterType: FilterType;
+  filters: FilterType[];
+  callback: (filterString: FilterType) => void;
+}
+
+function Filter(props: FilterProps) {
+  const { label, filterType, filters, callback } = props;
+  return (
+    <span
+      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'}`}
+      aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
+      onClick={() => callback(filterType)}
+    >
+      {label}
+      <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
+    </span>
   );
 }
