@@ -4,12 +4,13 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
-import { Order, OrderSync } from '../../../use-cases/orders/orders.model';
+import { TransferOrder, OrderSync } from '../../../use-cases/orders/orders.model';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
+import { CaseDocketEntry } from '../../../use-cases/case-docket/case-docket.model';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
-export interface DxtrOrder extends Order {
+export interface DxtrOrder extends TransferOrder {
   // txId will be encoded as a string, not a number, because it is
   // of type BIGINT in MS-SQL Server.
   txId: string;
@@ -17,8 +18,15 @@ export interface DxtrOrder extends Order {
   rawRec: string;
 }
 
-export interface DxtrOrderDocument extends DxtrCaseDocketEntryDocument {
+export interface DxtrOrderDocketEntry extends CaseDocketEntry {
+  txId: string;
+  newCaseId: string;
   dxtrCaseId: string;
+  rawRec: string;
+}
+
+export interface DxtrOrderDocument extends DxtrCaseDocketEntryDocument {
+  txId: string;
 }
 
 export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: string }) {
@@ -46,14 +54,29 @@ export class DxtrOrdersGateway implements OrdersGateway {
         value: txId,
       });
 
-      const rawOrders = await this._getOrders(context, txId, chapters, regions);
-      context.logger.info(MODULE_NAME, `Retrieved ${rawOrders.length} raw orders from DXTR.`);
-      const documents = await this._getDocuments(context, txId, chapters, regions);
+      // Get raw order which are a subset of case detail associated with a transfer order
+      const rawOrders = await this._getTransferOrders(context, txId, chapters, regions);
+
+      // Get the docket entries for transfer orders
+      const rawDocketEntries = await this._getTransferOrderDocketEntries(
+        context,
+        txId,
+        chapters,
+        regions,
+      );
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved ${rawDocketEntries.length} raw orders from DXTR.`,
+      );
+
+      // Get documents for transfer docket entries
+      const documents = await this._getTransferOrderDocuments(context, txId, chapters, regions);
       context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
+
       const mappedDocuments = documents.reduce((map, document) => {
-        const { dxtrCaseId } = document;
-        delete document.dxtrCaseId;
-        map.set(dxtrCaseId, document);
+        const { txId } = document;
+        delete document.txId;
+        map.set(txId, document);
         return map;
       }, new Map());
       context.logger.info(
@@ -61,21 +84,40 @@ export class DxtrOrdersGateway implements OrdersGateway {
         `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
       );
 
+      // Add documents to docket entries
+      const docketEntries = rawDocketEntries.map((de) => {
+        const txId = parseInt(de.txId);
+        if (maxTxId < txId) maxTxId = txId;
+
+        if (mappedDocuments.has(de.txId)) {
+          de.documents = translateModel([mappedDocuments.get(de.txId)]);
+        }
+
+        if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
+          de.newCaseId = de.rawRec.split('WARN:')[1].trim();
+        }
+        delete de.dxtrCaseId;
+        delete de.rawRec;
+        delete de.txId;
+        return de;
+      });
+
+      const mappedDocketEntries = docketEntries.reduce((map, docketEntry) => {
+        if (map.has(docketEntry.dxtrCaseId)) {
+          map.get(docketEntry.dxtrCaseId).push(docketEntry);
+        } else {
+          map.set(docketEntry.dxtrCaseId, [docketEntry]);
+        }
+        return map;
+      }, new Map<string, DxtrOrderDocketEntry[]>());
+
       const orders = rawOrders
         .map((rawOrder) => {
-          const txId = parseInt(rawOrder.txId);
-          if (maxTxId < txId) maxTxId = txId;
-
-          if (mappedDocuments.has(rawOrder.dxtrCaseId)) {
-            rawOrder.documents = translateModel([mappedDocuments.get(rawOrder.dxtrCaseId)]);
-          }
-          if (rawOrder.rawRec && rawOrder.rawRec.toUpperCase().includes('WARN:')) {
-            rawOrder.newCaseId = rawOrder.rawRec.split('WARN:')[1].trim();
+          if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
+            rawOrder.docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
           }
           delete rawOrder.dxtrCaseId;
-          delete rawOrder.rawRec;
-          delete rawOrder.txId;
-          return rawOrder satisfies Order;
+          return rawOrder satisfies TransferOrder;
         })
         .sort(dxtrOrdersSorter);
       context.logger.info(
@@ -94,41 +136,56 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  async _getOrders(
+  async _getTransferOrders(
     context: ApplicationContext,
     txId: string,
     chapters: string[],
     regions: string[],
   ): Promise<Array<DxtrOrder>> {
+    return this._getOrders(context, txId, 'CTO', chapters, regions);
+  }
+
+  async _getOrders(
+    context: ApplicationContext,
+    txId: string,
+    transactionCode: 'CTO',
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrder>> {
     const params: DbTableFieldSpec[] = [];
+
     params.push({
       name: 'txId',
       type: mssql.BigInt,
       value: txId,
     });
 
+    params.push({
+      name: 'transactionCode',
+      type: mssql.VarChar,
+      value: transactionCode,
+    });
+
     const query = `
       SELECT
-        TX.TX_ID AS txId,
-        CS.CS_CASEID AS dxtrCaseId,
-        CS.CS_DIV+'-'+CS.CASE_ID as caseId,
-        CS.CS_SHORT_TITLE as caseTitle,
-        CS.CS_CHAPTER as chapter,
-        C.COURT_NAME as courtName,
-        O.OFFICE_NAME as courtDivisionName,
-        G.REGION_ID as regionId,
-        R.REGION_NAME AS regionName,
         'transfer' AS orderType,
-        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
-        DE.DE_SEQNO AS sequenceNumber,
-        DE.DE_DOCUMENT_NUM AS documentNumber,
-        DE.DO_SUMMARY_TEXT AS summaryText,
-        DE.DT_TEXT AS fullText,
-        FORMAT(DE.DE_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
-        'pending' as status,
-        TX.REC AS rawRec
-      FROM [dbo].[AO_TX] AS TX
-      JOIN [dbo].[AO_DE] AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID=DE.COURT_ID
+        'pending' AS status,
+        CS.CS_CASEID AS dxtrCaseId,
+        CS.CS_DIV+'-'+CS.CASE_ID AS caseId,
+        CS.CS_SHORT_TITLE AS caseTitle,
+        CS.CS_CHAPTER AS chapter,
+        C.COURT_NAME AS courtName,
+        O.OFFICE_NAME AS courtDivisionName,
+        G.REGION_ID AS regionId,
+        R.REGION_NAME AS regionName,
+        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate
+      FROM (
+        SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE
+        FROM [dbo].[AO_TX] AS TX2
+        WHERE TX2.TX_CODE = @transactionCode
+        AND TX2.TX_ID > @txId
+        GROUP BY TX2.CS_CASEID, TX2.COURT_ID
+      ) AS TX
       JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID=CS.COURT_ID
       JOIN [dbo].[AO_GRP_DES] AS G
         ON CS.GRP_DES = G.GRP_DES
@@ -140,11 +197,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
-      WHERE TX.TX_CODE = 'CTO'
-        AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
-        AND G.REGION_ID IN ('${regions.join("','")}')
-        AND TX.TX_ID > @txId
-      ORDER BY TX.TX_ID ASC
+      WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
+      AND G.REGION_ID IN ('${regions.join("','")}')
       `;
 
     const queryResult: QueryResults = await executeQuery(
@@ -161,25 +215,109 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  async _getDocuments(
+  async _getTransferOrderDocketEntries(
     context: ApplicationContext,
     txId: string,
     chapters: string[],
     regions: string[],
-  ): Promise<Array<DxtrOrderDocument>> {
+  ): Promise<Array<DxtrOrderDocketEntry>> {
+    return this._getOrderDocketEntries(context, txId, 'CTO', chapters, regions);
+  }
+
+  async _getOrderDocketEntries(
+    context: ApplicationContext,
+    txId: string,
+    transactionCode: 'CTO',
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrderDocketEntry>> {
     const params: DbTableFieldSpec[] = [];
+
     params.push({
       name: 'txId',
       type: mssql.BigInt,
       value: txId,
     });
 
+    params.push({
+      name: 'transactionCode',
+      type: mssql.VarChar,
+      value: transactionCode,
+    });
+
+    const query = `
+      SELECT
+        TX.TX_ID AS txId,
+        DE.DE_SEQNO AS sequenceNumber,
+        DE.DE_DOCUMENT_NUM AS documentNumber,
+        DE.DO_SUMMARY_TEXT AS summaryText,
+        DE.DT_TEXT AS fullText,
+        FORMAT(DE.DE_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
+        TX.REC AS rawRec
+      FROM [dbo].[AO_TX] AS TX
+      JOIN [dbo].[AO_DE] AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID=DE.COURT_ID
+      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID=CS.COURT_ID
+      JOIN [dbo].[AO_GRP_DES] AS G
+        ON CS.GRP_DES = G.GRP_DES
+      JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
+      WHERE TX.TX_CODE = @transactionCode
+        AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
+        AND G.REGION_ID IN ('${regions.join("','")}')
+        AND TX.TX_ID > @txId
+      ORDER BY TX.TX_ID ASC
+      `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    if (queryResult.success) {
+      return (queryResult.results as mssql.IResult<DxtrOrderDocketEntry>).recordset;
+    } else {
+      return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
+    }
+  }
+
+  async _getTransferOrderDocuments(
+    context: ApplicationContext,
+    txId: string,
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrderDocument>> {
+    return this._getOrderDocuments(context, txId, 'CTO', chapters, regions);
+  }
+
+  async _getOrderDocuments(
+    context: ApplicationContext,
+    txId: string,
+    transactionCode: 'CTO',
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrderDocument>> {
+    const params: DbTableFieldSpec[] = [];
+
+    params.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: txId,
+    });
+
+    params.push({
+      name: 'transactionCode',
+      type: mssql.VarChar,
+      value: transactionCode,
+    });
+
     // NOTE: This query is a derivative of the original SQL query in `case-docket.dxtr.gateway.ts`.
     const query = `
       SELECT
+        CS2.TX_ID AS txId,
         CS.CS_CASEID AS dxtrCaseId,
         DE.DE_SEQNO AS sequenceNumber,
-        DC.PDF_SIZE as fileSize,
+        DC.PDF_SIZE AS fileSize,
         uriStem = CASE
             --- 1. PDF WEB PATH set to 'This file is no longer accessible via this system.' PDF deleted, case closed > 180 days section---
             WHEN ((DC.region_copied = 'Y' AND
@@ -238,19 +376,19 @@ export class DxtrOrdersGateway implements OrdersGateway {
       JOIN [dbo].[AO_CS_DIV] DIV ON CS.CS_DIV = DIV.CS_DIV
       JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
       JOIN (
-        SELECT C.CS_CASEID, C.COURT_ID
+        SELECT C.CS_CASEID, C.COURT_ID, T.TX_ID
           FROM [dbo].[AO_TX] AS T
           JOIN [dbo].[AO_DE] AS D ON T.CS_CASEID=D.CS_CASEID AND T.DE_SEQNO=D.DE_SEQNO AND T.COURT_ID = D.COURT_ID
           JOIN [dbo].[AO_CS] AS C ON T.CS_CASEID=C.CS_CASEID AND T.COURT_ID=C.COURT_ID
           JOIN [dbo].[AO_GRP_DES] AS G ON C.GRP_DES=G.GRP_DES
-        WHERE T.TX_CODE = 'CTO'
+        WHERE T.TX_CODE = @transactionCode
           AND C.CS_CHAPTER IN ('${chapters.join("','")}')
           AND G.REGION_ID IN ('${regions.join("','")}')
           AND T.TX_ID > @txId
       ) AS CS2 ON CS2.CS_CASEID=CS.CS_CASEID AND CS2.COURT_ID=CS.COURT_ID
       WHERE DC.COURT_STATUS != 'unk'
       AND DE.DE_SEQNO=TX.DE_SEQNO
-      AND TX.TX_CODE='CTO'
+      AND TX.TX_CODE=@transactionCode
     `;
 
     const queryResult: QueryResults = await executeQuery(

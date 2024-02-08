@@ -1,7 +1,13 @@
 import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentHistory, CaseHistory } from '../adapters/types/case.history';
-import { Order, OrderSync, OrderTransfer, TransferIn, TransferOut } from './orders/orders.model';
+import {
+  TransferOrder,
+  OrderSync,
+  TransferOrderAction,
+  TransferIn,
+  TransferOut,
+} from './orders/orders.model';
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
@@ -19,10 +25,10 @@ export interface OrdersGateway {
 }
 
 export interface OrdersRepository {
-  getOrders(context: ApplicationContext): Promise<Order[]>;
-  getOrder(context: ApplicationContext, id: string, caseId: string): Promise<Order>;
-  putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
-  updateOrder(context: ApplicationContext, id: string, data: OrderTransfer);
+  getOrders(context: ApplicationContext): Promise<TransferOrder[]>;
+  getOrder(context: ApplicationContext, id: string, caseId: string): Promise<TransferOrder>;
+  putOrders(context: ApplicationContext, orders: TransferOrder[]): Promise<TransferOrder[]>;
+  updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction);
 }
 
 export interface CasesRepository {

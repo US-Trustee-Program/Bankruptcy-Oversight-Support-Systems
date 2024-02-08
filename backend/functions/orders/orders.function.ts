@@ -9,7 +9,7 @@ import {
   GetOrdersResponse,
   PatchOrderResponse,
 } from '../lib/controllers/orders/orders.controller';
-import { OrderTransfer } from '../lib/use-cases/orders/orders.model';
+import { TransferOrderAction } from '../lib/use-cases/orders/orders.model';
 import { BadRequestError } from '../lib/common-errors/bad-request';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
@@ -58,7 +58,7 @@ async function updateOrder(
     });
     throw camsError;
   }
-  return ordersController.updateOrder(context, id, data as OrderTransfer);
+  return ordersController.updateOrder(context, id, data as TransferOrderAction);
 }
 
 export default httpTrigger;

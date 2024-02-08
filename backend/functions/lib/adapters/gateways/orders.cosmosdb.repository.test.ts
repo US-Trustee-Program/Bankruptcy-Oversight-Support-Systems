@@ -1,6 +1,6 @@
 import { OrdersCosmosDbRepository } from './orders.cosmosdb.repository';
 import { ORDERS } from '../../testing/mock-data/orders.mock';
-import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
+import { TransferOrder, TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
@@ -11,7 +11,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { createPreExistingDocumentError } from '../../testing/cosmos-errors';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 
-const testNewOrderTransferData: OrderTransfer = {
+const testNewOrderTransferData: TransferOrderAction = {
   id: 'test-id-0',
   sequenceNumber: 2,
   caseId: '111-11-11111',
@@ -24,7 +24,7 @@ const testNewOrderTransferData: OrderTransfer = {
   status: 'approved',
 };
 
-const testNewOrderData: Order = {
+const testNewOrderData: TransferOrder = {
   id: 'test-id-0',
   caseId: '111-11-11111',
   caseTitle: 'Foreign Business Entity',
@@ -114,7 +114,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When putting an order, Should throw Unknown Error if an unknown error occurs', async () => {
-    const errorTestNewOrderData: Order = {
+    const errorTestNewOrderData: TransferOrder = {
       ...testNewOrderData,
     };
     delete errorTestNewOrderData.id;
@@ -130,7 +130,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should ignore an existing document error when putting an order', async () => {
-    const errorTestNewOrderData: Order = {
+    const errorTestNewOrderData: TransferOrder = {
       ...testNewOrderData,
     };
     delete errorTestNewOrderData.id;
@@ -146,7 +146,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When putting an order, Should throw ServerConfigError if an AggregateAuthenticationError error occurs', async () => {
-    const testNewOrderData2: Order = {
+    const testNewOrderData2: TransferOrder = {
       ...testNewOrderData,
       caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
     };
@@ -166,7 +166,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should not put an empty order array', async () => {
-    const ordersList: Order[] = [];
+    const ordersList: TransferOrder[] = [];
 
     const create = jest.spyOn(HumbleItems.prototype, 'create');
 
@@ -175,12 +175,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should put an order array', async () => {
-    const positiveTestNewOrderData1: Order = {
+    const positiveTestNewOrderData1: TransferOrder = {
       ...testNewOrderData,
       caseId: '999-00-99999',
       id: undefined,
     };
-    const positiveTestNewOrderData2: Order = {
+    const positiveTestNewOrderData2: TransferOrder = {
       ...testNewOrderData,
       caseId: '888-00-99999',
       id: undefined,

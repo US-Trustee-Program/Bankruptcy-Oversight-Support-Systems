@@ -1,51 +1,43 @@
+import { CaseDetailInterface } from '../../adapters/types/cases';
 import { CaseDocketEntry } from '../case-docket/case-docket.model';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
+export type OrderType = 'transfer' | 'consolidation';
 
-export type Order = CaseDocketEntry & {
+// TODO: Consider modeling a CaseDetailSummary in cases.d.ts and use it here instead of CaseDetailInterface
+
+export type TransferOrder = CaseDetailInterface & {
   id?: string;
-  caseId: string;
-  caseTitle: string;
-  chapter: string;
-  courtName: string;
-  courtDivisionName: string;
-  regionId: string;
   orderType: 'transfer';
   orderDate: string;
-  sequenceNumber: number;
   status: OrderStatus;
+  docketEntries: CaseDocketEntry[];
   newCaseId?: string;
-  newCourtName?: string;
-  newCourtDivisionName?: string;
-  newDivisionCode?: string;
-  newRegionId?: string;
-  newRegionName?: string;
+  newCase?: Partial<CaseDetailInterface>;
   reason?: string;
 };
 
-type OrderTransferRejection = {
+export type ConsolidationOrder = CaseDetailInterface & {
+  orderType: 'consolidation';
+};
+
+export type Order = TransferOrder | ConsolidationOrder;
+
+type TransferOrderActionRejection = {
   id: string;
-  sequenceNumber: number;
   caseId: string;
-  newCaseId?: string;
   status: 'rejected';
   reason?: string;
 };
 
-type OrderTransferApproval = {
+type TransferOrderActionApproval = {
   id: string;
-  sequenceNumber: number;
   caseId: string;
-  newCaseId: string;
-  newCourtName: string;
-  newCourtDivisionName: string;
-  newDivisionCode: string;
-  newRegionId: string;
-  newRegionName: string;
+  newCase?: Partial<CaseDetailInterface>;
   status: 'approved';
 };
 
-export type OrderTransfer = OrderTransferRejection | OrderTransferApproval;
+export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
 
 export interface Transfer {
   caseId: string;
@@ -64,6 +56,6 @@ export type TransferOut = Transfer & {
 };
 
 export type OrderSync = {
-  orders: Order[];
+  orders: TransferOrder[];
   maxTxId: string;
 };

@@ -1,21 +1,27 @@
-import { Order } from '../../use-cases/orders/orders.model';
+import { TransferOrder } from '../../use-cases/orders/orders.model';
 
-export const ORDERS: Order[] = [
+export const ORDERS: TransferOrder[] = [
   {
     id: 'test-id-0',
+    orderType: 'transfer',
+    status: 'pending',
     caseId: '111-11-11111',
     caseTitle: 'Foreign Business Entity',
     chapter: '15',
-    courtName: 'Southern District of New York',
-    courtDivisionName: 'Manhattan',
     regionId: '02',
-    orderType: 'transfer',
+    courtName: 'Southern District of New York',
+    courtDivision: '',
+    courtDivisionName: 'Manhattan',
     orderDate: '2023-11-02',
-    status: 'pending',
-    newCaseId: '012-34-56789',
-    sequenceNumber: 100,
     dateFiled: '2023-11-02',
-    summaryText: 'Order to Transfer',
-    fullText: 'It is ordered that the case be transferred...',
+    newCaseId: '012-34-56789',
+    docketEntries: [
+      {
+        dateFiled: '2023-11-02',
+        sequenceNumber: 100,
+        summaryText: 'Order to Transfer',
+        fullText: 'It is ordered that the case be transferred...',
+      },
+    ],
   },
 ];

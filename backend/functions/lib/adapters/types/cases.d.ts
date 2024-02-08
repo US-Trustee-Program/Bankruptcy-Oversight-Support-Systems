@@ -39,6 +39,9 @@ export interface DebtorAttorney {
   email?: string;
   office?: string;
 }
+
+// TODO: Consider making a CaseDetailSummary which contains the summary attributes.
+
 export interface CaseDetailInterface {
   caseId: string;
   courtDivision: string;

@@ -4,7 +4,7 @@ import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
-import { OrderTransfer } from '../../use-cases/orders/orders.model';
+import { TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
@@ -32,7 +32,7 @@ const syncResponse: SyncOrdersStatus = {
 
 describe('orders controller tests', () => {
   const id = '12345';
-  const orderTransfer: OrderTransfer = {
+  const orderTransfer: TransferOrderAction = {
     id,
     sequenceNumber: 123,
     caseId: ORDERS[0].caseId,
