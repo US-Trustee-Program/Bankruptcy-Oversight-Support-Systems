@@ -8,15 +8,6 @@ export interface CaseAssignment {
   unassignedOn?: string;
 }
 
-export interface CaseAssignmentHistory {
-  id?: string;
-  documentType: 'ASSIGNMENT_HISTORY';
-  caseId: string;
-  occurredAtTimestamp: string;
-  previousAssignments: CaseAssignment[];
-  newAssignments: CaseAssignment[];
-}
-
 export interface AttorneyAssignmentResponseInterface {
   success: boolean;
   message: string;

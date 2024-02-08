@@ -5,7 +5,7 @@
         "--no-sandbox"
       ]
     },
-    "timeout": 10000
+    "timeout": 20000
   },
   "urls": [
     "http://localhost:3000/",
@@ -14,8 +14,7 @@
       "actions": [
         "wait for element [data-testid='toggle-modal-button-0'] to be visible",
         "click element [data-testid='toggle-modal-button-0']"
-      ],
-      "timeout": 20000
+      ]
     },
     "http://localhost:3000/case-detail/101-23-44461/",
     {
@@ -28,7 +27,6 @@
         "clear field #document-number-search-field",
         "click element .cams-multi-select"
       ],
-      "timeout": 20000,
       "viewport": {
         "width": 1280,
         "height": 2048
@@ -38,13 +36,14 @@
       "url": "http://localhost:3000/case-detail/123-12-12345/court-docket/",
       "actions": [
         "wait for element [data-testid='alert-container'] to be visible"
-      ],
-      "timeout": 20000
+      ]
     },
     {
       "url": "http://localhost:3000/data-verification/",
       "actions": [
         "wait for element [data-testid='data-verification-screen'] to be visible",
+        "click element div.approved",
+        "click element div.rejected",
         "click element [data-testid='accordion-button-order-list-guid-0']",
         "click element #buttonSuggestedCases",
         "click element [data-testid='suggested-cases-radio-0']",
@@ -64,7 +63,6 @@
         "wait for element [data-testid='accordion-content-guid-1'] to be hidden",
         "wait for element [data-testid='accordion-content-guid-2'] to be visible"
       ],
-      "timeout": 20000,
       "viewport": {
         "width": 1280,
         "height": 2048

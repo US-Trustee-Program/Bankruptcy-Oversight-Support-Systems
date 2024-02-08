@@ -17,7 +17,7 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = await applicationContextCreator(functionContext);
   const caseHistoryController = new CaseHistoryController(applicationContext);
   try {
-    const responseBody = await caseHistoryController.getCaseHistory({
+    const responseBody = await caseHistoryController.getCaseHistory(applicationContext, {
       caseId: caseHistoryRequest.params.caseId,
     });
     functionContext.res = httpSuccess(responseBody);

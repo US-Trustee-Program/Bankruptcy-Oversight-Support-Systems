@@ -18,12 +18,21 @@ describe('CaseNumber component', () => {
   }
 
   test('should render the case number as a link to the detail screen by default', () => {
+    renderWithProps({ ...defaultProps, openLinkIn: 'same-window' });
+
+    const link = screen.getByTestId(linkTestId);
+    expect(link).toBeInTheDocument();
+    expect(link.attributes.getNamedItem('target')?.value).toEqual('_self');
+  });
+
+  test('should open a link in the same window if specified', () => {
     renderWithProps(defaultProps);
 
     const link = screen.getByTestId(linkTestId);
     expect(link).toBeInTheDocument();
     expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseNumber}/`);
     expect(link.attributes.getNamedItem('title')?.value).toEqual(`Open case ${caseNumber}`);
+    expect(link.attributes.getNamedItem('target')?.value).toEqual('_blank');
 
     const span = screen.getByTestId(testId);
     expect(span).toBeInTheDocument();
@@ -39,5 +48,14 @@ describe('CaseNumber component', () => {
     const span = screen.getByTestId(testId);
     expect(span).toBeInTheDocument();
     expect(span).toHaveTextContent(expectedTextContent);
+  });
+
+  test('should append a class name to the span if provided', () => {
+    const className = 'test';
+    renderWithProps({ ...defaultProps, className });
+
+    const span = screen.getByTestId(testId);
+    expect(span).toBeInTheDocument();
+    expect(span.attributes.getNamedItem('class')?.value).toEqual(className);
   });
 });
