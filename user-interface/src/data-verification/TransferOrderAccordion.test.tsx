@@ -911,9 +911,9 @@ describe('TransferOrderAccordion', () => {
   test('should get office select options', () => {
     const expectedOptions: Array<Record<string, string>> = [
       { value: '', label: ' ' },
-      { value: '001', label: 'A New York 1' },
-      { value: '002', label: 'B New York 1' },
-      { value: '003', label: 'C New York 1' },
+      { value: '001', label: 'A (New York 1)' },
+      { value: '002', label: 'B (New York 1)' },
+      { value: '003', label: 'C (New York 1)' },
     ];
 
     const sortedTestOffices = [...testOffices].sort((a, b) =>
