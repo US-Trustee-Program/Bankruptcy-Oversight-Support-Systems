@@ -1,5 +1,4 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseDetailInterface } from '../../adapters/types/cases';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import {
@@ -10,13 +9,15 @@ import {
   getRuntimeStateRepository,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
-import { TransferOrder, TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { CamsResponse } from '../controller-types';
+import { TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { TransferOrder } from '../../../../../common/src/cams/orders';
+import { CaseSummary } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
 export type GetOrdersResponse = CamsResponse<Array<TransferOrder>>;
-export type GetSuggestedCasesResponse = CamsResponse<Array<CaseDetailInterface>>;
+export type GetSuggestedCasesResponse = CamsResponse<Array<CaseSummary>>;
 export type PatchOrderResponse = CamsResponse<string>;
 
 export class OrdersController {

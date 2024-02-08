@@ -4,7 +4,7 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
-import { TransferOrder, OrderSync } from '../../../use-cases/orders/orders.model';
+import { TransferOrder, OrderSync } from '../../../../../../common/src/cams/orders';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
 import { CaseDocketEntry } from '../../../use-cases/case-docket/case-docket.model';
 
@@ -13,15 +13,13 @@ const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 export interface DxtrOrder extends TransferOrder {
   // txId will be encoded as a string, not a number, because it is
   // of type BIGINT in MS-SQL Server.
-  txId: string;
   dxtrCaseId: string;
-  rawRec: string;
 }
 
 export interface DxtrOrderDocketEntry extends CaseDocketEntry {
   txId: string;
-  newCaseId: string;
   dxtrCaseId: string;
+  newCaseId?: string;
   rawRec: string;
 }
 
@@ -96,25 +94,36 @@ export class DxtrOrdersGateway implements OrdersGateway {
         if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
           de.newCaseId = de.rawRec.split('WARN:')[1].trim();
         }
-        delete de.dxtrCaseId;
         delete de.rawRec;
         delete de.txId;
         return de;
       });
 
-      const mappedDocketEntries = docketEntries.reduce((map, docketEntry) => {
-        if (map.has(docketEntry.dxtrCaseId)) {
-          map.get(docketEntry.dxtrCaseId).push(docketEntry);
-        } else {
-          map.set(docketEntry.dxtrCaseId, [docketEntry]);
-        }
-        return map;
-      }, new Map<string, DxtrOrderDocketEntry[]>());
+      const mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]> = docketEntries.reduce(
+        (map, docketEntry) => {
+          const dxtrCaseId = docketEntry.dxtrCaseId;
+          delete docketEntry.dxtrCaseId;
+          if (map.has(dxtrCaseId)) {
+            map.get(dxtrCaseId).push(docketEntry);
+          } else {
+            map.set(dxtrCaseId, [docketEntry]);
+          }
+          return map;
+        },
+        new Map<string, DxtrOrderDocketEntry[]>(),
+      );
 
       const orders = rawOrders
         .map((rawOrder) => {
           if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
-            rawOrder.docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
+            const docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
+            rawOrder.docketEntries = docketEntries;
+            docketEntries.forEach((docket) => {
+              if (docket.newCaseId) {
+                rawOrder.newCaseId = docket.newCaseId;
+                delete docket.newCaseId;
+              }
+            });
           }
           delete rawOrder.dxtrCaseId;
           return rawOrder satisfies TransferOrder;
@@ -248,6 +257,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     const query = `
       SELECT
         TX.TX_ID AS txId,
+        CS.CS_CASEID as dxtrCaseId,
         DE.DE_SEQNO AS sequenceNumber,
         DE.DE_DOCUMENT_NUM AS documentNumber,
         DE.DO_SUMMARY_TEXT AS summaryText,

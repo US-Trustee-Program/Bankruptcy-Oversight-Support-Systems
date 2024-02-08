@@ -14,7 +14,8 @@ import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
-import { TransferOrder, TransferOrderAction, TransferIn, TransferOut } from './orders.model';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 
 describe('Orders use case', () => {
@@ -62,6 +63,10 @@ describe('Orders use case', () => {
 
   test('should add transfer records for both cases when a transfer order is completed', async () => {
     const order: TransferOrder = { ...ORDERS[0], status: 'approved' };
+    order.newCase = {
+      caseId: '012-34-56789',
+    };
+
     const action: TransferOrderAction = {
       id: order.id,
       caseId: order.caseId,

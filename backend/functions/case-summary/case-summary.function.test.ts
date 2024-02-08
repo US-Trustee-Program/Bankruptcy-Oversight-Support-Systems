@@ -1,4 +1,4 @@
-import { CaseDetailInterface } from '../lib/adapters/types/cases';
+import { CaseDetailInterface } from '../../../common/src/cams/cases';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { CamsResponse } from '../lib/controllers/controller-types';

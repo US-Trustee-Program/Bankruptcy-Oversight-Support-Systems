@@ -9,8 +9,8 @@ import {
   GetOrdersResponse,
   PatchOrderResponse,
 } from '../lib/controllers/orders/orders.controller';
-import { TransferOrderAction } from '../lib/use-cases/orders/orders.model';
 import { BadRequestError } from '../lib/common-errors/bad-request';
+import { TransferOrderAction } from '../../../common/src/cams/orders';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 

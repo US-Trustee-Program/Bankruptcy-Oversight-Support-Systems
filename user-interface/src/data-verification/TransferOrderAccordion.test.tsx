@@ -164,8 +164,8 @@ describe('TransferOrderAccordion', () => {
 
     const content = findAccordionContent(order.id, false);
 
-    expect(content?.textContent).toContain(order.summaryText);
-    expect(content?.textContent).toContain(order.fullText);
+    expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
+    expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
 
     const form = screen.getByTestId(`order-form-${order.id}`);
     expect(form).toBeInTheDocument();
@@ -235,9 +235,11 @@ describe('TransferOrderAccordion', () => {
     let heading;
     const approvedOrder: Order = {
       ...order,
-      newCourtName: 'New Court',
-      newCourtDivisionName: 'New Division',
-      newCaseId: '23-67890',
+      newCase: {
+        courtName: 'New Court',
+        courtDivisionName: 'New Division',
+        caseId: '23-67890',
+      },
       status: 'approved',
     };
 
@@ -254,7 +256,7 @@ describe('TransferOrderAccordion', () => {
     await waitFor(async () => {
       const actionText = findActionText(order.id, true);
       expect(actionText).toHaveTextContent(
-        `Transferred ${getCaseNumber(approvedOrder.caseId)} from${approvedOrder.courtName} (${approvedOrder.courtDivisionName})to ${getCaseNumber(approvedOrder.newCaseId)} and court${approvedOrder.newCourtName} (${approvedOrder.newCourtDivisionName}).`,
+        `Transferred ${getCaseNumber(approvedOrder.caseId)} from${approvedOrder.courtName} (${approvedOrder.courtDivisionName})to ${getCaseNumber(approvedOrder.newCase?.caseId)} and court${approvedOrder.newCase?.courtName} (${approvedOrder.newCase?.courtDivisionName}).`,
       );
     });
   });
@@ -859,7 +861,7 @@ describe('TransferOrderAccordion', () => {
     let newCaseIdText;
     await waitFor(async () => {
       newCaseIdText = findCaseNumberInputInAccordion(order.id);
-      expect(newCaseIdText).toHaveValue(order.newCaseId);
+      expect(newCaseIdText).toHaveValue(order.newCase?.caseId);
     });
 
     selectCourtInAccordion('1');
@@ -878,21 +880,14 @@ describe('TransferOrderAccordion', () => {
 
   test('should determine if an transfer update DTO is valid', () => {
     const ok = isValidOrderTransfer({
-      id: 'guid-1',
-      caseId: '111-22-33333',
-      sequenceNumber: 0,
-      status: 'pending',
-      newCaseId: '222-33-44444',
-      newCourtDivisionName: 'new court',
+      newCase: {
+        caseId: '222-33-44444',
+        courtDivisionName: 'new court',
+      },
     });
     expect(ok).toBeTruthy();
 
-    const notOk = isValidOrderTransfer({
-      id: 'guid-1',
-      caseId: '111-22-33333',
-      sequenceNumber: 0,
-      status: 'pending',
-    });
+    const notOk = isValidOrderTransfer({});
     expect(notOk).toBeFalsy();
   });
 

@@ -6,11 +6,12 @@ import {
   CasesRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TransferOrder, TransferOrderAction, TransferIn, TransferOut } from './orders.model';
-import { CamsError } from '../../common-errors/cams-error';
-import { CaseDetailInterface } from '../../adapters/types/cases';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 

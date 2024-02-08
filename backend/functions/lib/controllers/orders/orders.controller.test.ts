@@ -4,12 +4,12 @@ import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
-import { TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { CamsResponse } from '../controller-types';
 import { CaseDetailInterface } from '../../adapters/types/cases';
+import { TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -34,9 +34,7 @@ describe('orders controller tests', () => {
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
     id,
-    sequenceNumber: 123,
     caseId: ORDERS[0].caseId,
-    newCaseId: '081-23-12344',
     status: 'rejected',
   };
   let applicationContext: ApplicationContext;

@@ -4,9 +4,9 @@ import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
-import { TransferOrder, TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 

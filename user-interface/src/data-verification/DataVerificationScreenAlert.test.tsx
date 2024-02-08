@@ -17,10 +17,12 @@ describe('Review Orders screen - Alert', () => {
   test('should display alert and update order list when an order is updated by the TransferOrderAccordion', async () => {
     const mockOrder = { ...Chapter15MockApi.orders[0] };
     mockOrder.status = 'approved';
-    mockOrder.newCaseId = '55-55555';
-    mockOrder.newCourtDivisionName = 'Cool Division';
-    mockOrder.newCourtName = 'My Shinny New court';
-    const mockAlertMessage = `Transfer of case to ${mockOrder.newCaseId} in ${mockOrder.newCourtName} (${mockOrder.newCourtDivisionName}) was approved.`;
+    mockOrder.newCase = {
+      caseId: '55-55555',
+      courtDivisionName: 'Cool Division',
+      courtName: 'My Shinny New court',
+    };
+    const mockAlertMessage = `Transfer of case to ${mockOrder.newCaseId} in ${mockOrder.newCase.courtName} (${mockOrder.newCase.courtDivisionName}) was approved.`;
 
     vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
       (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {

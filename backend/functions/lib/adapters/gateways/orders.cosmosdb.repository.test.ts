@@ -1,6 +1,5 @@
 import { OrdersCosmosDbRepository } from './orders.cosmosdb.repository';
 import { ORDERS } from '../../testing/mock-data/orders.mock';
-import { TransferOrder, TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
@@ -10,17 +9,19 @@ import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { createPreExistingDocumentError } from '../../testing/cosmos-errors';
 import { ServerConfigError } from '../../common-errors/server-config-error';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const testNewOrderTransferData: TransferOrderAction = {
   id: 'test-id-0',
-  sequenceNumber: 2,
   caseId: '111-11-11111',
-  newCaseId: '000-01-12345',
-  newCourtName: 'New Court Name',
-  newCourtDivisionName: 'New Division',
-  newDivisionCode: '081',
-  newRegionId: '02',
-  newRegionName: 'NEW YORK',
+  newCase: {
+    caseId: '000-01-12345',
+    courtName: 'New Court Name',
+    courtDivisionName: 'New Division',
+    courtDivision: '081',
+    regionId: '02',
+    regionName: 'NEW YORK',
+  },
   status: 'approved',
 };
 
@@ -31,15 +32,21 @@ const testNewOrderData: TransferOrder = {
   chapter: '15',
   courtName: 'Southern District of New York',
   courtDivisionName: 'Manhattan',
+  courtDivision: '081',
   regionId: '02',
   orderType: 'transfer',
   orderDate: '2023-11-02',
+  dateFiled: '2023-11-02',
   status: 'pending',
   newCaseId: '012-34-56789',
-  sequenceNumber: 100,
-  dateFiled: '2023-11-02',
-  summaryText: 'Order to Transfer',
-  fullText: 'It is ordered that the case be transferred...',
+  docketEntries: [
+    {
+      dateFiled: '2023-11-02',
+      sequenceNumber: 100,
+      summaryText: 'Order to Transfer',
+      fullText: 'It is ordered that the case be transferred...',
+    },
+  ],
 };
 
 describe('Test case assignment cosmosdb repository tests', () => {

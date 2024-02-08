@@ -1,5 +1,4 @@
-import { CaseDetailInterface } from '../../adapters/types/cases';
-import { CaseDocketEntry } from '../case-docket/case-docket.model';
+import { CaseDetailInterface, CaseDocketEntry, CaseSummary } from './cases';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
@@ -13,15 +12,11 @@ export type TransferOrder = CaseDetailInterface & {
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   newCaseId?: string;
-  newCase?: Partial<CaseDetailInterface>;
+  newCase?: Partial<CaseSummary>;
   reason?: string;
 };
 
-export type ConsolidationOrder = CaseDetailInterface & {
-  orderType: 'consolidation';
-};
-
-export type Order = TransferOrder | ConsolidationOrder;
+export type Order = TransferOrder;
 
 type TransferOrderActionRejection = {
   id: string;
@@ -33,27 +28,11 @@ type TransferOrderActionRejection = {
 type TransferOrderActionApproval = {
   id: string;
   caseId: string;
-  newCase?: Partial<CaseDetailInterface>;
+  newCase?: Partial<CaseSummary>; // TODO CASM-326 may want to make this required
   status: 'approved';
 };
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
-
-export interface Transfer {
-  caseId: string;
-  otherCaseId: string;
-  orderDate: string;
-  divisionName: string;
-  courtName: string;
-}
-
-export type TransferIn = Transfer & {
-  documentType: 'TRANSFER_IN';
-};
-
-export type TransferOut = Transfer & {
-  documentType: 'TRANSFER_OUT';
-};
 
 export type OrderSync = {
   orders: TransferOrder[];
