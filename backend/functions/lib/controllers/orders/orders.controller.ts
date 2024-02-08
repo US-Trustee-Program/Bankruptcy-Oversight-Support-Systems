@@ -10,12 +10,12 @@ import {
   getRuntimeStateRepository,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
-import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
+import { TransferOrder, TransferOrderAction } from '../../use-cases/orders/orders.model';
 import { CamsResponse } from '../controller-types';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
-export type GetOrdersResponse = CamsResponse<Array<Order>>;
+export type GetOrdersResponse = CamsResponse<Array<TransferOrder>>;
 export type GetSuggestedCasesResponse = CamsResponse<Array<CaseDetailInterface>>;
 export type PatchOrderResponse = CamsResponse<string>;
 
@@ -66,7 +66,7 @@ export class OrdersController {
   public async updateOrder(
     context: ApplicationContext,
     id: string,
-    data: OrderTransfer,
+    data: TransferOrderAction,
   ): Promise<PatchOrderResponse> {
     // TODO: Need to sanitize id and data.
     try {

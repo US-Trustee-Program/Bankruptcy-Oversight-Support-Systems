@@ -7,7 +7,7 @@ import {
   DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
-import { Order } from '../../../use-cases/orders/orders.model';
+import { TransferOrder } from '../../../use-cases/orders/orders.model';
 import { ApplicationContext } from '../../types/basic';
 
 const dxtrOrder: DxtrOrder = {
@@ -39,7 +39,7 @@ const dxtrOrderDocument: DxtrOrderDocument = {
   deleted: 'N',
 };
 
-const expectedOrder: Order = {
+const expectedOrder: TransferOrder = {
   sequenceNumber: 0,
   dateFiled: '2023-12-01',
   summaryText: 'Summary Text',
