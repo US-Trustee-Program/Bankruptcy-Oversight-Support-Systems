@@ -354,6 +354,35 @@ jobs:
           name: ${{ needs.build-info.outputs.apiName }}-build
           path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
+  get-identities:
+    runs-on: ubuntu-latest
+    needs:
+      [
+        build-info,
+        build-frontend,
+        build-service,
+        accessibility-test,
+        security-sast-scan,
+        security-sca-scan-frontend,
+        security-sca-scan-backend,
+        security-sca-scan-common,
+      ]
+    environment: ${{ needs.build-info.outputs.environment }}
+    if: needs.build-info.outputs.deployBicep == 'false'
+    outputs:
+      cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
+
+      deployJobDependency: ${{ steps.azure-db-deploy.outputs.deployJobDependency }}
+    steps:
+      - name: Deploy Azure resources
+        id: azure-deploy
+        run: |
+          webappSubnetName=$(cat ./outputs.json | jq -r .webappSubnetName.value)
+          echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
+
+          keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
+          echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
 
   deploy:
     runs-on: ubuntu-latest
@@ -373,6 +402,7 @@ jobs:
     outputs:
       cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
+      deployJobDependency: ${{ steps.azure-db-deploy.outputs.deployJobDependency }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
@@ -400,6 +430,7 @@ jobs:
 
       - name: Create Azure resource groups
         id: azure-resource-group
+        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
@@ -409,6 +440,7 @@ jobs:
 
       - name: Deploy Azure resources
         id: azure-deploy
+        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
             --show-what-if \
@@ -416,29 +448,15 @@ jobs:
             --file ./ops/cloud-deployment/main.bicep \
             --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
-          cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
-          echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
-
-          vnetName=$(cat ./outputs.json | jq -r .vnetName.value)
-          echo "vnetName=${vnetName}" >> $GITHUB_OUTPUT
-
           webappSubnetName=$(cat ./outputs.json | jq -r .webappSubnetName.value)
           echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-
-          webappPrivateEndpointSubnetName=$(cat ./outputs.json | jq -r .webappPrivateEndpointSubnetName.value)
-          echo "webappPrivateEndpointSubnetName=${webappPrivateEndpointSubnetName}" >> $GITHUB_OUTPUT
-
-          apiPrivateEndpointSubnetName=$(cat ./outputs.json | jq -r .apiPrivateEndpointSubnetName.value)
-          echo "apiPrivateEndpointSubnetName=${apiPrivateEndpointSubnetName}" >> $GITHUB_OUTPUT
-
-          cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
-          echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
 
           keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
           echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
 
       - name: Deploy database
         id: azure-db-deploy
+        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
 
@@ -456,7 +474,7 @@ jobs:
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
 
       - name: Create Webapp Slot Resource
-        if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
+        if: ((needs.build-info.outputs.slotDeploymentEnabled == 'true') && (needs.build-info.outputs.deployBicep == 'true'))
         run: |
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
             --webappName ${{ needs.build-info.outputs.webappName }} \
@@ -465,11 +483,11 @@ jobs:
             --slotName ${{ needs.build-info.outputs.slotName }} \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
             --network-rg ${{ steps.rgNetwork.outputs.out }} \
-            --vnet ${{ steps.azure-deploy.outputs.vnetName }} \
+            --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --subnet ${{ steps.azure-deploy.outputs.webappSubnetName }}
 
       - name: Create API Slot Resource
-        if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
+        if: ((needs.build-info.outputs.slotDeploymentEnabled == 'true') && (needs.build-info.outputs.deployBicep == 'true'))
         run: |
           slotStorageAccountName=ustpslot${{ needs.build-info.outputs.environmentHash }}
 
