@@ -28,6 +28,14 @@ while [[ $# -gt 0 ]]; do
         kv_managed_id="${2}"
         shift 2
         ;;
+    --cosmosAccountName)
+        cosmos_account_name="{2}"
+        shift 2
+        ;;
+    --dbRg)
+        db_rg="{2}"
+        shift 2
+        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -41,3 +49,5 @@ webappSubnetName=$(echo "${snetId}" | sed 's|^.*subnets/||' | sed 's|"||')
 echo "webappSubnetName=${webappSubnetName}" >> "$GITHUB_OUTPUT"
 keyVaultManagedIdName=$(az identity show --ids "${kv_managed_id}" --query "[0].name" | sed 's|"||')
 echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> "$GITHUB_OUTPUT"
+cosmosDbManagedIdName=$(az identity list -g "${db_rg}" --query "[?contains(name, '${cosmos_account_name}')].name" -o tsv)
+echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> "$GITHUB_OUTPUT"
