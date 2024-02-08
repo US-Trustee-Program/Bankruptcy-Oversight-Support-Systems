@@ -157,8 +157,8 @@ describe('Review Orders screen', () => {
         const content = screen.getByTestId(`accordion-content-${order.id}`);
         expect(content).toBeInTheDocument();
         expect(content).not.toBeVisible();
-        expect(content?.textContent).toContain(order.summaryText);
-        expect(content?.textContent).toContain(order.fullText);
+        expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
+        expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
         if (order.status !== 'approved' && order.status !== 'rejected') {
           const form = screen.getByTestId(`order-form-${order.id}`);
           expect(form).toBeInTheDocument();

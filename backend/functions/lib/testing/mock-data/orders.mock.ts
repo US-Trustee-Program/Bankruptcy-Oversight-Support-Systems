@@ -1,4 +1,4 @@
-import { TransferOrder } from '../../use-cases/orders/orders.model';
+import { TransferOrder } from '../../../../../common/src/cams/orders';
 
 export const ORDERS: TransferOrder[] = [
   {

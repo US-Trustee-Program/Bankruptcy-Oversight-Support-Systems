@@ -3,22 +3,41 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { QueryResults } from '../../types/database';
 import {
   DxtrOrder,
+  DxtrOrderDocketEntry,
   DxtrOrderDocument,
   DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
-import { TransferOrder } from '../../../use-cases/orders/orders.model';
+import { TransferOrder } from '../../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../types/basic';
 
+const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
+  {
+    newCaseId: '22-111111',
+    rawRec: 'NNNNNN WARN: 22-111111',
+    sequenceNumber: 0,
+    dateFiled: '2023-12-01',
+    txId: '1',
+    dxtrCaseId: '111111',
+    documentNumber: 0,
+    summaryText: 'Summary Text',
+    fullText: 'This is the full text.',
+  },
+  {
+    rawRec: '',
+    sequenceNumber: 1,
+    dateFiled: '2023-12-01',
+    txId: '2',
+    dxtrCaseId: '111111',
+    documentNumber: 1,
+    summaryText: 'Some other Text',
+    fullText: 'This is the other full text.',
+  },
+];
+
 const dxtrOrder: DxtrOrder = {
-  txId: '1',
   dxtrCaseId: '111111',
-  rawRec: 'NNNNNN WARN: 22-111111',
-  sequenceNumber: 0,
-  documentNumber: 0,
   dateFiled: '2023-12-01',
-  summaryText: 'Summary Text',
-  fullText: 'This is the full text.',
   caseId: '081-23-111111',
   caseTitle: 'Mr Bean',
   chapter: '15',
@@ -28,10 +47,12 @@ const dxtrOrder: DxtrOrder = {
   orderType: 'transfer',
   orderDate: '2023-12-01',
   status: 'pending',
+  courtDivision: '081',
+  docketEntries: [],
 };
 
 const dxtrOrderDocument: DxtrOrderDocument = {
-  dxtrCaseId: '111111',
+  txId: '1',
   sequenceNumber: 0,
   fileSize: 9999,
   uriStem: 'https://somedomain.gov/files',
@@ -40,29 +61,42 @@ const dxtrOrderDocument: DxtrOrderDocument = {
 };
 
 const expectedOrder: TransferOrder = {
-  sequenceNumber: 0,
   dateFiled: '2023-12-01',
-  summaryText: 'Summary Text',
-  fullText: 'This is the full text.',
   caseId: '081-23-111111',
   caseTitle: 'Mr Bean',
   chapter: '15',
   courtName: '',
   courtDivisionName: '',
+  courtDivision: '081',
   regionId: '',
   orderType: 'transfer',
   orderDate: '2023-12-01',
   status: 'pending',
-  documentNumber: 0,
-  documents: [
+  newCaseId: '22-111111',
+  docketEntries: [
     {
-      fileSize: 9999,
-      fileUri: 'https://somedomain.gov/files/0208-173976-0-0-0.pdf',
-      fileLabel: '0',
-      fileExt: 'pdf',
+      sequenceNumber: 0,
+      dateFiled: '2023-12-01',
+      summaryText: 'Summary Text',
+      fullText: 'This is the full text.',
+      documentNumber: 0,
+      documents: [
+        {
+          fileSize: 9999,
+          fileUri: 'https://somedomain.gov/files/0208-173976-0-0-0.pdf',
+          fileLabel: '0',
+          fileExt: 'pdf',
+        },
+      ],
+    },
+    {
+      sequenceNumber: 1,
+      dateFiled: '2023-12-01',
+      documentNumber: 1,
+      summaryText: 'Some other Text',
+      fullText: 'This is the other full text.',
     },
   ],
-  newCaseId: '22-111111',
 };
 
 describe('DxtrOrdersGateway', () => {
@@ -112,6 +146,18 @@ describe('DxtrOrdersGateway', () => {
         return Promise.resolve(mockOrdersResults);
       });
 
+      const mockDocumentsDocketEntryResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: dxtrCaseDocketEntries,
+        },
+        message: '',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(mockDocumentsDocketEntryResults);
+      });
+
       const mockDocumentsResults: QueryResults = {
         success: true,
         results: {
@@ -127,7 +173,7 @@ describe('DxtrOrdersGateway', () => {
       const gateway = new DxtrOrdersGateway();
       const orderSync = await gateway.getOrderSync(applicationContext, '0');
       expect(orderSync.orders).toEqual([expectedOrder]);
-      expect(orderSync.maxTxId).toEqual('1');
+      expect(orderSync.maxTxId).toEqual('2');
     });
 
     test('should add chapters enabled by feature flags', async () => {
@@ -225,6 +271,49 @@ describe('DxtrOrdersGateway', () => {
         callSequence++;
         if (callSequence === 1) {
           return Promise.resolve(mockOrdersResults);
+        } else {
+          return Promise.resolve(mockDocumentsResults);
+        }
+      });
+
+      const gateway = new DxtrOrdersGateway();
+      await expect(gateway.getOrderSync(applicationContext, '0')).rejects.toThrow(
+        expectedErrorMessage,
+      );
+      querySpy.mockReset();
+    });
+
+    test('_getOrderDocuments should throw a CamsError when the query execution fails', async () => {
+      const mockOrdersResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [dxtrOrder],
+        },
+        message: '',
+      };
+
+      const mockDocketEntries: QueryResults = {
+        success: true,
+        message: '',
+        results: {
+          recordset: [],
+        },
+      };
+
+      const expectedErrorMessage = 'some warning from the documents query';
+      const mockDocumentsResults: QueryResults = {
+        success: false,
+        message: expectedErrorMessage,
+        results: undefined,
+      };
+
+      let callSequence = 0;
+      querySpy.mockImplementation(async () => {
+        callSequence++;
+        if (callSequence === 1) {
+          return Promise.resolve(mockOrdersResults);
+        } else if (callSequence === 2) {
+          return Promise.resolve(mockDocketEntries);
         } else {
           return Promise.resolve(mockDocumentsResults);
         }

@@ -1,4 +1,4 @@
-import { DebtorAttorney } from '../../adapters/types/cases';
+import { DebtorAttorney } from '../../../../../common/src/cams/parties';
 
 export const ATTORNEYS = new Map<string, DebtorAttorney>([
   [

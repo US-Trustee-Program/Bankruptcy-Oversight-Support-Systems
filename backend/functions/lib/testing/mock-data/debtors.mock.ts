@@ -1,4 +1,4 @@
-import { Party } from '../../adapters/types/cases';
+import { Party } from '../../../../../common/src/cams/parties';
 
 export const DEBTORS = new Map<string, Party>([
   [

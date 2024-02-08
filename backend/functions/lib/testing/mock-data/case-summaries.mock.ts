@@ -1,4 +1,4 @@
-import { CaseDetailInterface } from '../../adapters/types/cases';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 
 export const CASE_SUMMARIES: CaseDetailInterface[] = [
   {

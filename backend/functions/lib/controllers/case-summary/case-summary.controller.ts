@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsResponse } from '../controller-types';
-import { CaseDetailInterface } from '../../adapters/types/cases';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 import { CaseManagement } from '../../use-cases/case-management';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';

@@ -1,13 +1,8 @@
 import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentHistory, CaseHistory } from '../adapters/types/case.history';
-import {
-  TransferOrder,
-  OrderSync,
-  TransferOrderAction,
-  TransferIn,
-  TransferOut,
-} from './orders/orders.model';
+import { OrderSync, TransferOrder, TransferOrderAction } from '../../../../common/src/cams/orders';
+import { TransferIn, TransferOut } from '../../../../common/src/cams/events';
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;

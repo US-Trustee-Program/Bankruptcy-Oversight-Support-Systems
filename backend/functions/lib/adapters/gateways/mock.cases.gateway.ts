@@ -1,8 +1,8 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { CaseDetailInterface } from '../types/cases';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 

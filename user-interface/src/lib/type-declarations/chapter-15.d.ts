@@ -1,4 +1,5 @@
 import { ResponseData } from './api';
+import * as CommonOrders from '@common/cams/orders';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 
@@ -118,24 +119,27 @@ export interface CaseAssignmentHistoryResponseData extends ResponseData {
   body: CaseAssignmentHistory[];
 }
 
-export type Order = CaseDocketEntry & {
+export type Order = CommonOrders.Order & {
   id: string;
-  caseId: string;
-  caseTitle: string;
-  chapter: string;
-  courtName: string;
-  courtDivisionName: string;
-  regionId: string;
-  orderType: 'transfer';
-  orderDate: string;
-  status: 'pending' | 'approved' | 'rejected';
-  newCaseId?: string;
-  newCourtName?: string;
-  newCourtDivisionName?: string;
-  newDivisionCode?: string;
-  newRegionId?: string;
-  reason?: string;
 };
+
+// export type Order = CaseDocketEntry & {
+//   caseId: string;
+//   caseTitle: string;
+//   chapter: string;
+//   courtName: string;
+//   courtDivisionName: string;
+//   regionId: string;
+//   orderType: 'transfer';
+//   orderDate: string;
+//   status: 'pending' | 'approved' | 'rejected';
+//   newCaseId?: string;
+//   newCourtName?: string;
+//   newCourtDivisionName?: string;
+//   newDivisionCode?: string;
+//   newRegionId?: string;
+//   reason?: string;
+// };
 
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;
@@ -154,36 +158,13 @@ export interface OfficeDetails {
   regionName: string;
 }
 
-export interface RegionDetails {
-  regionId: string;
-  regionName: string;
-}
-
-export interface OrderTransfer {
-  id: string;
-  sequenceNumber: number;
-  caseId: string;
-  newCaseId?: string;
-  newCourtName?: string;
-  newCourtDivisionName?: string;
-  newDivisionCode?: string;
-  newRegionId?: string;
-  newRegionName?: string;
-  status: OrderStatus;
-  reason?: string;
-}
-
 export interface OfficesResponseData extends ResponseData {
   body: OfficeDetails[];
 }
 
-export interface Transfer {
-  caseId: string;
-  otherCaseId: string;
-  orderDate: string;
-  divisionName: string;
-  courtName: string;
-  documentType: 'TRANSFER_IN' | 'TRANSFER_OUT';
+export interface RegionDetails {
+  regionId: string;
+  regionName: string;
 }
 
 type AbstractCaseHistory<B, A> = {

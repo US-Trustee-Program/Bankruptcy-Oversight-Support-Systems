@@ -2,7 +2,7 @@ import httpTrigger from './orders.function';
 import { ORDERS } from '../lib/testing/mock-data/orders.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import { TransferOrderAction } from '../lib/use-cases/orders/orders.model';
+import { TransferOrderAction } from '../../../common/src/cams/orders';
 
 const context = require('azure-function-context-mock');
 
