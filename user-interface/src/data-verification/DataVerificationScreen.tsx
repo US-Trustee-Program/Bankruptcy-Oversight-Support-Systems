@@ -12,6 +12,8 @@ import {
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { orderType, transferStatusType } from '@/lib/utils/labels';
+import Icon from '@/lib/components/uswds/Icon';
 
 export interface AlertDetails {
   message: string;
@@ -19,15 +21,7 @@ export interface AlertDetails {
   timeOut: number;
 }
 
-// TODO: Consider moving statusType and orderType to a common lib.
-export const statusType = new Map();
-statusType.set('pending', 'Pending Review');
-statusType.set('approved', 'Approved');
-statusType.set('rejected', 'Rejected');
-
-export const orderType = new Map();
-orderType.set('transfer', 'Transfer');
-orderType.set('consolidation', 'Consolidation');
+type FilterType = 'pending' | 'approved' | 'rejected';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -37,6 +31,7 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function DataVerificationScreen() {
+  const [filters, setFilters] = useState<FilterType[]>(['pending']);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -97,6 +92,18 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
+  function handleSetFilter(filterString: FilterType) {
+    if (filters.includes(filterString)) {
+      setFilters(
+        filters.filter((filter) => {
+          return filter !== filterString;
+        }),
+      );
+    } else {
+      setFilters([...filters, filterString]);
+    }
+  }
+
   useEffect(() => {
     getOrders();
     getOffices();
@@ -121,6 +128,26 @@ export default function DataVerificationScreen() {
           {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
           {!isOrderListLoading && (
             <section className="order-list-container">
+              <div className="filters order-status">
+                <Filter
+                  label="Pending Review"
+                  filterType="pending"
+                  filters={filters}
+                  callback={handleSetFilter}
+                />
+                <Filter
+                  label="Approved"
+                  filterType="approved"
+                  filters={filters}
+                  callback={handleSetFilter}
+                />
+                <Filter
+                  label="Rejected"
+                  filterType="rejected"
+                  filters={filters}
+                  callback={handleSetFilter}
+                />
+              </div>
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
                   <div className="grid-col-2 text-no-wrap">Case Number</div>
@@ -131,25 +158,49 @@ export default function DataVerificationScreen() {
                 </div>
               </div>
               <AccordionGroup>
-                {orderList.map((order: Order) => {
-                  return (
-                    <TransferOrderAccordion
-                      key={`accordion-${order.id}`}
-                      order={order}
-                      regionsMap={regionsMap}
-                      officesList={officesList}
-                      orderType={orderType}
-                      statusType={statusType}
-                      onOrderUpdate={handleOrderUpdate}
-                    ></TransferOrderAccordion>
-                  );
-                })}
+                {orderList
+                  .filter((o) => filters.includes(o.status))
+                  .map((order: Order) => {
+                    return (
+                      <TransferOrderAccordion
+                        key={`accordion-${order.id}`}
+                        order={order}
+                        regionsMap={regionsMap}
+                        officesList={officesList}
+                        orderType={orderType}
+                        statusType={transferStatusType}
+                        onOrderUpdate={handleOrderUpdate}
+                      ></TransferOrderAccordion>
+                    );
+                  })}
               </AccordionGroup>
             </section>
           )}
         </div>
         <div className="grid-col-1"></div>
       </div>
+    </div>
+  );
+}
+
+interface FilterProps {
+  label: string;
+  filterType: FilterType;
+  filters: FilterType[];
+  callback: (filterString: FilterType) => void;
+}
+
+function Filter(props: FilterProps) {
+  const { label, filterType, filters, callback } = props;
+  return (
+    <div
+      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big`}
+      aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
+      onClick={() => callback(filterType)}
+      data-testid={`order-status-filter-${filterType}`}
+    >
+      {label}
+      <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
     </div>
   );
 }

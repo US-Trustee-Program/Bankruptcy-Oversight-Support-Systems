@@ -4,13 +4,13 @@ import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom'
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
-  CaseStaffAssignmentHistory,
-  CaseStaffAssignmentHistoryResponseData,
+  CaseAssignmentHistoryResponseData,
   CaseDetailType,
   CaseDocket,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
+  CaseHistory,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
@@ -164,7 +164,7 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
 interface CaseDetailProps {
   caseDetail?: CaseDetailType;
   caseDocketEntries?: CaseDocketEntry[];
-  caseStaffAssignmentHistory?: CaseStaffAssignmentHistory[];
+  caseHistory?: CaseHistory[];
 }
 
 export default function CaseDetail(props: CaseDetailProps) {
@@ -178,9 +178,7 @@ export default function CaseDetail(props: CaseDetailProps) {
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
-  const [caseStaffAssignmentHistory, setCaseStaffAssignmentHistory] = useState<
-    CaseStaffAssignmentHistory[]
-  >([]);
+  const [caseHistory, setCaseHistory] = useState<CaseHistory[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
@@ -228,19 +226,19 @@ export default function CaseDetail(props: CaseDetailProps) {
       });
   }
 
-  async function fetchCaseStaffAssignmentHistory() {
+  async function fetchCaseAssignmentHistory() {
     setIsAuditHistoryLoading(true);
     api
       .get(`/cases/${caseId}/history`, {})
       .then((data) => {
-        const response = data as CaseStaffAssignmentHistoryResponseData;
+        const response = data as CaseAssignmentHistoryResponseData;
         if (response) {
-          setCaseStaffAssignmentHistory(response.body);
+          setCaseHistory(response.body);
           setIsAuditHistoryLoading(false);
         }
       })
       .catch(() => {
-        setCaseStaffAssignmentHistory([]);
+        setCaseHistory([]);
         setIsAuditHistoryLoading(false);
       });
   }
@@ -312,10 +310,10 @@ export default function CaseDetail(props: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
-    if (props.caseStaffAssignmentHistory) {
-      setCaseStaffAssignmentHistory(props.caseStaffAssignmentHistory);
+    if (props.caseHistory) {
+      setCaseHistory(props.caseHistory);
     } else {
-      fetchCaseStaffAssignmentHistory();
+      fetchCaseAssignmentHistory();
     }
   }, []);
 
@@ -507,7 +505,7 @@ export default function CaseDetail(props: CaseDetailProps) {
                       path="audit-history"
                       element={
                         <CaseDetailAuditHistory
-                          caseHistory={caseStaffAssignmentHistory}
+                          caseHistory={caseHistory}
                           isAuditHistoryLoading={isAuditHistoryLoading}
                         />
                       }
