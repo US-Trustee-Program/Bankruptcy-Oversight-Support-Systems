@@ -286,7 +286,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer fromRegion 2 - (Court Division 1)toRegion 2 - (New York 1)',
+        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
       );
     });
   });
@@ -779,7 +779,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer fromRegion 2 - (Court Division 1)toRegion 2 - (New York 1)',
+        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
       );
     });
 
@@ -949,7 +949,7 @@ describe('Test CaseSelection component', () => {
     renderWithProps({ region1: '1', region2: '002' });
 
     expect(document.body).toHaveTextContent(
-      'USTP Office: transfer fromRegion 1 - (Division Name 1)toRegion 2 - (Division Name 2)',
+      'USTP Office: transfer fromRegion 1 - Division Name 1toRegion 2 - Division Name 2',
     );
   });
 
@@ -957,7 +957,7 @@ describe('Test CaseSelection component', () => {
     renderWithProps({ region1: 'ABC', region2: 'BCD' });
 
     expect(document.body).toHaveTextContent(
-      'USTP Office: transfer fromRegion ABC - (Division Name 1)toRegion BCD - (Division Name 2)',
+      'USTP Office: transfer fromRegion ABC - Division Name 1toRegion BCD - Division Name 2',
     );
   });
 });
