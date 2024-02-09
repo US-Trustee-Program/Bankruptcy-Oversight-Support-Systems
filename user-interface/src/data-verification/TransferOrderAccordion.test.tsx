@@ -238,7 +238,7 @@ describe('TransferOrderAccordion', () => {
       newCase: {
         courtName: 'New Court',
         courtDivisionName: 'New Division',
-        caseId: '23-67890',
+        caseId: '01-00002',
       },
       status: 'approved',
     };
@@ -692,6 +692,15 @@ describe('TransferOrderAccordion', () => {
       petitionLabel: '',
     };
 
+    enterCaseNumberInAccordion(caseIdInput, '00-00000');
+    enterCaseNumberInAccordion(caseIdInput, '');
+    let approveButton: HTMLElement;
+    await waitFor(async () => {
+      approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+      expect(approveButton).toBeInTheDocument();
+      expect(approveButton).toBeVisible();
+      expect(approveButton).toBeDisabled();
+    });
     vi.spyOn(Api, 'get').mockImplementation((_path: string) => {
       return Promise.resolve({ message: '', count: 1, body: caseLookup });
     });
@@ -816,6 +825,7 @@ describe('TransferOrderAccordion', () => {
       const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
       expect(newCaseIdText).toHaveValue(newValue);
     });
+    //add test for changing caseID line 225-226
   });
 
   test('should show a case summary when a case is found', async () => {

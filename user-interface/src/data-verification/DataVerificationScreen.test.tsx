@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
@@ -167,6 +167,40 @@ describe('Review Orders screen', () => {
         }
       });
     }
+  });
+
+  test('should toggle filter button', async () => {
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    const ordersScreen = screen.getByTestId('data-verification-screen');
+    expect(ordersScreen).toBeInTheDocument();
+
+    let accordionGroup;
+    await waitFor(() => {
+      accordionGroup = screen.getByTestId('accordion-group');
+      expect(accordionGroup).toBeInTheDocument();
+    });
+    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
+
+    act(() => {
+      fireEvent.click(approvedOrderFilter);
+    });
+
+    await waitFor(() => {
+      expect(approvedOrderFilter).toHaveClass('active');
+    });
+
+    act(() => {
+      fireEvent.click(approvedOrderFilter);
+    });
+
+    await waitFor(() => {
+      expect(approvedOrderFilter).toHaveClass('inactive');
+    });
   });
 
   test('should not render a list if an API error is encountered', async () => {

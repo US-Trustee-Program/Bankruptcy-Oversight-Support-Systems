@@ -123,24 +123,6 @@ export type Order = CommonOrders.Order & {
   id: string;
 };
 
-// export type Order = CaseDocketEntry & {
-//   caseId: string;
-//   caseTitle: string;
-//   chapter: string;
-//   courtName: string;
-//   courtDivisionName: string;
-//   regionId: string;
-//   orderType: 'transfer';
-//   orderDate: string;
-//   status: 'pending' | 'approved' | 'rejected';
-//   newCaseId?: string;
-//   newCourtName?: string;
-//   newCourtDivisionName?: string;
-//   newDivisionCode?: string;
-//   newRegionId?: string;
-//   reason?: string;
-// };
-
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;
 }
