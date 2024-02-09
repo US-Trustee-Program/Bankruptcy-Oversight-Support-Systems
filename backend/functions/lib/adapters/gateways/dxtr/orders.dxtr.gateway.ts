@@ -330,6 +330,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
       FROM (
         SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE
         FROM [dbo].[AO_TX] AS TX2
+        JOIN [dbo].[AO_DE] AS DE ON TX2.CS_CASEID=DE.CS_CASEID AND TX2.DE_SEQNO=DE.DE_SEQNO AND TX2.COURT_ID=DE.COURT_ID
         WHERE TX2.TX_CODE = @transactionCode
         AND TX2.TX_ID > @txId
         GROUP BY TX2.CS_CASEID, TX2.COURT_ID
