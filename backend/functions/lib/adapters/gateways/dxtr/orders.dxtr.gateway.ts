@@ -53,10 +53,10 @@ export class DxtrOrdersGateway implements OrdersGateway {
       });
 
       // Get raw order which are a subset of case detail associated with a transfer order
-      const rawOrders = await this._getTransferOrders(context, txId, chapters, regions);
+      const rawOrders = await this.getTransferOrders(context, txId, chapters, regions);
 
       // Get the docket entries for transfer orders
-      const rawDocketEntries = await this._getTransferOrderDocketEntries(
+      const rawDocketEntries = await this.getTransferOrderDocketEntries(
         context,
         txId,
         chapters,
@@ -68,7 +68,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
       );
 
       // Get documents for transfer docket entries
-      const documents = await this._getTransferOrderDocuments(context, txId, chapters, regions);
+      const documents = await this.getTransferOrderDocuments(context, txId, chapters, regions);
       context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
 
       const mappedDocuments = documents.reduce((map, document) => {
@@ -145,16 +145,16 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  async _getTransferOrders(
+  private async getTransferOrders(
     context: ApplicationContext,
     txId: string,
     chapters: string[],
     regions: string[],
   ): Promise<Array<DxtrOrder>> {
-    return this._getOrders(context, txId, 'CTO', chapters, regions);
+    return this.getOrders(context, txId, 'CTO', chapters, regions);
   }
 
-  async _getOrders(
+  private async getOrders(
     context: ApplicationContext,
     txId: string,
     transactionCode: 'CTO',
@@ -224,16 +224,16 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  async _getTransferOrderDocketEntries(
+  private async getTransferOrderDocketEntries(
     context: ApplicationContext,
     txId: string,
     chapters: string[],
     regions: string[],
   ): Promise<Array<DxtrOrderDocketEntry>> {
-    return this._getOrderDocketEntries(context, txId, 'CTO', chapters, regions);
+    return this.getOrderDocketEntries(context, txId, 'CTO', chapters, regions);
   }
 
-  async _getOrderDocketEntries(
+  private async getOrderDocketEntries(
     context: ApplicationContext,
     txId: string,
     transactionCode: 'CTO',
@@ -291,16 +291,16 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  async _getTransferOrderDocuments(
+  private async getTransferOrderDocuments(
     context: ApplicationContext,
     txId: string,
     chapters: string[],
     regions: string[],
   ): Promise<Array<DxtrOrderDocument>> {
-    return this._getOrderDocuments(context, txId, 'CTO', chapters, regions);
+    return this.getOrderDocuments(context, txId, 'CTO', chapters, regions);
   }
 
-  async _getOrderDocuments(
+  private async getOrderDocuments(
     context: ApplicationContext,
     txId: string,
     transactionCode: 'CTO',
