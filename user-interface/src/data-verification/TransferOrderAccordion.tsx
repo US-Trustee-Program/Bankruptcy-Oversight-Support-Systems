@@ -46,7 +46,7 @@ export function getOfficeList(officesList: Array<OfficeDetails>) {
   const mapOutput = officesList.map((court) => {
     return {
       value: court.divisionCode,
-      label: `${court.courtName} ${court.courtDivisionName}`,
+      label: `${court.courtName} (${court.courtDivisionName})`,
     };
   });
   mapOutput.splice(0, 0, { value: '', label: ' ' });
