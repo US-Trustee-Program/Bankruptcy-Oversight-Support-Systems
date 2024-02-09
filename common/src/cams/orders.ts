@@ -3,8 +3,6 @@ import { CaseDetailInterface, CaseDocketEntry, CaseSummary } from './cases';
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
 
-// TODO: Consider modeling a CaseDetailSummary in cases.d.ts and use it here instead of CaseDetailInterface
-
 export type TransferOrder = CaseDetailInterface & {
   id?: string;
   orderType: 'transfer';

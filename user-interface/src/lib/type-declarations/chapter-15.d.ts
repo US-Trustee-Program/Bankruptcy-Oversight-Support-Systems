@@ -1,8 +1,6 @@
 import { ResponseData } from './api';
 import * as CommonOrders from '@common/cams/orders';
 
-export type OrderStatus = 'pending' | 'approved' | 'rejected';
-
 export interface Chapter15Type {
   caseId: string;
   chapter?: string;

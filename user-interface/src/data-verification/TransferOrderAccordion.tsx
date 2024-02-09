@@ -11,8 +11,8 @@ import {
   Chapter15CaseSummaryResponseData,
   OfficeDetails,
   Order,
-  OrderStatus,
 } from '@/lib/type-declarations/chapter-15';
+import { OrderStatus } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
