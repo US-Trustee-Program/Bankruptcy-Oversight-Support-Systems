@@ -1,5 +1,6 @@
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
+import { formatDate } from '@/lib/utils/datetime';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CaseTableImperative = {
@@ -68,9 +69,15 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                 <CaseNumber caseNumber={bCase.caseId} />
               </td>
               <td scope="row">{bCase.caseTitle}</td>
-              <td scope="row">{taxId}</td>
-              <td scope="row">{bCase.courtName}</td>
-              <td scope="row">{bCase.dateFiled}</td>
+              <td scope="row" className="text-no-wrap">
+                {taxId}
+              </td>
+              <td scope="row">
+                {bCase.courtName} ({bCase.courtDivisionName})
+              </td>
+              <td scope="row" className="text-no-wrap">
+                {formatDate(bCase.dateFiled)}
+              </td>
               <td scope="row">{bCase.chapter}</td>
             </tr>
           );

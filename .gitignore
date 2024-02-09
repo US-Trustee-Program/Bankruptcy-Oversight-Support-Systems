@@ -68,3 +68,6 @@ architecture/structurizr-*
 
 # Bicep Params
 ops/cloud-deployment/params/*.parameters.json
+
+# VS code workspace config
+cams1.code-workspace
