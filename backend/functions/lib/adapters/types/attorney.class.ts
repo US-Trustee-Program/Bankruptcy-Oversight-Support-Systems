@@ -1,5 +1,5 @@
 import { ObjectKeyVal } from './basic';
-import { Person } from '../../../../../common/src/name-helper';
+import { Person } from '../../../../../common/src/cams/parties';
 
 export class Attorney implements Person {
   firstName: string;

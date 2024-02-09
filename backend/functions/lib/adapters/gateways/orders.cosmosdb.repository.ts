@@ -4,9 +4,9 @@ import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
-import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 
@@ -21,17 +21,17 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     this.cosmosConfig = getCosmosConfig(context);
   }
 
-  async getOrders(context: ApplicationContext): Promise<Order[]> {
+  async getOrders(context: ApplicationContext): Promise<TransferOrder[]> {
     const query = 'SELECT * FROM c ORDER BY c.orderDate ASC';
     const querySpec = {
       query,
       parameters: [],
     };
-    const response = await this.queryData<Order>(context, querySpec);
+    const response = await this.queryData<TransferOrder>(context, querySpec);
     return response;
   }
 
-  async getOrder(context: ApplicationContext, id: string, caseId: string): Promise<Order> {
+  async getOrder(context: ApplicationContext, id: string, caseId: string): Promise<TransferOrder> {
     try {
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
@@ -56,7 +56,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async updateOrder(context: ApplicationContext, id: string, data: OrderTransfer) {
+  async updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction) {
     try {
       const { resource: existingOrder } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
@@ -71,7 +71,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
       }
 
       // ONLY gather the mutable properties, however many there are.
-      const { id: _id, sequenceNumber: _sn, caseId: _cid, ...mutableProperties } = data;
+      const { id: _id, caseId: _cid, ...mutableProperties } = data;
 
       const updatedOrder = {
         ...existingOrder,
@@ -102,13 +102,12 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
-    const writtenOrders: Order[] = [];
+  async putOrders(context: ApplicationContext, orders: TransferOrder[]): Promise<TransferOrder[]> {
+    const writtenOrders: TransferOrder[] = [];
     if (!orders.length) return writtenOrders;
 
     try {
       for (const order of orders) {
-        order.id = order.caseId + '_' + order.sequenceNumber;
         try {
           const _result = await this.cosmosDbClient
             .database(this.cosmosConfig.databaseName)

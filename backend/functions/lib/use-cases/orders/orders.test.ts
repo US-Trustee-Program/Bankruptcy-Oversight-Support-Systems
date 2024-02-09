@@ -14,7 +14,8 @@ import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
-import { Order, OrderTransfer, TransferIn, TransferOut } from './orders.model';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 
 describe('Orders use case', () => {
@@ -61,22 +62,20 @@ describe('Orders use case', () => {
   });
 
   test('should add transfer records for both cases when a transfer order is completed', async () => {
-    const order: Order = { ...ORDERS[0], status: 'approved' };
-    const orderTransfer: OrderTransfer = {
+    const order: TransferOrder = { ...ORDERS[0], status: 'approved' };
+    order.newCase = {
+      caseId: '012-34-56789',
+    };
+
+    const action: TransferOrderAction = {
       id: order.id,
-      sequenceNumber: order.sequenceNumber,
       caseId: order.caseId,
-      newCaseId: order.newCaseId,
-      newCourtName: order.newCourtName,
-      newCourtDivisionName: order.newCourtDivisionName,
-      newDivisionCode: order.newDivisionCode,
-      newRegionId: order.newRegionId,
-      newRegionName: order.newRegionName,
+      newCase: order.newCase,
       status: 'approved',
     };
 
     const transferIn: TransferIn = {
-      caseId: order.newCaseId,
+      caseId: order.newCase.caseId,
       otherCaseId: order.caseId,
       divisionName: order.courtDivisionName,
       courtName: order.courtName,
@@ -86,9 +85,9 @@ describe('Orders use case', () => {
 
     const transferOut: TransferOut = {
       caseId: order.caseId,
-      otherCaseId: order.newCaseId,
-      divisionName: order.newCourtDivisionName,
-      courtName: order.newCourtName,
+      otherCaseId: order.newCase.caseId,
+      divisionName: order.newCase.courtDivisionName,
+      courtName: order.newCase.courtName,
       orderDate: order.orderDate,
       documentType: 'TRANSFER_OUT',
     };
@@ -101,8 +100,8 @@ describe('Orders use case', () => {
     const transferInFn = jest.spyOn(casesRepo, 'createTransferIn');
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
-    await useCase.updateOrder(mockContext, order.id, orderTransfer);
-    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
+    await useCase.updateOrder(mockContext, order.id, action);
+    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, action);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
     expect(transferOutFn).toHaveBeenCalledWith(mockContext, transferOut);
     expect(transferInFn).toHaveBeenCalledWith(mockContext, transferIn);
@@ -110,10 +109,9 @@ describe('Orders use case', () => {
   });
 
   test('should add audit records when a transfer order is rejected', async () => {
-    const order: Order = { ...ORDERS[0], status: 'rejected' };
-    const orderTransfer: OrderTransfer = {
+    const order: TransferOrder = { ...ORDERS[0], status: 'rejected' };
+    const orderTransfer: TransferOrderAction = {
       id: order.id,
-      sequenceNumber: order.sequenceNumber,
       caseId: order.caseId,
       status: 'rejected',
     };

@@ -1,9 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import {
-  CaseDetailInterface,
-  CaseDetailsDbResult,
-  CaseListDbResult,
-} from '../adapters/types/cases';
+import { CaseDetailsDbResult, CaseListDbResult } from '../adapters/types/cases';
+import { CaseDetailInterface } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';

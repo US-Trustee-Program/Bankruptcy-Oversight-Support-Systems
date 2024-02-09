@@ -1,12 +1,6 @@
 import { CasesInterface } from '../../../use-cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
-import {
-  CaseDetailInterface,
-  Party,
-  DxtrTransactionRecord,
-  TransactionDates,
-  DebtorAttorney,
-} from '../../types/cases';
+import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import {
   getMonthDayYearStringFromDate,
   getYearMonthDayStringFromDate,
@@ -22,6 +16,8 @@ import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
+import { CaseDetailInterface } from '../../../../../../common/src/cams/cases';
+import { Party, DebtorAttorney } from '../../../../../../common/src/cams/parties';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 

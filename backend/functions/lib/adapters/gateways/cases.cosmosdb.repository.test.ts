@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../types/basic';
 import { CasesCosmosDbRepository } from './cases.cosmosdb.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
+import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { throwAggregateAuthenticationError } from '../../testing/mock.cosmos-client-humble.helpers';
 import { ServerConfigError } from '../../common-errors/server-config-error';

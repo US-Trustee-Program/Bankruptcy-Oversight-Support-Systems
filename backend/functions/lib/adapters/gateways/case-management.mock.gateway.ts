@@ -1,5 +1,5 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { CaseDetailInterface } from '../types/cases';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
 
