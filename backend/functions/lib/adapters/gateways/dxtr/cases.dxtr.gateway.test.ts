@@ -4,7 +4,7 @@ import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
-import { CaseDetailInterface } from '../../types/cases';
+import { CaseDetailInterface } from '../../../../../../common/src/cams/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';

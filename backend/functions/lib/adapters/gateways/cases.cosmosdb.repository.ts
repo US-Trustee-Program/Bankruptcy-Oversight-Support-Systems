@@ -3,7 +3,7 @@ import { getCasesCosmosDbClient, getCosmosConfig } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
+import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { UnknownError } from '../../common-errors/unknown-error';

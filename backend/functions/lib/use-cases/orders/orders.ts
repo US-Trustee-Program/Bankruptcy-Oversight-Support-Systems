@@ -6,11 +6,12 @@ import {
   CasesRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { Order, OrderTransfer, TransferIn, TransferOut } from './orders.model';
-import { CamsError } from '../../common-errors/cams-error';
-import { CaseDetailInterface } from '../../adapters/types/cases';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -48,7 +49,7 @@ export class OrdersUseCase {
     this.runtimeStateRepo = runtimeRepo;
   }
 
-  public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
+  public async getOrders(context: ApplicationContext): Promise<Array<TransferOrder>> {
     return this.ordersRepo.getOrders(context);
   }
 
@@ -62,7 +63,7 @@ export class OrdersUseCase {
   public async updateOrder(
     context: ApplicationContext,
     id: string,
-    data: OrderTransfer,
+    data: TransferOrderAction,
   ): Promise<string> {
     const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     await this.ordersRepo.updateOrder(context, id, data);
@@ -80,9 +81,9 @@ export class OrdersUseCase {
 
       const transferOut: TransferOut = {
         caseId: order.caseId,
-        otherCaseId: order.newCaseId,
-        divisionName: order.newCourtDivisionName,
-        courtName: order.newCourtName,
+        otherCaseId: order.newCase.caseId,
+        divisionName: order.newCase.courtDivisionName,
+        courtName: order.newCase.courtName,
         orderDate: order.orderDate,
         documentType: 'TRANSFER_OUT',
       };

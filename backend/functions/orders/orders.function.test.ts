@@ -2,7 +2,7 @@ import httpTrigger from './orders.function';
 import { ORDERS } from '../lib/testing/mock-data/orders.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import { OrderTransfer } from '../lib/use-cases/orders/orders.model';
+import { TransferOrderAction } from '../../../common/src/cams/orders';
 
 const context = require('azure-function-context-mock');
 
@@ -45,7 +45,7 @@ describe('Orders Function tests', () => {
 
     updateOrder = jest
       .fn()
-      .mockImplementation((context: ApplicationContext, data: OrderTransfer) => {
+      .mockImplementation((context: ApplicationContext, data: TransferOrderAction) => {
         return Promise.resolve({ success: true, body: data });
       });
     const request = {
@@ -97,7 +97,7 @@ describe('Orders Function tests', () => {
     };
     updateOrder = jest
       .fn()
-      .mockImplementation((_context: ApplicationContext, _data: OrderTransfer) => {
+      .mockImplementation((_context: ApplicationContext, _data: TransferOrderAction) => {
         throw new CamsError('ORDERS-FUNCTION-TEST', { message: 'Unknown error on update.' });
       });
     const expectedErrorResponse = {

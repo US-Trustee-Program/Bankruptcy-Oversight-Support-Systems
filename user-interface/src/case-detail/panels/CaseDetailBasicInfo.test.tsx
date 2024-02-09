@@ -1,9 +1,10 @@
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailBasicInfo from './CaseDetailBasicInfo';
-import { CaseDetailType, DebtorAttorney, Transfer } from '@/lib/type-declarations/chapter-15';
+import { CaseDetailType, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
 import { render, screen } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { Transfer } from '@common/cams/events';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
