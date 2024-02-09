@@ -4,7 +4,7 @@ import {
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   OfficeDetails,
-  Order,
+  TransferOrder,
 } from '../type-declarations/chapter-15';
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
@@ -219,7 +219,7 @@ export default class Chapter15MockApi extends Api {
     },
   ];
 
-  static orders: Array<Order> = [
+  static orders: Array<TransferOrder> = [
     {
       id: 'guid-0',
       caseId: '081-01-00001',

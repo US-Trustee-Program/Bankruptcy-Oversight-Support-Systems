@@ -1,14 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import { CaseStaffAssignment, CaseHistory, Order } from '@/lib/type-declarations/chapter-15';
+import {
+  CaseStaffAssignment,
+  CaseHistory,
+  TransferOrder,
+} from '@/lib/type-declarations/chapter-15';
 import MockApi from '@/lib/models/chapter15-mock.api.cases';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
-  const pendingOrder: Order = {
+  const pendingOrder: TransferOrder = {
     ...MockApi.orders[0],
   };
-  const approvedOrder: Order = {
+  const approvedOrder: TransferOrder = {
     ...MockApi.orders[0],
     status: 'approved',
   };

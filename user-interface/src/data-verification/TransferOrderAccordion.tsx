@@ -10,7 +10,7 @@ import {
   CaseDetailType,
   Chapter15CaseSummaryResponseData,
   OfficeDetails,
-  Order,
+  TransferOrder,
 } from '@/lib/type-declarations/chapter-15';
 import { OrderStatus } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
@@ -33,7 +33,7 @@ type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
 };
 
-export function getOrderTransferFromOrder(order: Order): FlexibleTransferOrderAction {
+export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
   const { id, caseId, newCaseId } = order;
   return {
     id,
@@ -108,12 +108,12 @@ enum ValidationStates {
 }
 
 export interface TransferOrderAccordionProps {
-  order: Order;
+  order: TransferOrder;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
   officesList: Array<OfficeDetails>;
   regionsMap: Map<string, string>;
-  onOrderUpdate: (alertDetails: AlertDetails, order?: Order) => void;
+  onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
 }
@@ -253,7 +253,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       caseId: orderTransfer.newCase?.courtDivision + '-' + orderTransfer.newCase?.caseId,
     };
 
-    const updatedOrder: Order = {
+    const updatedOrder: TransferOrder = {
       ...order,
       ...orderTransfer,
     };

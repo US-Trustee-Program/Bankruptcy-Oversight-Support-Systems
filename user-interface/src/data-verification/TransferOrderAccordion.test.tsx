@@ -3,7 +3,7 @@ import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import {
   CaseDetailType,
   OfficeDetails,
-  Order,
+  TransferOrder,
   OrderResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
@@ -82,7 +82,7 @@ function enterCaseNumberInAccordion(caseIdInput: Element | null | undefined, val
 }
 
 describe('TransferOrderAccordion', () => {
-  let order: Order;
+  let order: TransferOrder;
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
   const testOffices: OfficeDetails[] = [
@@ -191,7 +191,7 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
     let heading;
-    const rejectedOrder: Order = { ...order, reason: '', status: 'rejected' };
+    const rejectedOrder: TransferOrder = { ...order, reason: '', status: 'rejected' };
 
     renderWithProps({
       order: rejectedOrder,
@@ -211,7 +211,7 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order reject details with reason when a rejected header is clicked that does have a reason defined', async () => {
     let heading;
-    const rejectedOrder: Order = { ...order, reason: 'order is bad', status: 'rejected' };
+    const rejectedOrder: TransferOrder = { ...order, reason: 'order is bad', status: 'rejected' };
 
     renderWithProps({
       order: rejectedOrder,
@@ -233,7 +233,7 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order transfer information when an order has been approved', async () => {
     let heading;
-    const approvedOrder: Order = {
+    const approvedOrder: TransferOrder = {
       ...order,
       newCase: {
         courtName: 'New Court',
@@ -297,7 +297,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -344,7 +344,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -410,7 +410,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -486,7 +486,7 @@ describe('TransferOrderAccordion', () => {
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -539,7 +539,7 @@ describe('TransferOrderAccordion', () => {
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -590,7 +590,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -654,7 +654,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -725,7 +725,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
