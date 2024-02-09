@@ -1,4 +1,4 @@
-import { CaseDetailType, OfficeDetails, Order } from '@/lib/type-declarations/chapter-15';
+import { CaseDetailType, OfficeDetails, TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { BrowserRouter } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { orderType, transferStatusType } from '@/lib/utils/labels';
 
 describe('Test suggested cases', () => {
   let apiSpy: MockInstance;
-  let order: Order;
+  let order: TransferOrder;
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
 
@@ -234,7 +234,7 @@ describe('Test suggested cases', () => {
   });
 
   test('should pass an error message back to the parent component when the suggestion query fails', async () => {
-    const onOrderUpdate = vi.fn((_alertDetails: AlertDetails, _order?: Order) => {});
+    const onOrderUpdate = vi.fn((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
     renderWithProps({ onOrderUpdate });
 
     vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('MockError'));

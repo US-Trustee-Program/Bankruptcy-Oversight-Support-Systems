@@ -29,6 +29,7 @@ export interface DebtorAttorney {
   email?: string;
   office?: string;
 }
+
 interface CaseDetailType {
   caseId: string;
   chapter: string;
@@ -117,9 +118,13 @@ export interface CaseAssignmentHistoryResponseData extends ResponseData {
   body: CaseAssignmentHistory[];
 }
 
-export type Order = CommonOrders.Order & {
+export type RequiredId<T> = T & {
   id: string;
 };
+
+export type TransferOrder = RequiredId<CommonOrders.TransferOrder>;
+export type ConsolidationOrder = RequiredId<CommonOrders.ConsolidationOrder>;
+export type Order = RequiredId<CommonOrders.Order>;
 
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;
@@ -159,7 +164,7 @@ type CaseAssignmentHistory = AbstractCaseHistory<CaseStaffAssignment[], CaseStaf
   documentType: 'AUDIT_ASSIGNMENT';
 };
 
-type CaseTransferHistory = AbstractCaseHistory<Order | null, Order> & {
+type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrder> & {
   documentType: 'AUDIT_TRANSFER';
 };
 

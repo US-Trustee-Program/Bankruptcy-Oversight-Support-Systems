@@ -6,14 +6,15 @@ import './DataVerificationScreen.scss';
 import {
   OfficeDetails,
   OfficesResponseData,
-  Order,
   OrderResponseData,
+  Order,
 } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
 import Icon from '@/lib/components/uswds/Icon';
+import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
 
 export interface AlertDetails {
   message: string;
@@ -160,8 +161,8 @@ export default function DataVerificationScreen() {
               <AccordionGroup>
                 {orderList
                   .filter((o) => filters.includes(o.status))
-                  .map((order: Order) => {
-                    return (
+                  .map((order) => {
+                    return order.orderType === 'transfer' ? (
                       <TransferOrderAccordion
                         key={`accordion-${order.id}`}
                         order={order}
@@ -171,6 +172,15 @@ export default function DataVerificationScreen() {
                         statusType={transferStatusType}
                         onOrderUpdate={handleOrderUpdate}
                       ></TransferOrderAccordion>
+                    ) : (
+                      <ConsolidationOrderAccordion
+                        key={`accordion-${order.id}`}
+                        order={order}
+                        regionsMap={regionsMap}
+                        orderType={orderType}
+                        statusType={transferStatusType}
+                        onOrderUpdate={handleOrderUpdate}
+                      ></ConsolidationOrderAccordion>
                     );
                   })}
               </AccordionGroup>

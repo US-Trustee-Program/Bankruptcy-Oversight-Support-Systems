@@ -14,7 +14,15 @@ export type TransferOrder = CaseDetailInterface & {
   reason?: string;
 };
 
-export type Order = TransferOrder;
+export type ConsolidationOrder = CaseDetailInterface & {
+  id?: string;
+  orderType: 'consolidation';
+  orderDate: string;
+  status: OrderStatus;
+  docketEntries: CaseDocketEntry[];
+};
+
+export type Order = TransferOrder | ConsolidationOrder;
 
 type TransferOrderActionRejection = {
   id: string;
