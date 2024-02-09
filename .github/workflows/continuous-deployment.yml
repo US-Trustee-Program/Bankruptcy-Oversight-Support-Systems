@@ -354,36 +354,6 @@ jobs:
           name: ${{ needs.build-info.outputs.apiName }}-build
           path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
-  get-identities:
-    runs-on: ubuntu-latest
-    needs:
-      [
-        build-info,
-        build-frontend,
-        build-service,
-        accessibility-test,
-        security-sast-scan,
-        security-sca-scan-frontend,
-        security-sca-scan-backend,
-        security-sca-scan-common,
-      ]
-    environment: ${{ needs.build-info.outputs.environment }}
-    if: needs.build-info.outputs.deployBicep == 'false'
-    outputs:
-      cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
-
-      deployJobDependency: ${{ steps.azure-db-deploy.outputs.deployJobDependency }}
-    steps:
-      - name: Deploy Azure resources
-        id: azure-deploy
-        run: |
-          webappSubnetName=$(cat ./outputs.json | jq -r .webappSubnetName.value)
-          echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-
-          keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
-          echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
-
   deploy:
     runs-on: ubuntu-latest
     needs:
@@ -453,7 +423,6 @@ jobs:
 
           keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
           echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
-
       - name: Deploy database
         id: azure-db-deploy
         if: needs.build-info.outputs.deployBicep == 'true'
@@ -501,6 +470,17 @@ jobs:
             --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --cosmosIdName ${{ steps.azure-db-deploy.outputs.cosmosDbManagedIdName }} \
             --storageAccName ${slotStorageAccountName:0:24}
+  check-deployment:
+    runs-on: ubuntu-latest
+    needs: [build-info, deploy]
+    environment: ${{ needs.build-info.outputs.environment }}
+    outputs:
+      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
+    if: always()
+    steps:
+      - name: Check deployment and set params
+        id: set-deploy-params
+        run: |
 
   deploy-webapp:
     runs-on: ubuntu-latest
