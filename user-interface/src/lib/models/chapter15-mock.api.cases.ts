@@ -233,6 +233,7 @@ export default class Chapter15MockApi extends Api {
       orderDate: '2024-01-01',
       status: 'pending',
       dateFiled: '2024-01-01',
+      newCaseId: '01-00002',
       newCase: {
         caseId: '01-00002',
         courtName: 'A',

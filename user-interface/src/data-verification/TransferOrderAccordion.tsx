@@ -38,7 +38,7 @@ export function getOrderTransferFromOrder(order: Order): FlexibleTransferOrderAc
   return {
     id,
     caseId,
-    newCase: newCaseId ? { caseId: newCaseId } : undefined,
+    newCase: { caseId: newCaseId },
   };
 }
 
@@ -89,16 +89,14 @@ export function updateOrderTransfer(
 ) {
   const updated: FlexibleTransferOrderAction = { ...orderTransfer };
   const office = officesList.find((o) => o.divisionCode === selection?.value);
-  if (office) {
-    updated.newCase = {
-      ...updated.newCase,
-      regionId: office.regionId,
-      regionName: office.regionName,
-      courtName: office.courtName,
-      courtDivisionName: office.courtDivisionName,
-      courtDivision: office.divisionCode,
-    };
-  }
+  updated.newCase = {
+    ...updated.newCase,
+    regionId: office?.regionId,
+    regionName: office?.regionName,
+    courtName: office?.courtName,
+    courtDivisionName: office?.courtDivisionName,
+    courtDivision: office?.divisionCode,
+  };
 
   return updated;
 }
@@ -223,8 +221,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     const updated = { ...orderTransfer };
     if (updated.newCase) {
       updated.newCase.caseId = newCaseId;
-    } else {
-      updated.newCase = { caseId: newCaseId };
     }
 
     isValidOrderTransfer(updated).then((valid) => {
