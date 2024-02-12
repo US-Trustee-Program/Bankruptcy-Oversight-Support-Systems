@@ -1,16 +1,21 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import {
+  OfficeDetails,
+  OrderResponseData,
+  TransferOrder,
+} from '@/lib/type-declarations/chapter-15';
 import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 describe('Review Orders screen', () => {
-  let ordersResponse: OrderResponseData;
+  let orders: TransferOrder[];
 
   beforeAll(async () => {
-    ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    orders = ordersResponse.body.filter((o) => o.orderType === 'transfer') as TransferOrder[];
   });
 
   beforeEach(async () => {
@@ -145,7 +150,7 @@ describe('Review Orders screen', () => {
     const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
     fireEvent.click(approvedOrderFilter);
     fireEvent.click(rejectedOrderFilter);
-    for (const order of ordersResponse.body) {
+    for (const order of orders) {
       await waitFor(async () => {
         const heading = screen.getByTestId(`accordion-heading-${order.id}`);
         expect(heading).toBeInTheDocument();
