@@ -10,7 +10,7 @@ export type TransferOrder = CaseDetailInterface & {
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   newCaseId?: string;
-  newCase?: Partial<CaseSummary>;
+  newCase?: CaseSummary;
   reason?: string;
 };
 
@@ -20,6 +20,7 @@ export type ConsolidationOrder = CaseDetailInterface & {
   orderDate: string;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
+  cases: Array<CaseSummary>;
 };
 
 export type Order = TransferOrder | ConsolidationOrder;
