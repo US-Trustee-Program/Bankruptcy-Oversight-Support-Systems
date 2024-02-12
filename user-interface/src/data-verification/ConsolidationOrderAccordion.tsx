@@ -6,6 +6,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import { ConsolidationOrder } from '@/lib/type-declarations/chapter-15';
 import './TransferOrderAccordion.scss';
+import { CaseTable } from './CaseTable';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -90,6 +91,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     </div>
                   );
                 })}
+            </div>
+            <div>
+              <CaseTable id={'case-list'} cases={order.cases}></CaseTable>
             </div>
             <div className="grid-col-1"></div>
           </div>

@@ -7,7 +7,6 @@ import Input from '@/lib/components/uswds/Input';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
-  CaseDetailType,
   Chapter15CaseSummaryResponseData,
   OfficeDetails,
   TransferOrder,
@@ -30,7 +29,7 @@ import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: Partial<CaseSummary>;
+  newCase?: CaseSummary;
 };
 
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
@@ -135,17 +134,17 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const [validationState, setValidationState] = useState<ValidationStates>(
     ValidationStates.notValidated,
   );
-  const [newCaseSummary, setNewCaseSummary] = useState<CaseDetailType | null>(null);
+  const [newCaseSummary, setNewCaseSummary] = useState<CaseSummary | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
   const [toggleView, setToggleView] = useState<'default' | 'suggestions'>('default');
-  const [suggestedCases, setSuggestedCases] = useState<CaseDetailType[] | null>(null);
+  const [suggestedCases, setSuggestedCases] = useState<CaseSummary[] | null>(null);
 
-  async function getTransferredCaseSuggestions(caseId: string): Promise<CaseDetailType[] | null> {
+  async function getTransferredCaseSuggestions(caseId: string): Promise<CaseSummary[] | null> {
     const suggestions = await api
       .get(`/orders-suggestions/${caseId}/`)
       .then((response) => {
-        return response.body as CaseDetailType[];
+        return response.body as CaseSummary[];
       })
       .catch((reason: Error) => {
         props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
@@ -229,18 +228,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     setOrderTransfer(updated);
   }
 
-  function handleSuggestedCaseSelection(bCase: CaseDetailType) {
+  function handleSuggestedCaseSelection(bCase: CaseSummary) {
     if (bCase) {
       const updated = { ...orderTransfer };
       // Remove the division prefix to be consistent with case entry view.
-      updated.newCase = {
-        caseId: getCaseNumber(bCase.caseId),
-        courtDivision: bCase.courtDivision,
-        courtDivisionName: bCase.courtDivisionName,
-        courtName: bCase.courtName,
-        regionId: bCase.regionId,
-        regionName: bCase.regionName,
-      };
+      updated.newCase = bCase;
       setOrderTransfer(updated);
       approveButtonRef.current?.disableButton(false);
     }
