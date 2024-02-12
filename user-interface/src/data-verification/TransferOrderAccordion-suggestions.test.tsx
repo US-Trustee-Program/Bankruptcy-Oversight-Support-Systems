@@ -1,4 +1,4 @@
-import { CaseDetailType, OfficeDetails, TransferOrder } from '@/lib/type-declarations/chapter-15';
+import { OfficeDetails, TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { screen, fireEvent, render, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { MockInstance } from 'vitest';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { CaseDetail } from '@common/cams/cases';
 
 describe('Test suggested cases', () => {
   let apiSpy: MockInstance;
@@ -52,7 +53,7 @@ describe('Test suggested cases', () => {
     },
   ];
 
-  const caseLookup: CaseDetailType = {
+  const caseLookup: CaseDetail = {
     caseId: '',
     chapter: '',
     caseTitle: '',
@@ -91,7 +92,7 @@ describe('Test suggested cases', () => {
       .spyOn(Chapter15MockApi, 'get')
       .mockResolvedValue({ success: true, body: [caseLookup] });
     vi.stubEnv('CAMS_PA11Y', 'true');
-    order = Chapter15MockApi.orders[0];
+    order = Chapter15MockApi.orders[0] as TransferOrder;
   });
 
   afterEach(() => {

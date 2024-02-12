@@ -3,7 +3,7 @@ import { USTP_OFFICE_NAME_MAP } from './dxtr.constants';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
 import { OfficeDetails } from '../../../use-cases/offices/offices.model';
-import { OFFICES } from '../../../testing/mock-data/offices.mock';
+import { OFFICES } from '../../../../../../common/src/cams/test-utilities/offices.mock';
 
 const MODULE_NAME = 'MOCK-OFFICES-GATEWAY';
 

@@ -1,9 +1,9 @@
-import { CaseDetailInterface, CaseDocketEntry, CaseSummary } from './cases';
+import { CaseDocketEntry, CaseSummary } from './cases';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
 
-export type TransferOrder = CaseDetailInterface & {
+export type TransferOrder = CaseSummary & {
   id?: string;
   orderType: 'transfer';
   orderDate: string;
@@ -14,7 +14,7 @@ export type TransferOrder = CaseDetailInterface & {
   reason?: string;
 };
 
-export type ConsolidationOrder = CaseDetailInterface & {
+export type ConsolidationOrder = CaseSummary & {
   id?: string;
   orderType: 'consolidation';
   orderDate: string;

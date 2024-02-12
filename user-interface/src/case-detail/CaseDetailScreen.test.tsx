@@ -1,15 +1,11 @@
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import CaseDetail, { docketSorterClosure } from './CaseDetailScreen';
+import CaseDetailScreen, { docketSorterClosure } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import {
-  CaseDetailType,
-  CaseDocketEntry,
-  Debtor,
-  DebtorAttorney,
-} from '@/lib/type-declarations/chapter-15';
+import { CaseDocketEntry, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
+import { CaseDetail } from '@common/cams/cases';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';
@@ -40,7 +36,7 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       regionId: '02',
@@ -66,7 +62,7 @@ describe('Case Detail screen tests', () => {
     };
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -151,7 +147,7 @@ describe('Case Detail screen tests', () => {
   test.each(regionTestCases)(
     'should display the reformatted region ID',
     async (regionId: string, officeName: string, expectedRegionId: string) => {
-      const testCaseDetail: CaseDetailType = {
+      const testCaseDetail: CaseDetail = {
         caseId: caseId,
         chapter: '15',
         regionId,
@@ -171,7 +167,7 @@ describe('Case Detail screen tests', () => {
       };
       render(
         <BrowserRouter>
-          <CaseDetail caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} />
         </BrowserRouter>,
       );
 
@@ -204,7 +200,7 @@ describe('Case Detail screen tests', () => {
       address3: MaybeString,
       cityStateZipCountry: MaybeString,
     ) => {
-      const testCaseDetail: CaseDetailType = {
+      const testCaseDetail: CaseDetail = {
         caseId: caseId,
         chapter: '15',
         officeName: 'Redondo Beach',
@@ -227,7 +223,7 @@ describe('Case Detail screen tests', () => {
       };
       render(
         <BrowserRouter>
-          <CaseDetail caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} />
         </BrowserRouter>,
       );
 
@@ -266,7 +262,7 @@ describe('Case Detail screen tests', () => {
   test.each(debtorTaxIdTestCases)(
     'should display debtor tax ID information with various IDs lines present/absent',
     async (ssn: MaybeString, taxId: MaybeString) => {
-      const testCaseDetail: CaseDetailType = {
+      const testCaseDetail: CaseDetail = {
         caseId: caseId,
         chapter: '15',
         officeName: 'Redondo Beach',
@@ -287,7 +283,7 @@ describe('Case Detail screen tests', () => {
       };
       render(
         <BrowserRouter>
-          <CaseDetail caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} />
         </BrowserRouter>,
       );
 
@@ -319,7 +315,7 @@ describe('Case Detail screen tests', () => {
   );
 
   test('should show "No judge assigned" when a judge name is unavailable.', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       officeName: 'Redondo Beach',
@@ -337,7 +333,7 @@ describe('Case Detail screen tests', () => {
     };
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -351,7 +347,7 @@ describe('Case Detail screen tests', () => {
   }, 20000);
 
   test('should show "Information is not available." when a debtor attorney is unavailable.', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       officeName: 'Redondo Beach',
@@ -370,7 +366,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -384,7 +380,7 @@ describe('Case Detail screen tests', () => {
   }, 20000);
 
   test('should not display case dismissed date if not supplied in api response', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       officeName: 'Redondo Beach',
@@ -403,7 +399,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -417,7 +413,7 @@ describe('Case Detail screen tests', () => {
   }, 20000);
 
   test('should not display closed by court date if reopened date is supplied and is later than CBC date', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       officeName: 'Redondo Beach',
@@ -437,7 +433,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -457,7 +453,7 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should not display reopened date if closed by court date is later than reopened date', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       officeName: 'Redondo Beach',
@@ -477,7 +473,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -497,7 +493,7 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should display (unassigned) when no assignment exist for case', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: caseId,
       chapter: '15',
       officeName: 'Redondo Beach',
@@ -517,7 +513,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetail caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
 
@@ -571,7 +567,7 @@ describe('Case Detail screen tests', () => {
         email,
       };
 
-      const testCaseDetail: CaseDetailType = {
+      const testCaseDetail: CaseDetail = {
         caseId: caseId,
         chapter: '15',
         officeName: 'Redondo Beach',
@@ -594,7 +590,7 @@ describe('Case Detail screen tests', () => {
 
       render(
         <BrowserRouter>
-          <CaseDetail caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} />
         </BrowserRouter>,
       );
 
@@ -646,7 +642,7 @@ describe('Case Detail screen tests', () => {
   test.each(navRouteTestCases)(
     'should highlight the correct nav link when loading the corresponding url directly in browser',
     async (routePath: string, expectedLink: string) => {
-      const testCaseDetail: CaseDetailType = {
+      const testCaseDetail: CaseDetail = {
         caseId: '080-01-12345',
         chapter: '15',
         officeName: 'Redondo Beach',
@@ -672,7 +668,7 @@ describe('Case Detail screen tests', () => {
       // use <MemoryRouter> when you want to manually control the history
       render(
         <MemoryRouter initialEntries={[routePath]}>
-          <CaseDetail caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} />
         </MemoryRouter>,
       );
 

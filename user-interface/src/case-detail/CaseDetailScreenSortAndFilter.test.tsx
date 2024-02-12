@@ -1,14 +1,15 @@
 import { describe } from 'vitest';
 import { render, waitFor, screen, fireEvent, within } from '@testing-library/react';
-import CaseDetail, {
+import CaseDetailScreen, {
   applySortAndFilters,
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
-import { CaseDetailType, CaseDocket } from '@/lib/type-declarations/chapter-15';
+import { CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import ReactRouter from 'react-router';
+import { CaseDetail } from '@common/cams/cases';
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -50,7 +51,7 @@ const testCaseDocketEntries: CaseDocket = [
 describe('Case Detail sort, search, and filter tests', () => {
   const testCaseId = '111-11-12345';
 
-  const testCaseDetail: CaseDetailType = {
+  const testCaseDetail: CaseDetail = {
     caseId: testCaseId,
     chapter: '15',
     officeName: 'Redondo Beach',
@@ -83,7 +84,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -134,7 +138,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/court-docket"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -172,7 +179,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -213,7 +223,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/court-docket"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -419,7 +432,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -455,7 +471,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -492,7 +511,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -532,7 +554,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -569,7 +594,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>
@@ -608,7 +636,10 @@ describe('Case Detail sort, search, and filter tests', () => {
             <Route
               path="case-detail/:id/*"
               element={
-                <CaseDetail caseDetail={testCaseDetail} caseDocketEntries={testCaseDocketEntries} />
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
               }
             />
           </Routes>

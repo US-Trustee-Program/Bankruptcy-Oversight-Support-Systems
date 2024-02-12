@@ -1,25 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { CaseTable } from './CaseTable';
-import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
+import { CaseSummary } from '@common/cams/cases';
 
-const cases: Array<CaseDetailType> = [
+const cases: Array<CaseSummary> = [
   {
     // courtDivision: '081', // <-- GAP
     caseId: '081-85-86221',
     caseTitle: 'Smith-Moyer',
     dateFiled: '2022-10-03',
-    // dxtrId: '313826', // GAP
     chapter: '15',
     // courtId: '0208', // GAP
     courtName: 'Southern District of New York',
     courtDivisionName: 'Manhattan',
-    judgeName: 'Kimberly X. Willis',
     regionId: '02',
     debtorTypeLabel: 'Individual Business',
     petitionLabel: 'Voluntary',
     officeName: 'New York',
-    assignments: [], // GAP
     debtor: {
       name: 'DebtorName',
       ssn: '11-1111',
@@ -30,17 +27,14 @@ const cases: Array<CaseDetailType> = [
     caseId: '081-85-86221',
     caseTitle: 'Smith-Moyer',
     dateFiled: '2022-10-03',
-    // dxtrId: '313826', // GAP
     chapter: '15',
     // courtId: '0208', // GAP
     courtName: 'Southern District of New York',
     courtDivisionName: 'Manhattan',
-    judgeName: 'Kimberly X. Willis',
     regionId: '02',
     debtorTypeLabel: 'Individual Business',
     petitionLabel: 'Voluntary',
     officeName: 'New York',
-    assignments: [], // GAP
     debtor: {
       name: 'DebtorName',
       taxId: '22-22222',
@@ -51,17 +45,14 @@ const cases: Array<CaseDetailType> = [
     caseId: '081-85-86221',
     caseTitle: 'Smith-Moyer',
     dateFiled: '2022-10-03',
-    // dxtrId: '313826', // GAP
     chapter: '15',
     // courtId: '0208', // GAP
     courtName: 'Southern District of New York',
     courtDivisionName: 'Manhattan',
-    judgeName: 'Kimberly X. Willis',
     regionId: '02',
     debtorTypeLabel: 'Individual Business',
     petitionLabel: 'Voluntary',
     officeName: 'New York',
-    assignments: [], // GAP
     debtor: {
       name: 'DebtorName',
     },

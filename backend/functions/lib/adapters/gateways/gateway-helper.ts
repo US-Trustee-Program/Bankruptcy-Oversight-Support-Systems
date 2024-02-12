@@ -8,11 +8,11 @@ import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-en
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import { CaseDocketEntry } from '../../use-cases/case-docket/case-docket.model';
 import { CaseAssignmentHistory } from '../types/case.history';
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 import { DebtorAttorney, Party } from '../../../../../common/src/cams/parties';
 
 export class GatewayHelper {
-  getAllCasesMockExtract(): CaseDetailInterface[] {
+  getAllCasesMockExtract(): CaseDetail[] {
     const filename = './lib/testing/mock-data/cases.mock.json';
 
     try {

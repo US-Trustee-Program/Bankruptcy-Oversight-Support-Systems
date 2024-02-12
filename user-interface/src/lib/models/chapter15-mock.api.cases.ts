@@ -1,6 +1,6 @@
+import { CaseDetail } from '@common/cams/cases';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import {
-  CaseDetailType,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   OfficeDetails,
@@ -118,13 +118,14 @@ export default class Chapter15MockApi extends Api {
     },
   ];
 
-  static caseDetails: CaseDetailType = {
+  static caseDetails: CaseDetail = {
     caseId: '101-23-12345',
     chapter: '15',
     regionId: '02',
     regionName: 'NEW YORK',
     officeName: 'New York',
     courtName: 'Southern District of New York',
+    courtDivision: '081',
     courtDivisionName: 'Manhattan',
     caseTitle: 'Débora Arden Coronado Nazario III',
     dateFiled: '2023-02-15',
@@ -240,6 +241,9 @@ export default class Chapter15MockApi extends Api {
         courtDivisionName: 'New York 1',
         courtDivision: '101',
         regionId: '02',
+        chapter: '15',
+        caseTitle: 'Test case',
+        dateFiled: '2023-12-31',
       },
       docketEntries: [
         {
@@ -279,6 +283,9 @@ export default class Chapter15MockApi extends Api {
         courtDivisionName: 'New York 1',
         courtDivision: '101',
         regionId: '02',
+        chapter: '15',
+        caseTitle: 'Test case',
+        dateFiled: '2023-12-31',
       },
       docketEntries: [
         {
@@ -318,6 +325,9 @@ export default class Chapter15MockApi extends Api {
         courtDivisionName: 'New York 1',
         courtDivision: '101',
         regionId: '02',
+        chapter: '15',
+        caseTitle: 'Test case',
+        dateFiled: '2023-12-31',
       },
       docketEntries: [
         {
@@ -350,6 +360,38 @@ export default class Chapter15MockApi extends Api {
       orderType: 'consolidation',
       orderDate: '2024-01-04',
       status: 'pending',
+      cases: [
+        {
+          caseId: '01-00004',
+          courtName: 'A',
+          courtDivisionName: 'New York 1',
+          courtDivision: '101',
+          regionId: '02',
+          chapter: '15',
+          caseTitle: 'Test case A',
+          dateFiled: '2023-12-31',
+        },
+        {
+          caseId: '01-00005',
+          courtName: 'B',
+          courtDivisionName: 'New York 2',
+          courtDivision: '102',
+          regionId: '03',
+          chapter: '15',
+          caseTitle: 'Test case B',
+          dateFiled: '2023-12-24',
+        },
+        {
+          caseId: '01-00006',
+          courtName: 'C',
+          courtDivisionName: 'New York 3',
+          courtDivision: '103',
+          regionId: '03',
+          chapter: '15',
+          caseTitle: 'Test case C',
+          dateFiled: '2023-12-15',
+        },
+      ],
       docketEntries: [
         {
           sequenceNumber: 4,

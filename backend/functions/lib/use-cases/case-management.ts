@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseDetailsDbResult, CaseListDbResult } from '../adapters/types/cases';
-import { CaseDetailInterface } from '../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
@@ -49,7 +49,7 @@ export class CaseManagement {
         message: '',
         count: cases?.length,
         body: {
-          caseList: cases as CaseDetailInterface[],
+          caseList: cases as CaseDetail[],
         },
       };
     } catch (originalError) {
@@ -87,13 +87,13 @@ export class CaseManagement {
   public async getCaseSummary(
     applicationContext: ApplicationContext,
     caseId: string,
-  ): Promise<CaseDetailInterface> {
+  ): Promise<CaseDetail> {
     const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
     caseSummary.officeName = this.officesGateway.getOffice(caseSummary.courtDivision);
     return caseSummary;
   }
 
-  private async getCaseAssigneeNames(context: ApplicationContext, bCase: CaseDetailInterface) {
+  private async getCaseAssigneeNames(context: ApplicationContext, bCase: CaseDetail) {
     const caseAssignment = new CaseAssignmentUseCase(context);
     try {
       const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(

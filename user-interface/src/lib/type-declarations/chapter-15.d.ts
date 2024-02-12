@@ -30,29 +30,6 @@ export interface DebtorAttorney {
   office?: string;
 }
 
-interface CaseDetailType {
-  caseId: string;
-  chapter: string;
-  caseTitle: string;
-  officeName: string;
-  dateFiled: string;
-  judgeName?: string;
-  courtName?: string;
-  courtDivision?: string;
-  courtDivisionName?: string;
-  closedDate?: string;
-  dismissedDate?: string;
-  reopenedDate?: string;
-  regionId?: string;
-  regionName?: string;
-  assignments: string[];
-  debtor: Debtor;
-  debtorAttorney?: DebtorAttorney;
-  debtorTypeLabel: string;
-  petitionLabel: string;
-  transfers?: Transfer[];
-}
-
 export interface CaseStaffAssignment {
   id?: string;
   documentType: 'ASSIGNMENT';
@@ -110,7 +87,7 @@ export interface Chapter15CaseSummaryResponseData extends ResponseData {
 
 export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
-    caseDetails: CaseDetailType;
+    caseDetails: CaseDetail;
   };
 }
 
@@ -118,13 +95,17 @@ export interface CaseAssignmentHistoryResponseData extends ResponseData {
   body: CaseAssignmentHistory[];
 }
 
-export type RequiredId<T> = T & {
+export type TransferOrder = CommonOrders.TransferOrder & {
   id: string;
 };
 
-export type TransferOrder = RequiredId<CommonOrders.TransferOrder>;
-export type ConsolidationOrder = RequiredId<CommonOrders.ConsolidationOrder>;
-export type Order = RequiredId<CommonOrders.Order>;
+export type ConsolidationOrder = CommonOrders.ConsolidationOrder & {
+  id: string;
+};
+
+export type Order = CommonOrders.Order & {
+  id: string;
+};
 
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;

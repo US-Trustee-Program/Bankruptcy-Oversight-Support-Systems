@@ -2,7 +2,7 @@ import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 
@@ -12,9 +12,9 @@ export class CasesLocalGateway implements CasesInterface {
     _options: {
       startingMonth?: number;
     },
-  ): Promise<CaseDetailInterface[]> => {
+  ): Promise<CaseDetail[]> => {
     const gatewayHelper = new GatewayHelper();
-    let cases: CaseDetailInterface[];
+    let cases: CaseDetail[];
 
     try {
       cases = gatewayHelper.getAllCasesMockExtract();
@@ -30,10 +30,7 @@ export class CasesLocalGateway implements CasesInterface {
     return cases;
   };
 
-  async getCaseDetail(
-    applicationContext: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseDetailInterface> {
+  async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
 
@@ -78,10 +75,7 @@ export class CasesLocalGateway implements CasesInterface {
     return caseDetail;
   }
 
-  getCaseSummary(
-    applicationContext: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseDetailInterface> {
+  getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     // TODO: remove unnecessary stuff
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
@@ -116,7 +110,7 @@ export class CasesLocalGateway implements CasesInterface {
   public async getSuggestedCases(
     applicationContext: ApplicationContext,
     caseId: string,
-  ): Promise<CaseDetailInterface[]> {
+  ): Promise<CaseDetail[]> {
     const gatewayHelper = new GatewayHelper();
     try {
       return gatewayHelper.getAllCasesMockExtract();

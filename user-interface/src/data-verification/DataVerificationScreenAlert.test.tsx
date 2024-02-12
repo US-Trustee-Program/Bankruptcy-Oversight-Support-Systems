@@ -20,8 +20,12 @@ describe('Review Orders screen - Alert', () => {
     mockOrder.status = 'approved';
     mockOrder.newCase = {
       caseId: '55-55555',
+      courtDivision: '081',
       courtDivisionName: 'Cool Division',
       courtName: 'My Shinny New court',
+      chapter: '15',
+      caseTitle: 'Test case',
+      dateFiled: '2023-12-31',
     };
     const mockAlertMessage = `Transfer of case to ${mockOrder.newCaseId} in ${mockOrder.newCase.courtName} (${mockOrder.newCase.courtDivisionName}) was approved.`;
 
