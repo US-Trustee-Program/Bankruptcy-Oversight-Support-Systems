@@ -1,6 +1,6 @@
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 
-export const CASE_SUMMARIES: CaseDetailInterface[] = [
+export const CASE_SUMMARIES: CaseDetail[] = [
   {
     courtDivision: '081',
     caseId: '081-11-06541',

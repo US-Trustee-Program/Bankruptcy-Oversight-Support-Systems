@@ -6,9 +6,13 @@ import {
   CasesRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import {
+  ConsolidationOrder,
+  TransferOrder,
+  TransferOrderAction,
+} from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
@@ -49,14 +53,16 @@ export class OrdersUseCase {
     this.runtimeStateRepo = runtimeRepo;
   }
 
-  public async getOrders(context: ApplicationContext): Promise<Array<TransferOrder>> {
+  public async getOrders(
+    context: ApplicationContext,
+  ): Promise<Array<TransferOrder | ConsolidationOrder>> {
     return this.ordersRepo.getOrders(context);
   }
 
   public async getSuggestedCases(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Array<CaseDetailInterface>> {
+  ): Promise<Array<CaseDetail>> {
     return this.casesGateway.getSuggestedCases(context, caseId);
   }
 
@@ -69,36 +75,37 @@ export class OrdersUseCase {
     await this.ordersRepo.updateOrder(context, id, data);
     const order = await this.ordersRepo.getOrder(context, id, data.caseId);
 
-    if (order.status === 'approved') {
-      const transferIn: TransferIn = {
-        caseId: order.newCaseId,
-        otherCaseId: order.caseId,
-        divisionName: order.courtDivisionName,
-        courtName: order.courtName,
-        orderDate: order.orderDate,
-        documentType: 'TRANSFER_IN',
-      };
+    if (order.orderType === 'transfer') {
+      if (order.status === 'approved') {
+        const transferIn: TransferIn = {
+          caseId: order.newCaseId,
+          otherCaseId: order.caseId,
+          divisionName: order.courtDivisionName,
+          courtName: order.courtName,
+          orderDate: order.orderDate,
+          documentType: 'TRANSFER_IN',
+        };
 
-      const transferOut: TransferOut = {
+        const transferOut: TransferOut = {
+          caseId: order.caseId,
+          otherCaseId: order.newCase.caseId,
+          divisionName: order.newCase.courtDivisionName,
+          courtName: order.newCase.courtName,
+          orderDate: order.orderDate,
+          documentType: 'TRANSFER_OUT',
+        };
+
+        await this.casesRepo.createTransferIn(context, transferIn);
+        await this.casesRepo.createTransferOut(context, transferOut);
+      }
+      const caseHistory: CaseHistory = {
         caseId: order.caseId,
-        otherCaseId: order.newCase.caseId,
-        divisionName: order.newCase.courtDivisionName,
-        courtName: order.newCase.courtName,
-        orderDate: order.orderDate,
-        documentType: 'TRANSFER_OUT',
+        documentType: 'AUDIT_TRANSFER',
+        before: initialOrder as TransferOrder,
+        after: order,
       };
-
-      await this.casesRepo.createTransferIn(context, transferIn);
-      await this.casesRepo.createTransferOut(context, transferOut);
+      await this.casesRepo.createCaseHistory(context, caseHistory);
     }
-
-    const caseHistory: CaseHistory = {
-      caseId: order.caseId,
-      documentType: 'AUDIT_TRANSFER',
-      before: initialOrder,
-      after: order,
-    };
-    await this.casesRepo.createCaseHistory(context, caseHistory);
 
     return id;
   }
@@ -155,13 +162,15 @@ export class OrdersUseCase {
     context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
 
     for (const order of writtenOrders) {
-      const caseHistory: CaseHistory = {
-        caseId: order.caseId,
-        documentType: 'AUDIT_TRANSFER',
-        before: null,
-        after: order,
-      };
-      await this.casesRepo.createCaseHistory(context, caseHistory);
+      if (order.orderType === 'transfer') {
+        const caseHistory: CaseHistory = {
+          caseId: order.caseId,
+          documentType: 'AUDIT_TRANSFER',
+          before: null,
+          after: order,
+        };
+        await this.casesRepo.createCaseHistory(context, caseHistory);
+      }
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };

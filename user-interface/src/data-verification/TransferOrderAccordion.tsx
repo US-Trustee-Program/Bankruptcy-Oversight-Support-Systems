@@ -248,7 +248,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     const updatedOrder: TransferOrder = {
       ...order,
       ...orderTransfer,
-    };
+    } as TransferOrder;
 
     api
       .patch(`/orders/${orderTransfer.id}`, orderTransfer)

@@ -8,7 +8,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { CamsResponse } from '../controller-types';
-import { CaseDetailInterface } from '../../adapters/types/cases';
+import { CaseDetail } from '../../adapters/types/cases';
 import { TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const syncResponse: SyncOrdersStatus = {
@@ -79,7 +79,7 @@ describe('orders controller tests', () => {
 
   test('should get suggested cases', async () => {
     const suggestedCases = [CASE_SUMMARIES[0]];
-    const suggestedCasesResponse: CamsResponse<CaseDetailInterface[]> = {
+    const suggestedCasesResponse: CamsResponse<CaseDetail[]> = {
       body: suggestedCases,
       success: true,
     };

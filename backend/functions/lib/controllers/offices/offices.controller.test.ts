@@ -1,7 +1,7 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
-import { OFFICES } from '../../testing/mock-data/offices.mock';
+import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsError } from '../../common-errors/cams-error';
 
 let getOffices;

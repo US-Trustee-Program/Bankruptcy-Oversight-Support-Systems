@@ -1,4 +1,4 @@
-import { CaseListDbResult, CaseDetailInterface } from '../adapters/types/cases';
+import { CaseListDbResult, CaseDetail } from '../adapters/types/cases';
 import { CaseManagement } from './case-management';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
@@ -71,7 +71,7 @@ describe('Case list tests', () => {
 
   test('Calling getCases should return valid data', async () => {
     const chapterCaseList = new CaseManagement(applicationContext);
-    const caseList: CaseDetailInterface[] = [
+    const caseList: CaseDetail[] = [
       {
         caseId: '001-04-44449',
         caseTitle: 'Flo Esterly and Neas Van Sampson',
@@ -166,7 +166,7 @@ describe('Case list tests', () => {
       async getCases(
         _context,
         _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<CaseDetailInterface[]> {
+      ): Promise<CaseDetail[]> {
         throw Error('some random error');
       }
     }
@@ -191,7 +191,7 @@ describe('Case list tests', () => {
       async getCases(
         _context,
         _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<CaseDetailInterface[]> {
+      ): Promise<CaseDetail[]> {
         throw new CamsError('SOME_MODULE', { message: 'some error message' });
       }
     }
@@ -210,7 +210,7 @@ describe('Case list tests', () => {
   });
 
   test('should throw error if assignee names lookup throws an error', async () => {
-    const caseThatWillThrowError: CaseDetailInterface = {
+    const caseThatWillThrowError: CaseDetail = {
       ...CASE_SUMMARIES[0],
       caseId: 'ThrowError',
     };
@@ -345,7 +345,7 @@ describe('Case detail tests', () => {
 
 describe('Case summary tests', () => {
   test('should return summary with office name', async () => {
-    const caseSummary: CaseDetailInterface = {
+    const caseSummary: CaseDetail = {
       caseId: '000-00-00000',
       courtDivision: 'TheDiv',
       chapter: '15',
@@ -359,7 +359,7 @@ describe('Case summary tests', () => {
     jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
     jest.spyOn(useCase.officesGateway, 'getOffice').mockReturnValue(officeName);
 
-    const expected: CaseDetailInterface = {
+    const expected: CaseDetail = {
       ...caseSummary,
       officeName,
     };

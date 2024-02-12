@@ -4,7 +4,7 @@ import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
-import { CaseDetailInterface } from '../../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../../common/src/cams/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -241,7 +241,7 @@ describe('Test DXTR Gateway', () => {
     const closedDate = '2023-10-31';
     const dismissedDate = '2023-11-15';
     const reopenedDate = '2023-12-31';
-    const expectedClose: CaseDetailInterface = {
+    const expectedClose: CaseDetail = {
       ...cases[0],
       closedDate,
       dismissedDate,

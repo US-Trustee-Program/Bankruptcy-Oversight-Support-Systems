@@ -1,10 +1,11 @@
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailBasicInfo from './CaseDetailBasicInfo';
-import { CaseDetailType, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
+import { DebtorAttorney } from '@/lib/type-declarations/chapter-15';
 import { render, screen } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { Transfer } from '@common/cams/events';
+import { CaseDetail } from '@common/cams/cases';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -20,7 +21,7 @@ const TEST_DEBTOR_ATTORNEY: DebtorAttorney = {
   email: 'janedoe@cubeddoe.com',
   office: 'Doe, Doe and Doe, PLC',
 };
-const BASE_TEST_CASE_DETAIL: CaseDetailType = {
+const BASE_TEST_CASE_DETAIL: CaseDetail = {
   caseId: TEST_CASE_ID,
   chapter: '15',
   regionId: '02',
@@ -81,7 +82,7 @@ describe('Case detail basic information panel', () => {
 
   describe('With debtor counsel variations', () => {
     test('should not show office if not available', () => {
-      const testCaseDetail: CaseDetailType = { ...BASE_TEST_CASE_DETAIL };
+      const testCaseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL };
       const debtorAttorney = testCaseDetail.debtorAttorney!;
       delete debtorAttorney.office;
 

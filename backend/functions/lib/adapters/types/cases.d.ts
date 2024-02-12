@@ -1,7 +1,7 @@
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 
 export interface CaseListRecordSet {
-  caseList: CaseDetailInterface[];
+  caseList: CaseDetail[];
   initialized?: boolean;
 }
 
@@ -16,7 +16,7 @@ export interface CaseDetailsDbResult {
   success: boolean;
   message: string;
   body: {
-    caseDetails: CaseDetailInterface;
+    caseDetails: CaseDetail;
   };
 }
 
@@ -31,4 +31,4 @@ export interface TransactionDates {
   reopenedDates?: Date[];
 }
 
-export { CaseDetailInterface };
+export { CaseDetail as CaseDetail };

@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailHeader from './CaseDetailHeader';
-import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
-import CaseDetail from '../CaseDetailScreen';
+import CaseDetailScreen from '../CaseDetailScreen';
+import { CaseDetail } from '@common/cams/cases';
 
 describe('Case Detail Header tests', () => {
-  const testCaseDetail: CaseDetailType = {
+  const testCaseDetail: CaseDetail = {
     caseId: '1234',
     chapter: '15',
     caseTitle: 'The Beach Boys',
@@ -68,7 +68,7 @@ describe('Case Detail Header tests', () => {
   });
 
   test('should fix header in place when screen is scrolled and header hits the top of the screen', async () => {
-    const testCaseDetail: CaseDetailType = {
+    const testCaseDetail: CaseDetail = {
       caseId: '000-11-22222',
       chapter: '15',
       regionId: '02',
@@ -106,7 +106,7 @@ describe('Case Detail Header tests', () => {
             style={{ minHeight: '100px', height: '100px' }}
             data-testid="cams-header-test-id"
           ></header>
-          <CaseDetail caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} />
           <div style={{ minHeight: '2000px', height: '2000px' }}></div>
         </div>
       </BrowserRouter>,

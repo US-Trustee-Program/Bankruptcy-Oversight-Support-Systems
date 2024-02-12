@@ -1,11 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import {
-  CaseDetailType,
-  OfficeDetails,
-  TransferOrder,
-  OrderResponseData,
-} from '@/lib/type-declarations/chapter-15';
+import { OfficeDetails, TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -23,6 +18,8 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { CaseDetail } from '@common/cams/cases';
+import { Mock } from '@common/cams/test-utilities/mock-data';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -144,9 +141,7 @@ describe('TransferOrderAccordion', () => {
   }
 
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    order = ordersResponse.body[0];
+    order = Mock.getTransferOrderWithId();
   });
 
   afterEach(() => {
@@ -236,9 +231,16 @@ describe('TransferOrderAccordion', () => {
     const approvedOrder: TransferOrder = {
       ...order,
       newCase: {
-        courtName: 'New Court',
-        courtDivisionName: 'New Division',
         caseId: '01-00002',
+        caseTitle: 'Test case title',
+        dateFiled: '12-31-2023',
+        chapter: '15',
+        courtName: 'New Court',
+        courtDivision: '',
+        courtDivisionName: 'New Division',
+        debtor: {
+          name: 'Joe',
+        },
       },
       status: 'approved',
     };
@@ -677,7 +679,7 @@ describe('TransferOrderAccordion', () => {
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
-    const caseLookup: CaseDetailType = {
+    const caseLookup: CaseDetail = {
       caseId: '',
       chapter: '',
       caseTitle: '',
@@ -690,6 +692,7 @@ describe('TransferOrderAccordion', () => {
       },
       debtorTypeLabel: '',
       petitionLabel: '',
+      courtDivision: '',
     };
 
     enterCaseNumberInAccordion(caseIdInput, '00-00000');
@@ -871,7 +874,7 @@ describe('TransferOrderAccordion', () => {
     let newCaseIdText;
     await waitFor(async () => {
       newCaseIdText = findCaseNumberInputInAccordion(order.id);
-      expect(newCaseIdText).toHaveValue(order.newCase?.caseId);
+      expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
     selectCourtInAccordion('1');
