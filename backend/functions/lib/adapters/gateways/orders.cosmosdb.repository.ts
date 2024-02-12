@@ -6,7 +6,7 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
-import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 
@@ -21,17 +21,17 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     this.cosmosConfig = getCosmosConfig(context);
   }
 
-  async getOrders(context: ApplicationContext): Promise<TransferOrder[]> {
+  async getOrders(context: ApplicationContext): Promise<Order[]> {
     const query = 'SELECT * FROM c ORDER BY c.orderDate ASC';
     const querySpec = {
       query,
       parameters: [],
     };
-    const response = await this.queryData<TransferOrder>(context, querySpec);
+    const response = await this.queryData<Order>(context, querySpec);
     return response;
   }
 
-  async getOrder(context: ApplicationContext, id: string, caseId: string): Promise<TransferOrder> {
+  async getOrder(context: ApplicationContext, id: string, caseId: string): Promise<Order> {
     try {
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
@@ -102,8 +102,8 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async putOrders(context: ApplicationContext, orders: TransferOrder[]): Promise<TransferOrder[]> {
-    const writtenOrders: TransferOrder[] = [];
+  async putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
+    const writtenOrders: Order[] = [];
     if (!orders.length) return writtenOrders;
 
     try {

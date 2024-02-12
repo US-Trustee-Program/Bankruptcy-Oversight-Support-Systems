@@ -4,6 +4,7 @@ import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BrowserRouter } from 'react-router-dom';
 import DataVerificationScreen from './DataVerificationScreen';
+import { TransferOrder } from '@/lib/type-declarations/chapter-15';
 
 describe('Review Orders screen - Alert', () => {
   beforeEach(async () => {
@@ -15,7 +16,7 @@ describe('Review Orders screen - Alert', () => {
   });
 
   test('should display alert and update order list when an order is updated by the TransferOrderAccordion', async () => {
-    const mockOrder = { ...Chapter15MockApi.orders[0] };
+    const mockOrder: TransferOrder = { ...Chapter15MockApi.orders[0], orderType: 'transfer' };
     mockOrder.status = 'approved';
     mockOrder.newCase = {
       caseId: '55-55555',

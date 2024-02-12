@@ -4,7 +4,7 @@ import {
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   OfficeDetails,
-  TransferOrder,
+  Order,
 } from '../type-declarations/chapter-15';
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
@@ -219,7 +219,7 @@ export default class Chapter15MockApi extends Api {
     },
   ];
 
-  static orders: Array<TransferOrder> = [
+  static orders: Array<Order> = [
     {
       id: 'guid-0',
       caseId: '081-01-00001',
@@ -331,6 +331,37 @@ export default class Chapter15MockApi extends Api {
               fileUri: 'file3',
               fileSize: 1000003,
               fileLabel: 'FileLabel3',
+              fileExt: 'pdf',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'guid-4',
+      caseId: '081-01-00003',
+      caseTitle: 'Case 4',
+      chapter: '15',
+      courtName: 'Court 4',
+      courtDivisionName: 'Court Division 4',
+      courtDivision: '081',
+      dateFiled: '2024-01-03',
+      regionId: '02',
+      orderType: 'consolidation',
+      orderDate: '2024-01-04',
+      status: 'pending',
+      docketEntries: [
+        {
+          sequenceNumber: 4,
+          documentNumber: 4,
+          dateFiled: '2024-01-04',
+          summaryText: 'Summary Text 4',
+          fullText: 'Full Text 4',
+          documents: [
+            {
+              fileUri: 'file4',
+              fileSize: 1000004,
+              fileLabel: 'FileLabel4',
               fileExt: 'pdf',
             },
           ],

@@ -15,14 +15,13 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
 import Icon from '@/lib/components/uswds/Icon';
 import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
+import { OrderStatus, OrderType } from '@common/cams/orders';
 
 export interface AlertDetails {
   message: string;
   type: UswdsAlertStyle;
   timeOut: number;
 }
-
-type FilterType = 'pending' | 'approved' | 'rejected';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -32,7 +31,8 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function DataVerificationScreen() {
-  const [filters, setFilters] = useState<FilterType[]>(['pending']);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
+  const [typeFilter, setTypeFilter] = useState<OrderType[]>(['transfer', 'consolidation']);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -93,15 +93,27 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
-  function handleSetFilter(filterString: FilterType) {
-    if (filters.includes(filterString)) {
-      setFilters(
-        filters.filter((filter) => {
+  function handleStatusFilter(filterString: OrderStatus) {
+    if (statusFilter.includes(filterString)) {
+      setStatusFilter(
+        statusFilter.filter((filter) => {
           return filter !== filterString;
         }),
       );
     } else {
-      setFilters([...filters, filterString]);
+      setStatusFilter([...statusFilter, filterString]);
+    }
+  }
+
+  function handleTypeFilter(filterString: OrderType) {
+    if (typeFilter.includes(filterString)) {
+      setTypeFilter(
+        typeFilter.filter((filter) => {
+          return filter !== filterString;
+        }),
+      );
+    } else {
+      setTypeFilter([...typeFilter, filterString]);
     }
   }
 
@@ -130,23 +142,35 @@ export default function DataVerificationScreen() {
           {!isOrderListLoading && (
             <section className="order-list-container">
               <div className="filters order-status">
-                <Filter
+                <Filter<OrderStatus>
                   label="Pending Review"
                   filterType="pending"
-                  filters={filters}
-                  callback={handleSetFilter}
+                  filters={statusFilter}
+                  callback={handleStatusFilter}
                 />
-                <Filter
+                <Filter<OrderStatus>
                   label="Approved"
                   filterType="approved"
-                  filters={filters}
-                  callback={handleSetFilter}
+                  filters={statusFilter}
+                  callback={handleStatusFilter}
                 />
-                <Filter
+                <Filter<OrderStatus>
                   label="Rejected"
                   filterType="rejected"
-                  filters={filters}
-                  callback={handleSetFilter}
+                  filters={statusFilter}
+                  callback={handleStatusFilter}
+                />
+                <Filter<OrderType>
+                  label="Transfer"
+                  filterType="transfer"
+                  filters={typeFilter}
+                  callback={handleTypeFilter}
+                />
+                <Filter<OrderType>
+                  label="Consolidation"
+                  filterType="consolidation"
+                  filters={typeFilter}
+                  callback={handleTypeFilter}
                 />
               </div>
               <div className="data-verification-accordion-header">
@@ -160,7 +184,8 @@ export default function DataVerificationScreen() {
               </div>
               <AccordionGroup>
                 {orderList
-                  .filter((o) => filters.includes(o.status))
+                  .filter((o) => typeFilter.includes(o.orderType))
+                  .filter((o) => statusFilter.includes(o.status))
                   .map((order) => {
                     return order.orderType === 'transfer' ? (
                       <TransferOrderAccordion
@@ -193,14 +218,14 @@ export default function DataVerificationScreen() {
   );
 }
 
-interface FilterProps {
+interface FilterProps<T extends string> {
   label: string;
-  filterType: FilterType;
-  filters: FilterType[];
-  callback: (filterString: FilterType) => void;
+  filterType: T;
+  filters: T[];
+  callback: (filterString: T) => void;
 }
 
-function Filter(props: FilterProps) {
+function Filter<T extends string>(props: FilterProps<T>) {
   const { label, filterType, filters, callback } = props;
   return (
     <div
