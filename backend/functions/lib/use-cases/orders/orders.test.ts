@@ -17,6 +17,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -62,10 +63,7 @@ describe('Orders use case', () => {
   });
 
   test('should add transfer records for both cases when a transfer order is completed', async () => {
-    const order: TransferOrder = { ...ORDERS[0], status: 'approved' };
-    order.newCase = {
-      caseId: '012-34-56789',
-    };
+    const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
 
     const action: TransferOrderAction = {
       id: order.id,

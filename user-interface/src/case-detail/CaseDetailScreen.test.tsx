@@ -38,14 +38,18 @@ describe('Case Detail screen tests', () => {
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
     const testCaseDetail: CaseDetail = {
       caseId: caseId,
+      dxtrId: '123',
       chapter: '15',
       regionId: '02',
       officeName: 'New York',
+      officeCode: '000',
       caseTitle: 'The Beach Boys',
       dateFiled: '01-04-1962',
       judgeName: rickBHartName,
+      courtId: '01',
       courtName: 'Court of Law',
       courtDivisionName: 'Manhattan',
+      courtDivision: '081',
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
@@ -59,6 +63,8 @@ describe('Case Detail screen tests', () => {
         cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
       },
       debtorAttorney,
+      groupDesignator: '01',
+      regionName: 'Test Region',
     };
     render(
       <BrowserRouter>
@@ -116,7 +122,7 @@ describe('Case Detail screen tests', () => {
         expect(debtorName).toHaveTextContent(testCaseDetail.debtor.name);
 
         const debtorType = screen.getByTestId('case-detail-debtor-type');
-        expect(debtorType).toHaveTextContent(testCaseDetail.debtorTypeLabel);
+        expect(debtorType).toHaveTextContent(testCaseDetail.debtorTypeLabel as string);
 
         const properties: Array<keyof Debtor> = [
           'address1',
@@ -164,6 +170,14 @@ describe('Case Detail screen tests', () => {
           name: 'Roger Rabbit',
         },
         debtorAttorney,
+        courtId: '',
+        dxtrId: '',
+        officeCode: '',
+        courtName: '',
+        courtDivision: '',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionName: '',
       };
       render(
         <BrowserRouter>
@@ -220,6 +234,15 @@ describe('Case Detail screen tests', () => {
           cityStateZipCountry,
         },
         debtorAttorney,
+        courtId: '',
+        dxtrId: '',
+        officeCode: '',
+        courtName: '',
+        courtDivision: '',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
       };
       render(
         <BrowserRouter>
@@ -280,6 +303,15 @@ describe('Case Detail screen tests', () => {
           taxId,
         },
         debtorAttorney,
+        courtId: '',
+        dxtrId: '',
+        officeCode: '',
+        courtName: '',
+        courtDivision: '',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
       };
       render(
         <BrowserRouter>
@@ -330,6 +362,15 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      courtId: '',
+      dxtrId: '',
+      officeCode: '',
+      courtName: '',
+      courtDivision: '',
+      courtDivisionName: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
     };
     render(
       <BrowserRouter>
@@ -362,6 +403,15 @@ describe('Case Detail screen tests', () => {
       debtor: {
         name: 'Roger Rabbit',
       },
+      courtId: '',
+      dxtrId: '',
+      officeCode: '',
+      courtName: '',
+      courtDivision: '',
+      courtDivisionName: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
     };
 
     render(
@@ -395,6 +445,15 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      courtId: '',
+      dxtrId: '',
+      officeCode: '',
+      courtName: '',
+      courtDivision: '',
+      courtDivisionName: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
     };
 
     render(
@@ -429,6 +488,15 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      courtId: '',
+      dxtrId: '',
+      officeCode: '',
+      courtName: '',
+      courtDivision: '',
+      courtDivisionName: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
     };
 
     render(
@@ -469,6 +537,15 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      courtId: '',
+      dxtrId: '',
+      officeCode: '',
+      courtName: '',
+      courtDivision: '',
+      courtDivisionName: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
     };
 
     render(
@@ -509,6 +586,15 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      courtId: '',
+      dxtrId: '',
+      officeCode: '',
+      courtName: '',
+      courtDivision: '',
+      courtDivisionName: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
     };
 
     render(
@@ -582,6 +668,15 @@ describe('Case Detail screen tests', () => {
           name: 'Roger Rabbit',
         },
         debtorAttorney: expectedAttorney,
+        courtId: '',
+        dxtrId: '',
+        officeCode: '',
+        courtName: '',
+        courtDivision: '',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
       };
 
       const expectedLink = `mailto:${expectedAttorney.email}?subject=${getCaseNumber(
@@ -663,6 +758,15 @@ describe('Case Detail screen tests', () => {
           cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
           phone: '234-123-1234',
         },
+        courtId: '',
+        dxtrId: '',
+        officeCode: '',
+        courtName: '',
+        courtDivision: '',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
       };
 
       // use <MemoryRouter> when you want to manually control the history

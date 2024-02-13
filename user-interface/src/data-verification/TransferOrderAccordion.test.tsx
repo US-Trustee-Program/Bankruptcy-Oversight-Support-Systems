@@ -279,7 +279,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
+        `USTP Office: transfer fromRegion ${parseInt(order.regionId)} - ${order.courtDivisionName}toRegion ${parseInt(testOffices[0].regionId)} - ${testOffices[0].courtDivisionName}`,
       );
     });
   });
@@ -776,7 +776,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
+        `USTP Office: transfer fromRegion ${parseInt(order.regionId)} - ${order.courtDivisionName}toRegion ${parseInt(testOffices[0].regionId)} - ${testOffices[0].courtDivisionName}`,
       );
     });
 

@@ -1,14 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import {
-  CaseStaffAssignment,
-  CaseHistory,
-  TransferOrder,
-} from '@/lib/type-declarations/chapter-15';
-import MockApi from '@/lib/models/chapter15-mock.api.cases';
+import { CaseStaffAssignment, CaseHistory } from '@/lib/type-declarations/chapter-15';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
+  const pendingOrder = MockData.getTransferOrder({ override: { caseId, status: 'pending' } });
+  const approvedOrder = MockData.getTransferOrder({ override: { caseId, status: 'approved' } });
+  /*
   const pendingOrder: TransferOrder = {
     ...MockApi.orders[0],
   } as TransferOrder;
@@ -16,6 +15,7 @@ describe('audit history tests', () => {
     ...MockApi.orders[0],
     status: 'approved',
   } as TransferOrder;
+  */
   const assignmentBefore: CaseStaffAssignment[] = [
     {
       caseId,

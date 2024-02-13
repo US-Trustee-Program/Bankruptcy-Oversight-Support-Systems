@@ -1,14 +1,16 @@
-import { CaseDetail } from '@common/cams/cases';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
-import {
-  CaseDocketEntry,
-  Chapter15CaseDetailsResponseData,
-  OfficeDetails,
-  Order,
-} from '../type-declarations/chapter-15';
+import { Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
+function buildArray(fn: () => void, size: number) {
+  const arr = [];
+  for (let i = 0; i < size - 1; i++) {
+    arr.push(fn());
+  }
+  return arr;
+}
 export default class Chapter15MockApi extends Api {
   static caseList = [
     {
@@ -58,6 +60,8 @@ export default class Chapter15MockApi extends Api {
     },
   ];
 
+  static caseDocketEntries = buildArray(MockData.getDocketEntry, 5);
+  /*
   static caseDocketEntries: CaseDocketEntry[] = [
     {
       sequenceNumber: 0,
@@ -117,7 +121,11 @@ export default class Chapter15MockApi extends Api {
       ],
     },
   ];
+  */
 
+  static caseDetails = MockData.getCaseDetail();
+
+  /*
   static caseDetails: CaseDetail = {
     caseId: '101-23-12345',
     chapter: '15',
@@ -168,7 +176,10 @@ export default class Chapter15MockApi extends Api {
       },
     ],
   };
+  */
 
+  static offices = MockData.getOffices().slice(0, 5);
+  /*
   static offices: Array<OfficeDetails> = [
     {
       divisionCode: '001',
@@ -219,7 +230,10 @@ export default class Chapter15MockApi extends Api {
       regionName: 'NEW YORK',
     },
   ];
+  */
 
+  static orders = buildArray(MockData.getTransferOrder, 4);
+  /*
   static orders: Array<Order> = [
     {
       id: 'guid-0',
@@ -411,6 +425,7 @@ export default class Chapter15MockApi extends Api {
       ],
     },
   ];
+  */
 
   public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;

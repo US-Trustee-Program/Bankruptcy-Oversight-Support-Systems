@@ -71,7 +71,8 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
               </div>
             )}
             <ul className="usa-list usa-list--unstyled">
-              {caseDetail.assignments?.length > 0 &&
+              {caseDetail.assignments &&
+                caseDetail.assignments.length > 0 &&
                 (caseDetail.assignments as Array<string>)?.map((staff: string, idx: number) => {
                   return (
                     <li key={idx} className="individual-assignee">

@@ -20,7 +20,8 @@ export type ConsolidationOrder = CaseSummary & {
   orderDate: string;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
-  cases: Array<CaseSummary>;
+  leadCase: CaseSummary;
+  childCases: Array<CaseSummary>;
 };
 
 export type Order = TransferOrder | ConsolidationOrder;

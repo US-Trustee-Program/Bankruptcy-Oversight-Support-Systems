@@ -8,8 +8,8 @@ import {
   DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
-import { TransferOrder } from '../../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../types/basic';
+import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
 
 const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
@@ -36,19 +36,8 @@ const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
 ];
 
 const dxtrOrder: DxtrOrder = {
+  ...MockData.getTransferOrder(),
   dxtrCaseId: '111111',
-  dateFiled: '2023-12-01',
-  caseId: '081-23-111111',
-  caseTitle: 'Mr Bean',
-  chapter: '15',
-  courtName: '',
-  courtDivisionName: '',
-  regionId: '',
-  orderType: 'transfer',
-  orderDate: '2023-12-01',
-  status: 'pending',
-  courtDivision: '081',
-  docketEntries: [],
 };
 
 const dxtrOrderDocument: DxtrOrderDocument = {
@@ -60,44 +49,7 @@ const dxtrOrderDocument: DxtrOrderDocument = {
   deleted: 'N',
 };
 
-const expectedOrder: TransferOrder = {
-  dateFiled: '2023-12-01',
-  caseId: '081-23-111111',
-  caseTitle: 'Mr Bean',
-  chapter: '15',
-  courtName: '',
-  courtDivisionName: '',
-  courtDivision: '081',
-  regionId: '',
-  orderType: 'transfer',
-  orderDate: '2023-12-01',
-  status: 'pending',
-  newCaseId: '22-111111',
-  docketEntries: [
-    {
-      sequenceNumber: 0,
-      dateFiled: '2023-12-01',
-      summaryText: 'Summary Text',
-      fullText: 'This is the full text.',
-      documentNumber: 0,
-      documents: [
-        {
-          fileSize: 9999,
-          fileUri: 'https://somedomain.gov/files/0208-173976-0-0-0.pdf',
-          fileLabel: '0',
-          fileExt: 'pdf',
-        },
-      ],
-    },
-    {
-      sequenceNumber: 1,
-      dateFiled: '2023-12-01',
-      documentNumber: 1,
-      summaryText: 'Some other Text',
-      fullText: 'This is the other full text.',
-    },
-  ],
-};
+const expectedOrder = MockData.getTransferOrder();
 
 describe('DxtrOrdersGateway', () => {
   describe('getOrders', () => {
