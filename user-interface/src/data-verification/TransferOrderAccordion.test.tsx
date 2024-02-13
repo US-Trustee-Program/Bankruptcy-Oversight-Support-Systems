@@ -18,7 +18,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
-import { Mock } from '@common/cams/test-utilities/mock-data';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -140,7 +140,7 @@ describe('TransferOrderAccordion', () => {
   }
 
   beforeEach(async () => {
-    order = Mock.getTransferOrderWithId();
+    order = MockData.getTransferOrder();
   });
 
   afterEach(() => {
@@ -228,7 +228,7 @@ describe('TransferOrderAccordion', () => {
   test('should expand and show order transfer information when an order has been approved', async () => {
     let heading;
 
-    const mockedApprovedOrder: TransferOrder = Mock.getTransferOrderWithId({
+    const mockedApprovedOrder: TransferOrder = MockData.getTransferOrder({
       override: {
         status: 'approved',
       },
@@ -668,7 +668,7 @@ describe('TransferOrderAccordion', () => {
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
-    const caseLookup = Mock.getCaseSummary({
+    const caseLookup = MockData.getCaseSummary({
       entityType: 'person',
       override: {
         debtor: {
