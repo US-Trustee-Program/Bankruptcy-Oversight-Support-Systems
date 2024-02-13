@@ -70,22 +70,28 @@ function getTransferOrder(
   override: Partial<TransferOrder> = {},
 ): TransferOrder {
   const summary = getCaseSummary(entityType);
+
+  const newCase = getCaseSummary();
+
   const transferOrder: TransferOrder = {
     ...summary,
     orderType: 'transfer',
     orderDate: '2024-01-01',
     status: override.status || 'pending',
     docketEntries: [getDocketEntry()],
-    newCaseId: getCaseId(),
-    newCase: override.status === 'approved' ? getCaseSummary() : undefined,
+    newCaseId: override.status === 'approved' ? newCase.caseId : undefined,
+    newCase: override.status === 'approved' ? newCase : undefined,
     reason: override.status === 'rejected' ? faker.lorem.sentences(2) : undefined,
   };
 
   return { ...transferOrder, ...override };
 }
 
-function getTransferOrderWithId(override: Partial<TransferOrder> = {}): RequiredId<TransferOrder> {
-  return { ...getTransferOrder(), id: faker.string.uuid(), ...override };
+function getTransferOrderWithId(
+  entityType: EntityType,
+  override: Partial<TransferOrder> = {},
+): RequiredId<TransferOrder> {
+  return { ...getTransferOrder(entityType, override), id: faker.string.uuid(), ...override };
 }
 
 function getParty(entityType: EntityType = 'person', override: Partial<Party> = {}): Party {

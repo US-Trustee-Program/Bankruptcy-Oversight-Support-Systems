@@ -228,37 +228,25 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order transfer information when an order has been approved', async () => {
     let heading;
-    const approvedOrder: TransferOrder = {
-      ...order,
-      newCase: {
-        caseId: '01-00002',
-        caseTitle: 'Test case title',
-        dateFiled: '12-31-2023',
-        chapter: '15',
-        courtName: 'New Court',
-        courtDivision: '',
-        courtDivisionName: 'New Division',
-        debtor: {
-          name: 'Joe',
-        },
-      },
+
+    const mockedApprovedOrder: TransferOrder = Mock.getTransferOrderWithId('person', {
       status: 'approved',
-    };
+    });
 
     renderWithProps({
-      order: approvedOrder,
+      order: mockedApprovedOrder,
     });
 
     await waitFor(async () => {
-      heading = findAccordionHeading(order.id);
+      heading = findAccordionHeading(mockedApprovedOrder.id);
     });
 
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const actionText = findActionText(order.id, true);
+      const actionText = findActionText(mockedApprovedOrder.id, true);
       expect(actionText).toHaveTextContent(
-        `Transferred ${getCaseNumber(approvedOrder.caseId)} from${approvedOrder.courtName} (${approvedOrder.courtDivisionName})to ${getCaseNumber(approvedOrder.newCase?.caseId)} and court${approvedOrder.newCase?.courtName} (${approvedOrder.newCase?.courtDivisionName}).`,
+        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName})to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
       );
     });
   });
