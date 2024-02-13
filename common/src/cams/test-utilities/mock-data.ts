@@ -59,6 +59,7 @@ function getCaseSummary(
   const office = randomOffice();
   const caseSummary: CaseSummary = {
     ...office,
+    dxtrId: '0', // NEED TO REFACTOR THIS OUT OF THE MODEL AND STOP LEAKING FROM THE API
     caseId: randomCaseId(),
     // TODO: Need a chapter.
     chapter: '',

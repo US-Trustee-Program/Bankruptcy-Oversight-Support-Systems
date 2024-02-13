@@ -6,7 +6,7 @@ export interface OfficeDetails {
   courtDivision: string;
   courtDivisionName: string;
   groupDesignator: string;
-  state: string;
   regionId: string;
   regionName: string;
+  state?: string;
 }

@@ -409,8 +409,6 @@ export default class Chapter15MockApi extends Api {
           ],
         },
       ],
-      // TODO: Add two or more cases summaries here.
-      cases: [],
     },
   ];
 

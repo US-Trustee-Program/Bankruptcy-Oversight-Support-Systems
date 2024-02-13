@@ -14,7 +14,7 @@ export const ORDERS: TransferOrder[] = [
     courtDivisionName: 'Manhattan',
     orderDate: '2023-11-02',
     dateFiled: '2023-11-02',
-    newCaseId: '012-34-56789',
+    newCaseId: '34-56789',
     docketEntries: [
       {
         dateFiled: '2023-11-02',
@@ -23,5 +23,14 @@ export const ORDERS: TransferOrder[] = [
         fullText: 'It is ordered that the case be transferred...',
       },
     ],
+    courtId: '',
+    debtor: {
+      name: 'DebtorName',
+    },
+    dxtrId: '0',
+    groupDesignator: '',
+    officeCode: '',
+    officeName: '',
+    regionName: '',
   },
 ];

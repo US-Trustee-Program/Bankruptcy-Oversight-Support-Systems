@@ -10,13 +10,12 @@ import {
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsResponse } from '../controller-types';
-import { TransferOrderAction } from '../../../../../common/src/cams/orders';
-import { TransferOrder } from '../../../../../common/src/cams/orders';
+import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
-export type GetOrdersResponse = CamsResponse<Array<TransferOrder>>;
+export type GetOrdersResponse = CamsResponse<Array<Order>>;
 export type GetSuggestedCasesResponse = CamsResponse<Array<CaseSummary>>;
 export type PatchOrderResponse = CamsResponse<string>;
 
