@@ -18,7 +18,6 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
-import { CaseDetail } from '@common/cams/cases';
 import { Mock } from '@common/cams/test-utilities/mock-data';
 
 vi.mock(
@@ -229,8 +228,10 @@ describe('TransferOrderAccordion', () => {
   test('should expand and show order transfer information when an order has been approved', async () => {
     let heading;
 
-    const mockedApprovedOrder: TransferOrder = Mock.getTransferOrderWithId('person', {
-      status: 'approved',
+    const mockedApprovedOrder: TransferOrder = Mock.getTransferOrderWithId({
+      override: {
+        status: 'approved',
+      },
     });
 
     renderWithProps({
@@ -667,21 +668,15 @@ describe('TransferOrderAccordion', () => {
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
-    const caseLookup: CaseDetail = {
-      caseId: '',
-      chapter: '',
-      caseTitle: '',
-      officeName: '',
-      dateFiled: '',
-      assignments: [],
-      debtor: {
-        name: 'DebtorName',
-        ssn: '111-11-1111',
+    const caseLookup = Mock.getCaseSummary({
+      entityType: 'person',
+      override: {
+        debtor: {
+          name: 'DebtorName',
+          ssn: '111-11-1111',
+        },
       },
-      debtorTypeLabel: '',
-      petitionLabel: '',
-      courtDivision: '',
-    };
+    });
 
     enterCaseNumberInAccordion(caseIdInput, '00-00000');
     enterCaseNumberInAccordion(caseIdInput, '');

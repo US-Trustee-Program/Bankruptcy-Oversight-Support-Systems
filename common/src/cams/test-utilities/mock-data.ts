@@ -37,11 +37,14 @@ function randomOffice() {
   return OFFICES[randomInt(OFFICES.length - 1)];
 }
 
-function getCaseSummary(
-  entityType: EntityType = 'person',
-  override: Partial<CaseSummary> = {},
-): CaseSummary {
-  const debtor = getParty(entityType);
+interface Options<T> {
+  entityType?: EntityType;
+  override?: Partial<T>;
+}
+
+function getCaseSummary(options: Options<CaseSummary> = { override: {} }): CaseSummary {
+  const { entityType, override } = options;
+  const debtor = getParty({ entityType });
   const debtorTypeCode = entityType === 'person' ? 'IC' : randomTruth() ? 'CB' : 'IB';
   const debtorTypeLabel = debtorTypeLabelMap.get(debtorTypeCode);
   const office = randomOffice();
@@ -58,20 +61,18 @@ function getCaseSummary(
   return { ...caseSummary, ...override };
 }
 
-function getCaseDetail(override: Partial<CaseDetail> = {}): CaseDetail {
+function getCaseDetail(options: Options<CaseDetail> = { override: {} }): CaseDetail {
+  const { entityType, override } = options;
   const caseDetail: CaseDetail = {
-    ...getCaseSummary(),
+    ...getCaseSummary({ entityType }),
   };
   return { ...caseDetail, ...override };
 }
 
-function getTransferOrder(
-  entityType: EntityType = 'person',
-  override: Partial<TransferOrder> = {},
-): TransferOrder {
-  const summary = getCaseSummary(entityType);
-
-  const newCase = getCaseSummary();
+function getTransferOrder(options: Options<TransferOrder> = { override: {} }): TransferOrder {
+  const { entityType, override } = options;
+  const summary = getCaseSummary({ entityType });
+  const newCase = getCaseSummary({ entityType });
 
   const transferOrder: TransferOrder = {
     ...summary,
@@ -88,13 +89,13 @@ function getTransferOrder(
 }
 
 function getTransferOrderWithId(
-  entityType: EntityType,
-  override: Partial<TransferOrder> = {},
+  options: Options<TransferOrder> = { override: {} },
 ): RequiredId<TransferOrder> {
-  return { ...getTransferOrder(entityType, override), id: faker.string.uuid(), ...override };
+  return { ...getTransferOrder(options), id: faker.string.uuid(), ...options.override };
 }
 
-function getParty(entityType: EntityType = 'person', override: Partial<Party> = {}): Party {
+function getParty(options: Options<Party> = { override: {} }): Party {
+  const { entityType, override } = options;
   const party: Party = {
     name: entityType === 'company' ? faker.company.name() : faker.person.fullName(),
     address1: faker.location.streetAddress(),

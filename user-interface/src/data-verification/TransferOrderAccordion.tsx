@@ -29,7 +29,7 @@ import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: CaseSummary;
+  newCase?: Partial<CaseSummary>;
 };
 
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
