@@ -3,9 +3,9 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
-import { OfficeDetails } from '../../../use-cases/offices/offices.model';
 import { OfficesGatewayInterface } from '../../../use-cases/offices/offices.gateway.interface';
 import { USTP_OFFICE_NAME_MAP } from './dxtr.constants';
+import { OfficeDetails } from '../../../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
@@ -22,7 +22,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     const input: DbTableFieldSpec[] = [];
 
     const query = `
-    SELECT a.[CS_DIV] AS divisionCode
+    SELECT a.[CS_DIV] AS courtDivision
       ,a.[GRP_DES] AS groupDesignator
       ,a.[COURT_ID] AS courtId
       ,a.[OFFICE_CODE] AS officeCode

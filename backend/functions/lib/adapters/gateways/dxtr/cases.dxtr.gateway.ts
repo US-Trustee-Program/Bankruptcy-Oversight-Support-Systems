@@ -16,7 +16,7 @@ import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
-import { CaseDetail } from '../../../../../../common/src/cams/cases';
+import { CaseDetail, CaseSummary } from '../../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../../common/src/cams/parties';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
@@ -46,7 +46,10 @@ function sqlUnion(queries: string[]) {
 
 export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
-    const bCase = await this.getCaseSummary(applicationContext, caseId);
+    const caseSummary = await this.getCaseSummary(applicationContext, caseId);
+    const bCase: CaseDetail = {
+      ...caseSummary,
+    };
 
     const transactionDates = await this.queryTransactions(
       applicationContext,
@@ -77,7 +80,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   async getCases(
     applicationContext: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<CaseDetail[]> {
+  ): Promise<CaseSummary[]> {
     const doChapter12Enable = applicationContext.featureFlags['chapter-twelve-enabled'];
     const doChapter11Enable = applicationContext.featureFlags['chapter-eleven-enabled'];
     const rowsToReturn = doChapter12Enable || doChapter11Enable ? '10' : '20';
@@ -121,7 +124,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return Promise.resolve(
-      handleQueryResult<CaseDetail[]>(
+      handleQueryResult<CaseSummary[]>(
         applicationContext,
         queryResult,
         MODULENAME,
@@ -133,7 +136,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   public async getSuggestedCases(
     applicationContext: ApplicationContext,
     caseId: string,
-  ): Promise<CaseDetail[]> {
+  ): Promise<CaseSummary[]> {
     const input: DbTableFieldSpec[] = [];
     const bCase = await this.getCaseSummary(applicationContext, caseId);
 
@@ -279,7 +282,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   async getCaseSummary(
     applicationContext: ApplicationContext,
     caseId: string,
-  ): Promise<CaseDetail> {
+  ): Promise<CaseSummary> {
     const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
     const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
 
@@ -296,7 +299,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     courtDiv: string,
     dxtrCaseId: string,
-  ): Promise<CaseDetail> {
+  ): Promise<CaseSummary> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -359,7 +362,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return Promise.resolve(
-      handleQueryResult<CaseDetail>(
+      handleQueryResult<CaseSummary>(
         applicationContext,
         queryResult,
         MODULENAME,
@@ -637,12 +640,12 @@ export default class CasesDxtrGateway implements CasesInterface {
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     applicationContext.logger.debug(MODULENAME, `Case results received from DXTR:`, queryResult);
 
-    return (queryResult.results as mssql.IResult<CaseDetail>).recordset[0];
+    return (queryResult.results as mssql.IResult<CaseSummary>).recordset[0];
   }
 
   casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
 
-    return (queryResult.results as mssql.IResult<CaseDetail[]>).recordset;
+    return (queryResult.results as mssql.IResult<CaseSummary[]>).recordset;
   }
 }
