@@ -10,6 +10,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { createPreExistingDocumentError } from '../../testing/cosmos-errors';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 const testNewOrderTransferData: TransferOrderAction = {
   id: 'test-id-0',
@@ -25,29 +26,7 @@ const testNewOrderTransferData: TransferOrderAction = {
   status: 'approved',
 };
 
-const testNewOrderData: TransferOrder = {
-  id: 'test-id-0',
-  caseId: '111-11-11111',
-  caseTitle: 'Foreign Business Entity',
-  chapter: '15',
-  courtName: 'Southern District of New York',
-  courtDivisionName: 'Manhattan',
-  courtDivision: '081',
-  regionId: '02',
-  orderType: 'transfer',
-  orderDate: '2023-11-02',
-  dateFiled: '2023-11-02',
-  status: 'pending',
-  newCaseId: '012-34-56789',
-  docketEntries: [
-    {
-      dateFiled: '2023-11-02',
-      sequenceNumber: 100,
-      summaryText: 'Order to Transfer',
-      fullText: 'It is ordered that the case be transferred...',
-    },
-  ],
-};
+const testNewOrderData = MockData.getTransferOrder({ override: { id: 'test-id-0' } });
 
 describe('Test case assignment cosmosdb repository tests', () => {
   let repository: OrdersCosmosDbRepository;

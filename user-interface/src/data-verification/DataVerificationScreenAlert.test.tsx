@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BrowserRouter } from 'react-router-dom';
 import DataVerificationScreen from './DataVerificationScreen';
-import { TransferOrder } from '@/lib/type-declarations/chapter-15';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('Review Orders screen - Alert', () => {
   beforeEach(async () => {
@@ -16,18 +15,8 @@ describe('Review Orders screen - Alert', () => {
   });
 
   test('should display alert and update order list when an order is updated by the TransferOrderAccordion', async () => {
-    const mockOrder: TransferOrder = { ...Chapter15MockApi.orders[0], orderType: 'transfer' };
-    mockOrder.status = 'approved';
-    mockOrder.newCase = {
-      caseId: '55-55555',
-      courtDivision: '081',
-      courtDivisionName: 'Cool Division',
-      courtName: 'My Shinny New court',
-      chapter: '15',
-      caseTitle: 'Test case',
-      dateFiled: '2023-12-31',
-    };
-    const mockAlertMessage = `Transfer of case to ${mockOrder.newCaseId} in ${mockOrder.newCase.courtName} (${mockOrder.newCase.courtDivisionName}) was approved.`;
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
+    const mockAlertMessage = `Transfer of case to ${mockOrder.newCaseId} in ${mockOrder.newCase?.courtName} (${mockOrder.newCase?.courtDivisionName}) was approved.`;
 
     vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
       (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {

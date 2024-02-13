@@ -9,7 +9,7 @@ import { CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import ReactRouter from 'react-router';
-import { CaseDetail } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -51,28 +51,7 @@ const testCaseDocketEntries: CaseDocket = [
 describe('Case Detail sort, search, and filter tests', () => {
   const testCaseId = '111-11-12345';
 
-  const testCaseDetail: CaseDetail = {
-    caseId: testCaseId,
-    chapter: '15',
-    officeName: 'Redondo Beach',
-    caseTitle: 'The Beach Boys',
-    dateFiled: '01-04-1962',
-    judgeName: 'some judge',
-    debtorTypeLabel: 'Corporate Business',
-    petitionLabel: 'Voluntary',
-    closedDate: '01-08-1963',
-    dismissedDate: '01-08-1964',
-    assignments: [],
-    debtor: {
-      name: 'Roger Rabbit',
-    },
-    debtorAttorney: {
-      name: 'Jane Doe',
-      address1: '123 Rabbithole Lane',
-      cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-      phone: '234-123-1234',
-    },
-  };
+  const testCaseDetail = MockData.getCaseDetail({ override: { caseId: testCaseId } });
 
   describe('display tests', () => {
     test('should display sort and filter panel when navigated to docket entries', async () => {

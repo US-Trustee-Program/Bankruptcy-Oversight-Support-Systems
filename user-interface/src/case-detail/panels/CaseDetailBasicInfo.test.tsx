@@ -1,11 +1,11 @@
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailBasicInfo from './CaseDetailBasicInfo';
-import { DebtorAttorney } from '@/lib/type-declarations/chapter-15';
 import { render, screen } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -13,39 +13,15 @@ const NEW_CASE_ID = '222-24-00001';
 const TEST_TRIAL_ATTORNEY_1 = 'Brian Wilson';
 const TEST_TRIAL_ATTORNEY_2 = 'Carl Wilson';
 const TEST_JUDGE_NAME = 'Rick B Hart';
-const TEST_DEBTOR_ATTORNEY: DebtorAttorney = {
-  name: 'Jane Doe',
-  address1: '123 Rabbithole Lane',
-  cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-  phone: '234-123-1234',
-  email: 'janedoe@cubeddoe.com',
-  office: 'Doe, Doe and Doe, PLC',
-};
-const BASE_TEST_CASE_DETAIL: CaseDetail = {
-  caseId: TEST_CASE_ID,
-  chapter: '15',
-  regionId: '02',
-  officeName: 'New York',
-  caseTitle: 'The Beach Boys',
-  dateFiled: '01-04-1962',
-  judgeName: TEST_JUDGE_NAME,
-  courtName: 'Court of Law',
-  courtDivisionName: 'Manhattan',
-  debtorTypeLabel: 'Corporate Business',
-  petitionLabel: 'Voluntary',
-  closedDate: '01-08-1963',
-  dismissedDate: '01-08-1964',
-  assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
-  debtor: {
-    name: 'Roger Rabbit',
-    address1: '123 Rabbithole Lane',
-    address2: 'Apt 117',
-    address3: 'Suite C',
-    cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
+const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
+  override: {
+    caseId: TEST_CASE_ID,
+    judgeName: TEST_JUDGE_NAME,
+    assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
+    debtorAttorney: TEST_DEBTOR_ATTORNEY,
   },
-  debtorAttorney: TEST_DEBTOR_ATTORNEY,
-};
-
+});
 const TRANSFER_IN: Transfer = {
   caseId: TEST_CASE_ID,
   otherCaseId: OLD_CASE_ID,

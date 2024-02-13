@@ -2,32 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailHeader from './CaseDetailHeader';
 import CaseDetailScreen from '../CaseDetailScreen';
-import { CaseDetail } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('Case Detail Header tests', () => {
-  const testCaseDetail: CaseDetail = {
-    caseId: '1234',
-    chapter: '15',
-    caseTitle: 'The Beach Boys',
-    courtName: 'Court of Law',
-    courtDivisionName: 'Manhattan',
-    regionId: '02',
-    officeName: 'New York',
-    dateFiled: '01-04-1962',
-    judgeName: 'Mr. Judge',
-    debtorTypeLabel: 'Corporate Business',
-    petitionLabel: 'Voluntary',
-    closedDate: '01-08-1963',
-    dismissedDate: '01-08-1964',
-    assignments: ['sally', 'joe'],
-    debtor: {
-      name: 'Roger Rabbit',
-      address1: '123 Rabbithole Lane',
-      address2: 'Apt 117',
-      address3: 'Suite C',
-      cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-    },
-  };
+  const testCaseDetail = MockData.getCaseDetail();
 
   test('should render loading info when isLoading is true', () => {
     render(
@@ -62,42 +40,14 @@ describe('Case Detail Header tests', () => {
     const isFinishedH2 = screen.getByTestId('h2-with-case-info');
     const caseChapter = screen.getByTestId('case-chapter');
 
-    expect(isLoadingH1).toContainHTML('The Beach Boys');
+    expect(isLoadingH1).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
-    expect(caseChapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
+    expect(caseChapter.innerHTML).toEqual(
+      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+    );
   });
 
   test('should fix header in place when screen is scrolled and header hits the top of the screen', async () => {
-    const testCaseDetail: CaseDetail = {
-      caseId: '000-11-22222',
-      chapter: '15',
-      regionId: '02',
-      officeName: 'New York',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: 'Ms. Judge',
-      courtName: 'Court of Law',
-      courtDivisionName: 'Manhattan',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: ['Mr. Frank', 'Ms. Jane'],
-      debtor: {
-        name: 'Roger Rabbit',
-        address1: '123 Rabbithole Lane',
-        address2: '',
-        address3: '',
-        cityStateZipCountry: 'Redondo Beach CA 90111 USA',
-      },
-      debtorAttorney: {
-        name: 'Jane Doe',
-        address1: 'Somewhere nice',
-        cityStateZipCountry: 'where its sunny all the time',
-        phone: '111-555-1234',
-      },
-    };
-
     render(
       <BrowserRouter>
         <div className="App" data-testid="app-component-test-id">
@@ -116,7 +66,7 @@ describe('Case Detail Header tests', () => {
     await waitFor(
       async () => {
         const title = await screen.findByTestId('case-detail-heading');
-        expect(title.innerHTML).toEqual('The Beach Boys');
+        expect(title.innerHTML).toEqual(testCaseDetail.caseTitle);
       },
       { timeout: 1000 },
     );

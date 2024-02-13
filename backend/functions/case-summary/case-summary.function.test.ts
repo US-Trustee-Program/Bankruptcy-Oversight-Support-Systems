@@ -1,4 +1,5 @@
 import { CaseDetail } from '../../../common/src/cams/cases';
+import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { CamsResponse } from '../lib/controllers/controller-types';
@@ -8,13 +9,8 @@ const context = require('azure-function-context-mock');
 
 describe('Case summary function', () => {
   test('Should return case summary for an existing case ID', async () => {
-    const caseDetail: CaseDetail = {
-      caseId: '',
-      courtDivision: '',
-      chapter: '',
-      caseTitle: '',
-      dateFiled: '',
-    };
+    const caseDetail: CaseDetail = MockData.getCaseDetail();
+
     const expectedResponseBody: CamsResponse<CaseDetail> = {
       success: true,
       body: caseDetail,
