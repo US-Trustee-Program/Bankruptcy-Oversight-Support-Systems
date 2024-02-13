@@ -4,7 +4,7 @@ export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
 
 export type TransferOrder = CaseSummary & {
-  id?: string;
+  id: string;
   orderType: 'transfer';
   orderDate: string;
   status: OrderStatus;

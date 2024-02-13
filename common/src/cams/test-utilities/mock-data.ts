@@ -1,6 +1,5 @@
 import { faker } from '@faker-js/faker';
 import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
-import { RequiredId } from '../common';
 import { TransferOrder } from '../orders';
 import { Party } from '../parties';
 import { OFFICES } from './offices.mock';
@@ -25,8 +24,16 @@ function randomInt(range: number) {
   return Math.floor(Math.random() * range);
 }
 
-function getCaseId() {
+function randomCaseId() {
   return '24-' + ('00000' + randomInt(99999)).slice(-5);
+}
+
+function randomSsn() {
+  return '999-' + ('00' + randomInt(99)).slice(-2) + '-' + ('0000' + randomInt(9999)).slice(-4);
+}
+
+function randomEin() {
+  return '99-' + ('0000000' + randomInt(9999999)).slice(-7);
 }
 
 function getOffices() {
@@ -42,7 +49,9 @@ interface Options<T> {
   override?: Partial<T>;
 }
 
-function getCaseSummary(options: Options<CaseSummary> = { override: {} }): CaseSummary {
+function getCaseSummary(
+  options: Options<CaseSummary> = { entityType: 'person', override: {} },
+): CaseSummary {
   const { entityType, override } = options;
   const debtor = getParty({ entityType });
   const debtorTypeCode = entityType === 'person' ? 'IC' : randomTruth() ? 'CB' : 'IB';
@@ -50,9 +59,11 @@ function getCaseSummary(options: Options<CaseSummary> = { override: {} }): CaseS
   const office = randomOffice();
   const caseSummary: CaseSummary = {
     ...office,
-    caseId: getCaseId(),
+    caseId: randomCaseId(),
+    // TODO: Need a chapter.
     chapter: '',
     caseTitle: debtor.name,
+    // TODO: Need a random filing date.
     dateFiled: '',
     debtor,
     debtorTypeCode,
@@ -61,7 +72,9 @@ function getCaseSummary(options: Options<CaseSummary> = { override: {} }): CaseS
   return { ...caseSummary, ...override };
 }
 
-function getCaseDetail(options: Options<CaseDetail> = { override: {} }): CaseDetail {
+function getCaseDetail(
+  options: Options<CaseDetail> = { entityType: 'person', override: {} },
+): CaseDetail {
   const { entityType, override } = options;
   const caseDetail: CaseDetail = {
     ...getCaseSummary({ entityType }),
@@ -76,6 +89,7 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
 
   const transferOrder: TransferOrder = {
     ...summary,
+    id: faker.string.uuid(),
     orderType: 'transfer',
     orderDate: '2024-01-01',
     status: override.status || 'pending',
@@ -88,22 +102,18 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
   return { ...transferOrder, ...override };
 }
 
-function getTransferOrderWithId(
-  options: Options<TransferOrder> = { override: {} },
-): RequiredId<TransferOrder> {
-  return { ...getTransferOrder(options), id: faker.string.uuid(), ...options.override };
-}
-
 function getParty(options: Options<Party> = { override: {} }): Party {
   const { entityType, override } = options;
   const party: Party = {
     name: entityType === 'company' ? faker.company.name() : faker.person.fullName(),
     address1: faker.location.streetAddress(),
-    address2: faker.location.secondaryAddress(),
-    address3: '',
-    cityStateZipCountry: `${faker.location.city()}, ${faker.location.state()}, ${faker.location.zipCode()}, US`,
-    taxId: entityType === 'company' ? '88-8888888' : '',
-    ssn: entityType === 'person' ? '999-99-9999' : '',
+    address2: randomTruth() ? faker.location.secondaryAddress() : undefined,
+    address3: undefined,
+    cityStateZipCountry: `${faker.location.city()}, ${faker.location.state({
+      abbreviated: true,
+    })}, ${faker.location.zipCode()}, US`,
+    taxId: entityType === 'company' ? randomEin() : undefined,
+    ssn: entityType === 'person' ? randomSsn() : undefined,
   };
   return {
     ...party,
@@ -136,13 +146,12 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
-export const Mock = {
-  getCaseId,
+export const MockData = {
+  randomCaseId,
   getCaseSummary,
   getCaseDetail,
   getOffices,
   getParty,
   getDocketEntry,
   getTransferOrder,
-  getTransferOrderWithId,
 };
