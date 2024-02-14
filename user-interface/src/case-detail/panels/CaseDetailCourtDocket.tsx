@@ -31,6 +31,8 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   const [alertOptions, setAlertOptions] = useState<AlertOptions | null>(null);
 
+  const minSearchTextSize = 3;
+
   useEffect(() => {
     if (!props.isDocketLoading) {
       if (!hasDocketEntries) {
@@ -46,15 +48,25 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
         alertRef.current?.show();
       } else {
         alertRef.current?.hide();
-        if (props.searchString) {
-          handleHighlight(window, document, 'searchable-docket', props.searchString);
+        if (props.searchString && props.searchString.length >= minSearchTextSize) {
+          try {
+            handleHighlight(window, document, 'searchable-docket', props.searchString);
+          } catch (e) {
+            // TODO CAMS-332 There might not be a need to handle this. May be okay to just ignore.
+          }
         }
       }
     }
   }, [docketEntries]);
 
   useEffect(() => {
-    handleHighlight(window, document, 'searchable-docket', props.searchString);
+    if (props.searchString && props.searchString.length >= minSearchTextSize) {
+      try {
+        handleHighlight(window, document, 'searchable-docket', props.searchString);
+      } catch (e) {
+        // TODO CAMS-332 There might not be a need to handle this. May be okay to just ignore.
+      }
+    }
   }, [props.searchString]);
 
   return (
