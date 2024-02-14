@@ -219,6 +219,8 @@ export class OrdersUseCase {
       const listOfOrders = consolidations.filter((consolidation) => {
         return consolidation.jobId === jobId;
       });
+
+      // TODO: extract the following section to flatten and simplify our cognitive and algorithmic complexity
       const caseSummaryMap: Map<string, CaseSummary> = new Map();
       for (const order of listOfOrders) {
         const subjectCase = `${order.caseId}`;
@@ -243,6 +245,8 @@ export class OrdersUseCase {
           }
         }
       }
+      // end TODO
+
       const parent: ConsolidationOrder = {
         ...listOfOrders[0],
         childCases: Array.from(caseSummaryMap.values()),
