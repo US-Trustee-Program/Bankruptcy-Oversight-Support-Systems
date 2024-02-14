@@ -1,8 +1,8 @@
 import httpTrigger from './orders.function';
-import { ORDERS } from '../lib/testing/mock-data/orders.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
+import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 
 const context = require('azure-function-context-mock');
 
@@ -22,8 +22,9 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 
 describe('Orders Function tests', () => {
   test('should return a list of orders', async () => {
+    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
     getOrders = jest.fn().mockImplementation(() => {
-      return Promise.resolve({ success: true, body: ORDERS });
+      return Promise.resolve({ success: true, body: mockOrders });
     });
     const request = {
       params: {},
@@ -31,7 +32,7 @@ describe('Orders Function tests', () => {
     };
     const expectedResponseBody = {
       success: true,
-      body: ORDERS,
+      body: mockOrders,
     };
     process.env = {
       DATABASE_MOCK: 'true',

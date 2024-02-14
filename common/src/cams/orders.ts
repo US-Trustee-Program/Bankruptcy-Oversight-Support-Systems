@@ -20,7 +20,9 @@ export type ConsolidationOrder = CaseSummary & {
   orderDate: string;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
-  leadCase: CaseSummary;
+  divisionCode: string;
+  jobId: number;
+  leadCase?: CaseSummary;
   childCases: Array<CaseSummary>;
 };
 
@@ -43,6 +45,7 @@ type TransferOrderActionApproval = {
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
 
 export type OrderSync = {
-  orders: TransferOrder[];
+  consolidations: ConsolidationOrder[];
+  transfers: TransferOrder[];
   maxTxId: string;
 };

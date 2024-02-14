@@ -4,13 +4,21 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
-import { TransferOrder, OrderSync } from '../../../../../../common/src/cams/orders';
+import {
+  ConsolidationOrder,
+  OrderSync,
+  TransferOrder,
+} from '../../../../../../common/src/cams/orders';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
 import { CaseDocketEntry } from '../../../use-cases/case-docket/case-docket.model';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
-export interface DxtrOrder extends TransferOrder {
+export interface DxtrTransfer extends TransferOrder, DxtrOrder {}
+
+export interface DxtrConsolidation extends Omit<ConsolidationOrder, 'id'>, DxtrOrder {}
+
+export interface DxtrOrder {
   dxtrCaseId: string;
 }
 
@@ -39,7 +47,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
     const transfers = await this.getTransferOrderSync(context, txId);
     const consolidations = await this.getConsolidationOrderSync(context, txId);
     return {
-      orders: [...transfers.orders, ...consolidations.orders],
+      consolidations: consolidations.consolidations,
+      transfers: transfers.transfers,
       maxTxId:
         transfers.maxTxId > consolidations.maxTxId ? transfers.maxTxId : consolidations.maxTxId,
     };
@@ -128,31 +137,25 @@ export class DxtrOrdersGateway implements OrdersGateway {
         new Map<string, DxtrOrderDocketEntry[]>(),
       );
 
-      const orders = rawOrders
+      const consolidations = rawOrders
         .map((rawOrder) => {
           if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
-            const docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
-            rawOrder.docketEntries = docketEntries;
-            docketEntries.forEach((docket) => {
-              if (docket.newCaseId) {
-                rawOrder.newCaseId = docket.newCaseId;
-                delete docket.newCaseId;
-              }
-            });
+            rawOrder.docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
           }
-          delete rawOrder.dxtrCaseId;
-          return rawOrder satisfies TransferOrder;
+          const { dxtrCaseId: _dxtrCaseId, ...orderProps } = rawOrder;
+          return orderProps satisfies ConsolidationOrder;
         })
         .sort(dxtrOrdersSorter);
       context.logger.info(
         MODULE_NAME,
-        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
+        `Processed ${consolidations.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
       );
 
       // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
-      // autoincrementing PK as a string, not an integer value.
+      // auto-incrementing PK as a string, not an integer value.
       return {
-        orders,
+        consolidations,
+        transfers: undefined,
         maxTxId: maxTxId.toString(),
       };
     } catch (originalError) {
@@ -267,7 +270,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
       // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
       // autoincrementing PK as a string, not an integer value.
       return {
-        orders,
+        consolidations: undefined,
+        transfers: orders,
         maxTxId: maxTxId.toString(),
       };
     } catch (originalError) {
@@ -280,8 +284,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
     txId: string,
     chapters: string[],
     regions: string[],
-  ): Promise<Array<DxtrOrder>> {
-    return this.getOrders(context, txId, 'CTO', chapters, regions);
+  ): Promise<Array<DxtrTransfer>> {
+    return this.getOrders<DxtrTransfer>(context, txId, 'CTO', chapters, regions);
   }
 
   private async getConsolidationOrders(
@@ -289,17 +293,84 @@ export class DxtrOrdersGateway implements OrdersGateway {
     txId: string,
     chapters: string[],
     regions: string[],
-  ): Promise<Array<DxtrOrder>> {
-    return this.getOrders(context, txId, 'OCS', chapters, regions);
+  ): Promise<Array<DxtrConsolidation>> {
+    const params: DbTableFieldSpec[] = [];
+    params.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: txId,
+    });
+
+    params.push({
+      name: 'transactionCode',
+      type: mssql.VarChar,
+      value: 'OCS',
+    });
+
+    const query = `
+      SELECT
+        'consolidation' AS orderType,
+        'pending' AS status,
+        CS.CS_CASEID AS dxtrCaseId,
+        CS.CS_DIV+'-'+CS.CASE_ID AS caseId,
+        CS.CS_SHORT_TITLE AS caseTitle,
+        CS.CS_DIV as divisionCode,
+        CS.CS_CHAPTER AS chapter,
+        C.COURT_NAME AS courtName,
+        O.OFFICE_NAME AS courtDivisionName,
+        G.REGION_ID AS regionId,
+        R.REGION_NAME AS regionName,
+        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
+        TX.JOB_ID AS jobId,
+        TX.REC AS transactionRecord,
+        CASE
+          WHEN PATINDEX('%WARN: %', TX.REC) > 0
+          THEN substring(REC, PATINDEX('%WARN: %', REC)+6, 8)
+          ELSE null
+        END AS leadCase
+      FROM (
+        SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE, TX2.TX_CODE, TX2.REC, TX2.JOB_ID
+        FROM [dbo].[AO_TX] AS TX2
+        JOIN [dbo].[AO_DE] AS DE ON TX2.CS_CASEID=DE.CS_CASEID AND TX2.DE_SEQNO=DE.DE_SEQNO AND TX2.COURT_ID=DE.COURT_ID
+        WHERE TX2.TX_CODE = @transactionCode
+        AND TX2.TX_ID > @txId
+        GROUP BY TX2.CS_CASEID, TX2.COURT_ID, TX2.TX_DATE, TX2.TX_CODE, TX2.REC, TX2.JOB_ID
+      ) AS TX
+      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID=CS.COURT_ID
+      JOIN [dbo].[AO_GRP_DES] AS G
+        ON CS.GRP_DES = G.GRP_DES
+      JOIN [dbo].[AO_COURT] AS C
+        ON CS.COURT_ID = C.COURT_ID
+      JOIN [dbo].[AO_CS_DIV] AS CSD
+        ON CS.CS_DIV = CSD.CS_DIV
+      JOIN [dbo].[AO_OFFICE] AS O
+        ON CS.COURT_ID = O.COURT_ID
+        AND CSD.OFFICE_CODE = O.OFFICE_CODE
+      JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
+      WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
+      AND G.REGION_ID IN ('${regions.join("','")}')
+      `;
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    if (queryResult.success) {
+      return (queryResult.results as mssql.IResult<DxtrConsolidation>).recordset;
+    } else {
+      return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
+    }
   }
 
-  private async getOrders(
+  private async getOrders<T>(
     context: ApplicationContext,
     txId: string,
     transactionCode: string,
     chapters: string[],
     regions: string[],
-  ): Promise<Array<DxtrOrder>> {
+  ): Promise<Array<T>> {
     const params: DbTableFieldSpec[] = [];
 
     params.push({
@@ -358,7 +429,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     );
 
     if (queryResult.success) {
-      return (queryResult.results as mssql.IResult<DxtrOrder>).recordset;
+      return (queryResult.results as mssql.IResult<T>).recordset;
     } else {
       return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
     }

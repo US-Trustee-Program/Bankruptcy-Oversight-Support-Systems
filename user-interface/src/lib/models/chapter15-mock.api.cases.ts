@@ -4,13 +4,6 @@ import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 
-function buildArray(fn: () => void, size: number) {
-  const arr = [];
-  for (let i = 0; i < size - 1; i++) {
-    arr.push(fn());
-  }
-  return arr;
-}
 export default class Chapter15MockApi extends Api {
   static caseList = [
     {
@@ -60,7 +53,7 @@ export default class Chapter15MockApi extends Api {
     },
   ];
 
-  static caseDocketEntries = buildArray(MockData.getDocketEntry, 5);
+  static caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
   /*
   static caseDocketEntries: CaseDocketEntry[] = [
     {
@@ -232,7 +225,7 @@ export default class Chapter15MockApi extends Api {
   ];
   */
 
-  static orders = buildArray(MockData.getTransferOrder, 4);
+  static orders = MockData.buildArray(MockData.getTransferOrder, 4);
   /*
   static orders: Array<Order> = [
     {
