@@ -123,7 +123,7 @@ describe('Test DXTR Gateway', () => {
     }
   });
 
-  test.only('should return a single case when supplied a caseId', async () => {
+  test('should return a single case when supplied a caseId', async () => {
     const closedDate = '2023-10-31';
     const dismissedDate = '2023-11-15';
     const reopenedDate = '2023-12-31';
@@ -261,7 +261,10 @@ describe('Test DXTR Gateway', () => {
     const testCase = MockData.getCaseDetail({
       entityType: 'company',
       override: {
+        debtorTypeCode: 'CB',
         debtorTypeLabel: expectedDebtorTypeLabel,
+        petitionCode: 'VP',
+        petitionLabel: 'Voluntary',
       },
     });
 
@@ -321,8 +324,8 @@ describe('Test DXTR Gateway', () => {
     );
 
     expect(actualResult.regionId).toEqual(testCase.regionId);
-    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
     expect(actualResult.courtName).toEqual(testCase.courtName);
+    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
