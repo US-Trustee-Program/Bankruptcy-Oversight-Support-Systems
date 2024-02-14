@@ -156,6 +156,7 @@ describe('Test DXTR Gateway', () => {
       override: {
         debtor: expectedParty,
         debtorAttorney: expectedDebtorAttorney,
+        debtorTypeCode: 'CB',
         debtorTypeLabel: expectedDebtorTypeLabel,
         regionId: '04',
       },

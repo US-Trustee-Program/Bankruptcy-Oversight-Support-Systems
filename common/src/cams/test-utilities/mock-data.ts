@@ -72,7 +72,7 @@ function getCaseSummary(
 ): CaseSummary {
   const { entityType, override } = options;
   const debtor = getParty({ entityType });
-  const debtorTypeCode = entityType === 'person' ? 'IC' : randomTruth() ? 'CB' : 'IB';
+  const debtorTypeCode = entityType === 'person' ? 'IC' : 'CB';
   const debtorTypeLabel = debtorTypeLabelMap.get(debtorTypeCode);
   const office = randomOffice();
   const caseSummary: CaseSummary = {
