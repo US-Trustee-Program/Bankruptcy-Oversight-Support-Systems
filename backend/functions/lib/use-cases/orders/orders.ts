@@ -12,7 +12,7 @@ import {
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
-import { CaseDetail } from '../../../../../common/src/cams/cases';
+import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
@@ -155,13 +155,20 @@ export class OrdersUseCase {
     }
 
     const startingTxId = options?.txIdOverride ?? initialSyncState.txId;
-    const { orders, maxTxId } = await this.ordersGateway.getOrderSync(context, startingTxId);
-    context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', { maxTxId, orders });
+    const { consolidations, transfers, maxTxId } = await this.ordersGateway.getOrderSync(
+      context,
+      startingTxId,
+    );
+    context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', {
+      maxTxId,
+      transfers,
+      consolidations,
+    });
 
-    const writtenOrders = await this.ordersRepo.putOrders(context, orders);
+    const writtenTransfers = await this.ordersRepo.putOrders(context, transfers);
     context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
 
-    for (const order of writtenOrders) {
+    for (const order of writtenTransfers) {
       if (order.orderType === 'transfer') {
         const caseHistory: CaseHistory = {
           caseId: order.caseId,
@@ -173,6 +180,21 @@ export class OrdersUseCase {
       }
     }
 
+    const jobIds: Set<number> = new Set();
+    consolidations.forEach((consolidation) => {
+      jobIds.add(consolidation.jobId);
+    });
+
+    const consolidationsByJobId = await this.mapConsolidations(jobIds, consolidations, context);
+
+    const writtenConsolidations = await this.ordersRepo.putOrders(
+      context,
+      Array.from(consolidationsByJobId.values()),
+    );
+    context.logger.info(MODULE_NAME, 'Consolidations Written to Cosmos: ', writtenConsolidations);
+
+    // TODO: create AUDIT_HISTORY for consolidations
+
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
     await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
@@ -181,9 +203,54 @@ export class OrdersUseCase {
       options,
       initialSyncState,
       finalSyncState,
-      length: orders.length,
+      length: transfers.length + Array.from(consolidationsByJobId.values()).length,
       startingTxId,
       maxTxId,
     };
+  }
+
+  public async mapConsolidations(
+    jobIds: Set<number>,
+    consolidations: ConsolidationOrder[],
+    context: ApplicationContext,
+  ): Promise<Map<number, ConsolidationOrder>> {
+    const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
+    for (const jobId of jobIds) {
+      const listOfOrders = consolidations.filter((consolidation) => {
+        return consolidation.jobId === jobId;
+      });
+      const caseSummaryMap: Map<string, CaseSummary> = new Map();
+      for (const order of listOfOrders) {
+        const subjectCase = `${order.caseId}`;
+        console.log('Subject Case: ', subjectCase);
+        const leadCase = order.leadCase ? `${order.divisionCode}-${order.leadCase}` : undefined;
+        console.log('Lead Case: ', leadCase);
+        if (!caseSummaryMap.has(subjectCase)) {
+          try {
+            caseSummaryMap.set(
+              subjectCase,
+              await this.casesGateway.getCaseSummary(context, subjectCase),
+            );
+          } catch (e) {
+            // do nothing
+          }
+        }
+        if (leadCase && !caseSummaryMap.has(leadCase)) {
+          try {
+            caseSummaryMap.set(leadCase, await this.casesGateway.getCaseSummary(context, leadCase));
+          } catch (e) {
+            // do nothing
+          }
+        }
+      }
+      const parent: ConsolidationOrder = {
+        ...listOfOrders[0],
+        childCases: Array.from(caseSummaryMap.values()),
+      };
+      consolidationsByJobId.set(jobId, parent);
+    }
+    console.log(' Consolidations by JobId: ', consolidationsByJobId);
+
+    return consolidationsByJobId;
   }
 }

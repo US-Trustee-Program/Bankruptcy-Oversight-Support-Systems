@@ -162,7 +162,7 @@ describe('DxtrOrdersGateway', () => {
 
       const gateway = new DxtrOrdersGateway();
       const orderSync = await gateway.getOrderSync(applicationContext, '0');
-      expect(orderSync.orders).toEqual([expectedOrder]);
+      expect(orderSync.transfers).toEqual([expectedOrder]);
       expect(orderSync.maxTxId).toEqual('2');
     });
 

@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
-import { TransferOrder } from '../orders';
+import { ConsolidationOrder, TransferOrder } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
 
@@ -126,6 +126,28 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
   return { ...transferOrder, ...override };
 }
 
+function getConsolidationOrder(
+  options: Options<ConsolidationOrder> = { override: {} },
+): ConsolidationOrder {
+  const { entityType, override } = options;
+  const summary = getCaseSummary({ entityType });
+
+  const consolidationOrder: ConsolidationOrder = {
+    ...summary,
+    id: faker.string.uuid(),
+    orderType: 'consolidation',
+    orderDate: someDateAfterThisDate(summary.dateFiled),
+    status: override.status || 'pending',
+    docketEntries: [getDocketEntry()],
+    divisionCode: summary.courtDivision,
+    jobId: faker.number.int(),
+    leadCase: summary,
+    childCases: [getCaseSummary(), getCaseSummary()],
+  };
+
+  return { ...consolidationOrder, ...override };
+}
+
 function getParty(options: Options<Party> = { override: {} }): Party {
   const { entityType, override } = options;
   const party: Party = {
@@ -185,6 +207,14 @@ function getDebtorAttorney(): DebtorAttorney {
   };
 }
 
+function buildArray(fn: () => void, size: number) {
+  const arr = [];
+  for (let i = 0; i < size - 1; i++) {
+    arr.push(fn());
+  }
+  return arr;
+}
+
 export const MockData = {
   randomCaseId,
   getCaseSummary,
@@ -194,4 +224,6 @@ export const MockData = {
   getDocketEntry,
   getTransferOrder,
   getDebtorAttorney,
+  getConsolidationOrder,
+  buildArray,
 };

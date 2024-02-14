@@ -1,6 +1,5 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
-import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import {
   getOrdersGateway,
@@ -46,11 +45,12 @@ describe('Orders use case', () => {
   });
 
   test('should return list of orders for the API from the repo', async () => {
+    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
     const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: ORDERS,
+      resources: mockOrders,
     });
     const result = await useCase.getOrders(mockContext);
-    expect(result).toEqual(ORDERS);
+    expect(result).toEqual(mockOrders);
     expect(mockRead).toHaveBeenCalled();
   });
 
@@ -107,7 +107,7 @@ describe('Orders use case', () => {
   });
 
   test('should add audit records when a transfer order is rejected', async () => {
-    const order: TransferOrder = { ...ORDERS[0], status: 'rejected' };
+    const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'rejected' } });
     const orderTransfer: TransferOrderAction = {
       id: order.id,
       caseId: order.caseId,
@@ -128,6 +128,16 @@ describe('Orders use case', () => {
   });
 
   test('should retrieve orders from legacy and persist to new system', async () => {
+    const transfers = [
+      MockData.getTransferOrder(),
+      MockData.getTransferOrder(),
+      MockData.getTransferOrder(),
+    ];
+    const consolidations = [
+      MockData.getConsolidationOrder(),
+      MockData.getConsolidationOrder(),
+      MockData.getConsolidationOrder(),
+    ];
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
     jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
@@ -135,7 +145,8 @@ describe('Orders use case', () => {
     });
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
-      orders: ORDERS,
+      consolidations,
+      transfers,
       maxTxId: '3000',
     });
 
@@ -146,7 +157,8 @@ describe('Orders use case', () => {
 
     const mockPutOrders = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
-      .mockResolvedValue(ORDERS);
+      .mockResolvedValueOnce(transfers)
+      .mockResolvedValueOnce(consolidations);
 
     const mockUpdateState = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
@@ -154,11 +166,22 @@ describe('Orders use case', () => {
 
     await useCase.syncOrders(mockContext);
 
-    expect(mockPutOrders).toHaveBeenCalledWith(mockContext, ORDERS);
+    expect(mockPutOrders).toHaveBeenCalledWith(mockContext, transfers);
+    expect(mockPutOrders).toHaveBeenCalledWith(mockContext, consolidations);
     expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
   });
 
   test('should handle a missing order runtime state when a starting transaction ID is provided', async () => {
+    const transfers = [
+      MockData.getTransferOrder(),
+      MockData.getTransferOrder(),
+      MockData.getTransferOrder(),
+    ];
+    const consolidations = [
+      MockData.getConsolidationOrder(),
+      MockData.getConsolidationOrder(),
+      MockData.getConsolidationOrder(),
+    ];
     const id = 'guid-id';
     const txId = '1234';
     const initialState: OrderSyncState = { documentType: 'ORDERS_SYNC_STATE', txId };
@@ -178,7 +201,8 @@ describe('Orders use case', () => {
     const mockGetOrderSync = jest
       .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
       .mockResolvedValue({
-        orders: ORDERS,
+        consolidations,
+        transfers,
         maxTxId: '3000',
       });
 
@@ -190,7 +214,8 @@ describe('Orders use case', () => {
 
     const mockPutOrders = jest
       .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
-      .mockResolvedValue(ORDERS);
+      .mockResolvedValueOnce(transfers)
+      .mockResolvedValueOnce(consolidations);
 
     const mockUpdateState = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')

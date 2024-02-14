@@ -1,6 +1,5 @@
 import { OrdersController } from './orders.controller';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
@@ -10,6 +9,7 @@ import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { CamsResponse } from '../controller-types';
 import { CaseDetail } from '../../adapters/types/cases';
 import { TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -31,10 +31,11 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('orders controller tests', () => {
+  const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
     id,
-    caseId: ORDERS[0].caseId,
+    caseId: mockOrders[0].caseId,
     status: 'rejected',
   };
   let applicationContext: ApplicationContext;
@@ -45,12 +46,12 @@ describe('orders controller tests', () => {
 
   test('should get orders', async () => {
     const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: ORDERS,
+      resources: mockOrders,
     });
     const controller = new OrdersController(applicationContext);
     const result = await controller.getOrders(applicationContext);
     expect(result.success).toBeTruthy();
-    expect(result['body']).toEqual(ORDERS);
+    expect(result['body']).toEqual(mockOrders);
     expect(mockRead).toHaveBeenCalled();
   });
 
@@ -94,7 +95,7 @@ describe('orders controller tests', () => {
     expect(response).toEqual(suggestedCasesResponse);
   });
 
-  test('should rethrow CamsError if CamsError is ecountered', async () => {
+  test('should rethrow CamsError if CamsError is encountered', async () => {
     const camsError = new CamsError('TEST');
     jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(camsError);
     jest.spyOn(OrdersUseCase.prototype, 'updateOrder').mockRejectedValue(camsError);

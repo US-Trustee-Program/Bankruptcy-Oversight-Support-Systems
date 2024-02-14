@@ -1,5 +1,4 @@
 import { OrdersCosmosDbRepository } from './orders.cosmosdb.repository';
-import { ORDERS } from '../../testing/mock-data/orders.mock';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
@@ -39,18 +38,20 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should get a list of orders', async () => {
+    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
     const mockFetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: ORDERS,
+      resources: mockOrders,
     });
 
     const testResult = await repository.getOrders(applicationContext);
 
-    expect(testResult).toEqual(ORDERS);
+    expect(testResult).toEqual(mockOrders);
     expect(mockFetchAll).toHaveBeenCalled();
   });
 
   test('should get an order', async () => {
-    const order = { ...ORDERS[0] };
+    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
+    const order = { ...mockOrders[0] };
     const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
       resource: order,
     });
