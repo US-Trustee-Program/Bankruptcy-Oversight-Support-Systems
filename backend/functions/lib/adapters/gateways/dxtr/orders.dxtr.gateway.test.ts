@@ -86,19 +86,57 @@ describe('DxtrOrdersGateway', () => {
       const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const querySpy = jest.spyOn(database, 'executeQuery');
 
-      const mockOrdersResults: QueryResults = {
+      // First get consolidation orders
+      const consolidtionOrdersResults: QueryResults = {
         success: true,
         results: {
-          recordset: [dxtrOrder],
+          recordset: [],
         },
         message: '',
       };
 
       querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockOrdersResults);
+        return Promise.resolve(consolidtionOrdersResults);
       });
 
-      const mockDocumentsDocketEntryResults: QueryResults = {
+      const consolidationDocketEntryResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(consolidationDocketEntryResults);
+      });
+
+      const consolidationDocumentResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(consolidationDocumentResults);
+      });
+
+      // Then get transfer orders
+      const transferOrdersResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [expectedOrder],
+        },
+        message: '',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(transferOrdersResults);
+      });
+
+      const transferDocketEntryResults: QueryResults = {
         success: true,
         results: {
           recordset: dxtrCaseDocketEntries,
@@ -107,10 +145,10 @@ describe('DxtrOrdersGateway', () => {
       };
 
       querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockDocumentsDocketEntryResults);
+        return Promise.resolve(transferDocketEntryResults);
       });
 
-      const mockDocumentsResults: QueryResults = {
+      const transferDocumentResults: QueryResults = {
         success: true,
         results: {
           recordset: [dxtrOrderDocument],
@@ -119,7 +157,7 @@ describe('DxtrOrdersGateway', () => {
       };
 
       querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockDocumentsResults);
+        return Promise.resolve(transferDocumentResults);
       });
 
       const gateway = new DxtrOrdersGateway();
