@@ -14,16 +14,26 @@ export type TransferOrder = CaseSummary & {
   reason?: string;
 };
 
-export type ConsolidationOrder = CaseSummary & {
+export type ConsolidationOrder = {
   id?: string;
+  caseId: string;
   orderType: 'consolidation';
   orderDate: string;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   divisionCode: string;
   jobId: number;
+  leadCaseIdHint?: string;
   leadCase?: CaseSummary;
   childCases: Array<CaseSummary>;
+};
+
+export type RawConsolidationOrder = CaseSummary & {
+  orderDate: string;
+  docketEntries: CaseDocketEntry[];
+  jobId: number;
+  courtName: string;
+  leadCaseIdHint?: string;
 };
 
 export type Order = TransferOrder | ConsolidationOrder;
@@ -46,6 +56,12 @@ export type TransferOrderAction = TransferOrderActionRejection | TransferOrderAc
 
 export type OrderSync = {
   consolidations: ConsolidationOrder[];
+  transfers: TransferOrder[];
+  maxTxId: string;
+};
+
+export type RawOrderSync = {
+  consolidations: RawConsolidationOrder[];
   transfers: TransferOrder[];
   maxTxId: string;
 };

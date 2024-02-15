@@ -1,7 +1,7 @@
 import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentHistory, CaseHistory } from '../adapters/types/case.history';
-import { Order, OrderSync, TransferOrderAction } from '../../../../common/src/cams/orders';
+import { Order, RawOrderSync, TransferOrderAction } from '../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../common/src/cams/events';
 
 export interface CaseDocketGateway {
@@ -16,7 +16,7 @@ export interface CaseHistoryGateway {
 }
 
 export interface OrdersGateway {
-  getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync>;
+  getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
 export interface OrdersRepository {

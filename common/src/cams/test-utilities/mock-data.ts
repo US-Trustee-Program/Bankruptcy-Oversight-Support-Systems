@@ -1,10 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
-import { ConsolidationOrder, TransferOrder } from '../orders';
+import { ConsolidationOrder, RawConsolidationOrder, TransferOrder } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
 
 type EntityType = 'company' | 'person';
+type BankruptcyChapters = '9' | '11' | '12' | '15';
 
 const debtorTypeLabelMap = new Map<string, string>([
   ['CB', 'Corporate Business'],
@@ -24,8 +25,8 @@ function randomInt(range: number) {
   return Math.floor(Math.random() * range);
 }
 
-function randomCaseId() {
-  return '24-' + ('00000' + randomInt(99999)).slice(-5);
+function randomCaseId(divisionCode: string = '999') {
+  return divisionCode + '-99-' + ('00000' + randomInt(99999)).slice(-5);
 }
 
 function randomSsn() {
@@ -45,9 +46,7 @@ function randomOffice() {
 }
 
 function randomDate(year = '2024') {
-  const date = `${year}-01-01`;
-
-  return someDateAfterThisDate(date, 28);
+  return someDateAfterThisDate(`${year}-01-01`, 28);
 }
 
 function someDateAfterThisDate(thisDateString: string, days?: number): string {
@@ -57,8 +56,7 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   return someDate.toISOString().split('T')[0];
 }
 
-function randomChapter() {
-  const chapters = ['9', '11', '12', '15'];
+function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {
   return chapters[randomInt(chapters.length - 1)];
 }
 
@@ -78,7 +76,7 @@ function getCaseSummary(
   const caseSummary: CaseSummary = {
     ...office,
     dxtrId: '0', // NEED TO REFACTOR THIS OUT OF THE MODEL AND STOP LEAKING FROM THE API
-    caseId: randomCaseId(),
+    caseId: randomCaseId(office.courtDivision),
     chapter: randomChapter(),
     caseTitle: debtor.name,
     dateFiled: randomDate(),
@@ -148,6 +146,23 @@ function getConsolidationOrder(
   return { ...consolidationOrder, ...override };
 }
 
+function getRawConsolidationOrder(
+  options: Options<RawConsolidationOrder> = { override: {} },
+): RawConsolidationOrder {
+  const { entityType, override } = options;
+  const summary = getCaseSummary({ entityType });
+
+  const consolidationOrder: RawConsolidationOrder = {
+    ...summary,
+    orderDate: someDateAfterThisDate(summary.dateFiled),
+    docketEntries: [getDocketEntry()],
+    jobId: faker.number.int(),
+    leadCaseIdHint: randomTruth() ? randomCaseId() : null,
+  };
+
+  return { ...consolidationOrder, ...override };
+}
+
 function getParty(options: Options<Party> = { override: {} }): Party {
   const { entityType, override } = options;
   const party: Party = {
@@ -209,7 +224,7 @@ function getDebtorAttorney(): DebtorAttorney {
 
 function buildArray(fn: () => void, size: number) {
   const arr = [];
-  for (let i = 0; i < size - 1; i++) {
+  for (let i = 0; i < size; i++) {
     arr.push(fn());
   }
   return arr;
@@ -225,5 +240,6 @@ export const MockData = {
   getTransferOrder,
   getDebtorAttorney,
   getConsolidationOrder,
+  getRawConsolidationOrder,
   buildArray,
 };
