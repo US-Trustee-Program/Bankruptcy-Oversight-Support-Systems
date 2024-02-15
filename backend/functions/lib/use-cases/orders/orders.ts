@@ -8,11 +8,12 @@ import {
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ConsolidationOrder,
+  RawConsolidationOrder,
   TransferOrder,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
-import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
+import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
@@ -62,7 +63,7 @@ export class OrdersUseCase {
   public async getSuggestedCases(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Array<CaseDetail>> {
+  ): Promise<Array<CaseSummary>> {
     return this.casesGateway.getSuggestedCases(context, caseId);
   }
 
@@ -211,49 +212,98 @@ export class OrdersUseCase {
 
   public async mapConsolidations(
     jobIds: Set<number>,
-    consolidations: ConsolidationOrder[],
+    consolidations: RawConsolidationOrder[],
     context: ApplicationContext,
   ): Promise<Map<number, ConsolidationOrder>> {
     const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
-    for (const jobId of jobIds) {
-      const listOfOrders = consolidations.filter((consolidation) => {
-        return consolidation.jobId === jobId;
-      });
 
-      // TODO: extract the following section to flatten and simplify our cognitive and algorithmic complexity
-      const caseSummaryMap: Map<string, CaseSummary> = new Map();
-      for (const order of listOfOrders) {
-        const subjectCase = `${order.caseId}`;
-        console.log('Subject Case: ', subjectCase);
-        const leadCase = order.leadCase ? `${order.divisionCode}-${order.leadCase}` : undefined;
-        console.log('Lead Case: ', leadCase);
-        if (!caseSummaryMap.has(subjectCase)) {
-          try {
-            caseSummaryMap.set(
-              subjectCase,
-              await this.casesGateway.getCaseSummary(context, subjectCase),
-            );
-          } catch (e) {
-            // do nothing
-          }
-        }
-        if (leadCase && !caseSummaryMap.has(leadCase)) {
-          try {
-            caseSummaryMap.set(leadCase, await this.casesGateway.getCaseSummary(context, leadCase));
-          } catch (e) {
-            // do nothing
-          }
-        }
+    const getIt = async (caseId: string) => {
+      try {
+        return this.casesGateway.getCaseSummary(context, caseId);
+      } catch {
+        //
       }
-      // end TODO
+    };
 
-      const parent: ConsolidationOrder = {
-        ...listOfOrders[0],
-        childCases: Array.from(caseSummaryMap.values()),
-      };
-      consolidationsByJobId.set(jobId, parent);
+    const map = new Map<number, Map<string, RawConsolidationOrder>>();
+    for (const order of consolidations) {
+      const subjectCaseId = order.caseId;
+      const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
+
+      if (!map.has(order.jobId)) map.set(order.jobId, new Map<string, RawConsolidationOrder>());
+      const caseMap = map.get(order.jobId);
+
+      caseMap.set(subjectCaseId, order);
+
+      if (!caseMap.has(maybeLeadCaseId)) {
+        const maybeLeadCase = await getIt(maybeLeadCaseId);
+        // TODO: we need something that has docket entries
+        if (maybeLeadCase)
+          caseMap.set(maybeLeadCaseId, {
+            ...maybeLeadCase,
+            orderDate: order.orderDate,
+            docketEntries: [],
+            jobId: order.jobId,
+          });
+      }
     }
-    console.log(' Consolidations by JobId: ', consolidationsByJobId);
+
+    // const caseSummaryMap: Map<string, CaseSummary> = new Map();
+    // for (const order of consolidations) {
+    //   const subjectCase = `${order.caseId}`;
+    //   console.log('Subject Case: ', subjectCase);
+    //   // This will not have the division code.
+    //   const leadCaseIdHint = order.leadCaseIdHint ?? undefined;
+    //   console.log('Lead Case: ', leadCaseIdHint);
+    //   if (!caseSummaryMap.has(subjectCase)) {
+    //     try {
+    //       caseSummaryMap.set(
+    //         subjectCase,
+    //         await this.casesGateway.getCaseSummary(context, subjectCase),
+    //       );
+    //     } catch (e) {
+    //       // do nothing
+    //     }
+    //   }
+    //   if (leadCaseIdHint && !caseSummaryMap.has(leadCaseIdHint)) {
+    //     try {
+    //       caseSummaryMap.set(
+    //         leadCaseIdHint,
+    //         await this.casesGateway.getCaseSummary(context, leadCaseIdHint),
+    //       );
+    //     } catch (e) {
+    //       // do nothing
+    //     }
+    //   }
+    // }
+
+    map.forEach((caseSummaries, jobId) => {
+      const firstOrder = caseSummaries.values().next().value;
+      const consolidationOrder: ConsolidationOrder = {
+        caseId: firstOrder.caseId,
+        orderType: 'consolidation',
+        orderDate: firstOrder.orderDate,
+        status: 'pending',
+        docketEntries: firstOrder.docketEntries,
+        divisionCode: firstOrder.divisionCode,
+        jobId,
+        childCases: Array.from(map.get(jobId).values()),
+      };
+      consolidationsByJobId.set(jobId, consolidationOrder);
+    });
+
+    // for (const jobId of jobIds) {
+    //   const listOfOrders = consolidations.filter((consolidation) => {
+    //     return consolidation.jobId === jobId;
+    //   });
+    //
+    //   const parent: ConsolidationOrder = {
+    //     ...listOfOrders[0],
+    //     childCases: Array.from(map.get(jobId).values()),
+    //   };
+    //   consolidationsByJobId.set(jobId, parent);
+    // }
+    // console.log(' Consolidations by JobId: ', consolidationsByJobId);
 
     return consolidationsByJobId;
   }

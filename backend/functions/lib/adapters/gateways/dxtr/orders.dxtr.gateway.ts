@@ -5,8 +5,9 @@ import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import {
-  ConsolidationOrder,
   OrderSync,
+  RawConsolidationOrder,
+  RawOrderSync,
   TransferOrder,
 } from '../../../../../../common/src/cams/orders';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
@@ -16,7 +17,7 @@ const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 
 export interface DxtrTransfer extends TransferOrder, DxtrOrder {}
 
-export interface DxtrConsolidation extends Omit<ConsolidationOrder, 'id'>, DxtrOrder {}
+export interface DxtrConsolidation extends RawConsolidationOrder, DxtrOrder {}
 
 export interface DxtrOrder {
   dxtrCaseId: string;
@@ -43,7 +44,7 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 }
 
 export class DxtrOrdersGateway implements OrdersGateway {
-  async getOrderSync(context: ApplicationContext, txId: string): Promise<OrderSync> {
+  async getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync> {
     const transfers = await this.getTransferOrderSync(context, txId);
     const consolidations = await this.getConsolidationOrderSync(context, txId);
     return {
@@ -57,7 +58,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
   private async getConsolidationOrderSync(
     context: ApplicationContext,
     txId: string,
-  ): Promise<OrderSync> {
+  ): Promise<RawOrderSync> {
     try {
       let maxTxId: number = parseInt(txId);
 
@@ -143,7 +144,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
             rawOrder.docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
           }
           const { dxtrCaseId: _dxtrCaseId, ...orderProps } = rawOrder;
-          return orderProps satisfies ConsolidationOrder;
+          return orderProps satisfies RawConsolidationOrder;
         })
         .sort(dxtrOrdersSorter);
       context.logger.info(
@@ -312,7 +313,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         'consolidation' AS orderType,
         'pending' AS status,
         CS.CS_CASEID AS dxtrCaseId,
-        CS.CS_DIV+'-'+CS.CASE_ID AS caseId,
+        CS.CS_DIV + '-' + CS.CASE_ID AS caseId,
         CS.CS_SHORT_TITLE AS caseTitle,
         CS.CS_DIV as divisionCode,
         CS.CS_CHAPTER AS chapter,
@@ -325,9 +326,9 @@ export class DxtrOrdersGateway implements OrdersGateway {
         TX.REC AS transactionRecord,
         CASE
           WHEN PATINDEX('%WARN: %', TX.REC) > 0
-          THEN substring(REC, PATINDEX('%WARN: %', REC)+6, 8)
+          THEN CS.CS_DIV + '-' + substring(REC, PATINDEX('%WARN: %', REC)+6, 8)
           ELSE null
-        END AS leadCase
+        END AS leadCaseIdHint
       FROM (
         SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE, TX2.TX_CODE, TX2.REC, TX2.JOB_ID
         FROM [dbo].[AO_TX] AS TX2

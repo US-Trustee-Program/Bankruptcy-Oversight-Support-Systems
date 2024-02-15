@@ -93,7 +93,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 })}
             </div>
             <div>
-              <CaseTable id={'case-list'} cases={order.cases}></CaseTable>
+              <CaseTable id={'case-list'} cases={order.childCases}></CaseTable>
             </div>
             <div className="grid-col-1"></div>
           </div>
