@@ -194,7 +194,27 @@ export class OrdersUseCase {
     );
     context.logger.info(MODULE_NAME, 'Consolidations Written to Cosmos: ', writtenConsolidations);
 
-    // TODO: create AUDIT_HISTORY for consolidations
+    for (const order of consolidations) {
+      const consolidation: ConsolidationOrder = {
+        caseId: order.caseId,
+        orderType: 'consolidation',
+        orderDate: order.orderDate,
+        status: 'pending',
+        docketEntries: order.docketEntries,
+        divisionCode: order.courtDivision,
+        jobId: order.jobId,
+        childCases: [],
+      };
+      if (consolidation.orderType === 'consolidation') {
+        const caseHistory: CaseHistory = {
+          caseId: order.caseId,
+          documentType: 'AUDIT_CONSOLIDATION',
+          before: null,
+          after: consolidation,
+        };
+        await this.casesRepo.createCaseHistory(context, caseHistory);
+      }
+    }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
     await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
@@ -217,7 +237,7 @@ export class OrdersUseCase {
   ): Promise<Map<number, ConsolidationOrder>> {
     const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
 
-    const getIt = async (caseId: string) => {
+    const safelyGetCaseSummary = async (caseId: string) => {
       try {
         return this.casesGateway.getCaseSummary(context, caseId);
       } catch {
@@ -225,18 +245,17 @@ export class OrdersUseCase {
       }
     };
 
-    const map = new Map<number, Map<string, RawConsolidationOrder>>();
+    const jobToCaseMap = new Map<number, Map<string, RawConsolidationOrder>>();
     for (const order of consolidations) {
-      const subjectCaseId = order.caseId;
+      if (!jobToCaseMap.has(order.jobId)) {
+        jobToCaseMap.set(order.jobId, new Map<string, RawConsolidationOrder>());
+      }
+      const caseMap = jobToCaseMap.get(order.jobId);
+      caseMap.set(order.caseId, order);
+
       const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
-
-      if (!map.has(order.jobId)) map.set(order.jobId, new Map<string, RawConsolidationOrder>());
-      const caseMap = map.get(order.jobId);
-
-      caseMap.set(subjectCaseId, order);
-
       if (!caseMap.has(maybeLeadCaseId)) {
-        const maybeLeadCase = await getIt(maybeLeadCaseId);
+        const maybeLeadCase = await safelyGetCaseSummary(maybeLeadCaseId);
         // TODO: we need something that has docket entries
         if (maybeLeadCase)
           caseMap.set(maybeLeadCaseId, {
@@ -248,36 +267,7 @@ export class OrdersUseCase {
       }
     }
 
-    // const caseSummaryMap: Map<string, CaseSummary> = new Map();
-    // for (const order of consolidations) {
-    //   const subjectCase = `${order.caseId}`;
-    //   console.log('Subject Case: ', subjectCase);
-    //   // This will not have the division code.
-    //   const leadCaseIdHint = order.leadCaseIdHint ?? undefined;
-    //   console.log('Lead Case: ', leadCaseIdHint);
-    //   if (!caseSummaryMap.has(subjectCase)) {
-    //     try {
-    //       caseSummaryMap.set(
-    //         subjectCase,
-    //         await this.casesGateway.getCaseSummary(context, subjectCase),
-    //       );
-    //     } catch (e) {
-    //       // do nothing
-    //     }
-    //   }
-    //   if (leadCaseIdHint && !caseSummaryMap.has(leadCaseIdHint)) {
-    //     try {
-    //       caseSummaryMap.set(
-    //         leadCaseIdHint,
-    //         await this.casesGateway.getCaseSummary(context, leadCaseIdHint),
-    //       );
-    //     } catch (e) {
-    //       // do nothing
-    //     }
-    //   }
-    // }
-
-    map.forEach((caseSummaries, jobId) => {
+    jobToCaseMap.forEach((caseSummaries, jobId) => {
       const firstOrder = caseSummaries.values().next().value;
       const consolidationOrder: ConsolidationOrder = {
         caseId: firstOrder.caseId,
@@ -287,23 +277,10 @@ export class OrdersUseCase {
         docketEntries: firstOrder.docketEntries,
         divisionCode: firstOrder.divisionCode,
         jobId,
-        childCases: Array.from(map.get(jobId).values()),
+        childCases: Array.from(jobToCaseMap.get(jobId).values()),
       };
       consolidationsByJobId.set(jobId, consolidationOrder);
     });
-
-    // for (const jobId of jobIds) {
-    //   const listOfOrders = consolidations.filter((consolidation) => {
-    //     return consolidation.jobId === jobId;
-    //   });
-    //
-    //   const parent: ConsolidationOrder = {
-    //     ...listOfOrders[0],
-    //     childCases: Array.from(map.get(jobId).values()),
-    //   };
-    //   consolidationsByJobId.set(jobId, parent);
-    // }
-    // console.log(' Consolidations by JobId: ', consolidationsByJobId);
 
     return consolidationsByJobId;
   }
