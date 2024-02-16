@@ -22,10 +22,10 @@ export interface IconInputProps {
 
 function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState<string>('');
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInputValue(ev.target.value);
+    setInputValue(ev.target.value ?? '');
     if (props.onChange) {
       props.onChange(ev);
     }
