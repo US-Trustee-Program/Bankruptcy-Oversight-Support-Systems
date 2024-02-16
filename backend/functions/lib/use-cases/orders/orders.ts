@@ -237,14 +237,7 @@ export class OrdersUseCase {
   ): Promise<Map<number, ConsolidationOrder>> {
     const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
 
-    const safelyGetCaseSummary = async (caseId: string) => {
-      try {
-        return this.casesGateway.getCaseSummary(context, caseId);
-      } catch {
-        //
-      }
-    };
-
+    const notFound = new Set<string>();
     const jobToCaseMap = new Map<number, Map<string, RawConsolidationOrder>>();
     for (const order of consolidations) {
       if (!jobToCaseMap.has(order.jobId)) {
@@ -254,16 +247,21 @@ export class OrdersUseCase {
       caseMap.set(order.caseId, order);
 
       const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
-      if (!caseMap.has(maybeLeadCaseId)) {
-        const maybeLeadCase = await safelyGetCaseSummary(maybeLeadCaseId);
-        // TODO: we need something that has docket entries
-        if (maybeLeadCase)
-          caseMap.set(maybeLeadCaseId, {
-            ...maybeLeadCase,
-            orderDate: order.orderDate,
-            docketEntries: [],
-            jobId: order.jobId,
-          });
+      if (maybeLeadCaseId && !caseMap.has(maybeLeadCaseId) && !notFound.has(maybeLeadCaseId)) {
+        try {
+          const maybeLeadCase = await this.casesGateway.getCaseSummary(context, maybeLeadCaseId);
+          // TODO: we need something that has docket entries
+          if (maybeLeadCase) {
+            caseMap.set(maybeLeadCaseId, {
+              ...maybeLeadCase,
+              orderDate: order.orderDate,
+              docketEntries: [],
+              jobId: order.jobId,
+            });
+          }
+        } catch {
+          notFound.add(maybeLeadCaseId);
+        }
       }
     }
 
