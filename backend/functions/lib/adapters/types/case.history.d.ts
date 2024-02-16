@@ -1,5 +1,5 @@
 import { CaseAssignment } from './case.assignment';
-import { TransferOrder } from '../../../../../common/src/cams/orders';
+import { ConsolidationOrder, TransferOrder } from '../../../../../common/src/cams/orders';
 
 // TODO: Consider a way to make the occurredAtTimestamp optional when creating a record, otherwise it is required.
 type AbstractCaseHistory<B, A> = {
@@ -18,4 +18,11 @@ type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrd
   documentType: 'AUDIT_TRANSFER';
 };
 
-export type CaseHistory = CaseAssignmentHistory | CaseTransferHistory;
+type CaseConsolidationHistory = AbstractCaseHistory<
+  (ConsolidationOrder & { parent?: string }) | null,
+  ConsolidationOrder & { parent?: string }
+> & {
+  documentType: 'AUDIT_CONSOLIDATION';
+};
+
+export type CaseHistory = CaseAssignmentHistory | CaseTransferHistory | CaseConsolidationHistory;
