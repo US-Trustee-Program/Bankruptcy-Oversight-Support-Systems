@@ -31,6 +31,8 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   const [alertOptions, setAlertOptions] = useState<AlertOptions | null>(null);
 
+  const MINIMUM_SEARCH_CHARACTERS = 3;
+
   useEffect(() => {
     if (!props.isDocketLoading) {
       if (!hasDocketEntries) {
@@ -46,15 +48,25 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
         alertRef.current?.show();
       } else {
         alertRef.current?.hide();
-        if (props.searchString) {
-          handleHighlight(window, document, 'searchable-docket', props.searchString);
-        }
+        handleHighlight(
+          window,
+          document,
+          'searchable-docket',
+          props.searchString,
+          MINIMUM_SEARCH_CHARACTERS,
+        );
       }
     }
   }, [docketEntries]);
 
   useEffect(() => {
-    handleHighlight(window, document, 'searchable-docket', props.searchString);
+    handleHighlight(
+      window,
+      document,
+      'searchable-docket',
+      props.searchString,
+      MINIMUM_SEARCH_CHARACTERS,
+    );
   }, [props.searchString]);
 
   return (
