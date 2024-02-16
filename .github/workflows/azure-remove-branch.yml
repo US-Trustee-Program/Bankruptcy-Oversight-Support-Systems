@@ -5,11 +5,39 @@ on:
     inputs:
       hashId:
         description: "Hash id of target branch deployemnt"
-        default: ""
+        required: true
         type: string
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      executeCleanup: ${{ steps.check.outputs.executeCleanup }}
+    steps:
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: Validate resources
+        run: |
+          echo "Does resources with ${{ inputs.hashId }} exist?"
+          count=$(az group list --query "length([?id.contains(@,'${{ inputs.hashId }}')])")
+          if [[$count -eq 2]]; then
+            echo 'Expected resources found.'
+            echo "executeCleanup=true" >> $GITHUB_OUTPUT
+          else
+            echo 'Did not find existing Azure resources with matching hash id.'
+            echo "executeCleanup=false" >> $GITHUB_OUTPUT
+          fi
+
   clean-up:
     runs-on: ubuntu-latest
+    needs: [check]
+    if: needs.check.outputs.executeCleanup == 'true'
     steps:
-      - run: echo "Stub job for new workflow"
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@v3
+      - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ inputs.hashId }} false
