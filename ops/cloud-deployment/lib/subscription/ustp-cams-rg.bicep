@@ -10,6 +10,10 @@ param location string = 'eastus'
 @secure()
 param azSubscription string
 
+param isBranchDeployment bool = false
+param branchName string = ''
+param branchHashId string = ''
+
 var resourceGroupNames = [ {
     name: databaseResourceGroupName
     create: createDatabaseRG
@@ -29,5 +33,11 @@ module resourceGroup './resource-group-deploy.bicep' = [for item in resourceGrou
   params: {
     location: location
     resourceGroupName: item.name
+    tags: isBranchDeployment ? {
+      // Expected tags to set on Azure Resource Group for resources deployed for branch deploys
+      isBranchDeployment: isBranchDeployment
+      branchName: branchName
+      branchHashId: branchHashId
+    } : {}
   }
 }]
