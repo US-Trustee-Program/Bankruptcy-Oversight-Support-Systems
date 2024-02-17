@@ -289,6 +289,13 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     }
   }
 
+  function onCollapse() {
+    cancelUpdate();
+    setToggleView('default');
+    approveButtonRef.current?.disableButton(true);
+    // TODO: make 'Enter Case' button the active button
+  }
+
   function approveOrderRejection(rejectionReason?: string) {
     const rejection: TransferOrderAction = {
       id: order.id,
@@ -329,36 +336,34 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         id={`order-list-${order.id}`}
         expandedId={expandedId}
         onExpand={onExpand}
+        onCollapse={onCollapse}
       >
         <section
           className="accordion-heading grid-row grid-gap-lg"
           data-testid={`accordion-heading-${order.id}`}
         >
           <div
-            className="grid-col-2 case-id text-no-wrap"
-            aria-label={`Case number ${getCaseNumber(order.caseId).split('').join(' ')}`}
+            className="grid-col-6 text-no-wrap"
+            aria-label={`Case district ${getCaseNumber(order.courtName)}`}
           >
-            {getCaseNumber(order.caseId)}
-          </div>
-          <div className="grid-col-4 case-title" aria-label={`Case title ${order.caseTitle}`}>
-            {order.caseTitle}
+            {order.courtName}
           </div>
           <div
-            className="grid-col-2 order-date text-no-wrap"
-            title="Order date"
-            aria-label={`Order date ${formatDate(order.orderDate)}`}
+            className="grid-col-2 text-no-wrap"
+            title="Event date"
+            aria-label={`Event date ${formatDate(order.orderDate)}`}
           >
             {formatDate(order.orderDate)}
           </div>
           <div className="grid-col-2 order-type text-no-wrap">
-            <span aria-label={`Order type ${orderType.get(order.orderType)}`}>
+            <span aria-label={`Event type ${orderType.get(order.orderType)}`}>
               {orderType.get(order.orderType)}
             </span>
           </div>
           <div className="grid-col-2 order-status text-no-wrap">
             <span
               className={order.status}
-              aria-label={`Order status ${statusType.get(order.status)}`}
+              aria-label={`Event status ${statusType.get(order.status)}`}
             >
               {statusType.get(order.status)}
             </span>
