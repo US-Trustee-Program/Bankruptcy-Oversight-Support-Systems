@@ -79,7 +79,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
           <div>
             <ConsolidatedCasesTable
-              id={'case-list'}
+              id={`${order.id}-case-list`}
               cases={order.childCases}
               onSelect={handleIncludeCase}
               ref={caseTable}

@@ -62,7 +62,7 @@ function _ConsolidatedCasesTable(
           return (
             <>
               <tr key={`${key}`} data-testid={key}>
-                <th scope="col">
+                <td scope="row">
                   <input
                     type="checkbox"
                     onChange={handleCaseSelection}
@@ -72,7 +72,7 @@ function _ConsolidatedCasesTable(
                     checked={included.includes(idx)}
                     title={`select ${bCase.caseTitle}`}
                   ></input>
-                </th>
+                </td>
                 <td scope="row">
                   <CaseNumber caseNumber={bCase.caseId} /> ({bCase.courtDivisionName})
                 </td>
