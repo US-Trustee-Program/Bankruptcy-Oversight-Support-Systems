@@ -5,12 +5,25 @@ on:
     inputs:
       hashId:
         description: "Hash id of target branch deployemnt"
-        required: true
+        default: ''
         type: string
 
 jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: List existing branch deployments
+        run: |
+          echo "Execute an az cli command to find all branch deployments in Azure environment"
+          # TODO List branch deployment branch name and hash id
+
   check:
     runs-on: ubuntu-latest
+    if: inputs.hashId != ''
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
     steps:
