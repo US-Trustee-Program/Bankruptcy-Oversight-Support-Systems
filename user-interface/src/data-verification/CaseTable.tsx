@@ -11,6 +11,7 @@ interface CaseTableProps {
   id: string;
   cases: Array<CaseSummary>;
   onSelect?: (bCase: CaseSummary) => void;
+  displayDocket?: boolean;
 }
 
 function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
@@ -51,35 +52,44 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
           const taxId = bCase.debtor?.ssn || bCase.debtor?.taxId || '';
           const key = `${id}-row-${idx}`;
           return (
-            <tr key={key} data-testid={key}>
-              {onSelect && (
-                <th scope="col">
-                  <input
-                    type="radio"
-                    onChange={handleCaseSelection}
-                    value={idx}
-                    name="case-selection"
-                    data-testid={`${id}-radio-${idx}`}
-                    checked={idx === selectedIdx}
-                    title={`select ${bCase.caseTitle}`}
-                  ></input>
-                </th>
-              )}
-              <td scope="row">
-                <CaseNumber caseNumber={bCase.caseId} />
-              </td>
-              <td scope="row">{bCase.caseTitle}</td>
-              <td scope="row" className="text-no-wrap">
-                {taxId}
-              </td>
-              <td scope="row">
-                {bCase.courtName} ({bCase.courtDivisionName})
-              </td>
-              <td scope="row" className="text-no-wrap">
-                {formatDate(bCase.dateFiled)}
-              </td>
-              <td scope="row">{bCase.chapter}</td>
-            </tr>
+            <>
+              <tr key={`${key}`} data-testid={key}>
+                {onSelect && (
+                  <th scope="col">
+                    <input
+                      type="radio"
+                      onChange={handleCaseSelection}
+                      value={idx}
+                      name="case-selection"
+                      data-testid={`${id}-radio-${idx}`}
+                      checked={idx === selectedIdx}
+                      title={`select ${bCase.caseTitle}`}
+                    ></input>
+                  </th>
+                )}
+                <td scope="row">
+                  <CaseNumber caseNumber={bCase.caseId} />
+                </td>
+                <td scope="row">{bCase.caseTitle}</td>
+                <td scope="row" className="text-no-wrap">
+                  {taxId}
+                </td>
+                <td scope="row">
+                  {bCase.courtName} ({bCase.courtDivisionName})
+                </td>
+                <td scope="row" className="text-no-wrap">
+                  {formatDate(bCase.dateFiled)}
+                </td>
+                <td scope="row">{bCase.chapter}</td>
+              </tr>
+              <tr key={`${key}-b`} data-testid={`${key}-b`}>
+                <td colSpan={6} className="measure-6">
+                  Some placeholder here Some placeholder hereSome placeholder hereSome placeholder
+                  hereSome placeholder hereSome placeholder hereSome placeholder hereSome
+                  placeholder hereSome placeholder hereSome placeholder here{' '}
+                </td>
+              </tr>
+            </>
           );
         })}
       </tbody>

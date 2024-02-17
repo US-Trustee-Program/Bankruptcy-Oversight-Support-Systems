@@ -8,6 +8,7 @@ import {
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ConsolidationOrder,
+  ConsolidationOrderCase,
   RawConsolidationOrder,
   TransferOrder,
   TransferOrderAction,
@@ -186,7 +187,7 @@ export class OrdersUseCase {
       jobIds.add(consolidation.jobId);
     });
 
-    const consolidationsByJobId = await this.mapConsolidations(jobIds, consolidations, context);
+    const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
     const writtenConsolidations = await this.ordersRepo.putOrders(
       context,
@@ -202,6 +203,7 @@ export class OrdersUseCase {
         status: 'pending',
         docketEntries: order.docketEntries,
         divisionCode: order.courtDivision,
+        courtName: order.courtName,
         jobId: order.jobId,
         childCases: [],
       };
@@ -231,17 +233,16 @@ export class OrdersUseCase {
   }
 
   public async mapConsolidations(
-    jobIds: Set<number>,
-    consolidations: RawConsolidationOrder[],
     context: ApplicationContext,
+    consolidations: RawConsolidationOrder[],
   ): Promise<Map<number, ConsolidationOrder>> {
     const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
 
     const notFound = new Set<string>();
-    const jobToCaseMap = new Map<number, Map<string, RawConsolidationOrder>>();
+    const jobToCaseMap = new Map<number, Map<string, ConsolidationOrderCase>>();
     for (const order of consolidations) {
       if (!jobToCaseMap.has(order.jobId)) {
-        jobToCaseMap.set(order.jobId, new Map<string, RawConsolidationOrder>());
+        jobToCaseMap.set(order.jobId, new Map<string, ConsolidationOrderCase>());
       }
       const caseMap = jobToCaseMap.get(order.jobId);
       caseMap.set(order.caseId, order);
@@ -254,9 +255,7 @@ export class OrdersUseCase {
           if (maybeLeadCase) {
             caseMap.set(maybeLeadCaseId, {
               ...maybeLeadCase,
-              orderDate: order.orderDate,
               docketEntries: [],
-              jobId: order.jobId,
             });
           }
         } catch {
@@ -274,6 +273,7 @@ export class OrdersUseCase {
         status: 'pending',
         docketEntries: firstOrder.docketEntries,
         divisionCode: firstOrder.divisionCode,
+        courtName: firstOrder.courtName,
         jobId,
         childCases: Array.from(jobToCaseMap.get(jobId).values()),
       };

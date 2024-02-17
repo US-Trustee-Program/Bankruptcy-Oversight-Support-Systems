@@ -175,11 +175,10 @@ export default function DataVerificationScreen() {
               </div>
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2 text-no-wrap">Case Number</div>
-                  <div className="grid-col-4 text-no-wrap">Case Title</div>
-                  <div className="grid-col-2 text-no-wrap">Order Date</div>
-                  <div className="grid-col-2 text-no-wrap">Order Type</div>
-                  <div className="grid-col-2 text-no-wrap">Order Status</div>
+                  <div className="grid-col-6 text-no-wrap">Court District</div>
+                  <div className="grid-col-2 text-no-wrap">Event Date</div>
+                  <div className="grid-col-2 text-no-wrap">Event Type</div>
+                  <div className="grid-col-2 text-no-wrap">Event Status</div>
                 </div>
               </div>
               <AccordionGroup>

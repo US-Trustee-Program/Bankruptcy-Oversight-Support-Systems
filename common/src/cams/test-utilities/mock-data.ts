@@ -1,6 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
-import { ConsolidationOrder, RawConsolidationOrder, TransferOrder } from '../orders';
+import {
+  ConsolidationOrder,
+  ConsolidationOrderCase,
+  RawConsolidationOrder,
+  TransferOrder,
+} from '../orders';
 import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
 
@@ -63,6 +68,19 @@ function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15'])
 interface Options<T> {
   entityType?: EntityType;
   override?: Partial<T>;
+}
+
+function getConsolidatedOrderCase(
+  options: Options<ConsolidationOrderCase> = { entityType: 'person', override: {} },
+) {
+  const { entityType, override } = options;
+  const docketEntries = [getDocketEntry()];
+  const consolidatedCaseSummary: ConsolidationOrderCase = {
+    ...getCaseSummary({ entityType: entityType }),
+    docketEntries,
+  };
+
+  return { ...consolidatedCaseSummary, ...override };
 }
 
 function getCaseSummary(
@@ -131,7 +149,8 @@ function getConsolidationOrder(
   const summary = getCaseSummary({ entityType });
 
   const consolidationOrder: ConsolidationOrder = {
-    ...summary,
+    caseId: summary.caseId,
+    courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',
     orderDate: someDateAfterThisDate(summary.dateFiled),
@@ -139,8 +158,7 @@ function getConsolidationOrder(
     docketEntries: [getDocketEntry()],
     divisionCode: summary.courtDivision,
     jobId: faker.number.int(),
-    leadCase: summary,
-    childCases: [getCaseSummary(), getCaseSummary()],
+    childCases: [getConsolidatedOrderCase(), getConsolidatedOrderCase()],
   };
 
   return { ...consolidationOrder, ...override };

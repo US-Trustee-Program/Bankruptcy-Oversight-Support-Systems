@@ -20,19 +20,22 @@ export type ConsolidationOrder = {
   orderType: 'consolidation';
   orderDate: string;
   status: OrderStatus;
+  courtName: string;
   docketEntries: CaseDocketEntry[];
   divisionCode: string;
   jobId: number;
   leadCaseIdHint?: string;
-  leadCase?: CaseSummary;
-  childCases: Array<CaseSummary>;
+  leadCase?: ConsolidationOrderCase;
+  childCases: Array<ConsolidationOrderCase>;
 };
 
-export type RawConsolidationOrder = CaseSummary & {
-  orderDate: string;
+export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
+};
+
+export type RawConsolidationOrder = ConsolidationOrderCase & {
+  orderDate: string;
   jobId: number;
-  courtName: string;
   leadCaseIdHint?: string;
 };
 
