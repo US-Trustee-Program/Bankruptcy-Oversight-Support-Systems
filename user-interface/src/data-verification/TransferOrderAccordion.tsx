@@ -117,8 +117,11 @@ export interface TransferOrderAccordionProps {
   expandedId?: string;
 }
 
+const enterCaseButtonId = 'buttonEnterCase';
+
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const [activeButtonId, setActiveButtonId] = useState<string>(enterCaseButtonId || '');
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -293,7 +296,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     cancelUpdate();
     setToggleView('default');
     approveButtonRef.current?.disableButton(true);
-    // TODO: make 'Enter Case' button the active button
+    setActiveButtonId(enterCaseButtonId);
+  }
+
+  function onToggleButtonClick(id: string) {
+    setActiveButtonId(id);
   }
 
   function approveOrderRejection(rejectionReason?: string) {
@@ -462,7 +469,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   <ButtonGroup
                     id={`button-group-${order.id}`}
                     className="entry-option-button-group"
-                    defaultButtonId="buttonEnterCase"
+                    activeButtonId={activeButtonId}
+                    onButtonClick={onToggleButtonClick}
                   >
                     <Button id="buttonEnterCase" onClick={selectCaseInputEntry}>
                       Enter Case
