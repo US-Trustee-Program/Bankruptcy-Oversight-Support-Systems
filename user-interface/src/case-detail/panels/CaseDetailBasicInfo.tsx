@@ -1,8 +1,9 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDetailType, Transfer } from '@/lib/type-declarations/chapter-15';
+import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
+import { Transfer } from '@common/cams/events';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';

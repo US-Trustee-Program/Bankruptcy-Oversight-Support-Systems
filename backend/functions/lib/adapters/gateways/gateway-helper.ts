@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import { CaseDetailInterface, DebtorAttorney, Party } from '../types/cases';
 import { QueryResults } from '../types/database';
 import { ApplicationContext } from '../types/basic';
 import { CamsError } from '../../common-errors/cams-error';
@@ -9,6 +8,8 @@ import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-en
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import { CaseDocketEntry } from '../../use-cases/case-docket/case-docket.model';
 import { CaseAssignmentHistory } from '../types/case.history';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { DebtorAttorney, Party } from '../../../../../common/src/cams/parties';
 
 export class GatewayHelper {
   getAllCasesMockExtract(): CaseDetailInterface[] {

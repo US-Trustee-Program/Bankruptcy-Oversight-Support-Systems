@@ -1,9 +1,4 @@
-export interface Person {
-  firstName: string;
-  lastName: string;
-  middleName?: string;
-  generation?: string;
-}
+import { Person } from './cams/parties';
 
 export function getFullName(person: Person, fullMiddle = false) {
   const fullName = [];

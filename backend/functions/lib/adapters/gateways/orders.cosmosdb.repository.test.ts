@@ -1,6 +1,5 @@
 import { OrdersCosmosDbRepository } from './orders.cosmosdb.repository';
 import { ORDERS } from '../../testing/mock-data/orders.mock';
-import { Order, OrderTransfer } from '../../use-cases/orders/orders.model';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
@@ -10,36 +9,44 @@ import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { createPreExistingDocumentError } from '../../testing/cosmos-errors';
 import { ServerConfigError } from '../../common-errors/server-config-error';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 
-const testNewOrderTransferData: OrderTransfer = {
+const testNewOrderTransferData: TransferOrderAction = {
   id: 'test-id-0',
-  sequenceNumber: 2,
   caseId: '111-11-11111',
-  newCaseId: '000-01-12345',
-  newCourtName: 'New Court Name',
-  newCourtDivisionName: 'New Division',
-  newDivisionCode: '081',
-  newRegionId: '02',
-  newRegionName: 'NEW YORK',
+  newCase: {
+    caseId: '000-01-12345',
+    courtName: 'New Court Name',
+    courtDivisionName: 'New Division',
+    courtDivision: '081',
+    regionId: '02',
+    regionName: 'NEW YORK',
+  },
   status: 'approved',
 };
 
-const testNewOrderData: Order = {
+const testNewOrderData: TransferOrder = {
   id: 'test-id-0',
   caseId: '111-11-11111',
   caseTitle: 'Foreign Business Entity',
   chapter: '15',
   courtName: 'Southern District of New York',
   courtDivisionName: 'Manhattan',
+  courtDivision: '081',
   regionId: '02',
   orderType: 'transfer',
   orderDate: '2023-11-02',
+  dateFiled: '2023-11-02',
   status: 'pending',
   newCaseId: '012-34-56789',
-  sequenceNumber: 100,
-  dateFiled: '2023-11-02',
-  summaryText: 'Order to Transfer',
-  fullText: 'It is ordered that the case be transferred...',
+  docketEntries: [
+    {
+      dateFiled: '2023-11-02',
+      sequenceNumber: 100,
+      summaryText: 'Order to Transfer',
+      fullText: 'It is ordered that the case be transferred...',
+    },
+  ],
 };
 
 describe('Test case assignment cosmosdb repository tests', () => {
@@ -114,7 +121,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When putting an order, Should throw Unknown Error if an unknown error occurs', async () => {
-    const errorTestNewOrderData: Order = {
+    const errorTestNewOrderData: TransferOrder = {
       ...testNewOrderData,
     };
     delete errorTestNewOrderData.id;
@@ -130,7 +137,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should ignore an existing document error when putting an order', async () => {
-    const errorTestNewOrderData: Order = {
+    const errorTestNewOrderData: TransferOrder = {
       ...testNewOrderData,
     };
     delete errorTestNewOrderData.id;
@@ -146,7 +153,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When putting an order, Should throw ServerConfigError if an AggregateAuthenticationError error occurs', async () => {
-    const testNewOrderData2: Order = {
+    const testNewOrderData2: TransferOrder = {
       ...testNewOrderData,
       caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
     };
@@ -166,7 +173,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should not put an empty order array', async () => {
-    const ordersList: Order[] = [];
+    const ordersList: TransferOrder[] = [];
 
     const create = jest.spyOn(HumbleItems.prototype, 'create');
 
@@ -175,12 +182,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('should put an order array', async () => {
-    const positiveTestNewOrderData1: Order = {
+    const positiveTestNewOrderData1: TransferOrder = {
       ...testNewOrderData,
       caseId: '999-00-99999',
       id: undefined,
     };
-    const positiveTestNewOrderData2: Order = {
+    const positiveTestNewOrderData2: TransferOrder = {
       ...testNewOrderData,
       caseId: '888-00-99999',
       id: undefined,

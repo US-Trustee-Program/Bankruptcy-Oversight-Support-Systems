@@ -1,7 +1,7 @@
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { ORDERS } from '../../../testing/mock-data/orders.mock';
-import { OrderSync } from '../../../use-cases/orders/orders.model';
+import { OrderSync } from '../../../../../../common/src/cams/orders';
 
 export class MockOrdersGateway implements OrdersGateway {
   async getOrderSync(_applicationContext: ApplicationContext, txId: string): Promise<OrderSync> {

@@ -1,4 +1,4 @@
-import { TransferIn, TransferOut } from '../../use-cases/orders/orders.model';
+import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
 
 export interface CaseListRecordSet {
   caseList: CaseDetailInterface[];
@@ -20,52 +20,6 @@ export interface CaseDetailsDbResult {
   };
 }
 
-export interface Party {
-  name: string;
-  address1?: string;
-  address2?: string;
-  address3?: string;
-  cityStateZipCountry?: string;
-  taxId?: string;
-  ssn?: string;
-}
-export interface DebtorAttorney {
-  name: string;
-  address1?: string;
-  address2?: string;
-  address3?: string;
-  cityStateZipCountry?: string;
-  phone?: string;
-  email?: string;
-  office?: string;
-}
-export interface CaseDetailInterface {
-  caseId: string;
-  courtDivision: string;
-  chapter: string;
-  caseTitle: string;
-  dateFiled: string;
-  closedDate?: string;
-  dismissedDate?: string;
-  reopenedDate?: string;
-  dxtrId?: string;
-  courtId?: string;
-  courtName?: string;
-  regionId?: string;
-  regionName?: string;
-  officeName?: string;
-  petitionCode?: string;
-  petitionLabel?: string;
-  courtDivisionName?: string;
-  assignments?: string[];
-  judgeName?: string;
-  debtor?: Party;
-  debtorAttorney?: DebtorAttorney;
-  debtorTypeCode?: string;
-  debtorTypeLabel?: string;
-  transfers?: Array<TransferIn | TransferOut>;
-}
-
 export interface DxtrTransactionRecord {
   txRecord: string;
   txCode: string;
@@ -76,3 +30,5 @@ export interface TransactionDates {
   dismissedDates?: Date[];
   reopenedDates?: Date[];
 }
+
+export { CaseDetailInterface };
