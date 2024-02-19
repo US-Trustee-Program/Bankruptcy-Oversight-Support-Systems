@@ -41,6 +41,14 @@ export type RawConsolidationOrder = ConsolidationOrderCase & {
 
 export type Order = TransferOrder | ConsolidationOrder;
 
+export function isTransferOrder(order: Order): order is TransferOrder {
+  return order.orderType === 'transfer';
+}
+
+export function isConsolidationOrder(order: Order): order is ConsolidationOrder {
+  return order.orderType === 'consolidation';
+}
+
 type TransferOrderActionRejection = {
   id: string;
   caseId: string;

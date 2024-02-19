@@ -12,6 +12,8 @@ import {
   RawConsolidationOrder,
   TransferOrder,
   TransferOrderAction,
+  isConsolidationOrder,
+  isTransferOrder,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
@@ -77,7 +79,7 @@ export class OrdersUseCase {
     await this.ordersRepo.updateOrder(context, id, data);
     const order = await this.ordersRepo.getOrder(context, id, data.caseId);
 
-    if (order.orderType === 'transfer') {
+    if (isTransferOrder(order)) {
       if (order.status === 'approved') {
         const transferIn: TransferIn = {
           caseId: order.newCaseId,
@@ -171,7 +173,7 @@ export class OrdersUseCase {
     context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
 
     for (const order of writtenTransfers) {
-      if (order.orderType === 'transfer') {
+      if (isTransferOrder(order)) {
         const caseHistory: CaseHistory = {
           caseId: order.caseId,
           documentType: 'AUDIT_TRANSFER',
@@ -207,7 +209,7 @@ export class OrdersUseCase {
         jobId: order.jobId,
         childCases: [],
       };
-      if (consolidation.orderType === 'consolidation') {
+      if (isConsolidationOrder(consolidation)) {
         const caseHistory: CaseHistory = {
           caseId: order.caseId,
           documentType: 'AUDIT_CONSOLIDATION',
