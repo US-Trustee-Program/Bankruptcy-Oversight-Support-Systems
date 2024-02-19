@@ -9,13 +9,14 @@ import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { isTransferOrder } from '@common/cams/orders';
 
 describe('Review Orders screen', () => {
   let orders: TransferOrder[];
 
   beforeAll(async () => {
     const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    orders = ordersResponse.body.filter((o) => o.orderType === 'transfer') as TransferOrder[];
+    orders = ordersResponse.body.filter((o) => isTransferOrder(o)) as TransferOrder[];
   });
 
   beforeEach(async () => {

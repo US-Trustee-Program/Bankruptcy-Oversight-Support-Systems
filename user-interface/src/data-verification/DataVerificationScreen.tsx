@@ -15,7 +15,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, transferStatusType } from '@/lib/utils/labels';
 import Icon from '@/lib/components/uswds/Icon';
 import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
-import { OrderStatus, OrderType } from '@common/cams/orders';
+import { OrderStatus, OrderType, isTransferOrder } from '@common/cams/orders';
 
 export interface AlertDetails {
   message: string;
@@ -186,7 +186,7 @@ export default function DataVerificationScreen() {
                   .filter((o) => typeFilter.includes(o.orderType))
                   .filter((o) => statusFilter.includes(o.status))
                   .map((order) => {
-                    return order.orderType === 'transfer' ? (
+                    return isTransferOrder(order) ? (
                       <TransferOrderAccordion
                         key={`accordion-${order.id}`}
                         order={order}
