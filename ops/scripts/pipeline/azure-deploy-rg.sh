@@ -12,7 +12,8 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName")
+requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "isBranch")
+requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropiate Azure resource tagging, these should be required when isBranch == true
 
 function validation_func() {
     local location=$1
@@ -23,6 +24,7 @@ function validation_func() {
         echo "Error: Missing location parameter"
         exit 10
     fi
+
     if [[ -z "${deployment_file}" ]]; then
         echo "Error: Missing deployment file"
         exit 11
@@ -44,6 +46,7 @@ function validation_func() {
         databaseResourceGroupName=*) databaseResourceGroupName=${p/*=/} ;;
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
         webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
+        isBranch=*) isBranch=${p/*=/} ;;
         *)
             # skipped unmatched keys
             ;;
@@ -58,6 +61,16 @@ function validation_func() {
             exit 14
         fi
     done
+    # Check that required params for branch deployments has been set
+    if [[ "${isBranch}" == "true" ]]; then
+        for r in "${requiredBranchDeployParams[@]}"; do
+            varOfVar=${r}
+            if [[ -z ${!varOfVar} ]]; then
+                echo "Error: Missing parameter required for branch deployments (${r})"
+                exit 15
+            fi
+        done
+    fi
 }
 
 function az_rg_exists_func() {
