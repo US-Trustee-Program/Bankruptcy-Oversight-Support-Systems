@@ -6,9 +6,9 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import Input from '@/lib/components/uswds/Input';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
+import { OfficeDetails } from '@common/cams/courts';
 import {
   Chapter15CaseSummaryResponseData,
-  OfficeDetails,
   TransferOrder,
 } from '@/lib/type-declarations/chapter-15';
 import { OrderStatus } from '@common/cams/orders';
@@ -44,7 +44,7 @@ export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransfe
 export function getOfficeList(officesList: Array<OfficeDetails>) {
   const mapOutput = officesList.map((court) => {
     return {
-      value: court.divisionCode,
+      value: court.courtDivision,
       label: `${court.courtName} (${court.courtDivisionName})`,
     };
   });
@@ -87,14 +87,14 @@ export function updateOrderTransfer(
   officesList: Array<OfficeDetails>,
 ) {
   const updated: FlexibleTransferOrderAction = { ...orderTransfer };
-  const office = officesList.find((o) => o.divisionCode === selection?.value);
+  const office = officesList.find((o) => o.courtDivision === selection?.value);
   updated.newCase = {
     ...updated.newCase,
     regionId: office?.regionId,
     regionName: office?.regionName,
     courtName: office?.courtName,
     courtDivisionName: office?.courtDivisionName,
-    courtDivision: office?.divisionCode,
+    courtDivision: office?.courtDivision,
   };
 
   return updated;

@@ -31,6 +31,8 @@ import FakeRuntimeStateCosmosClientHumble from './cosmos-humble-objects/fake.run
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
 import FakeCasesCosmosClientHumble from './cosmos-humble-objects/fake.cases.cosmos-client-humble';
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
+import FakeConsolidationsCosmosClientHumble from './cosmos-humble-objects/fake.consolidations.cosmos-client-humble';
+import { ConsolidationOrdersCosmosDbRepository } from './adapters/gateways/consolidations.cosmosdb.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -65,6 +67,16 @@ export const getOrdersCosmosDbClient = (
 ): CosmosClientHumble | FakeOrdersCosmosClientHumble => {
   if (applicationContext.config.get('dbMock')) {
     return new FakeOrdersCosmosClientHumble();
+  } else {
+    return new CosmosClientHumble(applicationContext.config);
+  }
+};
+
+export const getConsolidationOrdersCosmosDbClient = (
+  applicationContext: ApplicationContext,
+): CosmosClientHumble | FakeConsolidationsCosmosClientHumble => {
+  if (applicationContext.config.get('dbMock')) {
+    return new FakeConsolidationsCosmosClientHumble();
   } else {
     return new CosmosClientHumble(applicationContext.config);
   }
@@ -109,6 +121,15 @@ export const getOrdersRepository = (applicationContext: ApplicationContext): Ord
   // TODO: Replace this with a mock repo.
   // if (applicationContext.config.get('dbMock')) return new MockOrdersCosmosDbRepository();
   return new OrdersCosmosDbRepository(applicationContext);
+};
+
+export const getConsolidationRepository = (
+  applicationContext: ApplicationContext,
+): ConsolidationOrdersCosmosDbRepository => {
+  // TODO: Replace this with a mock repo.
+  // TODO: Create an interface
+  // if (applicationContext.config.get('dbMock')) return new MockOrdersCosmosDbRepository();
+  return new ConsolidationOrdersCosmosDbRepository(applicationContext);
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {

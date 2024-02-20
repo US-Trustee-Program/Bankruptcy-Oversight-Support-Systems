@@ -10,7 +10,7 @@ import {
   PatchOrderResponse,
 } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
-import { TransferOrderAction } from '../../../common/src/cams/orders';
+import { OrderAction, TransferOrder } from '../../../common/src/cams/orders';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 
@@ -58,7 +58,11 @@ async function updateOrder(
     });
     throw camsError;
   }
-  return ordersController.updateOrder(context, id, data as TransferOrderAction);
+  const orderType = data.orderType;
+  // return ordersController.updateOrder(context, id, data as TransferOrderAction);
+  if (orderType === 'transfer') {
+    return ordersController.updateOrder(context, id, data as OrderAction<TransferOrder>);
+  }
 }
 
 export default httpTrigger;

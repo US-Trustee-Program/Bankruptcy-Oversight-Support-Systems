@@ -3,6 +3,10 @@ import { CaseDocketEntry, CaseSummary } from './cases';
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
 
+export type ConsolidationOrderActionRejection = ConsolidationOrder & {
+  rejectedCases: Array<string>;
+};
+
 export type TransferOrder = CaseSummary & {
   id: string;
   orderType: 'transfer';
@@ -16,7 +20,7 @@ export type TransferOrder = CaseSummary & {
 
 export type ConsolidationOrder = {
   id?: string;
-  caseId: string;
+  consolidationId: string;
   orderType: 'consolidation';
   orderDate: string;
   status: OrderStatus;
@@ -41,6 +45,21 @@ export type RawConsolidationOrder = ConsolidationOrderCase & {
 
 export type Order = TransferOrder | ConsolidationOrder;
 
+export interface ConsolidationHistory {
+  status: OrderStatus;
+  leadCase?: CaseSummary;
+  childCases: Array<CaseSummary>;
+  // For History
+  // rejected?
+  //   status, reason?
+  // approved?
+  //   am I lead?
+  //     yes - status, all childCases
+  //     no - status, leadCase
+  // pending?
+  //   status
+}
+
 export function isTransferOrder(order: Order): order is TransferOrder {
   return order.orderType === 'transfer';
 }
@@ -64,6 +83,21 @@ type TransferOrderActionApproval = {
 };
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
+
+type OrderActionRejection<T = TransferOrder | ConsolidationOrder> = {
+  id: string;
+  status: 'rejected';
+  reason?: string;
+  order: T;
+};
+
+type OrderActionApproval<T = TransferOrder | ConsolidationOrder> = {
+  id: string;
+  status: 'approved';
+  order: T;
+};
+
+export type OrderAction<T> = OrderActionRejection<T> | OrderActionApproval<T>;
 
 export type OrderSync = {
   consolidations: ConsolidationOrder[];

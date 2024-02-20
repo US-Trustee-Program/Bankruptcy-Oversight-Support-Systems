@@ -1,32 +1,22 @@
-import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getOrdersCosmosDbClient } from '../../factory';
-import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
-import { ServerConfigError } from '../../common-errors/server-config-error';
-import { OrdersRepository } from '../../use-cases/gateways.types';
-import { NotFoundError } from '../../common-errors/not-found-error';
-import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
-import {
-  ConsolidationOrder,
-  Order,
-  OrderAction,
-  TransferOrder,
-} from '../../../../../common/src/cams/orders';
+import { getCosmosConfig, getOrdersCosmosDbClient } from '../../../factory';
+import { ApplicationContext } from '../../types/basic';
+import { CosmosConfig } from '../../types/database';
+import { ServerConfigError } from '../../../common-errors/server-config-error';
 
-const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
-const CONTAINER_NAME: string = 'orders';
+const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY';
 
-export class OrdersCosmosDbRepository implements OrdersRepository {
-  private cosmosDbClient;
+export class CosmosDbCrudRepository<T> {
+  protected cosmosDbClient;
 
-  private containerName;
-  private cosmosConfig: CosmosConfig;
-  private moduleName;
+  protected containerName;
+  protected cosmosConfig: CosmosConfig;
+  protected moduleName;
 
   // TODO: allow extending class to override containerName
   constructor(
     context: ApplicationContext,
-    containerName: string = CONTAINER_NAME,
+    containerName: string,
     moduleName: string = MODULE_NAME,
   ) {
     this.cosmosDbClient = getOrdersCosmosDbClient(context);
@@ -35,17 +25,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     this.moduleName = moduleName;
   }
 
-  async getOrders(context: ApplicationContext): Promise<Order[]> {
-    const query = 'SELECT * FROM c ORDER BY c.orderDate ASC';
-    const querySpec = {
-      query,
-      parameters: [],
-    };
-    const response = await this.queryData<Order>(context, querySpec);
-    return response;
-  }
-
-  async getOrder(context: ApplicationContext, id: string, partitionKey: string): Promise<Order> {
+  public async get(context: ApplicationContext, id: string, partitionKey: string): Promise<T> {
     try {
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
@@ -70,41 +50,15 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async updateOrder<T = TransferOrder | ConsolidationOrder>(
-    context: ApplicationContext,
-    id: string,
-    data: OrderAction<T>,
-  ) {
+  public async update(context: ApplicationContext, id: string, data: T) {
     try {
-      const { resource: existingOrder } = await this.cosmosDbClient
-        .database(this.cosmosConfig.databaseName)
-        .container(this.containerName)
-        .item(id, data.order['caseId'])
-        .read();
-
-      if (!existingOrder) {
-        throw new NotFoundError(this.moduleName, {
-          message: `Order not found with id ${id}`,
-        });
-      }
-
-      // ONLY gather the mutable properties, however many there are.
-      // const { id: _id, ...mutableProperties } = data;
-      const { id: _id, order, ...mutableProperties } = data;
-
-      const updatedOrder = {
-        ...existingOrder,
-        ...order,
-        ...mutableProperties,
-      };
-
       await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .item(id)
-        .replace(updatedOrder);
+        .replace(data);
 
-      context.logger.debug(this.moduleName, `Order updated ${id}`);
+      context.logger.debug(this.moduleName, `${typeof data} Updated ${id}`);
       return { id };
     } catch (originalError) {
       context.logger.error(
@@ -122,24 +76,12 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
-    const writtenOrders: Order[] = [];
-    if (!orders.length) return writtenOrders;
-
+  public async put(context: ApplicationContext, data: T): Promise<T> {
     try {
-      for (const order of orders) {
-        try {
-          const _result = await this.cosmosDbClient
-            .database(this.cosmosConfig.databaseName)
-            .container(this.containerName)
-            .items.create(order);
-          writtenOrders.push(order);
-        } catch (e) {
-          if (!isPreExistingDocumentError(e)) {
-            throw e;
-          }
-        }
-      }
+      const _result = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.create(data);
     } catch (originalError) {
       context.logger.error(
         this.moduleName,
@@ -154,10 +96,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         throw originalError;
       }
     }
-    return writtenOrders;
+    return data;
   }
 
-  private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
+  protected async query(context: ApplicationContext, querySpec: object): Promise<T[]> {
     try {
       const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)

@@ -11,15 +11,18 @@ import {
   ConsolidationOrderCase,
   RawConsolidationOrder,
   TransferOrder,
-  TransferOrderAction,
-  isConsolidationOrder,
   isTransferOrder,
+  OrderAction,
+  Order,
+  ConsolidationOrderActionRejection,
+  ConsolidationHistory,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
+import { ConsolidationOrdersCosmosDbRepository } from '../../adapters/gateways/consolidations.cosmosdb.repository';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -41,6 +44,7 @@ export class OrdersUseCase {
   private readonly casesGateway: CasesInterface;
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
+  private readonly consolidationsRepo: ConsolidationOrdersCosmosDbRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository;
 
   constructor(
@@ -49,12 +53,14 @@ export class OrdersUseCase {
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
     runtimeRepo: RuntimeStateRepository,
+    consolidationRepo: ConsolidationOrdersCosmosDbRepository,
   ) {
     this.casesRepo = casesRepo;
     this.casesGateway = casesGateway;
     this.ordersRepo = ordersRepo;
     this.ordersGateway = ordersGateway;
     this.runtimeStateRepo = runtimeRepo;
+    this.consolidationsRepo = consolidationRepo;
   }
 
   public async getOrders(
@@ -70,14 +76,17 @@ export class OrdersUseCase {
     return this.casesGateway.getSuggestedCases(context, caseId);
   }
 
-  public async updateOrder(
+  public async updateTransferOrder(
     context: ApplicationContext,
     id: string,
-    data: TransferOrderAction,
+    data: OrderAction<TransferOrder>,
   ): Promise<string> {
-    const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
-    await this.ordersRepo.updateOrder(context, id, data);
-    const order = await this.ordersRepo.getOrder(context, id, data.caseId);
+    const initialOrder = await this.ordersRepo.getOrder(context, id, data.order.caseId);
+    let order: Order;
+    if (isTransferOrder(data.order)) {
+      await this.ordersRepo.updateOrder(context, id, data);
+      order = await this.ordersRepo.getOrder(context, id, data.order.caseId);
+    }
 
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
@@ -191,33 +200,24 @@ export class OrdersUseCase {
 
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    const writtenConsolidations = await this.ordersRepo.putOrders(
+    const writtenConsolidations = await this.consolidationsRepo.putOrders(
       context,
       Array.from(consolidationsByJobId.values()),
     );
     context.logger.info(MODULE_NAME, 'Consolidations Written to Cosmos: ', writtenConsolidations);
 
     for (const order of consolidations) {
-      const consolidation: ConsolidationOrder = {
-        caseId: order.caseId,
-        orderType: 'consolidation',
-        orderDate: order.orderDate,
+      const history: ConsolidationHistory = {
         status: 'pending',
-        docketEntries: order.docketEntries,
-        divisionCode: order.courtDivision,
-        courtName: order.courtName,
-        jobId: order.jobId,
         childCases: [],
       };
-      if (isConsolidationOrder(consolidation)) {
-        const caseHistory: CaseHistory = {
-          caseId: order.caseId,
-          documentType: 'AUDIT_CONSOLIDATION',
-          before: null,
-          after: consolidation,
-        };
-        await this.casesRepo.createCaseHistory(context, caseHistory);
-      }
+      const caseHistory: CaseHistory = {
+        caseId: order.caseId,
+        documentType: 'AUDIT_CONSOLIDATION',
+        before: null,
+        after: history,
+      };
+      await this.casesRepo.createCaseHistory(context, caseHistory);
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
@@ -232,6 +232,51 @@ export class OrdersUseCase {
       startingTxId,
       maxTxId,
     };
+  }
+
+  public async rejectConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionRejection,
+  ) {
+    // TODO: implement and define type for `data`
+
+    // TODO: move this stuff into use case
+    // UPDATE existing "pending" consolidation order [orders]
+    // ADD "reject" consolidation order [orders]
+
+    // WHAT DO WE NEED FROM REQ
+
+    const { rejectedCases, ...originalOrder } = data;
+    const rejectedChildCases = data.childCases.filter((c) => rejectedCases.includes(c.caseId));
+    const remainingChildCases = data.childCases.filter((c) => !rejectedCases.includes(c.caseId));
+
+    const doSplit = !remainingChildCases.length;
+    if (doSplit) {
+      originalOrder.childCases = remainingChildCases;
+    } else {
+      originalOrder.status = 'rejected';
+      originalOrder.childCases = rejectedChildCases;
+    }
+
+    // persist the originalConsolidationOrder to cosmos
+    this.consolidationsRepo.update(context, originalOrder.id, originalOrder);
+
+    if (doSplit) {
+      const rejectConsolidation: ConsolidationOrder = {
+        consolidationId: 'tbd',
+        orderType: 'consolidation',
+        status: 'rejected',
+        orderDate: data.orderDate,
+        docketEntries: data.docketEntries,
+        courtName: data.courtName,
+        divisionCode: data.divisionCode,
+        jobId: data.jobId,
+        childCases: rejectedChildCases,
+      };
+      this.consolidationsRepo.put(context, rejectConsolidation);
+    }
+
+    // UPDATE the case detail history for list of reject cases [cases] with document type AUDIT_CONSOLIDATION
   }
 
   public async mapConsolidations(
@@ -266,10 +311,12 @@ export class OrdersUseCase {
       }
     }
 
+    const consolidationId = crypto.randomUUID();
+
     jobToCaseMap.forEach((caseSummaries, jobId) => {
       const firstOrder = caseSummaries.values().next().value;
       const consolidationOrder: ConsolidationOrder = {
-        caseId: firstOrder.caseId,
+        consolidationId,
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',
