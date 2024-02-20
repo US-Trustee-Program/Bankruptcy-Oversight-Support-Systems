@@ -20,6 +20,7 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { CasesLocalGateway } from '../../adapters/gateways/mock.cases.gateway';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -166,6 +167,7 @@ describe('Orders use case', () => {
       consolidations[2].leadCase,
       ...consolidations[2].childCases,
     ];
+
     jest
       .spyOn(CasesLocalGateway.prototype, 'getCaseSummary')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
@@ -183,6 +185,35 @@ describe('Orders use case', () => {
     //Commenting out because it will mostl ikely be unnecessary
     //expect(mockPutOrders.mock.calls[1][1]).toEqual(consolidations);
     expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
+  });
+
+  test('mapConsolidations should fetch a lead case if a case ID is found in an raw record in DXTR', async () => {
+    const jobId = 0;
+
+    // Add two consolidation orders, each with a lead case ID. One lead case ID will return a case, the other will not.
+    const rawConsolidationOrders = [
+      MockData.getRawConsolidationOrder({
+        override: { jobId, caseId: '999-99-11111', leadCaseIdHint: '99-00000' },
+      }),
+      MockData.getRawConsolidationOrder({
+        override: { jobId, caseId: '999-99-22222', leadCaseIdHint: '99-99999' },
+      }),
+    ];
+
+    jest
+      .spyOn(CasesLocalGateway.prototype, 'getCaseSummary')
+      .mockResolvedValueOnce(MockData.getCaseSummary({ override: { caseId: '999-99-00000' } }))
+      .mockRejectedValue(
+        new NotFoundError('MOCK', { message: 'Case summary not found for case ID.' }),
+      );
+
+    // The consolidation order should contain three cases. One for each raw order, and one for the returned lead case.
+    const map = await useCase.mapConsolidations(mockContext, rawConsolidationOrders);
+    const caseIds = map.get(jobId).childCases.map((c) => c.caseId);
+    expect(caseIds).toHaveLength(3);
+    expect(caseIds).toContain('999-99-00000');
+    expect(caseIds).toContain('999-99-11111');
+    expect(caseIds).toContain('999-99-22222');
   });
 
   test('should handle a missing order runtime state when a starting transaction ID is provided', async () => {
