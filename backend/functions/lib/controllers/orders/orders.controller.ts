@@ -7,10 +7,16 @@ import {
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
+  getConsolidationRepository,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsResponse } from '../controller-types';
-import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import {
+  Order,
+  OrderAction,
+  ConsolidationOrderActionRejection,
+  TransferOrder,
+} from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
@@ -29,6 +35,7 @@ export class OrdersController {
       getOrdersRepository(context),
       getOrdersGateway(context),
       getRuntimeStateRepository(context),
+      getConsolidationRepository(context),
     );
   }
 
@@ -66,11 +73,11 @@ export class OrdersController {
   public async updateOrder(
     context: ApplicationContext,
     id: string,
-    data: TransferOrderAction,
+    data: OrderAction<TransferOrder>,
   ): Promise<PatchOrderResponse> {
     // TODO: Need to sanitize id and data.
     try {
-      const result = await this.useCase.updateOrder(context, id, data);
+      const result = await this.useCase.updateTransferOrder(context, id, data);
       return {
         success: true,
         body: result,
@@ -88,6 +95,19 @@ export class OrdersController {
   ): Promise<SyncOrdersStatus> {
     try {
       const result = await this.useCase.syncOrders(context, options);
+      return result;
+    } catch (originalError) {
+      throw originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    }
+  }
+  public async rejectConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionRejection,
+  ) {
+    try {
+      const result = await this.useCase.rejectConsolidation(context, data);
       return result;
     } catch (originalError) {
       throw originalError instanceof CamsError

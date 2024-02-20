@@ -201,6 +201,7 @@ export default function DataVerificationScreen() {
                         key={`accordion-${order.id}`}
                         order={order}
                         regionsMap={regionsMap}
+                        officesList={officesList}
                         orderType={orderType}
                         statusType={transferStatusType}
                         onOrderUpdate={handleOrderUpdate}

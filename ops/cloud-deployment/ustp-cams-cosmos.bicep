@@ -24,6 +24,10 @@ param databaseContainers array = [
     partitionKey1: '/caseId'
   }
   {
+    name: 'consolidations'
+    partitionKey1: '/consolidationId'
+  }
+  {
     name: 'runtime-state'
     partitionKey1: '/documentType'
   }
