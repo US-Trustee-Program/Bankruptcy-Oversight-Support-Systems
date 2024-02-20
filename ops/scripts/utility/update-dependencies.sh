@@ -30,5 +30,15 @@ npm ci
 npm update --save
 popd || exit
 
+pushd dev-tools || exit
+npm run clean
+npm ci
+npm update --save
+popd || exit
+
+git add .
+git commit -m "Update all npm projects"
+git push -u origin dependency-updates
+
 git checkout "$CURRENT_BRANCH"
 git stash pop
