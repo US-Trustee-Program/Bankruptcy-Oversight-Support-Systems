@@ -21,7 +21,7 @@
     "@azure/identity": "^3.4.2",
     "@faker-js/faker": "^8.4.1",
     "@types/node": "^20.11.19",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
     "dotenv": "^16.4.5",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
