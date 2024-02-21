@@ -16,6 +16,8 @@ import {
   Order,
   ConsolidationOrderActionRejection,
   ConsolidationHistory,
+  OrderStatus,
+  ConsolidationOrderActionApproval,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
@@ -23,7 +25,8 @@ import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
 import { ConsolidationOrdersCosmosDbRepository } from '../../adapters/gateways/consolidations.cosmosdb.repository';
-
+import { sortDatesReverse } from '../../../../../common/src/date-helper';
+import { isConsolidationHistory } from '../../../../../common/src/cams/orders';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -200,7 +203,7 @@ export class OrdersUseCase {
 
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    const writtenConsolidations = await this.consolidationsRepo.putOrders(
+    const writtenConsolidations = await this.consolidationsRepo.putAll(
       context,
       Array.from(consolidationsByJobId.values()),
     );
@@ -234,49 +237,76 @@ export class OrdersUseCase {
     };
   }
 
+  public async approveConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionApproval,
+  ) {
+    const { approvedCases, leadCase, ...provisionalOrder } = data;
+    await this.handleConsolidation(context, 'approved', provisionalOrder, approvedCases, leadCase);
+  }
+
   public async rejectConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ) {
-    // TODO: implement and define type for `data`
+    const { rejectedCases, ...provisionalOrder } = data;
+    await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
+  }
 
-    // TODO: move this stuff into use case
-    // UPDATE existing "pending" consolidation order [orders]
-    // ADD "reject" consolidation order [orders]
+  private async handleConsolidation(
+    context: ApplicationContext,
+    status: OrderStatus,
+    provisionalOrder: ConsolidationOrder,
+    includedCases: string[],
+    leadCase?: ConsolidationOrderCase,
+  ) {
+    const includedChildCases = provisionalOrder.childCases.filter((c) =>
+      includedCases.includes(c.caseId),
+    );
+    const remainingChildCases = provisionalOrder.childCases.filter(
+      (c) => !includedCases.includes(c.caseId),
+    );
 
-    // WHAT DO WE NEED FROM REQ
-
-    const { rejectedCases, ...originalOrder } = data;
-    const rejectedChildCases = data.childCases.filter((c) => rejectedCases.includes(c.caseId));
-    const remainingChildCases = data.childCases.filter((c) => !rejectedCases.includes(c.caseId));
-
-    const doSplit = !remainingChildCases.length;
+    const doSplit = remainingChildCases.length > 0;
+    const newConsolidation: ConsolidationOrder = {
+      ...provisionalOrder,
+      id: undefined,
+      consolidationId: crypto.randomUUID(),
+      status,
+      childCases: includedChildCases,
+      leadCase,
+    };
     if (doSplit) {
-      originalOrder.childCases = remainingChildCases;
+      provisionalOrder.childCases = remainingChildCases;
+      await this.consolidationsRepo.update(context, provisionalOrder.id, provisionalOrder);
     } else {
-      originalOrder.status = 'rejected';
-      originalOrder.childCases = rejectedChildCases;
+      await this.consolidationsRepo.delete(
+        context,
+        provisionalOrder.id,
+        provisionalOrder.consolidationId,
+      );
     }
 
-    // persist the originalConsolidationOrder to cosmos
-    this.consolidationsRepo.update(context, originalOrder.id, originalOrder);
-
-    if (doSplit) {
-      const rejectConsolidation: ConsolidationOrder = {
-        consolidationId: 'tbd',
-        orderType: 'consolidation',
-        status: 'rejected',
-        orderDate: data.orderDate,
-        docketEntries: data.docketEntries,
-        courtName: data.courtName,
-        divisionCode: data.divisionCode,
-        jobId: data.jobId,
-        childCases: rejectedChildCases,
+    await this.consolidationsRepo.put(context, newConsolidation);
+    for (const childCase of newConsolidation.childCases) {
+      const history: ConsolidationHistory = {
+        status,
+        childCases: [],
       };
-      this.consolidationsRepo.put(context, rejectConsolidation);
-    }
+      const fullHistory = await this.casesRepo.getCaseHistory(context, childCase.caseId);
+      const before = fullHistory
+        .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
+        .sort((a, b) => sortDatesReverse(a.occurredAtTimestamp, b.occurredAtTimestamp))
+        .shift()?.after;
 
-    // UPDATE the case detail history for list of reject cases [cases] with document type AUDIT_CONSOLIDATION
+      const caseHistory: CaseHistory = {
+        caseId: childCase.caseId,
+        documentType: 'AUDIT_CONSOLIDATION',
+        before: isConsolidationHistory(before) ? before : undefined,
+        after: history,
+      };
+      await this.casesRepo.createCaseHistory(context, caseHistory);
+    }
   }
 
   public async mapConsolidations(
@@ -298,7 +328,6 @@ export class OrdersUseCase {
       if (maybeLeadCaseId && !caseMap.has(maybeLeadCaseId) && !notFound.has(maybeLeadCaseId)) {
         try {
           const maybeLeadCase = await this.casesGateway.getCaseSummary(context, maybeLeadCaseId);
-          // TODO: we need something that has docket entries
           if (maybeLeadCase) {
             caseMap.set(maybeLeadCaseId, {
               ...maybeLeadCase,

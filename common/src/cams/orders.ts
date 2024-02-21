@@ -5,6 +5,12 @@ export type OrderType = 'transfer' | 'consolidation';
 
 export type ConsolidationOrderActionRejection = ConsolidationOrder & {
   rejectedCases: Array<string>;
+  leadCase: undefined;
+};
+
+export type ConsolidationOrderActionApproval = ConsolidationOrder & {
+  approvedCases: Array<string>;
+  leadCase: ConsolidationOrderCase;
 };
 
 export type TransferOrder = CaseSummary & {
@@ -31,6 +37,7 @@ export type ConsolidationOrder = {
   leadCaseIdHint?: string;
   leadCase?: ConsolidationOrderCase;
   childCases: Array<ConsolidationOrderCase>;
+  reason?: string;
 };
 
 export type ConsolidationOrderCase = CaseSummary & {
@@ -62,6 +69,10 @@ export interface ConsolidationHistory {
 
 export function isTransferOrder(order: Order): order is TransferOrder {
   return order.orderType === 'transfer';
+}
+
+export function isConsolidationHistory(history: unknown): history is ConsolidationHistory {
+  return typeof history === 'object' && 'childCases' in history && 'status' in history;
 }
 
 export function isConsolidationOrder(order: Order): order is ConsolidationOrder {
