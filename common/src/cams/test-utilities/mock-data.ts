@@ -149,7 +149,7 @@ function getConsolidationOrder(
   const summary = getCaseSummary({ entityType });
 
   const consolidationOrder: ConsolidationOrder = {
-    caseId: summary.caseId,
+    consolidationId: crypto.randomUUID(),
     courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',
