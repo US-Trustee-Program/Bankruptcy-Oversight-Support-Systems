@@ -27,9 +27,8 @@ const httpTrigger: AzureFunction = async function (
     if (procedure === 'reject') {
       await consolidationsController.rejectConsolidation(applicationContext, body);
     } else if (procedure === 'approve') {
-      // handle approve
+      await consolidationsController.approveConsolidation(applicationContext, body);
     } else {
-      // error
       throw new BadRequestError(MODULE_NAME, {
         message: `Could not perform ${procedure}.`,
       });

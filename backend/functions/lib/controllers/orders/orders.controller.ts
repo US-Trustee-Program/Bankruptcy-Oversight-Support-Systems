@@ -2,19 +2,20 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import {
-  getCasesRepository,
   getCasesGateway,
+  getCasesRepository,
+  getConsolidationRepository,
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
-  getConsolidationRepository,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsResponse } from '../controller-types';
 import {
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
   Order,
   OrderAction,
-  ConsolidationOrderActionRejection,
   TransferOrder,
 } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
@@ -102,13 +103,26 @@ export class OrdersController {
         : new UnknownError(MODULE_NAME, { originalError });
     }
   }
+
   public async rejectConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ) {
     try {
-      const result = await this.useCase.rejectConsolidation(context, data);
-      return result;
+      return await this.useCase.rejectConsolidation(context, data);
+    } catch (originalError) {
+      throw originalError instanceof CamsError
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    }
+  }
+
+  public async approveConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionApproval,
+  ) {
+    try {
+      return await this.useCase.approveConsolidation(context, data);
     } catch (originalError) {
       throw originalError instanceof CamsError
         ? originalError
