@@ -18,8 +18,8 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: List existing branch deployments
         run: |
-          echo "Execute an az cli command to find all branch deployments in Azure environment"
-          # TODO List branch deployment branch name and hash id
+          echo "List Azure resource groups of current branch deployment"
+          az group list --query "[?tags.branchName].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
   check:
     runs-on: ubuntu-latest
