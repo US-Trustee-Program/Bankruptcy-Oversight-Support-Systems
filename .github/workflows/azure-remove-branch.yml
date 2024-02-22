@@ -32,6 +32,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Validate resources
+        id: check
         run: |
           echo "Does resources with ${{ inputs.hashId }} exist?"
           count=$(az group list --query "length([?id.contains(@,'${{ inputs.hashId }}')])")
