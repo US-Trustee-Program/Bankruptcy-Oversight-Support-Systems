@@ -35,7 +35,7 @@ jobs:
         run: |
           echo "Does resources with ${{ inputs.hashId }} exist?"
           count=$(az group list --query "length([?id.contains(@,'${{ inputs.hashId }}')])")
-          if [[$count -eq 2]]; then
+          if [[ $count -eq 2 ]]; then
             echo 'Expected resources found.'
             echo "executeCleanup=true" >> $GITHUB_OUTPUT
           else
