@@ -7,6 +7,7 @@ import {
   getRuntimeStateRepository,
   getCasesRepository,
   getCasesGateway,
+  getConsolidationRepository,
 } from '../../factory';
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
@@ -30,6 +31,7 @@ describe('Orders use case', () => {
   let casesRepo;
   let runtimeStateRepo;
   let casesGateway;
+  let consolidationRepo;
   let useCase: OrdersUseCase;
 
   beforeEach(async () => {
@@ -39,12 +41,14 @@ describe('Orders use case', () => {
     ordersRepo = getOrdersRepository(mockContext);
     casesRepo = getCasesRepository(mockContext);
     casesGateway = getCasesGateway(mockContext);
+    consolidationRepo = getConsolidationRepository(mockContext);
     useCase = new OrdersUseCase(
       casesRepo,
       casesGateway,
       ordersRepo,
       ordersGateway,
       runtimeStateRepo,
+      consolidationRepo,
     );
   });
 
@@ -102,7 +106,7 @@ describe('Orders use case', () => {
     const transferInFn = jest.spyOn(casesRepo, 'createTransferIn');
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
-    await useCase.updateOrder(mockContext, order.id, action);
+    await useCase.updateTransferOrder(mockContext, order.id, action);
     expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, action);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
     expect(transferOutFn).toHaveBeenCalledWith(mockContext, transferOut);
@@ -125,7 +129,7 @@ describe('Orders use case', () => {
 
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
-    await useCase.updateOrder(mockContext, order.id, orderTransfer);
+    await useCase.updateTransferOrder(mockContext, order.id, orderTransfer);
     expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
     expect(auditFn).toHaveBeenCalled();

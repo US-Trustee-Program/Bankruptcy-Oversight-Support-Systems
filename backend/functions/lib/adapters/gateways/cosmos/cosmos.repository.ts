@@ -54,6 +54,14 @@ export class CosmosDbCrudRepository<T extends Item> {
     }
   }
 
+  public async getAll(context: ApplicationContext): Promise<Array<T>> {
+    const querySpec = {
+      query: 'SELECT * FROM c ',
+      parameters: [],
+    };
+    return await this.query(context, querySpec);
+  }
+
   public async update(context: ApplicationContext, id: string, data: T) {
     try {
       await this.cosmosDbClient

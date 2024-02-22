@@ -3,7 +3,6 @@ import { CasesCosmosDbRepository } from './cases.cosmosdb.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
-import { throwAggregateAuthenticationError } from '../../testing/mock.cosmos-client-humble.helpers';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import {
@@ -11,6 +10,7 @@ import {
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
 import { CaseAssignmentHistory } from '../types/case.history';
+import { AggregateAuthenticationError } from '@azure/identity';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
@@ -72,22 +72,22 @@ describe('Runtime State Repo', () => {
   });
 
   test('should throw a ServerConfigError if AggregateAuthenticationError is encountered', async () => {
+    const cosmosdbAggregateError = new AggregateAuthenticationError([], 'Mocked Test Error');
     const serverConfigError = new ServerConfigError('TEST', {
       message: 'Failed to authenticate to Azure',
+      originalError: cosmosdbAggregateError,
     });
-    jest
-      .spyOn(HumbleQuery.prototype, 'fetchAll')
-      .mockImplementation(
-        throwAggregateAuthenticationError<{ resources: Array<TransferIn | TransferOut> }>(),
-      );
+    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockImplementation(() => {
+      throw cosmosdbAggregateError;
+    });
 
-    jest
-      .spyOn(HumbleItem.prototype, 'replace')
-      .mockImplementation(throwAggregateAuthenticationError());
+    jest.spyOn(HumbleItem.prototype, 'replace').mockImplementation(() => {
+      throw cosmosdbAggregateError;
+    });
 
-    jest
-      .spyOn(HumbleItems.prototype, 'create')
-      .mockImplementation(throwAggregateAuthenticationError<void>());
+    jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+      throw cosmosdbAggregateError;
+    });
 
     await expect(repo.getTransfers(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(
       serverConfigError,

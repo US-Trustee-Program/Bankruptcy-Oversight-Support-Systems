@@ -95,14 +95,14 @@ type TransferOrderActionApproval = {
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
 
-type OrderActionRejection<T = TransferOrder | ConsolidationOrder> = {
+type OrderActionRejection<T = TransferOrder> = {
   id: string;
   status: 'rejected';
   reason?: string;
   order: T;
 };
 
-type OrderActionApproval<T = TransferOrder | ConsolidationOrder> = {
+type OrderActionApproval<T = TransferOrder> = {
   id: string;
   status: 'approved';
   order: T;

@@ -46,7 +46,7 @@ describe('Orders Function tests', () => {
 
     updateOrder = jest
       .fn()
-      .mockImplementation((context: ApplicationContext, data: TransferOrderAction) => {
+      .mockImplementation((_context: ApplicationContext, data: TransferOrderAction) => {
         return Promise.resolve({ success: true, body: data });
       });
     const request = {
@@ -54,6 +54,7 @@ describe('Orders Function tests', () => {
       method: 'PATCH',
       body: {
         id,
+        orderType: 'transfer',
       },
     };
     const expectedResponseBody = {
@@ -94,6 +95,7 @@ describe('Orders Function tests', () => {
       method: 'PATCH',
       body: {
         id,
+        orderType: 'transfer',
       },
     };
     updateOrder = jest

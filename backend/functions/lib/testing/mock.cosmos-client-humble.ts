@@ -54,7 +54,7 @@ export class HumbleItems<T> {
     const id = crypto.randomUUID().toString();
     const itemWithId = { ...item, id };
     this.container.map.set(id, itemWithId);
-    return this.container.map.get(id);
+    return { item: this.container.map.get(id) };
   }
   async upsert(item: T) {
     const id = item['id'] || crypto.randomUUID().toString();

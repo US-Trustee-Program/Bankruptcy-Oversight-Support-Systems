@@ -12,12 +12,12 @@ import {
   RawConsolidationOrder,
   TransferOrder,
   isTransferOrder,
-  OrderAction,
   Order,
   ConsolidationOrderActionRejection,
   ConsolidationHistory,
   OrderStatus,
   ConsolidationOrderActionApproval,
+  TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
@@ -27,6 +27,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { ConsolidationOrdersCosmosDbRepository } from '../../adapters/gateways/consolidations.cosmosdb.repository';
 import { sortDatesReverse } from '../../../../../common/src/date-helper';
 import { isConsolidationHistory } from '../../../../../common/src/cams/orders';
+import * as crypto from 'crypto';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -82,13 +83,13 @@ export class OrdersUseCase {
   public async updateTransferOrder(
     context: ApplicationContext,
     id: string,
-    data: OrderAction<TransferOrder>,
+    data: TransferOrderAction,
   ): Promise<string> {
-    const initialOrder = await this.ordersRepo.getOrder(context, id, data.order.caseId);
+    const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     let order: Order;
-    if (isTransferOrder(data.order)) {
+    if (isTransferOrder(initialOrder)) {
       await this.ordersRepo.updateOrder(context, id, data);
-      order = await this.ordersRepo.getOrder(context, id, data.order.caseId);
+      order = await this.ordersRepo.getOrder(context, id, data.caseId);
     }
 
     if (isTransferOrder(order)) {
@@ -175,14 +176,8 @@ export class OrdersUseCase {
       context,
       startingTxId,
     );
-    context.logger.info(MODULE_NAME, 'Got orders from gateway (DXTR)', {
-      maxTxId,
-      transfers,
-      consolidations,
-    });
 
     const writtenTransfers = await this.ordersRepo.putOrders(context, transfers);
-    context.logger.info(MODULE_NAME, 'Put orders to repo (Cosmos)');
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
@@ -200,14 +195,9 @@ export class OrdersUseCase {
     consolidations.forEach((consolidation) => {
       jobIds.add(consolidation.jobId);
     });
-
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    const writtenConsolidations = await this.consolidationsRepo.putAll(
-      context,
-      Array.from(consolidationsByJobId.values()),
-    );
-    context.logger.info(MODULE_NAME, 'Consolidations Written to Cosmos: ', writtenConsolidations);
+    await this.consolidationsRepo.putAll(context, Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
       const history: ConsolidationHistory = {
@@ -249,6 +239,11 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ) {
+    // TODO CAMS-270
+    // Need to check the following before creating a ConsolidationOrder with status of reject:
+    // - rejectedCases exist and length > 0
+    // - valid case id supplied (Noticed a reject record got created when passing a list of invalid string values)
+
     const { rejectedCases, ...provisionalOrder } = data;
     await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
@@ -340,10 +335,9 @@ export class OrdersUseCase {
       }
     }
 
-    const consolidationId = crypto.randomUUID();
-
     jobToCaseMap.forEach((caseSummaries, jobId) => {
-      const firstOrder = caseSummaries.values().next().value;
+      const consolidationId = crypto.randomUUID();
+      const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
         orderType: 'consolidation',
@@ -357,7 +351,6 @@ export class OrdersUseCase {
       };
       consolidationsByJobId.set(jobId, consolidationOrder);
     });
-
     return consolidationsByJobId;
   }
 }
