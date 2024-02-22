@@ -7,6 +7,7 @@ export function syncOrders() {
     console.log('ORDER_SYNC_ENDPOINT environment variable required.');
     return;
   }
+  console.log(endpoint);
   fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20,7 +21,7 @@ export function syncOrders() {
         .then((data) => console.log('Loaded orders:', JSON.stringify(data, null, 2)))
         .catch((error) => console.log('Unable to read API response:', error));
     })
-    .catch((error) => console.log('Unable to sync orders. Reason:', error.message));
+    .catch((error) => console.log('Unable to sync orders. Reason:', error.message, error));
 }
 
 syncOrders();

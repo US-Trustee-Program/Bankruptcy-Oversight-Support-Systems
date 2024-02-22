@@ -15,8 +15,7 @@ import {
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
   Order,
-  OrderAction,
-  TransferOrder,
+  TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 
@@ -74,7 +73,7 @@ export class OrdersController {
   public async updateOrder(
     context: ApplicationContext,
     id: string,
-    data: OrderAction<TransferOrder>,
+    data: TransferOrderAction,
   ): Promise<PatchOrderResponse> {
     // TODO: Need to sanitize id and data.
     try {

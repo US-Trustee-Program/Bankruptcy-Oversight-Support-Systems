@@ -31,7 +31,7 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('orders controller tests', () => {
-  const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
+  const mockOrders = [MockData.getTransferOrder()];
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
     id,
@@ -56,7 +56,9 @@ describe('orders controller tests', () => {
   });
 
   test('should update an order', async () => {
-    const updateOrderSpy = jest.spyOn(OrdersUseCase.prototype, 'updateOrder').mockResolvedValue(id);
+    const updateOrderSpy = jest
+      .spyOn(OrdersUseCase.prototype, 'updateTransferOrder')
+      .mockResolvedValue(id);
     const expectedResult = {
       success: true,
       body: id,
@@ -98,7 +100,7 @@ describe('orders controller tests', () => {
   test('should rethrow CamsError if CamsError is encountered', async () => {
     const camsError = new CamsError('TEST');
     jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(camsError);
-    jest.spyOn(OrdersUseCase.prototype, 'updateOrder').mockRejectedValue(camsError);
+    jest.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(camsError);
     jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(camsError);
     jest.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(camsError);
 
@@ -117,7 +119,7 @@ describe('orders controller tests', () => {
     const originalError = new Error('Test');
     const unknownError = new UnknownError('TEST', { originalError });
     jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'updateOrder').mockRejectedValue(originalError);
+    jest.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(originalError);
     jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(originalError);
     jest.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(originalError);
 

@@ -79,7 +79,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
       if (!history.occurredAtTimestamp) {
         history.occurredAtTimestamp = new Date().toISOString();
       }
-      const item = await this.cosmosDbClient
+      const { item } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(history);

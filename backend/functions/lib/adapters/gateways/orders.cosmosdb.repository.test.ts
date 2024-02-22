@@ -49,14 +49,31 @@ describe('Test case assignment cosmosdb repository tests', () => {
     expect(mockFetchAll).toHaveBeenCalled();
   });
 
-  test('should get an order', async () => {
-    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
+  test('should get a transfer order', async () => {
+    const mockOrders = [MockData.getTransferOrder()];
     const order = { ...mockOrders[0] };
     const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
       resource: order,
     });
 
     const testResult = await repository.getOrder(applicationContext, order.id, order.caseId);
+
+    expect(testResult).toEqual(order);
+    expect(mockRead).toHaveBeenCalled();
+  });
+
+  test('should get a consolidation order', async () => {
+    const mockOrders = [MockData.getConsolidationOrder()];
+    const order = { ...mockOrders[0] };
+    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
+      resource: order,
+    });
+
+    const testResult = await repository.getOrder(
+      applicationContext,
+      order.id,
+      order.consolidationId,
+    );
 
     expect(testResult).toEqual(order);
     expect(mockRead).toHaveBeenCalled();

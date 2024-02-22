@@ -324,7 +324,6 @@ export class DxtrOrdersGateway implements OrdersGateway {
         R.REGION_NAME AS regionName,
         FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
         TX.JOB_ID AS jobId,
-        TX.REC AS transactionRecord,
         CASE
           WHEN PATINDEX('%WARN: %', TX.REC) > 0
           THEN CS.CS_DIV + '-' + substring(REC, PATINDEX('%WARN: %', REC)+6, 8)

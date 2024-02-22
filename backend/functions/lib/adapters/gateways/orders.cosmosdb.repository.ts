@@ -6,12 +6,7 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
-import {
-  ConsolidationOrder,
-  Order,
-  OrderAction,
-  TransferOrder,
-} from '../../../../../common/src/cams/orders';
+import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 const CONTAINER_NAME: string = 'orders';
@@ -70,16 +65,12 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     }
   }
 
-  async updateOrder<T = TransferOrder | ConsolidationOrder>(
-    context: ApplicationContext,
-    id: string,
-    data: OrderAction<T>,
-  ) {
+  async updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction) {
     try {
       const { resource: existingOrder } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(id, data.order['caseId'])
+        .item(id, data.caseId)
         .read();
 
       if (!existingOrder) {
@@ -90,11 +81,10 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
 
       // ONLY gather the mutable properties, however many there are.
       // const { id: _id, ...mutableProperties } = data;
-      const { id: _id, order, ...mutableProperties } = data;
+      const { id: _id, ...mutableProperties } = data;
 
       const updatedOrder = {
         ...existingOrder,
-        ...order,
         ...mutableProperties,
       };
 
