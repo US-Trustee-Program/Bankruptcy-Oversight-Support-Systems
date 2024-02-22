@@ -12,8 +12,8 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "isBranch")
-requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropiate Azure resource tagging, these should be required when isBranch == true
+requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "isBranchDeployment")
+requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropiate Azure resource tagging, these should be required when isBranchDeployment == true
 
 function validation_func() {
     local location=$1
@@ -46,7 +46,7 @@ function validation_func() {
         databaseResourceGroupName=*) databaseResourceGroupName=${p/*=/} ;;
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
         webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
-        isBranch=*) isBranch=${p/*=/} ;;
+        isBranchDeployment=*) isBranchDeployment=${p/*=/} ;;
         branchName=*) branchName=${p/*=/} ;;
         branchHashId=*) branchHashId=${p/*=/} ;;
         *)
@@ -64,7 +64,7 @@ function validation_func() {
         fi
     done
     # Check that required params for branch deployments has been set
-    if [[ "${isBranch}" == "true" ]]; then
+    if [[ "${isBranchDeployment}" == "true" ]]; then
         echo "Recognize branch deployment for ${branchName} ${branchHashId}"
         for r in "${requiredBranchDeployParams[@]}"; do
             varOfVar=${r}
