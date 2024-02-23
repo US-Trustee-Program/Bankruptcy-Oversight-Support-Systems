@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getRuntimeCosmosDbClient } from '../../factory';
+import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
@@ -19,7 +19,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getRuntimeCosmosDbClient(applicationContext);
+    this.cosmosDbClient = getCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
   }
 
