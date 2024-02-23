@@ -1,16 +1,10 @@
 import * as crypto from 'crypto';
-
-type QueryParameter = Record<string, string>;
-
-interface QueryOptions {
-  query: string;
-  parameters: Array<QueryParameter>;
-}
+import { QueryOptions } from '../cosmos-humble-objects/cosmos-items-humble';
 
 export class HumbleQuery<T> {
-  items: HumbleItems<T>;
+  items: HumbleItems;
   query: QueryOptions;
-  constructor(items: HumbleItems<T>, query: QueryOptions) {
+  constructor(items: HumbleItems, query: QueryOptions) {
     this.items = items;
     this.query = query;
   }
@@ -19,14 +13,14 @@ export class HumbleQuery<T> {
   }
 }
 
-export class HumbleItem<T> {
-  container: HumbleContainer<T>;
+export class HumbleItem {
+  container: HumbleContainer;
   id: string;
-  constructor(container: HumbleContainer<T>, id: string) {
+  constructor(container: HumbleContainer, id: string) {
     this.container = container;
     this.id = id;
   }
-  async read(): Promise<{ resource: T }> {
+  async read<T>(): Promise<{ resource: T }> {
     if (this.container.map.has(this.id)) {
       return {
         resource: this.container.map.get(this.id),
@@ -35,66 +29,74 @@ export class HumbleItem<T> {
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
   }
-  async replace(item: T): Promise<{ id: string }> {
+  async replace<T>(item: T): Promise<{ item: T }> {
     if (this.container.map.has(this.id)) {
       this.container.map.set(this.id, item);
-      return { id: this.id };
+      return { item };
+    }
+    // TODO: We should probably make this function work for real and throw a reasonable error.
+    // throw Error('Not found');
+  }
+  async delete<T>(item: T): Promise<{ item: T }> {
+    if (this.container.map.has(this.id)) {
+      this.container.map.delete(this.id);
+      return { item };
     }
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
   }
 }
 
-export class HumbleItems<T> {
-  container: HumbleContainer<T>;
-  constructor(container: HumbleContainer<T>) {
+export class HumbleItems {
+  container: HumbleContainer;
+  constructor(container: HumbleContainer) {
     this.container = container;
   }
-  async create(item: T) {
+  async create<T>(item: T) {
     const id = crypto.randomUUID().toString();
     const itemWithId = { ...item, id };
     this.container.map.set(id, itemWithId);
     return { item: this.container.map.get(id) };
   }
-  async upsert(item: T) {
+  async upsert<T>(item: T) {
     const id = item['id'] || crypto.randomUUID().toString();
     const itemWithId = { ...item, id };
     this.container.map.set(id, itemWithId);
     return this.container.map.get(id);
   }
-  query(query: QueryOptions) {
+  query<T>(query: QueryOptions): HumbleQuery<T> {
     return new HumbleQuery<T>(this, query);
   }
 }
 
-export class HumbleContainer<T> {
-  database: HumbleDatabase<T>;
+export class HumbleContainer {
+  database: HumbleDatabase;
   containerName: string;
-  map = new Map<string, T>();
-  constructor(database: HumbleDatabase<T>, containerName: string) {
+  map = new Map();
+  constructor(database: HumbleDatabase, containerName: string) {
     this.database = database;
     this.containerName = containerName;
   }
   public get items() {
-    return new HumbleItems<T>(this);
+    return new HumbleItems(this);
   }
   item(id: string, _partitionKey?: string) {
     return new HumbleItem(this, id);
   }
 }
 
-export class HumbleDatabase<T> {
+export class HumbleDatabase {
   databaseId: string;
   constructor(databaseId: string) {
     this.databaseId = databaseId;
   }
   container(containerName: string) {
-    return new HumbleContainer<T>(this, containerName);
+    return new HumbleContainer(this, containerName);
   }
 }
 
-export class HumbleClient<T> {
+export class HumbleClient {
   database(databaseId: string) {
-    return new HumbleDatabase<T>(databaseId);
+    return new HumbleDatabase(databaseId);
   }
 }

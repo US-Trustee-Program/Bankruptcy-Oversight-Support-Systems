@@ -1,18 +1,21 @@
 import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getOrdersCosmosDbClient } from '../../factory';
+import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
-import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { Order, TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import CosmosClientHumble from '../../cosmos-humble-objects/cosmos-client-humble';
+import { HumbleClient } from '../../testing/mock.cosmos-client-humble';
+import { QueryOptions } from '../../cosmos-humble-objects/cosmos-items-humble';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 const CONTAINER_NAME: string = 'orders';
 
 export class OrdersCosmosDbRepository implements OrdersRepository {
-  private cosmosDbClient;
+  private cosmosDbClient: CosmosClientHumble | HumbleClient;
 
   private containerName;
   private cosmosConfig: CosmosConfig;
@@ -24,7 +27,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     containerName: string = CONTAINER_NAME,
     moduleName: string = MODULE_NAME,
   ) {
-    this.cosmosDbClient = getOrdersCosmosDbClient(context);
+    this.cosmosDbClient = getCosmosDbClient(context);
     this.cosmosConfig = getCosmosConfig(context);
     this.containerName = containerName;
     this.moduleName = moduleName;
@@ -46,7 +49,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .item(id, partitionKey)
-        .read();
+        .read<TransferOrder>();
 
       return resource;
     } catch (originalError) {
@@ -71,7 +74,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .item(id, data.caseId)
-        .read();
+        .read<TransferOrder>();
 
       if (!existingOrder) {
         throw new NotFoundError(this.moduleName, {
@@ -122,7 +125,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
           const _result = await this.cosmosDbClient
             .database(this.cosmosConfig.databaseName)
             .container(this.containerName)
-            .items.create(order);
+            .items.create<Order>(order);
           writtenOrders.push(order);
         } catch (e) {
           if (!isPreExistingDocumentError(e)) {
@@ -147,12 +150,12 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     return writtenOrders;
   }
 
-  private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
+  private async queryData<T>(context: ApplicationContext, querySpec: QueryOptions): Promise<T[]> {
     try {
       const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .items.query(querySpec)
+        .items.query<T>(querySpec)
         .fetchAll();
       return results;
     } catch (originalError) {

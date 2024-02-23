@@ -7,7 +7,6 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { CaseDetail } from '../../adapters/types/cases';
 import {
-  ConsolidationOrder,
   ConsolidationOrderActionRejection,
   Order,
   TransferOrder,
@@ -156,21 +155,21 @@ describe('orders controller tests', () => {
       rejectedCases: [mockConsolidationOrder.childCases[0].caseId],
       leadCase: undefined,
     };
-
+    const expectedResult: ManageConsolidationResponse = {
+      success: true,
+      body: [mockConsolidationOrder],
+    };
+    jest
+      .spyOn(OrdersUseCase.prototype, 'rejectConsolidation')
+      .mockResolvedValue([mockConsolidationOrder]);
     const controller = new OrdersController(applicationContext);
 
-    const actualResult: ManageConsolidationResponse = await controller.rejectConsolidation(
+    const actualResult = await controller.rejectConsolidation(
       applicationContext,
       mockConsolidationOrderActionRejection,
     );
-
+    expect(actualResult).toEqual(expectedResult);
     expect(actualResult.success).toBeTruthy();
-
-    // TODO CAMS-270: This was awkward to do to drill down to the case id. May be better way.
-    const actualRejectedCaseId = (actualResult['body'] as ConsolidationOrder[]).find(
-      (el) => el.status == 'rejected',
-    ).childCases[0].caseId;
-    expect(actualRejectedCaseId).toEqual(mockConsolidationOrder.childCases[0].caseId);
   });
   test('should call reject consolidation and handle error', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
