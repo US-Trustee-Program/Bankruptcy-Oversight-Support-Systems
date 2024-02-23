@@ -24,8 +24,8 @@ import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
-import { ConsolidationOrdersCosmosDbRepository } from '../../adapters/gateways/consolidations.cosmosdb.repository';
-import { sortDatesReverse } from '../../../../../common/src/date-helper';
+import ConsolidationOrdersCosmosDbRepository from '../../adapters/gateways/consolidations.cosmosdb.repository';
+import { sortDates, sortDatesReverse } from '../../../../../common/src/date-helper';
 import { isConsolidationHistory } from '../../../../../common/src/cams/orders';
 import * as crypto from 'crypto';
 const MODULE_NAME = 'ORDERS_USE_CASE';
@@ -67,10 +67,12 @@ export class OrdersUseCase {
     this.consolidationsRepo = consolidationRepo;
   }
 
-  public async getOrders(
-    context: ApplicationContext,
-  ): Promise<Array<TransferOrder | ConsolidationOrder>> {
-    return this.ordersRepo.getOrders(context);
+  public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
+    const transferOrders = await this.ordersRepo.getOrders(context);
+    const consolidationOrders = await this.consolidationsRepo.getAll(context);
+    return transferOrders
+      .concat(consolidationOrders)
+      .sort((a, b) => sortDates(a.orderDate, b.orderDate));
   }
 
   public async getSuggestedCases(
@@ -238,14 +240,12 @@ export class OrdersUseCase {
   public async rejectConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
-  ) {
+  ): Promise<ConsolidationOrder[]> {
     // TODO CAMS-270
-    // Need to check the following before creating a ConsolidationOrder with status of reject:
-    // - rejectedCases exist and length > 0
     // - valid case id supplied (Noticed a reject record got created when passing a list of invalid string values)
 
     const { rejectedCases, ...provisionalOrder } = data;
-    await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
+    return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
 
   private async handleConsolidation(
@@ -254,14 +254,14 @@ export class OrdersUseCase {
     provisionalOrder: ConsolidationOrder,
     includedCases: string[],
     leadCase?: ConsolidationOrderCase,
-  ) {
+  ): Promise<ConsolidationOrder[]> {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
     const remainingChildCases = provisionalOrder.childCases.filter(
       (c) => !includedCases.includes(c.caseId),
     );
-
+    const response: Array<ConsolidationOrder> = [];
     const doSplit = remainingChildCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
@@ -274,15 +274,19 @@ export class OrdersUseCase {
     if (doSplit) {
       provisionalOrder.childCases = remainingChildCases;
       await this.consolidationsRepo.update(context, provisionalOrder.id, provisionalOrder);
+      response.push(provisionalOrder);
     } else {
+      // TODO: Do we want to consider a soft delete or just a status change?
       await this.consolidationsRepo.delete(
         context,
         provisionalOrder.id,
         provisionalOrder.consolidationId,
       );
+      //somehow signal this was a deletion
+      response.push(provisionalOrder);
     }
-
-    await this.consolidationsRepo.put(context, newConsolidation);
+    const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
+    response.push(createdConsolidation);
     for (const childCase of newConsolidation.childCases) {
       const history: ConsolidationHistory = {
         status,
@@ -302,6 +306,7 @@ export class OrdersUseCase {
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
+    return response;
   }
 
   public async mapConsolidations(

@@ -6,7 +6,7 @@ import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import { httpError } from '../lib/adapters/utils/http-response';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 
 dotenv.config();
 
@@ -20,19 +20,21 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   const consolidationsController = new OrdersController(applicationContext);
-  const procedure = consolidationsRequest?.params?.procedure;
-  const body = consolidationsRequest?.body;
+  const procedure = consolidationsRequest.params.procedure;
+  const body = consolidationsRequest.body;
+  let response;
 
   try {
     if (procedure === 'reject') {
-      await consolidationsController.rejectConsolidation(applicationContext, body);
+      response = await consolidationsController.rejectConsolidation(applicationContext, body);
     } else if (procedure === 'approve') {
-      await consolidationsController.approveConsolidation(applicationContext, body);
+      response = await consolidationsController.approveConsolidation(applicationContext, body);
     } else {
       throw new BadRequestError(MODULE_NAME, {
         message: `Could not perform ${procedure}.`,
       });
     }
+    functionContext.res = httpSuccess(response);
   } catch (originalError) {
     const error =
       originalError instanceof CamsError

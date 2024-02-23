@@ -1,4 +1,5 @@
 export function sortDates(dateA: Date | string, dateB: Date | string): number {
+  //Sort DESC
   if (dateA > dateB) {
     return 1;
   } else if (dateA == dateB) {
@@ -9,5 +10,6 @@ export function sortDates(dateA: Date | string, dateB: Date | string): number {
 }
 
 export function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
+  //Sort ASC
   return sortDates(dateA, dateB) * -1;
 }

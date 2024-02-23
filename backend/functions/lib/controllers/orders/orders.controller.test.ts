@@ -1,4 +1,3 @@
-import { OrdersController } from './orders.controller';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
@@ -6,10 +5,18 @@ import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
-import { CamsResponse } from '../controller-types';
 import { CaseDetail } from '../../adapters/types/cases';
-import { TransferOrderAction } from '../../../../../common/src/cams/orders';
+import {
+  ConsolidationOrder,
+  ConsolidationOrderActionRejection,
+  Order,
+  TransferOrder,
+  TransferOrderAction,
+} from '../../../../../common/src/cams/orders';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import { sortDates } from '../../../../../common/src/date-helper';
+import { ManageConsolidationResponse, OrdersController } from './orders.controller';
+import { CamsResponse } from '../controller-types';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -23,7 +30,7 @@ const syncResponse: SyncOrdersStatus = {
   finalSyncState: {
     documentType: 'ORDERS_SYNC_STATE',
     txId: '464',
-    id: '28e35739-58cd-400b-9d4b-26969773618b',
+    id: '28e35739-58cd-400b-9d4b-26969773 618b',
   },
   length: 13,
   startingTxId: '10',
@@ -31,23 +38,31 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('orders controller tests', () => {
-  const mockOrders = [MockData.getTransferOrder()];
+  const mockTransferOrder = new Array<Order>(MockData.getTransferOrder());
+  const mockConsolidationOrder = new Array<Order>(MockData.getConsolidationOrder());
+  const mockOrders = mockTransferOrder
+    .concat(mockConsolidationOrder)
+    .sort((a, b) => sortDates(a.orderDate, b.orderDate));
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
     id,
-    caseId: mockOrders[0].caseId,
+    caseId: (mockTransferOrder[0] as TransferOrder).caseId,
     status: 'rejected',
   };
   let applicationContext: ApplicationContext;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
   });
 
   test('should get orders', async () => {
-    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: mockOrders,
-    });
+    const mockRead = jest
+      .spyOn(HumbleQuery.prototype, 'fetchAll')
+      .mockResolvedValueOnce({
+        resources: mockTransferOrder,
+      })
+      .mockResolvedValueOnce({ resources: mockConsolidationOrder });
+
     const controller = new OrdersController(applicationContext);
     const result = await controller.getOrders(applicationContext);
     expect(result.success).toBeTruthy();
@@ -133,4 +148,43 @@ describe('orders controller tests', () => {
       unknownError,
     );
   });
+
+  test('should call reject consolidation', async () => {
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
+      ...mockConsolidationOrder,
+      rejectedCases: [mockConsolidationOrder.childCases[0].caseId],
+      leadCase: undefined,
+    };
+
+    const controller = new OrdersController(applicationContext);
+
+    const actualResult: ManageConsolidationResponse = await controller.rejectConsolidation(
+      applicationContext,
+      mockConsolidationOrderActionRejection,
+    );
+
+    expect(actualResult.success).toBeTruthy();
+
+    // TODO CAMS-270: This was awkward to do to drill down to the case id. May be better way.
+    const actualRejectedCaseId = (actualResult['body'] as ConsolidationOrder[]).find(
+      (el) => el.status == 'rejected',
+    ).childCases[0].caseId;
+    expect(actualRejectedCaseId).toEqual(mockConsolidationOrder.childCases[0].caseId);
+  });
+  test('should call reject consolidation and handle error', async () => {
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
+      ...mockConsolidationOrder,
+      rejectedCases: [],
+      leadCase: undefined,
+    };
+    const controller = new OrdersController(applicationContext);
+    expect(
+      controller.rejectConsolidation(applicationContext, mockConsolidationOrderActionRejection),
+    ).rejects.toThrow(CamsError);
+  });
+
+  test('should call accept consolidation', async () => {});
+  test('should call acctp consolidation and handle error', async () => {});
 });
