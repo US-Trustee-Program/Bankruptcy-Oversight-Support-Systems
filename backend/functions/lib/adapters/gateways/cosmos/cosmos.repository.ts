@@ -1,5 +1,5 @@
 import { AggregateAuthenticationError } from '@azure/identity';
-import { getCosmosConfig, getOrdersCosmosDbClient } from '../../../factory';
+import { getCosmosConfig, getCosmosDbClient } from '../../../factory';
 import { ApplicationContext } from '../../types/basic';
 import { CosmosConfig } from '../../types/database';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
@@ -7,7 +7,7 @@ import { isPreExistingDocumentError } from './cosmos.helper';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY';
 
-interface Item {
+export interface Item {
   id?: string;
 }
 
@@ -23,7 +23,7 @@ export class CosmosDbCrudRepository<T extends Item> {
     containerName: string,
     moduleName: string = MODULE_NAME,
   ) {
-    this.cosmosDbClient = getOrdersCosmosDbClient(context);
+    this.cosmosDbClient = getCosmosDbClient(context);
     this.cosmosConfig = getCosmosConfig(context);
     this.containerName = containerName;
     this.moduleName = moduleName;

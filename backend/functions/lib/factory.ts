@@ -32,7 +32,9 @@ import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-stat
 import FakeCasesCosmosClientHumble from './cosmos-humble-objects/fake.cases.cosmos-client-humble';
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 import FakeConsolidationsCosmosClientHumble from './cosmos-humble-objects/fake.consolidations.cosmos-client-humble';
-import { ConsolidationOrdersCosmosDbRepository } from './adapters/gateways/consolidations.cosmosdb.repository';
+import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
+import FakeCosmosClientHumble from './cosmos-humble-objects/fake.cosmos-client-humble';
+import { CosmosDbCrudRepository } from './adapters/gateways/cosmos/cosmos.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -57,6 +59,16 @@ export const getAssignmentsCosmosDbClient = (
 ): CosmosClientHumble | FakeAssignmentsCosmosClientHumble => {
   if (applicationContext.config.get('dbMock')) {
     return new FakeAssignmentsCosmosClientHumble();
+  } else {
+    return new CosmosClientHumble(applicationContext.config);
+  }
+};
+
+export const getCosmosDbClient = (
+  applicationContext: ApplicationContext,
+): CosmosClientHumble | FakeCosmosClientHumble => {
+  if (applicationContext.config.get('dbMock')) {
+    return new FakeCosmosClientHumble();
   } else {
     return new CosmosClientHumble(applicationContext.config);
   }
@@ -115,6 +127,14 @@ export const getOfficesGateway = (
   } else {
     return new OfficesDxtrGateway();
   }
+};
+
+export const getCosmosCrudRepository = <T>(
+  context: ApplicationContext,
+  containerName: string,
+  moduleName: string,
+): CosmosDbCrudRepository<T> => {
+  return new CosmosDbCrudRepository<T>(context, containerName, moduleName);
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {

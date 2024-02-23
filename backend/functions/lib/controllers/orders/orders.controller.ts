@@ -12,18 +12,21 @@ import {
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsResponse } from '../controller-types';
 import {
+  ConsolidationOrder,
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
   Order,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
 export type GetOrdersResponse = CamsResponse<Array<Order>>;
 export type GetSuggestedCasesResponse = CamsResponse<Array<CaseSummary>>;
 export type PatchOrderResponse = CamsResponse<string>;
+export type ManageConsolidationResponse = CamsResponse<ConsolidationOrder[]>;
 
 export class OrdersController {
   private readonly useCase: OrdersUseCase;
@@ -106,9 +109,18 @@ export class OrdersController {
   public async rejectConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
-  ) {
+  ): Promise<ManageConsolidationResponse> {
     try {
-      return await this.useCase.rejectConsolidation(context, data);
+      if (data.rejectedCases.length == 0) {
+        throw new BadRequestError('Missing rejected cases');
+      }
+
+      const orders = await this.useCase.rejectConsolidation(context, data);
+      const response: ManageConsolidationResponse = {
+        success: true,
+        body: orders,
+      };
+      return response;
     } catch (originalError) {
       throw originalError instanceof CamsError
         ? originalError

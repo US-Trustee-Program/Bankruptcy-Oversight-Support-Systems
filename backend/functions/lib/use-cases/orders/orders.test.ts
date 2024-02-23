@@ -22,6 +22,7 @@ import { CasesLocalGateway } from '../../adapters/gateways/mock.cases.gateway';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { sortDates } from '../../../../../common/src/date-helper';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -53,8 +54,10 @@ describe('Orders use case', () => {
   });
 
   test('should return list of orders for the API from the repo', async () => {
-    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
-    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
+    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()].sort(
+      (a, b) => sortDates(a.orderDate, b.orderDate),
+    );
+    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
       resources: mockOrders,
     });
     const result = await useCase.getOrders(mockContext);
