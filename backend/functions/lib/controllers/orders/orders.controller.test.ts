@@ -7,6 +7,7 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { CaseDetail } from '../../adapters/types/cases';
 import {
+  ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
   Order,
   TransferOrder,
@@ -184,6 +185,52 @@ describe('orders controller tests', () => {
     ).rejects.toThrow(CamsError);
   });
 
-  test('should call accept consolidation', async () => {});
-  test('should call acctp consolidation and handle error', async () => {});
+  test('should call approve consolidation', async () => {
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
+      ...mockConsolidationOrder,
+      approvedCases: [mockConsolidationOrder.childCases[0].caseId],
+      leadCase: mockConsolidationOrder.childCases[0],
+    };
+    jest
+      .spyOn(OrdersUseCase.prototype, 'approveConsolidation')
+      .mockResolvedValue([mockConsolidationOrder]);
+    const controller = new OrdersController(applicationContext);
+
+    const actualResult = await controller.approveConsolidation(
+      applicationContext,
+      mockConsolidationOrderActionApproval,
+    );
+
+    expect(actualResult.success).toBeTruthy();
+    const expectedResult: ManageConsolidationResponse = {
+      success: true,
+      body: [mockConsolidationOrder],
+    };
+    expect(actualResult).toEqual(expectedResult);
+  });
+
+  test('should call approve consolidation and handle error', async () => {
+    const controller = new OrdersController(applicationContext);
+
+    // setup missing approved cases
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
+      ...mockConsolidationOrder,
+      approvedCases: [],
+      leadCase: mockConsolidationOrder.childCases[0],
+    };
+
+    expect(
+      controller.approveConsolidation(applicationContext, mockConsolidationOrderActionApproval),
+    ).rejects.toThrow(CamsError);
+
+    // setup missing lead case
+    mockConsolidationOrderActionApproval.approvedCases = ['11-11111'];
+    mockConsolidationOrderActionApproval.leadCase = undefined;
+
+    expect(
+      controller.approveConsolidation(applicationContext, mockConsolidationOrderActionApproval),
+    ).rejects.toThrow(CamsError);
+  });
 });
