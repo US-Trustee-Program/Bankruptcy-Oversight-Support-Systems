@@ -259,6 +259,7 @@ export const MockData = {
   getTransferOrder,
   getDebtorAttorney,
   getConsolidationOrder,
+  getConsolidatedOrderCase,
   getRawConsolidationOrder,
   buildArray,
 };

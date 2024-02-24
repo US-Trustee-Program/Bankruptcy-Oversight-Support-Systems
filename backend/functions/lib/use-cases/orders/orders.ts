@@ -232,9 +232,15 @@ export class OrdersUseCase {
   public async approveConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionApproval,
-  ) {
+  ): Promise<ConsolidationOrder[]> {
     const { approvedCases, leadCase, ...provisionalOrder } = data;
-    await this.handleConsolidation(context, 'approved', provisionalOrder, approvedCases, leadCase);
+    return await this.handleConsolidation(
+      context,
+      'approved',
+      provisionalOrder,
+      approvedCases,
+      leadCase,
+    );
   }
 
   public async rejectConsolidation(

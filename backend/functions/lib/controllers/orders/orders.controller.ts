@@ -131,9 +131,22 @@ export class OrdersController {
   public async approveConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionApproval,
-  ) {
+  ): Promise<ManageConsolidationResponse> {
     try {
-      return await this.useCase.approveConsolidation(context, data);
+      if (data.approvedCases.length == 0) {
+        throw new BadRequestError('Missing approved cases');
+      }
+
+      if (!data.leadCase) {
+        throw new BadRequestError('Missing lead case');
+      }
+
+      const orders = await this.useCase.approveConsolidation(context, data);
+      const response: ManageConsolidationResponse = {
+        success: true,
+        body: orders,
+      };
+      return response;
     } catch (originalError) {
       throw originalError instanceof CamsError
         ? originalError
