@@ -3,6 +3,7 @@ import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { ConsolidationOrderCase } from '@common/cams/orders';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { formatDate } from '@/lib/utils/datetime';
 
 export type OrderTableImperative = {
   clearSelection: () => void;
@@ -80,7 +81,7 @@ function _ConsolidatedCasesTable(
                 <td scope="row" className="text-no-wrap">
                   {bCase.chapter}
                 </td>
-                <td scope="row">{bCase.dateFiled}</td>
+                <td scope="row">{formatDate(bCase.dateFiled)}</td>
                 <td scope="row" className="text-no-wrap">
                   Ben Matlock
                 </td>
