@@ -56,7 +56,15 @@ export default class Chapter15MockApi extends Api {
   static caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
   static caseDetails = MockData.getCaseDetail();
   static offices = MockData.getOffices().slice(0, 5);
-  static orders = MockData.buildArray(MockData.getTransferOrder, 4);
+  // static orders = MockData.buildArray(MockData.getTransferOrder, 4);
+  static orders = [
+    MockData.getTransferOrder({ override: { id: '1' } }),
+    MockData.getTransferOrder({ override: { id: '2', status: 'approved' } }),
+    MockData.getTransferOrder({ override: { id: '3', status: 'rejected' } }),
+    MockData.getConsolidationOrder({ override: { id: '4' } }),
+    MockData.getConsolidationOrder({ override: { id: '5', status: 'approved' } }),
+    MockData.getConsolidationOrder({ override: { id: '6', status: 'rejected' } }),
+  ];
 
   public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;

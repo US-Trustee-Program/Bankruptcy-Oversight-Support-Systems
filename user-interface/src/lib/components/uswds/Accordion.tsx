@@ -24,6 +24,7 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
     if (!props.children) return;
     return Children.map(props.children, (child) => {
       return cloneElement(child, {
+        key: `${child.key}-copy`,
         onExpand: expandAccordion,
         expandedId: expandedAccordion,
       });
