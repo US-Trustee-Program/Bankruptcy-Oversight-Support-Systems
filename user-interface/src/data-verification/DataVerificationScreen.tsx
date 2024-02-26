@@ -3,19 +3,23 @@ import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import './DataVerificationScreen.scss';
-import {
-  OfficeDetails,
-  OfficesResponseData,
-  OrderResponseData,
-  Order,
-} from '@/lib/type-declarations/chapter-15';
+import { OfficesResponseData, OrderResponseData, Order } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { orderType, orderStatusType } from '@/lib/utils/labels';
 import Icon from '@/lib/components/uswds/Icon';
 import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
-import { OrderStatus, OrderType, isTransferOrder } from '@common/cams/orders';
+import {
+  ConsolidationOrder,
+  OrderStatus,
+  OrderType,
+  TransferOrder,
+  isConsolidationOrder,
+  isTransferOrder,
+} from '@common/cams/orders';
+import { OfficeDetails } from '@common/cams/courts';
+import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 
 export interface AlertDetails {
   message: string;
@@ -31,6 +35,7 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function DataVerificationScreen() {
+  const featureFlags = useFeatureFlags();
   const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
   const [typeFilter, setTypeFilter] = useState<OrderType[]>(['transfer', 'consolidation']);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
@@ -80,7 +85,7 @@ export default function DataVerificationScreen() {
       .catch(() => {});
   }
 
-  function handleOrderUpdate(alertDetails: AlertDetails, updatedOrder?: Order) {
+  function handleTransferOrderUpdate(alertDetails: AlertDetails, updatedOrder?: TransferOrder) {
     if (updatedOrder) {
       setOrderList(
         orderList.map((order) => {
@@ -91,6 +96,13 @@ export default function DataVerificationScreen() {
 
     setReviewOrderAlert(alertDetails);
     alertRef.current?.show();
+  }
+
+  function handleConsolidationOrderUpdate(
+    _alertDetails: AlertDetails,
+    _updatedOrder?: ConsolidationOrder,
+  ) {
+    // TODO: Implement the APi call to update the consolidation order.
   }
 
   function handleStatusFilter(filterString: OrderStatus) {
@@ -160,18 +172,22 @@ export default function DataVerificationScreen() {
                   filters={statusFilter}
                   callback={handleStatusFilter}
                 />
-                <Filter<OrderType>
-                  label="Transfer"
-                  filterType="transfer"
-                  filters={typeFilter}
-                  callback={handleTypeFilter}
-                />
-                <Filter<OrderType>
-                  label="Consolidation"
-                  filterType="consolidation"
-                  filters={typeFilter}
-                  callback={handleTypeFilter}
-                />
+                {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                  <>
+                    <Filter<OrderType>
+                      label="Transfer"
+                      filterType="transfer"
+                      filters={typeFilter}
+                      callback={handleTypeFilter}
+                    />
+                    <Filter<OrderType>
+                      label="Consolidation"
+                      filterType="consolidation"
+                      filters={typeFilter}
+                      callback={handleTypeFilter}
+                    />
+                  </>
+                )}
               </div>
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
@@ -183,6 +199,13 @@ export default function DataVerificationScreen() {
               </div>
               <AccordionGroup>
                 {orderList
+                  .filter((o) => {
+                    if (isConsolidationOrder(o)) {
+                      return featureFlags[CONSOLIDATIONS_ENABLED];
+                    } else {
+                      return true;
+                    }
+                  })
                   .filter((o) => typeFilter.includes(o.orderType))
                   .filter((o) => statusFilter.includes(o.status))
                   .map((order) => {
@@ -193,8 +216,8 @@ export default function DataVerificationScreen() {
                         regionsMap={regionsMap}
                         officesList={officesList}
                         orderType={orderType}
-                        statusType={transferStatusType}
-                        onOrderUpdate={handleOrderUpdate}
+                        statusType={orderStatusType}
+                        onOrderUpdate={handleTransferOrderUpdate}
                       ></TransferOrderAccordion>
                     ) : (
                       <ConsolidationOrderAccordion
@@ -203,8 +226,8 @@ export default function DataVerificationScreen() {
                         regionsMap={regionsMap}
                         officesList={officesList}
                         orderType={orderType}
-                        statusType={transferStatusType}
-                        onOrderUpdate={handleOrderUpdate}
+                        statusType={orderStatusType}
+                        onOrderUpdate={handleConsolidationOrderUpdate}
                       ></ConsolidationOrderAccordion>
                     );
                   })}
