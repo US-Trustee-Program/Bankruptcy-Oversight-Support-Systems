@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OfficeDetails, TransferOrder } from '@/lib/type-declarations/chapter-15';
+import { TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -17,8 +17,9 @@ import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
-import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { OfficeDetails } from '@common/cams/courts';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -83,7 +84,7 @@ describe('TransferOrderAccordion', () => {
   regionMap.set('02', 'NEW YORK');
   const testOffices: OfficeDetails[] = [
     {
-      divisionCode: '001',
+      courtDivision: '001',
       groupDesignator: 'AA',
       courtId: '0101',
       officeCode: '1',
@@ -95,7 +96,7 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '003',
+      courtDivision: '003',
       groupDesignator: 'AC',
       courtId: '0103',
       officeCode: '3',
@@ -107,7 +108,7 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '002',
+      courtDivision: '002',
       groupDesignator: 'AB',
       courtId: '0102',
       officeCode: '2',
@@ -125,7 +126,7 @@ describe('TransferOrderAccordion', () => {
       order: order,
       officesList: testOffices,
       orderType,
-      statusType: transferStatusType,
+      statusType: orderStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},
       regionsMap: regionMap,
@@ -152,8 +153,7 @@ describe('TransferOrderAccordion', () => {
 
     const heading = findAccordionHeading(order.id);
 
-    expect(heading?.textContent).toContain(order.caseTitle);
-    expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
+    expect(heading?.textContent).toContain(order.courtName);
     expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
     const content = findAccordionContent(order.id, false);
@@ -908,7 +908,7 @@ describe('TransferOrderAccordion', () => {
     ];
 
     const sortedTestOffices = [...testOffices].sort((a, b) =>
-      a.divisionCode < b.divisionCode ? -1 : 1,
+      a.courtDivision < b.courtDivision ? -1 : 1,
     );
 
     const actualOptions = getOfficeList(sortedTestOffices);

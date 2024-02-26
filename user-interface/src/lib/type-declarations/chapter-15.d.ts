@@ -1,5 +1,6 @@
 import { ResponseData } from './api';
 import * as CommonOrders from '@common/cams/orders';
+import { OfficeDetails } from '@common/cams/courts';
 
 export interface Chapter15Type {
   caseId: string;
@@ -109,19 +110,6 @@ export type Order = CommonOrders.Order & {
 
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;
-}
-
-export interface OfficeDetails {
-  divisionCode: string;
-  groupDesignator: string;
-  courtId: string;
-  courtName: string;
-  officeCode: string;
-  officeName: string;
-  state: string;
-  courtDivisionName: string;
-  regionId: string;
-  regionName: string;
 }
 
 export interface OfficesResponseData extends ResponseData {

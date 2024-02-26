@@ -2,7 +2,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { CaseHistory } from '@/lib/type-declarations/chapter-15';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { transferStatusType } from '@/lib/utils/labels';
+import { orderStatusType } from '@/lib/utils/labels';
 
 export interface CaseDetailAuditHistoryProps {
   caseHistory: CaseHistory[];
@@ -80,10 +80,10 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
                               <td>Order</td>
                               <td data-testid={`previous-order-${idx}`}>
                                 {!history.before && <>(none)</>}
-                                {history.before && transferStatusType.get(history.before.status)}
+                                {history.before && orderStatusType.get(history.before.status)}
                               </td>
                               <td data-testid={`new-order-${idx}`}>
-                                {history.after && transferStatusType.get(history.after.status)}
+                                {history.after && orderStatusType.get(history.after.status)}
                               </td>
                               <td data-testid={`change-date-${idx}`}>
                                 <span className="text-no-wrap">

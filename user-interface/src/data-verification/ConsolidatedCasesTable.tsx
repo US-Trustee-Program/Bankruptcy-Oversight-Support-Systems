@@ -92,7 +92,7 @@ function _ConsolidatedCasesTable(
                   {bCase.docketEntries &&
                     bCase.docketEntries.map((docketEntry, idx) => {
                       return (
-                        <div key={idx}>
+                        <div key={`${key}-docket-entry-${idx}`}>
                           <Link
                             to={`/case-detail/${bCase.caseId}/court-docket?document=${docketEntry.documentNumber}`}
                             target="_blank"

@@ -1,12 +1,13 @@
-import { OfficeDetails, TransferOrder } from '@/lib/type-declarations/chapter-15';
+import { TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { BrowserRouter } from 'react-router-dom';
 import { screen, fireEvent, render, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { MockInstance } from 'vitest';
-import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { OfficeDetails } from '@common/cams/courts';
 
 describe('Test suggested cases', () => {
   let apiSpy: MockInstance;
@@ -16,7 +17,7 @@ describe('Test suggested cases', () => {
 
   const testOffices: OfficeDetails[] = [
     {
-      divisionCode: '001',
+      courtDivision: '001',
       groupDesignator: 'AA',
       courtId: '0101',
       officeCode: '1',
@@ -28,7 +29,7 @@ describe('Test suggested cases', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '003',
+      courtDivision: '003',
       groupDesignator: 'AC',
       courtId: '0103',
       officeCode: '3',
@@ -40,7 +41,7 @@ describe('Test suggested cases', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '002',
+      courtDivision: '002',
       groupDesignator: 'AB',
       courtId: '0102',
       officeCode: '2',
@@ -60,7 +61,7 @@ describe('Test suggested cases', () => {
       order: order,
       officesList: testOffices,
       orderType,
-      statusType: transferStatusType,
+      statusType: orderStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},
       regionsMap: regionMap,
