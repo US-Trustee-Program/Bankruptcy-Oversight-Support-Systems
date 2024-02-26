@@ -68,11 +68,17 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     order.childCases.forEach((childCase) => {
       expect(content?.textContent).toContain(childCase.caseTitle);
-      // expect(content?.textContent).toContain(formatDate(childCase.dateFiled));
+      expect(content?.textContent).toContain(formatDate(childCase.dateFiled));
       childCase.docketEntries.forEach((de) => {
         expect(content?.textContent).toContain(de.summaryText);
         expect(content?.textContent).toContain(de.fullText);
       });
     });
   });
+
+  test('should display pending order properly', () => {});
+
+  test('should display approved order properly', () => {});
+
+  test('should display rejected order properly', () => {});
 });
