@@ -298,4 +298,9 @@ describe('Orders use case', () => {
     await expect(useCase.syncOrders(mockContext)).rejects.toThrow('TEST');
     expect(mockGetState).toHaveBeenCalled();
   });
+
+  test('should approve a consolidation order', () => {});
+  test('should approve a split consolidation order', () => {});
+  test('should reject a consolidation order', () => {});
+  test('should reject a split consolidation order', () => {});
 });
