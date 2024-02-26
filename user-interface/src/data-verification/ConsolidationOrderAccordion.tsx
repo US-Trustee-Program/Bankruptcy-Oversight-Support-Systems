@@ -1,12 +1,11 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
-import { ConsolidationOrder } from '@/lib/type-declarations/chapter-15';
 import { CaseTableImperative } from './CaseTable';
 import { ChangeEvent, forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { ConsolidatedCasesTable } from './ConsolidatedCasesTable';
 import './TransferOrderAccordion.scss';
-import { ConsolidationOrderCase, OrderStatus } from '@common/cams/orders';
+import { ConsolidationOrder, ConsolidationOrderCase, OrderStatus } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -126,6 +125,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           <div>
             <ConsolidatedCasesTable
               id={`${order.id}-case-list`}
+              data-testid={`${order.id}-case-list`}
               cases={order.childCases}
               onSelect={handleIncludeCase}
               ref={caseTable}
@@ -154,6 +154,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 >
                   <SearchableSelect
                     id={`court-selection-${order.id}`}
+                    data-testid={`court-selection-${order.id}`}
                     className="new-court__select"
                     closeMenuOnSelect={true}
                     label="Select new court"

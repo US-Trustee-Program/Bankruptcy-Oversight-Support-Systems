@@ -8,7 +8,6 @@ import {
 } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
-import * as crypto from 'crypto';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -150,7 +149,7 @@ function getConsolidationOrder(
   const summary = getCaseSummary({ entityType });
 
   const consolidationOrder: ConsolidationOrder = {
-    consolidationId: crypto.randomUUID(),
+    consolidationId: faker.string.uuid(),
     courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',
