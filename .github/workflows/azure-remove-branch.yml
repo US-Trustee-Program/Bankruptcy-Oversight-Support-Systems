@@ -1,6 +1,8 @@
 name: Clean up Flexion Azure Resources
 
 on:
+  pull_request:
+    types: [ closed ]
   workflow_dispatch:
     inputs:
       hashId:
@@ -23,19 +25,31 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: inputs.hashId != ''
+    if: inputs.hashId != '' || github.event.action == 'closed'
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
+      targetBranchHashId: ${{ steps.check.outputs.targetBranchHashId }}
     steps:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Genereate branch hash id
+        id: hash
+        if: github.event.action == 'closed'
+        run: |
+          branchHashId=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
+          echo "hashId=$branchHashId" >> $GITHUB_OUTPUT
+
       - name: Validate resources
         id: check
         run: |
-          echo "Does resources with ${{ inputs.hashId }} exist?"
-          count=$(az group list --query "length([?id.contains(@,'${{ inputs.hashId }}')])")
+          target=${{ inputs.hashId == '' && steps.hash.outputs.hashId || inputs.hashId  }}
+          echo "targetBranchHashId=$target" >> $GITHUB_OUTPUT
+
+          echo "Does resources with $target exist?"
+          count=$(az group list --query "length([?id.contains(@,'$target')])")
           if [[ $count -eq 2 ]]; then
             echo 'Expected resources found.'
             echo "executeCleanup=true" >> $GITHUB_OUTPUT
@@ -54,4 +68,4 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: actions/checkout@v3
-      - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ inputs.hashId }} false
+      - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ needs.check.outputs.targetBranchHashId }} false
