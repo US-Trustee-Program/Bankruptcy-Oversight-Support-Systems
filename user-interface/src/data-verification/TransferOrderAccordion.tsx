@@ -121,7 +121,7 @@ const enterCaseButtonId = 'buttonEnterCase';
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
-  const [activeButtonId, setActiveButtonId] = useState<string>(enterCaseButtonId || '');
+  const [activeButtonId, setActiveButtonId] = useState<string>(enterCaseButtonId);
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
