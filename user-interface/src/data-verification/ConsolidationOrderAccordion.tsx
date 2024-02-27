@@ -11,7 +11,7 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { getOfficeList } from './TransferOrderAccordion';
+import { getOfficeList } from './dataVerificationHelper';
 import { OfficeDetails } from '@common/cams/courts';
 import Input from '@/lib/components/uswds/Input';
 
@@ -199,7 +199,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           <div className="grid-col-2">
             <Button
               id={`accordion-reject-button-${order.id}`}
-              onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
+              onClick={() =>
+                confirmationModalRef.current?.show({
+                  status: 'rejected',
+                  caseIds: order.childCases.map((c) => c.caseId),
+                })
+              }
               uswdsStyle={UswdsButtonStyle.Secondary}
             >
               Reject
@@ -228,6 +233,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
         <ConfirmationModal
           ref={confirmationModalRef}
           id={`confirmation-modal-${order.id}`}
+          courts={officesList}
           onCancel={cancelUpdate}
           onConfirm={confirmAction}
         ></ConfirmationModal>
@@ -236,22 +242,24 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   );
 }
 
-interface ConfirmationModalProps {
+export interface ConfirmationModalProps {
   id: string;
+  courts: OfficeDetails[];
   onCancel: () => void;
-  onConfirm: (status: OrderStatus, reason?: string) => void;
+  onConfirm: (status: OrderStatus, reason?: string, leadCaseId?: string) => void;
 }
 
 type ShowOptionParams = {
   status: OrderStatus;
+  caseIds: string[];
 };
 
 type ShowOptions = {
   status: OrderStatus;
-  title: string;
+  heading: string;
 };
 
-type ConfirmationModalImperative = ModalRefType & {
+export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
@@ -259,15 +267,25 @@ function ConfirmationModalComponent(
   props: ConfirmationModalProps,
   ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
 ) {
-  const { id, onConfirm }: ConfirmationModalProps = props;
+  const { id, onConfirm, onCancel }: ConfirmationModalProps = props;
 
   const modalRef = useRef<ModalRefType>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [reason] = useState<string>('');
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
-    title: '',
+    heading: '',
   });
+  const [caseIds, setCaseIds] = useState<string[]>([]);
+  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
+  const leadCaseIdRef = useRef<InputRef>(null);
+
+  // const courtSelectionOptions = props.courts.map((court) => {
+  //   return {
+  //     value: court.courtDivision,
+  //     label: `${court.courtName} (${court.courtDivisionName})`,
+  //   };
+  // });
 
   function clearReason() {
     if (reasonRef.current) reasonRef.current.value = '';
@@ -277,9 +295,9 @@ function ConfirmationModalComponent(
     modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
     submitButton: {
-      label: options.title,
+      label: options.heading,
       onClick: () => {
-        onConfirm(options.status, reasonRef.current?.value);
+        onConfirm(options.status, reasonRef.current?.value, leadCaseNumber);
       },
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',
     },
@@ -288,17 +306,20 @@ function ConfirmationModalComponent(
       onClick: () => {
         clearReason();
         hide();
+        onCancel();
       },
     },
   };
 
   function show(options: ShowOptionParams) {
-    const title = options.status === 'approved' ? 'Approve' : 'Reject';
-
     setOptions({
       status: options.status,
-      title,
+      heading:
+        options.status === 'approved'
+          ? 'Additional Consolidation Information'
+          : 'Reject Case Consolidation?',
     });
+    setCaseIds(options.caseIds);
 
     if (modalRef.current?.show) {
       modalRef.current?.show({});
@@ -311,6 +332,10 @@ function ConfirmationModalComponent(
     }
   }
 
+  function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    setLeadCaseNumber(ev.target.value);
+  }
+
   useImperativeHandle(ConfirmationModalRef, () => ({
     show,
     hide,
@@ -321,13 +346,14 @@ function ConfirmationModalComponent(
       ref={modalRef}
       modalId={`confirm-modal-${id}`}
       className="confirm-modal"
-      heading={`${options.title} case transfer?`}
+      heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
       onClose={clearReason}
       content={
         <>
           {options.status === 'rejected' && (
             <div>
+              <div data-testid={`confirm-modal-${id}-caseIds`}>{caseIds.join(', ')}</div>
               <label htmlFor={`rejection-reason-${id}`} className="usa-label">
                 Reason for rejection
               </label>
@@ -342,6 +368,29 @@ function ConfirmationModalComponent(
               </div>
             </div>
           )}
+          {options.status === 'approved' && (
+            <div>
+              <div id="lead-case-court-container">
+                <label htmlFor={'lead-case-court'} className="usa-label">
+                  Lead Case Court
+                </label>
+                <SearchableSelect
+                  id={'lead-case-court'}
+                  options={getOfficeList(props.courts)}
+                ></SearchableSelect>
+              </div>
+              <div id="lead-case-number-containter">
+                <Input
+                  id={`lead-case-input-${props.id}`}
+                  data-testid={`lead-case-input-${props.id}`}
+                  className="usa-input"
+                  onChange={handleLeadCaseInputChange}
+                  aria-label="Lead case number"
+                  ref={leadCaseIdRef}
+                />
+              </div>
+            </div>
+          )}
         </>
       }
       actionButtonGroup={actionButtonGroup}
@@ -349,4 +398,4 @@ function ConfirmationModalComponent(
   );
 }
 
-const ConfirmationModal = forwardRef(ConfirmationModalComponent);
+export const ConfirmationModal = forwardRef(ConfirmationModalComponent);

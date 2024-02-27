@@ -27,6 +27,7 @@ import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
+import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -39,17 +40,6 @@ export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransfe
     caseId,
     newCase: { caseId: newCaseId },
   };
-}
-
-export function getOfficeList(officesList: Array<OfficeDetails>) {
-  const mapOutput = officesList.map((court) => {
-    return {
-      value: court.courtDivision,
-      label: `${court.courtName} (${court.courtDivisionName})`,
-    };
-  });
-  mapOutput.splice(0, 0, { value: '', label: ' ' });
-  return mapOutput;
 }
 
 export function isValidOrderTransfer(transfer: {
