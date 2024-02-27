@@ -163,8 +163,6 @@ describe('TransferOrderAccordion', () => {
 
     const form = screen.getByTestId(`order-form-${order.id}`);
     expect(form).toBeInTheDocument();
-
-    findCaseNumberInputInAccordion(order.id);
   });
 
   test('should expand and show detail when a header is clicked', async () => {

@@ -2,6 +2,7 @@ export interface OfficeDetails {
   officeName: string;
   officeCode: string;
   courtId: string;
+  // TODO: CAMS-270 court to office relationship is not one-to-one, may need to refactor
   courtName: string;
   courtDivision: string;
   courtDivisionName: string;
