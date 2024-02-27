@@ -322,7 +322,7 @@ describe('Review Orders screen', () => {
       fireEvent.click(screen.getByTestId(`order-status-filter-rejected`));
     });
 
-    // Check if all the orders are in listed by default.
+    // Check if all the orders are listed by default.
     for (const order of orders) {
       const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
       expect(heading).toBeInTheDocument();
