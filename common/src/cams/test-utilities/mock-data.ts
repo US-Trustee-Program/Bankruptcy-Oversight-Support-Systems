@@ -8,6 +8,7 @@ import {
 } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
+import { ATTORNEYS } from './attorneys.mock';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -248,6 +249,10 @@ function buildArray(fn: () => void, size: number) {
   return arr;
 }
 
+function getTrialAttorneys() {
+  return ATTORNEYS;
+}
+
 export const MockData = {
   randomCaseId,
   getCaseSummary,
@@ -261,4 +266,5 @@ export const MockData = {
   getConsolidatedOrderCase,
   getRawConsolidationOrder,
   buildArray,
+  getTrialAttorneys,
 };

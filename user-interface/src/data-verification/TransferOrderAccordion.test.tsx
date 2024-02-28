@@ -9,7 +9,6 @@ import {
   CaseSelection,
   TransferOrderAccordion,
   TransferOrderAccordionProps,
-  getOfficeList,
   isValidOrderTransfer,
   validateNewCaseIdInput,
 } from './TransferOrderAccordion';
@@ -20,6 +19,8 @@ import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
+import { getOfficeList } from './dataVerificationHelper';
+import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -53,14 +54,6 @@ function findActionText(id: string, visible: boolean) {
     expect(content).not.toBeVisible();
   }
   return content;
-}
-
-function selectCourtInAccordion(index: string) {
-  const selectButton = document.querySelector(`#test-select-button-${index}`);
-  expect(selectButton).toBeInTheDocument();
-  fireEvent.click(selectButton!);
-
-  return selectButton;
 }
 
 function findCaseNumberInputInAccordion(id: string) {
@@ -269,7 +262,7 @@ describe('TransferOrderAccordion', () => {
     /**
      * SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
      */
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -304,7 +297,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -329,7 +322,7 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  test('should properly reject when API returns a successful reponse and a reason is supplied', async () => {
+  test('should properly reject when API returns a successful response and a reason is supplied', async () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
@@ -351,7 +344,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -417,7 +410,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -493,7 +486,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -546,7 +539,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -597,7 +590,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newUserInput = '24-12345';
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
@@ -661,7 +654,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
@@ -727,7 +720,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(caseIdInput, '24-12345');
@@ -766,7 +759,7 @@ describe('TransferOrderAccordion', () => {
       findAccordionContent(order.id, true);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -778,7 +771,7 @@ describe('TransferOrderAccordion', () => {
       );
     });
 
-    selectCourtInAccordion('0');
+    selectItemInMockSelect(`court-selection-${order.id}`, 0);
 
     await waitFor(async () => {
       const preview = screen.queryByTestId(`preview-description-${order.id}`);
@@ -828,7 +821,7 @@ describe('TransferOrderAccordion', () => {
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newValue = '22-33333';
     enterCaseNumberInAccordion(newCaseIdText, newValue);
@@ -858,7 +851,7 @@ describe('TransferOrderAccordion', () => {
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newValue = '77-77777';
     enterCaseNumberInAccordion(newCaseIdText, newValue);
