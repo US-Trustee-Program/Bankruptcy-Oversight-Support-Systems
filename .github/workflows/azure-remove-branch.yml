@@ -1,15 +1,71 @@
 name: Clean up Flexion Azure Resources
 
 on:
+  pull_request:
+    types: [ closed ]
   workflow_dispatch:
     inputs:
       hashId:
         description: "Hash id of target branch deployemnt"
-        default: ""
+        default: ''
         type: string
 
 jobs:
-  clean-up:
+  list:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Stub job for new workflow"
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: List existing branch deployments
+        run: |
+          echo "List Azure resource groups of current branch deployment"
+          az group list --query "[?tags.branchName].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
+
+  check:
+    runs-on: ubuntu-latest
+    if: inputs.hashId != '' || github.event.action == 'closed'
+    outputs:
+      executeCleanup: ${{ steps.check.outputs.executeCleanup }}
+      targetBranchHashId: ${{ steps.check.outputs.targetBranchHashId }}
+    steps:
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Genereate branch hash id
+        id: hash
+        if: github.event.action == 'closed'
+        run: |
+          branchHashId=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
+          echo "hashId=$branchHashId" >> $GITHUB_OUTPUT
+
+      - name: Validate resources
+        id: check
+        run: |
+          target=${{ inputs.hashId == '' && steps.hash.outputs.hashId || inputs.hashId  }}
+          echo "targetBranchHashId=$target" >> $GITHUB_OUTPUT
+
+          echo "Do resources with $target exist?"
+          count=$(az group list --query "length([?id.contains(@,'$target')])")
+          if [[ $count -eq 2 ]]; then
+            echo 'Expected resources found.'
+            echo "executeCleanup=true" >> $GITHUB_OUTPUT
+          else
+            echo 'Did not find existing Azure resources with matching hash id.'
+            echo "executeCleanup=false" >> $GITHUB_OUTPUT
+          fi
+
+  clean-up:
+    runs-on: ubuntu-latest
+    needs: [check]
+    if: needs.check.outputs.executeCleanup == 'true'
+    steps:
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@v3
+      - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ needs.check.outputs.targetBranchHashId }} false
