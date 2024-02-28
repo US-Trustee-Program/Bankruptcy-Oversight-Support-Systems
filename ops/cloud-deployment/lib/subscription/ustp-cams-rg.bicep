@@ -37,7 +37,6 @@ module resourceGroup './resource-group-deploy.bicep' = [for item in resourceGrou
     location: location
     resourceGroupName: item.name
     tags: isBranchDeployment ? {
-      // Expected tags to set on Azure Resource Group for resources deployed for branch deploys
       isBranchDeployment: isBranchDeployment
       branchName: branchName
       branchHashId: branchHashId
