@@ -48,7 +48,7 @@ jobs:
           target=${{ inputs.hashId == '' && steps.hash.outputs.hashId || inputs.hashId  }}
           echo "targetBranchHashId=$target" >> $GITHUB_OUTPUT
 
-          echo "Does resources with $target exist?"
+          echo "Do resources with $target exist?"
           count=$(az group list --query "length([?id.contains(@,'$target')])")
           if [[ $count -eq 2 ]]; then
             echo 'Expected resources found.'
