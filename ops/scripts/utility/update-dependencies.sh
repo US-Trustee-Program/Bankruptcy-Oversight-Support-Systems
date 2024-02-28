@@ -6,7 +6,10 @@
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/update-dependencies.sh
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-git stash
+if [[ -n $(git status -s) ]]; then
+  STASHED_CHANGE=true
+  git stash
+fi
 git checkout main
 git pull --rebase
 git branch -D dependency-updates
@@ -41,4 +44,6 @@ git commit -m "Update all npm projects"
 git push -u origin dependency-updates
 
 git checkout "$CURRENT_BRANCH"
-git stash pop
+if [[ -n "${STASHED_CHANGE}" ]]; then
+  git stash pop
+fi
