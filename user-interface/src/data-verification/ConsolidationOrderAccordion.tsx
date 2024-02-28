@@ -2,18 +2,21 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import { CaseTableImperative } from './CaseTable';
-import { ChangeEvent, forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidatedCasesTable } from './ConsolidatedCasesTable';
 import './TransferOrderAccordion.scss';
 import { ConsolidationOrder, ConsolidationOrderCase, OrderStatus } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import Modal from '@/lib/components/uswds/modal/Modal';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from './dataVerificationHelper';
 import { OfficeDetails } from '@common/cams/courts';
 import Input from '@/lib/components/uswds/Input';
+import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
+import {
+  ConfirmationModal,
+  ConfirmationModalImperative,
+} from '@/data-verification/ConsolidationOrderModal';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -34,6 +37,17 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const caseIdRef = useRef<InputRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
+  const [attorneys] = useState<AttorneyInfo[]>([]);
+
+  // Fetch all cases from CAMS API
+
+  useEffect(() => {
+    if (selectedCases.length == 0) {
+      approveButtonRef.current?.disableButton(true);
+    } else {
+      approveButtonRef.current?.disableButton(false);
+    }
+  }, [selectedCases]);
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
     if (selectedCases.includes(bCase)) {
@@ -57,6 +71,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   function handleCaseInputChange(ev: ChangeEvent<HTMLInputElement>): void {
     // TODO: Implement input
+    caseIdRef.current?.setValue(ev.target.value);
     console.log(ev);
     throw new Error('Function not implemented.');
   }
@@ -205,6 +220,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   caseIds: order.childCases.map((c) => c.caseId),
                 })
               }
+              disabled={true}
+              //Disabled until we get to story CAMS-301
               uswdsStyle={UswdsButtonStyle.Secondary}
             >
               Reject
@@ -221,7 +238,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             </Button>
             <Button
               id={`accordion-approve-button-${order.id}`}
-              onClick={() => confirmationModalRef.current?.show({ status: 'approved' })}
+              onClick={() => confirmationModalRef.current?.show({ status: 'approved', attorneys })}
               disabled={true}
               ref={approveButtonRef}
             >
@@ -241,161 +258,3 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     </Accordion>
   );
 }
-
-export interface ConfirmationModalProps {
-  id: string;
-  courts: OfficeDetails[];
-  onCancel: () => void;
-  onConfirm: (status: OrderStatus, reason?: string, leadCaseId?: string) => void;
-}
-
-type ShowOptionParams = {
-  status: OrderStatus;
-  caseIds: string[];
-};
-
-type ShowOptions = {
-  status: OrderStatus;
-  heading: string;
-};
-
-export type ConfirmationModalImperative = ModalRefType & {
-  show: (options: ShowOptionParams) => void;
-};
-
-function ConfirmationModalComponent(
-  props: ConfirmationModalProps,
-  ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
-) {
-  const { id, onConfirm, onCancel }: ConfirmationModalProps = props;
-
-  const modalRef = useRef<ModalRefType>(null);
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
-  const [reason] = useState<string>('');
-  const [options, setOptions] = useState<ShowOptions>({
-    status: 'pending',
-    heading: '',
-  });
-  const [caseIds, setCaseIds] = useState<string[]>([]);
-  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
-  const leadCaseIdRef = useRef<InputRef>(null);
-
-  // const courtSelectionOptions = props.courts.map((court) => {
-  //   return {
-  //     value: court.courtDivision,
-  //     label: `${court.courtName} (${court.courtDivisionName})`,
-  //   };
-  // });
-
-  function clearReason() {
-    if (reasonRef.current) reasonRef.current.value = '';
-  }
-
-  const actionButtonGroup = {
-    modalId: `confirmation-modal-${id}`,
-    modalRef: modalRef,
-    submitButton: {
-      label: options.heading,
-      onClick: () => {
-        onConfirm(options.status, reasonRef.current?.value, leadCaseNumber);
-      },
-      className: options.status === 'rejected' ? 'usa-button--secondary' : '',
-    },
-    cancelButton: {
-      label: 'Go back',
-      onClick: () => {
-        clearReason();
-        hide();
-        onCancel();
-      },
-    },
-  };
-
-  function show(options: ShowOptionParams) {
-    setOptions({
-      status: options.status,
-      heading:
-        options.status === 'approved'
-          ? 'Additional Consolidation Information'
-          : 'Reject Case Consolidation?',
-    });
-    setCaseIds(options.caseIds);
-
-    if (modalRef.current?.show) {
-      modalRef.current?.show({});
-    }
-  }
-
-  function hide() {
-    if (modalRef.current?.hide) {
-      modalRef.current?.hide({});
-    }
-  }
-
-  function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setLeadCaseNumber(ev.target.value);
-  }
-
-  useImperativeHandle(ConfirmationModalRef, () => ({
-    show,
-    hide,
-  }));
-
-  return (
-    <Modal
-      ref={modalRef}
-      modalId={`confirm-modal-${id}`}
-      className="confirm-modal"
-      heading={`${options.heading}`}
-      data-testid={`confirm-modal-${id}`}
-      onClose={clearReason}
-      content={
-        <>
-          {options.status === 'rejected' && (
-            <div>
-              <div data-testid={`confirm-modal-${id}-caseIds`}>{caseIds.join(', ')}</div>
-              <label htmlFor={`rejection-reason-${id}`} className="usa-label">
-                Reason for rejection
-              </label>
-              <div>
-                <textarea
-                  id={`rejection-reason-${id}`}
-                  data-testid={`rejection-reason-input-${id}`}
-                  ref={reasonRef}
-                  className="rejection-reason-input usa-textarea"
-                  defaultValue={reason}
-                ></textarea>
-              </div>
-            </div>
-          )}
-          {options.status === 'approved' && (
-            <div>
-              <div id="lead-case-court-container">
-                <label htmlFor={'lead-case-court'} className="usa-label">
-                  Lead Case Court
-                </label>
-                <SearchableSelect
-                  id={'lead-case-court'}
-                  options={getOfficeList(props.courts)}
-                ></SearchableSelect>
-              </div>
-              <div id="lead-case-number-containter">
-                <Input
-                  id={`lead-case-input-${props.id}`}
-                  data-testid={`lead-case-input-${props.id}`}
-                  className="usa-input"
-                  onChange={handleLeadCaseInputChange}
-                  aria-label="Lead case number"
-                  ref={leadCaseIdRef}
-                />
-              </div>
-            </div>
-          )}
-        </>
-      }
-      actionButtonGroup={actionButtonGroup}
-    ></Modal>
-  );
-}
-
-export const ConfirmationModal = forwardRef(ConfirmationModalComponent);
