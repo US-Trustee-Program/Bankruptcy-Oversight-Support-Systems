@@ -1,0 +1,15 @@
+name: Clean up Flexion Azure Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      hashId:
+        description: "Hash id of target branch deployemnt"
+        default: ""
+        type: string
+
+jobs:
+  clean-up:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Stub job for new workflow"
