@@ -1,7 +1,6 @@
 import {
   ClientContext,
   Container,
-  Item,
   ItemResponse,
   Items,
   PartitionKey,
@@ -24,7 +23,6 @@ export interface QueryOptions {
 }
 
 export class CosmosItemHumble {
-  private item: Item;
   private partitionKey: PartitionKey;
   private container: Container;
   private id: string;
@@ -41,12 +39,16 @@ export class CosmosItemHumble {
     this.clientContext = clientContext;
   }
 
+  async delete<T>(): Promise<ItemResponse<T>> {
+    return this.container.item(this.id, this.partitionKey).delete<T>();
+  }
+
   async read<T>(): Promise<ItemResponse<T>> {
-    return this.item.read<T>();
+    return this.container.item(this.id, this.partitionKey).read<T>();
   }
 
   async replace<T>(item: T): Promise<ItemResponse<T>> {
-    return this.item.replace<T>(item);
+    return this.container.item(this.id, this.partitionKey).replace<T>(item);
   }
 }
 

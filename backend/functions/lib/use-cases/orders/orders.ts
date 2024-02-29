@@ -279,7 +279,12 @@ export class OrdersUseCase {
     };
     if (doSplit) {
       provisionalOrder.childCases = remainingChildCases;
-      await this.consolidationsRepo.update(context, provisionalOrder.id, provisionalOrder);
+      await this.consolidationsRepo.update(
+        context,
+        provisionalOrder.id,
+        provisionalOrder.consolidationId,
+        provisionalOrder,
+      );
       response.push(provisionalOrder);
     } else {
       // TODO: Do we want to consider a soft delete or just a status change?

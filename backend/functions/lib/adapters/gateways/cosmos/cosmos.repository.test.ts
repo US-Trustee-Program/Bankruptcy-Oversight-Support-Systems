@@ -62,7 +62,12 @@ describe('Test generic cosmosdb repository', () => {
     const mockReplace = jest
       .spyOn(HumbleItem.prototype, 'replace')
       .mockResolvedValue({ item: updatedItem });
-    const actual = await cosmosCrudRepo.update(mockDbContext, updatedItem.id, updatedItem);
+    const actual = await cosmosCrudRepo.update(
+      mockDbContext,
+      updatedItem.id,
+      updatedItem.id,
+      updatedItem,
+    );
     expect(actual).toEqual(updatedItem);
     expect(mockReplace).toHaveBeenCalled();
   });

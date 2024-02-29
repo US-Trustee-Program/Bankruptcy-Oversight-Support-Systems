@@ -60,7 +60,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
       await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(syncState.id)
+        .item(syncState.id, syncState.documentType)
         .replace(syncState);
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);

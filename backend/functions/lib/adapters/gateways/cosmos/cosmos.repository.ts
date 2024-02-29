@@ -66,12 +66,12 @@ export class CosmosDbCrudRepository<T extends Item> {
     return this.execute<T>(context, lambdaToExecute);
   }
 
-  public async update(context: ApplicationContext, id: string, data: T) {
+  public async update(context: ApplicationContext, id: string, partitionKey: string, data: T) {
     const lambdaToExecute = async <T>(): Promise<T> => {
       const { item } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(id)
+        .item(id, partitionKey)
         .replace(data);
 
       context.logger.debug(this.moduleName, `${typeof data} Updated ${id}`);
