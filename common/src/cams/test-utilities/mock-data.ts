@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
 import {
+  ConsolidationHistory,
   ConsolidationOrder,
   ConsolidationOrderCase,
   RawConsolidationOrder,
@@ -253,6 +254,14 @@ function getTrialAttorneys() {
   return ATTORNEYS;
 }
 
+function getConsolidationHistory(override: Partial<ConsolidationHistory> = {}) {
+  return {
+    status: override.status || 'pending',
+    leadCase: override.leadCase || undefined,
+    childCases: override.childCases || [],
+  };
+}
+
 export const MockData = {
   randomCaseId,
   getCaseSummary,
@@ -267,4 +276,5 @@ export const MockData = {
   getRawConsolidationOrder,
   buildArray,
   getTrialAttorneys,
+  getConsolidationHistory,
 };

@@ -1,4 +1,4 @@
-import { isConsolidationOrder, isTransferOrder } from './orders';
+import { isConsolidationHistory, isConsolidationOrder, isTransferOrder } from './orders';
 import { MockData } from './test-utilities/mock-data';
 
 describe('orders model tests', () => {
@@ -12,5 +12,10 @@ describe('orders model tests', () => {
     const mockOrder = MockData.getConsolidationOrder();
     expect(isTransferOrder(mockOrder)).toEqual(false);
     expect(isConsolidationOrder(mockOrder)).toEqual(true);
+  });
+
+  test('should properly identify consolidation history', () => {
+    const mockHistory = MockData.getConsolidationHistory();
+    expect(isConsolidationHistory(mockHistory)).toEqual(true);
   });
 });
