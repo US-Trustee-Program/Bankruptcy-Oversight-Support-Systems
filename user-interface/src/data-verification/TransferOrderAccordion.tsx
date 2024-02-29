@@ -688,13 +688,12 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   </div>
                   <div className="grid-col-1"></div>
                 </div>
-                {/*TODO: find a way to remove `!` from below order properties */}
                 <ConfirmationModal
                   ref={confirmationModalRef}
                   id={`confirmation-modal-${order.id}`}
                   fromCaseId={order.caseId}
                   toCaseId={orderTransfer.newCase?.caseId}
-                  fromDivisionName={order.courtDivisionName!}
+                  fromDivisionName={order.courtDivisionName}
                   toDivisionName={orderTransfer.newCase?.courtDivisionName}
                   fromCourtName={order.courtName!}
                   toCourtName={orderTransfer.newCase?.courtName}
