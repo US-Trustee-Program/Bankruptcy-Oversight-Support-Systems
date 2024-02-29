@@ -181,17 +181,15 @@ function ConsolidationOrderModalComponent(
           />
           <label htmlFor={`radio-substantive-${id}`}>Substantive</label>
         </div>
-        {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
-          <div id="lead-case-court-container">
-            <label htmlFor={'lead-case-court'} className="usa-label">
-              Lead Case Court
-            </label>
-            <SearchableSelect
-              id={'lead-case-court'}
-              options={getOfficeList(props.courts)}
-            ></SearchableSelect>
-          </div>
-        )}
+        <div id="lead-case-court-container">
+          <label htmlFor={'lead-case-court'} className="usa-label">
+            Lead Case Court
+          </label>
+          <SearchableSelect
+            id={'lead-case-court'}
+            options={getOfficeList(props.courts)}
+          ></SearchableSelect>
+        </div>
         <div id="lead-case-number-containter">
           <Input
             id={`lead-case-input-${props.id}`}
@@ -203,21 +201,23 @@ function ConsolidationOrderModalComponent(
             ref={leadCaseIdRef}
           />
         </div>
-        <div id="lead-case-court-container">
-          <label htmlFor={'lead-attorney'} className="usa-label">
-            All cases will be assigned to
-          </label>
-          <SearchableSelect
-            id={'lead-attorney'}
-            options={options.attorneys.map((attorney) => {
-              const fullName = getFullName(attorney);
-              return {
-                value: fullName,
-                label: fullName,
-              };
-            })}
-          ></SearchableSelect>
-        </div>
+        {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
+          <div id="lead-case-court-container">
+            <label htmlFor={'lead-attorney'} className="usa-label">
+              All cases will be assigned to
+            </label>
+            <SearchableSelect
+              id={'lead-attorney'}
+              options={options.attorneys.map((attorney) => {
+                const fullName = getFullName(attorney);
+                return {
+                  value: fullName,
+                  label: fullName,
+                };
+              })}
+            ></SearchableSelect>
+          </div>
+        )}
       </div>
     );
   }
