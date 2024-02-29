@@ -191,6 +191,9 @@ function ConsolidationOrderModalComponent(
           ></SearchableSelect>
         </div>
         <div id="lead-case-number-containter">
+          <label htmlFor={`lead-case-input-${props.id}`} className="usa-label">
+            Lead Case Number
+          </label>
           <Input
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
