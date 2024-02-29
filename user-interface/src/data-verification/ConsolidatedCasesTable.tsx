@@ -1,7 +1,7 @@
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { ConsolidationOrderCase } from '@common/cams/orders';
-import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
+import { SyntheticEvent, forwardRef, useImperativeHandle, useState, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 
@@ -57,10 +57,10 @@ function _ConsolidatedCasesTable(
         </tr>
       </thead>
       <tbody>
-        {cases?.map((bCase, idx) => {
-          const key = `${id}-row-${idx}`;
-          return (
-            <>
+        {cases
+          ?.reduce((accumulator: ReactNode[], bCase, idx) => {
+            const key = `${id}-row-${idx}`;
+            accumulator.push(
               <tr key={key} data-testid={key}>
                 <td scope="row">
                   <input
@@ -84,9 +84,11 @@ function _ConsolidatedCasesTable(
                 <td scope="row" className="text-no-wrap">
                   Ben Matlock
                 </td>
-              </tr>
+              </tr>,
+            );
+            accumulator.push(
               <tr key={`${key}-b`} data-testid={`${key}-b`}>
-                <td> </td>
+                <td></td>
                 <td colSpan={6} className="measure-6">
                   {!bCase.docketEntries && <>No docket entries</>}
                   {bCase.docketEntries &&
@@ -115,10 +117,13 @@ function _ConsolidatedCasesTable(
                       );
                     })}
                 </td>
-              </tr>
-            </>
-          );
-        })}
+              </tr>,
+            );
+            return accumulator;
+          }, [])
+          .map((node) => {
+            return node;
+          })}
       </tbody>
     </table>
   );
