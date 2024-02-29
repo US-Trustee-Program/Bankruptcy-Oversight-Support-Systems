@@ -14,7 +14,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import Input from '@/lib/components/uswds/Input';
 import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import {
-  ConfirmationModal,
+  ConsolidationOrderModal,
   ConfirmationModalImperative,
 } from '@/data-verification/ConsolidationOrderModal';
 
@@ -247,13 +247,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           </div>
           <div className="grid-col-1"></div>
         </div>
-        <ConfirmationModal
+        <ConsolidationOrderModal
           ref={confirmationModalRef}
           id={`confirmation-modal-${order.id}`}
           courts={officesList}
           onCancel={cancelUpdate}
           onConfirm={confirmAction}
-        ></ConfirmationModal>
+        ></ConsolidationOrderModal>
       </section>
     </Accordion>
   );
