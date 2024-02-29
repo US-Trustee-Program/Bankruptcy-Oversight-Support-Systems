@@ -9,6 +9,7 @@ import {
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -117,5 +118,17 @@ describe('ConsolidationOrderAccordion tests', () => {
       // for some reason, toBeVisible() doesn't work.
       expect(modal).toHaveStyle({ display: 'block' });
     });
+  });
+
+  test('should not show add case when add case consolidation feature flag is false', async () => {
+    const mockFeatureFlags = {
+      'consolidations-add-case': false,
+    };
+    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+
+    renderWithProps();
+
+    const courtSelectDiv = screen.queryByTestId(`court-selection-usa-combo-box-${order.id}`);
+    expect(courtSelectDiv).not.toBeInTheDocument();
   });
 });

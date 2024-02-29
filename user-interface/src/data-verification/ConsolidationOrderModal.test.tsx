@@ -8,6 +8,7 @@ import {
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { selectItemInMockSelect } from '@/lib/components/SearchableSelect.mock';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -98,17 +99,17 @@ describe('ConsolidationOrderModalComponent', () => {
 
     // Select consolidation type
     const radioAdministrative = screen.queryByTestId(`radio-administrative-${id}`);
-    const radioSubstative = screen.queryByTestId(`radio-substantive-${id}`);
+    const radioSubstantive = screen.queryByTestId(`radio-substantive-${id}`);
 
     expect(radioAdministrative).toBeInTheDocument();
-    expect(radioSubstative).toBeInTheDocument();
+    expect(radioSubstantive).toBeInTheDocument();
 
     fireEvent.click(radioAdministrative!);
     expect(radioAdministrative).toBeChecked();
-    expect(radioSubstative).not.toBeChecked();
+    expect(radioSubstantive).not.toBeChecked();
 
-    fireEvent.click(radioSubstative!);
-    expect(radioSubstative).toBeChecked();
+    fireEvent.click(radioSubstantive!);
+    expect(radioSubstantive).toBeChecked();
     expect(radioAdministrative).not.toBeChecked();
 
     // Select lead case court.
@@ -169,5 +170,30 @@ describe('ConsolidationOrderModalComponent', () => {
     await waitFor(() => {
       expect(onCancelSpy).toHaveBeenCalled();
     });
+  });
+
+  test('should not show consolidation type input when feature flag is false', async () => {
+    const mockFeatureFlags = {
+      'consolidations-assign-attorney': false,
+    };
+    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+
+    const id = 'test';
+    const caseIds = ['11-11111', '22-22222'];
+    const courts = MockData.getOffices().slice(0, 3);
+    const attorneys = MockData.getTrialAttorneys();
+
+    // Render and activate the modal.
+    const ref = renderModalWithProps({ id, courts });
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', caseIds, attorneys });
+    });
+
+    // Select consolidation type
+    const radioAdministrative = screen.queryByTestId(`radio-administrative-${id}`);
+    const radioSubstantive = screen.queryByTestId(`radio-substantive-${id}`);
+
+    expect(radioAdministrative).not.toBeInTheDocument();
+    expect(radioSubstantive).not.toBeInTheDocument();
   });
 });
