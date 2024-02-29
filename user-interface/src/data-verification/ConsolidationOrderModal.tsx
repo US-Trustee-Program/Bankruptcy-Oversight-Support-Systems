@@ -13,7 +13,7 @@ import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
 
-export interface ConfirmationModalProps {
+export interface ConsolidationOrderModalProps {
   id: string;
   courts: OfficeDetails[];
   onCancel: () => void;
@@ -36,11 +36,11 @@ export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
-function ConfirmationModalComponent(
-  props: ConfirmationModalProps,
+function ConsolidationOrderModalComponent(
+  props: ConsolidationOrderModalProps,
   ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
 ) {
-  const { id, onConfirm, onCancel }: ConfirmationModalProps = props;
+  const { id, onConfirm, onCancel }: ConsolidationOrderModalProps = props;
 
   const modalRef = useRef<ModalRefType>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
@@ -245,4 +245,4 @@ function ConfirmationModalComponent(
   );
 }
 
-export const ConfirmationModal = forwardRef(ConfirmationModalComponent);
+export const ConsolidationOrderModal = forwardRef(ConsolidationOrderModalComponent);

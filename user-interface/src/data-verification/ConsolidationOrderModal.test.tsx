@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
-  ConfirmationModal,
+  ConsolidationOrderModal,
   ConfirmationModalImperative,
-  ConfirmationModalProps,
+  ConsolidationOrderModalProps,
 } from '@/data-verification/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -14,7 +14,7 @@ vi.mock(
   () => import('../lib/components/SearchableSelect.mock'),
 );
 
-describe('ConfirmationModalComponent', () => {
+describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();
   const onConfirmSpy = vitest.fn();
 
@@ -35,9 +35,9 @@ describe('ConfirmationModalComponent', () => {
     // return caseIdInput;
   }
 
-  function renderModalWithProps(props: Partial<ConfirmationModalProps> = {}) {
+  function renderModalWithProps(props: Partial<ConsolidationOrderModalProps> = {}) {
     const modalRef = React.createRef<ConfirmationModalImperative>();
-    const defaultProps: ConfirmationModalProps = {
+    const defaultProps: ConsolidationOrderModalProps = {
       id: 'mock-modal-id',
       onCancel: onCancelSpy,
       onConfirm: onConfirmSpy,
@@ -48,7 +48,7 @@ describe('ConfirmationModalComponent', () => {
 
     render(
       <BrowserRouter>
-        <ConfirmationModal {...renderProps} ref={modalRef} />
+        <ConsolidationOrderModal {...renderProps} ref={modalRef} />
       </BrowserRouter>,
     );
     return modalRef;
