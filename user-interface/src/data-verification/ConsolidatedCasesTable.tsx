@@ -33,7 +33,6 @@ function _ConsolidatedCasesTable(
       setIncluded([...included, idx]);
     }
     const _case = cases[idx];
-    // if (onSelect) onSelect(order);
     onSelect(_case);
   }
 
@@ -62,7 +61,7 @@ function _ConsolidatedCasesTable(
           const key = `${id}-row-${idx}`;
           return (
             <>
-              <tr key={`${key}`} data-testid={key}>
+              <tr key={key} data-testid={key}>
                 <td scope="row">
                   <input
                     type="checkbox"
