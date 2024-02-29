@@ -12,7 +12,8 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName")
+requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "isBranchDeployment")
+requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropiate Azure resource tagging, these should be required when isBranchDeployment == true
 
 function validation_func() {
     local location=$1
@@ -23,6 +24,7 @@ function validation_func() {
         echo "Error: Missing location parameter"
         exit 10
     fi
+
     if [[ -z "${deployment_file}" ]]; then
         echo "Error: Missing deployment file"
         exit 11
@@ -38,12 +40,15 @@ function validation_func() {
         exit 13
     fi
 
-    # Parse deployment_parameters and set required params as variables
+    # Parse deployment_parameters and set required params as variables if it exists
     for p in $deployment_parameters; do
         case "${p}" in
         databaseResourceGroupName=*) databaseResourceGroupName=${p/*=/} ;;
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
         webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
+        isBranchDeployment=*) isBranchDeployment=${p/*=/} ;;
+        branchName=*) branchName=${p/*=/} ;;
+        branchHashId=*) branchHashId=${p/*=/} ;;
         *)
             # skipped unmatched keys
             ;;
@@ -58,6 +63,17 @@ function validation_func() {
             exit 14
         fi
     done
+    # Check that required params for branch deployments has been set
+    if [[ "${isBranchDeployment}" == "true" ]]; then
+        echo "Recognize branch deployment for ${branchName} ${branchHashId}"
+        for r in "${requiredBranchDeployParams[@]}"; do
+            varOfVar=${r}
+            if [[ -z ${!varOfVar} ]]; then
+                echo "Error: Missing parameter required for branch deployments (${r})"
+                exit 15
+            fi
+        done
+    fi
 }
 
 function az_rg_exists_func() {
@@ -122,13 +138,13 @@ validation_func "${location}" "${deployment_file}" "${deployment_parameters}"
 deployment_parameters="${deployment_parameters} location=${location}"
 
 if [ "$(az_rg_exists_func "${databaseResourceGroupName}")" != true ]; then
-    deployment_parameters="${deployment_parameters} createDatabaseRG=true"
+deployment_parameters="${deployment_parameters} createDatabaseRG=true"
 fi
 if [ "$(az_rg_exists_func "${networkResourceGroupName}")" != true ]; then
-    deployment_parameters="${deployment_parameters} createNetworkRG=true"
+deployment_parameters="${deployment_parameters} createNetworkRG=true"
 fi
 if [ "$(az_rg_exists_func "${webappResourceGroupName}")" != true ]; then
-    deployment_parameters="${deployment_parameters} createAppRG=true"
+deployment_parameters="${deployment_parameters} createAppRG=true"
 fi
 
 az_deploy_func "${location}" "${deployment_file}" "${deployment_parameters}"
