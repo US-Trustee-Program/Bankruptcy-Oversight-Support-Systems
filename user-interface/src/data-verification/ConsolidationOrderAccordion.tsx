@@ -17,6 +17,9 @@ import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
 } from '@/data-verification/ConsolidationOrderModal';
+import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import api from '@/lib/models/api';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -38,6 +41,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const [attorneys] = useState<AttorneyInfo[]>([]);
+  const featureFlags = useFeatureFlags();
 
   // Fetch all cases from CAMS API
 
@@ -83,14 +87,32 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     approveButtonRef.current?.disableButton(true);
   }
 
-  function confirmAction(status: OrderStatus, reason?: string): void {
+  function confirmAction(status: OrderStatus, reason: string = '', leadCaseNumber?: string): void {
     //TODO: Confirmation action moving us to the confirmation modal for the Consolidation Order
     if (status === 'rejected') {
       console.log('Cases selected', selectedCases);
       console.log(reason);
       //approveOrderRejection(reason);
     } else if (status === 'approved') {
+      const data = {
+        childCases: selectedCases,
+        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber),
+      };
+
       //confirmOrderApproval();
+      api
+        .put(`/orders/${order.id}`, data)
+        .then(() => {
+          props.onOrderUpdate({
+            message: ``,
+            type: UswdsAlertStyle.Success,
+            timeOut: 8,
+          });
+        })
+        .catch((reason) => {
+          // TODO: make the error message more meaningful
+          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        });
     }
   }
 
@@ -149,65 +171,69 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           <div className="grid-col-1"></div>
         </div>
 
-        <div className="grid-row grid-gap-lg">
-          <div className="grid-col-1"></div>
-          <div className="grid-col-10">
-            <h3>Add Case</h3>
-          </div>
-          <div className="grid-col-1"></div>
-        </div>
+        {featureFlags[CONSOLIDATIONS_ADD_CASE_ENABLED] && (
+          <>
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-10">
+                <h3>Add Case</h3>
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
 
-        <div className="court-selection grid-row grid-gap-lg">
-          <div className="grid-col-1"></div>
-          <div className="grid-col-10">
-            <div className="form-row">
-              <div className="select-container court-select-container">
-                <label htmlFor={`court-selection-${order.id}`}>Court</label>
-                <div
-                  className="usa-combo-box"
-                  data-testid={`court-selection-usa-combo-box-${order.id}`}
-                >
-                  <SearchableSelect
-                    id={`court-selection-${order.id}`}
-                    data-testid={`court-selection-${order.id}`}
-                    className="new-court__select"
-                    closeMenuOnSelect={true}
-                    label="Select new court"
-                    ref={courtSelectionRef}
-                    onChange={handleCourtSelection}
-                    //getOfficeList might need pulled into its own file
-                    options={getOfficeList(officesList)}
-                  />
+            <div className="court-selection grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-10">
+                <div className="form-row">
+                  <div className="select-container court-select-container">
+                    <label htmlFor={`court-selection-${order.id}`}>Court</label>
+                    <div
+                      className="usa-combo-box"
+                      data-testid={`court-selection-usa-combo-box-${order.id}`}
+                    >
+                      <SearchableSelect
+                        id={`court-selection-${order.id}`}
+                        data-testid={`court-selection-${order.id}`}
+                        className="new-court__select"
+                        closeMenuOnSelect={true}
+                        label="Select new court"
+                        ref={courtSelectionRef}
+                        onChange={handleCourtSelection}
+                        //getOfficeList might need pulled into its own file
+                        options={getOfficeList(officesList)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+              <div className="grid-col-1"></div>
             </div>
-          </div>
-          <div className="grid-col-1"></div>
-        </div>
 
-        <div className="case-selection grid-row grid-gap-lg">
-          <div className="grid-col-1"></div>
+            <div className="case-selection grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
 
-          <div className="grid-col-10">
-            <div className="form-row">
-              <div>
-                <label htmlFor={`new-case-input-${order.id}`}>Case Number</label>
-                <div>
-                  <Input
-                    id={`new-case-input-${order.id}`}
-                    data-testid={`new-case-input-${order.id}`}
-                    className="usa-input"
-                    value=""
-                    onChange={handleCaseInputChange}
-                    aria-label="New case ID"
-                    ref={caseIdRef}
-                  />
+              <div className="grid-col-10">
+                <div className="form-row">
+                  <div>
+                    <label htmlFor={`new-case-input-${order.id}`}>Case Number</label>
+                    <div>
+                      <Input
+                        id={`new-case-input-${order.id}`}
+                        data-testid={`new-case-input-${order.id}`}
+                        className="usa-input"
+                        value=""
+                        onChange={handleCaseInputChange}
+                        aria-label="New case ID"
+                        ref={caseIdRef}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+              <div className="grid-col-1"></div>
             </div>
-          </div>
-          <div className="grid-col-1"></div>
-        </div>
+          </>
+        )}
 
         <div className="button-bar grid-row grid-gap-lg">
           <div className="grid-col-1"></div>

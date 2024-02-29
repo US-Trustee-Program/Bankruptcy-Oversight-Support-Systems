@@ -160,26 +160,28 @@ function ConsolidationOrderModalComponent(
   function showApprovedContentStep1() {
     return (
       <div>
-        <div id="consolidation-type-container">
-          <label htmlFor={'consolidation-type'} className="usa-label">
-            Consolidation Type
-          </label>
-          <input
-            data-testid={`radio-administrative-${id}`}
-            type="radio"
-            name="consolidationType"
-            value="administrative"
-          />
+        {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
+          <div id="consolidation-type-container">
+            <label htmlFor={'consolidation-type'} className="usa-label">
+              Consolidation Type
+            </label>
+            <input
+              data-testid={`radio-administrative-${id}`}
+              type="radio"
+              name="consolidationType"
+              value="administrative"
+            />
 
-          <label htmlFor={`radio-administrative-${id}`}>Administrative</label>
-          <input
-            data-testid={`radio-substantive-${id}`}
-            type="radio"
-            name="consolidationType"
-            value="substative"
-          />
-          <label htmlFor={`radio-substantive-${id}`}>Substantive</label>
-        </div>
+            <label htmlFor={`radio-administrative-${id}`}>Administrative</label>
+            <input
+              data-testid={`radio-substantive-${id}`}
+              type="radio"
+              name="consolidationType"
+              value="substantive"
+            />
+            <label htmlFor={`radio-substantive-${id}`}>Substantive</label>
+          </div>
+        )}
         <div id="lead-case-court-container">
           <label htmlFor={'lead-case-court'} className="usa-label">
             Lead Case Court
