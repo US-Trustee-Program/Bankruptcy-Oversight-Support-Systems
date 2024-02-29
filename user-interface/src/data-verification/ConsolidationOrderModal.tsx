@@ -128,7 +128,6 @@ function ConsolidationOrderModalComponent(
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
-    console.log('Target: ', ev.target.value);
     leadCaseIdRef.current?.setValue(joinedInput);
     setLeadCaseNumber(joinedInput);
   }
