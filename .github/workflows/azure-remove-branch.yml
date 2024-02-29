@@ -39,8 +39,9 @@ jobs:
         id: hash
         if: github.event.action == 'closed'
         run: |
-          branchHashId=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
-          echo "hashId=$branchHashId" >> $GITHUB_OUTPUT
+          hash=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
+          shortHash="${hash:0:6}"
+          echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
       - name: Validate resources
         id: check

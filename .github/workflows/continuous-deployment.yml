@@ -102,6 +102,9 @@ jobs:
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
 
+          # Some debug output
+          echo "Github event action: ${{ github.event.action }}"
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
