@@ -630,7 +630,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             {suggestedCases && suggestedCases?.length > 0 && (
                               <CaseTable
                                 id="suggested-cases"
-                                cases={suggestedCases!}
+                                cases={suggestedCases}
                                 onSelect={handleSuggestedCaseSelection}
                                 ref={suggestedCasesRef}
                               ></CaseTable>

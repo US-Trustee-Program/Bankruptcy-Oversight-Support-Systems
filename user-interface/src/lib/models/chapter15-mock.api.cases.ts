@@ -118,18 +118,18 @@ export default class Chapter15MockApi extends Api {
           caseDetails: Chapter15MockApi.caseDetails,
         },
       };
-    } else if (path.match(/\/orders/)) {
-      response = {
-        message: '',
-        count: 1,
-        body: Chapter15MockApi.orders,
-      };
     } else if (path.match(/\/orders-suggestions\/[\d-]+/)) {
       response = {
         success: true,
         body: [Chapter15MockApi.caseDetails],
       };
       return Promise.resolve(response as SimpleResponseData);
+    } else if (path.match(/\/orders/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: Chapter15MockApi.orders,
+      };
     } else if (path.match(/\/offices/)) {
       response = {
         message: '',
