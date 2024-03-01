@@ -26,6 +26,7 @@ export type TransferOrder = CaseSummary & {
 
 export type ConsolidationOrder = {
   id?: string;
+  deleted?: true;
   consolidationId: string;
   orderType: 'consolidation';
   orderDate: string;
@@ -56,6 +57,7 @@ export interface ConsolidationHistory {
   status: OrderStatus;
   leadCase?: CaseSummary;
   childCases: Array<CaseSummary>;
+  //documentType: 'AUDIT_CONSOLIDATION';
   // For History
   // rejected?
   //   status, reason?
@@ -72,7 +74,10 @@ export function isTransferOrder(order: Order): order is TransferOrder {
 }
 
 export function isConsolidationHistory(history: unknown): history is ConsolidationHistory {
-  return typeof history === 'object' && 'childCases' in history && 'status' in history;
+  // This is still pretty ambiguous. We may want to consider hoisting the documentType
+  // here OR coming up with a "type" name system if we don't want to lead Cosmos implementation
+  // details through the API.
+  return typeof history === 'object' && 'status' in history;
 }
 
 export function isConsolidationOrder(order: Order): order is ConsolidationOrder {

@@ -42,7 +42,13 @@ export function deleteDocuments(
             console.log(`Deleting document id: ${doc.id} from ${container} container`);
           })
           .catch((e) => {
-            console.error('doc id', doc.id, e.body.code);
+            if ('body' in e && 'code' in e.body) {
+              console.error('doc id', doc.id, e.body.code);
+            } else if ('message' in e) {
+              console.error('doc id', doc.id, e.message);
+            } else {
+              console.error('doc id', doc.id, e);
+            }
           });
       });
     });

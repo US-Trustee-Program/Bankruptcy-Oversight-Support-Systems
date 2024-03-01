@@ -9,15 +9,15 @@ export type OrderTableImperative = {
   clearSelection: () => void;
 };
 
-interface OrderTableProps {
+interface ConsolidationCaseTableProps {
   id: string;
   cases: Array<ConsolidationOrderCase>;
   onSelect: (bCase: ConsolidationOrderCase) => void;
   displayDocket?: boolean;
 }
 
-function _ConsolidatedCasesTable(
-  props: OrderTableProps,
+function _ConsolidationCaseTable(
+  props: ConsolidationCaseTableProps,
   OrderTableRef: React.Ref<OrderTableImperative>,
 ) {
   const { id, cases, onSelect } = props;
@@ -82,7 +82,7 @@ function _ConsolidatedCasesTable(
                 </td>
                 <td scope="row">{formatDate(bCase.dateFiled)}</td>
                 <td scope="row" className="text-no-wrap">
-                  Ben Matlock
+                  {''}
                 </td>
               </tr>,
             );
@@ -129,4 +129,4 @@ function _ConsolidatedCasesTable(
   );
 }
 
-export const ConsolidatedCasesTable = forwardRef(_ConsolidatedCasesTable);
+export const ConsolidationCaseTable = forwardRef(_ConsolidationCaseTable);

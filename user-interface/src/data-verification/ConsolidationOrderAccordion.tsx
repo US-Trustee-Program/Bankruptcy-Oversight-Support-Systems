@@ -1,9 +1,9 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
-import { CaseTableImperative } from './CaseTable';
+import { CaseTable, CaseTableImperative } from './CaseTable';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
-import { ConsolidatedCasesTable } from './ConsolidatedCasesTable';
+import { ConsolidationCaseTable } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
 import {
   ConsolidationOrder,
@@ -25,6 +25,8 @@ import {
 import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import api from '@/lib/models/api';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { CaseNumber } from '@/lib/components/CaseNumber';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -32,7 +34,11 @@ export interface ConsolidationOrderAccordionProps {
   orderType: Map<string, string>;
   officesList: Array<OfficeDetails>;
   regionsMap: Map<string, string>;
-  onOrderUpdate: (alertDetails: AlertDetails, order?: ConsolidationOrder) => void;
+  onOrderUpdate: (
+    alertDetails: AlertDetails,
+    orders?: ConsolidationOrder[],
+    deletedOrder?: ConsolidationOrder,
+  ) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
 }
@@ -101,19 +107,29 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     } else if (status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
-        approvedCases: selectedCases.map((bCase) => bCase.caseId),
+        approvedCases: selectedCases
+          .map((bCase) => bCase.caseId)
+          .filter((caseId) => caseId !== leadCaseNumber),
         leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber)!,
       };
 
       //confirmOrderApproval();
       api
         .put('/consolidations/approve', data)
-        .then(() => {
-          props.onOrderUpdate({
-            message: ``,
-            type: UswdsAlertStyle.Success,
-            timeOut: 8,
-          });
+        .then((response) => {
+          const newOrders = response.body as ConsolidationOrder[];
+          const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
+          props.onOrderUpdate(
+            {
+              message: `Consolidation to lead case ${getCaseNumber(approvedOrder.leadCase?.caseId)} in ${
+                approvedOrder.leadCase?.courtName
+              } (${approvedOrder.leadCase?.courtDivisionName}) was successful.`,
+              type: UswdsAlertStyle.Success,
+              timeOut: 8,
+            },
+            newOrders,
+            order,
+          );
         })
         .catch((reason) => {
           // TODO: make the error message more meaningful
@@ -158,135 +174,171 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           </span>
         </div>
       </section>
-      <section
-        className="accordion-content order-form"
-        data-testid={`accordion-content-${order.id}`}
-      >
-        <div className="grid-row grid-gap-lg">
-          <div className="grid-col-1"></div>
+      <>
+        {order.status === 'pending' && (
+          <section
+            className="accordion-content order-form"
+            data-testid={`accordion-content-${order.id}`}
+          >
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
 
-          <div>
-            <ConsolidatedCasesTable
-              id={`${order.id}-case-list`}
-              data-testid={`${order.id}-case-list`}
-              cases={order.childCases}
-              onSelect={handleIncludeCase}
-              ref={caseTable}
-            ></ConsolidatedCasesTable>
-          </div>
-          <div className="grid-col-1"></div>
-        </div>
+              <div>
+                <ConsolidationCaseTable
+                  id={`${order.id}-case-list`}
+                  data-testid={`${order.id}-case-list`}
+                  cases={order.childCases}
+                  onSelect={handleIncludeCase}
+                  ref={caseTable}
+                ></ConsolidationCaseTable>
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
 
-        {featureFlags[CONSOLIDATIONS_ADD_CASE_ENABLED] && (
-          <>
+            {featureFlags[CONSOLIDATIONS_ADD_CASE_ENABLED] && (
+              <>
+                <div className="grid-row grid-gap-lg">
+                  <div className="grid-col-1"></div>
+                  <div className="grid-col-10">
+                    <h3>Add Case</h3>
+                  </div>
+                  <div className="grid-col-1"></div>
+                </div>
+
+                <div className="court-selection grid-row grid-gap-lg">
+                  <div className="grid-col-1"></div>
+                  <div className="grid-col-10">
+                    <div className="form-row">
+                      <div className="select-container court-select-container">
+                        <label htmlFor={`court-selection-${order.id}`}>Court</label>
+                        <div
+                          className="usa-combo-box"
+                          data-testid={`court-selection-usa-combo-box-${order.id}`}
+                        >
+                          <SearchableSelect
+                            id={`court-selection-${order.id}`}
+                            data-testid={`court-selection-${order.id}`}
+                            className="new-court__select"
+                            closeMenuOnSelect={true}
+                            label="Select new court"
+                            ref={courtSelectionRef}
+                            onChange={handleCourtSelection}
+                            //getOfficeList might need pulled into its own file
+                            options={getOfficeList(officesList)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid-col-1"></div>
+                </div>
+
+                <div className="case-selection grid-row grid-gap-lg">
+                  <div className="grid-col-1"></div>
+
+                  <div className="grid-col-10">
+                    <div className="form-row">
+                      <div>
+                        <label htmlFor={`new-case-input-${order.id}`}>Case Number</label>
+                        <div>
+                          <Input
+                            id={`new-case-input-${order.id}`}
+                            data-testid={`new-case-input-${order.id}`}
+                            className="usa-input"
+                            value=""
+                            onChange={handleCaseInputChange}
+                            aria-label="New case ID"
+                            ref={caseIdRef}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid-col-1"></div>
+                </div>
+              </>
+            )}
+
+            <div className="button-bar grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-2">
+                <Button
+                  id={`accordion-reject-button-${order.id}`}
+                  onClick={() =>
+                    confirmationModalRef.current?.show({
+                      status: 'rejected',
+                      caseIds: order.childCases.map((c) => c.caseId),
+                    })
+                  }
+                  disabled={true}
+                  //Disabled until we get to story CAMS-301
+                  uswdsStyle={UswdsButtonStyle.Secondary}
+                >
+                  Reject
+                </Button>
+              </div>
+              <div className="grid-col-6"></div>
+              <div className="grid-col-2 text-no-wrap">
+                <Button
+                  id={`accordion-cancel-button-${order.id}`}
+                  onClick={cancelUpdate}
+                  uswdsStyle={UswdsButtonStyle.Outline}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  id={`accordion-approve-button-${order.id}`}
+                  onClick={() =>
+                    confirmationModalRef.current?.show({ status: 'approved', attorneys })
+                  }
+                  disabled={true}
+                  ref={approveButtonRef}
+                >
+                  Approve
+                </Button>
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+            <ConsolidationOrderModal
+              ref={confirmationModalRef}
+              id={`confirmation-modal-${order.id}`}
+              courts={officesList}
+              onCancel={cancelUpdate}
+              onConfirm={confirmAction}
+            ></ConsolidationOrderModal>
+          </section>
+        )}
+        {order.status === 'approved' && (
+          <section
+            className="accordion-content order-form"
+            data-testid={`accordion-content-${order.id}`}
+          >
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <h3>Add Case</h3>
+                Consolidated the following cases to lead case{' '}
+                <CaseNumber
+                  caseNumber={order.leadCase!.caseId}
+                  renderAs="link"
+                  openLinkIn="new-window"
+                ></CaseNumber>{' '}
+                {order.leadCase?.caseTitle}
               </div>
               <div className="grid-col-1"></div>
             </div>
-
-            <div className="court-selection grid-row grid-gap-lg">
+            <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <div className="form-row">
-                  <div className="select-container court-select-container">
-                    <label htmlFor={`court-selection-${order.id}`}>Court</label>
-                    <div
-                      className="usa-combo-box"
-                      data-testid={`court-selection-usa-combo-box-${order.id}`}
-                    >
-                      <SearchableSelect
-                        id={`court-selection-${order.id}`}
-                        data-testid={`court-selection-${order.id}`}
-                        className="new-court__select"
-                        closeMenuOnSelect={true}
-                        label="Select new court"
-                        ref={courtSelectionRef}
-                        onChange={handleCourtSelection}
-                        //getOfficeList might need pulled into its own file
-                        options={getOfficeList(officesList)}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <CaseTable
+                  id={`order-${order.id}-child-cases`}
+                  cases={order.childCases}
+                ></CaseTable>
               </div>
               <div className="grid-col-1"></div>
             </div>
-
-            <div className="case-selection grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-
-              <div className="grid-col-10">
-                <div className="form-row">
-                  <div>
-                    <label htmlFor={`new-case-input-${order.id}`}>Case Number</label>
-                    <div>
-                      <Input
-                        id={`new-case-input-${order.id}`}
-                        data-testid={`new-case-input-${order.id}`}
-                        className="usa-input"
-                        value=""
-                        onChange={handleCaseInputChange}
-                        aria-label="New case ID"
-                        ref={caseIdRef}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-          </>
+          </section>
         )}
-
-        <div className="button-bar grid-row grid-gap-lg">
-          <div className="grid-col-1"></div>
-          <div className="grid-col-2">
-            <Button
-              id={`accordion-reject-button-${order.id}`}
-              onClick={() =>
-                confirmationModalRef.current?.show({
-                  status: 'rejected',
-                  caseIds: order.childCases.map((c) => c.caseId),
-                })
-              }
-              disabled={true}
-              //Disabled until we get to story CAMS-301
-              uswdsStyle={UswdsButtonStyle.Secondary}
-            >
-              Reject
-            </Button>
-          </div>
-          <div className="grid-col-6"></div>
-          <div className="grid-col-2 text-no-wrap">
-            <Button
-              id={`accordion-cancel-button-${order.id}`}
-              onClick={cancelUpdate}
-              uswdsStyle={UswdsButtonStyle.Outline}
-            >
-              Cancel
-            </Button>
-            <Button
-              id={`accordion-approve-button-${order.id}`}
-              onClick={() => confirmationModalRef.current?.show({ status: 'approved', attorneys })}
-              disabled={true}
-              ref={approveButtonRef}
-            >
-              Approve
-            </Button>
-          </div>
-          <div className="grid-col-1"></div>
-        </div>
-        <ConsolidationOrderModal
-          ref={confirmationModalRef}
-          id={`confirmation-modal-${order.id}`}
-          courts={officesList}
-          onCancel={cancelUpdate}
-          onConfirm={confirmAction}
-        ></ConsolidationOrderModal>
-      </section>
+      </>
     </Accordion>
   );
 }
