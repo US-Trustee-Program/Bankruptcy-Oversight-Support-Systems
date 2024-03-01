@@ -254,6 +254,42 @@ export class OrdersUseCase {
     return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
 
+  private async buildHistory(
+    context: ApplicationContext,
+    bCase: CaseSummary,
+    status: OrderStatus,
+    leadCase?: CaseSummary,
+    childCases?: CaseSummary[],
+  ): Promise<CaseHistory> {
+    const after: ConsolidationHistory = {
+      status,
+      childCases,
+      leadCase,
+    };
+    let before;
+    try {
+      const fullHistory = await this.casesRepo.getCaseHistory(context, bCase.caseId);
+      before = fullHistory
+        .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
+        .sort((a, b) => sortDatesReverse(a.occurredAtTimestamp, b.occurredAtTimestamp))
+        .shift()?.after;
+    } catch {
+      before = undefined;
+    }
+
+    if (isConsolidationHistory(before) && before.childCases.length > 0) {
+      //create unique set of child cases then write to an array
+      after.childCases.push(...before.childCases);
+    }
+    //When building a history we will want to add to the before state
+    return {
+      caseId: bCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: isConsolidationHistory(before) ? before : undefined,
+      after,
+    };
+  }
+
   private async handleConsolidation(
     context: ApplicationContext,
     status: OrderStatus,
@@ -277,46 +313,47 @@ export class OrdersUseCase {
       childCases: includedChildCases,
       leadCase,
     };
+
     if (doSplit) {
-      provisionalOrder.childCases = remainingChildCases;
-      await this.consolidationsRepo.update(
-        context,
-        provisionalOrder.id,
-        provisionalOrder.consolidationId,
-        provisionalOrder,
-      );
-      response.push(provisionalOrder);
-    } else {
-      // TODO: Do we want to consider a soft delete or just a status change?
-      await this.consolidationsRepo.delete(
-        context,
-        provisionalOrder.id,
-        provisionalOrder.consolidationId,
-      );
-      //somehow signal this was a deletion
-      response.push(provisionalOrder);
+      const remainingOrder = {
+        ...provisionalOrder,
+        childCases: remainingChildCases,
+        id: undefined,
+      };
+      await this.consolidationsRepo.put(context, remainingOrder);
+      response.push(remainingOrder);
     }
+
+    await this.consolidationsRepo.delete(
+      context,
+      provisionalOrder.id,
+      provisionalOrder.consolidationId,
+    );
+
     const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
     response.push(createdConsolidation);
+    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
-      const history: ConsolidationHistory = {
-        status,
-        childCases: [],
-      };
-      const fullHistory = await this.casesRepo.getCaseHistory(context, childCase.caseId);
-      const before = fullHistory
-        .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
-        .sort((a, b) => sortDatesReverse(a.occurredAtTimestamp, b.occurredAtTimestamp))
-        .shift()?.after;
+      if (childCase.caseId === leadCase.caseId) {
+        const leadCaseHistory = await this.buildHistory(
+          context,
+          leadCaseSummary,
+          status,
+          undefined,
+          childCaseSummaries,
+        );
+        await this.casesRepo.createCaseHistory(context, leadCaseHistory);
 
-      const caseHistory: CaseHistory = {
-        caseId: childCase.caseId,
-        documentType: 'AUDIT_CONSOLIDATION',
-        before: isConsolidationHistory(before) ? before : undefined,
-        after: history,
-      };
+        continue;
+      }
+
+      const caseHistory = await this.buildHistory(context, childCase, status, leadCaseSummary);
       await this.casesRepo.createCaseHistory(context, caseHistory);
+      const { docketEntries: _docketEntries, ...caseSummary } = childCase;
+      childCaseSummaries.push(caseSummary);
     }
+
     return response;
   }
 

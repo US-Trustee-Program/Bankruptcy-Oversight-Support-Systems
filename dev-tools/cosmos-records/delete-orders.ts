@@ -7,7 +7,7 @@ export default function deleteOrders() {
   deleteDocuments(
     'cases',
     'caseId',
-    'SELECT * FROM c WHERE c.documentType = "AUDIT_CONSOLIDATIONS"',
+    'SELECT * FROM c WHERE c.documentType = "AUDIT_CONSOLIDATION"',
   );
   deleteDocuments('consolidations', 'consolidationId', 'SELECT * FROM c');
 }

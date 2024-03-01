@@ -99,10 +99,19 @@ export default function DataVerificationScreen() {
   }
 
   function handleConsolidationOrderUpdate(
-    _alertDetails: AlertDetails,
-    _updatedOrder?: ConsolidationOrder,
+    alertDetails: AlertDetails,
+    orders?: ConsolidationOrder[],
+    deletedOrder?: ConsolidationOrder,
   ) {
-    // TODO: Implement the APi call to update the consolidation order.
+    // update the orders list
+    if (deletedOrder && orders) {
+      const newOrderList = orderList.filter((o) => o.id !== deletedOrder.id);
+      newOrderList.push(...(orders as Order[]));
+      setOrderList(newOrderList);
+    }
+    // display alert
+    setReviewOrderAlert(alertDetails);
+    alertRef.current?.show();
   }
 
   function handleStatusFilter(filterString: OrderStatus) {

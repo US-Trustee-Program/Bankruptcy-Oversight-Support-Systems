@@ -82,13 +82,6 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                 </td>
                 <td scope="row">{bCase.chapter}</td>
               </tr>
-              <tr key={`${key}-b`} data-testid={`${key}-b`}>
-                <td colSpan={6} className="measure-6">
-                  Some placeholder here Some placeholder hereSome placeholder hereSome placeholder
-                  hereSome placeholder hereSome placeholder hereSome placeholder hereSome
-                  placeholder hereSome placeholder hereSome placeholder here{' '}
-                </td>
-              </tr>
             </>
           );
         })}
