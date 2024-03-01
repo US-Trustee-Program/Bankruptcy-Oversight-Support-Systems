@@ -104,6 +104,9 @@ jobs:
           echo "Execute virtual network deployment: ${execVnetDeploy}"
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
 
+          # Some debug output
+          echo "Github event action: ${{ github.event.action }}"
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
@@ -421,7 +424,7 @@ jobs:
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }}' \
+            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ needs.build-info.outputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch || false}}' \
             -l ${{ secrets.AZ_LOCATION }}
 
       - name: Deploy Azure resources
