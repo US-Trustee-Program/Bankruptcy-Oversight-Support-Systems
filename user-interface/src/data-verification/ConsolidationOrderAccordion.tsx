@@ -5,7 +5,12 @@ import { CaseTableImperative } from './CaseTable';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidatedCasesTable } from './ConsolidatedCasesTable';
 import './TransferOrderAccordion.scss';
-import { ConsolidationOrder, ConsolidationOrderCase, OrderStatus } from '@common/cams/orders';
+import {
+  ConsolidationOrder,
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderCase,
+  OrderStatus,
+} from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { InputRef } from '@/lib/type-declarations/input-fields';
@@ -94,14 +99,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       console.log(reason);
       //approveOrderRejection(reason);
     } else if (status === 'approved') {
-      const data = {
-        childCases: selectedCases,
-        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber),
+      const data: ConsolidationOrderActionApproval = {
+        ...order,
+        approvedCases: selectedCases.map((bCase) => bCase.caseId),
+        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber)!,
       };
 
       //confirmOrderApproval();
       api
-        .put(`/orders/${order.id}`, data)
+        .put('/consolidations/approve', data)
         .then(() => {
           props.onOrderUpdate({
             message: ``,

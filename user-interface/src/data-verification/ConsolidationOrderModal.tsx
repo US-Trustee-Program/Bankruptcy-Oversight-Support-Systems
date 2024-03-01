@@ -51,6 +51,7 @@ function ConsolidationOrderModalComponent(
     attorneys: [],
   });
   const [caseIds, setCaseIds] = useState<string[]>([]);
+  const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const leadCaseIdRef = useRef<InputRef>(null);
   const featureFlags = useFeatureFlags();
@@ -72,7 +73,11 @@ function ConsolidationOrderModalComponent(
     submitButton: {
       label: options.heading,
       onClick: () => {
-        onConfirm(options.status, reasonRef.current?.value, leadCaseNumber);
+        onConfirm(
+          options.status,
+          reasonRef.current?.value,
+          `${leadCaseDivisionCode}-${leadCaseNumber}`,
+        );
       },
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',
     },
@@ -129,7 +134,7 @@ function ConsolidationOrderModalComponent(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
     leadCaseIdRef.current?.setValue(joinedInput);
-    setLeadCaseNumber(joinedInput);
+    if (newCaseId) setLeadCaseNumber(newCaseId);
   }
 
   useImperativeHandle(ConfirmationModalRef, () => ({
@@ -189,6 +194,9 @@ function ConsolidationOrderModalComponent(
           <SearchableSelect
             id={'lead-case-court'}
             options={getOfficeList(props.courts)}
+            onChange={(ev) => {
+              setLeadCaseDivisionCode(ev?.value || '');
+            }}
           ></SearchableSelect>
         </div>
         <div id="lead-case-number-containter">
