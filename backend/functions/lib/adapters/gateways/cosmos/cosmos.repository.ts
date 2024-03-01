@@ -25,7 +25,8 @@ export class CosmosDbCrudRepository<T extends Item> {
 
   private async execute<R>(context: ApplicationContext, fn: () => Promise<R>): Promise<R> {
     try {
-      return await fn();
+      const executionResult = await fn();
+      return executionResult;
     } catch (originalError) {
       context.logger.error(
         this.moduleName,
@@ -44,12 +45,12 @@ export class CosmosDbCrudRepository<T extends Item> {
 
   protected async query(context: ApplicationContext, querySpec: object): Promise<T[]> {
     const lambdaToExecute = async <T>(): Promise<T[]> => {
-      const { resources: results } = await this.cosmosDbClient
+      const { resources } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.query(querySpec)
         .fetchAll();
-      return results;
+      return resources;
     };
     return this.execute<T[]>(context, lambdaToExecute);
   }
@@ -68,27 +69,29 @@ export class CosmosDbCrudRepository<T extends Item> {
 
   public async update(context: ApplicationContext, id: string, partitionKey: string, data: T) {
     const lambdaToExecute = async <T>(): Promise<T> => {
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .item(id, partitionKey)
         .replace(data);
 
       context.logger.debug(this.moduleName, `${typeof data} Updated ${id}`);
-      return item;
+      return resource;
     };
     return this.execute<T>(context, lambdaToExecute);
   }
 
   public async put(context: ApplicationContext, data: T): Promise<T> {
     const lambdaToExecute = async <T>(): Promise<T> => {
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(data);
-      return item;
+
+      return resource;
     };
-    return this.execute<T>(context, lambdaToExecute);
+    const response = await this.execute<T>(context, lambdaToExecute);
+    return response;
   }
 
   async putAll(context: ApplicationContext, list: T[]): Promise<T[]> {
@@ -97,11 +100,11 @@ export class CosmosDbCrudRepository<T extends Item> {
       if (!list.length) return written;
       for (const record of list) {
         try {
-          const { item } = await this.cosmosDbClient
+          const { resource } = await this.cosmosDbClient
             .database(this.cosmosConfig.databaseName)
             .container(this.containerName)
             .items.create(record);
-          written.push(item);
+          written.push(resource);
         } catch (e) {
           if (!isPreExistingDocumentError(e)) {
             throw e;
@@ -115,13 +118,13 @@ export class CosmosDbCrudRepository<T extends Item> {
 
   public async delete(context: ApplicationContext, id: string, partitionKey: string) {
     const lambdaToExecute = async <T>(): Promise<T> => {
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .item(id, partitionKey)
         .delete();
 
-      return item;
+      return resource;
     };
     return this.execute<T>(context, lambdaToExecute);
   }
