@@ -52,37 +52,35 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
           const taxId = bCase.debtor?.ssn || bCase.debtor?.taxId || '';
           const key = `${id}-row-${idx}`;
           return (
-            <>
-              <tr key={`${key}`} data-testid={key}>
-                {onSelect && (
-                  <th scope="col">
-                    <input
-                      type="radio"
-                      onChange={handleCaseSelection}
-                      value={idx}
-                      name="case-selection"
-                      data-testid={`${id}-radio-${idx}`}
-                      checked={idx === selectedIdx}
-                      title={`select ${bCase.caseTitle}`}
-                    ></input>
-                  </th>
-                )}
-                <td scope="row">
-                  <CaseNumber caseNumber={bCase.caseId} />
-                </td>
-                <td scope="row">{bCase.caseTitle}</td>
-                <td scope="row" className="text-no-wrap">
-                  {taxId}
-                </td>
-                <td scope="row">
-                  {bCase.courtName} ({bCase.courtDivisionName})
-                </td>
-                <td scope="row" className="text-no-wrap">
-                  {formatDate(bCase.dateFiled)}
-                </td>
-                <td scope="row">{bCase.chapter}</td>
-              </tr>
-            </>
+            <tr key={`${key}`} data-testid={key}>
+              {onSelect && (
+                <th scope="col">
+                  <input
+                    type="radio"
+                    onChange={handleCaseSelection}
+                    value={idx}
+                    name="case-selection"
+                    data-testid={`${id}-radio-${idx}`}
+                    checked={idx === selectedIdx}
+                    title={`select ${bCase.caseTitle}`}
+                  ></input>
+                </th>
+              )}
+              <td scope="row">
+                <CaseNumber caseNumber={bCase.caseId} />
+              </td>
+              <td scope="row">{bCase.caseTitle}</td>
+              <td scope="row" className="text-no-wrap">
+                {taxId}
+              </td>
+              <td scope="row">
+                {bCase.courtName} ({bCase.courtDivisionName})
+              </td>
+              <td scope="row" className="text-no-wrap">
+                {formatDate(bCase.dateFiled)}
+              </td>
+              <td scope="row">{bCase.chapter}</td>
+            </tr>
           );
         })}
       </tbody>
