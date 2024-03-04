@@ -7,7 +7,6 @@ export function syncOrders() {
     console.log('ORDER_SYNC_ENDPOINT environment variable required.');
     return;
   }
-  console.log(endpoint);
   fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
