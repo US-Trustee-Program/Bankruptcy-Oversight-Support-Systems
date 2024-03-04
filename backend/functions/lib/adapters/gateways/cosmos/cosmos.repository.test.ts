@@ -61,7 +61,7 @@ describe('Test generic cosmosdb repository', () => {
 
     const mockReplace = jest
       .spyOn(HumbleItem.prototype, 'replace')
-      .mockResolvedValue({ item: updatedItem });
+      .mockResolvedValue({ resource: updatedItem });
     const actual = await cosmosCrudRepo.update(
       mockDbContext,
       updatedItem.id,
@@ -83,7 +83,7 @@ describe('Test generic cosmosdb repository', () => {
 
     const mockCreate = jest
       .spyOn(HumbleItems.prototype, 'create')
-      .mockResolvedValue({ item: expectedItem });
+      .mockResolvedValue({ resource: expectedItem });
     const actual = await cosmosCrudRepo.put(mockDbContext, newItem);
     expect(actual).toEqual(expectedItem);
     expect(mockCreate).toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe('Test generic cosmosdb repository', () => {
 
     const mockDelete = jest
       .spyOn(HumbleItem.prototype, 'delete')
-      .mockResolvedValue({ item: itemToDelete });
+      .mockResolvedValue({ resource: itemToDelete });
     const actual = await cosmosCrudRepo.delete(mockDbContext, itemToDelete.id, itemToDelete.id);
     expect(actual).toEqual(itemToDelete);
     expect(mockDelete).toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe('Test generic cosmosdb repository', () => {
     const mockCreate = jest
       .spyOn(HumbleItems.prototype, 'create')
       .mockRejectedValueOnce(existingError)
-      .mockResolvedValueOnce({ item: items[0] });
+      .mockResolvedValueOnce({ resource: items[0] });
 
     const actual = await cosmosCrudRepo.putAll(mockDbContext, items);
     expect(actual).toEqual(expectedItems);

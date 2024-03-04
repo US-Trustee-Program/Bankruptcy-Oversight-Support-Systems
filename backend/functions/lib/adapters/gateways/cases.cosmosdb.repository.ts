@@ -79,12 +79,12 @@ export class CasesCosmosDbRepository implements CasesRepository {
       if (!history.occurredAtTimestamp) {
         history.occurredAtTimestamp = new Date().toISOString();
       }
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(history);
-      context.logger.debug(MODULE_NAME, `New history created ${item.id}`);
-      return item.id;
+      context.logger.debug(MODULE_NAME, `New history created ${resource.id}`);
+      return resource.id;
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       throw new UnknownError(MODULE_NAME, {
@@ -99,11 +99,11 @@ export class CasesCosmosDbRepository implements CasesRepository {
   private async create<T>(context: ApplicationContext, itemToCreate: T): Promise<T> {
     try {
       try {
-        const { item } = await this.cosmosDbClient
+        const { resource } = await this.cosmosDbClient
           .database(this.cosmosConfig.databaseName)
           .container(this.containerName)
           .items.create(itemToCreate);
-        return item;
+        return resource;
       } catch (e) {
         if (!isPreExistingDocumentError(e)) {
           throw e;
