@@ -69,7 +69,9 @@ export class CosmosItemsHumble {
   async upsert<T>(item: T): Promise<ItemResponse<T>> {
     return this.items.upsert<T>(item);
   }
-
+  readAll<T>(): QueryIterator<T> {
+    return this.items.readAll<T>();
+  }
   query<T>(query: string | QueryOptions): QueryIterator<T> {
     let converted;
     if (typeof query !== 'string') {
