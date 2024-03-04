@@ -1,0 +1,18 @@
+.accordion-content {
+  .consolidation-text {
+    padding: 1rem 0;
+    font-size: 1.25rem;
+  }
+  .instructional-text {
+    padding-bottom: 1rem;
+  }
+  table {
+    width: 100%;
+  }
+  tr.case-info td {
+    border-bottom: 0 solid;
+  }
+  tr.docket-entry td {
+    border-top: 0 solid;
+  }
+}
