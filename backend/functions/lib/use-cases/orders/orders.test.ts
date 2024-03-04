@@ -187,10 +187,7 @@ describe('Orders use case', () => {
 
     await useCase.syncOrders(mockContext);
 
-    // expect(mockPutOrders.mock.calls[0][1]).toHaveBeenCalledWith(mockContext, transfers);
     expect(mockPutOrders.mock.calls[0][1]).toEqual(transfers);
-    //Commenting out because it will mostl ikely be unnecessary
-    //expect(mockPutOrders.mock.calls[1][1]).toEqual(consolidations);
     expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
   });
 
