@@ -247,7 +247,7 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ): Promise<ConsolidationOrder[]> {
-    // TODO CAMS-270
+    // TODO CAMS-301
     // - valid case id supplied (Noticed a reject record got created when passing a list of invalid string values)
 
     const { rejectedCases, ...provisionalOrder } = data;

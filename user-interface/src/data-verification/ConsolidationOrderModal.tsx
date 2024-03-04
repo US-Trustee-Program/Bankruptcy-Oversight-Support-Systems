@@ -8,7 +8,7 @@ import useFeatureFlags, {
   CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import SearchableSelect from '@/lib/components/SearchableSelect';
-import { getOfficeList } from '@/data-verification/dataVerificationHelper';
+import { getOfficeList, validateNewCaseIdInput } from '@/data-verification/dataVerificationHelper';
 import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -55,13 +55,6 @@ function ConsolidationOrderModalComponent(
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const leadCaseIdRef = useRef<InputRef>(null);
   const featureFlags = useFeatureFlags();
-
-  // const courtSelectionOptions = props.courts.map((court) => {
-  //   return {
-  //     value: court.courtDivision,
-  //     label: `${court.courtName} (${court.courtDivisionName})`,
-  //   };
-  // });
 
   function clearReason() {
     if (reasonRef.current) reasonRef.current.value = '';
@@ -111,23 +104,6 @@ function ConsolidationOrderModalComponent(
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
-  }
-
-  // TODO: This code is duplicated from TransferOrderAccordion. We need to make a CaseIdInput component...
-  function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
-    // TODO: Move this logic into a CaseIdInput component based on Input.
-    const allowedCharsPattern = /[0-9]/g;
-    const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
-    if (filteredInput.length > 7) {
-      filteredInput.splice(7);
-    }
-    if (filteredInput.length > 2) {
-      filteredInput.splice(2, 0, '-');
-    }
-    const joinedInput = filteredInput?.join('') || '';
-    const caseIdPattern = /^\d{2}-\d{5}$/;
-    const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
-    return { newCaseId, joinedInput };
   }
 
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {

@@ -52,7 +52,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
           const taxId = bCase.debtor?.ssn || bCase.debtor?.taxId || '';
           const key = `${id}-row-${idx}`;
           return (
-            <tr key={`${key}`} data-testid={key}>
+            <tr key={key} data-testid={key}>
               {onSelect && (
                 <th scope="col">
                   <input

@@ -94,7 +94,7 @@ type TransferOrderActionRejection = {
 type TransferOrderActionApproval = {
   id: string;
   caseId: string;
-  newCase?: Partial<CaseSummary>; // TODO CAMS-326 may want to make this required
+  newCase: Partial<CaseSummary>;
   status: 'approved';
 };
 
