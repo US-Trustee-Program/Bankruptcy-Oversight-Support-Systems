@@ -44,7 +44,7 @@ describe('Consolidations Function tests', () => {
     expect(context.res.body).toEqual(expectedResponseBody);
   });
 
-  test('should reject consolidation when procedure == "Approve"', async () => {
+  test('should approve consolidation when procedure == "Approve"', async () => {
     const mockConsolidationOrder = [MockData.getConsolidationOrder()];
     approveConsolidation.mockImplementation(() => {
       return Promise.resolve({ success: true, body: [mockConsolidationOrder] });
@@ -66,7 +66,7 @@ describe('Consolidations Function tests', () => {
     expect(context.res.body).toEqual(expectedResponseBody);
   });
 
-  test('should throw an BadRequestError on invalid procedure request', async () => {
+  test('should throw a BadRequestError on invalid procedure request', async () => {
     const request = {
       params: {
         procedure: 'unsupported',
