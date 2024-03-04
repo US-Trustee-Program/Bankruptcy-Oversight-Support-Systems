@@ -317,16 +317,24 @@ describe('Review Orders screen', () => {
     );
 
     // Make sure all the order statuses are visible.
+    let approveFilter;
+    let rejectFilter;
+
     await waitFor(() => {
-      fireEvent.click(screen.getByTestId(`order-status-filter-approved`));
-      fireEvent.click(screen.getByTestId(`order-status-filter-rejected`));
+      approveFilter = screen.getByTestId(`order-status-filter-approved`);
+      rejectFilter = screen.getByTestId(`order-status-filter-rejected`);
     });
 
-    // Check if all the orders are listed by default.
-    for (const order of orders) {
-      const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
-      expect(heading).toBeInTheDocument();
-    }
+    fireEvent.click(approveFilter!);
+    fireEvent.click(rejectFilter!);
+
+    await waitFor(() => {
+      // Check if all the orders are listed by default.
+      for (const order of orders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+      }
+    });
 
     // disabling transfer filter
     let transferFilter: HTMLElement;
