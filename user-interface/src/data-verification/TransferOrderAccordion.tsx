@@ -27,7 +27,7 @@ import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
-import { getOfficeList } from '@/data-verification/dataVerificationHelper';
+import { getOfficeList, validateNewCaseIdInput } from '@/data-verification/dataVerificationHelper';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -53,22 +53,6 @@ function safeToInt(s: string) {
   if (isNaN(intVal)) return s;
 
   return intVal.toString();
-}
-
-export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
-  // TODO: Move this logic into a CaseIdInput component based on Input.
-  const allowedCharsPattern = /[0-9]/g;
-  const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
-  if (filteredInput.length > 7) {
-    filteredInput.splice(7);
-  }
-  if (filteredInput.length > 2) {
-    filteredInput.splice(2, 0, '-');
-  }
-  const joinedInput = filteredInput?.join('') || '';
-  const caseIdPattern = /^\d{2}-\d{5}$/;
-  const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
-  return { newCaseId, joinedInput };
 }
 
 export function updateOrderTransfer(

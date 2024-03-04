@@ -141,7 +141,6 @@ describe('Orders use case', () => {
   test('should retrieve orders from legacy and persist to new system', async () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 3);
 
-    // to get child cases, somehow, we need to make sure that a consolidation contains the following caseid: 081-06-00243
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 

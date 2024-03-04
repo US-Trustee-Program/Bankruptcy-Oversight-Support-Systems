@@ -10,7 +10,6 @@ import {
   TransferOrderAccordion,
   TransferOrderAccordionProps,
   isValidOrderTransfer,
-  validateNewCaseIdInput,
 } from './TransferOrderAccordion';
 import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -19,7 +18,7 @@ import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
-import { getOfficeList } from './dataVerificationHelper';
+import { getOfficeList, validateNewCaseIdInput } from './dataVerificationHelper';
 import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
 
 vi.mock(
