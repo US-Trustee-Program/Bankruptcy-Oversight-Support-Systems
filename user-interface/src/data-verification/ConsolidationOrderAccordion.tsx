@@ -24,9 +24,10 @@ import {
 } from '@/data-verification/ConsolidationOrderModal';
 import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import api from '@/lib/models/api';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
+import './ConsolidationOrderAccordion.scss';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -182,8 +183,27 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           >
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-
-              <div>
+              <div className="grid-col-10">
+                <div className="measure-6 instructional-text">
+                  <Alert
+                    inline={true}
+                    show={true}
+                    slim={true}
+                    message="Mark the cases to include in a consolidation. When finished, click Continue to
+                    choose the consolidation type, pick a lead case, and assign the cases to a staff
+                    member."
+                    type={UswdsAlertStyle.Info}
+                    role="status"
+                    className="instructional-text"
+                    id="consolidation-instructional-text"
+                  />
+                </div>
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-10">
                 <ConsolidationCaseTable
                   id={`${order.id}-case-list`}
                   data-testid={`${order.id}-case-list`}
@@ -313,7 +333,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             className="accordion-content order-form"
             data-testid={`accordion-content-${order.id}`}
           >
-            <div className="grid-row grid-gap-lg">
+            <div className="grid-row grid-gap-lg consolidation-text">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 Consolidated the following cases to lead case{' '}
@@ -322,7 +342,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   renderAs="link"
                   openLinkIn="new-window"
                 ></CaseNumber>{' '}
-                {order.leadCase?.caseTitle}
+                {order.leadCase?.caseTitle}.
               </div>
               <div className="grid-col-1"></div>
             </div>
