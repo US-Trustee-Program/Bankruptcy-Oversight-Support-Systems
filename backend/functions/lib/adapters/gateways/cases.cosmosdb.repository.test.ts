@@ -53,7 +53,7 @@ describe('Runtime State Repo', () => {
 
   test('should create a TransferIn document', async () => {
     const create = jest.spyOn(HumbleItems.prototype, 'create').mockResolvedValue({
-      item: transferIn,
+      resource: transferIn,
     });
     const toCreate = { ...transferIn };
     const actual = await repo.createTransferIn(context, toCreate);
@@ -63,7 +63,7 @@ describe('Runtime State Repo', () => {
 
   test('should update a TransferOut document', async () => {
     const create = jest.spyOn(HumbleItems.prototype, 'create').mockResolvedValue({
-      item: transferOut,
+      resource: transferOut,
     });
     const toCreate = { ...transferOut };
     const actual = await repo.createTransferOut(context, toCreate);

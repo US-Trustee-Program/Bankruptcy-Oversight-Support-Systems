@@ -95,7 +95,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       resource: testNewOrderData,
     });
     const mockReplace = jest.spyOn(HumbleItem.prototype, 'replace').mockResolvedValue({
-      item: testNewOrderData,
+      resource: testNewOrderData,
     });
     const testResult = await repository.updateOrder(
       applicationContext,

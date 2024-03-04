@@ -77,11 +77,11 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
 
   async createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T> {
     try {
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(syncState);
-      return item;
+      return resource;
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {

@@ -29,18 +29,18 @@ export class HumbleItem {
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
   }
-  async replace<T>(item: T): Promise<{ item: T }> {
+  async replace<T>(resource: T): Promise<{ resource: T }> {
     if (this.container.map.has(this.id)) {
-      this.container.map.set(this.id, item);
-      return { item };
+      this.container.map.set(this.id, resource);
+      return { resource };
     }
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
   }
-  async delete<T>(item: T): Promise<{ item: T }> {
+  async delete<T>(resource: T): Promise<{ resource: T }> {
     if (this.container.map.has(this.id)) {
       this.container.map.delete(this.id);
-      return { item };
+      return { resource };
     }
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
@@ -52,15 +52,15 @@ export class HumbleItems {
   constructor(container: HumbleContainer) {
     this.container = container;
   }
-  async create<T>(item: T) {
+  async create<T>(resource: T) {
     const id = crypto.randomUUID().toString();
-    const itemWithId = { ...item, id };
+    const itemWithId = { ...resource, id };
     this.container.map.set(id, itemWithId);
-    return { item: this.container.map.get(id) };
+    return { resource: this.container.map.get(id) };
   }
-  async upsert<T>(item: T) {
-    const id = item['id'] || crypto.randomUUID().toString();
-    const itemWithId = { ...item, id };
+  async upsert<T>(resource: T) {
+    const id = resource['id'] || crypto.randomUUID().toString();
+    const itemWithId = { ...resource, id };
     this.container.map.set(id, itemWithId);
     return this.container.map.get(id);
   }

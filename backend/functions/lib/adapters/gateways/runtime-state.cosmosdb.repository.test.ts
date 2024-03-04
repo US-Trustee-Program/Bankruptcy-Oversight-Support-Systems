@@ -43,9 +43,9 @@ describe('Runtime State Repo', () => {
   });
 
   test('should create a runtime state document', async () => {
-    const create = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation((_item) => {
+    const create = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation((_resource) => {
       return Promise.resolve({
-        item: expected,
+        resource: expected,
       });
     });
     const toCreate = { ...expected };
