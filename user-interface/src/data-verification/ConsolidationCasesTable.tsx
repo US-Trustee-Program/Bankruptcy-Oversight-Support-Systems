@@ -61,7 +61,7 @@ function _ConsolidationCaseTable(
           ?.reduce((accumulator: ReactNode[], bCase, idx) => {
             const key = `${id}-row-${idx}`;
             accumulator.push(
-              <tr key={key} data-testid={key} className="case-info">
+              <tr key={`${key}-case-info`} data-testid={`${key}-case-info`} className="case-info">
                 <td scope="row">
                   <input
                     type="checkbox"
@@ -87,7 +87,11 @@ function _ConsolidationCaseTable(
               </tr>,
             );
             accumulator.push(
-              <tr key={`${key}-b`} data-testid={`${key}-b`} className="docket-entry">
+              <tr
+                key={`${key}-docket-entry`}
+                data-testid={`${key}-docket-entry`}
+                className="docket-entry"
+              >
                 <td></td>
                 <td colSpan={5} className="measure-6">
                   {!bCase.docketEntries && <>No docket entries</>}

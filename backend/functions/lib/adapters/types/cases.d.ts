@@ -30,5 +30,3 @@ export interface TransactionDates {
   dismissedDates?: Date[];
   reopenedDates?: Date[];
 }
-
-export { CaseDetail as CaseDetail };

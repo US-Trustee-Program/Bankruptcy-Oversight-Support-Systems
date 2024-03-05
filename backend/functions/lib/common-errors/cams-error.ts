@@ -22,3 +22,7 @@ export class CamsError extends Error {
     this.data = options.data;
   }
 }
+
+export function isCamsError(error: unknown): error is CamsError {
+  return error instanceof CamsError;
+}
