@@ -106,17 +106,13 @@ export const getOfficesGateway = (
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  // TODO: Replace this with a mock repo.
-  // if (applicationContext.config.get('dbMock')) return new MockOrdersCosmosDbRepository();
   return new OrdersCosmosDbRepository(applicationContext);
 };
 
 export const getConsolidationRepository = (
   applicationContext: ApplicationContext,
 ): ConsolidationOrdersCosmosDbRepository => {
-  // TODO: Replace this with a mock repo.
   // TODO: Create an interface
-  // if (applicationContext.config.get('dbMock')) return new MockOrdersCosmosDbRepository();
   return new ConsolidationOrdersCosmosDbRepository(applicationContext);
 };
 

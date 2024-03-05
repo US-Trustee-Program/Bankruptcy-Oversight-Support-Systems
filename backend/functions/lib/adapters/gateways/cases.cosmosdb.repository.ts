@@ -26,7 +26,6 @@ export class CasesCosmosDbRepository implements CasesRepository {
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<TransferIn | TransferOut>> {
-    // TODO: validate caseId
     const query = "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'TRANSFER_%'";
     const querySpec = {
       query,

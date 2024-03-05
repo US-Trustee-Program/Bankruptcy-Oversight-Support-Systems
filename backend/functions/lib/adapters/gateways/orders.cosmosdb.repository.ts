@@ -21,7 +21,6 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
   private cosmosConfig: CosmosConfig;
   private moduleName;
 
-  // TODO: allow extending class to override containerName
   constructor(
     context: ApplicationContext,
     containerName: string = CONTAINER_NAME,
