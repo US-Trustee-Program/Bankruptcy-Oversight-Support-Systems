@@ -62,7 +62,6 @@ export const CaseAssignment = () => {
     }
   }
 
-  // TODO: figure out how we want to get cases and assignments
   const fetchCases = async () => {
     isFetching = true;
     await api

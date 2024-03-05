@@ -76,7 +76,6 @@ export class CasesLocalGateway implements CasesInterface {
   }
 
   getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
-    // TODO: remove unnecessary stuff
     const gatewayHelper = new GatewayHelper();
     let caseDetail;
 

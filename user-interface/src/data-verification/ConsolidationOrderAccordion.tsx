@@ -78,17 +78,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     caseTable.current?.clearSelection();
   }
 
-  function handleCourtSelection(newValue: SearchableSelectOption): void {
-    //Adding to the list of possible consolidations
-    //const updatedSelection = updateCaseToAdd(selection, orderTransfer, officesList);
-    //TODO: Handle when a case is selected
-    console.log(newValue);
+  function handleAddNewCaseDivisionCode(_newValue: SearchableSelectOption): void {
+    throw new Error('Function not implemented.');
   }
 
-  function handleCaseInputChange(ev: ChangeEvent<HTMLInputElement>): void {
-    // TODO: Implement input
-    caseIdRef.current?.setValue(ev.target.value);
-    console.log(ev);
+  function handleAddNewCaseNumber(_ev: ChangeEvent<HTMLInputElement>): void {
     throw new Error('Function not implemented.');
   }
 
@@ -99,13 +93,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     approveButtonRef.current?.disableButton(true);
   }
 
-  function confirmAction(status: OrderStatus, reason: string = '', leadCaseNumber?: string): void {
-    //TODO: Confirmation action moving us to the confirmation modal for the Consolidation Order
-    if (status === 'rejected') {
-      console.log('Cases selected', selectedCases);
-      console.log(reason);
-      //approveOrderRejection(reason);
-    } else if (status === 'approved') {
+  function confirmAction(status: OrderStatus, _reason: string = '', leadCaseNumber?: string): void {
+    if (status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
         approvedCases: selectedCases
@@ -114,7 +103,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
         leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber)!,
       };
 
-      //confirmOrderApproval();
       api
         .put('/consolidations/approve', data)
         .then((response) => {
@@ -242,7 +230,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                             closeMenuOnSelect={true}
                             label="Select new court"
                             ref={courtSelectionRef}
-                            onChange={handleCourtSelection}
+                            onChange={handleAddNewCaseDivisionCode}
                             //getOfficeList might need pulled into its own file
                             options={getOfficeList(officesList)}
                           />
@@ -266,7 +254,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                             data-testid={`new-case-input-${order.id}`}
                             className="usa-input"
                             value=""
-                            onChange={handleCaseInputChange}
+                            onChange={handleAddNewCaseNumber}
                             aria-label="New case ID"
                             ref={caseIdRef}
                           />
