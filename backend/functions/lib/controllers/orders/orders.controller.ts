@@ -4,7 +4,7 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import {
   getCasesGateway,
   getCasesRepository,
-  getConsolidationRepository,
+  getConsolidationOrdersRepository,
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
@@ -38,7 +38,7 @@ export class OrdersController {
       getOrdersRepository(context),
       getOrdersGateway(context),
       getRuntimeStateRepository(context),
-      getConsolidationRepository(context),
+      getConsolidationOrdersRepository(context),
     );
   }
 

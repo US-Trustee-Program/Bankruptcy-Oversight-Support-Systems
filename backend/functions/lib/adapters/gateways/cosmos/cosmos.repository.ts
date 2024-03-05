@@ -4,12 +4,9 @@ import { ApplicationContext } from '../../types/basic';
 import { CosmosConfig } from '../../types/database';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { isPreExistingDocumentError } from './cosmos.helper';
+import { DocumentRepository } from '../../../use-cases/gateways.types';
 
-export interface Item {
-  id?: string;
-}
-
-export class CosmosDbCrudRepository<T extends Item> {
+export class CosmosDbRepository<T> implements DocumentRepository<T> {
   protected cosmosDbClient;
 
   protected containerName: string;

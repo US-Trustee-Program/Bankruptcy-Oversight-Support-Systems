@@ -1,8 +1,29 @@
 import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentHistory, CaseHistory } from '../adapters/types/case.history';
-import { Order, RawOrderSync, TransferOrderAction } from '../../../../common/src/cams/orders';
+import {
+  ConsolidationOrder,
+  Order,
+  RawOrderSync,
+  TransferOrderAction,
+} from '../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../common/src/cams/events';
+
+export interface RepositoryResource {
+  id?: string;
+}
+
+export interface DocumentRepository<T extends RepositoryResource> {
+  get(context: ApplicationContext, id: string, partitionKey: string): Promise<T>;
+  update(context: ApplicationContext, id: string, partitionKey: string, data: T);
+  put(context: ApplicationContext, data: T): Promise<T>;
+  putAll(context: ApplicationContext, list: T[]): Promise<T[]>;
+  delete(context: ApplicationContext, id: string, partitionKey: string);
+}
+
+export interface ConsolidationOrdersRepository extends DocumentRepository<ConsolidationOrder> {
+  getAll(context: ApplicationContext): Promise<ConsolidationOrder[]>;
+}
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
