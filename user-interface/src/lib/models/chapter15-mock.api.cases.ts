@@ -56,7 +56,6 @@ export default class Chapter15MockApi extends Api {
   static caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
   static caseDetails = MockData.getCaseDetail();
   static offices = MockData.getOffices().slice(0, 5);
-  // static orders = MockData.buildArray(MockData.getTransferOrder, 4);
   static orders = [
     MockData.getTransferOrder({ override: { id: 'guid-0' } }),
     MockData.getTransferOrder({ override: { id: 'guid-1', status: 'approved' } }),

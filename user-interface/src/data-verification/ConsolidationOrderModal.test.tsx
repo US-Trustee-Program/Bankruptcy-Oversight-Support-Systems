@@ -29,11 +29,6 @@ describe('ConsolidationOrderModalComponent', () => {
     if (!caseIdInput) throw Error();
 
     fireEvent.change(caseIdInput!, { target: { value } });
-    // expect(caseIdInput).toHaveValue(value);
-    //
-    // return caseIdInput; // expect(caseIdInput).toHaveValue(value);
-    //
-    // return caseIdInput;
   }
 
   function renderModalWithProps(props: Partial<ConsolidationOrderModalProps> = {}) {
@@ -81,7 +76,7 @@ describe('ConsolidationOrderModalComponent', () => {
     });
   });
 
-  test('should show approved modal', async () => {
+  test('should show approved modal and allow user to submit modal after completing form', async () => {
     const id = 'test';
     const caseIds = ['11-11111', '22-22222'];
     const courts = MockData.getOffices().slice(0, 3);
@@ -92,6 +87,9 @@ describe('ConsolidationOrderModalComponent', () => {
     await waitFor(() => {
       ref.current?.show({ status: 'approved', caseIds, attorneys });
     });
+
+    const modal = screen.getByTestId('modal-test');
+    expect(modal).toHaveClass('is-visible');
 
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');
@@ -126,10 +124,15 @@ describe('ConsolidationOrderModalComponent', () => {
       expect(caseNumberInput).toHaveValue(testCaseNumber);
     });
 
-    // Select attorney (does nothing yet - behind feature flag)
+    // Select attorney
     selectItemInMockSelect(`lead-attorney`, 1);
 
-    // Click Verify (not implemented)
+    const approveButton = screen.getByTestId('toggle-modal-button-submit');
+    fireEvent.click(approveButton);
+
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-hidden');
+    });
   });
 
   test('should call onConfirm callback when confirmation button is clicked', async () => {

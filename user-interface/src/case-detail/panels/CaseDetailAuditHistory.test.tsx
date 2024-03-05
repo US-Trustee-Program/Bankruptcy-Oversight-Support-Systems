@@ -7,15 +7,6 @@ describe('audit history tests', () => {
   const caseId = '000-11-22222';
   const pendingOrder = MockData.getTransferOrder({ override: { caseId, status: 'pending' } });
   const approvedOrder = MockData.getTransferOrder({ override: { caseId, status: 'approved' } });
-  /*
-  const pendingOrder: TransferOrder = {
-    ...MockApi.orders[0],
-  } as TransferOrder;
-  const approvedOrder: TransferOrder = {
-    ...MockApi.orders[0],
-    status: 'approved',
-  } as TransferOrder;
-  */
   const assignmentBefore: CaseStaffAssignment[] = [
     {
       caseId,

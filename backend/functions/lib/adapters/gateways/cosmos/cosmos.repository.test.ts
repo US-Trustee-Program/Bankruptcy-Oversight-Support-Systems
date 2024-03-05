@@ -1,5 +1,5 @@
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { HumbleItem, HumbleItems } from '../../../testing/mock.cosmos-client-humble';
+import { MockHumbleItem, MockHumbleItems } from '../../../testing/mock.cosmos-client-humble';
 import { ApplicationContext } from '../../types/basic';
 import { getCosmosDbCrudRepository } from '../../../factory';
 import { AggregateAuthenticationError } from '@azure/identity';
@@ -28,14 +28,14 @@ describe('Test generic cosmosdb repository', () => {
     const expectedError = new ServerConfigError(moduleName, {
       message: 'Failed to authenticate to Azure',
     });
-    jest.spyOn(HumbleItem.prototype, 'read').mockRejectedValue(error);
+    jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(error);
     await expect(cosmosCrudRepo.get(mockDbContext, '', '')).rejects.toThrow(expectedError);
   });
 
   test('should get error', async () => {
     const errorMessage = 'something bad happened';
     const error = new Error(errorMessage);
-    jest.spyOn(HumbleItem.prototype, 'read').mockRejectedValue(error);
+    jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(error);
     await expect(cosmosCrudRepo.get(mockDbContext, '', '')).rejects.toThrow(errorMessage);
   });
 
@@ -44,7 +44,7 @@ describe('Test generic cosmosdb repository', () => {
       id: '123',
       something: 456,
     };
-    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
+    const mockRead = jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: mockItem,
     });
 
@@ -60,7 +60,7 @@ describe('Test generic cosmosdb repository', () => {
     };
 
     const mockReplace = jest
-      .spyOn(HumbleItem.prototype, 'replace')
+      .spyOn(MockHumbleItem.prototype, 'replace')
       .mockResolvedValue({ resource: updatedItem });
     const actual = await cosmosCrudRepo.update(
       mockDbContext,
@@ -82,7 +82,7 @@ describe('Test generic cosmosdb repository', () => {
     };
 
     const mockCreate = jest
-      .spyOn(HumbleItems.prototype, 'create')
+      .spyOn(MockHumbleItems.prototype, 'create')
       .mockResolvedValue({ resource: expectedItem });
     const actual = await cosmosCrudRepo.put(mockDbContext, newItem);
     expect(actual).toEqual(expectedItem);
@@ -96,14 +96,14 @@ describe('Test generic cosmosdb repository', () => {
     };
 
     const mockDelete = jest
-      .spyOn(HumbleItem.prototype, 'delete')
+      .spyOn(MockHumbleItem.prototype, 'delete')
       .mockResolvedValue({ resource: itemToDelete });
     const actual = await cosmosCrudRepo.delete(mockDbContext, itemToDelete.id, itemToDelete.id);
     expect(actual).toEqual(itemToDelete);
     expect(mockDelete).toHaveBeenCalled();
   });
 
-  test('should put items', async () => {
+  test('should create new items', async () => {
     const items: TestType[] = [
       {
         something: 42,
@@ -123,9 +123,10 @@ describe('Test generic cosmosdb repository', () => {
     };
 
     const mockCreate = jest
-      .spyOn(HumbleItems.prototype, 'create')
-      .mockRejectedValueOnce(existingError)
-      .mockResolvedValueOnce({ resource: items[0] });
+      .spyOn(MockHumbleItems.prototype, 'create')
+      .mockImplementation(async (record: TestType): Promise<{ resource: unknown }> => {
+        return record.id ? Promise.reject(existingError) : Promise.resolve({ resource: record });
+      });
 
     const actual = await cosmosCrudRepo.putAll(mockDbContext, items);
     expect(actual).toEqual(expectedItems);
@@ -134,7 +135,7 @@ describe('Test generic cosmosdb repository', () => {
 
   test('should return early when no items are passed in', async () => {
     const items: TestType[] = [];
-    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create');
+    const mockCreate = jest.spyOn(MockHumbleItems.prototype, 'create');
 
     const actual = await cosmosCrudRepo.putAll(mockDbContext, items);
     expect(actual).toEqual(items);
@@ -155,7 +156,7 @@ describe('Test generic cosmosdb repository', () => {
     const otherError = new Error('mock error');
 
     const mockCreate = jest
-      .spyOn(HumbleItems.prototype, 'create')
+      .spyOn(MockHumbleItems.prototype, 'create')
       .mockRejectedValueOnce(otherError);
 
     await expect(cosmosCrudRepo.putAll(mockDbContext, items)).rejects.toThrow(otherError);

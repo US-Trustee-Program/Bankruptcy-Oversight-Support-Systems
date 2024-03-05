@@ -21,10 +21,6 @@ export default function ButtonGroup({
     onClick?: ((ev: React.MouseEvent<HTMLButtonElement>) => void) | undefined,
   ) => {
     if ('id' in ev.target) {
-      /*
-    if (Object.prototype.hasOwnProperty.call(ev.target, 'id')) {
-      const id = (ev.target as HTMLButtonElement).id;
-      */
       onButtonClick((ev.target as { id: string }).id);
     }
 

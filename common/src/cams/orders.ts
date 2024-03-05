@@ -57,31 +57,24 @@ export interface ConsolidationHistory {
   status: OrderStatus;
   leadCase?: CaseSummary;
   childCases: Array<CaseSummary>;
-  //documentType: 'AUDIT_CONSOLIDATION';
-  // For History
-  // rejected?
-  //   status, reason?
-  // approved?
-  //   am I lead?
-  //     yes - status, all childCases
-  //     no - status, leadCase
-  // pending?
-  //   status
+  reason?: string;
 }
 
 export function isTransferOrder(order: Order): order is TransferOrder {
   return order.orderType === 'transfer';
 }
 
-export function isConsolidationHistory(history: unknown): history is ConsolidationHistory {
-  // This is still pretty ambiguous. We may want to consider hoisting the documentType
-  // here OR coming up with a "type" name system if we don't want to lead Cosmos implementation
-  // details through the API.
-  return typeof history === 'object' && 'status' in history;
-}
-
 export function isConsolidationOrder(order: Order): order is ConsolidationOrder {
   return order.orderType === 'consolidation';
+}
+
+export function isConsolidationHistory(history: unknown): history is ConsolidationHistory {
+  // TODO: This is still pretty ambiguous. We may want to consider hoisting the documentType
+  // here OR coming up with a "type" name system if we don't want to lead Cosmos implementation
+  // details through the API.
+  // The probability that a non-consolidation history object will satisfy this expression
+  // IS VERY HIGH!
+  return typeof history === 'object' && 'status' in history;
 }
 
 type TransferOrderActionRejection = {

@@ -1,14 +1,16 @@
 import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 import httpTrigger from './case-history.function';
-import { HumbleQuery } from '../lib/testing/mock.cosmos-client-humble';
+import { MockHumbleQuery } from '../lib/testing/mock.cosmos-client-humble';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 
 const context = require('azure-function-context-mock');
 
 describe('Case docket function', () => {
   test('Should return case history for an existing case ID', async () => {
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({ resources: CASE_HISTORY });
+    jest
+      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
+      .mockResolvedValue({ resources: CASE_HISTORY });
 
     const caseId = NORMAL_CASE_ID;
     const request = {
@@ -29,7 +31,7 @@ describe('Case docket function', () => {
 
   test('Should return an error response for a non-existent case ID', async () => {
     jest
-      .spyOn(HumbleQuery.prototype, 'fetchAll')
+      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
       .mockRejectedValue(new NotFoundError('test-module'));
     const request = {
       params: {

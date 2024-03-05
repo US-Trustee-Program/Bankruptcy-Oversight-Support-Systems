@@ -1,6 +1,5 @@
-import { CaseDetail } from '../adapters/types/cases';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+import { CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
 
 export interface CasesInterface {
   getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail>;

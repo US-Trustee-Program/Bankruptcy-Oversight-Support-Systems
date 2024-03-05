@@ -4,7 +4,7 @@ import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { isCamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 
@@ -36,10 +36,9 @@ const httpTrigger: AzureFunction = async function (
     }
     functionContext.res = httpSuccess(response);
   } catch (originalError) {
-    const error =
-      originalError instanceof CamsError
-        ? originalError
-        : new UnknownError(MODULE_NAME, { originalError });
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
     functionContext.res = httpError(error);
   }
