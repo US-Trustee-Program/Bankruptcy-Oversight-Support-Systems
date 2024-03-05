@@ -121,19 +121,15 @@ describe('ConsolidationOrderModalComponent', () => {
     await waitFor(() => {
       enterCaseNumberInModal(caseNumberInput, testCaseNumber);
     });
-    console.log('Input:', (caseNumberInput as HTMLInputElement).value);
-    console.log(
-      'Input value was empty string?',
-      (caseNumberInput as HTMLInputElement).value === '',
-    );
+
     await waitFor(() => {
       expect(caseNumberInput).toHaveValue(testCaseNumber);
     });
 
-    // Select attorney
+    // Select attorney (does nothing yet - behind feature flag)
     selectItemInMockSelect(`lead-attorney`, 1);
 
-    // Click Verify
+    // Click Verify (not implemented)
   });
 
   test('should call onConfirm callback when confirmation button is clicked', async () => {

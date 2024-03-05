@@ -325,14 +325,14 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         >
           <div
             className="grid-col-6 text-no-wrap"
-            aria-label={`Case district ${getCaseNumber(order.courtName)}`}
+            aria-label={`Court district – ${getCaseNumber(order.courtName)}`}
           >
             {order.courtName}
           </div>
           <div
             className="grid-col-2 text-no-wrap"
             title="Event date"
-            aria-label={`Event date ${formatDate(order.orderDate)}`}
+            aria-label={`Event date – ${formatDate(order.orderDate)}`}
           >
             {formatDate(order.orderDate)}
           </div>
