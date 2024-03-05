@@ -10,6 +10,9 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
+// import * as ModalModule from './ConsolidationOrderModal';
+// import useImperativeHandle from 'react';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -39,14 +42,17 @@ describe('ConsolidationOrderAccordion tests', () => {
   const offices: OfficeDetails[] = MockData.getOffices();
   const regionMap = new Map();
 
+  const onOrderUpdateMockFunc = vitest.fn();
+  const onExpandMockFunc = vitest.fn();
+
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
       officesList: offices,
       orderType,
       statusType: orderStatusType,
-      onOrderUpdate: () => {},
-      onExpand: () => {},
+      onOrderUpdate: onOrderUpdateMockFunc,
+      onExpand: onExpandMockFunc,
       regionsMap: regionMap,
     };
 
@@ -58,16 +64,22 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
   }
 
-  test('should render an order', async () => {
+  test('should render an order heading', async () => {
     renderWithProps();
-
     const heading = findAccordionHeading(order.id!);
     expect(heading?.textContent).toContain(order.courtName);
     expect(heading?.textContent).toContain(formatDate(order.orderDate));
+  });
 
-    const content = findAccordionContent(order.id!, false);
+  test('should display pending order content', () => {
+    const pendingOrder = MockData.getConsolidationOrder();
+    renderWithProps({ order: pendingOrder });
+    const content = findAccordionContent(pendingOrder.id!, false);
 
-    order.childCases.forEach((childCase) => {
+    const childCaseTable = screen.getByTestId(`${pendingOrder.id}-case-list`);
+    expect(childCaseTable).toBeInTheDocument();
+
+    pendingOrder.childCases.forEach((childCase) => {
       expect(content?.textContent).toContain(childCase.caseTitle);
       expect(content?.textContent).toContain(formatDate(childCase.dateFiled));
       childCase.docketEntries.forEach((de) => {
@@ -77,11 +89,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should display pending order properly', () => {});
+  test('should display approved order content', () => {
+    // We need to render an approved order.
+  });
 
-  test('should display approved order properly', () => {});
-
-  test('should display rejected order properly', () => {});
+  test('should display rejected order content', () => {
+    // We need to render a rejected order.
+  });
 
   test('should correctly enable/disable approve button', async () => {
     renderWithProps();
@@ -111,7 +125,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(approveButton as HTMLButtonElement);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
-    screen.debug(modal);
     await waitFor(() => {
       expect(modal).toBeInTheDocument();
       expect(modal).toHaveClass('is-visible');
@@ -130,5 +143,44 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const courtSelectDiv = screen.queryByTestId(`court-selection-usa-combo-box-${order.id}`);
     expect(courtSelectDiv).not.toBeInTheDocument();
+  });
+
+  test.skip('should call orderUpdate with expected parameters when approval process is completed', async () => {
+    renderWithProps();
+
+    const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    expect(approveButton).not.toBeEnabled();
+    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    fireEvent.click(approveButton as HTMLButtonElement);
+
+    const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
+    await waitFor(() => {
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveClass('is-visible');
+      // for some reason, toBeVisible() doesn't work.
+      expect(modal).toHaveStyle({ display: 'block' });
+    });
+
+    screen.debug(modal);
+
+    // select the lead case in the modal and click the submit button.
+    selectItemInMockSelect('lead-case-court', 1);
+    const modalCaseNumberInput = screen.getByTestId(`lead-case-input-${order.id}`);
+    fireEvent.change(modalCaseNumberInput!, {
+      target: { value: order.childCases[0].caseId },
+    });
+    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    fireEvent.click(modalApproveButton);
+
+    await waitFor(() => {
+      expect(onOrderUpdateMockFunc).toHaveBeenCalledWith({
+        status: 'approved',
+        leadCaseId: 'abcd',
+      });
+    });
   });
 });

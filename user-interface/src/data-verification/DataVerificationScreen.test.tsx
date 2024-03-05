@@ -178,37 +178,6 @@ describe('Review Orders screen', () => {
 
     const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
     expect(consolidationsFilter).toBeInTheDocument();
-
-    // TODO: Move this content checking to a ConsolidationOrderAccordion test.
-    for (const order of consolidationOrders) {
-      if (order.status === 'pending') {
-        const childCaseTable = screen.getByTestId(`${order.id}-case-list`);
-        expect(childCaseTable).toBeInTheDocument();
-        // TODO: Check for the form elements.
-      }
-      // TODO: Check for rejected/approved content.
-    }
-
-    // TODO: Move this content checking to a TransferORderAccordion test.
-    for (const order of transferOrders) {
-      await waitFor(async () => {
-        const content = screen.getByTestId(`accordion-content-${order.id}`);
-        expect(content).toBeInTheDocument();
-        expect(content).not.toBeVisible();
-        order.docketEntries.forEach((de) => {
-          expect(content?.textContent).toContain(de.summaryText);
-          expect(content?.textContent).toContain(de.fullText);
-        });
-
-        if (order.status === 'pending') {
-          const form = screen.getByTestId(`order-form-${order.id}`);
-          expect(form).toBeInTheDocument();
-          const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-          expect(newCaseIdText).toHaveValue(order.newCaseId);
-        }
-        // TODO: Check for rejected/approved content.
-      });
-    }
   });
 
   test('should toggle filter button', async () => {

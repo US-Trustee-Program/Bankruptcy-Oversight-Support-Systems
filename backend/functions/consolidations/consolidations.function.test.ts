@@ -37,7 +37,7 @@ describe('Consolidations Function tests', () => {
         ...mockConsolidationOrder,
         rejectedCases: [mockConsolidationOrder.childCases[0]],
       },
-      method: 'PATCH',
+      method: 'PUT',
     };
     const expectedResponseBody = {
       success: true,
@@ -64,7 +64,7 @@ describe('Consolidations Function tests', () => {
       params: {
         procedure: 'approve',
       },
-      method: 'PATCH',
+      method: 'PUT',
     };
     await httpTrigger(context, request);
 
@@ -76,7 +76,7 @@ describe('Consolidations Function tests', () => {
       params: {
         procedure: 'unsupported',
       },
-      method: 'PATCH',
+      method: 'PUT',
     };
     await httpTrigger(context, request);
     expect(context.res.statusCode).toEqual(400);
@@ -89,7 +89,7 @@ describe('Consolidations Function tests', () => {
       params: {
         procedure: 'approve',
       },
-      method: 'PATCH',
+      method: 'PUT',
     };
     await httpTrigger(context, request);
     expect(context.res.statusCode).toEqual(500);
