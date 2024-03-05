@@ -7,7 +7,7 @@ import {
   getRuntimeStateRepository,
   getCasesRepository,
   getCasesGateway,
-  getConsolidationRepository,
+  getConsolidationOrdersRepository,
 } from '../../factory';
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
@@ -42,7 +42,7 @@ describe('Orders use case', () => {
     ordersRepo = getOrdersRepository(mockContext);
     casesRepo = getCasesRepository(mockContext);
     casesGateway = getCasesGateway(mockContext);
-    consolidationRepo = getConsolidationRepository(mockContext);
+    consolidationRepo = getConsolidationOrdersRepository(mockContext);
     useCase = new OrdersUseCase(
       casesRepo,
       casesGateway,

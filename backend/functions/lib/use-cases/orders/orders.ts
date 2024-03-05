@@ -4,6 +4,7 @@ import {
   OrdersRepository,
   RuntimeStateRepository,
   CasesRepository,
+  ConsolidationOrdersRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
@@ -24,7 +25,6 @@ import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
-import ConsolidationOrdersCosmosDbRepository from '../../adapters/gateways/consolidations.cosmosdb.repository';
 import { sortDates, sortDatesReverse } from '../../../../../common/src/date-helper';
 import { isConsolidationHistory } from '../../../../../common/src/cams/orders';
 import * as crypto from 'crypto';
@@ -48,7 +48,7 @@ export class OrdersUseCase {
   private readonly casesGateway: CasesInterface;
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
-  private readonly consolidationsRepo: ConsolidationOrdersCosmosDbRepository;
+  private readonly consolidationsRepo: ConsolidationOrdersRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository;
 
   constructor(
@@ -57,7 +57,7 @@ export class OrdersUseCase {
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
     runtimeRepo: RuntimeStateRepository,
-    consolidationRepo: ConsolidationOrdersCosmosDbRepository,
+    consolidationRepo: ConsolidationOrdersRepository,
   ) {
     this.casesRepo = casesRepo;
     this.casesGateway = casesGateway;

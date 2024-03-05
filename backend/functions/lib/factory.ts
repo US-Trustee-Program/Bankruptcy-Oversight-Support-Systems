@@ -16,6 +16,7 @@ import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock
 import { ConnectionPool, config } from 'mssql';
 import {
   CasesRepository,
+  ConsolidationOrdersRepository,
   OrdersGateway,
   OrdersRepository,
   RuntimeStateRepository,
@@ -30,7 +31,7 @@ import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-stat
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { HumbleClient } from './testing/mock.cosmos-client-humble';
-import { CosmosDbCrudRepository } from './adapters/gateways/cosmos/cosmos.repository';
+import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -109,10 +110,9 @@ export const getOrdersRepository = (applicationContext: ApplicationContext): Ord
   return new OrdersCosmosDbRepository(applicationContext);
 };
 
-export const getConsolidationRepository = (
+export const getConsolidationOrdersRepository = (
   applicationContext: ApplicationContext,
-): ConsolidationOrdersCosmosDbRepository => {
-  // TODO: Create an interface
+): ConsolidationOrdersRepository => {
   return new ConsolidationOrdersCosmosDbRepository(applicationContext);
 };
 
@@ -131,5 +131,5 @@ export const getCosmosDbCrudRepository = <T>(
   containerName: string,
   moduleName: string,
 ) => {
-  return new CosmosDbCrudRepository<T>(context, containerName, moduleName);
+  return new CosmosDbRepository<T>(context, containerName, moduleName);
 };
