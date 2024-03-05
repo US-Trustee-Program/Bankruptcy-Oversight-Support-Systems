@@ -3,8 +3,12 @@ import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 
 const context = require('azure-function-context-mock');
 
-const rejectConsolidation = jest.fn();
-const approveConsolidation = jest.fn();
+const rejectConsolidation = jest
+  .fn()
+  .mockRejectedValue('Set up the desired behavior for your test.');
+const approveConsolidation = jest
+  .fn()
+  .mockRejectedValue('Set up the desired behavior for your test.');
 
 jest.mock('../lib/controllers/orders/orders.controller', () => {
   return {
@@ -18,11 +22,13 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 });
 
 describe('Consolidations Function tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   test('should reject consolidation when procedure == "reject"', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
-    rejectConsolidation.mockImplementation(() => {
-      return Promise.resolve({ success: true, body: [mockConsolidationOrder] });
-    });
+    rejectConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
     const request = {
       params: {
         procedure: 'reject',
@@ -45,24 +51,23 @@ describe('Consolidations Function tests', () => {
   });
 
   test('should approve consolidation when procedure == "Approve"', async () => {
+    process.env = {
+      DATABASE_MOCK: 'true',
+    };
     const mockConsolidationOrder = [MockData.getConsolidationOrder()];
-    approveConsolidation.mockImplementation(() => {
-      return Promise.resolve({ success: true, body: [mockConsolidationOrder] });
-    });
+    approveConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
+    const expectedResponseBody = {
+      success: true,
+      body: [mockConsolidationOrder],
+    };
     const request = {
       params: {
         procedure: 'approve',
       },
       method: 'PATCH',
     };
-    const expectedResponseBody = {
-      success: true,
-      body: [mockConsolidationOrder],
-    };
-    process.env = {
-      DATABASE_MOCK: 'true',
-    };
     await httpTrigger(context, request);
+
     expect(context.res.body).toEqual(expectedResponseBody);
   });
 
@@ -79,9 +84,7 @@ describe('Consolidations Function tests', () => {
   });
 
   test('should throw an UnknownError on bad request', async () => {
-    approveConsolidation.mockImplementation(() => {
-      throw new Error('consolidation-test');
-    });
+    approveConsolidation.mockRejectedValue('consolidation-test');
     const request = {
       params: {
         procedure: 'approve',
