@@ -107,7 +107,6 @@ function ConsolidationOrderModalComponent(
   }
 
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
     leadCaseIdRef.current?.setValue(joinedInput);
     if (newCaseId) setLeadCaseNumber(newCaseId);
@@ -208,10 +207,6 @@ function ConsolidationOrderModalComponent(
         )}
       </div>
     );
-  }
-
-  function _showApprovedContentStep2() {
-    return <></>;
   }
 
   return (
