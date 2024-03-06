@@ -208,7 +208,6 @@ output apiPrivateEndpointSubnetName string = apiPrivateEndpointSubnetName
 
 // Allowed subnet name that should have access to CosmosDb
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
-//testing this again
 output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
 
 resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
