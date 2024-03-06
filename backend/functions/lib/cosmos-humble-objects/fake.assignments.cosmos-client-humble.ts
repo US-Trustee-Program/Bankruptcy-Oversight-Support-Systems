@@ -37,10 +37,19 @@ export default class FakeAssignmentsCosmosClientHumble {
               if (assignment.caseId === THROW_UNKNOWN_ERROR_CASE_ID) {
                 throw new UnknownError(MODULE_NAME, { message: 'unknown' });
               }
+              if (!assignment || !assignment.documentType) {
+                assignment = {
+                  documentType: 'ASSIGNMENT',
+                  caseId: '012-23-12345',
+                  name: 'Test Attorney',
+                  role: 'TrialAttorney',
+                  assignedOn: '2024-03-05',
+                };
+              }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;
               this.caseAssignments.push(assignment);
               return {
-                item: {
+                resource: {
                   ...assignment,
                 },
               };
@@ -76,8 +85,15 @@ export default class FakeAssignmentsCosmosClientHumble {
                 },
               };
             },
+            readAll: () => {
+              return {
+                fetchAll: () => {
+                  return { resources: this.caseAssignments };
+                },
+              };
+            },
           },
-          item: (_id: string) => {
+          item: (_id: string, _partitionKey?: string) => {
             return {
               replace: (assignment: CaseAssignment) => {
                 if (assignment.caseId === THROW_PERMISSIONS_ERROR_CASE_ID) {
@@ -87,9 +103,10 @@ export default class FakeAssignmentsCosmosClientHumble {
                   throw new UnknownError(MODULE_NAME);
                 }
                 return {
-                  item: assignment,
+                  resource: assignment,
                 };
               },
+              delete: () => {},
             };
           },
         };
