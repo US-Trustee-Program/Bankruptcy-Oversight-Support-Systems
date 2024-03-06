@@ -85,8 +85,9 @@ jobs:
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           # Check if bicep changes
-          echo "deployBicep=true" >> $GITHUB_OUTPUT
+          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ secrets.AZ_APP_RG }})
           echo "Deploy Bicep?: $deployBicep"
+          echo "deployBicep=${deployBicep}">> $GITHUB_OUTPUT
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
@@ -111,7 +112,7 @@ jobs:
 
           # Some debug output
           echo "Github event action: ${{ github.event.action }}"
-      #$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ secrets.AZ_APP_RG }}) temporarily
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
