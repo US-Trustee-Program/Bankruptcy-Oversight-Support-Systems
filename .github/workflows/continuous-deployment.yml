@@ -420,11 +420,6 @@ jobs:
             --file ./ops/cloud-deployment/main.bicep \
             --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
-        # webappSubnetName=$(cat ./outputs.json | jq -r .webappSubnetName.value)
-        # echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-
-        # keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
-        # echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
       - name: Deploy database
         id: azure-db-deploy
         if: needs.build-info.outputs.deployBicep == 'true'
@@ -437,12 +432,6 @@ jobs:
             --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} allowAllNetworks=${{ vars.ENVIRONMENT != 'Main-Gov' }} actionGroupResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} \
             -o json --query properties.outputs | tee outputs.json
 
-        # cosmosDbClientId=$(cat ./outputs.json | jq -r .cosmosDbClientId.value)
-        # echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
-        # cosmosDbPrincipalId=$(cat ./outputs.json | jq -r .cosmosDbPrincipalId.value)
-        # echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
-        # cosmosDbManagedIdName=$(cat ./outputs.json | jq -r .cosmosDbManagedIdName.value)
-        # echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
       - name: Check deployment and set params
         id: set-deploy-params
         run: |
