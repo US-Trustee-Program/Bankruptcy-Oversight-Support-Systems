@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Title:        check-git-diff.sh
-# Description:  Helper script to check if bicepchanges have been made
+# Description:  Helper script to check if bicep changes have been made
 #
 # Exitcodes
 # ==========
@@ -12,11 +12,19 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+app_rg=$1
+
+if [[ -z "${app_rg}" ]]; then
+    echo "Error: Missing parameters. Usage: check-branch-exists.sh <app_rg:str>"
+    exit 1
+fi
+rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv) || true #continue if rg show fails
+
 changes=$(git diff HEAD^ HEAD -- ./ops/cloud-deployment/)
 
 
 
-if [[ $changes != "" ]]; then
+if [[ $changes != "" && $rg_response != "" ]] || [[ $rg_response == "" ]]; then
     deployBicep=true
 else
     deployBicep=false
