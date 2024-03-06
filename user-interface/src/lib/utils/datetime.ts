@@ -35,6 +35,7 @@ export function formatDateTime(dateOrString: Date | string): string {
 }
 
 export function sortDates(dateA: Date | string, dateB: Date | string): number {
+  // older date first
   if (dateA > dateB) {
     return 1;
   } else if (dateA == dateB) {
@@ -45,5 +46,6 @@ export function sortDates(dateA: Date | string, dateB: Date | string): number {
 }
 
 export function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
+  // newest date first
   return sortDates(dateA, dateB) * -1;
 }

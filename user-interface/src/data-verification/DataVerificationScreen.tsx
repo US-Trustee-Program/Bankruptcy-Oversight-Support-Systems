@@ -20,6 +20,7 @@ import {
 } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
+import { sortDates } from '@/lib/utils/datetime';
 
 export interface AlertDetails {
   message: string;
@@ -217,6 +218,7 @@ export default function DataVerificationScreen() {
                   })
                   .filter((o) => typeFilter.includes(o.orderType))
                   .filter((o) => statusFilter.includes(o.status))
+                  .sort((a, b) => sortDates(a.orderDate, b.orderDate))
                   .map((order) => {
                     return isTransferOrder(order) ? (
                       <TransferOrderAccordion
