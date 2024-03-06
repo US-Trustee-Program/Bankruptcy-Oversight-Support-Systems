@@ -91,6 +91,9 @@ describe('ConsolidationOrderModalComponent', () => {
     const modal = screen.getByTestId('modal-test');
     expect(modal).toHaveClass('is-visible');
 
+    const approveButton = screen.getByTestId('toggle-modal-button-submit');
+    expect(approveButton).toBeDisabled();
+
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');
     expect(firstHeading).toHaveTextContent('Additional Consolidation Information');
@@ -110,8 +113,12 @@ describe('ConsolidationOrderModalComponent', () => {
     expect(radioSubstantive).toBeChecked();
     expect(radioAdministrative).not.toBeChecked();
 
+    expect(approveButton).toBeDisabled();
+
     // Select lead case court.
     selectItemInMockSelect(`lead-case-court`, 1);
+
+    expect(approveButton).toBeDisabled();
 
     // Enter case number.
     const testCaseNumber = '11-11111';
@@ -127,7 +134,7 @@ describe('ConsolidationOrderModalComponent', () => {
     // Select attorney
     selectItemInMockSelect(`lead-attorney`, 1);
 
-    const approveButton = screen.getByTestId('toggle-modal-button-submit');
+    expect(approveButton).toBeEnabled();
     fireEvent.click(approveButton);
 
     await waitFor(() => {

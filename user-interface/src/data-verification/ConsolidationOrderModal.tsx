@@ -85,6 +85,7 @@ function ConsolidationOrderModalComponent(
   };
 
   function show(options: ShowOptionParams) {
+    modalRef.current?.buttons?.current?.disableSubmitButton(true);
     setOptions({
       status: options.status,
       heading:
@@ -109,7 +110,12 @@ function ConsolidationOrderModalComponent(
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
     leadCaseIdRef.current?.setValue(joinedInput);
-    if (newCaseId) setLeadCaseNumber(newCaseId);
+    if (newCaseId) {
+      setLeadCaseNumber(newCaseId);
+      modalRef.current?.buttons?.current?.disableSubmitButton(false);
+    } else {
+      modalRef.current?.buttons?.current?.disableSubmitButton(true);
+    }
   }
 
   useImperativeHandle(ConfirmationModalRef, () => ({
