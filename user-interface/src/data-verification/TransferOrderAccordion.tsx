@@ -310,6 +310,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
+  // TODO CAMS-270 : Need to figure out getting the Filed Date from the correct data object
   return (
     <>
       <Accordion
@@ -351,6 +352,29 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           </div>
         </section>
         <section className="accordion-content" data-testid={`accordion-content-${order.id}`}>
+          <div className="grid-row grid-gap-lg">
+            <div className="grid-col-1"></div>
+            <div className="grid-col-10">
+              <span className="text-bold padding-right-1">
+                Case Number:{' '}
+                <CaseNumber
+                  caseNumber={order.caseId}
+                  data-testid={`approved-transfer-original-case-link-${order.caseId}`}
+                ></CaseNumber>
+              </span>
+              <span className="text-bold">Case Title: </span>
+              <span className="padding-right-1">{order.caseTitle}</span>
+              <span className="text-bold">Chapter: </span>
+              <span className="padding-right-1">{order.chapter}</span>
+              <span className="text-bold">Filed Date: </span>
+              <span className="padding-right-1">{order.orderDate}</span>
+              <span className="text-bold">SSN/EIN: </span>
+              <span className="padding-right-1">
+                {order.debtor?.taxId ? order.debtor.taxId : order.debtor?.ssn}
+              </span>
+            </div>
+            <div className="grid-col-1"></div>
+          </div>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="order-legal-statement grid-col-10">
