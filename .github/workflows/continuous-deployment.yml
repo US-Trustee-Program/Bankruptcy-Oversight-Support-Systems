@@ -83,12 +83,7 @@ jobs:
           resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
           echo "Resource group appended with the following: ${resourceGroupSuffix}"
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-          echo "App RG: $azResourceGrpApp"
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-          # Check if bicep changes
-          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh rg-cams-app-dev$resourceGroupSuffix)
-          echo "Deploy Bicep?: $deployBicep"
-          echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
@@ -127,6 +122,20 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgAppDecode
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ steps.rgApp.outputs.out }}
+
+      - name: Check Bicep Deployment
+        id: check-bicep
+        run: |
+          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }})
+          echo "Deploy Bicep: $deployBicep"
+          echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
 
   accessibility-test:
     defaults:
