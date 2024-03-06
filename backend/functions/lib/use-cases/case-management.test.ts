@@ -8,11 +8,11 @@ import { MockCasesGateway } from '../adapters/gateways/case-management.mock.gate
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
-import { CaseAssignment } from '../adapters/types/case.assignment';
 import { describe } from 'node:test';
 import { CASE_SUMMARIES } from '../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const functionContext = require('azure-function-context-mock');
 

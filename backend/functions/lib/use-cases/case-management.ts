@@ -7,9 +7,9 @@ import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
-import { CaseAssignment } from '../adapters/types/case.assignment';
 import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 import { CasesRepository } from './gateways.types';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 

@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
 import {
-  ConsolidationHistory,
   ConsolidationOrder,
   ConsolidationOrderCase,
   RawConsolidationOrder,
@@ -10,6 +9,7 @@ import {
 import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
 import { ATTORNEYS } from './attorneys.mock';
+import { ConsolidationOrderSummary } from '../history';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -254,7 +254,7 @@ function getTrialAttorneys() {
   return ATTORNEYS;
 }
 
-function getConsolidationHistory(override: Partial<ConsolidationHistory> = {}) {
+function getConsolidationHistory(override: Partial<ConsolidationOrderSummary> = {}) {
   return {
     status: override.status || 'pending',
     leadCase: override.leadCase || undefined,

@@ -1,7 +1,7 @@
 import { getCasesRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseHistory } from '../../adapters/types/case.history';
 import { CasesRepository } from '../gateways.types';
+import { CaseHistory } from '../../../../../common/src/cams/history';
 
 export class CaseHistoryUseCase {
   private casesRepository: CasesRepository;

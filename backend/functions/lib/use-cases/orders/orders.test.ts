@@ -14,7 +14,11 @@ import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
-import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import {
+  ConsolidationOrderActionApproval,
+  TransferOrder,
+  TransferOrderAction,
+} from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
@@ -23,6 +27,10 @@ import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { sortDates } from '../../../../../common/src/date-helper';
+import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.repository';
+import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
+import * as crypto from 'crypto';
+import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -295,8 +303,201 @@ describe('Orders use case', () => {
     expect(mockGetState).toHaveBeenCalled();
   });
 
-  test('should approve a consolidation order', () => {});
-  test('should approve a split consolidation order', () => {});
+  test('should approve a consolidation order', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder({
+      override: {
+        status: 'approved',
+      },
+    });
+    const mockDelete = jest
+      .spyOn(CosmosDbRepository.prototype, 'delete')
+      .mockResolvedValue(pendingConsolidation);
+    const leadCase = MockData.getConsolidatedOrderCase();
+    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+    };
+    const newConsolidation = {
+      ...pendingConsolidation,
+      leadCase: leadCaseSummary,
+      id: crypto.randomUUID(),
+    };
+    const mockPut = jest
+      .spyOn(CosmosDbRepository.prototype, 'put')
+      .mockResolvedValue(newConsolidation);
+    const leadCaseBefore: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const childCaseSummaries = newConsolidation.childCases.map((bCase) => {
+      const { docketEntries: _docketEntries, ...bCaseSummary } = bCase;
+      return bCaseSummary;
+    });
+    const leadCaseAfter: ConsolidationOrderSummary = {
+      status: 'approved',
+      childCases: childCaseSummaries,
+    };
+    const leadCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: newConsolidation.leadCase.caseId,
+      before: leadCaseBefore,
+      after: leadCaseAfter,
+    };
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const after: ConsolidationOrderSummary = {
+      status: 'approved',
+      leadCase: newConsolidation.leadCase,
+      childCases: [],
+    };
+    const childCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before,
+      after,
+    };
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+    };
+    const mockGetHistory = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+    const mockCreateHistory = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue(crypto.randomUUID());
+
+    const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockDelete).toHaveBeenCalled();
+    expect(mockPut).toHaveBeenCalled();
+    expect(mockCreateHistory.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[0].caseId,
+      }),
+    );
+    expect(mockCreateHistory.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[1].caseId,
+      }),
+    );
+    expect(mockCreateHistory.mock.calls[2][1]).toEqual(expect.objectContaining(leadCaseHistory));
+    expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length + 1);
+    expect(actual).toEqual([newConsolidation]);
+  });
+
+  test('should approve a split consolidation order', async () => {
+    const originalConsolidation = MockData.getConsolidationOrder({
+      override: {
+        status: 'approved',
+      },
+    });
+    const mockDelete = jest
+      .spyOn(CosmosDbRepository.prototype, 'delete')
+      .mockResolvedValue(originalConsolidation);
+    const leadCase = MockData.getConsolidatedOrderCase();
+    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const approval: ConsolidationOrderActionApproval = {
+      ...originalConsolidation,
+      approvedCases: [originalConsolidation.childCases[0].caseId],
+      leadCase,
+    };
+
+    const approvedConsolidation = {
+      ...originalConsolidation,
+      childCases: [originalConsolidation.childCases[0]],
+      leadCase: leadCaseSummary,
+      id: crypto.randomUUID(),
+    };
+    const newPendingConsolidation = {
+      ...originalConsolidation,
+      childCases: [originalConsolidation.childCases[1]],
+      id: crypto.randomUUID(),
+    };
+
+    const mockPut = jest
+      .spyOn(CosmosDbRepository.prototype, 'put')
+      .mockResolvedValueOnce(newPendingConsolidation)
+      .mockResolvedValueOnce(approvedConsolidation);
+    const leadCaseBefore: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const childCaseSummaries = approvedConsolidation.childCases.map((bCase) => {
+      const { docketEntries: _docketEntries, ...bCaseSummary } = bCase;
+      return bCaseSummary;
+    });
+    const leadCaseAfter: ConsolidationOrderSummary = {
+      status: 'approved',
+      childCases: [childCaseSummaries[0]],
+    };
+    const leadCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: approvedConsolidation.leadCase.caseId,
+      before: leadCaseBefore,
+      after: leadCaseAfter,
+    };
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const after: ConsolidationOrderSummary = {
+      status: 'approved',
+      leadCase: approvedConsolidation.leadCase,
+      childCases: [],
+    };
+    const childCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: originalConsolidation.childCases[0].caseId,
+      before,
+      after,
+    };
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: originalConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+    };
+    const mockGetHistory = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+    const mockCreateHistory = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue(crypto.randomUUID());
+
+    const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockDelete).toHaveBeenCalled();
+    expect(mockPut).toHaveBeenCalled();
+    expect(mockCreateHistory.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: originalConsolidation.childCases[0].caseId,
+      }),
+    );
+    // expect(mockCreateHistory.mock.calls[1][1]).toEqual(
+    //   expect.objectContaining({
+    //     ...childCaseHistory,
+    //     caseId: originalConsolidation.childCases[1].caseId,
+    //   }),
+    // );
+    expect(mockCreateHistory.mock.calls[1][1]).toEqual(expect.objectContaining(leadCaseHistory));
+    expect(mockGetHistory).toHaveBeenCalledTimes(approval.approvedCases.length + 1);
+    expect(actual).toEqual([newPendingConsolidation, approvedConsolidation]);
+  });
+
   test('should reject a consolidation order', () => {});
   test('should reject a split consolidation order', () => {});
 });

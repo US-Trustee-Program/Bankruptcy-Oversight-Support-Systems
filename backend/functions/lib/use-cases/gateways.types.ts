@@ -1,6 +1,5 @@
 import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentHistory, CaseHistory } from '../adapters/types/case.history';
 import {
   ConsolidationOrder,
   Order,
@@ -8,6 +7,7 @@ import {
   TransferOrderAction,
 } from '../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../common/src/cams/events';
+import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
 
 export interface RepositoryResource {
   id?: string;

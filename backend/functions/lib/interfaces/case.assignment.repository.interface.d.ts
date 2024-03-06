@@ -1,4 +1,4 @@
-import { CaseAssignment } from '../adapters/types/case.assignment';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 export interface CaseAssignmentRepositoryInterface {
   createAssignment(caseAssignment: CaseAssignment): Promise<string>;
