@@ -10,12 +10,9 @@
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 app_rg=$1
+deployBicep=false
 
-if [[ -z "${app_rg}" ]]; then
-    echo "Error: Missing parameters. Usage: check-branch-exists.sh <app_rg:str>"
-    exit 1
-fi
-rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv) || true #continue if rg show fails
+rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)  #continue if rg show fails
 
 #compares current commit with previous commit for changes in bicep directory
 changes=$(git diff HEAD^ HEAD -- ./ops/cloud-deployment/)
