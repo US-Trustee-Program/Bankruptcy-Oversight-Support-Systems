@@ -1,4 +1,4 @@
-import { CaseListDbResult, CaseDetail } from '../adapters/types/cases';
+import { CaseListDbResult } from '../adapters/types/cases';
 import { CaseManagement } from './case-management';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
@@ -12,6 +12,7 @@ import { CaseAssignment } from '../adapters/types/case.assignment';
 import { describe } from 'node:test';
 import { CASE_SUMMARIES } from '../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseDetail } from '../../../../common/src/cams/cases';
 
 const functionContext = require('azure-function-context-mock');
 

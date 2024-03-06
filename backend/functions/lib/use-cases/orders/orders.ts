@@ -254,6 +254,7 @@ export class OrdersUseCase {
     return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
 
+  // TODO: Revisit whether the after state is actually what we want
   private async buildHistory(
     context: ApplicationContext,
     bCase: CaseSummary,
@@ -278,10 +279,8 @@ export class OrdersUseCase {
     }
 
     if (isConsolidationHistory(before) && before.childCases.length > 0) {
-      //create unique set of child cases then write to an array
       after.childCases.push(...before.childCases);
     }
-    //When building a history we will want to add to the before state
     return {
       caseId: bCase.caseId,
       documentType: 'AUDIT_CONSOLIDATION',
@@ -344,16 +343,13 @@ export class OrdersUseCase {
           childCaseSummaries,
         );
         await this.casesRepo.createCaseHistory(context, leadCaseHistory);
-
-        continue;
+      } else {
+        const caseHistory = await this.buildHistory(context, childCase, status, leadCaseSummary);
+        await this.casesRepo.createCaseHistory(context, caseHistory);
+        const { docketEntries: _docketEntries, ...caseSummary } = childCase;
+        childCaseSummaries.push(caseSummary);
       }
-
-      const caseHistory = await this.buildHistory(context, childCase, status, leadCaseSummary);
-      await this.casesRepo.createCaseHistory(context, caseHistory);
-      const { docketEntries: _docketEntries, ...caseSummary } = childCase;
-      childCaseSummaries.push(caseSummary);
     }
-
     return response;
   }
 

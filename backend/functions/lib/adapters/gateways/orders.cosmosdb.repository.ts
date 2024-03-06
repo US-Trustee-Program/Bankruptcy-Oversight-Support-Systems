@@ -8,14 +8,14 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { Order, TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import CosmosClientHumble from '../../cosmos-humble-objects/cosmos-client-humble';
-import { HumbleClient } from '../../testing/mock.cosmos-client-humble';
+import { MockHumbleClient } from '../../testing/mock.cosmos-client-humble';
 import { QueryOptions } from '../../cosmos-humble-objects/cosmos-items-humble';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 const CONTAINER_NAME: string = 'orders';
 
 export class OrdersCosmosDbRepository implements OrdersRepository {
-  private cosmosDbClient: CosmosClientHumble | HumbleClient;
+  private cosmosDbClient: CosmosClientHumble | MockHumbleClient;
 
   private containerName;
   private cosmosConfig: CosmosConfig;

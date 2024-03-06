@@ -1,10 +1,10 @@
 import * as crypto from 'crypto';
 import { QueryOptions } from '../cosmos-humble-objects/cosmos-items-humble';
 
-export class HumbleQuery<T> {
-  items: HumbleItems;
+export class MockHumbleQuery<T> {
+  items: MockHumbleItems;
   query: QueryOptions;
-  constructor(items: HumbleItems, query: QueryOptions) {
+  constructor(items: MockHumbleItems, query: QueryOptions) {
     this.items = items;
     this.query = query;
   }
@@ -13,10 +13,10 @@ export class HumbleQuery<T> {
   }
 }
 
-export class HumbleItem {
-  container: HumbleContainer;
+export class MockHumbleItem {
+  container: MockHumbleContainer;
   id: string;
-  constructor(container: HumbleContainer, id: string) {
+  constructor(container: MockHumbleContainer, id: string) {
     this.container = container;
     this.id = id;
   }
@@ -47,9 +47,9 @@ export class HumbleItem {
   }
 }
 
-export class HumbleItems {
-  container: HumbleContainer;
-  constructor(container: HumbleContainer) {
+export class MockHumbleItems {
+  container: MockHumbleContainer;
+  constructor(container: MockHumbleContainer) {
     this.container = container;
   }
   async create<T>(resource: T) {
@@ -64,39 +64,39 @@ export class HumbleItems {
     this.container.map.set(id, itemWithId);
     return this.container.map.get(id);
   }
-  query<T>(query: QueryOptions): HumbleQuery<T> {
-    return new HumbleQuery<T>(this, query);
+  query<T>(query: QueryOptions): MockHumbleQuery<T> {
+    return new MockHumbleQuery<T>(this, query);
   }
 }
 
-export class HumbleContainer {
-  database: HumbleDatabase;
+export class MockHumbleContainer {
+  database: MockHumbleDatabase;
   containerName: string;
   map = new Map();
-  constructor(database: HumbleDatabase, containerName: string) {
+  constructor(database: MockHumbleDatabase, containerName: string) {
     this.database = database;
     this.containerName = containerName;
   }
   public get items() {
-    return new HumbleItems(this);
+    return new MockHumbleItems(this);
   }
   item(id: string, _partitionKey?: string) {
-    return new HumbleItem(this, id);
+    return new MockHumbleItem(this, id);
   }
 }
 
-export class HumbleDatabase {
+export class MockHumbleDatabase {
   databaseId: string;
   constructor(databaseId: string) {
     this.databaseId = databaseId;
   }
   container(containerName: string) {
-    return new HumbleContainer(this, containerName);
+    return new MockHumbleContainer(this, containerName);
   }
 }
 
-export class HumbleClient {
+export class MockHumbleClient {
   database(databaseId: string) {
-    return new HumbleDatabase(databaseId);
+    return new MockHumbleDatabase(databaseId);
   }
 }

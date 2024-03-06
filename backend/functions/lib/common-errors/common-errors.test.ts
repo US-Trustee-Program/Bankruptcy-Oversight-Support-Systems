@@ -1,4 +1,5 @@
 import { BadRequestError } from './bad-request';
+import { CamsError, isCamsError } from './cams-error';
 import { BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND } from './constants';
 import { ForbiddenError } from './forbidden-error';
 import { NotFoundError } from './not-found-error';
@@ -41,5 +42,13 @@ describe('Common errors', () => {
     expect(error.status).toBe(NOT_FOUND);
     expect(error.module).toBe(testModuleName);
     expect(error.message).toBe('Not found');
+  });
+
+  test('isCamsError should return true for a CamsError and false otherwise', () => {
+    const camsError = new CamsError(testModuleName);
+    expect(isCamsError(camsError)).toBeTruthy();
+
+    const negativeError = new Error();
+    expect(isCamsError(negativeError)).toBeFalsy();
   });
 });

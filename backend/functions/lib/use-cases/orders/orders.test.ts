@@ -1,6 +1,6 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
-import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
+import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import {
   getOrdersGateway,
   getOrdersRepository,
@@ -57,7 +57,7 @@ describe('Orders use case', () => {
     const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()].sort(
       (a, b) => sortDates(a.orderDate, b.orderDate),
     );
-    const mockRead = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
+    const mockRead = jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
       resources: mockOrders,
     });
     const result = await useCase.getOrders(mockContext);
@@ -144,7 +144,7 @@ describe('Orders use case', () => {
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [startState],
     });
 

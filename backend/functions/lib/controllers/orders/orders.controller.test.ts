@@ -1,11 +1,10 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { HumbleQuery } from '../../testing/mock.cosmos-client-humble';
+import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
-import { CaseDetail } from '../../adapters/types/cases';
 import {
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
@@ -17,6 +16,7 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { sortDates } from '../../../../../common/src/date-helper';
 import { ManageConsolidationResponse, OrdersController } from './orders.controller';
 import { CamsResponse } from '../controller-types';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -30,7 +30,7 @@ const syncResponse: SyncOrdersStatus = {
   finalSyncState: {
     documentType: 'ORDERS_SYNC_STATE',
     txId: '464',
-    id: '28e35739-58cd-400b-9d4b-26969773 618b',
+    id: '28e35739-58cd-400b-9d4b-26969773618b',
   },
   length: 13,
   startingTxId: '10',
@@ -57,7 +57,7 @@ describe('orders controller tests', () => {
 
   test('should get orders', async () => {
     const mockRead = jest
-      .spyOn(HumbleQuery.prototype, 'fetchAll')
+      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
       .mockResolvedValueOnce({
         resources: mockTransferOrder,
       })
