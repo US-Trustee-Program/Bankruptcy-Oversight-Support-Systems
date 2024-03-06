@@ -26,12 +26,12 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
 
   async createAssignment(caseAssignment: CaseAssignment): Promise<string> {
     try {
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(caseAssignment);
-      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${item.id}`);
-      return item.id;
+      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${resource.id}`);
+      return resource.id;
     } catch (e) {
       this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {
@@ -54,13 +54,13 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
 
   async updateAssignment(caseAssignment: CaseAssignment): Promise<string> {
     try {
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .item(caseAssignment.id)
         .replace(caseAssignment);
-      this.applicationContext.logger.debug(MODULE_NAME, `Assignment updated ${item.id}`);
-      return item.id;
+      this.applicationContext.logger.debug(MODULE_NAME, `Assignment updated ${resource.id}`);
+      return resource.id;
     } catch (e) {
       this.applicationContext.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e.status === 403) {

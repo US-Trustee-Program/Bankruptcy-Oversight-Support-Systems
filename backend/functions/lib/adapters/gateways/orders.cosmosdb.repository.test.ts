@@ -2,7 +2,11 @@ import { OrdersCosmosDbRepository } from './orders.cosmosdb.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
-import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
+import {
+  MockHumbleItem,
+  MockHumbleItems,
+  MockHumbleQuery,
+} from '../../testing/mock.cosmos-client-humble';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -39,7 +43,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('should get a list of orders', async () => {
     const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
-    const mockFetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
+    const mockFetchAll = jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: mockOrders,
     });
 
@@ -52,7 +56,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should get a transfer order', async () => {
     const mockOrders = [MockData.getTransferOrder()];
     const order = { ...mockOrders[0] };
-    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
+    const mockRead = jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: order,
     });
 
@@ -65,7 +69,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should get a consolidation order', async () => {
     const mockOrders = [MockData.getConsolidationOrder()];
     const order = { ...mockOrders[0] };
-    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
+    const mockRead = jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: order,
     });
 
@@ -80,7 +84,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('When updating an order, Should throw Unknown Error if an unknown error occurs', async () => {
-    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockImplementation(() => {
+    const mockRead = jest.spyOn(MockHumbleItem.prototype, 'read').mockImplementation(() => {
       throw new Error('Replace error');
     });
 
@@ -91,10 +95,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('Should update order and return a cosmos order id', async () => {
-    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
+    const mockRead = jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: testNewOrderData,
     });
-    const mockReplace = jest.spyOn(HumbleItem.prototype, 'replace').mockResolvedValue({
+    const mockReplace = jest.spyOn(MockHumbleItem.prototype, 'replace').mockResolvedValue({
       resource: testNewOrderData,
     });
     const testResult = await repository.updateOrder(
@@ -108,7 +112,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   });
 
   test('Should throw a NotFoundError if attempting to update a document that does not exist.', async () => {
-    const mockRead = jest.spyOn(HumbleItem.prototype, 'read').mockResolvedValue({
+    const mockRead = jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: undefined,
     });
     await expect(
@@ -123,7 +127,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
     delete errorTestNewOrderData.id;
 
-    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+    const mockCreate = jest.spyOn(MockHumbleItems.prototype, 'create').mockImplementation(() => {
       throw new UnknownError('TEST_MODULE', { message: 'unknown error' });
     });
 
@@ -140,7 +144,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     delete errorTestNewOrderData.id;
 
     const mockCreate = jest
-      .spyOn(HumbleItems.prototype, 'create')
+      .spyOn(MockHumbleItems.prototype, 'create')
       .mockRejectedValue(createPreExistingDocumentError());
 
     await expect(
@@ -157,7 +161,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     delete testNewOrderData2.id;
     const ordersList = [testNewOrderData2];
 
-    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(() => {
+    const mockCreate = jest.spyOn(MockHumbleItems.prototype, 'create').mockImplementation(() => {
       throw new AggregateAuthenticationError([
         new ForbiddenError('TEST_MODULE', { message: 'forbidden' }),
       ]);
@@ -172,7 +176,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   test('should not put an empty order array', async () => {
     const ordersList: TransferOrder[] = [];
 
-    const create = jest.spyOn(HumbleItems.prototype, 'create');
+    const create = jest.spyOn(MockHumbleItems.prototype, 'create');
 
     await repository.putOrders(applicationContext, ordersList);
     expect(create).not.toHaveBeenCalled();
@@ -191,7 +195,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
     };
     const ordersList = [positiveTestNewOrderData1, positiveTestNewOrderData2];
 
-    const mockCreate = jest.spyOn(HumbleItems.prototype, 'create').mockImplementation(jest.fn());
+    const mockCreate = jest
+      .spyOn(MockHumbleItems.prototype, 'create')
+      .mockImplementation(jest.fn());
 
     await repository.putOrders(applicationContext, ordersList);
     expect(mockCreate).toHaveBeenCalledTimes(ordersList.length);
@@ -205,9 +211,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const serverConfigError = new ServerConfigError('', {
       message: 'Failed to authenticate to Azure',
     });
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockRejectedValue(aggregateError);
-    jest.spyOn(HumbleItems.prototype, 'create').mockRejectedValue(aggregateError);
-    jest.spyOn(HumbleItem.prototype, 'read').mockRejectedValue(aggregateError);
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockRejectedValue(aggregateError);
+    jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(aggregateError);
+    jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(aggregateError);
 
     await expect(repository.getOrders(applicationContext)).rejects.toThrow(serverConfigError);
     await expect(
@@ -223,9 +229,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   test('should throw all other encountered errors', async () => {
     const error = new UnknownError('TEST_MODULE', { message: 'test error' });
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockRejectedValue(error);
-    jest.spyOn(HumbleItem.prototype, 'read').mockRejectedValue(error);
-    jest.spyOn(HumbleItems.prototype, 'create').mockRejectedValue(error);
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockRejectedValue(error);
+    jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(error);
+    jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(error);
 
     await expect(repository.getOrders(applicationContext)).rejects.toThrow(error);
     await expect(

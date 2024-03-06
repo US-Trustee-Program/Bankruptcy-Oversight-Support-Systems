@@ -87,8 +87,7 @@ export class CosmosDbRepository<T> implements DocumentRepository<T> {
 
       return resource;
     };
-    const response = await this.execute<T>(context, lambdaToExecute);
-    return response;
+    return await this.execute<T>(context, lambdaToExecute);
   }
 
   async putAll(context: ApplicationContext, list: T[]): Promise<T[]> {

@@ -30,7 +30,7 @@ import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.re
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
-import { HumbleClient } from './testing/mock.cosmos-client-humble';
+import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
@@ -63,9 +63,9 @@ export const getAssignmentsCosmosDbClient = (
 
 export const getCosmosDbClient = (
   applicationContext: ApplicationContext,
-): CosmosClientHumble | HumbleClient => {
+): CosmosClientHumble | MockHumbleClient => {
   if (applicationContext.config.get('dbMock')) {
-    return new HumbleClient();
+    return new MockHumbleClient();
   } else {
     return new CosmosClientHumble(applicationContext.config);
   }
