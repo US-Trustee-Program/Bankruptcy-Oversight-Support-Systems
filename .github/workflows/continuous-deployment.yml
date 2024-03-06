@@ -391,7 +391,6 @@ jobs:
     outputs:
       cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
-      deployJobDependency: ${{ steps.azure-db-deploy.outputs.deployJobDependency }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
