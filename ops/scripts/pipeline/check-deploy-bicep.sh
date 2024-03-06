@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 
 # Title:        check-git-diff.sh
-# Description:  Helper script to check if bicep changes have been made
+# Description:  Helper script to check if bicep changes have been made and if bicep should be deployed
 #
 # Exitcodes
 # ==========
-# 0   No error
-# 1   Script interrupted
-# 2   Unknown flag or switch passed as parameter to script
-# 10+ Validation check errors
+# 1   missing parameter
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
@@ -20,6 +17,7 @@ if [[ -z "${app_rg}" ]]; then
 fi
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv) || true #continue if rg show fails
 
+#compares current commit with previous commit for changes in bicep directory
 changes=$(git diff HEAD^ HEAD -- ./ops/cloud-deployment/)
 
 

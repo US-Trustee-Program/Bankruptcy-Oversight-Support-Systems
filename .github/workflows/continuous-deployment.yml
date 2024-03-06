@@ -80,7 +80,7 @@ jobs:
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           # Check if bicep changes
-          echo "deployBicep=$(./ops/scripts/pipeline/check-git-diff.sh)" >> $GITHUB_OUTPUT
+          echo "deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh)" >> $GITHUB_OUTPUT
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
