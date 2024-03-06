@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Title:        check-git-diff.sh
+# Title:        check-deploy-bicep.sh
 # Description:  Helper script to check if bicep changes have been made and if bicep should be deployed
 #
 # Exitcodes
@@ -14,10 +14,9 @@ deployBicep=false
 containsBicep=false
 
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)  #continue if rg show fails
-#compares current commit with previous commit for changes in bicep directory
-changes=$(git diff HEAD^ HEAD)
 
-if [[ $changes == *".bicep"* ]]; then
+changes=$(git diff HEAD^ HEAD)
+if [[ $changes == *".bicep"* ]]; then #checks if most recent commit contains changes in any .bicep
     containsBicep=true
 else
     containsBicep=false
