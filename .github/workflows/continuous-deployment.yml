@@ -55,6 +55,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 3
 
       - name: Check environment
         id: check-env
@@ -64,7 +66,10 @@ jobs:
           shortHash="${hash:0:6}"
           echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
           echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
-
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Print build info
         id: build-info
         run: |
