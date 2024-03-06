@@ -15,7 +15,6 @@ import {
   isTransferOrder,
   Order,
   ConsolidationOrderActionRejection,
-  ConsolidationHistory,
   OrderStatus,
   ConsolidationOrderActionApproval,
   TransferOrderAction,
@@ -23,11 +22,14 @@ import {
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
-import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsError } from '../../common-errors/cams-error';
 import { sortDates, sortDatesReverse } from '../../../../../common/src/date-helper';
-import { isConsolidationHistory } from '../../../../../common/src/cams/orders';
 import * as crypto from 'crypto';
+import {
+  CaseHistory,
+  ConsolidationOrderSummary,
+  isConsolidationHistory,
+} from '../../../../../common/src/cams/history';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -202,7 +204,7 @@ export class OrdersUseCase {
     await this.consolidationsRepo.putAll(context, Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
-      const history: ConsolidationHistory = {
+      const history: ConsolidationOrderSummary = {
         status: 'pending',
         childCases: [],
       };
@@ -259,14 +261,14 @@ export class OrdersUseCase {
     context: ApplicationContext,
     bCase: CaseSummary,
     status: OrderStatus,
+    childCases: CaseSummary[],
     leadCase?: CaseSummary,
-    childCases?: CaseSummary[],
   ): Promise<CaseHistory> {
-    const after: ConsolidationHistory = {
+    const after: ConsolidationOrderSummary = {
       status,
       childCases,
-      leadCase,
     };
+    if (leadCase) after.leadCase = leadCase;
     let before;
     try {
       const fullHistory = await this.casesRepo.getCaseHistory(context, bCase.caseId);
@@ -284,7 +286,7 @@ export class OrdersUseCase {
     return {
       caseId: bCase.caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: isConsolidationHistory(before) ? before : undefined,
+      before: isConsolidationHistory(before) ? before : null,
       after,
     };
   }
@@ -319,8 +321,8 @@ export class OrdersUseCase {
         childCases: remainingChildCases,
         id: undefined,
       };
-      await this.consolidationsRepo.put(context, remainingOrder);
-      response.push(remainingOrder);
+      const updatedRemainingOrder = await this.consolidationsRepo.put(context, remainingOrder);
+      response.push(updatedRemainingOrder);
     }
 
     await this.consolidationsRepo.delete(
@@ -334,22 +336,26 @@ export class OrdersUseCase {
     const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
     const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
-      if (childCase.caseId === leadCase.caseId) {
-        const leadCaseHistory = await this.buildHistory(
+      if (childCase.caseId !== leadCase.caseId) {
+        const caseHistory = await this.buildHistory(
           context,
-          leadCaseSummary,
+          childCase,
           status,
-          undefined,
-          childCaseSummaries,
+          [],
+          leadCaseSummary,
         );
-        await this.casesRepo.createCaseHistory(context, leadCaseHistory);
-      } else {
-        const caseHistory = await this.buildHistory(context, childCase, status, leadCaseSummary);
         await this.casesRepo.createCaseHistory(context, caseHistory);
         const { docketEntries: _docketEntries, ...caseSummary } = childCase;
         childCaseSummaries.push(caseSummary);
       }
     }
+    const leadCaseHistory = await this.buildHistory(
+      context,
+      leadCaseSummary,
+      status,
+      childCaseSummaries,
+    );
+    await this.casesRepo.createCaseHistory(context, leadCaseHistory);
     return response;
   }
 

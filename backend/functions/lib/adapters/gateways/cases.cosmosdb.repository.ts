@@ -7,7 +7,7 @@ import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CaseAssignmentHistory } from '../types/case.history';
+import { CaseHistory } from '../../../../../common/src/cams/history';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
@@ -51,10 +51,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
     return this.create<TransferOut>(context, transferOut);
   }
 
-  async getCaseHistory(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<CaseAssignmentHistory>> {
+  async getCaseHistory(context: ApplicationContext, caseId: string): Promise<Array<CaseHistory>> {
     const query =
       'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
     const querySpec = {
@@ -66,14 +63,11 @@ export class CasesCosmosDbRepository implements CasesRepository {
         },
       ],
     };
-    const response = await this.queryData<CaseAssignmentHistory>(context, querySpec);
+    const response = await this.queryData<CaseHistory>(context, querySpec);
     return response;
   }
 
-  async createCaseHistory(
-    context: ApplicationContext,
-    history: CaseAssignmentHistory,
-  ): Promise<string> {
+  async createCaseHistory(context: ApplicationContext, history: CaseHistory): Promise<string> {
     try {
       if (!history.occurredAtTimestamp) {
         history.occurredAtTimestamp = new Date().toISOString();

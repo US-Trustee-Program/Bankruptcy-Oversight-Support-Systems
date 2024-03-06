@@ -6,8 +6,8 @@ import { AggregateAuthenticationError } from '@azure/identity';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CaseAssignment } from '../types/case.assignment';
-import { CaseAssignmentHistory } from '../types/case.history';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 

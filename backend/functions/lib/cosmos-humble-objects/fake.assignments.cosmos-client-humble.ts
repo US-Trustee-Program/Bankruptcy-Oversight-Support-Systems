@@ -1,7 +1,6 @@
 import { ForbiddenError } from '../common-errors/forbidden-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { UnknownError } from '../common-errors/unknown-error';
-import { CaseAssignment } from '../adapters/types/case.assignment';
 import { GatewayHelper } from '../adapters/gateways/gateway-helper';
 import { NotFoundError } from '../common-errors/not-found-error';
 import {
@@ -9,6 +8,7 @@ import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../testing/testing-constants';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {

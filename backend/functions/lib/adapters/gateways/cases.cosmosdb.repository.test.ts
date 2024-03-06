@@ -9,8 +9,8 @@ import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
-import { CaseAssignmentHistory } from '../types/case.history';
 import { AggregateAuthenticationError } from '@azure/identity';
+import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
