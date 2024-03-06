@@ -6,6 +6,7 @@
 # Exitcodes
 # ==========
 # 1   missing parameter
+#Testing Bicep Deployment
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
