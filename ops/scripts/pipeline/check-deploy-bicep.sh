@@ -16,7 +16,7 @@ containsBicep=false
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)  #continue if rg show fails
 
 changes=$(git diff HEAD^ HEAD)
-if [[ $changes == *".bicep"* ]]; then #checks if most recent commit contains changes in any .bicep
+if [[ $changes == *".bicep"* && $changes == *"cloud-deployment"* ]]; then #checks if most recent commit contains changes in any .bicep
     containsBicep=true
 else
     containsBicep=false
