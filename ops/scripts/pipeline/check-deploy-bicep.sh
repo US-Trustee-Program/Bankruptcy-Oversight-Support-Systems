@@ -14,17 +14,18 @@ deployBicep=false
 containsBicep=false
 
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)  #continue if rg show fails
-
 #compares current commit with previous commit for changes in bicep directory
 changes=$(git diff HEAD^ HEAD)
 
 if [[ $changes == *".bicep"* ]]; then
     containsBicep=true
+else
+    containsBicep=false
 fi
 
 
 
-if [[ $containsBicep && $rg_response != "" ]] || [[ $rg_response == "" ]]; then
+if [[ $containsBicep == true || $rg_response == "" ]]; then
     deployBicep=true
 else
     deployBicep=false
