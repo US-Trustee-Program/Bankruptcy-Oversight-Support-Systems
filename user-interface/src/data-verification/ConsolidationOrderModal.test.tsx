@@ -140,24 +140,7 @@ describe('ConsolidationOrderModalComponent', () => {
     await waitFor(() => {
       expect(modal).toHaveClass('is-hidden');
     });
-  });
-
-  test('should call onConfirm callback when confirmation button is clicked', async () => {
-    const id = 'test';
-    const caseIds = ['11-11111', '22-22222'];
-
-    const ref = renderModalWithProps({ id });
-
-    await waitFor(() => {
-      ref.current?.show({ status: 'rejected', caseIds });
-    });
-
-    const button = screen.queryByTestId(`toggle-modal-button-submit`);
-    fireEvent.click(button as Element);
-
-    await waitFor(() => {
-      expect(onConfirmSpy).toHaveBeenCalled();
-    });
+    expect(onConfirmSpy).toHaveBeenCalled();
   });
 
   test('should call onCancel callback when cancel button is clicked', async () => {
