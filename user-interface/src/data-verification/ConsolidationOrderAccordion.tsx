@@ -55,8 +55,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [attorneys] = useState<AttorneyInfo[]>([]);
   const featureFlags = useFeatureFlags();
 
-  // Fetch all cases from CAMS API
-
   useEffect(() => {
     if (selectedCases.length == 0) {
       approveButtonRef.current?.disableButton(true);

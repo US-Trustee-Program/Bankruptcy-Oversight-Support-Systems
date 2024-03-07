@@ -11,8 +11,6 @@ import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
-// import * as ModalModule from './ConsolidationOrderModal';
-// import useImperativeHandle from 'react';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -90,11 +88,11 @@ describe('ConsolidationOrderAccordion tests', () => {
   });
 
   test('should display approved order content', () => {
-    // We need to render an approved order.
+    // TODO: test rendering an approved order.
   });
 
   test('should display rejected order content', () => {
-    // We need to render a rejected order.
+    // TODO: test rendering a rejected order.
   });
 
   test('should correctly enable/disable approve button', async () => {
