@@ -14,17 +14,6 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
-/*
-    orders.forEach((order) => {
-      if (order.orderType === 'transfer') {
-        mock.mockResolvedValueOnce({
-          message: '',
-          count: 1,
-          body: { dateFiled: order.dateFiled, debtor: order.debtor },
-        });
-      }
-    });
-*/
 describe('Review Orders screen', () => {
   let orders: Order[];
   let transferOrders: TransferOrder[];

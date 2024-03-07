@@ -487,12 +487,6 @@ describe('Orders use case', () => {
         caseId: originalConsolidation.childCases[0].caseId,
       }),
     );
-    // expect(mockCreateHistory.mock.calls[1][1]).toEqual(
-    //   expect.objectContaining({
-    //     ...childCaseHistory,
-    //     caseId: originalConsolidation.childCases[1].caseId,
-    //   }),
-    // );
     expect(mockCreateHistory.mock.calls[1][1]).toEqual(expect.objectContaining(leadCaseHistory));
     expect(mockGetHistory).toHaveBeenCalledTimes(approval.approvedCases.length + 1);
     expect(actual).toEqual([newPendingConsolidation, approvedConsolidation]);
