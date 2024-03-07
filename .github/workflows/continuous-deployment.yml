@@ -51,7 +51,7 @@ jobs:
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ vars.SLOT_NAME }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
-      deployBicep: ${{ steps.build-info.outputs.deployBicep }}
+      deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
