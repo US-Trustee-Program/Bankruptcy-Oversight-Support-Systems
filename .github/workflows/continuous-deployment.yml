@@ -573,7 +573,7 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }} \
           WEBSITE_RUN_FROM_PACKAGE=1" \
-          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identities ${{ needs.deploy.outputs.cosmosDbPrincipalId }} \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
       - name: Retry Deploy Azure Functions backend
