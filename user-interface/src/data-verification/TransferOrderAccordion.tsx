@@ -209,7 +209,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   function handleSuggestedCaseSelection(bCase: CaseSummary) {
     if (bCase) {
       const updated = { ...orderTransfer };
-      // Remove the division prefix to be consistent with case entry view.
       updated.newCase = bCase;
       setOrderTransfer(updated);
       approveButtonRef.current?.disableButton(false);

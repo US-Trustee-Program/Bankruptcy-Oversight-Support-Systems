@@ -295,7 +295,6 @@ describe('Case list tests', () => {
 
 describe('Case detail tests', () => {
   test('Should return a properly formatted case when a case number is supplied', async () => {
-    //intermittent failure on OFFICE_ID
     const applicationContext = await applicationContextCreator(functionContext);
     const caseId = caseIdWithAssignments;
     const dateFiled = '2018-11-16';
