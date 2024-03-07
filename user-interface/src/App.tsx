@@ -8,7 +8,7 @@ import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import Home from './home/Home';
 import CaseAssignment from './case-assignment/CaseAssignmentScreen';
-import CaseDetail from './case-detail/CaseDetailScreen';
+import CaseDetailScreen from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
@@ -50,7 +50,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
-            <Route path="/case-detail/:caseId/*" element={<CaseDetail />}></Route>
+            <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
             )}

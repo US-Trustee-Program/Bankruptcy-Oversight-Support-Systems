@@ -47,3 +47,21 @@ export async function httpPatch(data: {
 
   return await fetch(data.url, requestInit);
 }
+
+export async function httpPut(data: {
+  url: string;
+  body: object;
+  headers?: object;
+}): Promise<Response> {
+  const requestInit: RequestInit = {
+    method: 'PUT',
+    headers: {
+      'content-type': 'application/json;charset=UTF-8',
+      ...data.headers,
+    },
+    body: JSON.stringify(data.body),
+    cache: 'default',
+  };
+
+  return await fetch(data.url, requestInit);
+}

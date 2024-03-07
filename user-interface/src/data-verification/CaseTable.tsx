@@ -1,6 +1,6 @@
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
+import { CaseSummary } from '@common/cams/cases';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CaseTableImperative = {
@@ -9,8 +9,9 @@ export type CaseTableImperative = {
 
 interface CaseTableProps {
   id: string;
-  cases: Array<CaseDetailType>;
-  onSelect?: (bCase: CaseDetailType) => void;
+  cases: Array<CaseSummary>;
+  onSelect?: (bCase: CaseSummary) => void;
+  displayDocket?: boolean;
 }
 
 function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
@@ -47,7 +48,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
         </tr>
       </thead>
       <tbody>
-        {cases.map((bCase, idx) => {
+        {cases?.map((bCase, idx) => {
           const taxId = bCase.debtor?.ssn || bCase.debtor?.taxId || '';
           const key = `${id}-row-${idx}`;
           return (

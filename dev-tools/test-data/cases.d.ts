@@ -1,5 +1,5 @@
 export interface CaseListRecordSet {
-  caseList: CaseDetailInterface[];
+  caseList: CaseDetail[];
   initialized?: boolean;
 }
 
@@ -14,7 +14,7 @@ export interface CaseDetailsDbResult {
   success: boolean;
   message: string;
   body: {
-    caseDetails: CaseDetailInterface;
+    caseDetails: CaseDetail;
   };
 }
 
@@ -35,7 +35,7 @@ export interface DebtorAttorney {
   cityStateZipCountry?: string;
   phone?: string;
 }
-export interface CaseDetailInterface {
+export interface CaseDetail {
   caseId: string;
   chapter: string;
   caseTitle: string;

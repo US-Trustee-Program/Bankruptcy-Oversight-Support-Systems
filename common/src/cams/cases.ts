@@ -1,30 +1,25 @@
 import { DebtorAttorney, Party } from './parties';
 import { TransferIn, TransferOut } from './events';
+import { OfficeDetails } from './courts';
 
-export interface CaseSummary {
+export interface CaseSummary extends OfficeDetails {
+  dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
   caseId: string;
-  courtDivision: string;
   chapter: string;
   caseTitle: string;
   dateFiled: string;
+  petitionCode?: string;
+  petitionLabel?: string;
+  debtorTypeCode?: string;
+  debtorTypeLabel?: string;
+  debtor: Party;
+}
+
+export interface CaseDetail extends CaseSummary {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
-  dxtrId?: string;
-  courtId?: string;
-  courtName?: string;
-  regionId?: string;
-  regionName?: string;
-  officeName?: string;
-  petitionCode?: string;
-  petitionLabel?: string;
-  courtDivisionName?: string;
-  debtor?: Party;
-  debtorTypeCode?: string;
-  debtorTypeLabel?: string;
-}
-
-export interface CaseDetailInterface extends CaseSummary {
+  courtId: string;
   assignments?: string[];
   transfers?: Array<TransferIn | TransferOut>;
   debtorAttorney?: DebtorAttorney;

@@ -1,13 +1,13 @@
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
+import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
+import { CasesRepository } from './gateways.types';
 import {
   AttorneyAssignmentResponseInterface,
   CaseAssignment,
-} from '../adapters/types/case.assignment';
-import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
-import { CasesRepository } from './gateways.types';
-import { CaseAssignmentHistory } from '../adapters/types/case.history';
+} from '../../../../common/src/cams/assignments';
+import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 

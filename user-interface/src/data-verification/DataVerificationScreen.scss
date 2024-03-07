@@ -51,6 +51,12 @@
         padding-left: 0.125rem;
       }
     }
+    .consolidation {
+      background: #5c5c5c;
+    }
+    .transfer {
+      background: #5c5c5c;
+    }
     .pending {
       // pa11y failed background color #C2850C for contrast.
       // The backgound color #a26b00 was specified by pa11y.

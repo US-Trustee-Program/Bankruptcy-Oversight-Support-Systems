@@ -2,15 +2,15 @@ import { ApplicationContext } from '../types/basic';
 import { CasesCosmosDbRepository } from './cases.cosmosdb.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
-import { HumbleItem, HumbleItems, HumbleQuery } from '../../testing/mock.cosmos-client-humble';
-import { throwAggregateAuthenticationError } from '../../testing/mock.cosmos-client-humble.helpers';
+import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
-import { CaseAssignmentHistory } from '../types/case.history';
+import { AggregateAuthenticationError } from '@azure/identity';
+import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
@@ -43,7 +43,7 @@ describe('Runtime State Repo', () => {
   });
 
   test('should get array of transfers when calling getTransfers', async () => {
-    const fetchAll = jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({
+    const fetchAll = jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: transfersArray,
     });
     const actual = await repo.getTransfers(context, caseId1);
@@ -52,8 +52,8 @@ describe('Runtime State Repo', () => {
   });
 
   test('should create a TransferIn document', async () => {
-    const create = jest.spyOn(HumbleItems.prototype, 'create').mockResolvedValue({
-      item: transferIn,
+    const create = jest.spyOn(MockHumbleItems.prototype, 'create').mockResolvedValue({
+      resource: transferIn,
     });
     const toCreate = { ...transferIn };
     const actual = await repo.createTransferIn(context, toCreate);
@@ -62,8 +62,8 @@ describe('Runtime State Repo', () => {
   });
 
   test('should update a TransferOut document', async () => {
-    const create = jest.spyOn(HumbleItems.prototype, 'create').mockResolvedValue({
-      item: transferOut,
+    const create = jest.spyOn(MockHumbleItems.prototype, 'create').mockResolvedValue({
+      resource: transferOut,
     });
     const toCreate = { ...transferOut };
     const actual = await repo.createTransferOut(context, toCreate);
@@ -72,22 +72,13 @@ describe('Runtime State Repo', () => {
   });
 
   test('should throw a ServerConfigError if AggregateAuthenticationError is encountered', async () => {
+    const cosmosdbAggregateError = new AggregateAuthenticationError([], 'Mocked Test Error');
     const serverConfigError = new ServerConfigError('TEST', {
       message: 'Failed to authenticate to Azure',
+      originalError: cosmosdbAggregateError,
     });
-    jest
-      .spyOn(HumbleQuery.prototype, 'fetchAll')
-      .mockImplementation(
-        throwAggregateAuthenticationError<{ resources: Array<TransferIn | TransferOut> }>(),
-      );
-
-    jest
-      .spyOn(HumbleItem.prototype, 'replace')
-      .mockImplementation(throwAggregateAuthenticationError());
-
-    jest
-      .spyOn(HumbleItems.prototype, 'create')
-      .mockImplementation(throwAggregateAuthenticationError<void>());
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockRejectedValue(cosmosdbAggregateError);
+    jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(cosmosdbAggregateError);
 
     await expect(repo.getTransfers(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(
       serverConfigError,
@@ -98,9 +89,8 @@ describe('Runtime State Repo', () => {
 
   test('should throw any other error encountered', async () => {
     const someError = new Error('Some other unknown error');
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockRejectedValue(someError);
-    jest.spyOn(HumbleItem.prototype, 'replace').mockRejectedValue(someError);
-    jest.spyOn(HumbleItems.prototype, 'create').mockRejectedValue(someError);
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockRejectedValue(someError);
+    jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(someError);
 
     await expect(repo.getTransfers(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(someError);
     await expect(repo.createTransferIn(context, transferIn)).rejects.toThrow(someError);
@@ -120,7 +110,9 @@ describe('Test case history cosmosdb repository tests', () => {
 
   test('should return case history for attorney assignments', async () => {
     const caseId = CASE_HISTORY[0].caseId;
-    jest.spyOn(HumbleQuery.prototype, 'fetchAll').mockResolvedValue({ resources: CASE_HISTORY });
+    jest
+      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
+      .mockResolvedValue({ resources: CASE_HISTORY });
 
     const actualAssignmentsOne = await repo.getCaseHistory(context, caseId);
 

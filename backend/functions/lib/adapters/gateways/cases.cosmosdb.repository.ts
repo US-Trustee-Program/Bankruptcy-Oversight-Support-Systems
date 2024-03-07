@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../types/basic';
-import { getCasesCosmosDbClient, getCosmosConfig } from '../../factory';
+import { getCosmosDbClient, getCosmosConfig } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
@@ -7,7 +7,7 @@ import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CaseAssignmentHistory } from '../types/case.history';
+import { CaseHistory } from '../../../../../common/src/cams/history';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
@@ -18,7 +18,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getCasesCosmosDbClient(applicationContext);
+    this.cosmosDbClient = getCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
   }
 
@@ -26,7 +26,6 @@ export class CasesCosmosDbRepository implements CasesRepository {
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<TransferIn | TransferOut>> {
-    // TODO: validate caseId
     const query = "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'TRANSFER_%'";
     const querySpec = {
       query,
@@ -52,10 +51,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
     return this.create<TransferOut>(context, transferOut);
   }
 
-  async getCaseHistory(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<CaseAssignmentHistory>> {
+  async getCaseHistory(context: ApplicationContext, caseId: string): Promise<Array<CaseHistory>> {
     const query =
       'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
     const querySpec = {
@@ -67,24 +63,21 @@ export class CasesCosmosDbRepository implements CasesRepository {
         },
       ],
     };
-    const response = await this.queryData<CaseAssignmentHistory>(context, querySpec);
+    const response = await this.queryData<CaseHistory>(context, querySpec);
     return response;
   }
 
-  async createCaseHistory(
-    context: ApplicationContext,
-    history: CaseAssignmentHistory,
-  ): Promise<string> {
+  async createCaseHistory(context: ApplicationContext, history: CaseHistory): Promise<string> {
     try {
       if (!history.occurredAtTimestamp) {
         history.occurredAtTimestamp = new Date().toISOString();
       }
-      const item = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(history);
-      context.logger.debug(MODULE_NAME, `New history created ${item.id}`);
-      return item.id;
+      context.logger.debug(MODULE_NAME, `New history created ${resource.id}`);
+      return resource.id;
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       throw new UnknownError(MODULE_NAME, {
@@ -99,11 +92,11 @@ export class CasesCosmosDbRepository implements CasesRepository {
   private async create<T>(context: ApplicationContext, itemToCreate: T): Promise<T> {
     try {
       try {
-        const { item } = await this.cosmosDbClient
+        const { resource } = await this.cosmosDbClient
           .database(this.cosmosConfig.databaseName)
           .container(this.containerName)
           .items.create(itemToCreate);
-        return item;
+        return resource;
       } catch (e) {
         if (!isPreExistingDocumentError(e)) {
           throw e;

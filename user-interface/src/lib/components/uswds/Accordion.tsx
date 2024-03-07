@@ -24,6 +24,7 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
     if (!props.children) return;
     return Children.map(props.children, (child) => {
       return cloneElement(child, {
+        key: `${child.key}-copy`,
         onExpand: expandAccordion,
         expandedId: expandedAccordion,
       });
@@ -42,6 +43,7 @@ interface AccordionProps extends PropsWithChildren {
   children: Array<ReactElement | string>;
   expandedId?: string;
   onExpand?: (id: string) => void;
+  onCollapse?: (id: string) => void;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {
@@ -55,6 +57,9 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
     setExpanded(!expanded);
     if (props.onExpand) {
       props.onExpand(props.id);
+    }
+    if (props.onCollapse) {
+      props.onCollapse(props.id);
     }
   }
 

@@ -3,6 +3,7 @@ import { SingleValue } from 'react-select';
 import { forwardRef, useEffect, useImperativeHandle } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
+import { fireEvent } from '@testing-library/react';
 
 export type SearchableSelectOption = SingleValue<Record<string, string>>;
 
@@ -75,7 +76,7 @@ export function MockSearchableSelectComponent(
       {props.options.map((option: SearchableSelectOption, idx: number) => {
         return (
           <button
-            id={`test-select-button-${idx}`}
+            id={`${props.id}-${idx}`}
             key={idx}
             onClick={() => {
               props.onChange && props.onChange(option);
@@ -90,3 +91,10 @@ export function MockSearchableSelectComponent(
 
 const SearchableSelect = forwardRef(MockSearchableSelectComponent);
 export default SearchableSelect;
+
+export function selectItemInMockSelect(id: string, index: number) {
+  const selectButton = document.querySelector(`#${id}-${index}`);
+  expect(selectButton).toBeInTheDocument();
+  fireEvent.click(selectButton!);
+  return selectButton;
+}

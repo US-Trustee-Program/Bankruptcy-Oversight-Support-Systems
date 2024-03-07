@@ -39,7 +39,7 @@ describe('Mocking CasesController to get error handling', () => {
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
-  //TODO rethink how to trigger a CAMS error for this test
+  // TODO rethink how to trigger a CAMS error for this test
   test('should call httpError if a CamsError is caught', async () => {
     const request = {
       params: { caseId: '00000' },

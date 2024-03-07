@@ -4,36 +4,16 @@ import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
 import * as mssql from 'mssql';
 import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
-import { CaseDetailInterface } from '../../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../../common/src/cams/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
+import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
 
 const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
-
-function generateTestCase(overlay = {}) {
-  const defaultReturn = {
-    caseId: '081-23-12345',
-    caseTitle: 'Debtor Two',
-    dateFiled: '2019-04-18T00:00:00.000Z',
-    dxtrId: '123',
-    courtId: '567',
-    chapter: '15',
-    regionId: '02',
-    courtDivision: '081',
-    courtName: 'Fancy Court Name',
-    courtDivisionName: 'Manhattan',
-    debtorTypeCode: 'CB',
-    petitionCode: 'VP',
-  };
-  return {
-    ...defaultReturn,
-    ...overlay,
-  };
-}
 
 describe('Test DXTR Gateway', () => {
   let applicationContext;
@@ -144,15 +124,45 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should return a single case when supplied a caseId', async () => {
-    const testCase = generateTestCase();
-    const cases = [testCase];
-    const mockCaseResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: cases,
-      },
-      message: '',
+    const closedDate = '2023-10-31';
+    const dismissedDate = '2023-11-15';
+    const reopenedDate = '2023-12-31';
+
+    const expectedParty = {
+      name: 'John Q. Smith',
+      address1: '123 Main St',
+      address2: 'Apt 17',
+      address3: '',
+      cityStateZipCountry: 'Queens NY 12345 USA',
+      ssn: '123-45-6789',
+      taxId: '12-3456789',
     };
+
+    const expectedDebtorAttorney = {
+      name: 'James Brown Esq.',
+      address1: '456 South St',
+      address2: undefined,
+      address3: undefined,
+      cityStateZipCountry: 'Queens NY 12345 USA',
+      phone: '101-345-8765',
+      email: undefined,
+      office: undefined,
+    };
+
+    const expectedDebtorTypeLabel = 'Corporate Business';
+
+    const testCase = MockData.getCaseDetail({
+      entityType: 'company',
+      override: {
+        debtor: expectedParty,
+        debtorAttorney: expectedDebtorAttorney,
+        debtorTypeCode: 'CB',
+        debtorTypeLabel: expectedDebtorTypeLabel,
+        regionId: '04',
+      },
+    });
+
+    const cases = [testCase];
 
     const transactions = [
       {
@@ -173,22 +183,20 @@ describe('Test DXTR Gateway', () => {
       },
     ];
 
+    const mockCaseResults: QueryResults = {
+      success: true,
+      results: {
+        recordset: cases,
+      },
+      message: '',
+    };
+
     const mockTransactionResults: QueryResults = {
       success: true,
       results: {
         recordset: transactions,
       },
       message: '',
-    };
-
-    const expectedParty = {
-      name: 'John Q. Smith',
-      address1: '123 Main St',
-      address2: 'Apt 17',
-      address3: '',
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      ssn: '123-45-6789',
-      taxId: '12-3456789',
     };
 
     const mockQueryParties: QueryResults = {
@@ -198,15 +206,6 @@ describe('Test DXTR Gateway', () => {
       },
       message: '',
     };
-
-    const expectedDebtorAttorney = {
-      name: 'James Brown Esq.',
-      address1: '456 South St',
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      phone: '101-345-8765',
-    };
-
-    const expectedDebtorTypeLabel = 'Corporate Business';
 
     const mockQueryDebtorAttorney: QueryResults = {
       success: true,
@@ -238,16 +237,14 @@ describe('Test DXTR Gateway', () => {
       testCase.caseId,
     );
 
-    const closedDate = '2023-10-31';
-    const dismissedDate = '2023-11-15';
-    const reopenedDate = '2023-12-31';
-    const expectedClose: CaseDetailInterface = {
-      ...cases[0],
+    const expectedResult: CaseDetail = {
+      ...testCase,
       closedDate,
       dismissedDate,
       reopenedDate,
     };
-    expect(actualResult).toStrictEqual(expectedClose);
+
+    expect(actualResult).toStrictEqual(expectedResult);
     expect(actualResult.regionId).toEqual(testCase.regionId);
     expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
     expect(actualResult.courtName).toEqual(testCase.courtName);
@@ -261,7 +258,17 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should return a single case summary when supplied a caseId', async () => {
-    const testCase = generateTestCase();
+    const expectedDebtorTypeLabel = 'Corporate Business';
+    const testCase = MockData.getCaseDetail({
+      entityType: 'company',
+      override: {
+        debtorTypeCode: 'CB',
+        debtorTypeLabel: expectedDebtorTypeLabel,
+        petitionCode: 'VP',
+        petitionLabel: 'Voluntary',
+      },
+    });
+
     const cases = [testCase];
     const mockCaseResults: QueryResults = {
       success: true,
@@ -292,7 +299,6 @@ describe('Test DXTR Gateway', () => {
       },
       message: '',
     };
-    const expectedDebtorTypeLabel = 'Corporate Business';
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockCaseResults);
@@ -319,8 +325,8 @@ describe('Test DXTR Gateway', () => {
     );
 
     expect(actualResult.regionId).toEqual(testCase.regionId);
-    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
     expect(actualResult.courtName).toEqual(testCase.courtName);
+    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
@@ -346,7 +352,7 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
-    const testCase = generateTestCase();
+    const testCase = MockData.getCaseDetail();
     const cases = [testCase];
 
     const mockCaseResults: QueryResults = {
@@ -672,7 +678,7 @@ describe('Test DXTR Gateway', () => {
   describe('getSuggestedCases tests', () => {
     test('should return decorated transferred cases', async () => {
       // Test case summary
-      const testCase = generateTestCase();
+      const testCase = MockData.getCaseDetail();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: {
@@ -732,7 +738,7 @@ describe('Test DXTR Gateway', () => {
 
     test('should throw CamsError when query fails to return valid response', async () => {
       // Test case summary
-      const testCase = generateTestCase();
+      const testCase = MockData.getCaseDetail();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: {
