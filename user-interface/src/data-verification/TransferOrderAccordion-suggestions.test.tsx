@@ -76,10 +76,15 @@ describe('Test suggested cases', () => {
   }
 
   beforeEach(async () => {
+    order = MockData.getTransferOrder();
     apiSpy = vi
       .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce({
+        message: '',
+        count: 1,
+        body: { dateFiled: order.dateFiled, debtor: order.debtor },
+      })
       .mockResolvedValue({ success: true, body: [caseLookup] });
-    order = MockData.getTransferOrder();
   });
 
   afterEach(() => {
@@ -137,7 +142,14 @@ describe('Test suggested cases', () => {
   });
 
   test('should show no suggested cases message when no suggestions are available', async () => {
-    const apiSpy = vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({ success: true, body: [] });
+    const apiSpy = vi
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce({
+        message: '',
+        count: 1,
+        body: { dateFiled: order.dateFiled, debtor: order.debtor },
+      })
+      .mockResolvedValue({ success: true, body: [] });
 
     renderWithProps();
 
