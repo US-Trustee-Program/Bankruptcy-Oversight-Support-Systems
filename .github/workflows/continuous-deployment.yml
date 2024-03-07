@@ -389,8 +389,8 @@ jobs:
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
-      cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
+      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
