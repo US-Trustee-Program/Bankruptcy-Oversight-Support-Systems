@@ -390,7 +390,7 @@ jobs:
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
       cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
+      cosmosDbPrincipalIdEncrypted: ${{ steps.cosmosPrincipalId.outputs.out }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
@@ -446,7 +446,7 @@ jobs:
             -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
             --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} allowAllNetworks=${{ vars.ENVIRONMENT != 'Main-Gov' }} actionGroupResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} \
-            -o json --query properties.outputs | tee outputs.json
+            -o json
 
       - name: Check deployment and set params
         id: set-deploy-params
@@ -460,7 +460,12 @@ jobs:
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
           webappSubnetName=snet-${{ needs.build-info.outputs.webappName }}
           echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosPrincipalId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
       - name: Create Webapp Slot Resource
         if: (needs.build-info.outputs.slotDeploymentEnabled == 'true')
         run: |
@@ -558,6 +563,13 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosPrincipalId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.deploy.outputs.cosmosDbPrincipalIdEncrypted }}
+
       - name: Deploy Azure Functions backend
         id: deploy-backend-step
         continue-on-error: true
@@ -574,7 +586,7 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }} \
           WEBSITE_RUN_FROM_PACKAGE=1" \
-          --identities ${{ needs.deploy.outputs.cosmosDbPrincipalId }} \
+          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
       - name: Retry Deploy Azure Functions backend
@@ -593,7 +605,7 @@ jobs:
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }} \
           WEBSITE_RUN_FROM_PACKAGE=1" \
-          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   smoke-test-application:
