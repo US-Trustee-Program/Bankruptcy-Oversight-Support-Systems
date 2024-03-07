@@ -457,7 +457,7 @@ jobs:
           echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
           cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
-          webappSubnetName=snet-${{ needs.build-info.outputs.apiName }}
+          webappSubnetName=snet-${{ needs.build-info.outputs.webappName }}
           echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
 
       - name: Create Webapp Slot Resource
