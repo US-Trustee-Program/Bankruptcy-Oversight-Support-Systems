@@ -14,6 +14,17 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
+/*
+    orders.forEach((order) => {
+      if (order.orderType === 'transfer') {
+        mock.mockResolvedValueOnce({
+          message: '',
+          count: 1,
+          body: { dateFiled: order.dateFiled, debtor: order.debtor },
+        });
+      }
+    });
+*/
 describe('Review Orders screen', () => {
   let orders: Order[];
   let transferOrders: TransferOrder[];
@@ -256,7 +267,8 @@ describe('Review Orders screen', () => {
   });
 
   test('should not render a list if an API error is encountered', async () => {
-    const mock = vitest.spyOn(Chapter15MockApi, 'get').mockRejectedValue({});
+    const mock = vitest.spyOn(Chapter15MockApi, 'get');
+    mock.mockRejectedValue({});
 
     render(
       <BrowserRouter>

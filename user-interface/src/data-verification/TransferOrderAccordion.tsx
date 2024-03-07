@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
@@ -111,6 +111,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const [validationState, setValidationState] = useState<ValidationStates>(
     ValidationStates.notValidated,
   );
+  const [originalCaseSummary, setOriginalCaseSummary] = useState<CaseSummary | null>(null);
   const [newCaseSummary, setNewCaseSummary] = useState<CaseSummary | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
@@ -310,6 +311,22 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
+  async function getCaseSummary() {
+    await api
+      .get(`/cases/${order.caseId}/summary`)
+      .then((response) => {
+        const typedResponse = response as Chapter15CaseSummaryResponseData;
+        setOriginalCaseSummary(typedResponse.body);
+      })
+      .catch((_reason) => {
+        //
+      });
+  }
+
+  useEffect(() => {
+    getCaseSummary();
+  }, []);
+
   // TODO CAMS-270 : Need to figure out getting the Filed Date from the correct data object
   return (
     <>
@@ -367,10 +384,14 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <span className="text-bold">Chapter: </span>
               <span className="padding-right-1">{order.chapter}</span>
               <span className="text-bold">Filed Date: </span>
-              <span className="padding-right-1">{order.orderDate}</span>
+              <span className="padding-right-1">
+                {originalCaseSummary && formatDate(originalCaseSummary.dateFiled)}
+              </span>
               <span className="text-bold">SSN/EIN: </span>
               <span className="padding-right-1">
-                {order.debtor?.taxId ? order.debtor.taxId : order.debtor?.ssn}
+                {originalCaseSummary?.debtor?.taxId
+                  ? originalCaseSummary?.debtor.taxId
+                  : originalCaseSummary?.debtor?.ssn}
               </span>
             </div>
             <div className="grid-col-1"></div>

@@ -1,5 +1,8 @@
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
-import { Chapter15CaseDetailsResponseData } from '../type-declarations/chapter-15';
+import {
+  Chapter15CaseDetailsResponseData,
+  Chapter15CaseSummaryResponseData,
+} from '../type-declarations/chapter-15';
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -97,7 +100,9 @@ export default class Chapter15MockApi extends Api {
 
   public static async get(
     path: string,
-  ): Promise<Chapter15CaseDetailsResponseData | SimpleResponseData> {
+  ): Promise<
+    Chapter15CaseSummaryResponseData | Chapter15CaseDetailsResponseData | SimpleResponseData
+  > {
     let response: ResponseData | SimpleResponseData;
     if (path.match(/\/cases\/123-12-12345\/docket/)) {
       return Promise.reject(new Error());

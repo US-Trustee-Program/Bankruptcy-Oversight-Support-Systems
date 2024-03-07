@@ -134,6 +134,11 @@ describe('TransferOrderAccordion', () => {
 
   beforeEach(async () => {
     order = MockData.getTransferOrder();
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
+      message: '',
+      count: 1,
+      body: { dateFiled: order.dateFiled, debtor: order.debtor },
+    });
   });
 
   afterEach(() => {
