@@ -1,16 +1,31 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OfficeDetails, OrderResponseData } from '@/lib/type-declarations/chapter-15';
+import { OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import {
+  Order,
+  isTransferOrder,
+  TransferOrder,
+  ConsolidationOrder,
+  isConsolidationOrder,
+} from '@common/cams/orders';
+import { OfficeDetails } from '@common/cams/courts';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 describe('Review Orders screen', () => {
-  let ordersResponse: OrderResponseData;
+  let orders: Order[];
+  let transferOrders: TransferOrder[];
+  let consolidationOrders: ConsolidationOrder[];
 
   beforeAll(async () => {
-    ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    orders = ordersResponse.body;
+    transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
+    consolidationOrders = orders.filter((order) =>
+      isConsolidationOrder(order),
+    ) as ConsolidationOrder[];
   });
 
   beforeEach(async () => {
@@ -19,12 +34,13 @@ describe('Review Orders screen', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.clearAllMocks();
   });
 
   test('should sort offices', () => {
     const testOffices: OfficeDetails[] = [
       {
-        divisionCode: '001',
+        courtDivision: '001',
         groupDesignator: 'AA',
         courtId: '0101',
         officeCode: '1',
@@ -36,7 +52,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        divisionCode: '003',
+        courtDivision: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -48,7 +64,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        divisionCode: '003',
+        courtDivision: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -60,7 +76,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        divisionCode: '002',
+        courtDivision: '002',
         groupDesignator: 'AB',
         courtId: '0102',
         officeCode: '2',
@@ -74,7 +90,7 @@ describe('Review Orders screen', () => {
     ];
     const expectedOffices: OfficeDetails[] = [
       {
-        divisionCode: '001',
+        courtDivision: '001',
         groupDesignator: 'AA',
         courtId: '0101',
         officeCode: '1',
@@ -86,7 +102,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        divisionCode: '002',
+        courtDivision: '002',
         groupDesignator: 'AB',
         courtId: '0102',
         officeCode: '2',
@@ -98,7 +114,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        divisionCode: '003',
+        courtDivision: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -110,7 +126,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        divisionCode: '003',
+        courtDivision: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -141,32 +157,27 @@ describe('Review Orders screen', () => {
       accordionGroup = screen.getByTestId('accordion-group');
       expect(accordionGroup).toBeInTheDocument();
     });
+
     const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
     const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
     fireEvent.click(approvedOrderFilter);
     fireEvent.click(rejectedOrderFilter);
-    for (const order of ordersResponse.body) {
+
+    for (const order of orders) {
       await waitFor(async () => {
-        const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
         expect(heading).toBeInTheDocument();
         expect(heading).toBeVisible();
-        expect(heading?.textContent).toContain(order.caseTitle);
-        expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
+        expect(heading?.textContent).toContain(order.courtName);
         expect(heading?.textContent).toContain(formatDate(order.orderDate));
-
-        const content = screen.getByTestId(`accordion-content-${order.id}`);
-        expect(content).toBeInTheDocument();
-        expect(content).not.toBeVisible();
-        expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
-        expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
-        if (order.status !== 'approved' && order.status !== 'rejected') {
-          const form = screen.getByTestId(`order-form-${order.id}`);
-          expect(form).toBeInTheDocument();
-          const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-          expect(newCaseIdText).toHaveValue(order.newCaseId);
-        }
       });
     }
+
+    const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
+    expect(transfersFilter).toBeInTheDocument();
+
+    const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
+    expect(consolidationsFilter).toBeInTheDocument();
   });
 
   test('should toggle filter button', async () => {
@@ -203,8 +214,50 @@ describe('Review Orders screen', () => {
     });
   });
 
+  test('should not show consolidation orders when consolidation feature flag is false', async () => {
+    const mockFeatureFlags = {
+      'consolidations-enabled': false,
+    };
+    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    let accordionGroup;
+    await waitFor(() => {
+      accordionGroup = screen.getByTestId('accordion-group');
+      expect(accordionGroup).toBeInTheDocument();
+    });
+
+    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
+    const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
+    fireEvent.click(approvedOrderFilter);
+    fireEvent.click(rejectedOrderFilter);
+
+    for (const order of transferOrders) {
+      await waitFor(() => {
+        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+      });
+    }
+
+    consolidationOrders.forEach((order) => {
+      const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+      expect(heading).not.toBeInTheDocument();
+    });
+
+    const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
+    expect(transfersFilter).not.toBeInTheDocument();
+
+    const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
+    expect(consolidationsFilter).not.toBeInTheDocument();
+  });
+
   test('should not render a list if an API error is encountered', async () => {
-    vitest.spyOn(Chapter15MockApi, 'get').mockRejectedValue({});
+    const mock = vitest.spyOn(Chapter15MockApi, 'get');
+    mock.mockRejectedValue({});
 
     render(
       <BrowserRouter>
@@ -217,5 +270,84 @@ describe('Review Orders screen', () => {
       expect(accordionGroup).toBeInTheDocument();
       expect(accordionGroup.childElementCount).toEqual(0);
     });
+
+    mock.mockRestore();
+  });
+
+  test('Should filter on type when clicking type filter', async () => {
+    const mockFeatureFlags = {
+      'consolidations-enabled': true,
+    };
+    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    // Make sure all the order statuses are visible.
+    let approveFilter;
+    let rejectFilter;
+
+    await waitFor(() => {
+      approveFilter = screen.getByTestId(`order-status-filter-approved`);
+      rejectFilter = screen.getByTestId(`order-status-filter-rejected`);
+    });
+
+    fireEvent.click(approveFilter!);
+    fireEvent.click(rejectFilter!);
+
+    await waitFor(() => {
+      // Check if all the orders are listed by default.
+      for (const order of orders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+      }
+    });
+
+    // disabling transfer filter
+    let transferFilter: HTMLElement;
+    await waitFor(() => {
+      transferFilter = screen.getByTestId(`order-status-filter-transfer`);
+      expect(transferFilter).toBeInTheDocument();
+    });
+    fireEvent.click(transferFilter!);
+
+    // make sure only consolidations are visible
+    await waitFor(async () => {
+      for (const order of transferOrders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).not.toBeInTheDocument();
+      }
+
+      for (const order of consolidationOrders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+        expect(heading).toBeVisible();
+      }
+    });
+
+    // deselect consolidation filter and select transfer filter
+    const consolidationFilter = screen.getByTestId(`order-status-filter-consolidation`);
+    expect(consolidationFilter).toBeInTheDocument();
+    fireEvent.click(transferFilter!);
+    fireEvent.click(consolidationFilter);
+
+    // make sure only transfers are visible
+    for (const order of transferOrders) {
+      await waitFor(async () => {
+        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+        expect(heading).toBeVisible();
+      });
+    }
+
+    for (const order of consolidationOrders) {
+      await waitFor(async () => {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).not.toBeInTheDocument();
+      });
+    }
   });
 });

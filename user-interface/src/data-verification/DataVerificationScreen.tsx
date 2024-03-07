@@ -3,25 +3,30 @@ import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import './DataVerificationScreen.scss';
-import {
-  OfficeDetails,
-  OfficesResponseData,
-  Order,
-  OrderResponseData,
-} from '@/lib/type-declarations/chapter-15';
+import { OfficesResponseData, OrderResponseData, Order } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { orderType, orderStatusType } from '@/lib/utils/labels';
 import Icon from '@/lib/components/uswds/Icon';
+import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
+import {
+  ConsolidationOrder,
+  OrderStatus,
+  OrderType,
+  TransferOrder,
+  isConsolidationOrder,
+  isTransferOrder,
+} from '@common/cams/orders';
+import { OfficeDetails } from '@common/cams/courts';
+import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
+import { sortDates } from '@/lib/utils/datetime';
 
 export interface AlertDetails {
   message: string;
   type: UswdsAlertStyle;
   timeOut: number;
 }
-
-type FilterType = 'pending' | 'approved' | 'rejected';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -31,7 +36,9 @@ export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
 }
 
 export default function DataVerificationScreen() {
-  const [filters, setFilters] = useState<FilterType[]>(['pending']);
+  const featureFlags = useFeatureFlags();
+  const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
+  const [typeFilter, setTypeFilter] = useState<OrderType[]>(['transfer', 'consolidation']);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -79,7 +86,7 @@ export default function DataVerificationScreen() {
       .catch(() => {});
   }
 
-  function handleOrderUpdate(alertDetails: AlertDetails, updatedOrder?: Order) {
+  function handleTransferOrderUpdate(alertDetails: AlertDetails, updatedOrder?: TransferOrder) {
     if (updatedOrder) {
       setOrderList(
         orderList.map((order) => {
@@ -92,15 +99,43 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
-  function handleSetFilter(filterString: FilterType) {
-    if (filters.includes(filterString)) {
-      setFilters(
-        filters.filter((filter) => {
+  function handleConsolidationOrderUpdate(
+    alertDetails: AlertDetails,
+    orders?: ConsolidationOrder[],
+    deletedOrder?: ConsolidationOrder,
+  ) {
+    // update the orders list
+    if (deletedOrder && orders) {
+      const newOrderList = orderList.filter((o) => o.id !== deletedOrder.id);
+      newOrderList.push(...(orders as Order[]));
+      setOrderList(newOrderList);
+    }
+    // display alert
+    setReviewOrderAlert(alertDetails);
+    alertRef.current?.show();
+  }
+
+  function handleStatusFilter(filterString: OrderStatus) {
+    if (statusFilter.includes(filterString)) {
+      setStatusFilter(
+        statusFilter.filter((filter) => {
           return filter !== filterString;
         }),
       );
     } else {
-      setFilters([...filters, filterString]);
+      setStatusFilter([...statusFilter, filterString]);
+    }
+  }
+
+  function handleTypeFilter(filterString: OrderType) {
+    if (typeFilter.includes(filterString)) {
+      setTypeFilter(
+        typeFilter.filter((filter) => {
+          return filter !== filterString;
+        }),
+      );
+    } else {
+      setTypeFilter([...typeFilter, filterString]);
     }
   }
 
@@ -129,48 +164,82 @@ export default function DataVerificationScreen() {
           {!isOrderListLoading && (
             <section className="order-list-container">
               <div className="filters order-status">
-                <Filter
+                <Filter<OrderStatus>
                   label="Pending Review"
                   filterType="pending"
-                  filters={filters}
-                  callback={handleSetFilter}
+                  filters={statusFilter}
+                  callback={handleStatusFilter}
                 />
-                <Filter
+                <Filter<OrderStatus>
                   label="Approved"
                   filterType="approved"
-                  filters={filters}
-                  callback={handleSetFilter}
+                  filters={statusFilter}
+                  callback={handleStatusFilter}
                 />
-                <Filter
+                <Filter<OrderStatus>
                   label="Rejected"
                   filterType="rejected"
-                  filters={filters}
-                  callback={handleSetFilter}
+                  filters={statusFilter}
+                  callback={handleStatusFilter}
                 />
+                {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                  <>
+                    <Filter<OrderType>
+                      label="Transfer"
+                      filterType="transfer"
+                      filters={typeFilter}
+                      callback={handleTypeFilter}
+                    />
+                    <Filter<OrderType>
+                      label="Consolidation"
+                      filterType="consolidation"
+                      filters={typeFilter}
+                      callback={handleTypeFilter}
+                    />
+                  </>
+                )}
               </div>
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2 text-no-wrap">Case Number</div>
-                  <div className="grid-col-4 text-no-wrap">Case Title</div>
-                  <div className="grid-col-2 text-no-wrap">Order Date</div>
-                  <div className="grid-col-2 text-no-wrap">Order Type</div>
-                  <div className="grid-col-2 text-no-wrap">Order Status</div>
+                  <div className="grid-col-6 text-no-wrap">Court District</div>
+                  <div className="grid-col-2 text-no-wrap">Event Date</div>
+                  <div className="grid-col-2 text-no-wrap">Event Type</div>
+                  <div className="grid-col-2 text-no-wrap">Event Status</div>
                 </div>
               </div>
               <AccordionGroup>
                 {orderList
-                  .filter((o) => filters.includes(o.status))
-                  .map((order: Order) => {
-                    return (
+                  .filter((o) => {
+                    if (isConsolidationOrder(o)) {
+                      return featureFlags[CONSOLIDATIONS_ENABLED];
+                    } else {
+                      return true;
+                    }
+                  })
+                  .filter((o) => typeFilter.includes(o.orderType))
+                  .filter((o) => statusFilter.includes(o.status))
+                  .sort((a, b) => sortDates(a.orderDate, b.orderDate))
+                  .map((order) => {
+                    return isTransferOrder(order) ? (
                       <TransferOrderAccordion
                         key={`accordion-${order.id}`}
                         order={order}
                         regionsMap={regionsMap}
                         officesList={officesList}
                         orderType={orderType}
-                        statusType={transferStatusType}
-                        onOrderUpdate={handleOrderUpdate}
+                        statusType={orderStatusType}
+                        onOrderUpdate={handleTransferOrderUpdate}
                       ></TransferOrderAccordion>
+                    ) : (
+                      <ConsolidationOrderAccordion
+                        key={`accordion-${order.id}`}
+                        order={order}
+                        regionsMap={regionsMap}
+                        officesList={officesList}
+                        orderType={orderType}
+                        statusType={orderStatusType}
+                        onOrderUpdate={handleConsolidationOrderUpdate}
+                      ></ConsolidationOrderAccordion>
                     );
                   })}
               </AccordionGroup>
@@ -183,14 +252,14 @@ export default function DataVerificationScreen() {
   );
 }
 
-interface FilterProps {
+interface FilterProps<T extends string> {
   label: string;
-  filterType: FilterType;
-  filters: FilterType[];
-  callback: (filterString: FilterType) => void;
+  filterType: T;
+  filters: T[];
+  callback: (filterString: T) => void;
 }
 
-function Filter(props: FilterProps) {
+function Filter<T extends string>(props: FilterProps<T>) {
   const { label, filterType, filters, callback } = props;
   return (
     <div

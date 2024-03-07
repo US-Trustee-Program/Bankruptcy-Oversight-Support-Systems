@@ -13,7 +13,7 @@ import {
   Judge,
   toDbRecords,
 } from './domain/bcase';
-import { CaseDetailInterface } from './cases';
+import { CaseDetail } from './cases';
 import { concatenateCityStateZipCountry, concatenateName } from './utility';
 import { TxCode } from './types';
 
@@ -55,7 +55,7 @@ if (format === 'json') {
     const dismissedDate = pickTop(bCase.transactions, 'CDC');
     const reopenedDate = pickTop(bCase.transactions, 'OCO');
 
-    const mappedCase: CaseDetailInterface = {
+    const mappedCase: CaseDetail = {
       caseId: bCase.div + '-' + bCase.caseId,
       chapter: bCase.chapter,
       caseTitle: bCase.shortTitle,

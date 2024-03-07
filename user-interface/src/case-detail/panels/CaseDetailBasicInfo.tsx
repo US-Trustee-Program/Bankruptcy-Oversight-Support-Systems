@@ -1,15 +1,15 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { Transfer } from '@common/cams/events';
+import { CaseDetail } from '@common/cams/cases';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
 
 export interface CaseDetailBasicInfoProps {
-  caseDetail: CaseDetailType;
+  caseDetail: CaseDetail;
   showReopenDate: boolean;
 }
 
@@ -71,7 +71,8 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
               </div>
             )}
             <ul className="usa-list usa-list--unstyled">
-              {caseDetail.assignments?.length > 0 &&
+              {caseDetail.assignments &&
+                caseDetail.assignments.length > 0 &&
                 (caseDetail.assignments as Array<string>)?.map((staff: string, idx: number) => {
                   return (
                     <li key={idx} className="individual-assignee">

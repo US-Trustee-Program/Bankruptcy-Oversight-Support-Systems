@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../types/basic';
-import { getCosmosConfig, getRuntimeCosmosDbClient } from '../../factory';
+import { getCosmosConfig, getCosmosDbClient } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
@@ -19,7 +19,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
   private cosmosConfig: CosmosConfig;
 
   constructor(applicationContext: ApplicationContext) {
-    this.cosmosDbClient = getRuntimeCosmosDbClient(applicationContext);
+    this.cosmosDbClient = getCosmosDbClient(applicationContext);
     this.cosmosConfig = getCosmosConfig(applicationContext);
   }
 
@@ -60,7 +60,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
       await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(syncState.id)
+        .item(syncState.id, syncState.documentType)
         .replace(syncState);
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
@@ -77,11 +77,11 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
 
   async createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T> {
     try {
-      const response = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
         .items.create(syncState);
-      return response.resource;
+      return resource;
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {

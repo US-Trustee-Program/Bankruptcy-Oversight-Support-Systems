@@ -1,11 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import {
-  CaseDetailType,
-  OfficeDetails,
-  Order,
-  OrderResponseData,
-} from '@/lib/type-declarations/chapter-15';
+import { TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -14,15 +9,17 @@ import {
   CaseSelection,
   TransferOrderAccordion,
   TransferOrderAccordionProps,
-  getOfficeList,
   isValidOrderTransfer,
-  validateNewCaseIdInput,
 } from './TransferOrderAccordion';
 import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
-import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { OfficeDetails } from '@common/cams/courts';
+import { getOfficeList, validateNewCaseIdInput } from './dataVerificationHelper';
+import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -58,14 +55,6 @@ function findActionText(id: string, visible: boolean) {
   return content;
 }
 
-function selectCourtInAccordion(index: string) {
-  const selectButton = document.querySelector(`#test-select-button-${index}`);
-  expect(selectButton).toBeInTheDocument();
-  fireEvent.click(selectButton!);
-
-  return selectButton;
-}
-
 function findCaseNumberInputInAccordion(id: string) {
   const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
   expect(caseIdInput).toBeInTheDocument();
@@ -82,12 +71,12 @@ function enterCaseNumberInAccordion(caseIdInput: Element | null | undefined, val
 }
 
 describe('TransferOrderAccordion', () => {
-  let order: Order;
+  let order: TransferOrder;
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
   const testOffices: OfficeDetails[] = [
     {
-      divisionCode: '001',
+      courtDivision: '001',
       groupDesignator: 'AA',
       courtId: '0101',
       officeCode: '1',
@@ -99,7 +88,7 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '003',
+      courtDivision: '003',
       groupDesignator: 'AC',
       courtId: '0103',
       officeCode: '3',
@@ -111,7 +100,7 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '002',
+      courtDivision: '002',
       groupDesignator: 'AB',
       courtId: '0102',
       officeCode: '2',
@@ -129,7 +118,7 @@ describe('TransferOrderAccordion', () => {
       order: order,
       officesList: testOffices,
       orderType,
-      statusType: transferStatusType,
+      statusType: orderStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},
       regionsMap: regionMap,
@@ -144,9 +133,12 @@ describe('TransferOrderAccordion', () => {
   }
 
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    order = ordersResponse.body[0];
+    order = MockData.getTransferOrder();
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
+      message: '',
+      count: 1,
+      body: { dateFiled: order.dateFiled, debtor: order.debtor },
+    });
   });
 
   afterEach(() => {
@@ -158,8 +150,7 @@ describe('TransferOrderAccordion', () => {
 
     const heading = findAccordionHeading(order.id);
 
-    expect(heading?.textContent).toContain(order.caseTitle);
-    expect(heading?.textContent).toContain(getCaseNumber(order.caseId));
+    expect(heading?.textContent).toContain(order.courtName);
     expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
     const content = findAccordionContent(order.id, false);
@@ -169,8 +160,6 @@ describe('TransferOrderAccordion', () => {
 
     const form = screen.getByTestId(`order-form-${order.id}`);
     expect(form).toBeInTheDocument();
-
-    findCaseNumberInputInAccordion(order.id);
   });
 
   test('should expand and show detail when a header is clicked', async () => {
@@ -191,7 +180,7 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
     let heading;
-    const rejectedOrder: Order = { ...order, reason: '', status: 'rejected' };
+    const rejectedOrder: TransferOrder = { ...order, reason: '', status: 'rejected' };
 
     renderWithProps({
       order: rejectedOrder,
@@ -211,7 +200,7 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order reject details with reason when a rejected header is clicked that does have a reason defined', async () => {
     let heading;
-    const rejectedOrder: Order = { ...order, reason: 'order is bad', status: 'rejected' };
+    const rejectedOrder: TransferOrder = { ...order, reason: 'order is bad', status: 'rejected' };
 
     renderWithProps({
       order: rejectedOrder,
@@ -233,30 +222,27 @@ describe('TransferOrderAccordion', () => {
 
   test('should expand and show order transfer information when an order has been approved', async () => {
     let heading;
-    const approvedOrder: Order = {
-      ...order,
-      newCase: {
-        courtName: 'New Court',
-        courtDivisionName: 'New Division',
-        caseId: '01-00002',
+
+    const mockedApprovedOrder: TransferOrder = MockData.getTransferOrder({
+      override: {
+        status: 'approved',
       },
-      status: 'approved',
-    };
+    });
 
     renderWithProps({
-      order: approvedOrder,
+      order: mockedApprovedOrder,
     });
 
     await waitFor(async () => {
-      heading = findAccordionHeading(order.id);
+      heading = findAccordionHeading(mockedApprovedOrder.id);
     });
 
     if (heading) fireEvent.click(heading);
 
     await waitFor(async () => {
-      const actionText = findActionText(order.id, true);
+      const actionText = findActionText(mockedApprovedOrder.id, true);
       expect(actionText).toHaveTextContent(
-        `Transferred ${getCaseNumber(approvedOrder.caseId)} from${approvedOrder.courtName} (${approvedOrder.courtDivisionName})to ${getCaseNumber(approvedOrder.newCase?.caseId)} and court${approvedOrder.newCase?.courtName} (${approvedOrder.newCase?.courtDivisionName}).`,
+        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName})to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
       );
     });
   });
@@ -280,7 +266,7 @@ describe('TransferOrderAccordion', () => {
     /**
      * SearchableSelect is a black box.  We can't fire events on it.  We'll have to mock onChange on it.
      */
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -288,7 +274,7 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
+        `USTP Office: transfer fromRegion ${parseInt(order.regionId)} - ${order.courtDivisionName}toRegion ${parseInt(testOffices[0].regionId)} - ${testOffices[0].courtDivisionName}`,
       );
     });
   });
@@ -297,7 +283,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -315,7 +301,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -340,11 +326,11 @@ describe('TransferOrderAccordion', () => {
     });
   });
 
-  test('should properly reject when API returns a successful reponse and a reason is supplied', async () => {
+  test('should properly reject when API returns a successful response and a reason is supplied', async () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -362,7 +348,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -410,7 +396,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -428,7 +414,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -486,7 +472,7 @@ describe('TransferOrderAccordion', () => {
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -504,7 +490,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -539,7 +525,7 @@ describe('TransferOrderAccordion', () => {
     vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -557,7 +543,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const input = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(input, '24-12345');
@@ -590,7 +576,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -608,7 +594,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newUserInput = '24-12345';
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
@@ -654,7 +640,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -672,25 +658,20 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     expect(caseIdInput).toHaveValue(order.newCaseId);
 
-    const caseLookup: CaseDetailType = {
-      caseId: '',
-      chapter: '',
-      caseTitle: '',
-      officeName: '',
-      dateFiled: '',
-      assignments: [],
-      debtor: {
-        name: 'DebtorName',
-        ssn: '111-11-1111',
+    const caseLookup = MockData.getCaseSummary({
+      entityType: 'person',
+      override: {
+        debtor: {
+          name: 'DebtorName',
+          ssn: '111-11-1111',
+        },
       },
-      debtorTypeLabel: '',
-      petitionLabel: '',
-    };
+    });
 
     enterCaseNumberInAccordion(caseIdInput, '00-00000');
     enterCaseNumberInAccordion(caseIdInput, '');
@@ -725,7 +706,7 @@ describe('TransferOrderAccordion', () => {
     let heading: HTMLElement;
     const orderUpdateSpy = vi
       .fn()
-      .mockImplementation((_alertDetails: AlertDetails, _order?: Order) => {});
+      .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -743,7 +724,7 @@ describe('TransferOrderAccordion', () => {
       fireEvent.click(heading);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
     enterCaseNumberInAccordion(caseIdInput, '24-12345');
@@ -782,7 +763,7 @@ describe('TransferOrderAccordion', () => {
       findAccordionContent(order.id, true);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     let preview: HTMLElement;
     await waitFor(async () => {
@@ -790,11 +771,11 @@ describe('TransferOrderAccordion', () => {
       expect(preview).toBeInTheDocument();
       expect(preview).toBeVisible();
       expect(preview?.textContent).toEqual(
-        'USTP Office: transfer fromRegion 2 - Court Division 1toRegion 2 - New York 1',
+        `USTP Office: transfer fromRegion ${parseInt(order.regionId)} - ${order.courtDivisionName}toRegion ${parseInt(testOffices[0].regionId)} - ${testOffices[0].courtDivisionName}`,
       );
     });
 
-    selectCourtInAccordion('0');
+    selectItemInMockSelect(`court-selection-${order.id}`, 0);
 
     await waitFor(async () => {
       const preview = screen.queryByTestId(`preview-description-${order.id}`);
@@ -844,7 +825,7 @@ describe('TransferOrderAccordion', () => {
       expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newValue = '22-33333';
     enterCaseNumberInAccordion(newCaseIdText, newValue);
@@ -871,10 +852,10 @@ describe('TransferOrderAccordion', () => {
     let newCaseIdText;
     await waitFor(async () => {
       newCaseIdText = findCaseNumberInputInAccordion(order.id);
-      expect(newCaseIdText).toHaveValue(order.newCase?.caseId);
+      expect(newCaseIdText).toHaveValue(order.newCaseId);
     });
 
-    selectCourtInAccordion('1');
+    selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newValue = '77-77777';
     enterCaseNumberInAccordion(newCaseIdText, newValue);
@@ -922,7 +903,7 @@ describe('TransferOrderAccordion', () => {
     ];
 
     const sortedTestOffices = [...testOffices].sort((a, b) =>
-      a.divisionCode < b.divisionCode ? -1 : 1,
+      a.courtDivision < b.courtDivision ? -1 : 1,
     );
 
     const actualOptions = getOfficeList(sortedTestOffices);

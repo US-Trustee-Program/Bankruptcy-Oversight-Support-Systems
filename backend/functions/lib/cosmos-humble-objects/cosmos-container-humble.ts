@@ -1,7 +1,7 @@
-import { ClientContext, Container, Database, Item, Items, PartitionKey } from '@azure/cosmos';
-
+import { ClientContext, Container, Database, PartitionKey } from '@azure/cosmos';
+import { CosmosItemHumble, CosmosItemsHumble } from './cosmos-items-humble';
 export default class CosmosContainerHumble {
-  private itemsCollection: Items;
+  private itemsCollection: CosmosItemsHumble;
   private container: Container;
   private database: Database;
   private id: string;
@@ -13,14 +13,20 @@ export default class CosmosContainerHumble {
     this.clientContext = clientContext;
     this.container = new Container(this.database, this.id, this.clientContext);
   }
-  public get items(): Items {
+
+  public get items(): CosmosItemsHumble {
     if (!this.itemsCollection) {
-      this.itemsCollection = new Items(this.container, this.clientContext);
+      this.itemsCollection = new CosmosItemsHumble(this.container, this.clientContext);
     }
     return this.itemsCollection;
   }
 
-  public item(id: string, partitionKeyValue?: string | number | unknown): Item {
-    return new Item(this.container, id, partitionKeyValue as PartitionKey, this.clientContext);
+  public item(id: string, partitionKeyValue?: string | number | unknown): CosmosItemHumble {
+    return new CosmosItemHumble(
+      this.container,
+      id,
+      partitionKeyValue as PartitionKey,
+      this.clientContext,
+    );
   }
 }

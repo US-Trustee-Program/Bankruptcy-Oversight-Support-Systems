@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsResponse } from '../controller-types';
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 import { CaseManagement } from '../../use-cases/case-management';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
@@ -11,7 +11,7 @@ type GetCaseSummaryRequest = {
   caseId: string;
 };
 
-type GetCaseSummaryResponse = CamsResponse<CaseDetailInterface>;
+type GetCaseSummaryResponse = CamsResponse<CaseDetail>;
 
 export class CaseSummaryController {
   private readonly useCase: CaseManagement;

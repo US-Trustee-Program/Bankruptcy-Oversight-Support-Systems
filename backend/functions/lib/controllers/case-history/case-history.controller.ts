@@ -2,8 +2,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CaseHistory } from '../../adapters/types/case.history';
 import { CamsResponse } from '../controller-types';
+import { CaseHistory } from '../../../../../common/src/cams/history';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
 

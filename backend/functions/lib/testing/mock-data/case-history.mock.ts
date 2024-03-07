@@ -1,4 +1,4 @@
-import { CaseAssignmentHistory } from '../../adapters/types/case.history';
+import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 
 export const CASE_HISTORY: CaseAssignmentHistory[] = [
   {

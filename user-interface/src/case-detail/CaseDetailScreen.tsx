@@ -5,7 +5,6 @@ import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
 import {
   CaseAssignmentHistoryResponseData,
-  CaseDetailType,
   CaseDocket,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
@@ -21,6 +20,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
+import { CaseDetail } from '@common/cams/cases';
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -162,18 +162,18 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
 }
 
 interface CaseDetailProps {
-  caseDetail?: CaseDetailType;
+  caseDetail?: CaseDetail;
   caseDocketEntries?: CaseDocketEntry[];
   caseHistory?: CaseHistory[];
 }
 
-export default function CaseDetail(props: CaseDetailProps) {
+export default function CaseDetailScreen(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetailType>();
+  const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),

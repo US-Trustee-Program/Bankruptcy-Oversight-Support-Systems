@@ -1,7 +1,7 @@
 import { OfficesUseCase } from './offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { OFFICES } from '../../testing/mock-data/offices.mock';
+import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;

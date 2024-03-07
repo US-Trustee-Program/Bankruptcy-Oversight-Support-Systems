@@ -4,10 +4,15 @@ import { DefaultAzureCredential } from '@azure/identity';
 
 interface DocumentWithId {
   id: string;
-  caseId: string;
+  caseId?: string;
+  consolidationId?: string;
 }
 
-export function deleteDocuments(container: string, query: string) {
+export function deleteDocuments(
+  container: string,
+  partitionKey: keyof DocumentWithId,
+  query: string,
+) {
   dotenv.config();
 
   const COSMOS_ENDPOINT = process.env.COSMOS_ENDPOINT || '';
@@ -27,12 +32,24 @@ export function deleteDocuments(container: string, query: string) {
     .then((response) => {
       const docs = response.resources as DocumentWithId[];
       docs.forEach((doc) => {
-        console.log(`Deleting document id: ${doc.id} from ${container} container`);
+        const partitionId = doc[partitionKey];
         client
           .database(COSMOS_DATABASE_NAME)
           .container(container)
-          .item(doc.id, doc.caseId)
-          .delete();
+          .item(doc.id, partitionId)
+          .delete()
+          .then(() => {
+            console.log(`Deleting document id: ${doc.id} from ${container} container`);
+          })
+          .catch((e) => {
+            if ('body' in e && 'code' in e.body) {
+              console.error('doc id', doc.id, e.body.code);
+            } else if ('message' in e) {
+              console.error('doc id', doc.id, e.message);
+            } else {
+              console.error('doc id', doc.id, e);
+            }
+          });
       });
     });
 }

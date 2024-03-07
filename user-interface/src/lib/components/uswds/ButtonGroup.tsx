@@ -1,27 +1,27 @@
-import { Children, createElement, ReactElement, isValidElement, useState } from 'react';
+import { Children, createElement, isValidElement, ReactElement } from 'react';
 import { UswdsButtonStyle } from './Button';
 
 export interface ButtonProps {
   id: string;
   children: ReactElement | Array<ReactElement>;
+  activeButtonId: string;
+  onButtonClick: (id: string) => void;
   className?: string;
-  defaultButtonId: string;
 }
 
-export default function ButtonGroup({ id, className, children, defaultButtonId }: ButtonProps) {
-  const [activeButtonId, setActiveButtonId] = useState<string>(defaultButtonId || '');
-
+export default function ButtonGroup({
+  id,
+  className,
+  children,
+  activeButtonId,
+  onButtonClick,
+}: ButtonProps) {
   const buttonClick = (
     ev: React.MouseEvent<HTMLButtonElement>,
     onClick?: ((ev: React.MouseEvent<HTMLButtonElement>) => void) | undefined,
   ) => {
     if ('id' in ev.target) {
-      const id = (ev.target as { id: string }).id;
-      /*
-    if (Object.prototype.hasOwnProperty.call(ev.target, 'id')) {
-      const id = (ev.target as HTMLButtonElement).id;
-      */
-      setActiveButtonId(id);
+      onButtonClick((ev.target as { id: string }).id);
     }
 
     if (onClick) {

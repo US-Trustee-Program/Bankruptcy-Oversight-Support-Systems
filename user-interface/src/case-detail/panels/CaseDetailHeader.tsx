@@ -2,14 +2,14 @@ import './CaseDetailHeader.scss';
 import { Link } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDetailType } from '@/lib/type-declarations/chapter-15';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
+import { CaseDetail } from '@common/cams/cases';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
   caseId: string | undefined;
-  caseDetail?: CaseDetailType;
+  caseDetail?: CaseDetail;
 }
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {

@@ -1,21 +1,23 @@
-import { CaseDetailType, OfficeDetails, Order } from '@/lib/type-declarations/chapter-15';
+import { TransferOrder } from '@/lib/type-declarations/chapter-15';
 import { AlertDetails } from './DataVerificationScreen';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { BrowserRouter } from 'react-router-dom';
 import { screen, fireEvent, render, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { MockInstance } from 'vitest';
-import { orderType, transferStatusType } from '@/lib/utils/labels';
+import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { OfficeDetails } from '@common/cams/courts';
 
 describe('Test suggested cases', () => {
   let apiSpy: MockInstance;
-  let order: Order;
+  let order: TransferOrder;
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
 
   const testOffices: OfficeDetails[] = [
     {
-      divisionCode: '001',
+      courtDivision: '001',
       groupDesignator: 'AA',
       courtId: '0101',
       officeCode: '1',
@@ -27,7 +29,7 @@ describe('Test suggested cases', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '003',
+      courtDivision: '003',
       groupDesignator: 'AC',
       courtId: '0103',
       officeCode: '3',
@@ -39,7 +41,7 @@ describe('Test suggested cases', () => {
       regionName: 'NEW YORK',
     },
     {
-      divisionCode: '002',
+      courtDivision: '002',
       groupDesignator: 'AB',
       courtId: '0102',
       officeCode: '2',
@@ -52,27 +54,14 @@ describe('Test suggested cases', () => {
     },
   ];
 
-  const caseLookup: CaseDetailType = {
-    caseId: '',
-    chapter: '',
-    caseTitle: '',
-    officeName: '',
-    dateFiled: '2024-01-01',
-    assignments: [],
-    debtor: {
-      name: 'DebtorName',
-      ssn: '111-11-1111',
-    },
-    debtorTypeLabel: '',
-    petitionLabel: '',
-  };
+  const caseLookup = MockData.getCaseSummary();
 
   function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
     const defaultProps: TransferOrderAccordionProps = {
       order: order,
       officesList: testOffices,
       orderType,
-      statusType: transferStatusType,
+      statusType: orderStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},
       regionsMap: regionMap,
@@ -87,11 +76,15 @@ describe('Test suggested cases', () => {
   }
 
   beforeEach(async () => {
+    order = MockData.getTransferOrder();
     apiSpy = vi
       .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce({
+        message: '',
+        count: 1,
+        body: { dateFiled: order.dateFiled, debtor: order.debtor },
+      })
       .mockResolvedValue({ success: true, body: [caseLookup] });
-    vi.stubEnv('CAMS_PA11Y', 'true');
-    order = Chapter15MockApi.orders[0];
   });
 
   afterEach(() => {
@@ -149,7 +142,14 @@ describe('Test suggested cases', () => {
   });
 
   test('should show no suggested cases message when no suggestions are available', async () => {
-    const apiSpy = vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({ success: true, body: [] });
+    const apiSpy = vi
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce({
+        message: '',
+        count: 1,
+        body: { dateFiled: order.dateFiled, debtor: order.debtor },
+      })
+      .mockResolvedValue({ success: true, body: [] });
 
     renderWithProps();
 
@@ -234,7 +234,7 @@ describe('Test suggested cases', () => {
   });
 
   test('should pass an error message back to the parent component when the suggestion query fails', async () => {
-    const onOrderUpdate = vi.fn((_alertDetails: AlertDetails, _order?: Order) => {});
+    const onOrderUpdate = vi.fn((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
     renderWithProps({ onOrderUpdate });
 
     vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('MockError'));

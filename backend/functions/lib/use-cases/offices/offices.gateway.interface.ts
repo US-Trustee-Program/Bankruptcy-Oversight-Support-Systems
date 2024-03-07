@@ -1,5 +1,5 @@
+import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { OfficeDetails } from './offices.model';
 
 export interface OfficesGatewayInterface {
   getOffice(id: string): string;

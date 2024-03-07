@@ -1,4 +1,4 @@
-import { CaseListDbResult, CaseDetailInterface } from '../adapters/types/cases';
+import { CaseListDbResult } from '../adapters/types/cases';
 import { CaseManagement } from './case-management';
 import { CasesInterface } from './cases.interface';
 import { applicationContextCreator } from '../adapters/utils/application-context-creator';
@@ -8,9 +8,11 @@ import { MockCasesGateway } from '../adapters/gateways/case-management.mock.gate
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
-import { CaseAssignment } from '../adapters/types/case.assignment';
 import { describe } from 'node:test';
 import { CASE_SUMMARIES } from '../testing/mock-data/case-summaries.mock';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -71,26 +73,7 @@ describe('Case list tests', () => {
 
   test('Calling getCases should return valid data', async () => {
     const chapterCaseList = new CaseManagement(applicationContext);
-    const caseList: CaseDetailInterface[] = [
-      {
-        caseId: '001-04-44449',
-        caseTitle: 'Flo Esterly and Neas Van Sampson',
-        dateFiled: '2005-05-04',
-        assignments: [],
-        chapter: '15',
-        courtDivision: '081',
-        officeName: 'New York',
-      },
-      {
-        caseId: '001-06-1122',
-        caseTitle: 'Jennifer Millhouse',
-        dateFiled: '2006-03-27',
-        assignments: [],
-        chapter: '15',
-        courtDivision: '081',
-        officeName: 'New York',
-      },
-    ];
+    const caseList: CaseDetail[] = [MockData.getCaseDetail(), MockData.getCaseDetail()];
     const mockChapterList: CaseListDbResult = {
       success: true,
       message: '',
@@ -166,7 +149,7 @@ describe('Case list tests', () => {
       async getCases(
         _context,
         _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<CaseDetailInterface[]> {
+      ): Promise<CaseDetail[]> {
         throw Error('some random error');
       }
     }
@@ -191,7 +174,7 @@ describe('Case list tests', () => {
       async getCases(
         _context,
         _options: { startingMonth?: number; gatewayHelper?: GatewayHelper },
-      ): Promise<CaseDetailInterface[]> {
+      ): Promise<CaseDetail[]> {
         throw new CamsError('SOME_MODULE', { message: 'some error message' });
       }
     }
@@ -210,7 +193,7 @@ describe('Case list tests', () => {
   });
 
   test('should throw error if assignee names lookup throws an error', async () => {
-    const caseThatWillThrowError: CaseDetailInterface = {
+    const caseThatWillThrowError: CaseDetail = {
       ...CASE_SUMMARIES[0],
       caseId: 'ThrowError',
     };
@@ -317,17 +300,13 @@ describe('Case detail tests', () => {
     const dateFiled = '2018-11-16';
     const closedDate = '2019-06-21';
     const assignments = [attorneyJaneSmith, attorneyJoeNobel];
-    const caseDetail = {
-      caseId: caseId,
-      caseTitle: 'Daniels LLC',
-      dateFiled,
-      closedDate,
-      assignments: [],
-      dxtrId: '12345',
-      courtId: '0208',
-      chapter: '15',
-      courtDivision: '081',
-    };
+    const caseDetail = MockData.getCaseDetail({
+      override: {
+        caseId: caseId,
+        dateFiled,
+        closedDate,
+      },
+    });
 
     const chapterCaseList = new CaseManagement(applicationContext);
     jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
@@ -345,13 +324,7 @@ describe('Case detail tests', () => {
 
 describe('Case summary tests', () => {
   test('should return summary with office name', async () => {
-    const caseSummary: CaseDetailInterface = {
-      caseId: '000-00-00000',
-      courtDivision: 'TheDiv',
-      chapter: '15',
-      caseTitle: 'BankRuptCo',
-      dateFiled: '2024-01-01',
-    };
+    const caseSummary = MockData.getCaseSummary({ override: { caseId: '000-00-00000' } });
     const officeName = 'OfficeName';
 
     const context = await applicationContextCreator(functionContext);
@@ -359,7 +332,7 @@ describe('Case summary tests', () => {
     jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
     jest.spyOn(useCase.officesGateway, 'getOffice').mockReturnValue(officeName);
 
-    const expected: CaseDetailInterface = {
+    const expected: CaseDetail = {
       ...caseSummary,
       officeName,
     };

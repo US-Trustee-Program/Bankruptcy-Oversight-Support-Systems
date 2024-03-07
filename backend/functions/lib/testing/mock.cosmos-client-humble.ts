@@ -1,16 +1,10 @@
 import * as crypto from 'crypto';
+import { QueryOptions } from '../cosmos-humble-objects/cosmos-items-humble';
 
-type QueryParameter = Record<string, string>;
-
-interface QueryOptions {
-  query: string;
-  parameters: Array<QueryParameter>;
-}
-
-export class HumbleQuery<T> {
-  items: HumbleItems<T>;
+export class MockHumbleQuery<T> {
+  items: MockHumbleItems;
   query: QueryOptions;
-  constructor(items: HumbleItems<T>, query: QueryOptions) {
+  constructor(items: MockHumbleItems, query: QueryOptions) {
     this.items = items;
     this.query = query;
   }
@@ -19,14 +13,14 @@ export class HumbleQuery<T> {
   }
 }
 
-export class HumbleItem<T> {
-  container: HumbleContainer<T>;
+export class MockHumbleItem {
+  container: MockHumbleContainer;
   id: string;
-  constructor(container: HumbleContainer<T>, id: string) {
+  constructor(container: MockHumbleContainer, id: string) {
     this.container = container;
     this.id = id;
   }
-  async read(): Promise<{ resource: T }> {
+  async read<T>(): Promise<{ resource: T }> {
     if (this.container.map.has(this.id)) {
       return {
         resource: this.container.map.get(this.id),
@@ -35,66 +29,74 @@ export class HumbleItem<T> {
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
   }
-  async replace(item: T): Promise<{ id: string }> {
+  async replace<T>(resource: T): Promise<{ resource: T }> {
     if (this.container.map.has(this.id)) {
-      this.container.map.set(this.id, item);
-      return { id: this.id };
+      this.container.map.set(this.id, resource);
+      return { resource };
+    }
+    // TODO: We should probably make this function work for real and throw a reasonable error.
+    // throw Error('Not found');
+  }
+  async delete<T>(resource: T): Promise<{ resource: T }> {
+    if (this.container.map.has(this.id)) {
+      this.container.map.delete(this.id);
+      return { resource };
     }
     // TODO: We should probably make this function work for real and throw a reasonable error.
     // throw Error('Not found');
   }
 }
 
-export class HumbleItems<T> {
-  container: HumbleContainer<T>;
-  constructor(container: HumbleContainer<T>) {
+export class MockHumbleItems {
+  container: MockHumbleContainer;
+  constructor(container: MockHumbleContainer) {
     this.container = container;
   }
-  async create(item: T) {
+  async create<T>(resource: T) {
     const id = crypto.randomUUID().toString();
-    const itemWithId = { ...item, id };
+    const itemWithId = { ...resource, id };
+    this.container.map.set(id, itemWithId);
+    return { resource: this.container.map.get(id) };
+  }
+  async upsert<T>(resource: T) {
+    const id = resource['id'] || crypto.randomUUID().toString();
+    const itemWithId = { ...resource, id };
     this.container.map.set(id, itemWithId);
     return this.container.map.get(id);
   }
-  async upsert(item: T) {
-    const id = item['id'] || crypto.randomUUID().toString();
-    const itemWithId = { ...item, id };
-    this.container.map.set(id, itemWithId);
-    return this.container.map.get(id);
-  }
-  query(query: QueryOptions) {
-    return new HumbleQuery<T>(this, query);
+  query<T>(query: QueryOptions): MockHumbleQuery<T> {
+    return new MockHumbleQuery<T>(this, query);
   }
 }
 
-export class HumbleContainer<T> {
-  database: HumbleDatabase<T>;
+export class MockHumbleContainer {
+  database: MockHumbleDatabase;
   containerName: string;
-  map = new Map<string, T>();
-  constructor(database: HumbleDatabase<T>, containerName: string) {
+  map = new Map();
+  constructor(database: MockHumbleDatabase, containerName: string) {
     this.database = database;
     this.containerName = containerName;
   }
   public get items() {
-    return new HumbleItems<T>(this);
+    return new MockHumbleItems(this);
   }
   item(id: string, _partitionKey?: string) {
-    return new HumbleItem(this, id);
+    return new MockHumbleItem(this, id);
   }
 }
 
-export class HumbleDatabase<T> {
+export class MockHumbleDatabase {
   databaseId: string;
   constructor(databaseId: string) {
     this.databaseId = databaseId;
   }
   container(containerName: string) {
-    return new HumbleContainer<T>(this, containerName);
+    return new MockHumbleContainer(this, containerName);
   }
 }
 
-export class HumbleClient<T> {
+export class MockHumbleClient {
   database(databaseId: string) {
-    return new HumbleDatabase<T>(databaseId);
+    return new MockHumbleDatabase(databaseId);
   }
 }

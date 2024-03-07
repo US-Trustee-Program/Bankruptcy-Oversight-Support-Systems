@@ -1,24 +1,32 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsError } from '../../common-errors/cams-error';
+import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import {
-  getCasesRepository,
   getCasesGateway,
+  getCasesRepository,
+  getConsolidationOrdersRepository,
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsResponse } from '../controller-types';
-import { TransferOrderAction } from '../../../../../common/src/cams/orders';
-import { TransferOrder } from '../../../../../common/src/cams/orders';
+import {
+  ConsolidationOrder,
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
+  Order,
+  TransferOrderAction,
+} from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
-export type GetOrdersResponse = CamsResponse<Array<TransferOrder>>;
+export type GetOrdersResponse = CamsResponse<Array<Order>>;
 export type GetSuggestedCasesResponse = CamsResponse<Array<CaseSummary>>;
 export type PatchOrderResponse = CamsResponse<string>;
+export type ManageConsolidationResponse = CamsResponse<ConsolidationOrder[]>;
 
 export class OrdersController {
   private readonly useCase: OrdersUseCase;
@@ -30,6 +38,7 @@ export class OrdersController {
       getOrdersRepository(context),
       getOrdersGateway(context),
       getRuntimeStateRepository(context),
+      getConsolidationOrdersRepository(context),
     );
   }
 
@@ -41,7 +50,7 @@ export class OrdersController {
         body: orders,
       };
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }
@@ -58,7 +67,7 @@ export class OrdersController {
         body: suggestedCases,
       };
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }
@@ -71,13 +80,13 @@ export class OrdersController {
   ): Promise<PatchOrderResponse> {
     // TODO: Need to sanitize id and data.
     try {
-      const result = await this.useCase.updateOrder(context, id, data);
+      const result = await this.useCase.updateTransferOrder(context, id, data);
       return {
         success: true,
         body: result,
       };
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }
@@ -91,7 +100,55 @@ export class OrdersController {
       const result = await this.useCase.syncOrders(context, options);
       return result;
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    }
+  }
+
+  public async rejectConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionRejection,
+  ): Promise<ManageConsolidationResponse> {
+    try {
+      if (data.rejectedCases.length == 0) {
+        throw new BadRequestError('Missing rejected cases');
+      }
+
+      const orders = await this.useCase.rejectConsolidation(context, data);
+      const response: ManageConsolidationResponse = {
+        success: true,
+        body: orders,
+      };
+      return response;
+    } catch (originalError) {
+      throw isCamsError(originalError)
+        ? originalError
+        : new UnknownError(MODULE_NAME, { originalError });
+    }
+  }
+
+  public async approveConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionApproval,
+  ): Promise<ManageConsolidationResponse> {
+    try {
+      if (data.approvedCases.length == 0) {
+        throw new BadRequestError('Missing approved cases');
+      }
+
+      if (!data.leadCase) {
+        throw new BadRequestError('Missing lead case');
+      }
+
+      const orders = await this.useCase.approveConsolidation(context, data);
+      const response: ManageConsolidationResponse = {
+        success: true,
+        body: orders,
+      };
+      return response;
+    } catch (originalError) {
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }

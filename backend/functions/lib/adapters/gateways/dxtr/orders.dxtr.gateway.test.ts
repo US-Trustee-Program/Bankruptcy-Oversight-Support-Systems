@@ -8,8 +8,8 @@ import {
   DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
-import { TransferOrder } from '../../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../types/basic';
+import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
 
 const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
@@ -36,19 +36,8 @@ const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
 ];
 
 const dxtrOrder: DxtrOrder = {
+  ...MockData.getTransferOrder(),
   dxtrCaseId: '111111',
-  dateFiled: '2023-12-01',
-  caseId: '081-23-111111',
-  caseTitle: 'Mr Bean',
-  chapter: '15',
-  courtName: '',
-  courtDivisionName: '',
-  regionId: '',
-  orderType: 'transfer',
-  orderDate: '2023-12-01',
-  status: 'pending',
-  courtDivision: '081',
-  docketEntries: [],
 };
 
 const dxtrOrderDocument: DxtrOrderDocument = {
@@ -60,44 +49,18 @@ const dxtrOrderDocument: DxtrOrderDocument = {
   deleted: 'N',
 };
 
-const expectedOrder: TransferOrder = {
-  dateFiled: '2023-12-01',
-  caseId: '081-23-111111',
-  caseTitle: 'Mr Bean',
-  chapter: '15',
-  courtName: '',
-  courtDivisionName: '',
-  courtDivision: '081',
-  regionId: '',
-  orderType: 'transfer',
-  orderDate: '2023-12-01',
-  status: 'pending',
-  newCaseId: '22-111111',
-  docketEntries: [
-    {
-      sequenceNumber: 0,
-      dateFiled: '2023-12-01',
-      summaryText: 'Summary Text',
-      fullText: 'This is the full text.',
-      documentNumber: 0,
-      documents: [
-        {
-          fileSize: 9999,
-          fileUri: 'https://somedomain.gov/files/0208-173976-0-0-0.pdf',
-          fileLabel: '0',
-          fileExt: 'pdf',
-        },
-      ],
+const expectedOrder = MockData.getTransferOrder();
+
+function buildSuccessfulQueryResult(recordset: Array<unknown> = []) {
+  const consolidationDocumentResults: QueryResults = {
+    success: true,
+    results: {
+      recordset: recordset,
     },
-    {
-      sequenceNumber: 1,
-      dateFiled: '2023-12-01',
-      documentNumber: 1,
-      summaryText: 'Some other Text',
-      fullText: 'This is the other full text.',
-    },
-  ],
-};
+    message: '',
+  };
+  return consolidationDocumentResults;
+}
 
 describe('DxtrOrdersGateway', () => {
   describe('getOrders', () => {
@@ -134,45 +97,25 @@ describe('DxtrOrdersGateway', () => {
       const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const querySpy = jest.spyOn(database, 'executeQuery');
 
-      const mockOrdersResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrOrder],
-        },
-        message: '',
-      };
+      const consolidtionOrdersResults = buildSuccessfulQueryResult();
+      const consolidationDocketEntryResults = buildSuccessfulQueryResult();
+      const consolidationDocumentResults = buildSuccessfulQueryResult();
 
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockOrdersResults);
-      });
+      const transferOrdersResults = buildSuccessfulQueryResult([expectedOrder]);
+      const transferDocketEntryResults = buildSuccessfulQueryResult(dxtrCaseDocketEntries);
+      const transferDocumentResults = buildSuccessfulQueryResult([dxtrOrderDocument]);
 
-      const mockDocumentsDocketEntryResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: dxtrCaseDocketEntries,
-        },
-        message: '',
-      };
-
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockDocumentsDocketEntryResults);
-      });
-
-      const mockDocumentsResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrOrderDocument],
-        },
-        message: '',
-      };
-
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockDocumentsResults);
-      });
+      querySpy
+        .mockResolvedValueOnce(transferOrdersResults)
+        .mockResolvedValueOnce(transferDocketEntryResults)
+        .mockResolvedValueOnce(transferDocumentResults)
+        .mockResolvedValueOnce(consolidtionOrdersResults)
+        .mockResolvedValueOnce(consolidationDocketEntryResults)
+        .mockResolvedValueOnce(consolidationDocumentResults);
 
       const gateway = new DxtrOrdersGateway();
       const orderSync = await gateway.getOrderSync(applicationContext, '0');
-      expect(orderSync.orders).toEqual([expectedOrder]);
+      expect(orderSync.transfers).toEqual([expectedOrder]);
       expect(orderSync.maxTxId).toEqual('2');
     });
 

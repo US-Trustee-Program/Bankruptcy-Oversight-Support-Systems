@@ -1,4 +1,4 @@
-import { httpGet, httpPatch, httpPost } from '../utils/http.adapter';
+import { httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import config from '../../configuration/apiConfiguration';
@@ -96,6 +96,28 @@ export default class Api {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPatch({ url: Api._host + pathStr, body });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return data;
+      } else {
+        return Promise.reject(new Error(data.message));
+      }
+    } catch (e: unknown) {
+      return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
+    }
+  }
+
+  public static async put(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseData> {
+    try {
+      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
+      const pathStr = Api.createPath(path, apiOptions);
+      const response = await httpPut({ url: Api._host + pathStr, body });
 
       const data = await response.json();
 

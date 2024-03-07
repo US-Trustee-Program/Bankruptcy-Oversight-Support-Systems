@@ -58,7 +58,10 @@ async function updateOrder(
     });
     throw camsError;
   }
-  return ordersController.updateOrder(context, id, data as TransferOrderAction);
+  const orderType = data.orderType;
+  if (orderType === 'transfer') {
+    return ordersController.updateOrder(context, id, data as TransferOrderAction);
+  }
 }
 
 export default httpTrigger;
