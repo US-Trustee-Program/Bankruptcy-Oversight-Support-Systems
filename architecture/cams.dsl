@@ -25,12 +25,15 @@ workspace {
                 ordersManualSync = component "Orders Manual Sync" "Orders Manual Sync API"
                 ordersSuggestions = component "Orders Suggestions" "Orders Suggestions API"
                 ordersSync = component "Sync" "Creates events in CAMS based on orders to transfer transactions in DXTR"
+                consolidations = component "Consolidations" "Consolidation Orders API"
+
             }
             dxtrsql = container "DXTR DB" "DXTR SQL Database"
             cosmos = container "Cosmos DB" "NoSQL Database" {
                 assignmentsCosmosContainer = component "Case Assignments Container" "Stores case assignments"
                 casesCosmosContainer = component "Cases Container" "Stores case transfer records and audit logs"
                 ordersCosmosContainer = component "Orders Container" "Stores case events"
+                consolidationsCosmosContainer = component "Consolidations Container" "Stores consolidation orders"
                 runtimeStateCosmosContainer = component "Runtime State Container" "Stores tracking information for automation"
             }
         }
@@ -56,12 +59,16 @@ workspace {
         webapp -> orders "Reads case events"
         webapp -> ordersManualSync "Triggers order sync via HTTP"
         webapp -> ordersSuggestions "Reads case summaries for data verification"
+        webapp -> consolidations "Reads and writes consolidation order data"
 
         nodeapi -> cosmos "Reads and writes case assignments, orders, cases, etc."
 
         cases -> dxtrsql "Gets case data"
         cases -> assignmentsCosmosContainer "Reads case assignments"
         cases -> casesCosmosContainer "Reads case transfer events"
+
+        consolidations -> casesCosmosContainer "Reads and Writes consolidations"
+        consolidations -> consolidationsCosmosContainer "Writes consolidations to CosmosDB"
 
         caseAssignments -> assignmentsCosmosContainer "Reads and writes case assignments"
         caseAssignments -> casesCosmosContainer "Writes case audit logs"

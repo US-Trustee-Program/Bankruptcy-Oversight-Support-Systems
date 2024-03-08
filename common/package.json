@@ -11,12 +11,13 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
-    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' src | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_common_${current_time}.svg",
-    "dependency-cruiser-ci": "npx depcruise --output-type err-long "
+    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' src | dot -T svg > ../docs/architecture/dependency-cruiser/common/dependency-graph_common_${current_time}.svg",
+    "dependency-cruiser-ci": "npx depcruise --output-type err-long src"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "dependency-cruiser": "^16.2.1",
     "@faker-js/faker": "^8.4.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.22",
