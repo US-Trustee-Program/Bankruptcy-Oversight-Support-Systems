@@ -1,5 +1,6 @@
 import { ResponseData } from './api';
 import * as CommonOrders from '@common/cams/orders';
+import { OfficeDetails } from '@common/cams/courts';
 
 export interface Chapter15Type {
   caseId: string;
@@ -28,28 +29,6 @@ export interface DebtorAttorney {
   phone?: string;
   email?: string;
   office?: string;
-}
-interface CaseDetailType {
-  caseId: string;
-  chapter: string;
-  caseTitle: string;
-  officeName: string;
-  dateFiled: string;
-  judgeName?: string;
-  courtName?: string;
-  courtDivision?: string;
-  courtDivisionName?: string;
-  closedDate?: string;
-  dismissedDate?: string;
-  reopenedDate?: string;
-  regionId?: string;
-  regionName?: string;
-  assignments: string[];
-  debtor: Debtor;
-  debtorAttorney?: DebtorAttorney;
-  debtorTypeLabel: string;
-  petitionLabel: string;
-  transfers?: Transfer[];
 }
 
 export interface CaseStaffAssignment {
@@ -104,12 +83,12 @@ export interface Chapter15CaseListResponseData extends ResponseData {
 }
 
 export interface Chapter15CaseSummaryResponseData extends ResponseData {
-  body: CaseDetailType;
+  body: CaseSummary;
 }
 
 export interface Chapter15CaseDetailsResponseData extends ResponseData {
   body: {
-    caseDetails: CaseDetailType;
+    caseDetails: CaseDetail;
   };
 }
 
@@ -117,25 +96,20 @@ export interface CaseAssignmentHistoryResponseData extends ResponseData {
   body: CaseAssignmentHistory[];
 }
 
+export type TransferOrder = CommonOrders.TransferOrder & {
+  id: string;
+};
+
+export type ConsolidationOrder = CommonOrders.ConsolidationOrder & {
+  id: string;
+};
+
 export type Order = CommonOrders.Order & {
   id: string;
 };
 
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;
-}
-
-export interface OfficeDetails {
-  divisionCode: string;
-  groupDesignator: string;
-  courtId: string;
-  courtName: string;
-  officeCode: string;
-  officeName: string;
-  state: string;
-  courtDivisionName: string;
-  regionId: string;
-  regionName: string;
 }
 
 export interface OfficesResponseData extends ResponseData {
@@ -159,7 +133,7 @@ type CaseAssignmentHistory = AbstractCaseHistory<CaseStaffAssignment[], CaseStaf
   documentType: 'AUDIT_ASSIGNMENT';
 };
 
-type CaseTransferHistory = AbstractCaseHistory<Order | null, Order> & {
+type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrder> & {
   documentType: 'AUDIT_TRANSFER';
 };
 

@@ -1,18 +1,19 @@
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseSummary } from '../../../../../common/src/cams/cases';
 
-export const CASE_SUMMARIES: CaseDetailInterface[] = [
+export const CASE_SUMMARIES: CaseSummary[] = [
   {
+    dxtrId: '0',
     courtDivision: '081',
     caseId: '081-11-06541',
     caseTitle: 'Crawford, Turner and Garrett',
-    dateFiled: '2011-05-20T11:59:00.0000000',
-    dxtrId: '313826',
+    dateFiled: '2023-05-20',
     chapter: '15',
     courtId: '0208',
     courtName: 'Some Court Name',
     courtDivisionName: 'Manhattan',
-    judgeName: 'Kimberly X. Willis',
+    groupDesignator: '',
     regionId: '02',
+    regionName: '',
     debtor: {
       name: 'Johnson',
       address1: '46878 Jason View Suite 516',
@@ -24,6 +25,7 @@ export const CASE_SUMMARIES: CaseDetailInterface[] = [
     },
     debtorTypeLabel: 'Corporate Business',
     petitionLabel: 'Voluntary',
+    officeCode: '',
     officeName: 'New York',
   },
 ];

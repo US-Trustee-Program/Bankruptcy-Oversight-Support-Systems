@@ -1,11 +1,11 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { CaseDetailInterface } from '../../../../../common/src/cams/cases';
+import { CaseDetail } from '../../../../../common/src/cams/cases';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
-  private caseList: CaseDetailInterface[] = [];
+  private caseList: CaseDetail[] = [];
 
   constructor() {
     this.setUpTestCaseList();
@@ -15,7 +15,7 @@ export class MockCasesGateway implements CasesInterface {
   async getCases(
     _applicationContext: ApplicationContext,
     options: { startingMonth?: number },
-  ): Promise<CaseDetailInterface[]> {
+  ): Promise<CaseDetail[]> {
     if (options.startingMonth != undefined) {
       this.startingMonth = options.startingMonth;
     }
@@ -31,7 +31,7 @@ export class MockCasesGateway implements CasesInterface {
   async getCaseDetail(
     _applicationContext: ApplicationContext,
     _caseId: string,
-  ): Promise<CaseDetailInterface> {
+  ): Promise<CaseDetail> {
     // const bCase = this.caseList.filter((aCase) => )
     throw new Error('not implemented');
   }
@@ -39,7 +39,7 @@ export class MockCasesGateway implements CasesInterface {
   async getCaseSummary(
     _applicationContext: ApplicationContext,
     _caseId: string,
-  ): Promise<CaseDetailInterface> {
+  ): Promise<CaseDetail> {
     // const bCase = this.caseList.filter((aCase) => )
     throw new Error('not implemented');
   }
@@ -47,7 +47,7 @@ export class MockCasesGateway implements CasesInterface {
   public async getSuggestedCases(
     _applicationContext: ApplicationContext,
     _caseId: string,
-  ): Promise<CaseDetailInterface[]> {
+  ): Promise<CaseDetail[]> {
     throw new Error('not implemented');
   }
 
@@ -58,7 +58,7 @@ export class MockCasesGateway implements CasesInterface {
 
   private setUpTestCaseList() {
     //Add Cases older than 6 months
-    const oldCases: CaseDetailInterface[] = [];
+    const oldCases: CaseDetail[] = [];
     const today = new Date();
 
     oldCases.push(
@@ -71,6 +71,18 @@ export class MockCasesGateway implements CasesInterface {
           new Date(today.getFullYear() - 4, today.getMonth() - 10, today.getDate()),
         ),
         assignments: [],
+        courtId: '',
+        courtDivisionName: '',
+        courtName: '',
+        dxtrId: '0',
+        groupDesignator: '',
+        officeCode: '',
+        officeName: '',
+        regionId: '',
+        regionName: '',
+        debtor: {
+          name: 'DebtorName',
+        },
       },
       {
         caseId: '081-23-01122',
@@ -81,6 +93,18 @@ export class MockCasesGateway implements CasesInterface {
           new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
         ),
         assignments: ['Mr. Jones', 'Diana', 'Joe'],
+        courtId: '',
+        courtDivisionName: '',
+        courtName: '',
+        dxtrId: '0',
+        groupDesignator: '',
+        officeCode: '',
+        officeName: '',
+        regionId: '',
+        regionName: '',
+        debtor: {
+          name: 'DebtorName',
+        },
       },
       {
         caseId: '081-13-01166',
@@ -91,12 +115,24 @@ export class MockCasesGateway implements CasesInterface {
           new Date(today.getFullYear() - 10, today.getMonth(), today.getDate()),
         ),
         assignments: [],
+        courtId: '',
+        courtDivisionName: '',
+        courtName: '',
+        dxtrId: '0',
+        groupDesignator: '',
+        officeCode: '',
+        officeName: '',
+        regionId: '',
+        regionName: '',
+        debtor: {
+          name: 'DebtorName',
+        },
       },
     );
     this.caseList.push(...oldCases);
 
     // Add Cases newer than 6 months
-    const newCases: CaseDetailInterface[] = [];
+    const newCases: CaseDetail[] = [];
 
     newCases.push(
       {
@@ -108,6 +144,18 @@ export class MockCasesGateway implements CasesInterface {
           new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()),
         ),
         assignments: [],
+        courtId: '',
+        courtDivisionName: '',
+        courtName: '',
+        dxtrId: '0',
+        groupDesignator: '',
+        officeCode: '',
+        officeName: '',
+        regionId: '',
+        regionName: '',
+        debtor: {
+          name: 'DebtorName',
+        },
       },
       {
         caseId: '081-23-01175',
@@ -118,6 +166,18 @@ export class MockCasesGateway implements CasesInterface {
           new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
         ),
         assignments: ['Daisy', 'Roger', 'Frank'],
+        courtId: '',
+        courtDivisionName: '',
+        courtName: '',
+        dxtrId: '0',
+        groupDesignator: '',
+        officeCode: '',
+        officeName: '',
+        regionId: '',
+        regionName: '',
+        debtor: {
+          name: 'DebtorName',
+        },
       },
       {
         caseId: '081-23-01176',
@@ -128,6 +188,18 @@ export class MockCasesGateway implements CasesInterface {
           new Date(today.getFullYear(), today.getMonth() - 2, today.getDate()),
         ),
         assignments: [],
+        courtId: '',
+        courtDivisionName: '',
+        courtName: '',
+        dxtrId: '0',
+        groupDesignator: '',
+        officeCode: '',
+        officeName: '',
+        regionId: '',
+        regionName: '',
+        debtor: {
+          name: 'DebtorName',
+        },
       },
     );
     this.caseList.push(...newCases);

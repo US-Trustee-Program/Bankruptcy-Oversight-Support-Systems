@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../types/basic';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
-import { AttorneyAssignmentResponseInterface } from '../types/case.assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
+import { AttorneyAssignmentResponseInterface } from '../../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =

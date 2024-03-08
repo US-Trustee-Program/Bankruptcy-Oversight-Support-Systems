@@ -10,18 +10,14 @@ import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-stat
 import { ApplicationContext } from './adapters/types/basic';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
-import FakeOrdersCosmosClientHumble from './cosmos-humble-objects/fake.orders.cosmos-client-humble';
-import FakeRuntimeStateCosmosClientHumble from './cosmos-humble-objects/fake.runtime.cosmos-client-humble';
 import {
   getAssignmentRepository,
   getAssignmentsCosmosDbClient,
   getCaseDocketUseCase,
   getCasesGateway,
   getOfficesGateway,
-  getOrdersCosmosDbClient,
   getOrdersGateway,
   getOrdersRepository,
-  getRuntimeCosmosDbClient,
   getRuntimeStateRepository,
 } from './factory';
 import { createMockApplicationContext } from './testing/testing-utilities';
@@ -65,14 +61,6 @@ describe('Factory functions', () => {
     expect(obj).toBeInstanceOf(CosmosClientHumble);
   });
 
-  test('getOrdersCosmosDbClient', async () => {
-    const mockObj = getOrdersCosmosDbClient(mockDbContext);
-    expect(mockObj).toBeInstanceOf(FakeOrdersCosmosClientHumble);
-
-    const obj = getOrdersCosmosDbClient(dbContext);
-    expect(obj).toBeInstanceOf(CosmosClientHumble);
-  });
-
   test('getCaseDocketUseCase', async () => {
     const mockObj = getCaseDocketUseCase(mockDbContext);
     expect(mockObj).toBeInstanceOf(CaseDocketUseCase);
@@ -100,14 +88,6 @@ describe('Factory functions', () => {
   test('getOrdersRepository', async () => {
     const obj = getOrdersRepository(dbContext);
     expect(obj).toBeInstanceOf(OrdersCosmosDbRepository);
-  });
-
-  test('getRuntimeCosmosDbClient', async () => {
-    const mockObj = getRuntimeCosmosDbClient(mockDbContext);
-    expect(mockObj).toBeInstanceOf(FakeRuntimeStateCosmosClientHumble);
-
-    const obj = getRuntimeCosmosDbClient(dbContext);
-    expect(obj).toBeInstanceOf(CosmosClientHumble);
   });
 
   test('getRuntimeStateRepository', async () => {

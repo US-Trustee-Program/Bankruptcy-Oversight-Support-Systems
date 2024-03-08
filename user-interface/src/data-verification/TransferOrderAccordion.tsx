@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
@@ -6,11 +6,10 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import Input from '@/lib/components/uswds/Input';
 import Api from '../lib/models/api';
 import MockApi from '../lib/models/chapter15-mock.api.cases';
+import { OfficeDetails } from '@common/cams/courts';
 import {
-  CaseDetailType,
   Chapter15CaseSummaryResponseData,
-  OfficeDetails,
-  Order,
+  TransferOrder,
 } from '@/lib/type-declarations/chapter-15';
 import { OrderStatus } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
@@ -28,29 +27,19 @@ import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
+import { getOfficeList, validateNewCaseIdInput } from '@/data-verification/dataVerificationHelper';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
 };
 
-export function getOrderTransferFromOrder(order: Order): FlexibleTransferOrderAction {
+export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
   const { id, caseId, newCaseId } = order;
   return {
     id,
     caseId,
     newCase: { caseId: newCaseId },
   };
-}
-
-export function getOfficeList(officesList: Array<OfficeDetails>) {
-  const mapOutput = officesList.map((court) => {
-    return {
-      value: court.divisionCode,
-      label: `${court.courtName} (${court.courtDivisionName})`,
-    };
-  });
-  mapOutput.splice(0, 0, { value: '', label: ' ' });
-  return mapOutput;
 }
 
 export function isValidOrderTransfer(transfer: {
@@ -66,36 +55,20 @@ function safeToInt(s: string) {
   return intVal.toString();
 }
 
-export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
-  // TODO: Move this logic into a CaseIdInput component based on Input.
-  const allowedCharsPattern = /[0-9]/g;
-  const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
-  if (filteredInput.length > 7) {
-    filteredInput.splice(7);
-  }
-  if (filteredInput.length > 2) {
-    filteredInput.splice(2, 0, '-');
-  }
-  const joinedInput = filteredInput?.join('') || '';
-  const caseIdPattern = /^\d{2}-\d{5}$/;
-  const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
-  return { newCaseId, joinedInput };
-}
-
 export function updateOrderTransfer(
   selection: SearchableSelectOption,
   orderTransfer: FlexibleTransferOrderAction,
   officesList: Array<OfficeDetails>,
 ) {
   const updated: FlexibleTransferOrderAction = { ...orderTransfer };
-  const office = officesList.find((o) => o.divisionCode === selection?.value);
+  const office = officesList.find((o) => o.courtDivision === selection?.value);
   updated.newCase = {
     ...updated.newCase,
     regionId: office?.regionId,
     regionName: office?.regionName,
     courtName: office?.courtName,
     courtDivisionName: office?.courtDivisionName,
-    courtDivision: office?.divisionCode,
+    courtDivision: office?.courtDivision,
   };
 
   return updated;
@@ -108,18 +81,21 @@ enum ValidationStates {
 }
 
 export interface TransferOrderAccordionProps {
-  order: Order;
+  order: TransferOrder;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
   officesList: Array<OfficeDetails>;
   regionsMap: Map<string, string>;
-  onOrderUpdate: (alertDetails: AlertDetails, order?: Order) => void;
+  onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
 }
 
+const enterCaseButtonId = 'buttonEnterCase';
+
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const [activeButtonId, setActiveButtonId] = useState<string>(enterCaseButtonId);
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -135,17 +111,18 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const [validationState, setValidationState] = useState<ValidationStates>(
     ValidationStates.notValidated,
   );
-  const [newCaseSummary, setNewCaseSummary] = useState<CaseDetailType | null>(null);
+  const [originalCaseSummary, setOriginalCaseSummary] = useState<CaseSummary | null>(null);
+  const [newCaseSummary, setNewCaseSummary] = useState<CaseSummary | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
   const [toggleView, setToggleView] = useState<'default' | 'suggestions'>('default');
-  const [suggestedCases, setSuggestedCases] = useState<CaseDetailType[] | null>(null);
+  const [suggestedCases, setSuggestedCases] = useState<CaseSummary[] | null>(null);
 
-  async function getTransferredCaseSuggestions(caseId: string): Promise<CaseDetailType[] | null> {
+  async function getTransferredCaseSuggestions(caseId: string): Promise<CaseSummary[] | null> {
     const suggestions = await api
       .get(`/orders-suggestions/${caseId}/`)
       .then((response) => {
-        return response.body as CaseDetailType[];
+        return response.body as CaseSummary[];
       })
       .catch((reason: Error) => {
         props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
@@ -229,18 +206,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     setOrderTransfer(updated);
   }
 
-  function handleSuggestedCaseSelection(bCase: CaseDetailType) {
+  function handleSuggestedCaseSelection(bCase: CaseSummary) {
     if (bCase) {
       const updated = { ...orderTransfer };
-      // Remove the division prefix to be consistent with case entry view.
-      updated.newCase = {
-        caseId: getCaseNumber(bCase.caseId),
-        courtDivision: bCase.courtDivision,
-        courtDivisionName: bCase.courtDivisionName,
-        courtName: bCase.courtName,
-        regionId: bCase.regionId,
-        regionName: bCase.regionName,
-      };
+      updated.newCase = bCase;
       setOrderTransfer(updated);
       approveButtonRef.current?.disableButton(false);
     }
@@ -253,10 +222,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       caseId: orderTransfer.newCase?.courtDivision + '-' + orderTransfer.newCase?.caseId,
     };
 
-    const updatedOrder: Order = {
+    const updatedOrder: TransferOrder = {
       ...order,
       ...orderTransfer,
-    };
+    } as TransferOrder;
 
     api
       .patch(`/orders/${orderTransfer.id}`, orderTransfer)
@@ -297,6 +266,17 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     }
   }
 
+  function onCollapse() {
+    cancelUpdate();
+    setToggleView('default');
+    approveButtonRef.current?.disableButton(true);
+    setActiveButtonId(enterCaseButtonId);
+  }
+
+  function onToggleButtonClick(id: string) {
+    setActiveButtonId(id);
+  }
+
   function approveOrderRejection(rejectionReason?: string) {
     const rejection: TransferOrderAction = {
       id: order.id,
@@ -330,6 +310,23 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
+  async function getCaseSummary() {
+    await api
+      .get(`/cases/${order.caseId}/summary`)
+      .then((response) => {
+        const typedResponse = response as Chapter15CaseSummaryResponseData;
+        setOriginalCaseSummary(typedResponse.body);
+      })
+      .catch((_reason) => {
+        //
+      });
+  }
+
+  useEffect(() => {
+    getCaseSummary();
+  }, []);
+
+  // TODO CAMS-270 : Need to figure out getting the Filed Date from the correct data object
   return (
     <>
       <Accordion
@@ -337,42 +334,67 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         id={`order-list-${order.id}`}
         expandedId={expandedId}
         onExpand={onExpand}
+        onCollapse={onCollapse}
       >
         <section
           className="accordion-heading grid-row grid-gap-lg"
           data-testid={`accordion-heading-${order.id}`}
         >
           <div
-            className="grid-col-2 case-id text-no-wrap"
-            aria-label={`Case number ${getCaseNumber(order.caseId).split('').join(' ')}`}
+            className="grid-col-6 text-no-wrap"
+            aria-label={`Court district – ${getCaseNumber(order.courtName)}`}
           >
-            {getCaseNumber(order.caseId)}
-          </div>
-          <div className="grid-col-4 case-title" aria-label={`Case title ${order.caseTitle}`}>
-            {order.caseTitle}
+            {order.courtName}
           </div>
           <div
-            className="grid-col-2 order-date text-no-wrap"
-            title="Order date"
-            aria-label={`Order date ${formatDate(order.orderDate)}`}
+            className="grid-col-2 text-no-wrap"
+            title="Event date"
+            aria-label={`Event date – ${formatDate(order.orderDate)}`}
           >
             {formatDate(order.orderDate)}
           </div>
           <div className="grid-col-2 order-type text-no-wrap">
-            <span aria-label={`Order type ${orderType.get(order.orderType)}`}>
+            <span aria-label={`Event type ${orderType.get(order.orderType)}`}>
               {orderType.get(order.orderType)}
             </span>
           </div>
           <div className="grid-col-2 order-status text-no-wrap">
             <span
               className={order.status}
-              aria-label={`Order status ${statusType.get(order.status)}`}
+              aria-label={`Event status ${statusType.get(order.status)}`}
             >
               {statusType.get(order.status)}
             </span>
           </div>
         </section>
         <section className="accordion-content" data-testid={`accordion-content-${order.id}`}>
+          <div className="grid-row grid-gap-lg">
+            <div className="grid-col-1"></div>
+            <div className="grid-col-10">
+              <span className="text-bold padding-right-1">
+                Case Number:{' '}
+                <CaseNumber
+                  caseNumber={order.caseId}
+                  data-testid={`approved-transfer-original-case-link-${order.caseId}`}
+                ></CaseNumber>
+              </span>
+              <span className="text-bold">Case Title: </span>
+              <span className="padding-right-1">{order.caseTitle}</span>
+              <span className="text-bold">Chapter: </span>
+              <span className="padding-right-1">{order.chapter}</span>
+              <span className="text-bold">Filed Date: </span>
+              <span className="padding-right-1">
+                {originalCaseSummary && formatDate(originalCaseSummary.dateFiled)}
+              </span>
+              <span className="text-bold">SSN/EIN: </span>
+              <span className="padding-right-1">
+                {originalCaseSummary?.debtor?.taxId
+                  ? originalCaseSummary?.debtor.taxId
+                  : originalCaseSummary?.debtor?.ssn}
+              </span>
+            </div>
+            <div className="grid-col-1"></div>
+          </div>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="order-legal-statement grid-col-10">
@@ -465,7 +487,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   <ButtonGroup
                     id={`button-group-${order.id}`}
                     className="entry-option-button-group"
-                    defaultButtonId="buttonEnterCase"
+                    activeButtonId={activeButtonId}
+                    onButtonClick={onToggleButtonClick}
                   >
                     <Button id="buttonEnterCase" onClick={selectCaseInputEntry}>
                       Enter Case
@@ -635,7 +658,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             {suggestedCases && suggestedCases?.length > 0 && (
                               <CaseTable
                                 id="suggested-cases"
-                                cases={suggestedCases!}
+                                cases={suggestedCases}
                                 onSelect={handleSuggestedCaseSelection}
                                 ref={suggestedCasesRef}
                               ></CaseTable>
@@ -693,13 +716,12 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                   </div>
                   <div className="grid-col-1"></div>
                 </div>
-                {/*TODO: find a way to remove `!` from below order properties */}
                 <ConfirmationModal
                   ref={confirmationModalRef}
                   id={`confirmation-modal-${order.id}`}
                   fromCaseId={order.caseId}
                   toCaseId={orderTransfer.newCase?.caseId}
-                  fromDivisionName={order.courtDivisionName!}
+                  fromDivisionName={order.courtDivisionName}
                   toDivisionName={orderTransfer.newCase?.courtDivisionName}
                   fromCourtName={order.courtName!}
                   toCourtName={orderTransfer.newCase?.courtName}

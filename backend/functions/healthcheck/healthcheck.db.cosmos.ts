@@ -42,12 +42,12 @@ export default class HealthcheckCosmosDb {
   public async checkDbWrite() {
     try {
       // Check write access
-      const { item } = await this.cosmosDbClient
+      const { resource } = await this.cosmosDbClient
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
         .items.create({});
-      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${item.id}`);
-      return item.id != undefined;
+      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${resource.id}`);
+      return resource.id != undefined;
     } catch (e) {
       this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
@@ -64,13 +64,16 @@ export default class HealthcheckCosmosDb {
         .fetchAll();
 
       if (results.length > 0) {
-        for (const item of results) {
-          this.applicationContext.logger.debug(MODULE_NAME, `Invoking delete on item ${item.id}`);
+        for (const resource of results) {
+          this.applicationContext.logger.debug(
+            MODULE_NAME,
+            `Invoking delete on item ${resource.id}`,
+          );
 
           await this.cosmosDbClient
             .database(this.databaseName)
             .container(this.CONTAINER_NAME)
-            .item(item.id, item.id)
+            .item(resource.id, resource.id)
             .delete();
         }
       }

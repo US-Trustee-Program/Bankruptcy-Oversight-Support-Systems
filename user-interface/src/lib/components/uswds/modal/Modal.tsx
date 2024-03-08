@@ -157,9 +157,11 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
-              <h2 className="usa-modal__heading" id={props.modalId + '-heading'}>
-                {props.heading}
-              </h2>
+              {props.heading && (
+                <h2 className="usa-modal__heading" id={props.modalId + '-heading'}>
+                  {props.heading}
+                </h2>
+              )}
               <div className="usa-prose">
                 <section id={props.modalId + '-description'} tabIndex={0}>
                   {props.content}

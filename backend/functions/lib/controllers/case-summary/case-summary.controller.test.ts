@@ -2,6 +2,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSummaryController } from './case-summary.controller';
 import { CaseManagement } from '../../use-cases/case-management';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 describe('Test case-summary controller', () => {
   let applicationContext;
@@ -13,14 +14,8 @@ describe('Test case-summary controller', () => {
   });
 
   test('should return success if case summary is found', async () => {
-    // mock response from use case
-    const caseDetail = {
-      caseId: '000-00-00000',
-      courtDivision: 'TheDiv',
-      chapter: '15',
-      caseTitle: 'BankRuptCo',
-      dateFiled: '2024-01-01',
-    };
+    const caseDetail = MockData.getCaseDetail();
+
     jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(caseDetail);
     const response = await controller.getCaseSummary(applicationContext, caseDetail.caseId);
     expect(response).toEqual({ success: true, body: caseDetail });

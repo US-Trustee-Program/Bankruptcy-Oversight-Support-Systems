@@ -2,8 +2,8 @@ import { OfficesGatewayInterface } from '../../../use-cases/offices/offices.gate
 import { USTP_OFFICE_NAME_MAP } from './dxtr.constants';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
-import { OfficeDetails } from '../../../use-cases/offices/offices.model';
-import { OFFICES } from '../../../testing/mock-data/offices.mock';
+import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
+import { OfficeDetails } from '../../../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'MOCK-OFFICES-GATEWAY';
 
@@ -17,6 +17,6 @@ export class MockOfficesGateway implements OfficesGatewayInterface {
   }
 
   getOffices(_applicationContext: ApplicationContext): Promise<OfficeDetails[]> {
-    return Promise.resolve(OFFICES);
+    return Promise.resolve(MockData.getOffices());
   }
 }

@@ -1,9 +1,9 @@
 import { CamsResponse } from '../controller-types';
-import { OfficeDetails } from '../../use-cases/offices/offices.model';
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { OfficeDetails } from '../../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 

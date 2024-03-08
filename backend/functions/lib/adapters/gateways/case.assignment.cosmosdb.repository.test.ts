@@ -1,13 +1,13 @@
 import { CaseAssignmentCosmosDbRepository } from './case.assignment.cosmosdb.repository';
 import { randomUUID } from 'crypto';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
-import { CaseAssignment } from '../types/case.assignment';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
   NOT_FOUND_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 
 describe('Test case assignment cosmosdb repository tests', () => {
   const currentDate = new Date().toISOString();
