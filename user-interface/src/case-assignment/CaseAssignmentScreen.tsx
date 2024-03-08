@@ -292,10 +292,7 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <CaseNumber
-                                    caseNumber={theCase.caseId}
-                                    openLinkIn="same-window"
-                                  />
+                                  <CaseNumber caseId={theCase.caseId} openLinkIn="same-window" />
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>
@@ -404,10 +401,7 @@ export const CaseAssignment = () => {
                               >
                                 <td className="case-number">
                                   <span className="mobile-title">Case Number:</span>
-                                  <CaseNumber
-                                    caseNumber={theCase.caseId}
-                                    openLinkIn="same-window"
-                                  />
+                                  <CaseNumber caseId={theCase.caseId} openLinkIn="same-window" />
                                 </td>
                                 <td className="chapter" data-testid={`${theCase.caseId}-chapter`}>
                                   <span className="mobile-title">Chapter:</span>

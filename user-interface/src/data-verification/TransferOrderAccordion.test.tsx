@@ -18,7 +18,7 @@ import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
-import { getOfficeList, validateNewCaseIdInput } from './dataVerificationHelper';
+import { getOfficeList, validateCaseNumberInput } from './dataVerificationHelper';
 import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
 
 vi.mock(
@@ -884,14 +884,14 @@ describe('TransferOrderAccordion', () => {
 
   // test('should limit user input to a valid case ID', () => {
   //   const validInput = buildChangeEvent('11-22222');
-  //   const ok = validateNewCaseIdInput(validInput);
+  //   const ok = validateCaseNumberInput(validInput);
   //   expect(ok.joinedInput).toEqual('');
-  //   expect(ok.newCaseId).toBeUndefined;
+  //   expect(ok.caseNumber).toBeUndefined;
 
   //   const invalidInput = buildChangeEvent('lahwrunxhncntgftitjt');
-  //   const notOK = validateNewCaseIdInput(invalidInput);
+  //   const notOK = validateCaseNumberInput(invalidInput);
   //   expect(notOK.joinedInput).toEqual('');
-  //   expect(notOK.newCaseId).toBeUndefined;
+  //   expect(notOK.caseNumber).toBeUndefined;
   // });
 
   test('should get office select options', () => {
@@ -948,7 +948,7 @@ describe('Test CaseSelection component', () => {
   });
 });
 
-describe('Test validateNewCaseIdInput function', () => {
+describe('Test validateCaseNumberInput function', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
   });
@@ -958,7 +958,7 @@ describe('Test validateNewCaseIdInput function', () => {
     const resultValue = '12-34567';
 
     const expectedResult = {
-      newCaseId: resultValue,
+      caseNumber: resultValue,
       joinedInput: resultValue,
     };
 
@@ -968,16 +968,16 @@ describe('Test validateNewCaseIdInput function', () => {
       },
     };
 
-    const returnedValue = validateNewCaseIdInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    const returnedValue = validateCaseNumberInput(testEvent as React.ChangeEvent<HTMLInputElement>);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('When supplied a value with alphabetic characters only, it should return an object with undefined newCaseId and empty string for joinedInput', async () => {
+  test('When supplied a value with alphabetic characters only, it should return an object with undefined caseNumber and empty string for joinedInput', async () => {
     const testValue = 'abcdefg';
     const resultValue = '';
 
     const expectedResult = {
-      newCaseId: undefined,
+      caseNumber: undefined,
       joinedInput: resultValue,
     };
 
@@ -987,7 +987,7 @@ describe('Test validateNewCaseIdInput function', () => {
       },
     };
 
-    const returnedValue = validateNewCaseIdInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    const returnedValue = validateCaseNumberInput(testEvent as React.ChangeEvent<HTMLInputElement>);
     expect(returnedValue).toEqual(expectedResult);
   });
 });

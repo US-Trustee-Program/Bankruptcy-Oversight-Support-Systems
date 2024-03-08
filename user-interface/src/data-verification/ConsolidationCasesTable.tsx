@@ -74,7 +74,7 @@ function _ConsolidationCaseTable(
                   ></input>
                 </td>
                 <td scope="row">
-                  <CaseNumber caseNumber={bCase.caseId} /> ({bCase.courtDivisionName})
+                  <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
                 </td>
                 <td scope="row">{bCase.caseTitle}</td>
                 <td scope="row" className="text-no-wrap">
