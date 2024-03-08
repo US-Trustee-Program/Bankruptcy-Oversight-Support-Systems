@@ -3,6 +3,9 @@ API_PATH=backend/functions
 WEB_PATH=user-interface
 COMMON_PATH=common
 
+default:
+	cat Makefile
+
 clean-common:
 	rm -rf $(COMMON_PATH)/build && rm -rf $(COMMON_PATH)/coverage && rm -rf $(COMMON_PATH)/node_modules
 
