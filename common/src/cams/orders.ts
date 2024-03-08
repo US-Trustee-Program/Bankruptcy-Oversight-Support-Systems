@@ -64,6 +64,7 @@ export function isConsolidationOrder(order: Order): order is ConsolidationOrder 
 type TransferOrderActionRejection = {
   id: string;
   caseId: string;
+  orderType: 'transfer';
   status: 'rejected';
   reason?: string;
 };
@@ -71,6 +72,7 @@ type TransferOrderActionRejection = {
 type TransferOrderActionApproval = {
   id: string;
   caseId: string;
+  orderType: 'transfer';
   newCase: Partial<CaseSummary>;
   status: 'approved';
 };

@@ -11,7 +11,7 @@ export function getOfficeList(officesList: OfficeDetails[]) {
   return mapOutput;
 }
 
-export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) {
+export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
   const allowedCharsPattern = /[0-9]/g;
   const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
   if (filteredInput.length > 7) {
@@ -21,7 +21,7 @@ export function validateNewCaseIdInput(ev: React.ChangeEvent<HTMLInputElement>) 
     filteredInput.splice(2, 0, '-');
   }
   const joinedInput = filteredInput?.join('') || '';
-  const caseIdPattern = /^\d{2}-\d{5}$/;
-  const newCaseId = caseIdPattern.test(joinedInput) ? joinedInput : undefined;
-  return { newCaseId, joinedInput };
+  const caseNumberPattern = /^\d{2}-\d{5}$/;
+  const caseNumber = caseNumberPattern.test(joinedInput) ? joinedInput : undefined;
+  return { caseNumber, joinedInput };
 }

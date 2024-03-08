@@ -67,7 +67,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                 </th>
               )}
               <td scope="row">
-                <CaseNumber caseNumber={bCase.caseId} />
+                <CaseNumber caseId={bCase.caseId} />
               </td>
               <td scope="row">{bCase.caseTitle}</td>
               <td scope="row" className="text-no-wrap">

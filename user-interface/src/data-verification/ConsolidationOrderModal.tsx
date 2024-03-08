@@ -8,7 +8,7 @@ import useFeatureFlags, {
   CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import SearchableSelect from '@/lib/components/SearchableSelect';
-import { getOfficeList, validateNewCaseIdInput } from '@/data-verification/dataVerificationHelper';
+import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
 import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -108,10 +108,10 @@ function ConsolidationOrderModalComponent(
   }
 
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { newCaseId, joinedInput } = validateNewCaseIdInput(ev);
+    const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
     leadCaseIdRef.current?.setValue(joinedInput);
-    if (newCaseId) {
-      setLeadCaseNumber(newCaseId);
+    if (caseNumber) {
+      setLeadCaseNumber(caseNumber);
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
     } else {
       modalRef.current?.buttons?.current?.disableSubmitButton(true);

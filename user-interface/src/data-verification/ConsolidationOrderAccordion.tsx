@@ -324,7 +324,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-10">
                 Consolidated the following cases to lead case{' '}
                 <CaseNumber
-                  caseNumber={order.leadCase!.caseId}
+                  caseId={order.leadCase!.caseId}
                   renderAs="link"
                   openLinkIn="new-window"
                 ></CaseNumber>{' '}
