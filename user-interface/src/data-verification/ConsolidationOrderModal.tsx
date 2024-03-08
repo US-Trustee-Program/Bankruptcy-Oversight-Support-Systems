@@ -64,7 +64,7 @@ function ConsolidationOrderModalComponent(
     modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
     submitButton: {
-      label: options.heading,
+      label: 'Approve',
       onClick: () => {
         onConfirm(
           options.status,
