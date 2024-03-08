@@ -37,7 +37,7 @@ on:
           - "false"
           - "true"
       enableBicepDeployment:
-        description: "False will not deploy bicep changes. True will deploy bicep to Azure."
+        description: "Default: false will not deploy bicep changes unless there are changes to the bicep. True will deploy bicep to Azure."
         required: true
         default: "false"
         type: choice
