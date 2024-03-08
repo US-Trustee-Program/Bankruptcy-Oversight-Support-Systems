@@ -36,6 +36,14 @@ on:
         options:
           - "false"
           - "true"
+      enableBicepDeployment:
+        description: "False will not deploy bicep changes. True will deploy bicep to Azure."
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 jobs:
   build-info:
     runs-on: ubuntu-latest
@@ -100,7 +108,7 @@ jobs:
           echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
           echo "Slot deployment is enabled: ${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}"
           echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
-
+          echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment }}"
           # Set to true to attempt to create a new virtual network
           execVnetDeploy=${{ inputs.deployVnet || 'true' }}
           echo "Execute virtual network deployment: ${execVnetDeploy}"
@@ -133,7 +141,7 @@ jobs:
       - name: Check Bicep Deployment
         id: check-bicep
         run: |
-          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }})
+          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment }})
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
 
