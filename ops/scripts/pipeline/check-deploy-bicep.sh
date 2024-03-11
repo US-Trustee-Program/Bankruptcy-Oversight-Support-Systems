@@ -17,7 +17,8 @@ rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
 lastMergeCommitSha=$(git log --pretty=format:"%H" --merges -n 1)
 
 if [[ $lastMergeCommitSha != "" ]]; then
-    changes=$(git diff "${lastMergeCommitSha}" HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+    # shellcheck disable=SC2086 # REASON: Renders the commit has unusable
+    changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 else
     changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 
