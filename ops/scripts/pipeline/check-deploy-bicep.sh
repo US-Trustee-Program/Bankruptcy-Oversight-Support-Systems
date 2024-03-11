@@ -10,7 +10,6 @@ app_rg=$1
 deploy_flag=$2 #workflow dispatch parameter enableBicepDeployment from GHA
 
 deployBicep=false #default bicep deployment to false
-containsBicep=false
 
 #If rg show fails, we want to continue instead of erroring out
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
@@ -18,13 +17,7 @@ rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
 #diff of previous merge commit  and current head only on folders containing potential infrastructure changes
 changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yaml)
 
-if [[ $changes != "" ]]; then
-    containsBicep=true
-fi
-
-
-
-if [[ $containsBicep == true || $rg_response == "" || $deploy_flag == true  ]]; then
+if [[ $changes != "" || $rg_response == "" || $deploy_flag == true  ]]; then
     deployBicep=true
 fi
 
