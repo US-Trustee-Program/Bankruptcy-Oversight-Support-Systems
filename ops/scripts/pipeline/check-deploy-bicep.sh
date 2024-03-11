@@ -13,17 +13,16 @@ deployBicep=false #default bicep deployment to false
 #If rg show fails, we want to continue instead of erroring out
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
 
-#gets only the last merge commit SHA
-lastMergeCommitSha=$(git log --pretty=format:"%H" --merges -n 1)
-
+#uses branch to get previous merge commits hash
+branch=$(git branch --show-current)
+# shellcheck disable=SC2086 # REASON: Quotes renders the branch unusable
+lastMergeCommitSha=$(git log ${branch} --first-parent --pretty=format:"%H" --merges -n 1)
 if [[ $lastMergeCommitSha != "" ]]; then
-    # shellcheck disable=SC2086 # REASON: Renders the commit has unusable
+    # shellcheck disable=SC2086 # REASON: Qoutes render the commit sha unusable
     changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 else
     changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
-
 fi
-#diff of previous merge commit  and current head only on folders containing potential infrastructure changes
 
 if [[ $changes != "" || $rg_response == "" || $deploy_flag == true  ]]; then
     deployBicep=true
