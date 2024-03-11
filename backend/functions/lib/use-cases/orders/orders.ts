@@ -100,7 +100,7 @@ export class OrdersUseCase {
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
         const transferIn: TransferIn = {
-          caseId: order.newCaseId,
+          caseId: order.newCase.caseId,
           otherCaseId: order.caseId,
           divisionName: order.courtDivisionName,
           courtName: order.courtName,
