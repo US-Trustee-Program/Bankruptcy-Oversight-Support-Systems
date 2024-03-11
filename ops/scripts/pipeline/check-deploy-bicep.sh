@@ -20,8 +20,6 @@ changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continu
 
 if [[ $changes != "" ]]; then
     containsBicep=true
-else
-    containsBicep=false
 fi
 
 
