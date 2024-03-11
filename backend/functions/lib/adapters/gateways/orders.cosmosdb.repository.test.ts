@@ -17,6 +17,7 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 
 const testNewOrderTransferData: TransferOrderAction = {
   id: 'test-id-0',
+  orderType: 'transfer',
   caseId: '111-11-11111',
   newCase: {
     caseId: '000-01-12345',
