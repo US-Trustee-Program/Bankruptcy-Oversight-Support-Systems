@@ -167,4 +167,13 @@ export default class Chapter15MockApi extends Api {
     };
     return Promise.resolve(response);
   }
+
+  public static async put(_path: string, data: object, _options?: ObjectKeyVal) {
+    const response = {
+      message: '',
+      count: 1,
+      body: data,
+    };
+    return Promise.resolve(response);
+  }
 }

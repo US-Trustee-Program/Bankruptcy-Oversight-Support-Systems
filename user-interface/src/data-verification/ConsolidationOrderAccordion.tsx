@@ -23,11 +23,12 @@ import {
   ConfirmationModalImperative,
 } from '@/data-verification/ConsolidationOrderModal';
 import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import api from '@/lib/models/api';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
+import Api from '@/lib/models/api';
+import MockApi from '@/lib/models/chapter15-mock.api.cases';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -54,6 +55,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const approveButtonRef = useRef<ButtonRef>(null);
   const [attorneys] = useState<AttorneyInfo[]>([]);
   const featureFlags = useFeatureFlags();
+
+  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
   useEffect(() => {
     if (selectedCases.length == 0) {

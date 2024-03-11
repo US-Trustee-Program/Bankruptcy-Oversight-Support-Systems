@@ -43,12 +43,6 @@ export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransfe
   };
 }
 
-export function isValidOrderTransfer(transfer: {
-  newCase?: { caseId?: string; courtDivisionName?: string };
-}) {
-  return transfer.newCase?.caseId && transfer.newCase?.courtDivisionName;
-}
-
 function safeToInt(s: string) {
   const intVal = parseInt(s);
   if (isNaN(intVal)) return s;
@@ -92,11 +86,9 @@ export interface TransferOrderAccordionProps {
   expandedId?: string;
 }
 
-const enterCaseButtonId = 'buttonEnterCase';
-
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
-  const [activeButtonId, setActiveButtonId] = useState<string>(enterCaseButtonId);
+  const [activeButtonId, setActiveButtonId] = useState<string>(`suggested-cases-${order.id}`);
 
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 
@@ -139,7 +131,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   async function selectSuggestedCaseEntry(
-    _event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ): Promise<void> {
     setLoadingSuggestions(true);
     setToggleView('suggestions');
@@ -148,6 +140,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       setSuggestedCases(suggestedCases);
     }
     setLoadingSuggestions(false);
+    const button = event.target as HTMLButtonElement;
+    button.classList.add('active');
     approveButtonRef.current?.disableButton(true);
   }
 
@@ -172,6 +166,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     return result;
   }
 
+  // TODO: fmadden 03/11/24 - When a court selection is made, getCaseSummary() seems to be getting called and
+  // uses the previously set newCaseId, rather than the value in the New Case input field.
+  // as a result, you get the wrong case summary listed.
   function handleCourtSelection(selection: SearchableSelectOption) {
     const office = officesList.find((o) => o.courtDivision === selection?.value) || null;
     setNewCaseDivision(office);
@@ -274,12 +271,21 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     cancelUpdate();
     setToggleView('default');
     approveButtonRef.current?.disableButton(true);
-    setActiveButtonId(enterCaseButtonId);
+    setActiveButtonId(`enter-case-${order.id}`);
   }
 
   function onToggleButtonClick(id: string) {
-    cancelUpdate();
+    // removed call to cancelUpdate // TODO CAMS-335 Verify whether this is the right fix for pa11y
+    //caseNumberRef.current?.resetValue();
+    setOrderTransfer(getOrderTransferFromOrder(order));
+    setValidationState(ValidationStates.notValidated);
+    if (suggestedCasesRef.current) suggestedCasesRef.current.clearSelection();
+    setLoadingCaseSummary(false);
+
     setActiveButtonId(id);
+    setNewCaseSummary(null);
+    console.log('what is the case id now?', order.newCaseId);
+    approveButtonRef.current?.disableButton(true);
   }
 
   function approveOrderRejection(rejectionReason?: string) {
@@ -316,6 +322,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
+  // TODO: fmadden 03/11/24 - shouldn't this be using order.newCaseId ???
   async function getCaseSummary() {
     await api
       .get(`/cases/${order.caseId}/summary`)
@@ -495,10 +502,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     activeButtonId={activeButtonId}
                     onButtonClick={onToggleButtonClick}
                   >
-                    <Button id="buttonEnterCase" onClick={selectCaseInputEntry}>
+                    <Button id={`enter-case-${order.id}`} onClick={selectCaseInputEntry}>
                       Enter Case
                     </Button>
-                    <Button id="buttonSuggestedCases" onClick={selectSuggestedCaseEntry}>
+                    <Button id={`suggested-cases-${order.id}`} onClick={selectSuggestedCaseEntry}>
                       Suggested Cases
                     </Button>
                   </ButtonGroup>

@@ -1,6 +1,6 @@
 import './SearchableSelect.scss';
 import { SingleValue } from 'react-select';
-import { forwardRef, useEffect, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 import { fireEvent } from '@testing-library/react';
@@ -17,12 +17,17 @@ export interface SearchableSelectProps {
   value?: string;
 }
 
+type SelectRef = InputRef & {
+  setValue: (option: Record<string, string>, foo: string) => void;
+};
+
 export function MockSearchableSelectComponent(
   props: SearchableSelectProps,
   ref: React.Ref<InputRef>,
 ) {
-  const searchableSelectRef = React.useRef(null);
+  const searchableSelectRef = React.useRef<SelectRef>(null);
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
+  const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
   useEffect(() => {
     if (props.value !== undefined) {
@@ -33,34 +38,30 @@ export function MockSearchableSelectComponent(
 
   function clearValue() {
     if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'clearValue')) {
-      (searchableSelectRef.current as InputRef).clearValue();
+      searchableSelectRef.current.clearValue();
     }
   }
 
   function resetValue() {
-    type SelectRef = {
-      setValue: (option: Record<string, string>, foo: string) => void;
-    };
-
     if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
       const option = props.options.find((option) => option.value == initialValue);
       if (option) {
-        (searchableSelectRef.current as SelectRef).setValue(option, 'select-option');
+        searchableSelectRef.current.setValue(option, 'select-option');
       }
     }
   }
 
   function setValue(value: string) {
-    type SelectRef = {
-      setValue: (option: Record<string, string>, foo: string) => void;
-    };
-
     if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
       const option = props.options.find((option) => option.value == value);
       if (option) {
-        (searchableSelectRef.current as SelectRef).setValue(option, 'select-option');
+        searchableSelectRef.current.setValue(option, 'select-option');
       }
     }
+  }
+
+  function disable(value: boolean) {
+    setIsDisabled(value);
   }
 
   useImperativeHandle(ref, () => {
@@ -68,6 +69,7 @@ export function MockSearchableSelectComponent(
       clearValue,
       resetValue,
       setValue,
+      disable,
     };
   });
 
@@ -82,6 +84,7 @@ export function MockSearchableSelectComponent(
               props.onChange && props.onChange(option);
             }}
             data-value={option}
+            disabled={isDisabled}
           ></button>
         );
       })}
