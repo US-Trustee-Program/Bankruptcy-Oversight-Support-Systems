@@ -11,16 +11,17 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
-    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' src | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_common_${current_time}.svg",
-    "dependency-cruiser-ci": "npx depcruise --output-type err-long "
+    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' src | dot -T svg > ../docs/architecture/dependency-cruiser/common/dependency-graph_common_${current_time}.svg",
+    "dependency-cruiser-ci": "npx depcruise --output-type err-long src"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@faker-js/faker": "^8.4.0",
+    "dependency-cruiser": "^16.2.1",
+    "@faker-js/faker": "^8.4.1",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.11.22",
-    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@types/node": "^20.11.25",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
@@ -31,6 +32,6 @@
     "prettier": "^3.2.5",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.2"
   }
 }
