@@ -12,11 +12,13 @@ deploy_flag=$2 #workflow dispatch parameter enableBicepDeployment from GHA
 deployBicep=false #default bicep deployment to false
 containsBicep=false
 
-rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)  #continue if rg show fails
+#If rg show fails, we want to continue instead of erroring out
+rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
 
-changes=$(git diff HEAD HEAD^@) #diff of previous merge commit
-if [[ $changes == *".bicep"* && $changes == *"cloud-deployment"* ]] || [[ $changes == *"continuous-deployment.yml"* ]]; then
- #checks if most recent commit contains changes in any .bicep or in the workflow file. Changes in the workflow file have the potential to affect bicep resources withiout modifying the bicep directly
+#diff of previous merge commit  and current head only on folders containing potential infrastructure changes
+changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yaml)
+
+if [[ $changes != "" ]]; then
     containsBicep=true
 else
     containsBicep=false
@@ -24,7 +26,7 @@ fi
 
 
 
-if [[ $containsBicep == true || $rg_response == "" || $deploy_flag == "true" ]]; then
+if [[ $containsBicep == true || $rg_response == "" || $deploy_flag == true  ]]; then
     deployBicep=true
 fi
 
