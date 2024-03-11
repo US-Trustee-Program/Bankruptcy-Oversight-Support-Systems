@@ -15,7 +15,7 @@ deployBicep=false #default bicep deployment to false
 rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
 
 #diff of previous merge commit  and current head only on folders containing potential infrastructure changes
-changes=$(git diff HEAD^@ HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 
 if [[ $changes != "" || $rg_response == "" || $deploy_flag == true  ]]; then
     deployBicep=true
