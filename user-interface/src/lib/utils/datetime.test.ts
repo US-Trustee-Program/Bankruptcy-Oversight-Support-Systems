@@ -30,9 +30,9 @@ describe('Date/Time utilities', () => {
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         timeZoneName: 'short',
       });
-      const myTimeZone = timeZoneFormatter.format(new Date()).split(' ')[1];
-
-      const dateString = new Date(2023, 1, 1, 12, 1).toISOString();
+      const dateToTest = new Date(2023, 1, 1, 12, 1);
+      const dateString = dateToTest.toISOString();
+      const myTimeZone = timeZoneFormatter.format(dateToTest).split(' ')[1];
       const actual = formatDateTime(dateString);
       expect(actual).toEqual(`02/01/2023 12:01 PM ${myTimeZone}`);
     });
@@ -47,9 +47,8 @@ describe('Date/Time utilities', () => {
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         timeZoneName: 'short',
       });
-      const myTimeZone = timeZoneFormatter.format(new Date()).split(' ')[1];
-
       const date = new Date(2023, 1, 1, 12, 1);
+      const myTimeZone = timeZoneFormatter.format(date).split(' ')[1];
       const actual = formatDateTime(date);
       expect(actual).toEqual(`02/01/2023 12:01 PM ${myTimeZone}`);
     });
