@@ -144,7 +144,7 @@ jobs:
           deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
-          echo "Testing Changes"
+
   accessibility-test:
     defaults:
       run:
