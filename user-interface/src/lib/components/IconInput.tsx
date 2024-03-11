@@ -23,6 +23,9 @@ export interface IconInputProps {
 function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string>('');
+  const [isDisabled, setIsDisabled] = useState<boolean>(
+    props.disabled !== undefined ? props.disabled : false,
+  );
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInputValue(ev.target.value ?? '');
@@ -43,11 +46,16 @@ function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
     throw new Error('Not implemented');
   }
 
+  function disable(value: boolean) {
+    setIsDisabled(value);
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
       resetValue,
       setValue,
+      disable,
     };
   });
 
@@ -63,7 +71,7 @@ function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
         autoComplete={props.autocomplete}
         onChange={handleOnChange}
         data-testid={props.id}
-        disabled={props.disabled}
+        disabled={isDisabled}
         min={props.min}
         max={props.max}
         pattern={props.pattern}

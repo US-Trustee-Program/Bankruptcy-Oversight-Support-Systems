@@ -9,7 +9,6 @@ import {
   CaseSelection,
   TransferOrderAccordion,
   TransferOrderAccordionProps,
-  isValidOrderTransfer,
 } from './TransferOrderAccordion';
 import React from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -20,6 +19,12 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { getOfficeList, validateCaseNumberInput } from './dataVerificationHelper';
 import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
+
+function isValidOrderTransfer(transfer: {
+  newCase?: { caseId?: string; courtDivisionName?: string };
+}) {
+  return transfer.newCase?.caseId && transfer.newCase?.courtDivisionName;
+}
 
 vi.mock(
   '../lib/components/SearchableSelect',
