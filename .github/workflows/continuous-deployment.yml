@@ -36,7 +36,14 @@ on:
         options:
           - "false"
           - "true"
-
+      enableBicepDeployment:
+        description: "Default: false will not deploy bicep changes unless there are changes to the bicep. True will deploy bicep to Azure."
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 jobs:
   build-info:
     runs-on: ubuntu-latest
@@ -52,9 +59,12 @@ jobs:
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ vars.SLOT_NAME }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
+      deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Check environment
         id: check-env
@@ -64,7 +74,10 @@ jobs:
           shortHash="${hash:0:6}"
           echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
           echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
-
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Print build info
         id: build-info
         run: |
@@ -79,7 +92,6 @@ jobs:
           echo "Resource group appended with the following: ${resourceGroupSuffix}"
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-
           # Stack name used downstream to label build artifacts and Azure resources
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
@@ -96,7 +108,7 @@ jobs:
           echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
           echo "Slot deployment is enabled: ${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}"
           echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
-
+          echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
           # Set to true to attempt to create a new virtual network
           execVnetDeploy=${{ inputs.deployVnet || 'true' }}
           echo "Execute virtual network deployment: ${execVnetDeploy}"
@@ -118,6 +130,20 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgAppDecode
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ steps.rgApp.outputs.out }}
+
+      - name: Check Bicep Deployment
+        id: check-bicep
+        run: |
+          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
+          echo "Deploy Bicep: $deployBicep"
+          echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
 
   accessibility-test:
     defaults:
@@ -400,8 +426,8 @@ jobs:
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
-      cosmosDbClientId: ${{ steps.azure-db-deploy.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId: ${{ steps.azure-db-deploy.outputs.cosmosDbPrincipalId }}
+      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalIdEncrypted: ${{ steps.cosmosPrincipalId.outputs.out }}
 
     steps:
       - run: echo "Current git reference ${{ github.ref_name }}"
@@ -429,6 +455,7 @@ jobs:
 
       - name: Create Azure resource groups
         id: azure-resource-group
+        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
@@ -438,6 +465,7 @@ jobs:
 
       - name: Deploy Azure resources
         id: azure-deploy
+        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
             --show-what-if \
@@ -445,29 +473,9 @@ jobs:
             --file ./ops/cloud-deployment/main.bicep \
             --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
-          cosmosDbVnet=$(cat ./outputs.json | jq -r .vnetName.value)
-          echo "cosmosDbVNet=${cosmosDbVnet}" >> $GITHUB_OUTPUT
-
-          vnetName=$(cat ./outputs.json | jq -r .vnetName.value)
-          echo "vnetName=${vnetName}" >> $GITHUB_OUTPUT
-
-          webappSubnetName=$(cat ./outputs.json | jq -r .webappSubnetName.value)
-          echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-
-          webappPrivateEndpointSubnetName=$(cat ./outputs.json | jq -r .webappPrivateEndpointSubnetName.value)
-          echo "webappPrivateEndpointSubnetName=${webappPrivateEndpointSubnetName}" >> $GITHUB_OUTPUT
-
-          apiPrivateEndpointSubnetName=$(cat ./outputs.json | jq -r .apiPrivateEndpointSubnetName.value)
-          echo "apiPrivateEndpointSubnetName=${apiPrivateEndpointSubnetName}" >> $GITHUB_OUTPUT
-
-          cosmosDbSnet=$(cat ./outputs.json | jq -r .cosmosDbAllowedSubnet.value)
-          echo "cosmosDbSnet=${cosmosDbSnet}" >> $GITHUB_OUTPUT
-
-          keyVaultManagedIdName=$(cat ./outputs.json | jq -r .keyVaultManagedIdName.value)
-          echo "keyVaultManagedIdName=${keyVaultManagedIdName}" >> $GITHUB_OUTPUT
-
       - name: Deploy database
         id: azure-db-deploy
+        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
 
@@ -475,17 +483,28 @@ jobs:
             -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
             --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} allowAllNetworks=${{ vars.ENVIRONMENT != 'Main-Gov' }} actionGroupResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} \
-            -o json --query properties.outputs | tee outputs.json
+            -o json
 
-          cosmosDbClientId=$(cat ./outputs.json | jq -r .cosmosDbClientId.value)
+      - name: Check deployment and set params
+        id: set-deploy-params
+        run: |
+          cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
           echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
-          cosmosDbPrincipalId=$(cat ./outputs.json | jq -r .cosmosDbPrincipalId.value)
+          cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
           echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
-          cosmosDbManagedIdName=$(cat ./outputs.json | jq -r .cosmosDbManagedIdName.value)
+          echo "CosmosDbPrincipalId: $cosmosDbPrincipalId"
+          cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
-
+          webappSubnetName=snet-${{ needs.build-info.outputs.webappName }}
+          echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosPrincipalId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
       - name: Create Webapp Slot Resource
-        if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
+        if: (needs.build-info.outputs.slotDeploymentEnabled == 'true')
         run: |
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
             --webappName ${{ needs.build-info.outputs.webappName }} \
@@ -494,11 +513,11 @@ jobs:
             --slotName ${{ needs.build-info.outputs.slotName }} \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
             --network-rg ${{ steps.rgNetwork.outputs.out }} \
-            --vnet ${{ steps.azure-deploy.outputs.vnetName }} \
-            --subnet ${{ steps.azure-deploy.outputs.webappSubnetName }}
+            --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
+            --subnet ${{ steps.set-deploy-params.outputs.webappSubnetName }}
 
       - name: Create API Slot Resource
-        if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
+        if: (needs.build-info.outputs.slotDeploymentEnabled == 'true')
         run: |
           slotStorageAccountName=ustpslot${{ needs.build-info.outputs.environmentHash }}
 
@@ -508,9 +527,9 @@ jobs:
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --idResourceGroup ${{ secrets.AZURE_RG }} \
             --slotName ${{ needs.build-info.outputs.slotName }} \
-            --kvIdName ${{ steps.azure-deploy.outputs.keyVaultManagedIdName }} \
+            --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
             --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-            --cosmosIdName ${{ steps.azure-db-deploy.outputs.cosmosDbManagedIdName }} \
+            --cosmosIdName ${{ steps.set-deploy-params.outputs.cosmosDbManagedIdName }} \
             --storageAccName ${slotStorageAccountName:0:24}
 
   deploy-webapp:
@@ -581,6 +600,13 @@ jobs:
           op: decode
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
 
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosPrincipalId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.deploy.outputs.cosmosDbPrincipalIdEncrypted }}
+
       - name: Deploy Azure Functions backend
         id: deploy-backend-step
         continue-on-error: true
@@ -596,7 +622,7 @@ jobs:
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
       - name: Retry Deploy Azure Functions backend
@@ -614,7 +640,7 @@ jobs:
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
+          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   smoke-test-application:
