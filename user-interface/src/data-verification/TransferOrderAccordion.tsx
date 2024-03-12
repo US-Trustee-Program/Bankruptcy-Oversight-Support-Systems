@@ -322,7 +322,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
-  // TODO: fmadden 03/11/24 - shouldn't this be using order.newCaseId ???
   async function getCaseSummary() {
     await api
       .get(`/cases/${order.caseId}/summary`)
