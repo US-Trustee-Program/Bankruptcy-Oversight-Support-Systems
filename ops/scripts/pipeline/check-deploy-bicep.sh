@@ -21,7 +21,7 @@ if [[ $lastMergeCommitSha != "" && $branch == "main" ]] ; then
     # shellcheck disable=SC2086 # REASON: Qoutes render the commit sha unusable
     changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 elif [[ $branch != "main" ]]; then
-    changes=$(git diff HEAD master -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+    changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 else
     changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 fi
