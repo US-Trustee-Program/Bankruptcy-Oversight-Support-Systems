@@ -18,7 +18,7 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { getOfficeList, validateCaseNumberInput } from './dataVerificationHelper';
-import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/SearchableSelect.mock';
 
 function isValidOrderTransfer(transfer: {
   newCase?: { caseId?: string; courtDivisionName?: string };
@@ -138,6 +138,7 @@ describe('TransferOrderAccordion', () => {
   }
 
   beforeEach(async () => {
+    vi.stubEnv('CAMS_PA11Y', 'true');
     order = MockData.getTransferOrder();
     vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
       message: '',
@@ -290,6 +291,15 @@ describe('TransferOrderAccordion', () => {
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
 
+    const patchSpy = vi.spyOn(Chapter15MockApi, 'patch').mockResolvedValue({
+      message: 'Rejected',
+      count: 1,
+      body: {
+        dateFiled: order.dateFiled,
+        debtor: order.debtor,
+      },
+    });
+
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
     });
@@ -308,8 +318,9 @@ describe('TransferOrderAccordion', () => {
 
     selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
+    const caseNumber = '24-12345';
     const input = findCaseNumberInputInAccordion(order.id);
-    enterCaseNumberInAccordion(input, '24-12345');
+    enterCaseNumberInAccordion(input, caseNumber);
 
     let approveButton;
     await waitFor(() => {
@@ -329,13 +340,40 @@ describe('TransferOrderAccordion', () => {
     await waitFor(async () => {
       expect(orderUpdateSpy).toHaveBeenCalled();
     });
+
+    const expectedInput = {
+      caseId: order.caseId,
+      id: order.id,
+      newCase: {
+        caseId: `${testOffices[0].courtDivision}-${caseNumber}`,
+        courtDivision: testOffices[0].courtDivision,
+        courtDivisionName: testOffices[0].courtDivisionName,
+        courtName: testOffices[0].courtName,
+        regionId: testOffices[0].regionId,
+        regionName: testOffices[0].regionName,
+      },
+      orderType: 'transfer',
+      status: 'approved',
+    };
+
+    expect(patchSpy).toHaveBeenCalledWith(`/orders/${order.id}`, expectedInput);
   });
 
   test('should properly reject when API returns a successful response and a reason is supplied', async () => {
     let heading: HTMLElement;
+
     const orderUpdateSpy = vi
       .fn()
       .mockImplementation((_alertDetails: AlertDetails, _order?: TransferOrder) => {});
+
+    const patchSpy = vi.spyOn(Chapter15MockApi, 'patch').mockResolvedValue({
+      message: 'Rejected',
+      count: 1,
+      body: {
+        dateFiled: order.dateFiled,
+        debtor: order.debtor,
+      },
+    });
 
     renderWithProps({
       onOrderUpdate: orderUpdateSpy,
@@ -381,6 +419,11 @@ describe('TransferOrderAccordion', () => {
     });
     fireEvent.click(confirmModal!);
 
+    const rejectedOrder = {
+      ...order,
+      status: 'rejected',
+      reason: rejectionValue,
+    };
     await waitFor(async () => {
       expect(orderUpdateSpy).toHaveBeenCalledWith(
         {
@@ -388,12 +431,18 @@ describe('TransferOrderAccordion', () => {
           type: UswdsAlertStyle.Success,
           timeOut: 8,
         },
-        {
-          ...order,
-          status: 'rejected',
-          reason: rejectionValue,
-        },
+        rejectedOrder,
       );
+
+      const expectedInput = {
+        caseId: rejectedOrder.caseId,
+        id: rejectedOrder.id,
+        orderType: 'transfer',
+        reason: rejectionValue,
+        status: 'rejected',
+      };
+
+      expect(patchSpy).toHaveBeenCalledWith(`/orders/${order.id}`, expectedInput);
     });
   });
 
@@ -666,7 +715,7 @@ describe('TransferOrderAccordion', () => {
     selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const caseIdInput = findCaseNumberInputInAccordion(order.id);
-    expect(caseIdInput).toHaveValue(order.newCaseId);
+    expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
 
     const caseLookup = MockData.getCaseSummary({
       entityType: 'person',
@@ -703,7 +752,7 @@ describe('TransferOrderAccordion', () => {
     fireEvent.click(cancelButton!);
 
     await waitFor(() => {
-      expect(caseIdInput).toHaveValue(order.newCaseId);
+      expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
     });
   });
 
@@ -798,18 +847,18 @@ describe('TransferOrderAccordion', () => {
     const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
-    let newCaseIdText;
+    let newCaseNumberText;
     await waitFor(async () => {
-      newCaseIdText = findCaseNumberInputInAccordion(order.id);
-      expect(newCaseIdText).toHaveValue(order.newCaseId);
+      newCaseNumberText = findCaseNumberInputInAccordion(order.id);
+      expect(newCaseNumberText).toHaveValue(order.docketSuggestedCaseNumber);
     });
 
     const newValue = '22-33333';
-    enterCaseNumberInAccordion(newCaseIdText, newValue);
+    enterCaseNumberInAccordion(newCaseNumberText, newValue);
 
     await waitFor(async () => {
-      const newCaseIdText = screen.getByTestId(`new-case-input-${order.id}`);
-      expect(newCaseIdText).toHaveValue(newValue);
+      const newCaseNumberText = screen.getByTestId(`new-case-input-${order.id}`);
+      expect(newCaseNumberText).toHaveValue(newValue);
     });
     //add test for changing caseID line 225-226
   });
@@ -824,16 +873,16 @@ describe('TransferOrderAccordion', () => {
     const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
-    let newCaseIdText;
+    let newCaseNumberText;
     await waitFor(async () => {
-      newCaseIdText = findCaseNumberInputInAccordion(order.id);
-      expect(newCaseIdText).toHaveValue(order.newCaseId);
+      newCaseNumberText = findCaseNumberInputInAccordion(order.id);
+      expect(newCaseNumberText).toHaveValue(order.docketSuggestedCaseNumber);
     });
 
     selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newValue = '22-33333';
-    enterCaseNumberInAccordion(newCaseIdText, newValue);
+    enterCaseNumberInAccordion(newCaseNumberText, newValue);
 
     await waitFor(async () => {
       const validatedCases = screen.getByTestId(`validated-cases`);
@@ -854,16 +903,16 @@ describe('TransferOrderAccordion', () => {
     const heading = findAccordionHeading(order.id);
     if (heading) fireEvent.click(heading);
 
-    let newCaseIdText;
+    let newCaseNumberText;
     await waitFor(async () => {
-      newCaseIdText = findCaseNumberInputInAccordion(order.id);
-      expect(newCaseIdText).toHaveValue(order.newCaseId);
+      newCaseNumberText = findCaseNumberInputInAccordion(order.id);
+      expect(newCaseNumberText).toHaveValue(order.docketSuggestedCaseNumber);
     });
 
     selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
     const newValue = '77-77777';
-    enterCaseNumberInAccordion(newCaseIdText, newValue);
+    enterCaseNumberInAccordion(newCaseNumberText, newValue);
 
     await waitFor(async () => {
       const validatedCases = screen.queryByTestId(`validated-cases`);

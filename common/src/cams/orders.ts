@@ -19,7 +19,7 @@ export type TransferOrder = CaseSummary & {
   orderDate: string;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
-  newCaseId?: string;
+  docketSuggestedCaseNumber?: string;
   newCase?: CaseSummary;
   reason?: string;
 };

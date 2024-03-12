@@ -111,9 +111,9 @@ describe('Case detail basic information panel', () => {
         </BrowserRouter>,
       );
 
-      const newCaseIdLink = screen.queryByTestId('case-detail-transfer-link-0');
-      expect(newCaseIdLink).toBeInTheDocument();
-      expect(newCaseIdLink?.textContent).toEqual(getCaseNumber(NEW_CASE_ID));
+      const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
+      expect(newCaseNumberLink).toBeInTheDocument();
+      expect(newCaseNumberLink?.textContent).toEqual(getCaseNumber(NEW_CASE_ID));
 
       const newCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(newCaseOrderDate).toBeInTheDocument();
@@ -137,9 +137,9 @@ describe('Case detail basic information panel', () => {
         </BrowserRouter>,
       );
 
-      const newCaseIdLink = screen.queryByTestId('case-detail-transfer-link-0');
-      expect(newCaseIdLink).toBeInTheDocument();
-      expect(newCaseIdLink?.textContent).toEqual(getCaseNumber(NEW_CASE_ID));
+      const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
+      expect(newCaseNumberLink).toBeInTheDocument();
+      expect(newCaseNumberLink?.textContent).toEqual(getCaseNumber(NEW_CASE_ID));
 
       const newCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(newCaseOrderDate).toBeInTheDocument();

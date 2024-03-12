@@ -13,7 +13,7 @@ import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-
 
 const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
-    newCaseId: '22-111111',
+    docketSuggestedCaseNumber: '22-111111',
     rawRec: 'NNNNNN WARN: 22-111111',
     sequenceNumber: 0,
     dateFiled: '2023-12-01',
