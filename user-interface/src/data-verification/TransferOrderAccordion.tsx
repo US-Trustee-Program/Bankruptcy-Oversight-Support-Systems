@@ -33,12 +33,13 @@ type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
 };
 
+// TODO: we're assigning a case number to a case id. This needs some thought.
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
-  const { id, caseId, newCaseId } = order;
+  const { id, caseId, docketSuggestedCaseNumber } = order;
   return {
     id,
     caseId,
-    newCase: { caseId: newCaseId },
+    newCase: { caseId: docketSuggestedCaseNumber },
     orderType: order.orderType,
   };
 }
@@ -111,7 +112,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const [toggleView, setToggleView] = useState<'default' | 'suggestions'>('default');
   const [suggestedCases, setSuggestedCases] = useState<CaseSummary[] | null>(null);
   const [newCaseDivision, setNewCaseDivision] = useState<OfficeDetails | null>(null);
-  const [newCaseNumber, setNewCaseNumber] = useState<string | null>(order.newCaseId || null);
+  const [newCaseNumber, setNewCaseNumber] = useState<string | null>(
+    order.docketSuggestedCaseNumber || null,
+  );
 
   async function getTransferredCaseSuggestions(caseId: string): Promise<CaseSummary[] | null> {
     const suggestions = await api
@@ -167,7 +170,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   // TODO: fmadden 03/11/24 - When a court selection is made, getCaseSummary() seems to be getting called and
-  // uses the previously set newCaseId, rather than the value in the New Case input field.
+  // uses the previously set case number, rather than the value in the New Case input field.
   // as a result, you get the wrong case summary listed.
   function handleCourtSelection(selection: SearchableSelectOption) {
     const office = officesList.find((o) => o.courtDivision === selection?.value) || null;
@@ -580,7 +583,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             id={`new-case-input-${order.id}`}
                             data-testid={`new-case-input-${order.id}`}
                             className="usa-input"
-                            value={order.newCaseId}
+                            value={order.docketSuggestedCaseNumber}
                             onChange={handleCaseInputChange}
                             aria-label="New case ID"
                             ref={caseNumberRef}

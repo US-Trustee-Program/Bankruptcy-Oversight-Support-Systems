@@ -109,7 +109,18 @@ describe('Test case assignment cosmosdb repository tests', () => {
     );
     expect(testResult).toEqual({ id: testNewOrderData.id });
     expect(mockRead).toHaveBeenCalled();
-    expect(mockReplace).toHaveBeenCalled();
+
+    const updatedOrder = {
+      ...testNewOrderData,
+      ...testNewOrderTransferData,
+      docketSuggestedCaseNumber: undefined,
+      orderType: 'transfer',
+      status: 'approved',
+    };
+    expect(mockReplace).not.toHaveBeenCalledWith(
+      expect.objectContaining({ caseId: testNewOrderData.caseId }),
+    );
+    expect(mockReplace).toHaveBeenCalledWith(updatedOrder);
   });
 
   test('Should throw a NotFoundError if attempting to update a document that does not exist.', async () => {
