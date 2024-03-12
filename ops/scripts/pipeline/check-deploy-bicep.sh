@@ -17,9 +17,11 @@ rg_response=$(az group show --name "${app_rg}" --query "[name]" -o tsv  || true)
 branch=$(git branch --show-current)
 # shellcheck disable=SC2086 # REASON: Quotes renders the branch unusable
 lastMergeCommitSha=$(git log ${branch} --first-parent --pretty=format:"%H" --merges -n 1)
-if [[ $lastMergeCommitSha != "" ]]; then
+if [[ $lastMergeCommitSha != "" && $branch == "main" ]] ; then
     # shellcheck disable=SC2086 # REASON: Qoutes render the commit sha unusable
     changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+elif [[ $branch != "main" ]]; then
+    changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 else
     changes=$(git diff HEAD^@ -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 fi
