@@ -417,6 +417,7 @@ jobs:
         build-info,
         build-frontend,
         build-service,
+        build-common,
         accessibility-test,
         security-sast-scan,
         security-sca-scan-frontend,
