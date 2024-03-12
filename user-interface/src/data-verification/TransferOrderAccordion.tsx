@@ -284,7 +284,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
 
     setActiveButtonId(id);
     setNewCaseSummary(null);
-    console.log('what is the case id now?', order.newCaseId);
     approveButtonRef.current?.disableButton(true);
   }
 

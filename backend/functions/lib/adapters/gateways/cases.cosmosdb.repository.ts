@@ -90,23 +90,21 @@ export class CasesCosmosDbRepository implements CasesRepository {
   }
 
   private async create<T>(context: ApplicationContext, itemToCreate: T): Promise<T> {
-    console.log('Creating a resource:', itemToCreate);
     try {
       try {
         const { resource } = await this.cosmosDbClient
           .database(this.cosmosConfig.databaseName)
           .container(this.containerName)
           .items.create(itemToCreate);
-        console.log('Created the following resource:', resource);
+        context.logger.info(MODULE_NAME, 'Created the following resource:', resource);
         return resource;
       } catch (e) {
         if (!isPreExistingDocumentError(e)) {
-          console.log('Item already exists:', itemToCreate);
+          context.logger.info(MODULE_NAME, 'Item already exists: ', itemToCreate);
           throw e;
         }
       }
     } catch (originalError) {
-      console.log(originalError);
       context.logger.error(
         MODULE_NAME,
         `${originalError.status} : ${originalError.name} : ${originalError.message}`,
