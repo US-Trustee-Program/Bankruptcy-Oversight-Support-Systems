@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
-import Api from '../lib/models/api';
-import MockApi from '../lib/models/chapter15-mock.api.cases';
 import './DataVerificationScreen.scss';
 import { OfficesResponseData, OrderResponseData, Order } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
@@ -21,6 +19,7 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { sortDates } from '@/lib/utils/datetime';
+import { useApi } from '@/lib/hooks/UseApi';
 
 export interface AlertDetails {
   message: string;
@@ -50,7 +49,7 @@ export default function DataVerificationScreen() {
     timeOut: 8,
   });
 
-  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  const api = useApi();
   const regionNumber = '02';
 
   async function getOrders() {
