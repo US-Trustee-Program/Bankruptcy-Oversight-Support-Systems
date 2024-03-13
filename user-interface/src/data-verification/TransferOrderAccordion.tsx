@@ -134,7 +134,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   async function selectSuggestedCaseEntry(
-    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    _event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ): Promise<void> {
     setLoadingSuggestions(true);
     setToggleView('suggestions');
@@ -143,8 +143,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       setSuggestedCases(suggestedCases);
     }
     setLoadingSuggestions(false);
-    const button = event.target as HTMLButtonElement;
-    button.classList.add('active');
     approveButtonRef.current?.disableButton(true);
   }
 
