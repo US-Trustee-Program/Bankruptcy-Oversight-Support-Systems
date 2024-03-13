@@ -33,13 +33,11 @@ type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
 };
 
-// TODO: we're assigning a case number to a case id. This needs some thought.
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
-  const { id, caseId, docketSuggestedCaseNumber } = order;
+  const { id, caseId } = order;
   return {
     id,
     caseId,
-    newCase: { caseId: docketSuggestedCaseNumber },
     orderType: order.orderType,
   };
 }
@@ -249,15 +247,19 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       });
   }
 
-  function cancelUpdate(): void {
-    courtSelectionRef.current?.clearValue();
-    caseNumberRef.current?.resetValue();
-    approveButtonRef.current?.disableButton(true);
+  function resetState() {
     setOrderTransfer(getOrderTransferFromOrder(order));
     setNewCaseSummary(null);
     setValidationState(ValidationStates.notValidated);
     if (suggestedCasesRef.current) suggestedCasesRef.current.clearSelection();
     setLoadingCaseSummary(false);
+    approveButtonRef.current?.disableButton(true);
+  }
+
+  function cancelUpdate(): void {
+    courtSelectionRef.current?.clearValue();
+    caseNumberRef.current?.resetValue();
+    resetState();
   }
 
   function confirmAction(status: OrderStatus, reason?: string): void {
@@ -276,16 +278,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   }
 
   function onToggleButtonClick(id: string) {
-    // removed call to cancelUpdate // TODO CAMS-335 Verify whether this is the right fix for pa11y
-    //caseNumberRef.current?.resetValue();
-    setOrderTransfer(getOrderTransferFromOrder(order));
-    setValidationState(ValidationStates.notValidated);
-    if (suggestedCasesRef.current) suggestedCasesRef.current.clearSelection();
-    setLoadingCaseSummary(false);
-
+    resetState();
     setActiveButtonId(id);
-    setNewCaseSummary(null);
-    approveButtonRef.current?.disableButton(true);
   }
 
   function approveOrderRejection(rejectionReason?: string) {
