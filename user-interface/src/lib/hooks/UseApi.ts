@@ -30,7 +30,7 @@ export function setApiContext(api: ApiClient) {
  * @returns ApiClient
  */
 export function useApi(): ApiClient {
-  return context ? context : legacyConfiguration();
+  return context ?? legacyConfiguration();
 }
 
 export interface ApiClient {
