@@ -19,7 +19,7 @@ export type TransferOrder = CaseSummary & {
   orderDate: string;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
-  newCaseId?: string;
+  docketSuggestedCaseNumber?: string;
   newCase?: CaseSummary;
   reason?: string;
 };
@@ -64,6 +64,7 @@ export function isConsolidationOrder(order: Order): order is ConsolidationOrder 
 type TransferOrderActionRejection = {
   id: string;
   caseId: string;
+  orderType: 'transfer';
   status: 'rejected';
   reason?: string;
 };
@@ -71,6 +72,7 @@ type TransferOrderActionRejection = {
 type TransferOrderActionApproval = {
   id: string;
   caseId: string;
+  orderType: 'transfer';
   newCase: Partial<CaseSummary>;
   status: 'approved';
 };

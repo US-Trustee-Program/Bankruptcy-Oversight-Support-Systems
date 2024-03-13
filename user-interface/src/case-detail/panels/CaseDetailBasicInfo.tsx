@@ -262,7 +262,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                         <div>
                           <span className="case-detail-item-name">Case Number:</span>
                           <CaseNumber
-                            caseNumber={transfer.otherCaseId}
+                            caseId={transfer.otherCaseId}
                             className="usa-link case-detail-item-value"
                             data-testid={`case-detail-transfer-link-${idx}`}
                           />

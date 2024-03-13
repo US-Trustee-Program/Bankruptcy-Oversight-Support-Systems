@@ -26,6 +26,9 @@ const BLANK = '';
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string>(props.value || BLANK);
+  const [inputDisabled, setInputDisabled] = useState<boolean>(
+    props.disabled !== undefined ? props.disabled : false,
+  );
 
   function resetValue() {
     setInputValue(props.value || BLANK);
@@ -39,6 +42,10 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputValue(value);
   }
 
+  function disable(value: boolean) {
+    setInputDisabled(value);
+  }
+
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInputValue(ev.target.value);
     if (props.onChange) {
@@ -50,7 +57,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputValue(props.value || BLANK);
   }, [props.value]);
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue }));
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, disable }));
 
   return (
     <input
@@ -63,7 +70,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
       autoComplete={props.autocomplete}
       onChange={handleOnChange}
       data-testid={props.id}
-      disabled={props.disabled}
+      disabled={inputDisabled}
       min={props.min}
       max={props.max}
       pattern={props.pattern}

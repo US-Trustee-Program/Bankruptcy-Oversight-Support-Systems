@@ -86,6 +86,7 @@ describe('Orders use case', () => {
 
     const action: TransferOrderAction = {
       id: order.id,
+      orderType: 'transfer',
       caseId: order.caseId,
       newCase: order.newCase,
       status: 'approved',
@@ -129,6 +130,7 @@ describe('Orders use case', () => {
     const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'rejected' } });
     const orderTransfer: TransferOrderAction = {
       id: order.id,
+      orderType: 'transfer',
       caseId: order.caseId,
       status: 'rejected',
     };

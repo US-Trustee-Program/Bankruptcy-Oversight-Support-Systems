@@ -16,7 +16,7 @@ describe('Review Orders screen - Alert', () => {
 
   test('should display alert and update order list when an order is updated by the TransferOrderAccordion', async () => {
     const mockOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
-    const mockAlertMessage = `Transfer of case to ${mockOrder.newCaseId} in ${mockOrder.newCase?.courtName} (${mockOrder.newCase?.courtDivisionName}) was approved.`;
+    const mockAlertMessage = `Transfer of case to ${mockOrder.docketSuggestedCaseNumber} in ${mockOrder.newCase?.courtName} (${mockOrder.newCase?.courtDivisionName}) was approved.`;
 
     vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
       (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {

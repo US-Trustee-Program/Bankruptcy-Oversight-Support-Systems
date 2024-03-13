@@ -15,6 +15,11 @@ describe('Test suggested cases', () => {
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
 
+  function getSuggestedCasesButton(orderId?: string) {
+    const theOrderId = orderId !== undefined ? orderId : order.id;
+    return document.querySelector(`#suggested-cases-${theOrderId}`);
+  }
+
   const testOffices: OfficeDetails[] = [
     {
       courtDivision: '001',
@@ -95,7 +100,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonSuggestedCases');
+    const button = getSuggestedCasesButton();
     fireEvent.click(button!);
 
     await waitFor(() => {
@@ -107,7 +112,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonSuggestedCases');
+    const button = getSuggestedCasesButton();
     fireEvent.click(button!);
 
     await waitFor(() => {
@@ -120,7 +125,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonSuggestedCases');
+    const button = getSuggestedCasesButton();
     fireEvent.click(button!);
 
     let case0;
@@ -154,7 +159,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const button = document.querySelector('#buttonSuggestedCases');
+    const button = getSuggestedCasesButton();
     fireEvent.click(button!);
 
     await waitFor(() => {
@@ -172,7 +177,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const suggestedButton = document.querySelector('#buttonSuggestedCases');
+    const suggestedButton = getSuggestedCasesButton();
     fireEvent.click(suggestedButton!);
 
     let case0;
@@ -192,7 +197,7 @@ describe('Test suggested cases', () => {
       expect(approveButton).toBeEnabled();
     });
 
-    const defaultButton = document.querySelector('#buttonEnterCase');
+    const defaultButton = document.querySelector(`#enter-case-${order.id}`);
     fireEvent.click(defaultButton!);
 
     approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
@@ -203,7 +208,7 @@ describe('Test suggested cases', () => {
     renderWithProps();
 
     // select the suggestions button
-    const suggestedButton = document.querySelector('#buttonSuggestedCases');
+    const suggestedButton = getSuggestedCasesButton();
     fireEvent.click(suggestedButton!);
 
     let case0;
@@ -239,7 +244,7 @@ describe('Test suggested cases', () => {
 
     vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('MockError'));
 
-    const suggestedButton = document.querySelector('#buttonSuggestedCases');
+    const suggestedButton = getSuggestedCasesButton();
     fireEvent.click(suggestedButton!);
 
     await waitFor(async () => {

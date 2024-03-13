@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { getCaseNumber } from '../utils/formatCaseNumber';
 
 export interface CaseNumberProps {
-  caseNumber: string;
+  caseId: string;
   renderAs?: 'link' | 'span';
   openLinkIn?: 'same-window' | 'new-window';
   className?: string;
@@ -10,21 +10,21 @@ export interface CaseNumberProps {
 }
 
 export function CaseNumber(props: CaseNumberProps) {
-  const { className, caseNumber, renderAs = 'link', openLinkIn = 'new-window' } = props;
+  const { className, caseId, renderAs = 'link', openLinkIn = 'new-window' } = props;
   const dataTestId = props['data-testid'];
   const span = (
     <span className={className ?? ''} data-testid={dataTestId}>
-      {getCaseNumber(caseNumber)}
+      {getCaseNumber(caseId)}
     </span>
   );
   if (renderAs === 'link') {
     const target = openLinkIn === 'new-window' ? '_blank' : '_self';
     return (
       <Link
-        to={`/case-detail/${caseNumber}/`}
+        to={`/case-detail/${caseId}/`}
         className={`usa-link`}
         data-testid={`${dataTestId}-link`}
-        title={`Open case ${caseNumber}`}
+        title={`Open case ${caseId}`}
         target={target}
         reloadDocument={true}
       >

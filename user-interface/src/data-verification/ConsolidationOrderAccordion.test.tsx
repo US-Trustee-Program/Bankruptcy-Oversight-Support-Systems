@@ -11,6 +11,9 @@ import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
+import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -42,6 +45,15 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   const onOrderUpdateMockFunc = vitest.fn();
   const onExpandMockFunc = vitest.fn();
+
+  beforeEach(async () => {
+    vi.stubEnv('CAMS_PA11Y', 'true');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
 
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
@@ -143,8 +155,21 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(courtSelectDiv).not.toBeInTheDocument();
   });
 
-  test.skip('should call orderUpdate with expected parameters when approval process is completed', async () => {
+  test('should call orderUpdate with expected parameters when approval process is completed', async () => {
     renderWithProps();
+
+    const leadCase = order.childCases[0];
+    const expectedOrderApproved: ConsolidationOrder = {
+      ...order,
+      leadCase,
+      status: 'approved',
+    };
+
+    vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [expectedOrderApproved],
+    });
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
@@ -163,22 +188,27 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modal).toHaveStyle({ display: 'block' });
     });
 
-    screen.debug(modal);
-
     // select the lead case in the modal and click the submit button.
     selectItemInMockSelect('lead-case-court', 1);
-    const modalCaseNumberInput = screen.getByTestId(`lead-case-input-${order.id}`);
+    const modalCaseNumberInput = screen.getByTestId(
+      `lead-case-input-confirmation-modal-${order.id}`,
+    );
     fireEvent.change(modalCaseNumberInput!, {
-      target: { value: order.childCases[0].caseId },
+      target: { value: getCaseNumber(leadCase.caseId) },
     });
     const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
-      expect(onOrderUpdateMockFunc).toHaveBeenCalledWith({
-        status: 'approved',
-        leadCaseId: 'abcd',
-      });
+      expect(onOrderUpdateMockFunc).toHaveBeenCalledWith(
+        {
+          message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${leadCase.courtName} (${leadCase?.courtDivisionName}) was successful.`,
+          timeOut: 8,
+          type: UswdsAlertStyle.Success,
+        },
+        [expectedOrderApproved],
+        order,
+      );
     });
   });
 });

@@ -2,7 +2,7 @@
 // refactor - let's find a way to avoid using any
 import './SearchableSelect.scss';
 import ReactSelect, { SingleValue } from 'react-select';
-import { forwardRef, useEffect, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 
@@ -21,6 +21,8 @@ export interface SearchableSelectProps {
 function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<InputRef>) {
   const searchableSelectRef = React.useRef(null);
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
+
+  const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
   useEffect(() => {
     if (props.value !== undefined) {
@@ -115,11 +117,16 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
     }
   }
 
+  function disable(value: boolean) {
+    setIsDisabled(value);
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
       resetValue,
       setValue,
+      disable,
     };
   });
 
@@ -135,6 +142,7 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
       data-testid={props.id}
       ref={searchableSelectRef}
       isSearchable={true}
+      isDisabled={isDisabled}
     ></ReactSelect>
   );
 }

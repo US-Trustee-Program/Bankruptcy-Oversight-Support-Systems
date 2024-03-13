@@ -89,6 +89,7 @@ export class OrdersUseCase {
     id: string,
     data: TransferOrderAction,
   ): Promise<string> {
+    context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     let order: Order;
     if (isTransferOrder(initialOrder)) {
@@ -99,7 +100,7 @@ export class OrdersUseCase {
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
         const transferIn: TransferIn = {
-          caseId: order.newCaseId,
+          caseId: order.newCase.caseId,
           otherCaseId: order.caseId,
           divisionName: order.courtDivisionName,
           courtName: order.courtName,

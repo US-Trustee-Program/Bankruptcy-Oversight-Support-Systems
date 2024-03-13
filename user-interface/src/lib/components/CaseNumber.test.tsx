@@ -5,9 +5,9 @@ import { CaseNumber, CaseNumberProps } from './CaseNumber';
 describe('CaseNumber component', () => {
   const testId = 'the-case-number';
   const linkTestId = testId + '-link';
-  const caseNumber = '000-11-22222';
+  const caseId = '000-11-22222';
   const expectedTextContent = '11-22222';
-  const defaultProps: CaseNumberProps = { caseNumber, 'data-testid': testId };
+  const defaultProps: CaseNumberProps = { caseId, 'data-testid': testId };
 
   function renderWithProps(props: CaseNumberProps) {
     render(
@@ -30,8 +30,8 @@ describe('CaseNumber component', () => {
 
     const link = screen.getByTestId(linkTestId);
     expect(link).toBeInTheDocument();
-    expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseNumber}/`);
-    expect(link.attributes.getNamedItem('title')?.value).toEqual(`Open case ${caseNumber}`);
+    expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseId}/`);
+    expect(link.attributes.getNamedItem('title')?.value).toEqual(`Open case ${caseId}`);
     expect(link.attributes.getNamedItem('target')?.value).toEqual('_blank');
 
     const span = screen.getByTestId(testId);

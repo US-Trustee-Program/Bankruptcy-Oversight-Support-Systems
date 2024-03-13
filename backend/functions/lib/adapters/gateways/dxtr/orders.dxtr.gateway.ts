@@ -28,7 +28,7 @@ export interface DxtrOrderDocketEntry extends CaseDocketEntry {
   // of type BIGINT in MS-SQL Server.
   txId: string;
   dxtrCaseId: string;
-  newCaseId?: string;
+  docketSuggestedCaseNumber?: string;
   rawRec: string;
 }
 
@@ -117,7 +117,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         }
 
         if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
-          de.newCaseId = de.rawRec.split('WARN:')[1].trim();
+          de.docketSuggestedCaseNumber = de.rawRec.split('WARN:')[1].trim();
         }
         delete de.rawRec;
         delete de.txId;
@@ -226,7 +226,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         }
 
         if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
-          de.newCaseId = de.rawRec.split('WARN:')[1].trim();
+          de.docketSuggestedCaseNumber = de.rawRec.split('WARN:')[1].trim();
         }
         delete de.rawRec;
         delete de.txId;
@@ -253,9 +253,9 @@ export class DxtrOrdersGateway implements OrdersGateway {
             const docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
             rawOrder.docketEntries = docketEntries;
             docketEntries.forEach((docket) => {
-              if (docket.newCaseId) {
-                rawOrder.newCaseId = docket.newCaseId;
-                delete docket.newCaseId;
+              if (docket.docketSuggestedCaseNumber) {
+                rawOrder.docketSuggestedCaseNumber = docket.docketSuggestedCaseNumber;
+                delete docket.docketSuggestedCaseNumber;
               }
             });
           }

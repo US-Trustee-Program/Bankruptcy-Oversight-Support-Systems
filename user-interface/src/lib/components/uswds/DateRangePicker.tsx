@@ -18,6 +18,7 @@ export interface DateRangePickerProps {
   onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   startDateLabel?: string;
   endDateLabel?: string;
+  disabled?: boolean;
 }
 
 function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<InputRef>) {
@@ -29,6 +30,9 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
   });
   const [startDateValue, setStartDateValue] = useState<string | null>(null);
   const [endDateValue, setEndDateValue] = useState<string | null>(null);
+  const [isDisabled, setIsDisabled] = useState<boolean>(
+    props.disabled !== undefined ? props.disabled : false,
+  );
 
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
@@ -60,11 +64,16 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
     throw new Error('Not implemented');
   }
 
+  function disable(value: boolean) {
+    setIsDisabled(value);
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
       resetValue,
       setValue,
+      disable,
     };
   });
 
@@ -92,6 +101,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
             max={internalDateRange.end}
             data-testid={id + '-date-start'}
             value={startDateValue === null ? undefined : startDateValue}
+            disabled={isDisabled}
           />
         </div>
       </div>

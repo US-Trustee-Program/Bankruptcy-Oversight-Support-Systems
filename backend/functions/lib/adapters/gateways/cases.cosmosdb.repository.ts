@@ -96,9 +96,11 @@ export class CasesCosmosDbRepository implements CasesRepository {
           .database(this.cosmosConfig.databaseName)
           .container(this.containerName)
           .items.create(itemToCreate);
+        context.logger.info(MODULE_NAME, 'Created the following resource:', resource);
         return resource;
       } catch (e) {
         if (!isPreExistingDocumentError(e)) {
+          context.logger.info(MODULE_NAME, 'Item already exists: ', itemToCreate);
           throw e;
         }
       }
