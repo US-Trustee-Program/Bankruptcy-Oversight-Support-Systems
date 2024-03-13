@@ -4,7 +4,7 @@ import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 
 // TODO: Possibly use the React Context API to scope the API context to the DOM rather than the module. Add a provider component to configure the API context.
-let context = legacyConfiguration();
+let context: ApiClient;
 
 /**
  * Factory function returning an API client instance based on legacy environment variable setting.
@@ -30,7 +30,7 @@ export function setApiContext(api: ApiClient) {
  * @returns ApiClient
  */
 export function useApi(): ApiClient {
-  return context;
+  return context ? context : legacyConfiguration();
 }
 
 export interface ApiClient {
