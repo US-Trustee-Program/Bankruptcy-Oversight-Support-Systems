@@ -13,12 +13,12 @@ import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-
 
 const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
-    docketSuggestedCaseNumber: '22-111111',
-    rawRec: 'NNNNNN WARN: 22-111111',
+    docketSuggestedCaseNumber: '22-11111',
+    rawRec: 'NNNNNN WARN: 22-11111',
     sequenceNumber: 0,
     dateFiled: '2023-12-01',
     txId: '1',
-    dxtrCaseId: '111111',
+    dxtrCaseId: '11111',
     documentNumber: 0,
     summaryText: 'Summary Text',
     fullText: 'This is the full text.',
@@ -28,7 +28,7 @@ const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
     sequenceNumber: 1,
     dateFiled: '2023-12-01',
     txId: '2',
-    dxtrCaseId: '111111',
+    dxtrCaseId: '11111',
     documentNumber: 1,
     summaryText: 'Some other Text',
     fullText: 'This is the other full text.',
@@ -37,7 +37,7 @@ const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
 
 const dxtrOrder: DxtrOrder = {
   ...MockData.getTransferOrder(),
-  dxtrCaseId: '111111',
+  dxtrCaseId: '11111',
 };
 
 const dxtrOrderDocument: DxtrOrderDocument = {
