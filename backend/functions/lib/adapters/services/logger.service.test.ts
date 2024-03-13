@@ -52,4 +52,24 @@ describe('Basic logger service tests', () => {
     logger.info('FOO-MODULE_NAME', '\r\ntest\r\nmessage\r\n');
     expect(mockLog).toHaveBeenCalledWith('[INFO] [FOO-MODULE_NAME]  test message');
   });
+
+  test('Test disallowed properties to ensure PII is not logged', async () => {
+    logger.info('FOO-MODULE_NAME', 'test message', {
+      sSN: '111-11-1111',
+      tAxid: '11-1111111',
+      prop1: 'foo',
+      prop2: 'bar',
+      prop3: {
+        ssn: '123-45-6789',
+        prop3a: 'foo-a',
+        prop3b: {
+          taxID: '33-3333333',
+          prop3aa: 'test',
+        },
+      },
+    });
+    expect(mockLog).toHaveBeenCalledWith(
+      '[INFO] [FOO-MODULE_NAME] test message {"prop1":"foo","prop2":"bar","prop3":{"prop3a":"foo-a","prop3b":{"prop3aa":"test"}}}',
+    );
+  });
 });

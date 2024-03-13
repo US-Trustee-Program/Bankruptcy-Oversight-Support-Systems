@@ -83,11 +83,12 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
 
       // ONLY gather the mutable properties, however many there are.
       // const { id: _id, ...mutableProperties } = data;
-      const { id: _id, ...mutableProperties } = data;
+      const { id: _id, orderType: _orderType, ...mutableProperties } = data;
 
       const updatedOrder = {
         ...existingOrder,
         ...mutableProperties,
+        docketSuggestedCaseNumber: undefined,
       };
 
       await this.cosmosDbClient

@@ -32,8 +32,12 @@ function randomInt(range: number) {
   return Math.floor(Math.random() * range);
 }
 
+function randomCaseNumber() {
+  return '99-' + ('00000' + randomInt(99999)).slice(-5);
+}
+
 function randomCaseId(divisionCode: string = '999') {
-  return divisionCode + '-99-' + ('00000' + randomInt(99999)).slice(-5);
+  return divisionCode + '-' + randomCaseNumber();
 }
 
 function randomSsn() {
@@ -136,7 +140,7 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
     orderDate: someDateAfterThisDate(summary.dateFiled),
     status: override.status || 'pending',
     docketEntries: [getDocketEntry()],
-    newCaseId: override.status === 'approved' ? newCase.caseId : randomCaseId(),
+    docketSuggestedCaseNumber: override.status === 'approved' ? undefined : randomCaseNumber(),
     newCase: override.status === 'approved' ? newCase : undefined,
     reason: override.status === 'rejected' ? faker.lorem.sentences(2) : undefined,
   };

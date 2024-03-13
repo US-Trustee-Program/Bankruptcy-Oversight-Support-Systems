@@ -5,8 +5,10 @@ import { LoggerHelper } from '../types/basic';
 type LoggerProvider = Console['log'] | Context['log'];
 type LogType = 'debug' | 'info' | 'warn' | 'error';
 
+const disallowedProperties = ['ssn', 'taxId'];
+
 export class LoggerImpl implements LoggerHelper {
-  private provider: LoggerProvider;
+  private readonly provider: LoggerProvider;
   constructor(provider: LoggerProvider = console.log) {
     this.provider = provider;
   }
@@ -15,7 +17,17 @@ export class LoggerImpl implements LoggerHelper {
   }
   private logMessage(logType: LogType, moduleName: string, message: string, data?: unknown) {
     const logString = `[${logType.toUpperCase()}] [${moduleName}] ${message} ${
-      undefined != data ? JSON.stringify(data) : ''
+      undefined != data
+        ? JSON.stringify(data, (key, value) => {
+            let disallowed = false;
+            disallowedProperties.forEach((prop) => {
+              if (key.localeCompare(prop, undefined, { sensitivity: 'accent' }) === 0) {
+                disallowed = true;
+              }
+            });
+            return disallowed ? undefined : value;
+          })
+        : ''
     }`;
     this.provider(this.sanitize(logString.trim()));
   }

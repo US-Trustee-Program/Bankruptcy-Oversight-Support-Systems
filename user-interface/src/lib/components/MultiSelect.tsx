@@ -2,7 +2,7 @@
 // refactor - let's find a way to avoid using any
 import './MultiSelect.scss';
 import ReactSelect from 'react-select';
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 
@@ -19,6 +19,7 @@ export interface MultiSelectProps {
 
 function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>) {
   const multiSelectRef = React.useRef(null);
+  const [isDisabled, setIsDisabled] = useState<boolean>(false);
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
       ...provided,
@@ -87,11 +88,16 @@ function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>)
     throw new Error('Not implemented');
   }
 
+  function disable(value: boolean) {
+    setIsDisabled(value);
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
       resetValue,
       setValue,
+      disable,
     };
   });
 
@@ -107,6 +113,7 @@ function MultiSelectComponent(props: MultiSelectProps, ref: React.Ref<InputRef>)
       id={props.id}
       data-testid={props.id}
       ref={multiSelectRef}
+      isDisabled={isDisabled}
     ></ReactSelect>
   );
 }
