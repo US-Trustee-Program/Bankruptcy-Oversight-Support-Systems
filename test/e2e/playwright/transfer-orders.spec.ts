@@ -1,37 +1,34 @@
 import { test } from '@playwright/test';
 
-// interface Order {
-//   id: string;
-//   orderType: string;
-//   status: string;
-// }
+interface Order {
+  id: string;
+  orderType: string;
+  status: string;
+}
 
-// interface OrdersResponse {
-//   body: Array<Order>;
-// }
+interface OrdersResponse {
+  body: Array<Order>;
+}
 
 test('test', async ({ page }) => {
-  const orderResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url() === 'http://localhost:3000/api/orders' &&
-      response.request().method() === 'GET',
-    { timeout: 0 },
-  );
+  const requestPromise = page.waitForEvent('requestfinished', {
+    predicate: (e) => e.url() === 'http://localhost:7071/api/orders',
+  });
   await page.goto('http://localhost:3000/data-verification');
-  const response = await orderResponsePromise;
 
-  console.log(JSON.stringify(response));
+  const request = await requestPromise;
+  const response = await request.response();
+  const ordersResponse = (await response?.json()) as OrdersResponse;
+  const orders = ordersResponse.body;
+  const pendingTransfers = orders.filter(
+    (o) => o.orderType === 'transfer' && o.status === 'pending',
+  );
+  const firstOrder = pendingTransfers[0] ?? null;
+  const firstOrderId = firstOrder.id;
 
-  // const body = (await orderResponsePromise).body;
-  // const orderResponse = body as unknown as OrdersResponse;
-  // console.log(orderResponse);
-  // const pendingTransfers = orderResponse.body.filter(
-  //   (o) => o.orderType === 'transfer' && o.status === 'pending',
-  // );
-  // const firstOrderId = pendingTransfers[0].id || null;
+  await page.getByTestId('order-status-filter-consolidation').click();
+  await page.locator(`[data-testid="accordion-button-order-list-${firstOrderId}"]`).click();
 
-  // await page.getByTestId('order-status-filter-consolidation').click();
-  // await page.locator('.usa-accordion__heading:first-child button').click();
   // await page.locator('.new-court__select:first-child input').click();
   // await page.getByLabel('Select new court').fill('manhattan');
   // await page.getByLabel('Select new court').press('Enter');
