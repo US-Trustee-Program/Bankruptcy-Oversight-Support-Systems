@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
     "target": "es6",
     "lib": ["es6", "dom"],
     "types": ["node"],
