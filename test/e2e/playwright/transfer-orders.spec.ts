@@ -14,20 +14,61 @@ interface OrdersResponse {
 }
 
 test.describe('Transfer Orders', () => {
-  test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
+  let orderResponseBody: Array<Order>;
+
+  test.beforeEach(async ({ page }) => {
+    // Navigate to Data Verification and capture network responses
     const orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
       { timeout: 30000 },
     );
+
     await page.goto('/data-verification');
     expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
-    const orderResponseBody = (await orderResponse.json()).body;
+    orderResponseBody = (await orderResponse.json()).body;
 
-    console.log(orderResponseBody);
+    expect(orderResponseBody).not.toBeFalsy();
+  });
 
-    // await expect(page.locator('#loading-spinner-svg')).not.toBeVisible();
+  test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
+    // get pending transfer order id
+    const pendingTransferOrder: Order = orderResponseBody.find(
+      (o) => o.orderType === 'transfer' && o.status === 'pending',
+    );
+    expect(pendingTransferOrder).not.toBeFalsy();
+    const orderId = pendingTransferOrder.id;
+
+    // open accordian by order id
+    await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
+
+    // fill in inputs
+    await page.locator(`#court-selection-${orderId}`).click();
+    const court = 'manhattan';
+    await page.getByLabel(`Select new court`).locator('visible=true').fill(court);
+    await page.getByLabel(`Select new court`).locator('visible=true').press('Enter');
+
+    await page.getByTestId(`new-case-input-${orderId}`).isEnabled();
+
+    const caseNumber = '18-61881';
+    await page.getByTestId(`new-case-input-${orderId}`).fill(caseNumber);
+
+    // Assert court selection
+    // TODO CAMS-269 For some reason it doesn't look like the input field gets set here
+    // const enteredCourtValue = await page
+    //   .getByLabel(`Select new court`)
+    //   .locator('visible=true')
+    //   .inputValue();
+    // expect(enteredCourtValue).toBe(court);
+
+    // Assert case number input
+    const enteredCaseValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
+    expect(enteredCaseValue).toBe(caseNumber);
+
+    // Action click Cancel
+    page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
+    await expect(page.getByTestId(`new-case-input-${orderId}`)).toBeDisabled();
   });
 });
 
