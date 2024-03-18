@@ -4,8 +4,6 @@ import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Input from '@/lib/components/uswds/Input';
-import Api from '../lib/models/api';
-import MockApi from '../lib/models/chapter15-mock.api.cases';
 import { OfficeDetails } from '@common/cams/courts';
 import {
   Chapter15CaseSummaryResponseData,
@@ -28,6 +26,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
+import { useApi } from '@/lib/hooks/UseApi';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -89,7 +88,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
   const [activeButtonId, setActiveButtonId] = useState<string>(`suggested-cases-${order.id}`);
 
-  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  const api = useApi();
 
   const courtSelectionRef = useRef<InputRef>(null);
   const caseNumberRef = useRef<InputRef>(null);

@@ -1,8 +1,6 @@
 import './CaseAssignmentScreen.scss';
 import { useState, useEffect, useRef } from 'react';
-import Api from '../lib/models/api';
 import { Chapter15Type, Chapter15CaseListResponseData } from '@/lib/type-declarations/chapter-15';
-import MockApi from '../lib/models/chapter15-mock.api.cases';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import AssignAttorneyModal, {
   AssignAttorneyModalRefType,
@@ -16,6 +14,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import Icon from '@/lib/components/uswds/Icon';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseNumber } from '@/lib/components/CaseNumber';
+import { useApi } from '@/lib/hooks/UseApi';
 
 const modalId = 'assign-attorney-modal';
 
@@ -24,7 +23,7 @@ const TABLE_TRANSFER_TIMEOUT = 10;
 export const CaseAssignment = () => {
   const modalRef = useRef<AssignAttorneyModalRefType>(null);
   const alertRef = useRef<AlertRefType>(null);
-  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  const api = useApi();
   const screenTitle = 'Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
