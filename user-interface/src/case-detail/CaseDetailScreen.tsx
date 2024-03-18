@@ -20,6 +20,7 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 import { CaseDetail } from '@common/cams/cases';
 import { useApi } from '@/lib/hooks/UseApi';
+
 const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
