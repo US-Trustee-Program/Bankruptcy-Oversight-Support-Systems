@@ -164,9 +164,9 @@ jobs:
     - name: Install Node dependencies
       run: |
         npm ci
-        npx playwright install
+
     - name: Run pa11y Test
-      run: TARGET_HOST=https://ustp-cams-webapp.azurewebsites.us/ npx playwright test
+      run: TARGET_HOST=https://ustp-cams-webapp.azurewebsites.us/ npx playwright test --reporter=list
 
   accessibility-test:
     defaults:
