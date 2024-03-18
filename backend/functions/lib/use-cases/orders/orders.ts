@@ -236,12 +236,13 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionApproval,
   ): Promise<ConsolidationOrder[]> {
-    const { approvedCases, leadCase, ...provisionalOrder } = data;
+    const { consolidationType, approvedCases, leadCase, ...provisionalOrder } = data;
     return await this.handleConsolidation(
       context,
       'approved',
       provisionalOrder,
       approvedCases,
+      consolidationType,
       leadCase,
     );
   }
@@ -295,8 +296,9 @@ export class OrdersUseCase {
   private async handleConsolidation(
     context: ApplicationContext,
     status: OrderStatus,
-    provisionalOrder: ConsolidationOrder,
+    provisionalOrder: Partial<ConsolidationOrder>,
     includedCases: string[],
+    consolidationType?: string,
     leadCase?: ConsolidationOrderCase,
   ): Promise<ConsolidationOrder[]> {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
@@ -311,6 +313,7 @@ export class OrdersUseCase {
       ...provisionalOrder,
       id: undefined,
       consolidationId: crypto.randomUUID(),
+      consolidationType,
       status,
       childCases: includedChildCases,
       leadCase,
@@ -319,6 +322,7 @@ export class OrdersUseCase {
     if (doSplit) {
       const remainingOrder = {
         ...provisionalOrder,
+        consolidationType,
         childCases: remainingChildCases,
         id: undefined,
       };
@@ -396,6 +400,7 @@ export class OrdersUseCase {
       const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
+        consolidationType: firstOrder.consolidationType,
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',

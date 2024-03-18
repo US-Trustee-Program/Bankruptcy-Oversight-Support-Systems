@@ -1,3 +1,4 @@
+import './ConsolidationOrderModal.scss';
 import { OfficeDetails } from '@common/cams/courts';
 import { OrderStatus } from '@common/cams/orders';
 import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
@@ -5,6 +6,7 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import useFeatureFlags, {
+  CONSOLIDATIONS_ENABLED,
   CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import SearchableSelect from '@/lib/components/SearchableSelect';
@@ -13,11 +15,18 @@ import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
 
+export type ConfirmActionResults = {
+  status: OrderStatus;
+  rejectionReason?: string;
+  leadCaseId?: string;
+  consolidationType: string;
+};
+
 export interface ConsolidationOrderModalProps {
   id: string;
   courts: OfficeDetails[];
   onCancel: () => void;
-  onConfirm: (status: OrderStatus, reason?: string, leadCaseId?: string) => void;
+  onConfirm: (results: ConfirmActionResults) => void;
 }
 
 type ShowOptionParams = {
@@ -50,6 +59,7 @@ function ConsolidationOrderModalComponent(
     heading: '',
     attorneys: [],
   });
+  const [consolidationType, setConsolidationType] = useState<string>('');
   const [caseIds, setCaseIds] = useState<string[]>([]);
   const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
@@ -66,11 +76,12 @@ function ConsolidationOrderModalComponent(
     submitButton: {
       label: 'Approve',
       onClick: () => {
-        onConfirm(
-          options.status,
-          reasonRef.current?.value,
-          `${leadCaseDivisionCode}-${leadCaseNumber}`,
-        );
+        onConfirm({
+          status: options.status,
+          rejectionReason: reasonRef.current?.value,
+          leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
+          consolidationType,
+        });
       },
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',
     },
@@ -105,6 +116,10 @@ function ConsolidationOrderModalComponent(
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
+  }
+
+  function handleSelectConsolidationType(ev: React.ChangeEvent<HTMLInputElement>) {
+    setConsolidationType(ev.target.value);
   }
 
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -146,29 +161,34 @@ function ConsolidationOrderModalComponent(
   function showApprovedContentStep1() {
     return (
       <div>
-        {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
-          <div id="consolidation-type-container">
-            <label htmlFor={'consolidation-type'} className="usa-label">
-              Consolidation Type
-            </label>
-            <input
-              data-testid={`radio-administrative-${id}`}
-              type="radio"
-              name="consolidationType"
-              value="administrative"
-            />
-
-            <label htmlFor={`radio-administrative-${id}`}>Administrative</label>
-            <input
-              data-testid={`radio-substantive-${id}`}
-              type="radio"
-              name="consolidationType"
-              value="substantive"
-            />
-            <label htmlFor={`radio-substantive-${id}`}>Substantive</label>
+        {featureFlags[CONSOLIDATIONS_ENABLED] && (
+          <div className="consolidation-type-container">
+            <div className="consolidation-type-radio">
+              <label htmlFor={'consolidation-type'} className="usa-label">
+                Consolidation Type
+              </label>
+              <input
+                data-testid={`radio-administrative-${id}`}
+                type="radio"
+                name="consolidationType"
+                value="administrative"
+                onChange={handleSelectConsolidationType}
+              />
+              <label htmlFor={`radio-administrative-${id}`}>Joint Administration</label>
+            </div>
+            <div>
+              <input
+                data-testid={`radio-substantive-${id}`}
+                type="radio"
+                name="consolidationType"
+                value="substantive"
+                onChange={handleSelectConsolidationType}
+              />
+              <label htmlFor={`radio-substantive-${id}`}>Substantive Consolidation</label>
+            </div>
           </div>
         )}
-        <div id="lead-case-court-container">
+        <div className="lead-case-court-container">
           <label htmlFor={'lead-case-court'} className="usa-label">
             Lead Case Court
           </label>
@@ -180,7 +200,7 @@ function ConsolidationOrderModalComponent(
             }}
           ></SearchableSelect>
         </div>
-        <div id="lead-case-number-containter">
+        <div className="lead-case-number-containter">
           <label htmlFor={`lead-case-input-${props.id}`} className="usa-label">
             Lead Case Number
           </label>
@@ -219,7 +239,7 @@ function ConsolidationOrderModalComponent(
     <Modal
       ref={modalRef}
       modalId={id}
-      className="confirm-modal"
+      className="confirm-modal consolidation-order-modal"
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
       onClose={clearReason}

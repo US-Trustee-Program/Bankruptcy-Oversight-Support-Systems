@@ -133,6 +133,10 @@ export class OrdersController {
     data: ConsolidationOrderActionApproval,
   ): Promise<ManageConsolidationResponse> {
     try {
+      if (!data.consolidationType) {
+        throw new BadRequestError('Missing consolidation type');
+      }
+
       if (data.approvedCases.length == 0) {
         throw new BadRequestError('Missing approved cases');
       }
