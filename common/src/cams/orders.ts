@@ -28,6 +28,7 @@ export type ConsolidationOrder = {
   id?: string;
   deleted?: true;
   consolidationId: string;
+  consolidationType: string;
   orderType: 'consolidation';
   orderDate: string;
   status: OrderStatus;

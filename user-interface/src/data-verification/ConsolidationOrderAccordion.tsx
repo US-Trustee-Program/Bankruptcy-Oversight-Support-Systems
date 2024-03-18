@@ -9,7 +9,6 @@ import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
   ConsolidationOrderCase,
-  OrderStatus,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
@@ -21,6 +20,7 @@ import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
+  ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
 import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -93,14 +93,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     approveButtonRef.current?.disableButton(true);
   }
 
-  function confirmAction(status: OrderStatus, _reason: string = '', leadCaseNumber?: string): void {
+  function confirmAction({ status, leadCaseId, consolidationType }: ConfirmActionResults): void {
     if (status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
+        consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCaseNumber),
-        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber)!,
+          .filter((caseId) => caseId !== leadCaseId),
+        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseId)!,
       };
 
       api
