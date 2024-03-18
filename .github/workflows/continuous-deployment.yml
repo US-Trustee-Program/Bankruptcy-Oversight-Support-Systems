@@ -145,6 +145,29 @@ jobs:
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
 
+  playwright-e2e-test:
+    defaults:
+      run:
+        working-directory: test/e2e
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get source code
+      uses: actions/checkout@v3
+
+    - name: Use Node.js 18.17.1
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.17.1
+        cache: "npm"
+        cache-dependency-path: user-interface/package-lock.json
+
+    - name: Install Node dependencies
+      run: |
+        npm ci
+        npx playwright install
+    - name: Run pa11y Test
+      run: TARGET_HOST=https://ustp-cams-webapp.azurewebsites.us/ npx playwright test
+
   accessibility-test:
     defaults:
       run:
