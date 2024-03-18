@@ -156,7 +156,3 @@ module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.b
     containers
   ]
 }
-
-output cosmosDbClientId string = cosmosDbUserManagedIdentity.outputs.clientId
-output cosmosDbPrincipalId string = cosmosDbUserManagedIdentity.outputs.principalId
-output cosmosDbManagedIdName string = cosmosDbUserManagedIdentity.outputs.name
