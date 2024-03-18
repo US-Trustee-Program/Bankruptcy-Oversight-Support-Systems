@@ -154,13 +154,6 @@ jobs:
     - name: Get source code
       uses: actions/checkout@v3
 
-    - name: Use Node.js 18.17.1
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18.17.1
-        cache: "npm"
-        cache-dependency-path: user-interface/package-lock.json
-
     - name: Install Node dependencies
       run: |
         npm ci
@@ -168,6 +161,23 @@ jobs:
 
     - name: Run the test
       run: TARGET_HOST=https://ustp-cams-webapp.azurewebsites.us/ npx playwright test --reporter=list
+
+  playwright-a11y-test:
+        defaults:
+          run:
+            working-directory: test/a11y/playwright
+        runs-on: ubuntu-latest
+        steps:
+        - name: Get source code
+          uses: actions/checkout@v3
+
+        - name: Install Node dependencies
+          run: |
+            npm ci
+            npx playwright install chromium msedge
+
+        - name: Run the test
+          run: TARGET_HOST=https://ustp-cams-webapp.azurewebsites.us/ npx playwright test --reporter=list
 
   accessibility-test:
     defaults:
