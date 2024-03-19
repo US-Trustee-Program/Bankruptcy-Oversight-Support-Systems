@@ -18,6 +18,7 @@ import {
   OrderStatus,
   ConsolidationOrderActionApproval,
   TransferOrderAction,
+  ConsolidationType,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
@@ -236,13 +237,13 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionApproval,
   ): Promise<ConsolidationOrder[]> {
-    const { consolidationType, approvedCases, leadCase, ...provisionalOrder } = data;
+    const { approvedCases, leadCase, ...provisionalOrder } = data;
     return await this.handleConsolidation(
       context,
       'approved',
       provisionalOrder,
       approvedCases,
-      consolidationType,
+      data.consolidationType,
       leadCase,
     );
   }
@@ -296,9 +297,9 @@ export class OrdersUseCase {
   private async handleConsolidation(
     context: ApplicationContext,
     status: OrderStatus,
-    provisionalOrder: Partial<ConsolidationOrder>,
+    provisionalOrder: ConsolidationOrder,
     includedCases: string[],
-    consolidationType?: string,
+    consolidationType?: ConsolidationType,
     leadCase?: ConsolidationOrderCase,
   ): Promise<ConsolidationOrder[]> {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
@@ -312,6 +313,7 @@ export class OrdersUseCase {
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
       id: undefined,
+      orderType: 'consolidation',
       consolidationId: crypto.randomUUID(),
       consolidationType,
       status,

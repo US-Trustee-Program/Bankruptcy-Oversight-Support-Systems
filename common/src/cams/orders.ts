@@ -2,6 +2,7 @@ import { CaseDocketEntry, CaseSummary } from './cases';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
+export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = ConsolidationOrder & {
   rejectedCases: Array<string>;
@@ -28,7 +29,7 @@ export type ConsolidationOrder = {
   id?: string;
   deleted?: true;
   consolidationId: string;
-  consolidationType: string;
+  consolidationType: ConsolidationType;
   orderType: 'consolidation';
   orderDate: string;
   status: OrderStatus;
