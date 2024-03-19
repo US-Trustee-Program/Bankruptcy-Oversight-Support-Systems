@@ -701,7 +701,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       Reject
                     </Button>
                   </div>
-                  <div className="grid-col-5 text-no-wrap align-right">
+                  <div className="grid-col-5 text-no-wrap float-right">
                     <Button
                       id={`accordion-cancel-button-${order.id}`}
                       onClick={cancelUpdate}
