@@ -70,6 +70,11 @@ body {
   }
 }
 
+.float-right {
+  display: flex;
+  justify-content: right;
+}
+
 @media screen and (max-width: 800px) {
   .App {
     .body {
