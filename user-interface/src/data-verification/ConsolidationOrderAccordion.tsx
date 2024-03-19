@@ -269,7 +269,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-2">
+              <div className="grid-col-5">
                 <Button
                   id={`accordion-reject-button-${order.id}`}
                   onClick={() =>
@@ -285,8 +285,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   Reject
                 </Button>
               </div>
-              <div className="grid-col-6"></div>
-              <div className="grid-col-2 text-no-wrap">
+              <div className="grid-col-5 text-no-wrap float-right">
                 <Button
                   id={`accordion-cancel-button-${order.id}`}
                   onClick={cancelUpdate}
