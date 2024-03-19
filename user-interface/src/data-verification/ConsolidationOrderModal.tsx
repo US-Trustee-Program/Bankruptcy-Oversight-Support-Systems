@@ -1,9 +1,9 @@
 import './ConsolidationOrderModal.scss';
 import { OfficeDetails } from '@common/cams/courts';
-import { OrderStatus } from '@common/cams/orders';
+import { ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import useFeatureFlags, {
   CONSOLIDATIONS_ENABLED,
@@ -14,12 +14,13 @@ import { getOfficeList, validateCaseNumberInput } from '@/data-verification/data
 import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
+import Radio from '@/lib/components/uswds/Radio';
 
 export type ConfirmActionResults = {
   status: OrderStatus;
   rejectionReason?: string;
   leadCaseId?: string;
-  consolidationType: string;
+  consolidationType: ConsolidationType;
 };
 
 export interface ConsolidationOrderModalProps {
@@ -59,11 +60,14 @@ function ConsolidationOrderModalComponent(
     heading: '',
     attorneys: [],
   });
-  const [consolidationType, setConsolidationType] = useState<string>('');
+  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
   const [caseIds, setCaseIds] = useState<string[]>([]);
   const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
-  const leadCaseIdRef = useRef<InputRef>(null);
+  const leadCaseNumberRef = useRef<InputRef>(null);
+  const leadCaseDivisionRef = useRef<InputRef>(null);
+  const administrativeConsolidationRef = useRef<InputRef>(null);
+  const substantiveConsolidationRef = useRef<InputRef>(null);
   const featureFlags = useFeatureFlags();
 
   function clearReason() {
@@ -80,7 +84,9 @@ function ConsolidationOrderModalComponent(
           status: options.status,
           rejectionReason: reasonRef.current?.value,
           leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
-          consolidationType,
+          // onConfirm should never be called unless the button is enabled.
+          // The button should never be enabled unless a consolidationType is selected
+          consolidationType: consolidationType as ConsolidationType,
         });
       },
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',
@@ -115,23 +121,35 @@ function ConsolidationOrderModalComponent(
   function hide() {
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
+      setConsolidationType(null);
+      administrativeConsolidationRef.current?.clearValue();
+      substantiveConsolidationRef.current?.clearValue();
+      setLeadCaseDivisionCode('');
+      leadCaseDivisionRef.current?.clearValue();
+      setLeadCaseNumber('');
+      leadCaseNumberRef.current?.clearValue();
     }
   }
 
   function handleSelectConsolidationType(ev: React.ChangeEvent<HTMLInputElement>) {
-    setConsolidationType(ev.target.value);
+    setConsolidationType(ev.target.value as ConsolidationType);
   }
 
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
-    leadCaseIdRef.current?.setValue(joinedInput);
+    leadCaseNumberRef.current?.setValue(joinedInput);
     if (caseNumber) {
       setLeadCaseNumber(caseNumber);
-      modalRef.current?.buttons?.current?.disableSubmitButton(false);
     } else {
-      modalRef.current?.buttons?.current?.disableSubmitButton(true);
+      setLeadCaseNumber('');
     }
   }
+
+  useEffect(() => {
+    modalRef.current?.buttons?.current?.disableSubmitButton(
+      consolidationType === null || leadCaseNumber.length !== 8,
+    );
+  }, [consolidationType, leadCaseNumber]);
 
   useImperativeHandle(ConfirmationModalRef, () => ({
     show,
@@ -167,24 +185,24 @@ function ConsolidationOrderModalComponent(
               <label htmlFor={'consolidation-type'} className="usa-label">
                 Consolidation Type
               </label>
-              <input
-                data-testid={`radio-administrative-${id}`}
-                type="radio"
-                name="consolidationType"
+              <Radio
+                id={`radio-administrative-${id}`}
+                name="consolidation-type"
                 value="administrative"
                 onChange={handleSelectConsolidationType}
+                ref={administrativeConsolidationRef}
+                label="Joint Administration"
               />
-              <label htmlFor={`radio-administrative-${id}`}>Joint Administration</label>
             </div>
             <div>
-              <input
-                data-testid={`radio-substantive-${id}`}
-                type="radio"
-                name="consolidationType"
+              <Radio
+                id={`radio-substantive-${id}`}
+                name="consolidation-type"
                 value="substantive"
                 onChange={handleSelectConsolidationType}
+                ref={substantiveConsolidationRef}
+                label="Substantive Consolidation"
               />
-              <label htmlFor={`radio-substantive-${id}`}>Substantive Consolidation</label>
             </div>
           </div>
         )}
@@ -198,6 +216,7 @@ function ConsolidationOrderModalComponent(
             onChange={(ev) => {
               setLeadCaseDivisionCode(ev?.value || '');
             }}
+            ref={leadCaseDivisionRef}
           ></SearchableSelect>
         </div>
         <div className="lead-case-number-containter">
@@ -208,10 +227,9 @@ function ConsolidationOrderModalComponent(
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
             className="usa-input"
-            value={leadCaseNumber}
             onChange={handleLeadCaseInputChange}
             aria-label="Lead case number"
-            ref={leadCaseIdRef}
+            ref={leadCaseNumberRef}
           />
         </div>
         {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
