@@ -18,10 +18,10 @@
   "license": "ISC",
   "dependencies": {
     "@azure/cosmos": "^4.0.0",
-    "@azure/identity": "^3.4.2",
+    "@azure/identity": "^4.0.1",
     "@faker-js/faker": "^8.4.1",
-    "@types/node": "^20.11.25",
-    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
