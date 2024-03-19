@@ -156,6 +156,7 @@ function getConsolidationOrder(
 
   const consolidationOrder: ConsolidationOrder = {
     consolidationId: faker.string.uuid(),
+    consolidationType: 'administrative',
     courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',

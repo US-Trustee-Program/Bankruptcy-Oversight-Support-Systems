@@ -73,11 +73,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function clearIncludedCases() {
-    setSelectedCases([]);
-    caseTable.current?.clearSelection();
-  }
-
   function handleAddNewCaseDivisionCode(_newValue: SearchableSelectOption): void {
     throw new Error('Function not implemented.');
   }
@@ -86,11 +81,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     throw new Error('Function not implemented.');
   }
 
-  function cancelUpdate(): void {
-    courtSelectionRef.current?.clearValue();
-    caseIdRef.current?.resetValue();
-    clearIncludedCases();
+  function clearInputs(): void {
+    //courtSelectionRef.current?.clearValue();
+    //caseIdRef.current?.resetValue();
+    caseTable.current?.clearSelection();
     approveButtonRef.current?.disableButton(true);
+    setSelectedCases([]);
   }
 
   function confirmAction({ status, leadCaseId, consolidationType }: ConfirmActionResults): void {
@@ -134,7 +130,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       id={`order-list-${order.id}`}
       expandedId={expandedId}
       onExpand={onExpand}
-      onCollapse={clearIncludedCases}
+      onCollapse={clearInputs}
     >
       <section
         className="accordion-heading grid-row grid-gap-lg"
@@ -289,7 +285,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-5 text-no-wrap float-right">
                 <Button
                   id={`accordion-cancel-button-${order.id}`}
-                  onClick={cancelUpdate}
+                  onClick={clearInputs}
                   uswdsStyle={UswdsButtonStyle.Outline}
                 >
                   Cancel
@@ -311,7 +307,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               ref={confirmationModalRef}
               id={`confirmation-modal-${order.id}`}
               courts={officesList}
-              onCancel={cancelUpdate}
+              onCancel={clearInputs}
               onConfirm={confirmAction}
             ></ConsolidationOrderModal>
           </section>
