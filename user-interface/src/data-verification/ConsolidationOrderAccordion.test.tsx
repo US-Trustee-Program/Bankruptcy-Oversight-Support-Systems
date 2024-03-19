@@ -14,6 +14,7 @@ import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock'
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -45,16 +46,20 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   const onOrderUpdateMockFunc = vitest.fn();
   const onExpandMockFunc = vitest.fn();
+  let mockFeatureFlags: FeatureFlagSet;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
+    mockFeatureFlags = {
+      'consolidations-enabled': true,
+    };
+    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
-
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
@@ -144,7 +149,8 @@ describe('ConsolidationOrderAccordion tests', () => {
   });
 
   test('should not show add case when add case consolidation feature flag is false', async () => {
-    const mockFeatureFlags = {
+    mockFeatureFlags = {
+      ...mockFeatureFlags,
       'consolidations-add-case': false,
     };
     vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
@@ -181,6 +187,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(approveButton as HTMLButtonElement);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
+
     await waitFor(() => {
       expect(modal).toBeInTheDocument();
       expect(modal).toHaveClass('is-visible');
@@ -196,10 +203,16 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.change(modalCaseNumberInput!, {
       target: { value: getCaseNumber(leadCase.caseId) },
     });
+    const adminRadioButton = screen.getByTestId(
+      `radio-administrative-confirmation-modal-${order.id}`,
+    );
+    fireEvent.click(adminRadioButton);
+
     const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
+      expect(onOrderUpdateMockFunc).toHaveBeenCalled();
       expect(onOrderUpdateMockFunc).toHaveBeenCalledWith(
         {
           message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${leadCase.courtName} (${leadCase?.courtDivisionName}) was successful.`,
@@ -209,6 +222,118 @@ describe('ConsolidationOrderAccordion tests', () => {
         [expectedOrderApproved],
         order,
       );
+    });
+  });
+
+  test.only('should call orderUpdate with expected parameters when approval process is completed and handle api exception', async () => {
+    renderWithProps();
+
+    const leadCase = order.childCases[0];
+
+    const errorMessage = 'Some random error';
+    vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
+
+    const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    expect(approveButton).not.toBeEnabled();
+    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    fireEvent.click(approveButton as HTMLButtonElement);
+
+    const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
+
+    await waitFor(() => {
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveClass('is-visible');
+      // for some reason, toBeVisible() doesn't work.
+      expect(modal).toHaveStyle({ display: 'block' });
+    });
+
+    // select the lead case in the modal and click the submit button.
+    selectItemInMockSelect('lead-case-court', 1);
+    const modalCaseNumberInput = screen.getByTestId(
+      `lead-case-input-confirmation-modal-${order.id}`,
+    );
+    fireEvent.change(modalCaseNumberInput!, {
+      target: { value: getCaseNumber(leadCase.caseId) },
+    });
+    const adminRadioButton = screen.getByTestId(
+      `radio-administrative-confirmation-modal-${order.id}`,
+    );
+    fireEvent.click(adminRadioButton);
+
+    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    fireEvent.click(modalApproveButton);
+
+    await waitFor(() => {
+      expect(onOrderUpdateMockFunc).toHaveBeenCalled();
+      expect(onOrderUpdateMockFunc).toHaveBeenCalledWith({
+        message: errorMessage,
+        timeOut: 8,
+        type: UswdsAlertStyle.Error,
+      });
+    });
+  });
+
+  test('should clear checkboxes and disable approve button when cancel is clicked', async () => {
+    renderWithProps();
+
+    const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
+    expect(approveButton).not.toBeEnabled();
+
+    const checkbox1: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox2: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+
+    fireEvent.click(checkbox1);
+    fireEvent.click(checkbox2);
+
+    await waitFor(() => {
+      expect(checkbox1.checked).toBeTruthy();
+      expect(checkbox2.checked).toBeTruthy();
+      expect(approveButton).toBeEnabled();
+    });
+
+    fireEvent.click(cancelButton as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(checkbox1.checked).toBeFalsy();
+      expect(checkbox2.checked).toBeFalsy();
+      expect(approveButton).not.toBeEnabled();
+    });
+  });
+
+  test('should clear checkboxes and disable approve button when accordion is collapsed', async () => {
+    renderWithProps();
+
+    const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
+    expect(approveButton).not.toBeEnabled();
+
+    let checkbox1: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    let checkbox2: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+
+    fireEvent.click(checkbox1);
+    fireEvent.click(checkbox2);
+
+    await waitFor(() => {
+      expect(checkbox1.checked).toBeTruthy();
+      expect(checkbox2.checked).toBeTruthy();
+      expect(approveButton).toBeEnabled();
+    });
+
+    fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordian
+
+    fireEvent.click(collapseButton as HTMLButtonElement);
+    checkbox1 = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    checkbox2 = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+
+    await waitFor(() => {
+      expect(checkbox1.checked).toBeFalsy();
+      expect(checkbox2.checked).toBeFalsy();
+      expect(approveButton).not.toBeEnabled();
     });
   });
 });
