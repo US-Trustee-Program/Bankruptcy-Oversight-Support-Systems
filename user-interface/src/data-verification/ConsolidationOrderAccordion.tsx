@@ -27,8 +27,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
-import Api from '@/lib/models/api';
-import MockApi from '@/lib/models/chapter15-mock.api.cases';
+import { useApi } from '@/lib/hooks/UseApi';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -56,7 +55,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [attorneys] = useState<AttorneyInfo[]>([]);
   const featureFlags = useFeatureFlags();
 
-  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  const api = useApi();
 
   useEffect(() => {
     if (selectedCases.length == 0) {
@@ -270,7 +269,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-2">
+              <div className="grid-col-5">
                 <Button
                   id={`accordion-reject-button-${order.id}`}
                   onClick={() =>
@@ -286,8 +285,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   Reject
                 </Button>
               </div>
-              <div className="grid-col-6"></div>
-              <div className="grid-col-2 text-no-wrap">
+              <div className="grid-col-5 text-no-wrap float-right">
                 <Button
                   id={`accordion-cancel-button-${order.id}`}
                   onClick={cancelUpdate}

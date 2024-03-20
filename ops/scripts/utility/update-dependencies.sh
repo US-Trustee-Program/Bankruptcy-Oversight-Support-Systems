@@ -47,3 +47,5 @@ git checkout "$CURRENT_BRANCH"
 if [[ -n "${STASHED_CHANGE}" ]]; then
   git stash pop
 fi
+
+open "https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/compare/main...dependency-updates?template=dependencies.md";
