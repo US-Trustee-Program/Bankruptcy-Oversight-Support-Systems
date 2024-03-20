@@ -71,3 +71,12 @@ ops/cloud-deployment/params/*.parameters.json
 
 # VS code workspace config
 cams1.code-workspace
+
+# Node
+**/node_modules/
+
+# Veracode
+**/pipeline-scan*
+
+# Build Archives
+**/*.zip
