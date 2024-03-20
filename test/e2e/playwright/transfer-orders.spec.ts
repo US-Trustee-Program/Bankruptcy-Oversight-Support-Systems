@@ -54,14 +54,6 @@ test.describe('Transfer Orders', () => {
     const caseNumber = '18-61881';
     await page.getByTestId(`new-case-input-${orderId}`).fill(caseNumber);
 
-    // Assert court selection
-    // TODO CAMS-269 For some reason it doesn't look like the input field gets set here
-    // const enteredCourtValue = await page
-    //   .getByLabel(`Select new court`)
-    //   .locator('visible=true')
-    //   .inputValue();
-    // expect(enteredCourtValue).toBe(court);
-
     // Assert case number input
     const enteredCaseValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
     expect(enteredCaseValue).toBe(caseNumber);
@@ -113,7 +105,6 @@ test('test', async ({ page }) => {
   });
   await page.getByTestId(`new-case-input-${firstOrderId}`).fill(caseNumber);
   await summaryRequestPromise;
-  // await page.on('requestfinished', (data) => data.response() !== null);
   await expect(page.getByTestId('alert-container-validation-not-found')).not.toBeVisible();
 
   await expect(page.getByTestId(`validated-cases-row-0`)).toContainText(caseNumber);
@@ -156,11 +147,5 @@ test('test', async ({ page }) => {
   const page1Promise = page.waitForEvent('popup');
   await page.getByTestId(`approved-transfer-original-case-link-${firstOrder.caseId}-link`).click();
   const page1 = await page1Promise;
-  // const page1DetailPromise = page1.waitForEvent('requestfinished', {
-  //   predicate: (e) => e.url() === `http://localhost:7071/api/cases/081-${caseNumber}/summary`,
-  // });
-  // await expect(page1.getByTestId('case-detail-heading')).toHaveText(firstOrder.caseTitle);
-  // await page1.waitForTimeout(30000);
-  // await expect(page1.getByTestId('case-number')).toHaveText(firstOrder.caseId.slice(4));
   await expect(page1.url()).toContain(`/case-detail/${firstOrder.caseId}/`);
 });
