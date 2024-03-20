@@ -4,7 +4,7 @@ import { ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import useFeatureFlags, {
   CONSOLIDATIONS_ENABLED,
   CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED,
@@ -66,8 +66,8 @@ function ConsolidationOrderModalComponent(
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const leadCaseNumberRef = useRef<InputRef>(null);
   const leadCaseDivisionRef = useRef<InputRef>(null);
-  const administrativeConsolidationRef = useRef<InputRef>(null);
-  const substantiveConsolidationRef = useRef<InputRef>(null);
+  const administrativeConsolidationRef = useRef<RadioRef>(null);
+  const substantiveConsolidationRef = useRef<RadioRef>(null);
   const featureFlags = useFeatureFlags();
 
   function clearReason() {
@@ -122,8 +122,8 @@ function ConsolidationOrderModalComponent(
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
       setConsolidationType(null);
-      administrativeConsolidationRef.current?.clearValue();
-      substantiveConsolidationRef.current?.clearValue();
+      administrativeConsolidationRef.current?.checked(false);
+      substantiveConsolidationRef.current?.checked(false);
       setLeadCaseDivisionCode('');
       leadCaseDivisionRef.current?.clearValue();
       setLeadCaseNumber('');
