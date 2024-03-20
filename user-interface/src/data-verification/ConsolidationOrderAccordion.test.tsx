@@ -225,7 +225,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.only('should call orderUpdate with expected parameters when approval process is completed and handle api exception', async () => {
+  test('should call orderUpdate with expected parameters when approval process is completed and handle api exception', async () => {
     renderWithProps();
 
     const leadCase = order.childCases[0];

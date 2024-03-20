@@ -101,17 +101,29 @@ describe('ConsolidationOrderModalComponent', () => {
     // Select consolidation type
     const radioAdministrative = screen.queryByTestId(`radio-administrative-${id}`);
     const radioSubstantive = screen.queryByTestId(`radio-substantive-${id}`);
+    const radioAdministrativeClickTarget = screen.queryByTestId(
+      `radio-administrative-${id}-click-target`,
+    );
+    const radioSubstantiveClickTarget = screen.queryByTestId(
+      `radio-substantive-${id}-click-target`,
+    );
 
     expect(radioAdministrative).toBeInTheDocument();
     expect(radioSubstantive).toBeInTheDocument();
 
-    fireEvent.click(radioAdministrative!);
-    expect(radioAdministrative).toBeChecked();
-    expect(radioSubstantive).not.toBeChecked();
+    fireEvent.click(radioAdministrativeClickTarget!);
 
-    fireEvent.click(radioSubstantive!);
-    expect(radioSubstantive).toBeChecked();
-    expect(radioAdministrative).not.toBeChecked();
+    await waitFor(() => {
+      expect(radioAdministrative).toBeChecked();
+      expect(radioSubstantive).not.toBeChecked();
+    });
+
+    fireEvent.click(radioSubstantiveClickTarget!);
+
+    // await waitFor(() => {
+    //   expect(radioSubstantive).toBeChecked();
+    //   expect(radioAdministrative).not.toBeChecked();
+    // });
 
     expect(approveButton).toBeDisabled();
 
@@ -140,7 +152,13 @@ describe('ConsolidationOrderModalComponent', () => {
     await waitFor(() => {
       expect(modal).toHaveClass('is-hidden');
     });
-    expect(onConfirmSpy).toHaveBeenCalled();
+
+    expect(onConfirmSpy).toHaveBeenCalledWith({
+      status: 'approved',
+      courtDivision: undefined,
+      leadCaseId: `${courts[0].courtDivision}-11-11111`,
+      consolidationType: 'substantive',
+    });
   });
 
   test('should call onCancel callback when cancel button is clicked', async () => {

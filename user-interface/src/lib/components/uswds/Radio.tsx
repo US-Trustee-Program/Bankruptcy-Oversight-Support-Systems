@@ -1,5 +1,5 @@
-import { ChangeEventHandler, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { InputRef } from '../../type-declarations/input-fields';
+import { ChangeEventHandler, forwardRef, useImperativeHandle, useState } from 'react';
+import { RadioRef } from '../../type-declarations/input-fields';
 
 export interface RadioProps {
   id: string;
@@ -12,43 +12,26 @@ export interface RadioProps {
   checked?: boolean;
 }
 
-const BLANK = '';
-
-function RadioComponent(props: RadioProps, ref: React.Ref<InputRef>) {
-  //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string>(props.value || BLANK);
-  const [inputDisabled, setInputDisabled] = useState<boolean>(
-    props.disabled !== undefined ? props.disabled : false,
-  );
-
-  function resetValue() {
-    setInputValue(props.value || BLANK);
-  }
-
-  function clearValue() {
-    setInputValue(BLANK);
-  }
-
-  function setValue(value: string) {
-    setInputValue(value);
-  }
+function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
+  const [isDisabled, setIsDisabled] = useState<boolean>(props.disabled ?? false);
+  const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
 
   function disable(value: boolean) {
-    setInputDisabled(value);
+    setIsDisabled(value);
+  }
+
+  function checked(value: boolean) {
+    setIsChecked(value);
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInputValue(ev.target.value);
+    setIsChecked(ev.target.checked);
     if (props.onChange) {
       props.onChange(ev);
     }
   }
 
-  useEffect(() => {
-    setInputValue(props.value || BLANK);
-  }, [props.value]);
-
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, disable }));
+  useImperativeHandle(ref, () => ({ checked, disable }));
 
   return (
     <div className="usa-radio">
@@ -59,11 +42,15 @@ function RadioComponent(props: RadioProps, ref: React.Ref<InputRef>) {
         name={props.name}
         onChange={handleOnChange}
         data-testid={props.id}
-        disabled={inputDisabled}
-        value={inputValue}
-        checked={props.checked}
+        disabled={isDisabled}
+        value={props.value}
+        checked={isChecked}
       />
-      <label className="usa-radio__label" htmlFor={props.id}>
+      <label
+        className="usa-radio__label"
+        htmlFor={props.id}
+        data-testid={`${props.id}-click-target`}
+      >
         {props.label}
       </label>
     </div>
