@@ -13,7 +13,7 @@ export default defineConfig({
   expect: {
     timeout: 10000,
   },
-  testDir: './playwright',
+  testDir: '',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -44,6 +44,16 @@ export default defineConfig({
     {
       name: 'Microsoft Edge',
       use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    },
+    {
+      name: 'e2e_tests',
+      testDir: './playwright',
+      testMatch: './*.spec.ts',
+    },
+    {
+      name: 'accessibility_tests',
+      testDir: './playwright-accessibility',
+      testMatch: './*.spec.ts',
     },
     // {
     //   name: 'Google Chrome',
