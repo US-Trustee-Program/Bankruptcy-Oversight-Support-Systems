@@ -1,10 +1,12 @@
+import './ConsolidationOrderModal.scss';
 import { OfficeDetails } from '@common/cams/courts';
-import { OrderStatus } from '@common/cams/orders';
+import { ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import useFeatureFlags, {
+  CONSOLIDATIONS_ENABLED,
   CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import SearchableSelect from '@/lib/components/SearchableSelect';
@@ -12,12 +14,22 @@ import { getOfficeList, validateCaseNumberInput } from '@/data-verification/data
 import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
+import Radio from '@/lib/components/uswds/Radio';
+
+export const CASE_NUMBER_LENGTH = 8;
+
+export type ConfirmActionResults = {
+  status: OrderStatus;
+  rejectionReason?: string;
+  leadCaseId?: string;
+  consolidationType: ConsolidationType;
+};
 
 export interface ConsolidationOrderModalProps {
   id: string;
   courts: OfficeDetails[];
   onCancel: () => void;
-  onConfirm: (status: OrderStatus, reason?: string, leadCaseId?: string) => void;
+  onConfirm: (results: ConfirmActionResults) => void;
 }
 
 type ShowOptionParams = {
@@ -50,10 +62,14 @@ function ConsolidationOrderModalComponent(
     heading: '',
     attorneys: [],
   });
+  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
   const [caseIds, setCaseIds] = useState<string[]>([]);
   const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
-  const leadCaseIdRef = useRef<InputRef>(null);
+  const leadCaseNumberRef = useRef<InputRef>(null);
+  const leadCaseDivisionRef = useRef<InputRef>(null);
+  const administrativeConsolidationRef = useRef<RadioRef>(null);
+  const substantiveConsolidationRef = useRef<RadioRef>(null);
   const featureFlags = useFeatureFlags();
 
   function clearReason() {
@@ -66,11 +82,14 @@ function ConsolidationOrderModalComponent(
     submitButton: {
       label: 'Approve',
       onClick: () => {
-        onConfirm(
-          options.status,
-          reasonRef.current?.value,
-          `${leadCaseDivisionCode}-${leadCaseNumber}`,
-        );
+        onConfirm({
+          status: options.status,
+          rejectionReason: reasonRef.current?.value,
+          leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
+          // onConfirm should never be called unless the button is enabled.
+          // The button should never be enabled unless a consolidationType is selected
+          consolidationType: consolidationType!,
+        });
       },
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',
     },
@@ -104,19 +123,35 @@ function ConsolidationOrderModalComponent(
   function hide() {
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
+      setConsolidationType(null);
+      administrativeConsolidationRef.current?.checked(false);
+      substantiveConsolidationRef.current?.checked(false);
+      setLeadCaseDivisionCode('');
+      leadCaseDivisionRef.current?.clearValue();
+      setLeadCaseNumber('');
+      leadCaseNumberRef.current?.clearValue();
     }
+  }
+
+  function handleSelectConsolidationType(ev: React.ChangeEvent<HTMLInputElement>) {
+    setConsolidationType(ev.target.value as ConsolidationType);
   }
 
   function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
-    leadCaseIdRef.current?.setValue(joinedInput);
+    leadCaseNumberRef.current?.setValue(joinedInput);
     if (caseNumber) {
       setLeadCaseNumber(caseNumber);
-      modalRef.current?.buttons?.current?.disableSubmitButton(false);
     } else {
-      modalRef.current?.buttons?.current?.disableSubmitButton(true);
+      setLeadCaseNumber('');
     }
   }
+
+  useEffect(() => {
+    modalRef.current?.buttons?.current?.disableSubmitButton(
+      consolidationType === null || leadCaseNumber.length !== CASE_NUMBER_LENGTH,
+    );
+  }, [consolidationType, leadCaseNumber]);
 
   useImperativeHandle(ConfirmationModalRef, () => ({
     show,
@@ -146,29 +181,34 @@ function ConsolidationOrderModalComponent(
   function showApprovedContentStep1() {
     return (
       <div>
-        {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
-          <div id="consolidation-type-container">
-            <label htmlFor={'consolidation-type'} className="usa-label">
-              Consolidation Type
-            </label>
-            <input
-              data-testid={`radio-administrative-${id}`}
-              type="radio"
-              name="consolidationType"
-              value="administrative"
-            />
-
-            <label htmlFor={`radio-administrative-${id}`}>Administrative</label>
-            <input
-              data-testid={`radio-substantive-${id}`}
-              type="radio"
-              name="consolidationType"
-              value="substantive"
-            />
-            <label htmlFor={`radio-substantive-${id}`}>Substantive</label>
+        {featureFlags[CONSOLIDATIONS_ENABLED] && (
+          <div className="consolidation-type-container">
+            <div className="consolidation-type-radio">
+              <label htmlFor={'consolidation-type'} className="usa-label">
+                Consolidation Type
+              </label>
+              <Radio
+                id={`radio-administrative-${id}`}
+                name="consolidation-type"
+                value="administrative"
+                onChange={handleSelectConsolidationType}
+                ref={administrativeConsolidationRef}
+                label="Joint Administration"
+              />
+            </div>
+            <div>
+              <Radio
+                id={`radio-substantive-${id}`}
+                name="consolidation-type"
+                value="substantive"
+                onChange={handleSelectConsolidationType}
+                ref={substantiveConsolidationRef}
+                label="Substantive Consolidation"
+              />
+            </div>
           </div>
         )}
-        <div id="lead-case-court-container">
+        <div className="lead-case-court-container">
           <label htmlFor={'lead-case-court'} className="usa-label">
             Lead Case Court
           </label>
@@ -178,9 +218,10 @@ function ConsolidationOrderModalComponent(
             onChange={(ev) => {
               setLeadCaseDivisionCode(ev?.value || '');
             }}
+            ref={leadCaseDivisionRef}
           ></SearchableSelect>
         </div>
-        <div id="lead-case-number-containter">
+        <div className="lead-case-number-containter">
           <label htmlFor={`lead-case-input-${props.id}`} className="usa-label">
             Lead Case Number
           </label>
@@ -188,10 +229,9 @@ function ConsolidationOrderModalComponent(
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
             className="usa-input"
-            value={leadCaseNumber}
             onChange={handleLeadCaseInputChange}
             aria-label="Lead case number"
-            ref={leadCaseIdRef}
+            ref={leadCaseNumberRef}
           />
         </div>
         {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
@@ -219,7 +259,7 @@ function ConsolidationOrderModalComponent(
     <Modal
       ref={modalRef}
       modalId={id}
-      className="confirm-modal"
+      className="confirm-modal consolidation-order-modal"
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
       onClose={clearReason}
