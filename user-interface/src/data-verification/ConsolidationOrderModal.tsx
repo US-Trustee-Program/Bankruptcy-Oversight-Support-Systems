@@ -86,7 +86,7 @@ function ConsolidationOrderModalComponent(
           leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
           // onConfirm should never be called unless the button is enabled.
           // The button should never be enabled unless a consolidationType is selected
-          consolidationType: consolidationType as ConsolidationType,
+          consolidationType: consolidationType!,
         });
       },
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',

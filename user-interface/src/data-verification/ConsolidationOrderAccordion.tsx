@@ -82,8 +82,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function clearInputs(): void {
-    //courtSelectionRef.current?.clearValue();
-    //caseIdRef.current?.resetValue();
     caseTable.current?.clearSelection();
     approveButtonRef.current?.disableButton(true);
     setSelectedCases([]);
