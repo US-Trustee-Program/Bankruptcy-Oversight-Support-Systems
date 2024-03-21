@@ -120,11 +120,6 @@ describe('ConsolidationOrderModalComponent', () => {
 
     fireEvent.click(radioSubstantiveClickTarget!);
 
-    // await waitFor(() => {
-    //   expect(radioSubstantive).toBeChecked();
-    //   expect(radioAdministrative).not.toBeChecked();
-    // });
-
     expect(approveButton).toBeDisabled();
 
     // Select lead case court.
