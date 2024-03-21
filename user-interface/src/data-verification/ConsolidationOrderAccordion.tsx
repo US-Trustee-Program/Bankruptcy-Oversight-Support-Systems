@@ -9,7 +9,6 @@ import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
   ConsolidationOrderCase,
-  OrderStatus,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
@@ -21,6 +20,7 @@ import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
+  ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
 import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -73,11 +73,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function clearIncludedCases() {
-    setSelectedCases([]);
-    caseTable.current?.clearSelection();
-  }
-
   function handleAddNewCaseDivisionCode(_newValue: SearchableSelectOption): void {
     throw new Error('Function not implemented.');
   }
@@ -86,21 +81,21 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     throw new Error('Function not implemented.');
   }
 
-  function cancelUpdate(): void {
-    courtSelectionRef.current?.clearValue();
-    caseIdRef.current?.resetValue();
-    clearIncludedCases();
+  function clearInputs(): void {
+    caseTable.current?.clearSelection();
     approveButtonRef.current?.disableButton(true);
+    setSelectedCases([]);
   }
 
-  function confirmAction(status: OrderStatus, _reason: string = '', leadCaseNumber?: string): void {
+  function confirmAction({ status, leadCaseId, consolidationType }: ConfirmActionResults): void {
     if (status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
+        consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCaseNumber),
-        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseNumber)!,
+          .filter((caseId) => caseId !== leadCaseId),
+        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseId)!,
       };
 
       api
@@ -133,7 +128,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       id={`order-list-${order.id}`}
       expandedId={expandedId}
       onExpand={onExpand}
-      onCollapse={clearIncludedCases}
+      onCollapse={clearInputs}
     >
       <section
         className="accordion-heading grid-row grid-gap-lg"
@@ -288,7 +283,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-5 text-no-wrap float-right">
                 <Button
                   id={`accordion-cancel-button-${order.id}`}
-                  onClick={cancelUpdate}
+                  onClick={clearInputs}
                   uswdsStyle={UswdsButtonStyle.Outline}
                 >
                   Cancel
@@ -310,7 +305,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               ref={confirmationModalRef}
               id={`confirmation-modal-${order.id}`}
               courts={officesList}
-              onCancel={cancelUpdate}
+              onCancel={clearInputs}
               onConfirm={confirmAction}
             ></ConsolidationOrderModal>
           </section>

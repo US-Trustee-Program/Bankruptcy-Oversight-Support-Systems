@@ -18,6 +18,7 @@ import {
   OrderStatus,
   ConsolidationOrderActionApproval,
   TransferOrderAction,
+  ConsolidationType,
 } from '../../../../../common/src/cams/orders';
 import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
@@ -242,6 +243,7 @@ export class OrdersUseCase {
       'approved',
       provisionalOrder,
       approvedCases,
+      data.consolidationType,
       leadCase,
     );
   }
@@ -297,6 +299,7 @@ export class OrdersUseCase {
     status: OrderStatus,
     provisionalOrder: ConsolidationOrder,
     includedCases: string[],
+    consolidationType?: ConsolidationType,
     leadCase?: ConsolidationOrderCase,
   ): Promise<ConsolidationOrder[]> {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
@@ -310,7 +313,9 @@ export class OrdersUseCase {
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
       id: undefined,
+      orderType: 'consolidation',
       consolidationId: crypto.randomUUID(),
+      consolidationType,
       status,
       childCases: includedChildCases,
       leadCase,
@@ -319,6 +324,7 @@ export class OrdersUseCase {
     if (doSplit) {
       const remainingOrder = {
         ...provisionalOrder,
+        consolidationType,
         childCases: remainingChildCases,
         id: undefined,
       };
@@ -396,6 +402,7 @@ export class OrdersUseCase {
       const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
+        consolidationType: firstOrder.consolidationType,
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',
