@@ -16,6 +16,8 @@ import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
 
+export const CASE_NUMBER_LENGTH = 8;
+
 export type ConfirmActionResults = {
   status: OrderStatus;
   rejectionReason?: string;
@@ -147,7 +149,7 @@ function ConsolidationOrderModalComponent(
 
   useEffect(() => {
     modalRef.current?.buttons?.current?.disableSubmitButton(
-      consolidationType === null || leadCaseNumber.length !== 8,
+      consolidationType === null || leadCaseNumber.length !== CASE_NUMBER_LENGTH,
     );
   }, [consolidationType, leadCaseNumber]);
 

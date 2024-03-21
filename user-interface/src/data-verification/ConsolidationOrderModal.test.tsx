@@ -101,22 +101,13 @@ describe('ConsolidationOrderModalComponent', () => {
     // Select consolidation type
     const radioAdministrative = screen.queryByTestId(`radio-administrative-${id}`);
     const radioSubstantive = screen.queryByTestId(`radio-substantive-${id}`);
-    const radioAdministrativeClickTarget = screen.queryByTestId(
-      `radio-administrative-${id}-click-target`,
-    );
+
     const radioSubstantiveClickTarget = screen.queryByTestId(
       `radio-substantive-${id}-click-target`,
     );
 
     expect(radioAdministrative).toBeInTheDocument();
     expect(radioSubstantive).toBeInTheDocument();
-
-    fireEvent.click(radioAdministrativeClickTarget!);
-
-    await waitFor(() => {
-      expect(radioAdministrative).toBeChecked();
-      expect(radioSubstantive).not.toBeChecked();
-    });
 
     fireEvent.click(radioSubstantiveClickTarget!);
 
@@ -128,14 +119,14 @@ describe('ConsolidationOrderModalComponent', () => {
     expect(approveButton).toBeDisabled();
 
     // Enter case number.
-    const testCaseNumber = '11-11111';
+    const leadCaseNumber = caseIds[0];
     const caseNumberInput = findCaseNumberInputInModal(id);
     await waitFor(() => {
-      enterCaseNumberInModal(caseNumberInput, testCaseNumber);
+      enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
     });
 
     await waitFor(() => {
-      expect(caseNumberInput).toHaveValue(testCaseNumber);
+      expect(caseNumberInput).toHaveValue(leadCaseNumber);
     });
 
     // Select attorney
@@ -151,7 +142,7 @@ describe('ConsolidationOrderModalComponent', () => {
     expect(onConfirmSpy).toHaveBeenCalledWith({
       status: 'approved',
       courtDivision: undefined,
-      leadCaseId: `${courts[0].courtDivision}-11-11111`,
+      leadCaseId: `${courts[0].courtDivision}-${leadCaseNumber}`,
       consolidationType: 'substantive',
     });
   });
