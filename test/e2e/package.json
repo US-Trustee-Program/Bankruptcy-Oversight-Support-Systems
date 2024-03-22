@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "ui": "playwright test --ui",
+    "headless": "playwright test"
+  },
   "author": "",
   "license": "ISC",
   "devDependencies": {
