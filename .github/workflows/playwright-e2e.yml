@@ -1,0 +1,80 @@
+name: Playwright E2E Tests
+
+concurrency: ${{ github.ref }}-${{ github.workflow }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      runTests:
+        description: "Input to run E2E tests"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+jobs:
+  build-info:
+    runs-on: ubuntu-latest
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+    outputs:
+      environment: ${{ vars.ENVIRONMENT }}
+      stackName: ${{ steps.build-info.outputs.stackName }}
+      webappName: ${{ steps.build-info.outputs.webappName }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check environment
+        id: check-env
+        if: ${{ vars.ENVIRONMENT != 'Main-Gov' }} # Generate deterministic hash to append to resource group names
+        run: |
+          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
+          shortHash="${hash:0:6}"
+          echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
+          echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: Print build info
+        id: build-info
+        run: |
+          echo "Printing build info"
+          echo "Environment: ${{ vars.ENVIRONMENT }}"
+          echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
+          echo "Git SHA: ${{ github.sha }}"
+          # Generate resource group name(s)
+          echo "Env Hash: ${{ steps.check-env.outputs.environmentHash }}"
+          resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
+          echo "Resource group appended with the following: ${resourceGroupSuffix}"
+          stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
+          echo "Stack Name: $stackName"
+          echo "stackName=${stackName}" >> $GITHUB_OUTPUT
+
+          # Expected build artifact naming
+          webappName="${stackName}-webapp"
+          echo "Webapp Artifact: $webappName"
+          echo "webappName=${webappName}" >> $GITHUB_OUTPUT
+
+  playwright-e2e-test-job:
+    needs: [build-info]
+    env:
+      webappName: ${{ needs.build-info.outputs.webappName }}
+    defaults:
+      run:
+        working-directory: test/e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v3
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          npx playwright install chromium msedge
+
+      - name: Run the test
+        run: |
+          TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
