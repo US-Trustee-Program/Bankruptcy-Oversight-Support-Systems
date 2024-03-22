@@ -907,7 +907,7 @@ jobs:
       - name: Install Node dependencies
         run: |
           npm ci
-          npx playwright install chromium msedge
+          npx playwright install --with-deps
       - name: Run the test
         run: |
           TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
@@ -1063,7 +1063,7 @@ jobs:
       - name: Install Node dependencies
         run: |
           npm ci
-          npx playwright install chromium msedge
+          npx playwright install --with-deps
 
       - name: Run the test
         run: |
