@@ -7,9 +7,9 @@
     "types": ["node"],
   },
   "include": ["**/*.ts"],
-  "references": [
-    {
-      "path": ["../../common"],
-    }
-  ]
+  // "references": [
+  //   {
+  //     "path": ["../../common"],
+  //   }
+  // ]
 }
