@@ -192,6 +192,10 @@ jobs:
     steps:
       - name: Get source code
         uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
@@ -924,6 +928,10 @@ jobs:
     steps:
       - name: Get source code
         uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
@@ -1075,6 +1083,10 @@ jobs:
     steps:
       - name: Get source code
         uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
