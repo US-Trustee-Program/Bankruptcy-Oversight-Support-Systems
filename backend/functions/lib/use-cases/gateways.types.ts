@@ -6,7 +6,12 @@ import {
   RawOrderSync,
   TransferOrderAction,
 } from '../../../../common/src/cams/orders';
-import { TransferIn, TransferOut } from '../../../../common/src/cams/events';
+import {
+  ConsolidationTo,
+  TransferIn,
+  TransferOut,
+  ConsolidationFrom,
+} from '../../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
 
 export interface RepositoryResource {
@@ -54,6 +59,18 @@ export interface CasesRepository {
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<TransferIn | TransferOut>>;
+  createConsolidationTo(
+    context: ApplicationContext,
+    transfer: ConsolidationTo,
+  ): Promise<ConsolidationTo>;
+  createConsolidationFrom(
+    context: ApplicationContext,
+    transfer: ConsolidationFrom,
+  ): Promise<ConsolidationFrom>;
+  getConsolidation(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(context: ApplicationContext, history: CaseHistory);
 }

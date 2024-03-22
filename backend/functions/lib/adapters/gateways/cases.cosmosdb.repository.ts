@@ -3,7 +3,12 @@ import { getCosmosDbClient, getCosmosConfig } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferIn,
+  TransferOut,
+} from '../../../../../common/src/cams/events';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -50,7 +55,38 @@ export class CasesCosmosDbRepository implements CasesRepository {
   ): Promise<TransferOut> {
     return this.create<TransferOut>(context, transferOut);
   }
+  async getConsolidation(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+    const query =
+      "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'CONSOLIDATION_%'";
+    const querySpec = {
+      query,
+      parameters: [
+        {
+          name: '@caseId',
+          value: caseId,
+        },
+      ],
+    };
+    const response = await this.queryData<ConsolidationTo | ConsolidationFrom>(context, querySpec);
+    return response;
+  }
 
+  async createConsolidationTo(
+    context: ApplicationContext,
+    consolidationIn: ConsolidationTo,
+  ): Promise<ConsolidationTo> {
+    return this.create<ConsolidationTo>(context, consolidationIn);
+  }
+
+  async createConsolidationFrom(
+    context: ApplicationContext,
+    consoldiationOut: ConsolidationFrom,
+  ): Promise<ConsolidationFrom> {
+    return this.create<ConsolidationFrom>(context, consoldiationOut);
+  }
   async getCaseHistory(context: ApplicationContext, caseId: string): Promise<Array<CaseHistory>> {
     const query =
       'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
