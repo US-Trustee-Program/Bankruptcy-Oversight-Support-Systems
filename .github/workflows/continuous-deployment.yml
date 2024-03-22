@@ -148,7 +148,6 @@ jobs:
           deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
-
   accessibility-test:
     defaults:
       run:
@@ -878,7 +877,9 @@ jobs:
   playwright-e2e-test:
     needs: [build-info, deploy-webapp, deploy-service]
     env:
+      stackName: ${{ needs.build-info.outputs.stackName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
+      priority: 201
     defaults:
       run:
         working-directory: test/e2e
@@ -886,19 +887,45 @@ jobs:
     steps:
       - name: Get source code
         uses: actions/checkout@v3
-
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      - name: Enable GHA runner access
+        run: |
+          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+          --is-cicd
       - name: Install Node dependencies
         run: |
           npm ci
           npx playwright install chromium msedge
-
       - name: Run the test
         run: |
           TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot, smoke-test-application-slots]
+    needs:
+      [
+        build-info,
+        deploy-webapp-slot,
+        deploy-service-slot,
+        smoke-test-application-slots,
+      ]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
@@ -920,7 +947,13 @@ jobs:
           az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot, smoke-test-application-slots]
+    needs:
+      [
+        build-info,
+        deploy-webapp-slot,
+        deploy-service-slot,
+        smoke-test-application-slots,
+      ]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       apiName: ${{ needs.build-info.outputs.apiName }}
@@ -943,7 +976,8 @@ jobs:
 
   smoke-test-application-post-swap:
     runs-on: ubuntu-latest
-    needs: [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+    needs:
+      [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       stackName: ${{ needs.build-info.outputs.stackName }}
@@ -996,9 +1030,12 @@ jobs:
           ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   playwright-e2e-test-post-swap:
-    needs: [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+    needs:
+      [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
+      stackName: ${{ needs.build-info.outputs.stackName }}
+      priority: 201
     defaults:
       run:
         working-directory: test/e2e
@@ -1006,7 +1043,23 @@ jobs:
     steps:
       - name: Get source code
         uses: actions/checkout@v3
-
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      - name: Enable GHA runner access
+        run: |
+          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+          --is-cicd
       - name: Install Node dependencies
         run: |
           npm ci
@@ -1015,3 +1068,8 @@ jobs:
       - name: Run the test
         run: |
           TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
