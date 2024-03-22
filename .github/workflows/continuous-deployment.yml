@@ -208,6 +208,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
+          --is-cicd
       - name: Install Node dependencies
         run: |
           npm ci
@@ -944,6 +945,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
+          --is-cicd
       - name: Install Node dependencies
         run: |
           npm ci
@@ -1099,6 +1101,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
+          --is-cicd
       - name: Install Node dependencies
         run: |
           npm ci
