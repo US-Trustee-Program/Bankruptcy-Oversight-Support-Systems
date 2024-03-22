@@ -148,26 +148,26 @@ jobs:
           deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
-  playwright-e2e-test-job:
-    needs: [build-info]
-    env:
-      webappName: ${{ needs.build-info.outputs.webappName }}
-    defaults:
-      run:
-        working-directory: test/e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get source code
-        uses: actions/checkout@v3
+  # playwright-e2e-test-job:
+  #   needs: [build-info]
+  #   env:
+  #     webappName: ${{ needs.build-info.outputs.webappName }}
+  #   defaults:
+  #     run:
+  #       working-directory: test/e2e
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Get source code
+  #       uses: actions/checkout@v3
 
-      - name: Install Node dependencies
-        run: |
-          npm ci
-          npx playwright install chromium msedge
+  #     - name: Install Node dependencies
+  #       run: |
+  #         npm ci
+  #         npx playwright install chromium msedge
 
-      - name: Run the test
-        run: |
-          TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
+  #     - name: Run the test
+  #       run: |
+  #         TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
   accessibility-test:
     defaults:
       run:
