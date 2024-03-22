@@ -184,7 +184,7 @@ jobs:
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
       stackName: ${{ needs.build-info.outputs.stackName }}
-      priority: 205
+      priority: 2051
     defaults:
       run:
         working-directory: test/e2e
@@ -920,7 +920,7 @@ jobs:
     env:
       stackName: ${{ needs.build-info.outputs.stackName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
-      priority: 205
+      priority: 2051
     defaults:
       run:
         working-directory: test/e2e
@@ -1075,7 +1075,7 @@ jobs:
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
       stackName: ${{ needs.build-info.outputs.stackName }}
-      priority: 205
+      priority: 2051
     defaults:
       run:
         working-directory: test/e2e
