@@ -27,10 +27,6 @@ test.describe('Consolidation Orders', () => {
   test('should select correct consolidationType radio when approving a consolidation', async ({
     page,
   }) => {
-    // test.setTimeout(60000);
-
-    await page.goto('/data-verification');
-
     // get pending consolidation order id
     const pendingConsolidationOrder: Order = orderResponseBody.find(
       (o) => o.orderType === 'consolidation' && o.status === 'pending',
