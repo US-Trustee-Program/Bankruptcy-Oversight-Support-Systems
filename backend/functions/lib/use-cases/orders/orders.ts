@@ -20,7 +20,12 @@ import {
   TransferOrderAction,
   ConsolidationType,
 } from '../../../../../common/src/cams/orders';
-import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferIn,
+  TransferOut,
+} from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CamsError } from '../../common-errors/cams-error';
@@ -102,6 +107,7 @@ export class OrdersUseCase {
       if (order.status === 'approved') {
         const transferIn: TransferIn = {
           caseId: order.newCase.caseId,
+          title: order.caseTitle,
           otherCaseId: order.caseId,
           divisionName: order.courtDivisionName,
           courtName: order.courtName,
@@ -111,6 +117,7 @@ export class OrdersUseCase {
 
         const transferOut: TransferOut = {
           caseId: order.caseId,
+          title: order.newCase.caseTitle,
           otherCaseId: order.newCase.caseId,
           divisionName: order.newCase.courtDivisionName,
           courtName: order.newCase.courtName,
@@ -344,6 +351,7 @@ export class OrdersUseCase {
     const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
       if (childCase.caseId !== leadCase.caseId) {
+        // Add the child case history.
         const caseHistory = await this.buildHistory(
           context,
           childCase,
@@ -352,10 +360,40 @@ export class OrdersUseCase {
           leadCaseSummary,
         );
         await this.casesRepo.createCaseHistory(context, caseHistory);
+
+        // Add the reference to the lead case to the child case.
+        const consolidationTo: ConsolidationTo = {
+          caseId: childCase.caseId,
+          title: newConsolidation.leadCase.caseTitle,
+          otherCaseId: newConsolidation.leadCase.caseId,
+          divisionName: newConsolidation.leadCase.courtDivisionName,
+          courtName: newConsolidation.leadCase.courtName,
+          orderDate: newConsolidation.orderDate,
+          consolidationType: newConsolidation.consolidationType,
+          documentType: 'CONSOLIDATION_TO',
+        };
+        await this.casesRepo.createConsolidationTo(context, consolidationTo);
+
+        // Add the reference to the child case to the lead case.
+        const consolidationFrom: ConsolidationFrom = {
+          caseId: newConsolidation.leadCase.caseId,
+          title: childCase.caseTitle,
+          otherCaseId: childCase.caseId,
+          divisionName: childCase.courtDivisionName,
+          courtName: childCase.courtName,
+          orderDate: newConsolidation.orderDate,
+          consolidationType: newConsolidation.consolidationType,
+          documentType: 'CONSOLIDATION_FROM',
+        };
+        await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
+
+        // Add the child case lead case history.
         const { docketEntries: _docketEntries, ...caseSummary } = childCase;
         childCaseSummaries.push(caseSummary);
       }
     }
+
+    // Add the lead case history.
     const leadCaseHistory = await this.buildHistory(
       context,
       leadCaseSummary,

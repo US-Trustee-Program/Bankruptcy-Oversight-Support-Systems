@@ -1,5 +1,5 @@
 import { DebtorAttorney, Party } from './parties';
-import { TransferIn, TransferOut } from './events';
+import { ConsolidationFrom, ConsolidationTo, TransferIn, TransferOut } from './events';
 import { OfficeDetails } from './courts';
 
 export interface CaseSummary extends OfficeDetails {
@@ -22,6 +22,7 @@ export interface CaseDetail extends CaseSummary {
   courtId: string;
   assignments?: string[];
   transfers?: Array<TransferIn | TransferOut>;
+  consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
   judgeName?: string;
 }
