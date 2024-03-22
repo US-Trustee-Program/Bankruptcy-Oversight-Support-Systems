@@ -179,7 +179,44 @@ jobs:
 
       - name: Run pa11y Test
         run: ../ops/scripts/pipeline/accessibility-test.sh
+  playwright-e2e-test-job:
+    needs: [build-info]
+    env:
+      webappName: ${{ needs.build-info.outputs.webappName }}
+      stackName: ${{ needs.build-info.outputs.stackName }}
+      priority: 205
+    defaults:
+      run:
+        working-directory: test/e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v3
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      - name: Enable GHA runner access
+        run: |
+          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          npx playwright install chromium msedge
 
+      - name: Run the test
+        run: |
+          TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
   sast-scan-and-upload:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -895,7 +932,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: |
-          ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
@@ -910,7 +947,7 @@ jobs:
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
@@ -1046,7 +1083,7 @@ jobs:
           in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: |
-          ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
@@ -1062,4 +1099,4 @@ jobs:
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
