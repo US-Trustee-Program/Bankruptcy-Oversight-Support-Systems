@@ -71,7 +71,7 @@ jobs:
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
       stackName: ${{ needs.build-info.outputs.stackName }}
-      priority: 200
+      priority: 201
     defaults:
       run:
         working-directory: test/e2e
@@ -95,6 +95,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
+          --is-cicd
       - name: Install Node dependencies
         run: |
           npm ci
