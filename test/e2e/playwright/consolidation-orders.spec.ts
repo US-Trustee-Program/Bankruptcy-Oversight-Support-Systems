@@ -104,11 +104,7 @@ test.describe('Consolidation Orders', () => {
       )
       .check();
 
-    await page
-      .locator('div')
-      .filter({ hasText: /^Select\.\.\.$/ })
-      .nth(1)
-      .click();
+    await page.locator('#lead-case-court div').filter({ hasText: 'Select...' }).first().click();
     await page.getByRole('option', { name: /Brooklyn/ }).click();
 
     await page
