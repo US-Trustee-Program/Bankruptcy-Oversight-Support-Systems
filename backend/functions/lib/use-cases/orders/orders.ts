@@ -19,12 +19,14 @@ import {
   ConsolidationOrderActionApproval,
   TransferOrderAction,
   ConsolidationType,
+  getCaseSummaryFromTransferOrderYuck,
+  getCaseSummaryFromConsolidationOrderCaseYuck,
 } from '../../../../../common/src/cams/orders';
 import {
   ConsolidationFrom,
   ConsolidationTo,
-  TransferIn,
-  TransferOut,
+  TransferFrom,
+  TransferTo,
 } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
@@ -102,31 +104,24 @@ export class OrdersUseCase {
       await this.ordersRepo.updateOrder(context, id, data);
       order = await this.ordersRepo.getOrder(context, id, data.caseId);
     }
-
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
-        const transferIn: TransferIn = {
+        const transferFrom: TransferFrom = {
           caseId: order.newCase.caseId,
-          title: order.caseTitle,
-          otherCaseId: order.caseId,
-          divisionName: order.courtDivisionName,
-          courtName: order.courtName,
+          otherCase: getCaseSummaryFromTransferOrderYuck(order),
           orderDate: order.orderDate,
-          documentType: 'TRANSFER_IN',
+          documentType: 'TRANSFER_FROM',
         };
 
-        const transferOut: TransferOut = {
+        const transferTo: TransferTo = {
           caseId: order.caseId,
-          title: order.newCase.caseTitle,
-          otherCaseId: order.newCase.caseId,
-          divisionName: order.newCase.courtDivisionName,
-          courtName: order.newCase.courtName,
+          otherCase: order.newCase,
           orderDate: order.orderDate,
-          documentType: 'TRANSFER_OUT',
+          documentType: 'TRANSFER_TO',
         };
 
-        await this.casesRepo.createTransferIn(context, transferIn);
-        await this.casesRepo.createTransferOut(context, transferOut);
+        await this.casesRepo.createTransferFrom(context, transferFrom);
+        await this.casesRepo.createTransferTo(context, transferTo);
       }
       const caseHistory: CaseHistory = {
         caseId: order.caseId,
@@ -364,10 +359,7 @@ export class OrdersUseCase {
         // Add the reference to the lead case to the child case.
         const consolidationTo: ConsolidationTo = {
           caseId: childCase.caseId,
-          title: newConsolidation.leadCase.caseTitle,
-          otherCaseId: newConsolidation.leadCase.caseId,
-          divisionName: newConsolidation.leadCase.courtDivisionName,
-          courtName: newConsolidation.leadCase.courtName,
+          otherCase: getCaseSummaryFromConsolidationOrderCaseYuck(newConsolidation.leadCase),
           orderDate: newConsolidation.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_TO',
@@ -377,10 +369,7 @@ export class OrdersUseCase {
         // Add the reference to the child case to the lead case.
         const consolidationFrom: ConsolidationFrom = {
           caseId: newConsolidation.leadCase.caseId,
-          title: childCase.caseTitle,
-          otherCaseId: childCase.caseId,
-          divisionName: childCase.courtDivisionName,
-          courtName: childCase.courtName,
+          otherCase: getCaseSummaryFromConsolidationOrderCaseYuck(childCase),
           orderDate: newConsolidation.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_FROM',

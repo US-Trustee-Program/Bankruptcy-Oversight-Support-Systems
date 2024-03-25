@@ -14,6 +14,7 @@ export type ConsolidationOrderActionApproval = ConsolidationOrder & {
   leadCase: ConsolidationOrderCase;
 };
 
+// TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
 export type TransferOrder = CaseSummary & {
   id: string;
   orderType: 'transfer';
@@ -24,6 +25,32 @@ export type TransferOrder = CaseSummary & {
   newCase?: CaseSummary;
   reason?: string;
 };
+
+// TODO: Helper function while we are in transition to remodel "has a".
+export function getCaseSummaryFromTransferOrderYuck(order: TransferOrder) {
+  return {
+    caseId: order.caseId,
+    caseTitle: order.caseTitle,
+    courtId: order.courtId,
+    courtDivision: order.courtDivision,
+    courtDivisionName: order.courtDivisionName,
+    courtName: order.courtName,
+    chapter: order.chapter,
+    dateFiled: order.dateFiled,
+    debtor: order.debtor,
+    dxtrId: order.dxtrId,
+    debtorTypeCode: order.debtorTypeCode,
+    debtorTypeLabel: order.debtorTypeLabel,
+    petitionCode: order.petitionCode,
+    petitionLabel: order.petitionLabel,
+    state: order.state,
+    regionId: order.regionId,
+    regionName: order.regionName,
+    groupDesignator: order.groupDesignator,
+    officeCode: order.officeCode,
+    officeName: order.officeName,
+  };
+}
 
 export type ConsolidationOrder = {
   id?: string;
@@ -46,6 +73,18 @@ export type ConsolidationOrder = {
 export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
 };
+
+export function getCaseSummaryFromConsolidationOrderCaseYuck(
+  order: RawConsolidationOrder | ConsolidationOrderCase,
+): CaseSummary {
+  const temp: RawConsolidationOrder = { ...(order as RawConsolidationOrder) };
+  delete temp.docketEntries;
+  delete temp.orderDate;
+  delete temp.leadCaseIdHint;
+  delete temp.jobId;
+
+  return temp;
+}
 
 export type RawConsolidationOrder = ConsolidationOrderCase & {
   orderDate: string;

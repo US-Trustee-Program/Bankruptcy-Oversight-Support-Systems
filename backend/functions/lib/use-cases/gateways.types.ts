@@ -8,9 +8,9 @@ import {
 } from '../../../../common/src/cams/orders';
 import {
   ConsolidationTo,
-  TransferIn,
-  TransferOut,
   ConsolidationFrom,
+  TransferFrom,
+  TransferTo,
 } from '../../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
 
@@ -53,12 +53,12 @@ export interface OrdersRepository {
 }
 
 export interface CasesRepository {
-  createTransferIn(context: ApplicationContext, transfer: TransferIn): Promise<TransferIn>;
-  createTransferOut(context: ApplicationContext, transfer: TransferOut): Promise<TransferOut>;
+  createTransferFrom(context: ApplicationContext, transfer: TransferFrom): Promise<TransferFrom>;
+  createTransferTo(context: ApplicationContext, transfer: TransferTo): Promise<TransferTo>;
   getTransfers(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Array<TransferIn | TransferOut>>;
+  ): Promise<Array<TransferFrom | TransferTo>>;
   createConsolidationTo(
     context: ApplicationContext,
     transfer: ConsolidationTo,

@@ -16,10 +16,11 @@ import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
   ConsolidationOrderActionApproval,
+  getCaseSummaryFromTransferOrderYuck,
   TransferOrder,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
-import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/mock.cases.gateway';
@@ -92,37 +93,33 @@ describe('Orders use case', () => {
       status: 'approved',
     };
 
-    const transferIn: TransferIn = {
+    const transferIn: TransferFrom = {
       caseId: order.newCase.caseId,
-      otherCaseId: order.caseId,
-      divisionName: order.courtDivisionName,
-      courtName: order.courtName,
+      otherCase: getCaseSummaryFromTransferOrderYuck(order),
       orderDate: order.orderDate,
-      documentType: 'TRANSFER_IN',
+      documentType: 'TRANSFER_FROM',
     };
 
-    const transferOut: TransferOut = {
+    const transferOut: TransferTo = {
       caseId: order.caseId,
-      otherCaseId: order.newCase.caseId,
-      divisionName: order.newCase.courtDivisionName,
-      courtName: order.newCase.courtName,
+      otherCase: order.newCase,
       orderDate: order.orderDate,
-      documentType: 'TRANSFER_OUT',
+      documentType: 'TRANSFER_TO',
     };
 
     const updateOrderFn = jest
       .spyOn(ordersRepo, 'updateOrder')
       .mockResolvedValue({ id: 'mock-guid' });
     const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
-    const transferOutFn = jest.spyOn(casesRepo, 'createTransferOut');
-    const transferInFn = jest.spyOn(casesRepo, 'createTransferIn');
+    const transferToFn = jest.spyOn(casesRepo, 'createTransferTo');
+    const transferFromFn = jest.spyOn(casesRepo, 'createTransferFrom');
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
     await useCase.updateTransferOrder(mockContext, order.id, action);
     expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, action);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
-    expect(transferOutFn).toHaveBeenCalledWith(mockContext, transferOut);
-    expect(transferInFn).toHaveBeenCalledWith(mockContext, transferIn);
+    expect(transferToFn).toHaveBeenCalledWith(mockContext, transferOut);
+    expect(transferFromFn).toHaveBeenCalledWith(mockContext, transferIn);
     expect(auditFn).toHaveBeenCalled();
   });
 
