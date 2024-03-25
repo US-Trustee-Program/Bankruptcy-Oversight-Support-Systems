@@ -261,21 +261,23 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     <>
                       <span className="case-detail-item-name">Lead Case:</span>
                       <CaseNumber
-                        caseId={caseDetail.consolidation[0].otherCaseId}
+                        caseId={caseDetail.consolidation[0].otherCase.caseId}
                         className="usa-link case-detail-item-value"
                         data-testid={`case-detail-consolidation-link`}
                       />{' '}
                       <span className="case-detail-title-value">
-                        {caseDetail.consolidation[0].title}
+                        {caseDetail.consolidation[0].otherCase.caseTitle}
                       </span>
                     </>
                   )}
                 </div>
-                <div>
-                  <span className="case-detail-consolidated-case-count">
-                    Cases Consolidated: {caseDetail.consolidation.length}
-                  </span>
-                </div>
+                {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
+                  <div>
+                    <span className="case-detail-consolidated-case-count">
+                      Cases Consolidated: {caseDetail.consolidation.length + 1}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="case-detail-item-name">Order Date:</span>
                   <span
@@ -303,25 +305,25 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     return (
                       <li key={idx} className="transfer">
                         <h4>
-                          Transferred {transfer.documentType === 'TRANSFER_IN' ? 'from' : 'to'}:
+                          Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}:
                         </h4>
                         <div>
                           <span className="case-detail-item-name">Case Number:</span>
                           <CaseNumber
-                            caseId={transfer.otherCaseId}
+                            caseId={transfer.otherCase.caseId}
                             className="usa-link case-detail-item-value"
                             data-testid={`case-detail-transfer-link-${idx}`}
                           />
                         </div>
                         <div className="transfer-court">
                           <span className="case-detail-item-name">
-                            {transfer.documentType === 'TRANSFER_IN' ? 'Previous' : 'New'} Court:
+                            {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'} Court:
                           </span>
                           <span
                             className="case-detail-item-value"
                             data-testid={`case-detail-transfer-court-${idx}`}
                           >
-                            {transfer.courtName} - {transfer.divisionName}
+                            {transfer.otherCase.courtName} - {transfer.otherCase.courtDivisionName}
                           </span>
                         </div>
                         <div>

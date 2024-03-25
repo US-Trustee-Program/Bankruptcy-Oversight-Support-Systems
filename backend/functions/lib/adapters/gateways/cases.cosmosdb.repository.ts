@@ -6,8 +6,8 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import {
   ConsolidationFrom,
   ConsolidationTo,
-  TransferIn,
-  TransferOut,
+  TransferFrom,
+  TransferTo,
 } from '../../../../../common/src/cams/events';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
@@ -30,7 +30,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
   async getTransfers(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Array<TransferIn | TransferOut>> {
+  ): Promise<Array<TransferFrom | TransferTo>> {
     const query = "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'TRANSFER_%'";
     const querySpec = {
       query,
@@ -41,20 +41,24 @@ export class CasesCosmosDbRepository implements CasesRepository {
         },
       ],
     };
-    const response = await this.queryData<TransferIn | TransferOut>(context, querySpec);
+    const response = await this.queryData<TransferFrom | TransferTo>(context, querySpec);
     return response;
   }
 
-  async createTransferIn(context: ApplicationContext, transferIn: TransferIn): Promise<TransferIn> {
-    return this.create<TransferIn>(context, transferIn);
+  async createTransferFrom(
+    context: ApplicationContext,
+    transferFrom: TransferFrom,
+  ): Promise<TransferFrom> {
+    return this.create<TransferFrom>(context, transferFrom);
   }
 
-  async createTransferOut(
+  async createTransferTo(
     context: ApplicationContext,
-    transferOut: TransferOut,
-  ): Promise<TransferOut> {
-    return this.create<TransferOut>(context, transferOut);
+    transferOut: TransferTo,
+  ): Promise<TransferTo> {
+    return this.create<TransferTo>(context, transferOut);
   }
+
   async getConsolidation(
     context: ApplicationContext,
     caseId: string,

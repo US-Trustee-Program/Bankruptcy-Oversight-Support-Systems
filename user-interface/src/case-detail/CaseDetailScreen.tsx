@@ -8,6 +8,7 @@ import {
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
   CaseHistory,
+  CaseAssociatedCasesResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
@@ -20,8 +21,10 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 import { CaseDetail } from '@common/cams/cases';
 import { useApi } from '@/lib/hooks/UseApi';
+import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { EventCaseReference } from '@common/cams/events';
 
-const LoadingIndicator = lazy(() => import('@/lib/components/LoadingIndicator'));
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
@@ -165,6 +168,7 @@ interface CaseDetailProps {
   caseDetail?: CaseDetail;
   caseDocketEntries?: CaseDocketEntry[];
   caseHistory?: CaseHistory[];
+  associatedCases?: EventCaseReference[];
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
@@ -179,6 +183,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     new Map(),
   );
   const [caseHistory, setCaseHistory] = useState<CaseHistory[]>([]);
+  const [associatedCases, setAssociatedCases] = useState<EventCaseReference[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
@@ -234,6 +239,22 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         const response = data as CaseAssignmentHistoryResponseData;
         if (response) {
           setCaseHistory(response.body);
+          setIsAuditHistoryLoading(false);
+        }
+      })
+      .catch(() => {
+        setCaseHistory([]);
+        setIsAuditHistoryLoading(false);
+      });
+  }
+
+  async function fetchAssociatedCases() {
+    api
+      .get(`/cases/${caseId}/associated`, {})
+      .then((data) => {
+        const response = data as CaseAssociatedCasesResponseData;
+        if (response) {
+          setAssociatedCases(response.body);
           setIsAuditHistoryLoading(false);
         }
       })
@@ -310,6 +331,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
+    if (props.associatedCases) {
+      setAssociatedCases(props.associatedCases);
+    } else {
+      fetchAssociatedCases();
+    }
+  }, []);
+
+  useEffect(() => {
     if (props.caseHistory) {
       setCaseHistory(props.caseHistory);
     } else {
@@ -341,10 +370,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
-                <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+                <CaseDetailNavigation
+                  caseId={caseId}
+                  initiallySelectedNavLink={navState}
+                  showAssociatedCasesList={false}
+                />
               </div>
               <div className="grid-col-8">
-                <LoadingIndicator />
+                <LoadingSpinner caption="Loading case details..." />
               </div>
               <div className="grid-col-1"></div>
             </div>
@@ -361,7 +394,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
               <div id="left-gutter" className="grid-col-1"></div>
               <div className="grid-col-2">
                 <div className={'left-navigation-pane-container'}>
-                  <CaseDetailNavigation caseId={caseId} initiallySelectedNavLink={navState} />
+                  <CaseDetailNavigation
+                    caseId={caseId}
+                    initiallySelectedNavLink={navState}
+                    showAssociatedCasesList={
+                      caseBasicInfo.consolidation != undefined &&
+                      caseBasicInfo.consolidation?.length > 0
+                    }
+                  />
                   {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                     <div
                       className={`filter-and-search padding-y-4`}
@@ -474,7 +514,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 </div>
               </div>
               <div className="grid-col-6">
-                <Suspense fallback={<LoadingIndicator />}>
+                <Suspense fallback={<LoadingSpinner />}>
                   <Routes>
                     <Route
                       index
@@ -509,6 +549,11 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           isAuditHistoryLoading={isAuditHistoryLoading}
                         />
                       }
+                    />
+                    {/* TODO: Wire this up with consolidations fetched from the API */}
+                    <Route
+                      path="associated-cases"
+                      element={<CaseDetailAssociatedCases associatedCases={associatedCases} />}
                     />
                   </Routes>
                 </Suspense>
