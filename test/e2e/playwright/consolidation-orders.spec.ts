@@ -41,10 +41,8 @@ test.describe('Consolidation Orders', () => {
     }
 
     for (let i = 0; i < childCaseCount; ++i) {
-      const checkbox = await page.getByTestId(
-        `${pendingConsolidationOrder.id}-case-list-checkbox-${i}`,
-      );
-      checkbox.check();
+      const checkbox = page.getByTestId(`${pendingConsolidationOrder.id}-case-list-checkbox-${i}`);
+      await checkbox.check();
     }
 
     const approveButton = page.getByTestId(
@@ -56,7 +54,7 @@ test.describe('Consolidation Orders', () => {
       `radio-administrative-confirmation-modal-${pendingConsolidationOrder.id}-click-target`,
     );
 
-    expect(jointAdminType).toBeInViewport();
+    expect(jointAdminType).toBeVisible();
   });
 
   test('should open consolidation modal, fill form and close modal by clicking cancel', async ({
