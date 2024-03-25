@@ -483,11 +483,16 @@ jobs:
         run: |
           allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
 
-          set -o pipefail && az deployment group create \
-            -g ${{ secrets.AZURE_RG }} \
-            -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-            --parameter resourceGroupName=${{ secrets.AZURE_RG }} accountName=${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} databaseName=${{ secrets.AZ_COSMOS_DATABASE_NAME }} allowedSubnet=${allowedSubnet} analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} allowAllNetworks=${{ vars.ENVIRONMENT != 'Main-Gov' }} actionGroupResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} \
-            -o json
+          ./ops/scripts/pipeline/az-cosmos-deploy.sh \
+            -g ${{ steps.rgApp.outputs.out }} \
+            --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+            --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            --environmentName ${{ vars.ENVIRONMENT }} \
+            --allowedSubnet ${allowedSubnet} \
+            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
+            --actionGroupResourceGroup=${{ secrets.AZ_ANALYTICS_RG }} \
+            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+            --branchHashId ${{ needs.build-info.outputs.environmentHash }}
 
       - name: Check deployment and set params
         id: set-deploy-params
