@@ -1,6 +1,7 @@
 import { ResponseData } from './api';
 import * as CommonOrders from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
+import { EventCaseReference } from '@common/cams/events';
 
 export interface Chapter15Type {
   caseId: string;
@@ -94,6 +95,10 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
 
 export interface CaseAssignmentHistoryResponseData extends ResponseData {
   body: CaseAssignmentHistory[];
+}
+
+export interface CaseAssociatedCasesResponseData extends ResponseData {
+  body: EventCaseReference[];
 }
 
 export type TransferOrder = CommonOrders.TransferOrder & {

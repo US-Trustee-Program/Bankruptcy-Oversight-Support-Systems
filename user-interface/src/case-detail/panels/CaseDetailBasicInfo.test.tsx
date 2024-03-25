@@ -22,21 +22,17 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
     debtorAttorney: TEST_DEBTOR_ATTORNEY,
   },
 });
-const TRANSFER_IN: Transfer = {
+const TRANSFER_FROM: Transfer = {
   caseId: TEST_CASE_ID,
-  otherCaseId: OLD_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: OLD_CASE_ID } }),
   orderDate: '01-04-2023',
-  divisionName: 'Old Division',
-  courtName: 'Ye Olde Court',
-  documentType: 'TRANSFER_IN',
+  documentType: 'TRANSFER_FROM',
 };
-const TRANSFER_OUT: Transfer = {
+const TRANSFER_TO: Transfer = {
   caseId: TEST_CASE_ID,
-  otherCaseId: NEW_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
   orderDate: '01-12-2024',
-  divisionName: 'New Division',
-  courtName: 'New Hotness Court',
-  documentType: 'TRANSFER_OUT',
+  documentType: 'TRANSFER_TO',
 };
 
 describe('Case detail basic information panel', () => {
@@ -77,7 +73,7 @@ describe('Case detail basic information panel', () => {
     test('should display old case information', () => {
       const transferredCase = {
         ...BASE_TEST_CASE_DETAIL,
-        transfers: [TRANSFER_IN],
+        transfers: [TRANSFER_FROM],
       };
       render(
         <BrowserRouter>
@@ -91,19 +87,19 @@ describe('Case detail basic information panel', () => {
 
       const oldCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(oldCaseOrderDate).toBeInTheDocument();
-      expect(oldCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_IN.orderDate));
+      expect(oldCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_FROM.orderDate));
 
       const oldCaseCourt = screen.queryByTestId('case-detail-transfer-court-0');
       expect(oldCaseCourt).toBeInTheDocument();
       expect(oldCaseCourt?.textContent).toEqual(
-        `${TRANSFER_IN.courtName} - ${TRANSFER_IN.divisionName}`,
+        `${TRANSFER_FROM.otherCase.courtName} - ${TRANSFER_FROM.otherCase.courtDivisionName}`,
       );
     });
 
     test('should display new case information', () => {
       const transferredCase = {
         ...BASE_TEST_CASE_DETAIL,
-        transfers: [TRANSFER_OUT],
+        transfers: [TRANSFER_TO],
       };
       render(
         <BrowserRouter>
@@ -117,19 +113,19 @@ describe('Case detail basic information panel', () => {
 
       const newCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(newCaseOrderDate).toBeInTheDocument();
-      expect(newCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_OUT.orderDate));
+      expect(newCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_TO.orderDate));
 
       const newCaseCourt = screen.queryByTestId('case-detail-transfer-court-0');
       expect(newCaseCourt).toBeInTheDocument();
       expect(newCaseCourt?.textContent).toEqual(
-        `${TRANSFER_OUT.courtName} - ${TRANSFER_OUT.divisionName}`,
+        `${TRANSFER_TO.otherCase.courtName} - ${TRANSFER_TO.otherCase.courtDivisionName}`,
       );
     });
 
     test('should display old and new case information', () => {
       const transferredCase = {
         ...BASE_TEST_CASE_DETAIL,
-        transfers: [TRANSFER_IN, TRANSFER_OUT],
+        transfers: [TRANSFER_FROM, TRANSFER_TO],
       };
       render(
         <BrowserRouter>
@@ -143,12 +139,12 @@ describe('Case detail basic information panel', () => {
 
       const newCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-0');
       expect(newCaseOrderDate).toBeInTheDocument();
-      expect(newCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_OUT.orderDate));
+      expect(newCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_TO.orderDate));
 
       const newCaseCourt = screen.queryByTestId('case-detail-transfer-court-0');
       expect(newCaseCourt).toBeInTheDocument();
       expect(newCaseCourt?.textContent).toEqual(
-        `${TRANSFER_OUT.courtName} - ${TRANSFER_OUT.divisionName}`,
+        `${TRANSFER_TO.otherCase.courtName} - ${TRANSFER_TO.otherCase.courtDivisionName}`,
       );
 
       const oldCaseIdLink = screen.queryByTestId('case-detail-transfer-link-1');
@@ -157,12 +153,12 @@ describe('Case detail basic information panel', () => {
 
       const oldCaseOrderDate = screen.queryByTestId('case-detail-transfer-order-1');
       expect(oldCaseOrderDate).toBeInTheDocument();
-      expect(oldCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_IN.orderDate));
+      expect(oldCaseOrderDate?.textContent).toEqual(formatDate(TRANSFER_FROM.orderDate));
 
       const oldCaseCourt = screen.queryByTestId('case-detail-transfer-court-1');
       expect(oldCaseCourt).toBeInTheDocument();
       expect(oldCaseCourt?.textContent).toEqual(
-        `${TRANSFER_IN.courtName} - ${TRANSFER_IN.divisionName}`,
+        `${TRANSFER_FROM.otherCase.courtName} - ${TRANSFER_FROM.otherCase.courtDivisionName}`,
       );
     });
   });
