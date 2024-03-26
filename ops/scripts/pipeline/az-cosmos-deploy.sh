@@ -97,6 +97,6 @@ fi
 az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-e2e.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
-az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmose2e.bicep \
+az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-e2e.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
