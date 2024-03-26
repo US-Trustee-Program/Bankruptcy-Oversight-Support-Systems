@@ -479,7 +479,6 @@ jobs:
 
       - name: Deploy database
         id: azure-db-deploy
-        if: needs.build-info.outputs.deployBicep == 'true'
         run: |
           allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
 
@@ -866,8 +865,13 @@ jobs:
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
             exit 1
           fi
+      - name: Seed e2e database
+        run: |
+          # az webapp traffic-routing set --distribution staging=0 --name "ustp-cams-dev-8a7662-node-api" --resource-group "rg-cams-app-dev-8a7662"
+          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ env.slotName }}
       - name: Execute Integration Tests
         run: |
+          # TODO CAMS-345 run playwright integration test instead here. Need to setup dependencies.
           pushd backend/functions
           npm ci
           export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
