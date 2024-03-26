@@ -709,7 +709,7 @@ jobs:
 
   enable-access:
     runs-on: ubuntu-latest
-    needs: [build-info, smoke-test-application, playwright-e2e-test]
+    needs: [build-info, smoke-test-application, execute-e2e-test-pre-swap]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
