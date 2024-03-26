@@ -6,32 +6,7 @@ param accountName string
 @description('CosmosDb database name')
 param databaseName string
 @description('List of container name and keys')
-param databaseContainers array = [
-  {
-    name: 'healthcheck'
-    partitionKey1: '/id'
-  }
-  {
-    name: 'assignments'
-    partitionKey1: '/caseId'
-  }
-  {
-    name: 'cases'
-    partitionKey1: '/caseId'
-  }
-  {
-    name: 'orders'
-    partitionKey1: '/caseId'
-  }
-  {
-    name: 'consolidations'
-    partitionKey1: '/consolidationId'
-  }
-  {
-    name: 'runtime-state'
-    partitionKey1: '/documentType'
-  }
-]
+param databaseContainers array = [] // See parameters.json file
 
 @description('Allowed subnet resource id')
 param allowedSubnet string = ''
