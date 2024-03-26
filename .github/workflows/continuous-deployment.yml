@@ -822,7 +822,7 @@ jobs:
           --slotName ${{ needs.build-info.outputs.slotName }} \
           --settings "INFO_SHA=${{ github.sha }}"
 
-  smoke-test-application-slots:
+  integration-test-slots:
     if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
     runs-on: ubuntu-latest
     needs: [build-info, deploy-webapp-slot, deploy-service-slot]
@@ -832,6 +832,7 @@ jobs:
       webappName: ${{ needs.build-info.outputs.webappName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
       slotName: ${{ needs.build-info.outputs.slotName }}
+      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
       priority: 200
     steps:
       - uses: actions/checkout@v3
@@ -854,7 +855,7 @@ jobs:
           --slot-name ${{ env.slotName }} \
           --is-cicd
 
-      - name: Health check api
+      - name: Smoke test application
         run: |
           webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}?x-ms-routing-name=${{ env.slotName }} )
           apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }} )
@@ -868,15 +869,6 @@ jobs:
       - name: Seed e2e database
         run: |
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ env.slotName }}
-      # - name: Execute Integration Tests
-      #   run: |
-      #     # TODO CAMS-345 run playwright integration test instead here. Need to setup dependencies.
-      #     pushd backend/functions
-      #     npm ci
-      #     export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-      #     export IS_SLOTS="true"
-      #     npm run test:integration
-      #     popd
       - name: Execute Playwright Integration test
         run: |
           pushd test/e2e
@@ -898,59 +890,23 @@ jobs:
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ops/scripts/pipeline/slots/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32} ${{ env.slotName }}
 
-  # playwright-e2e-test: # TODO Move this above
-  #   needs: [build-info, deploy-webapp, deploy-service]
-  #   env:
-  #     stackName: ${{ needs.build-info.outputs.stackName }}
-  #     webappName: ${{ needs.build-info.outputs.webappName }}
-  #     priority: 201
-  #   defaults:
-  #     run:
-  #       working-directory: test/e2e
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Get source code
-  #       uses: actions/checkout@v3
-  #     - uses: azure/login@v1
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
-  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
-  #     - uses: cloudposse/github-action-secret-outputs@main
-  #       id: rgApp
-  #       with:
-  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-  #         op: decode
-  #         in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-  #     - name: Enable GHA runner access
-  #       run: |
-  #         ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
-  #         -g ${{ steps.rgApp.outputs.out }} \
-  #         -s ${{ env.stackName }} \
-  #         -p ${{ env.priority }} \
-  #         --is-cicd
-  #     - name: Install Node dependencies
-  #       run: |
-  #         npm ci
-  #         npx playwright install chromium msedge
-  #     - name: Run the test
-  #       run: |
-  #         TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
-  #     - name: Upload report
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: playwright-report
-  #         path: test/e2e/playwright-report/
-  #         retention-days: 30
-  #     - name: Disable GHA runner access
-  #       if: always()
-  #       run: |
-  #         name="gha-${{ env.priority }}-${{ env.stackName }}"
-  #         ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+      - name: Clean up e2e test database
+        if: always()
+        run: |
+          e2eDatabaseName="${database}-e2e"
+          if [[ ${{ vars.ENVIRONMENT }} != 'Main-Gov' ]]; then
+            e2eDatabaseName="${e2eDatabaseName}-${{ env.branchHashId }}"
+          fi
+          az cosmosdb sql database delete \
+          --account-name ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+          --name ${e2eDatabaseName} \
+          --resource-group ${{ secrets.AZURE_RG }} \
+          --yes
+
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot, smoke-test-application-slots]
+    needs: [build-info, deploy-webapp-slot, deploy-service-slot, integration-test-slots]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
@@ -972,7 +928,7 @@ jobs:
           az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot, smoke-test-application-slots]
+    needs: [build-info, deploy-webapp-slot, deploy-service-slot, integration-test-slots]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       apiName: ${{ needs.build-info.outputs.apiName }}
@@ -1046,53 +1002,3 @@ jobs:
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
-
-  # playwright-e2e-test-post-swap:
-  #   needs: [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
-  #   env:
-  #     webappName: ${{ needs.build-info.outputs.webappName }}
-  #     stackName: ${{ needs.build-info.outputs.stackName }}
-  #     priority: 201
-  #   defaults:
-  #     run:
-  #       working-directory: test/e2e
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Get source code
-  #       uses: actions/checkout@v3
-  #     - uses: azure/login@v1
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
-  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
-  #     - uses: cloudposse/github-action-secret-outputs@main
-  #       id: rgApp
-  #       with:
-  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-  #         op: decode
-  #         in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-  #     - name: Enable GHA runner access
-  #       run: |
-  #         ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
-  #         -g ${{ steps.rgApp.outputs.out }} \
-  #         -s ${{ env.stackName }} \
-  #         -p ${{ env.priority }} \
-  #         --is-cicd
-  #     - name: Install Node dependencies
-  #       run: |
-  #         npm ci
-  #         npx playwright install chromium msedge
-  #     - name: Run the test
-  #       run: |
-  #         TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
-  #     - name: Upload report
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: playwright-report
-  #         path: test/e2e/playwright-report/
-  #         retention-days: 30
-  #     - name: Disable GHA runner access
-  #       if: always()
-  #       run: |
-  #         name="gha-${{ env.priority }}-${{ env.stackName }}"
-  #         ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
