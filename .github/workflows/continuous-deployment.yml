@@ -893,7 +893,7 @@ jobs:
       - name: Clean up e2e test database
         if: always()
         run: |
-          e2eDatabaseName="${database}-e2e"
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ vars.ENVIRONMENT }} != 'Main-Gov' ]]; then
             e2eDatabaseName="${e2eDatabaseName}-${{ env.branchHashId }}"
           fi
