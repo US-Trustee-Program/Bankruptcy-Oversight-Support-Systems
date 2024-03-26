@@ -23,7 +23,7 @@ test.describe('Transfer Orders', () => {
       { timeout: 30000 },
     );
 
-    await page.goto('/data-verification');
+    await page.goto('/data-verification?x-ms-routing-name=staging');
     expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
@@ -72,7 +72,7 @@ test('test', async ({ page }) => {
   const officesRequestPromise = page.waitForEvent('requestfinished', {
     predicate: (e) => e.url().includes('api/offices'),
   });
-  await page.goto('/data-verification');
+  await page.goto('/data-verification?x-ms-routing-name=staging');
 
   // Wait on the offices to come back from API
   await officesRequestPromise;

@@ -14,7 +14,7 @@ test.describe('Consolidation Orders', () => {
       predicate: (e) => e.url().includes('api/offices'),
     });
 
-    await page.goto('/data-verification');
+    await page.goto('/data-verification?x-ms-routing-name=staging');
     expect(page.locator('h1')).toHaveText('Data Verification');
     await officesRequestPromise;
 

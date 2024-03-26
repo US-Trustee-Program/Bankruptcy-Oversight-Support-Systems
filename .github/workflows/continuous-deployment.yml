@@ -708,7 +708,7 @@ jobs:
 
   enable-access:
     runs-on: ubuntu-latest
-    needs: [build-info, smoke-test-application, playwright-e2e-test]
+    needs: [build-info, smoke-test-application]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
@@ -867,60 +867,23 @@ jobs:
           fi
       - name: Seed e2e database
         run: |
-          # az webapp traffic-routing set --distribution staging=0 --name "ustp-cams-dev-8a7662-node-api" --resource-group "rg-cams-app-dev-8a7662"
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ env.slotName }}
-      - name: Execute Integration Tests
+      # - name: Execute Integration Tests
+      #   run: |
+      #     # TODO CAMS-345 run playwright integration test instead here. Need to setup dependencies.
+      #     pushd backend/functions
+      #     npm ci
+      #     export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+      #     export IS_SLOTS="true"
+      #     npm run test:integration
+      #     popd
+      - name: Execute Playwright Integration test
         run: |
-          # TODO CAMS-345 run playwright integration test instead here. Need to setup dependencies.
-          pushd backend/functions
-          npm ci
-          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-          export IS_SLOTS="true"
-          npm run test:integration
-          popd
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/slots/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32} ${{ env.slotName }}
-
-  playwright-e2e-test:
-    needs: [build-info, deploy-webapp, deploy-service]
-    env:
-      stackName: ${{ needs.build-info.outputs.stackName }}
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      priority: 201
-    defaults:
-      run:
-        working-directory: test/e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get source code
-        uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - name: Install Node dependencies
-        run: |
+          pushd test/e2e
           npm ci
           npx playwright install chromium msedge
-      - name: Run the test
-        run: |
           TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+          popd
       - name: Upload report
         uses: actions/upload-artifact@v4
         if: always()
@@ -928,11 +891,62 @@ jobs:
           name: playwright-report
           path: test/e2e/playwright-report/
           retention-days: 30
+
       - name: Disable GHA runner access
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+          ops/scripts/pipeline/slots/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32} ${{ env.slotName }}
+
+  # playwright-e2e-test: # TODO Move this above
+  #   needs: [build-info, deploy-webapp, deploy-service]
+  #   env:
+  #     stackName: ${{ needs.build-info.outputs.stackName }}
+  #     webappName: ${{ needs.build-info.outputs.webappName }}
+  #     priority: 201
+  #   defaults:
+  #     run:
+  #       working-directory: test/e2e
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Get source code
+  #       uses: actions/checkout@v3
+  #     - uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgApp
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+  #     - name: Enable GHA runner access
+  #       run: |
+  #         ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
+  #         -g ${{ steps.rgApp.outputs.out }} \
+  #         -s ${{ env.stackName }} \
+  #         -p ${{ env.priority }} \
+  #         --is-cicd
+  #     - name: Install Node dependencies
+  #       run: |
+  #         npm ci
+  #         npx playwright install chromium msedge
+  #     - name: Run the test
+  #       run: |
+  #         TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+  #     - name: Upload report
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: playwright-report
+  #         path: test/e2e/playwright-report/
+  #         retention-days: 30
+  #     - name: Disable GHA runner access
+  #       if: always()
+  #       run: |
+  #         name="gha-${{ env.priority }}-${{ env.stackName }}"
+  #         ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
@@ -1033,52 +1047,52 @@ jobs:
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
-  playwright-e2e-test-post-swap:
-    needs: [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
-    env:
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      stackName: ${{ needs.build-info.outputs.stackName }}
-      priority: 201
-    defaults:
-      run:
-        working-directory: test/e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get source code
-        uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - name: Install Node dependencies
-        run: |
-          npm ci
-          npx playwright install chromium msedge
-      - name: Run the test
-        run: |
-          TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: test/e2e/playwright-report/
-          retention-days: 30
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+  # playwright-e2e-test-post-swap:
+  #   needs: [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+  #   env:
+  #     webappName: ${{ needs.build-info.outputs.webappName }}
+  #     stackName: ${{ needs.build-info.outputs.stackName }}
+  #     priority: 201
+  #   defaults:
+  #     run:
+  #       working-directory: test/e2e
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Get source code
+  #       uses: actions/checkout@v3
+  #     - uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgApp
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+  #     - name: Enable GHA runner access
+  #       run: |
+  #         ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
+  #         -g ${{ steps.rgApp.outputs.out }} \
+  #         -s ${{ env.stackName }} \
+  #         -p ${{ env.priority }} \
+  #         --is-cicd
+  #     - name: Install Node dependencies
+  #       run: |
+  #         npm ci
+  #         npx playwright install chromium msedge
+  #     - name: Run the test
+  #       run: |
+  #         TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+  #     - name: Upload report
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: playwright-report
+  #         path: test/e2e/playwright-report/
+  #         retention-days: 30
+  #     - name: Disable GHA runner access
+  #       if: always()
+  #       run: |
+  #         name="gha-${{ env.priority }}-${{ env.stackName }}"
+  #         ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
