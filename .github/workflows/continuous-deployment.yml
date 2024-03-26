@@ -492,7 +492,7 @@ jobs:
             --environmentName ${{ vars.ENVIRONMENT }} \
             --allowedSubnet "${allowedSubnet}" \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
-            --actionGroupResourceGroup=${{ secrets.AZ_ANALYTICS_RG }} \
+            --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --branchHashId ${{ needs.build-info.outputs.environmentHash }}
 
