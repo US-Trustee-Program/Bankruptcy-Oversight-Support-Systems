@@ -1,9 +1,10 @@
 # CAMS Webapp Components
 
-```mermaidgraph TB
+```mermaid
+graph TB
   linkStyle default fill:#ffffff
 
-  subgraph diagram [CAMS - Webapp - Components]
+  subgraph diagram ["CAMS - Webapp - Components"]
     style diagram fill:#ffffff,stroke:#ffffff
 
     1["<div style='font-weight: bold'>AUST</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Assistant United States<br />Trustee - manages a USTP<br />office</div>"]
