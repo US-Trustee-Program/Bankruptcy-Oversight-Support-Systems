@@ -176,6 +176,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
+  const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
   const api = useApi();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
@@ -249,18 +250,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   }
 
   async function fetchAssociatedCases() {
+    setIsAssociatedCasesLoading(true);
     api
       .get(`/cases/${caseId}/associated`, {})
       .then((data) => {
         const response = data as CaseAssociatedCasesResponseData;
         if (response) {
           setAssociatedCases(response.body);
-          setIsAuditHistoryLoading(false);
+          setIsAssociatedCasesLoading(false);
         }
       })
       .catch(() => {
-        setCaseHistory([]);
-        setIsAuditHistoryLoading(false);
+        setAssociatedCases([]);
+        setIsAssociatedCasesLoading(false);
       });
   }
 
@@ -553,7 +555,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     {/* TODO: Wire this up with consolidations fetched from the API */}
                     <Route
                       path="associated-cases"
-                      element={<CaseDetailAssociatedCases associatedCases={associatedCases} />}
+                      element={
+                        <CaseDetailAssociatedCases
+                          associatedCases={associatedCases}
+                          isAssociatedCasesLoading={isAssociatedCasesLoading}
+                        />
+                      }
                     />
                   </Routes>
                 </Suspense>
