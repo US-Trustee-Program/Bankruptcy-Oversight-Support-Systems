@@ -80,16 +80,9 @@ storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$sto
 echo "Creating Node API Staging Slot..."
 az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
 
-echo "Updating Node API Slot Configuration with new storage account..."
+echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-az functionapp config appsettings set --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --slot-settings AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
-
-# TODO CAMS-345
-    # Set --slot-setting COSMOS_DATABASE_NAME=true
-    # Update COSMOS_DATABASE_NAME to point to e2e database name 'cams-e2e-<branch hash id>'
-#  az functionapp config appsettings list -g rg-cams-app-dev-8a7662 -n ustp-cams-dev-8a7662-node-api
-echo "Setting cosmos database for e2e testing..."
-az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="cams-e2e-${branch_hash_id}"
+az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="cams-e2e-${branch_hash_id}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
 
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
