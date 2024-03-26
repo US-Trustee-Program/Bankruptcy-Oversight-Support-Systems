@@ -484,7 +484,7 @@ jobs:
           allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
-            -g ${{ steps.rgApp.outputs.out }} \
+            -g ${{ secrets.AZURE_RG }} \
             --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
             --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --environmentName ${{ vars.ENVIRONMENT }} \
