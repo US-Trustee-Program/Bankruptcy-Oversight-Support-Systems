@@ -709,7 +709,7 @@ jobs:
 
   enable-access:
     runs-on: ubuntu-latest
-    needs: [build-info, smoke-test-application, execute-e2e-test-pre-swap]
+    needs: [build-info, smoke-test-application, execute-e2e-test-post-deploy]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
@@ -880,7 +880,7 @@ jobs:
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ops/scripts/pipeline/slots/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32} ${{ env.slotName }}
 
-  execute-e2e-test-pre-swap:
+  execute-e2e-test-post-deploy:
     needs: [build-info, deploy-webapp, deploy-service]
     uses: ./.github/workflows/e2e-reusable.yml
     with:
