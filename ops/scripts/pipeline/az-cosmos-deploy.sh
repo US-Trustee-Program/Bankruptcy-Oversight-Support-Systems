@@ -66,6 +66,7 @@ while [[ $# -gt 0 ]]; do
         ;;
 
     *)
+        echo "$1"
         exit 2 # error on unknown flag/switch
         ;;
     esac
