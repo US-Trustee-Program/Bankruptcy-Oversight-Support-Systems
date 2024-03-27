@@ -201,7 +201,7 @@ export default function DataVerificationScreen() {
               <div className="data-verification-accordion-header">
                 <div className="grid-row grid-gap-lg">
                   <div className="grid-col-6 text-no-wrap">Court District</div>
-                  <div className="grid-col-2 text-no-wrap">Event Date</div>
+                  <div className="grid-col-2 text-no-wrap">Order Filed</div>
                   <div className="grid-col-2 text-no-wrap">Event Type</div>
                   <div className="grid-col-2 text-no-wrap">Event Status</div>
                 </div>

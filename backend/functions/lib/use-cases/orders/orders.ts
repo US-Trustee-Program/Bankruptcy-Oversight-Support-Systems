@@ -360,7 +360,7 @@ export class OrdersUseCase {
         const consolidationTo: ConsolidationTo = {
           caseId: childCase.caseId,
           otherCase: getCaseSummaryFromConsolidationOrderCaseYuck(newConsolidation.leadCase),
-          orderDate: newConsolidation.orderDate,
+          orderDate: childCase.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_TO',
         };
@@ -370,7 +370,7 @@ export class OrdersUseCase {
         const consolidationFrom: ConsolidationFrom = {
           caseId: newConsolidation.leadCase.caseId,
           otherCase: getCaseSummaryFromConsolidationOrderCaseYuck(childCase),
-          orderDate: newConsolidation.orderDate,
+          orderDate: childCase.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_FROM',
         };
@@ -415,6 +415,7 @@ export class OrdersUseCase {
           if (maybeLeadCase) {
             caseMap.set(maybeLeadCaseId, {
               ...maybeLeadCase,
+              orderDate: order.orderDate,
               docketEntries: [],
             });
           }

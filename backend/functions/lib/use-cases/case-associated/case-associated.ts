@@ -9,7 +9,11 @@ export class CaseAssociatedUseCase {
   constructor(applicationContext: ApplicationContext) {
     this.casesRepository = getCasesRepository(applicationContext);
   }
-
+  getEarliestDate(orders: Array<EventCaseReference>) {
+    const earliestOrder = orders.sort((a, b) => (a.orderDate < b.orderDate ? -1 : 1))[0];
+    const earliestOrderDate = earliestOrder.orderDate;
+    return earliestOrderDate;
+  }
   public async getAssociatedCases(
     context: ApplicationContext,
     caseId: string,
@@ -35,6 +39,7 @@ export class CaseAssociatedUseCase {
       );
       leadCaseRef = childCaseConsolidation[0];
     }
+    leadCaseRef.orderDate = this.getEarliestDate(childCaseRefs);
     return [leadCaseRef, ...childCaseRefs];
   }
 }
