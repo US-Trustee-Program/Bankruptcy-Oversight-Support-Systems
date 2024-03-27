@@ -22,7 +22,11 @@ describe('Navigation tests', () => {
     async (linkId: string) => {
       render(
         <BrowserRouter>
-          <CaseDetailNavigation caseId="12345" initiallySelectedNavLink={NavState.BASIC_INFO} />
+          <CaseDetailNavigation
+            caseId="12345"
+            initiallySelectedNavLink={NavState.BASIC_INFO}
+            showAssociatedCasesList={false}
+          />
         </BrowserRouter>,
       );
 

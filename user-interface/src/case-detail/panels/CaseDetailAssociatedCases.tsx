@@ -13,9 +13,9 @@ export interface CaseDetailAssociatedCasesProps {
 
 export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCasesProps) {
   const { associatedCases, isAssociatedCasesLoading } = props;
-  const consolidation: Consolidation[] = associatedCases.filter(
+  const consolidation = associatedCases.filter(
     (c) => c.documentType === 'CONSOLIDATION_FROM' || c.documentType === 'CONSOLIDATION_TO',
-  );
+  ) as Consolidation[];
 
   return (
     <div className="associated-cases">
