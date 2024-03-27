@@ -840,8 +840,8 @@ jobs:
       azCredentials: ${{ secrets.AZURE_CREDENTIALS }}
       pgpSigningPassphrase: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
       azDatabaseResourceGroup: ${{ secrets.AZURE_RG }}
-      azCosmosAccountName: ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}
-      azCosmosDatabaseName: ${{ secrets.AZ_COSMOS_DATABASE_NAME }}
+      azCosmosAccountName: "somerandomtest"
+      azCosmosDatabaseName: ${{ vars.AZURE_ENVIRONMENT }}
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
