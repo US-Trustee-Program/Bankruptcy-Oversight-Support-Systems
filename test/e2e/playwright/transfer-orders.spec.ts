@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './fixture/urlQueryString';
 
 interface Order {
   id: string;
@@ -23,7 +24,7 @@ test.describe('Transfer Orders', () => {
       { timeout: 30000 },
     );
 
-    await page.goto('/data-verification?x-ms-routing-name=staging');
+    await page.goto('/data-verification');
     expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
@@ -72,7 +73,7 @@ test('test', async ({ page }) => {
   const officesRequestPromise = page.waitForEvent('requestfinished', {
     predicate: (e) => e.url().includes('api/offices'),
   });
-  await page.goto('/data-verification?x-ms-routing-name=staging');
+  await page.goto('/data-verification');
 
   // Wait on the offices to come back from API
   await officesRequestPromise;

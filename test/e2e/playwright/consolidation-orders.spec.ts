@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './fixture/urlQueryString';
 import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
 
 test.describe('Consolidation Orders', () => {
@@ -14,7 +15,7 @@ test.describe('Consolidation Orders', () => {
       predicate: (e) => e.url().includes('api/offices'),
     });
 
-    await page.goto('/data-verification?x-ms-routing-name=staging');
+    await page.goto('/data-verification');
     expect(page.locator('h1')).toHaveText('Data Verification');
     await officesRequestPromise;
 
