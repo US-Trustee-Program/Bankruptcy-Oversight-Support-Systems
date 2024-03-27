@@ -4,6 +4,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { consolidationType } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 export interface CaseDetailAssociatedCasesProps {
   associatedCases: EventCaseReference[];
@@ -42,7 +43,11 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                 </thead>
                 <tbody>
                   {consolidation
-                    .sort((a, b) => (a.otherCase.caseId > b.otherCase.caseId ? 1 : -1))
+                    .sort((a, b) =>
+                      getCaseNumber(a.otherCase.caseId) > getCaseNumber(b.otherCase.caseId)
+                        ? 1
+                        : -1,
+                    )
                     .sort((a, _b) => (a.documentType === 'CONSOLIDATION_FROM' ? 1 : -1))
                     .map((bCase, idx) => {
                       return (
