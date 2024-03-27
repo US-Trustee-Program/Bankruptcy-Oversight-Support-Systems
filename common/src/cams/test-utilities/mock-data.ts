@@ -162,7 +162,6 @@ function getConsolidationOrder(
     orderType: 'consolidation',
     orderDate: someDateAfterThisDate(summary.dateFiled),
     status: override.status || 'pending',
-    docketEntries: [getDocketEntry()],
     divisionCode: summary.courtDivision,
     jobId: faker.number.int(),
     childCases: [getConsolidatedOrderCase(), getConsolidatedOrderCase()],

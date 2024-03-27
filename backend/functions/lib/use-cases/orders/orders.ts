@@ -426,6 +426,7 @@ export class OrdersUseCase {
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
       const consolidationId = crypto.randomUUID();
+      // TODO: Maybe grab the earliest date from all the case summaries, rather than just the first one.
       const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
@@ -433,7 +434,6 @@ export class OrdersUseCase {
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',
-        docketEntries: firstOrder.docketEntries,
         divisionCode: firstOrder.divisionCode,
         courtName: firstOrder.courtName,
         jobId,
