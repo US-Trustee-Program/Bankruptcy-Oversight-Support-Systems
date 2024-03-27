@@ -152,6 +152,15 @@ export class DxtrOrdersGateway implements OrdersGateway {
         `Processed ${consolidations.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
       );
 
+      // Prefer the docket entry filing date over the TX table order date as the order date for the consolidation.
+      consolidations.forEach((consolidation) => {
+        let dateFiled;
+        consolidation.docketEntries.forEach((de) => {
+          if (!dateFiled || dateFiled > de.dateFiled) dateFiled = de.dateFiled;
+        });
+        if (dateFiled) consolidation.orderDate = dateFiled;
+      });
+
       // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
       // auto-incrementing PK as a string, not an integer value.
       return {
@@ -252,12 +261,17 @@ export class DxtrOrdersGateway implements OrdersGateway {
           if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
             const docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
             rawOrder.docketEntries = docketEntries;
+
+            // Prefer the docket entry filing date over the TX table order date as the order date for the transfer.
+            let dateFiled;
             docketEntries.forEach((docket) => {
+              if (!dateFiled || dateFiled > docket.dateFiled) dateFiled = docket.dateFiled;
               if (docket.docketSuggestedCaseNumber) {
                 rawOrder.docketSuggestedCaseNumber = docket.docketSuggestedCaseNumber;
                 delete docket.docketSuggestedCaseNumber;
               }
             });
+            if (dateFiled) rawOrder.orderDate = dateFiled;
           }
           delete rawOrder.dxtrCaseId;
           return rawOrder satisfies TransferOrder;
