@@ -894,12 +894,13 @@ jobs:
         if: always()
         run: |
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
-          if [[ ${{ vars.ENVIRONMENT }} != 'Main-Gov' ]]; then
+          if [[ ${{ vars.ENVIRONMENT }} != "Main-Gov" ]]; then
+            echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ env.branchHashId }}"
           fi
           az cosmosdb sql database delete \
           --account-name ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          --name ${e2eDatabaseName} \
+          --name "${e2eDatabaseName}" \
           --resource-group ${{ secrets.AZURE_RG }} \
           --yes
 
