@@ -701,17 +701,6 @@ jobs:
           npm run test:integration
           popd
 
-      - name: Execute End-to-end test
-        uses: ./.github/workflows/e2e-reusable.yml
-        with:
-          apiName: ${{ env.apiName }}
-          slotName: ${{ env.slotName }}
-          webappName: ${{ needs.build-info.outputs.webappName }}
-          stackName: ${{ needs.build-info.outputs.stackName }}
-          azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-          azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
-          secrets: inherit
-
       - name: Disable GHA runner access
         if: always()
         run: |
@@ -722,8 +711,8 @@ jobs:
     needs: [build-info, deploy-webapp, deploy-service]
     uses: ./.github/workflows/e2e-reusable.yml
     with:
-      apiName: ${{ env.apiName }}
-      slotName: ${{ env.slotName }}
+      apiName: ${{ needs.build-info.outputs.apiName }}
+      slotName: ${{ needs.build-info.outputs.slotName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       stackName: ${{ needs.build-info.outputs.stackName }}
       azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
@@ -922,8 +911,8 @@ jobs:
     needs: [build-info, deploy-webapp-slot, deploy-service-slot]
     uses: ./.github/workflows/e2e-reusable.yml
     with:
-      apiName: ${{ env.apiName }}
-      slotName: ${{ env.slotName }}
+      apiName: ${{ needs.build-info.outputs.apiName }}
+      slotName: ${{ needs.build-info.outputs.slotName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       stackName: ${{ needs.build-info.outputs.stackName }}
       azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
