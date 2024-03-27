@@ -23,13 +23,20 @@ on:
         default: '.us'
         required: false
         type: string
+      deploymentEnvironment:
+        required: true
+        type: string
+      branchHashId:
+        required: true
+        type: string
+
 jobs:
   seed-data:
     runs-on: ubuntu-latest
     steps:
-    - name: Seed e2e database
-      run: |
-        curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
+      - name: Seed e2e database
+        run: |
+          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
   playwright-e2e-test:
     env:
@@ -85,4 +92,18 @@ jobs:
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+
+      - name: Clean up e2e test database
+        if: always()
+        run: |
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          if [[ ${{ inputs.deploymentEnvironment }} != "Main-Gov" ]]; then
+            echo "Adding suffix to database name"
+            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+          fi
+          az cosmosdb sql database delete \
+          --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+          --name "${e2eDatabaseName}" \
+          --resource-group ${{ secrets.AZURE_RG }} \
+          --yes
