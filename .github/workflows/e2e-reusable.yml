@@ -115,15 +115,19 @@ jobs:
           ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ inputs.stackName }} ${name:0:32}
 
       - name: Clean up e2e test database
+        env:
+          azDatabaseResourceGroup: ${{ secrets.azDatabaseResourceGroup }}
+          azCosmosAccountName: ${{ secrets.azCosmosAccountName }}
+          azCosmosDatabaseName: ${{ secrets.azCosmosDatabaseName }}
         if: always()
         run: |
-          e2eDatabaseName="${{ secrets.azCosmosDatabaseName }}-e2e"
+          e2eDatabaseName="${{ env.azCosmosDatabaseName }}-e2e"
           if [[ ${{ inputs.deploymentEnvironment }} != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
           az cosmosdb sql database delete \
-          --account-name ${{ secrets.azCosmosAccountName }} \
+          --account-name ${{ env.azCosmosAccountName }} \
           --name "${e2eDatabaseName}" \
-          --resource-group ${{ secrets.azDatabaseResourceGroup }} \
+          --resource-group ${{ env.azDatabaseResourceGroup }} \
           --yes
