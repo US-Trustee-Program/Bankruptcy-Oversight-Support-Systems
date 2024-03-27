@@ -660,6 +660,7 @@ jobs:
       stackName: ${{ needs.build-info.outputs.stackName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       apiName: ${{ needs.build-info.outputs.apiName }}
+      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
       priority: 200
     steps:
       - uses: actions/checkout@v3
@@ -717,6 +718,25 @@ jobs:
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
+  execute-e2e-test-post-deploy:
+    needs: [build-info, deploy-webapp, deploy-service]
+    uses: ./.github/workflows/e2e-reusable.yml
+    with:
+      apiName: ${{ env.apiName }}
+      slotName: ${{ env.slotName }}
+      webappName: ${{ needs.build-info.outputs.webappName }}
+      stackName: ${{ needs.build-info.outputs.stackName }}
+      azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
+      azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
+    secrets: inherit
+
+  cleanup-e2e-post-deploy:
+    needs: [build-info, execute-e2e-test-post-deploy]
+    runs-on: ubuntu-latest
+    env:
+      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
+    steps:
       - name: Clean up e2e test database
         if: always()
         run: |
@@ -731,22 +751,9 @@ jobs:
           --resource-group ${{ secrets.AZURE_RG }} \
           --yes
 
-#  execute-e2e-test-post-deploy:
-#    needs: [build-info, deploy-webapp, deploy-service]
-#    uses: ./.github/workflows/e2e-reusable.yml
-#    with:
-#      apiName: ${{ env.apiName }}
-#      slotName: ${{ env.slotName }}
-#      webappName: ${{ needs.build-info.outputs.webappName }}
-#      stackName: ${{ needs.build-info.outputs.stackName }}
-#      azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-#      azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
-#      azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
-#    secrets: inherit
-
   enable-access:
     runs-on: ubuntu-latest
-    needs: [build-info, smoke-test-application]
+    needs: [build-info, smoke-test-application, execute-e2e-test-post-deploy]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
@@ -905,27 +912,31 @@ jobs:
             exit 1
           fi
 
-      - name: Seed e2e database
-        run: |
-          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ env.slotName }}
-
-      - name: Execute End-to-end test
-        uses: ./.github/workflows/e2e-reusable.yml
-        with:
-          apiName: ${{ env.apiName }}
-          slotName: ${{ env.slotName }}
-          webappName: ${{ needs.build-info.outputs.webappName }}
-          stackName: ${{ needs.build-info.outputs.stackName }}
-          azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-          azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
-          secrets: inherit
-
       - name: Disable GHA runner access
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ops/scripts/pipeline/slots/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32} ${{ env.slotName }}
 
+  execute-e2e-test-pre-swap:
+    needs: [build-info, deploy-webapp-slot, deploy-service-slot]
+    uses: ./.github/workflows/e2e-reusable.yml
+    with:
+      apiName: ${{ env.apiName }}
+      slotName: ${{ env.slotName }}
+      webappName: ${{ needs.build-info.outputs.webappName }}
+      stackName: ${{ needs.build-info.outputs.stackName }}
+      azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
+      azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
+    secrets: inherit
+
+  cleanup-e2e-pre-swap:
+    needs: [build-info, execute-e2e-test-pre-swap]
+    runs-on: ubuntu-latest
+    env:
+      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
+    steps:
       - name: Clean up e2e test database
         if: always()
         run: |
@@ -940,10 +951,9 @@ jobs:
           --resource-group ${{ secrets.AZURE_RG }} \
           --yes
 
-
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot, integration-test-slots]
+    needs: [build-info, deploy-webapp-slot, deploy-service-slot, integration-test-slots, execute-e2e-test-pre-swap]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       webappName: ${{ needs.build-info.outputs.webappName }}
