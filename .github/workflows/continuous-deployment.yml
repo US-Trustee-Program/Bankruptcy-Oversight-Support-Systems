@@ -887,7 +887,7 @@ jobs:
       azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
       deploymentEnvironment: ${{ vars.ENVIRONMENT }}
       branchHashId: ${{ needs.build-info.outputs.environmentHash }}
-    secrets: inherit
+    secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
