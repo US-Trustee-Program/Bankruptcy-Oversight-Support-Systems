@@ -31,17 +31,6 @@ on:
       branchHashId:
         required: true
         type: string
-    secrets:
-      azCredentials:
-        required: true
-      pgpSigningPassphrase:
-        required: true
-      azDatabaseResourceGroup:
-        required: true
-      azCosmosAccountName:
-        required: true
-      azCosmosDatabaseName:
-        required: true
 
 jobs:
   playwright-e2e-test:
@@ -58,13 +47,13 @@ jobs:
 
       - uses: azure/login@v1
         with:
-          creds: ${{ secrets.azCredentials }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.azureEnvironment }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
-          secret: ${{ secrets.pgpSigningPassphrase }}
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
@@ -120,13 +109,13 @@ jobs:
       - name: Clean up e2e test database
         if: always()
         run: |
-          e2eDatabaseName="${{ secrets.azCosmosDatabaseName }}-e2e"
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.deploymentEnvironment }} != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
           az cosmosdb sql database delete \
-          --account-name ${{ secrets.azCosmosAccountName }} \
+          --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
           --name "${e2eDatabaseName}" \
-          --resource-group  ${{ secrets.azDatabaseResourceGroup }} \
+          --resource-group  ${{ secrets.AZURE_RG }} \
           --yes
