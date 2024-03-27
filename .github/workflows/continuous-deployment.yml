@@ -868,7 +868,7 @@ jobs:
           az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot]
+    needs: [build-info, deploy-webapp-slot, deploy-service-slot, execute-e2e-test-pre-swap]
     environment: ${{ needs.build-info.outputs.environment }}
     env:
       apiName: ${{ needs.build-info.outputs.apiName }}
