@@ -29,7 +29,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           <div className="date-list">
             <ul className="usa-list usa-list--unstyled">
               <li data-testid="case-detail-filed-date">
-                <span className="case-detail-item-name">Filed:</span>
+                <span className="case-detail-item-name">Case Filed:</span>
                 <span className="case-detail-item-value">{formatDate(caseDetail.dateFiled)}</span>
               </li>
               {caseDetail.reopenedDate && showReopenDate && (
@@ -279,7 +279,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                   </div>
                 )}
                 <div>
-                  <span className="case-detail-item-name">Order Date:</span>
+                  <span className="case-detail-item-name">Order Filed:</span>
                   <span
                     className="case-detail-item-value"
                     data-testid={`case-detail-consolidation-order`}
@@ -327,7 +327,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                           </span>
                         </div>
                         <div>
-                          <span className="case-detail-item-name">Order Date:</span>
+                          <span className="case-detail-item-name">Order Filed:</span>
                           <span
                             className="case-detail-item-value"
                             data-testid={`case-detail-transfer-order-${idx}`}

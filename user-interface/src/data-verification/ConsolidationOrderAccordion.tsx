@@ -139,8 +139,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
         </div>
         <div
           className="grid-col-2 text-no-wrap"
-          title="Event date"
-          aria-label={`Event date ${formatDate(order.orderDate)}`}
+          title="Order Filed"
+          aria-label={`Order Filed ${formatDate(order.orderDate)}`}
         >
           {formatDate(order.orderDate)}
         </div>

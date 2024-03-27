@@ -83,6 +83,7 @@ function getConsolidatedOrderCase(
   const docketEntries = [getDocketEntry()];
   const consolidatedCaseSummary: ConsolidationOrderCase = {
     ...getCaseSummary({ entityType: entityType }),
+    orderDate: docketEntries[0].dateFiled,
     docketEntries,
   };
 

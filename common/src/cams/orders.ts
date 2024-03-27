@@ -71,6 +71,7 @@ export type ConsolidationOrder = {
 
 export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
+  orderDate: string;
 };
 
 export function getCaseSummaryFromConsolidationOrderCaseYuck(
@@ -86,7 +87,6 @@ export function getCaseSummaryFromConsolidationOrderCaseYuck(
 }
 
 export type RawConsolidationOrder = ConsolidationOrderCase & {
-  orderDate: string;
   jobId: number;
   leadCaseIdHint?: string;
 };
