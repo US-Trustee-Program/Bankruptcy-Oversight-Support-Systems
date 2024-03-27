@@ -836,7 +836,12 @@ jobs:
       azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
       deploymentEnvironment: ${{ needs.build-info.outputs.environment }}
       branchHashId: ${{ needs.build-info.outputs.environmentHash }}
-    secrets: inherit
+    secrets:
+      azCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+      pgpSigningPassphrase: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+      azDatabaseResourceGroup: ${{ secrets.AZURE_RG }}
+      azCosmosAccountName: ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}
+      azCosmosDatabaseName: ${{ secrets.AZ_COSMOS_DATABASE_NAME }}
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
