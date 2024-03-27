@@ -31,22 +31,13 @@ on:
         type: string
 
 jobs:
-  seed-data:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Seed e2e database
-        run: |
-          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
-
   playwright-e2e-test:
+    runs-on: ubuntu-latest
     env:
-      webappName: ${{ inputs.webappName }}
-      stackName: ${{ inputs.stackName }}
       priority: 201
     defaults:
       run:
         working-directory: test/e2e
-    runs-on: ubuntu-latest
     steps:
       - name: Get source code
         uses: actions/checkout@v3
@@ -67,9 +58,25 @@ jobs:
         run: |
           ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
+          -s ${{ inputs.stackName }} \
           -p ${{ env.priority }} \
           --is-cicd
+
+      - name: Smoke test application
+        run: |
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ inputs.webappName }}.azurewebsites${{ inputs.azureHostnameSuffix }}?x-ms-routing-name=${{ inputs.slotName }} )
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/healthcheck?x-ms-routing-name=${{ inputs.slotName }} )
+
+          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+            exit 0
+          else
+            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+            exit 1
+          fi
+
+      - name: Seed e2e database
+        run: |
+          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
       - name: Install Node dependencies
         run: |
@@ -78,7 +85,7 @@ jobs:
 
       - name: Run the test
         run: |
-          TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ inputs.azureHostnameSuffix }} npx playwright test --reporter=list,html
+          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ inputs.azureHostnameSuffix }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -91,8 +98,8 @@ jobs:
       - name: Disable GHA runner access
         if: always()
         run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+          name="gha-${{ env.priority }}-${{ inputs.stackName }}"
+          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ inputs.stackName }} ${name:0:32}
 
       - name: Clean up e2e test database
         if: always()
