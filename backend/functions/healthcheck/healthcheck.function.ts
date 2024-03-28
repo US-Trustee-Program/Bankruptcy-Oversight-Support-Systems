@@ -37,6 +37,7 @@ const httpTrigger: AzureFunction = async function (
 
   const respBody = {
     database: {
+      metadata: healthcheckCosmosDbClient.dbConfig(),
       cosmosDbWriteStatus: checkCosmosDbWrite,
       cosmosDbReadStatus: checkCosmosDbRead,
       cosmosDbDeleteStatus: checkCosmosDbDelete,

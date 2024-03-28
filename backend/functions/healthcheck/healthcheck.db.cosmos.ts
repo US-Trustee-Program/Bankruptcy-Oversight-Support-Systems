@@ -24,6 +24,12 @@ export default class HealthcheckCosmosDb {
     }
   }
 
+  public dbConfig() {
+    return {
+      databaseName: this.databaseName,
+    };
+  }
+
   public async checkDbRead() {
     try {
       // Check read access
