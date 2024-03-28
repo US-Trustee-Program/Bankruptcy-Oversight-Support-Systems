@@ -39,6 +39,12 @@
       ]
     },
     {
+      "url": "http://localhost:3000/case-detail/999-99-00001/associated-cases/",
+      "actions": [
+        "wait for element .associated-cases to be visible"
+      ]
+    },
+    {
       "url": "http://localhost:3000/data-verification/",
       "actions": [
         "wait for element [data-testid='data-verification-screen'] to be visible",

@@ -10,6 +10,7 @@ import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
 import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
+import { ConsolidationFrom, ConsolidationTo } from '../events';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -123,6 +124,7 @@ function getCaseDetail(
     reopenedDate: undefined,
     assignments: [],
     transfers: [],
+    consolidation: [],
     debtorAttorney: getDebtorAttorney(),
     judgeName: faker.person.fullName(),
   };
@@ -186,6 +188,22 @@ function getRawConsolidationOrder(
   };
 
   return { ...consolidationOrder, ...override };
+}
+
+function getConsolidationReference(
+  options: Options<ConsolidationTo | ConsolidationFrom> = { override: {} },
+): ConsolidationTo | ConsolidationFrom {
+  const reference: ConsolidationTo | ConsolidationFrom = {
+    caseId: randomCaseId(),
+    consolidationType: 'administrative',
+    documentType: 'CONSOLIDATION_FROM',
+    orderDate: randomDate(),
+    otherCase: getCaseSummary(),
+  };
+  return {
+    ...reference,
+    ...options.override,
+  };
 }
 
 function getParty(options: Options<Party> = { override: {} }): Party {
@@ -282,6 +300,7 @@ export const MockData = {
   getDebtorAttorney,
   getConsolidationOrder,
   getConsolidatedOrderCase,
+  getConsolidationReference,
   getRawConsolidationOrder,
   buildArray,
   getTrialAttorneys,
