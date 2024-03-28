@@ -552,7 +552,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         />
                       }
                     />
-                    {/* TODO: Wire this up with consolidations fetched from the API */}
                     <Route
                       path="associated-cases"
                       element={

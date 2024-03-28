@@ -126,8 +126,6 @@ describe('associated cases tests', () => {
     const row2Int = getInt(row2IdCell!.textContent as string);
     const row3Int = getInt(row3IdCell!.textContent as string);
     const row4Int = getInt(row4IdCell!.textContent as string);
-    console.log(row2IdCell!.textContent, row3IdCell!.textContent, row4IdCell!.textContent);
-    console.log(row2Int, row3Int, row4Int);
 
     expect(row3Int).toBeGreaterThan(row2Int);
     expect(row4Int).toBeGreaterThan(row3Int);

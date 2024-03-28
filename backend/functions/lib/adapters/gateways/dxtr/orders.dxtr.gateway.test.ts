@@ -16,7 +16,6 @@ function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
     if (!earliestDate || earliestDate > de.dateFiled) return de.dateFiled;
     return earliestDate;
   }, null);
-  console.log('earliestDate', earliestDate);
   return earliestDate;
 }
 
