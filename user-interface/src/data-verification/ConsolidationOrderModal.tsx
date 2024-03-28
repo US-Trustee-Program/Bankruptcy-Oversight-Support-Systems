@@ -194,7 +194,7 @@ function ConsolidationOrderModalComponent(
                 value="administrative"
                 onChange={handleSelectConsolidationType}
                 ref={administrativeConsolidationRef}
-                label={consolidationTypeMap.get('administrative')}
+                label={consolidationTypeMap.get('administrative')!}
               />
             </div>
             <div>
@@ -204,7 +204,7 @@ function ConsolidationOrderModalComponent(
                 value="substantive"
                 onChange={handleSelectConsolidationType}
                 ref={substantiveConsolidationRef}
-                label={consolidationTypeMap.get('substantive')}
+                label={consolidationTypeMap.get('substantive')!}
               />
             </div>
           </div>
