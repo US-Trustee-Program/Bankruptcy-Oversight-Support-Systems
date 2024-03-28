@@ -491,7 +491,7 @@ jobs:
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ needs.build-info.outputs.environmentHash }}
+            --branchHashId ${{ needs.build-info.outputs.environmentHash || 'DOES_NOT_EXIST' }}
 
       - name: Check deployment and set params
         id: set-deploy-params
