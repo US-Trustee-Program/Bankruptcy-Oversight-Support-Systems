@@ -267,6 +267,10 @@ function getConsolidationHistory(override: Partial<ConsolidationOrderSummary> = 
   };
 }
 
+function getDateBeforeToday() {
+  return faker.date.past();
+}
+
 export const MockData = {
   randomCaseId,
   getCaseSummary,
@@ -282,4 +286,5 @@ export const MockData = {
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,
+  getDateBeforeToday,
 };

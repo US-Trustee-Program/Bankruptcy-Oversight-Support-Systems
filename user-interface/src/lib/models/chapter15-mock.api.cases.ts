@@ -68,7 +68,11 @@ export default class Chapter15MockApi extends Api {
       override: {
         id: 'guid-4',
         status: 'approved',
-        leadCase: { ...MockData.getCaseSummary(), docketEntries: [] },
+        leadCase: {
+          ...MockData.getCaseSummary(),
+          docketEntries: [],
+          orderDate: MockData.getDateBeforeToday().toISOString(),
+        },
       },
     }),
     MockData.getConsolidationOrder({ override: { id: 'guid-5', status: 'rejected' } }),
