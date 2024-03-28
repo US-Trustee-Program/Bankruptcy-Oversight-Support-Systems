@@ -80,6 +80,3 @@ cams1.code-workspace
 
 # Build Archives
 **/*.zip
-
-# Python
-**/__pycache__/

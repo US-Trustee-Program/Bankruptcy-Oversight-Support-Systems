@@ -25,12 +25,7 @@ repos:
       rev: v1.4.0
       hooks:
       -   id: detect-secrets
-          args: [
-            '--baseline',
-            '.secrets.baseline',
-            '--filter',
-            './ops/scripts/pipeline/custom-secrets-filters.py::exclude_github_inherit'
-          ]
+          args: [ '--baseline', '.secrets.baseline' ]
           exclude: package.lock.json
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.28.0
