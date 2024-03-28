@@ -43,7 +43,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
           <th scope="col">Case Title</th>
           <th scope="col">SSN/EIN</th>
           <th scope="col">Court</th>
-          <th scope="col">Filed Date</th>
+          <th scope="col">Case Filed</th>
           <th scope="col">Chapter</th>
         </tr>
       </thead>

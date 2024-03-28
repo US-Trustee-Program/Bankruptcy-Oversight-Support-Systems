@@ -11,7 +11,16 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
 
-const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
+function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
+  const earliestDate = docket.reduce<string>((earliestDate, de) => {
+    if (!earliestDate || earliestDate > de.dateFiled) return de.dateFiled;
+    return earliestDate;
+  }, null);
+  console.log('earliestDate', earliestDate);
+  return earliestDate;
+}
+
+const dxtrTransferCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
     docketSuggestedCaseNumber: '22-11111',
     rawRec: 'NNNNNN WARN: 22-11111',
@@ -26,7 +35,7 @@ const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
     rawRec: '',
     sequenceNumber: 1,
-    dateFiled: '2023-12-01',
+    dateFiled: '2023-11-01',
     txId: '2',
     dxtrCaseId: '11111',
     documentNumber: 1,
@@ -35,12 +44,12 @@ const dxtrCaseDocketEntries: DxtrOrderDocketEntry[] = [
   },
 ];
 
-const dxtrOrder: DxtrOrder = {
+const dxtrTransferOrder: DxtrOrder = {
   ...MockData.getTransferOrder(),
   dxtrCaseId: '11111',
 };
 
-const dxtrOrderDocument: DxtrOrderDocument = {
+const dxtrTransferOrderDocument: DxtrOrderDocument = {
   txId: '1',
   sequenceNumber: 0,
   fileSize: 9999,
@@ -49,17 +58,88 @@ const dxtrOrderDocument: DxtrOrderDocument = {
   deleted: 'N',
 };
 
-const expectedOrder = MockData.getTransferOrder();
+const dxtrConsolidationCaseDocketEntries1: DxtrOrderDocketEntry[] = [
+  {
+    docketSuggestedCaseNumber: '22-11111',
+    rawRec: 'NNNNNN WARN: 22-11111',
+    sequenceNumber: 0,
+    dateFiled: '2023-12-01',
+    txId: '3',
+    dxtrCaseId: '11111',
+    documentNumber: 0,
+    summaryText: 'Summary Text',
+    fullText: 'This is the full text.',
+  },
+  {
+    rawRec: '',
+    sequenceNumber: 1,
+    dateFiled: '2023-11-01',
+    txId: '4',
+    dxtrCaseId: '11111',
+    documentNumber: 1,
+    summaryText: 'Some other Text',
+    fullText: 'This is the other full text.',
+  },
+];
+
+const dxtrConsolidationCaseDocketEntries2: DxtrOrderDocketEntry[] = [
+  {
+    docketSuggestedCaseNumber: '22-11111',
+    rawRec: 'NNNNNN WARN: 22-11111',
+    sequenceNumber: 0,
+    dateFiled: '2023-12-01',
+    txId: '5',
+    dxtrCaseId: '22222',
+    documentNumber: 0,
+    summaryText: 'Summary Text',
+    fullText: 'This is the full text.',
+  },
+  {
+    rawRec: '',
+    sequenceNumber: 1,
+    dateFiled: '2023-11-01',
+    txId: '6',
+    dxtrCaseId: '22222',
+    documentNumber: 1,
+    summaryText: 'Some other Text',
+    fullText: 'This is the other full text.',
+  },
+];
+
+const dxtrConsolidationCaseDocketEntries = [
+  ...dxtrConsolidationCaseDocketEntries1,
+  ...dxtrConsolidationCaseDocketEntries2,
+];
+
+const dxtrConsolidationOrders: DxtrOrder[] = [
+  {
+    ...MockData.getConsolidationOrder(),
+    dxtrCaseId: '11111',
+  },
+  {
+    ...MockData.getConsolidationOrder(),
+    dxtrCaseId: '22222',
+  },
+];
+
+const dxtrConsolidationOrderDocument: DxtrOrderDocument = {
+  txId: '1',
+  sequenceNumber: 0,
+  fileSize: 9999,
+  uriStem: 'https://somedomain.gov/files',
+  fileName: '0208-173976-0-0-0.pdf',
+  deleted: 'N',
+};
 
 function buildSuccessfulQueryResult(recordset: Array<unknown> = []) {
-  const consolidationDocumentResults: QueryResults = {
+  const orderDocumentResults: QueryResults = {
     success: true,
     results: {
       recordset: recordset,
     },
     message: '',
   };
-  return consolidationDocumentResults;
+  return orderDocumentResults;
 }
 
 describe('DxtrOrdersGateway', () => {
@@ -97,14 +177,17 @@ describe('DxtrOrdersGateway', () => {
       const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
       const querySpy = jest.spyOn(database, 'executeQuery');
 
-      const consolidtionOrdersResults = buildSuccessfulQueryResult();
-      const consolidationDocketEntryResults = buildSuccessfulQueryResult();
-      const consolidationDocumentResults = buildSuccessfulQueryResult();
+      const consolidtionOrdersResults = buildSuccessfulQueryResult(dxtrConsolidationOrders);
+      const consolidationDocketEntryResults = buildSuccessfulQueryResult(
+        dxtrConsolidationCaseDocketEntries,
+      );
+      const consolidationDocumentResults = buildSuccessfulQueryResult([
+        dxtrConsolidationOrderDocument,
+      ]);
 
-      const transferOrdersResults = buildSuccessfulQueryResult([expectedOrder]);
-      const transferDocketEntryResults = buildSuccessfulQueryResult(dxtrCaseDocketEntries);
-      const transferDocumentResults = buildSuccessfulQueryResult([dxtrOrderDocument]);
-
+      const transferOrdersResults = buildSuccessfulQueryResult([dxtrTransferOrder]);
+      const transferDocketEntryResults = buildSuccessfulQueryResult(dxtrTransferCaseDocketEntries);
+      const transferDocumentResults = buildSuccessfulQueryResult([dxtrTransferOrderDocument]);
       querySpy
         .mockResolvedValueOnce(transferOrdersResults)
         .mockResolvedValueOnce(transferDocketEntryResults)
@@ -115,8 +198,20 @@ describe('DxtrOrdersGateway', () => {
 
       const gateway = new DxtrOrdersGateway();
       const orderSync = await gateway.getOrderSync(applicationContext, '0');
-      expect(orderSync.transfers).toEqual([expectedOrder]);
-      expect(orderSync.maxTxId).toEqual('2');
+      expect(orderSync.maxTxId).toEqual('6');
+      expect(orderSync.transfers[0].orderDate).toEqual(
+        getEarliestDate(dxtrTransferCaseDocketEntries),
+      );
+
+      const firstConsolidation = orderSync.consolidations[0];
+      const secondConsolidation = orderSync.consolidations[1];
+
+      expect(firstConsolidation.orderDate).toEqual(
+        getEarliestDate(dxtrConsolidationCaseDocketEntries1),
+      );
+      expect(secondConsolidation.orderDate).toEqual(
+        getEarliestDate(dxtrConsolidationCaseDocketEntries2),
+      );
     });
 
     test('should add chapters enabled by feature flags', async () => {
@@ -126,7 +221,7 @@ describe('DxtrOrdersGateway', () => {
       const mockOrdersResults: QueryResults = {
         success: true,
         results: {
-          recordset: [dxtrOrder],
+          recordset: [dxtrTransferOrder],
         },
         message: '',
       };
@@ -134,7 +229,7 @@ describe('DxtrOrdersGateway', () => {
       const mockDocumentsResults: QueryResults = {
         success: true,
         results: {
-          recordset: [dxtrOrderDocument],
+          recordset: [dxtrTransferOrderDocument],
         },
         message: '',
       };
@@ -172,7 +267,7 @@ describe('DxtrOrdersGateway', () => {
       const mockDocumentsResults: QueryResults = {
         success: true,
         results: {
-          recordset: [dxtrOrderDocument],
+          recordset: [dxtrTransferOrderDocument],
         },
         message: '',
       };
@@ -197,7 +292,7 @@ describe('DxtrOrdersGateway', () => {
       const mockOrdersResults: QueryResults = {
         success: true,
         results: {
-          recordset: [dxtrOrder],
+          recordset: [dxtrTransferOrder],
         },
         message: '',
       };
@@ -230,7 +325,7 @@ describe('DxtrOrdersGateway', () => {
       const mockOrdersResults: QueryResults = {
         success: true,
         results: {
-          recordset: [dxtrOrder],
+          recordset: [dxtrTransferOrder],
         },
         message: '',
       };

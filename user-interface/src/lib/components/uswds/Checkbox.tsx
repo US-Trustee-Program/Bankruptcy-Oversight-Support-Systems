@@ -57,8 +57,8 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     }),
     [],
   );
-  const checkboxTestId = props.id ? `checkbox-${props.id}` : 'checkbox';
-  const labelTestId = props.id ? `checkbox-label-${props.id}` : 'checkbox-label';
+  const checkboxTestId = `checkbox-${props.id}`;
+  const labelTestId = `checkbox-label-${props.id}`;
   return (
     <div className={classes}>
       <input

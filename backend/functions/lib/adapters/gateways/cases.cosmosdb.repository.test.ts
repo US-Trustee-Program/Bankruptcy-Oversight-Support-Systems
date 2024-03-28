@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../types/basic';
 import { CasesCosmosDbRepository } from './cases.cosmosdb.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import { TransferTo, TransferFrom } from '../../../../../common/src/cams/events';
 import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
@@ -11,27 +11,24 @@ import {
 } from '../../testing/testing-constants';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
   const caseId2 = '222-22-22222';
-  const transferIn: TransferIn = {
+  const transferIn: TransferFrom = {
     caseId: caseId2,
-    otherCaseId: caseId1,
+    otherCase: MockData.getCaseSummary({ override: { caseId: caseId1 } }),
     orderDate: '01/01/2024',
-    divisionName: 'Test Division Name 2',
-    courtName: 'Test Court Name 2',
-    documentType: 'TRANSFER_IN',
+    documentType: 'TRANSFER_FROM',
   };
-  const transferOut: TransferOut = {
+  const transferOut: TransferTo = {
     caseId: caseId1,
-    otherCaseId: caseId2,
+    otherCase: MockData.getCaseSummary({ override: { caseId: caseId2 } }),
     orderDate: '01/01/2024',
-    divisionName: 'Test Division Name 1',
-    courtName: 'Test Court Name 1',
-    documentType: 'TRANSFER_OUT',
+    documentType: 'TRANSFER_TO',
   };
-  const transfersArray: Array<TransferIn | TransferOut> = [transferIn, transferOut];
+  const transfersArray: Array<TransferFrom | TransferTo> = [transferIn, transferOut];
 
   let context: ApplicationContext;
   let repo: CasesCosmosDbRepository;
@@ -56,7 +53,7 @@ describe('Runtime State Repo', () => {
       resource: transferIn,
     });
     const toCreate = { ...transferIn };
-    const actual = await repo.createTransferIn(context, toCreate);
+    const actual = await repo.createTransferFrom(context, toCreate);
     expect(create).toHaveBeenCalled();
     expect(actual.documentType).toEqual(toCreate.documentType);
   });
@@ -66,7 +63,7 @@ describe('Runtime State Repo', () => {
       resource: transferOut,
     });
     const toCreate = { ...transferOut };
-    const actual = await repo.createTransferOut(context, toCreate);
+    const actual = await repo.createTransferTo(context, toCreate);
     expect(create).toHaveBeenCalled();
     expect(actual.documentType).toEqual(toCreate.documentType);
   });
@@ -83,8 +80,8 @@ describe('Runtime State Repo', () => {
     await expect(repo.getTransfers(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(
       serverConfigError,
     );
-    await expect(repo.createTransferIn(context, transferIn)).rejects.toThrow(serverConfigError);
-    await expect(repo.createTransferOut(context, transferOut)).rejects.toThrow(serverConfigError);
+    await expect(repo.createTransferFrom(context, transferIn)).rejects.toThrow(serverConfigError);
+    await expect(repo.createTransferTo(context, transferOut)).rejects.toThrow(serverConfigError);
   });
 
   test('should throw any other error encountered', async () => {
@@ -93,8 +90,8 @@ describe('Runtime State Repo', () => {
     jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(someError);
 
     await expect(repo.getTransfers(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(someError);
-    await expect(repo.createTransferIn(context, transferIn)).rejects.toThrow(someError);
-    await expect(repo.createTransferOut(context, transferOut)).rejects.toThrow(someError);
+    await expect(repo.createTransferFrom(context, transferIn)).rejects.toThrow(someError);
+    await expect(repo.createTransferTo(context, transferOut)).rejects.toThrow(someError);
   });
 });
 

@@ -83,6 +83,7 @@ function getConsolidatedOrderCase(
   const docketEntries = [getDocketEntry()];
   const consolidatedCaseSummary: ConsolidationOrderCase = {
     ...getCaseSummary({ entityType: entityType }),
+    orderDate: docketEntries[0].dateFiled,
     docketEntries,
   };
 
@@ -162,7 +163,6 @@ function getConsolidationOrder(
     orderType: 'consolidation',
     orderDate: someDateAfterThisDate(summary.dateFiled),
     status: override.status || 'pending',
-    docketEntries: [getDocketEntry()],
     divisionCode: summary.courtDivision,
     jobId: faker.number.int(),
     childCases: [getConsolidatedOrderCase(), getConsolidatedOrderCase()],
@@ -267,6 +267,10 @@ function getConsolidationHistory(override: Partial<ConsolidationOrderSummary> = 
   };
 }
 
+function getDateBeforeToday() {
+  return faker.date.past();
+}
+
 export const MockData = {
   randomCaseId,
   getCaseSummary,
@@ -282,4 +286,5 @@ export const MockData = {
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,
+  getDateBeforeToday,
 };
