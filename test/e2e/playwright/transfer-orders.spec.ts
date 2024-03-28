@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './fixture/urlQueryString';
 
 interface Order {
   id: string;
@@ -65,7 +66,6 @@ test.describe('Transfer Orders', () => {
 });
 
 test('test', async ({ page }) => {
-  // test.setTimeout(60000);
   const ordersRequestPromise = page.waitForEvent('requestfinished', {
     predicate: (e) => e.url().includes('api/orders'),
   });
@@ -138,7 +138,6 @@ test('test', async ({ page }) => {
   await expect(page.getByTestId(`new-case-input-${firstOrderId}`)).toBeDisabled();
 
   // TODO CAMS-269 skipped failing assertion. Look into suggested case id
-  // console.log('debugging', firstOrder.docketSuggestedCaseNumber);
   // await expect(page.getByTestId(`new-case-input-${firstOrderId}`)).toHaveValue(
   //   firstOrder.docketSuggestedCaseNumber,
   // );
@@ -147,5 +146,5 @@ test('test', async ({ page }) => {
   const page1Promise = page.waitForEvent('popup');
   await page.getByTestId(`approved-transfer-original-case-link-${firstOrder.caseId}-link`).click();
   const page1 = await page1Promise;
-  await expect(page1.url()).toContain(`/case-detail/${firstOrder.caseId}/`);
+  expect(page1.url()).toContain(`/case-detail/${firstOrder.caseId}/`);
 });
