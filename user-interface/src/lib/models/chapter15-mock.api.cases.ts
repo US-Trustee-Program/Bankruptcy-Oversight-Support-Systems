@@ -1,3 +1,4 @@
+import { ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import {
   Chapter15CaseDetailsResponseData,
@@ -78,6 +79,29 @@ export default class Chapter15MockApi extends Api {
     MockData.getConsolidationOrder({ override: { id: 'guid-5', status: 'rejected' } }),
   ];
 
+  // Consolidated Lead Case
+  static consolidationLeadCaseId = '999-99-00001';
+  static consolidationLeadCaseSummary = MockData.getCaseSummary({
+    override: { caseId: this.consolidationLeadCaseId },
+  });
+  static consolidation: Array<ConsolidationTo | ConsolidationFrom> = [
+    MockData.getConsolidationReference({
+      override: {
+        otherCase: this.consolidationLeadCaseSummary,
+        documentType: 'CONSOLIDATION_TO',
+      },
+    }),
+    MockData.getConsolidationReference({
+      override: { caseId: this.consolidationLeadCaseId },
+    }),
+    MockData.getConsolidationReference({
+      override: { caseId: this.consolidationLeadCaseId },
+    }),
+  ];
+  static consolidationLeadCase = MockData.getCaseDetail({
+    override: { ...this.consolidationLeadCaseSummary, consolidation: this.consolidation },
+  });
+
   public static async list(path: string): Promise<ResponseData> {
     let response: ResponseData;
     switch (path) {
@@ -124,6 +148,20 @@ export default class Chapter15MockApi extends Api {
         count: 1,
         body: Chapter15MockApi.caseDetails,
       };
+    } else if (path.match(/\/cases\/999-99-00001/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: this.consolidationLeadCase,
+      };
+      console.log(JSON.stringify(response, null, 2));
+    } else if (path.match(/\/cases\/999-99-00001\/associated/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: this.consolidation,
+      };
+      console.log(JSON.stringify(response, null, 2));
     } else if (path.match(/\/cases\/[\d-]+/)) {
       response = {
         message: '',
