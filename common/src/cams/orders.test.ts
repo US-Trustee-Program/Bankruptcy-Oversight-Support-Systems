@@ -1,6 +1,6 @@
 import {
-  getCaseSummaryFromConsolidationOrderCaseYuck,
-  getCaseSummaryFromTransferOrderYuck,
+  getCaseSummaryFromConsolidationOrderCase,
+  getCaseSummaryFromTransferOrder,
   isConsolidationOrder,
   isTransferOrder,
 } from './orders';
@@ -36,7 +36,7 @@ describe('orders model tests', () => {
       );
 
       const transfer = MockData.getTransferOrder();
-      const summary = getCaseSummaryFromTransferOrderYuck(transfer);
+      const summary = getCaseSummaryFromTransferOrder(transfer);
 
       for (const idx in summaryProperties) {
         expect(summary).toHaveProperty(summaryProperties[idx]);
@@ -57,7 +57,7 @@ describe('orders model tests', () => {
     );
 
     const consolidation = MockData.getConsolidatedOrderCase();
-    const summary = getCaseSummaryFromConsolidationOrderCaseYuck(consolidation);
+    const summary = getCaseSummaryFromConsolidationOrderCase(consolidation);
 
     for (const idx in summaryProperties) {
       expect(summary).toHaveProperty(summaryProperties[idx]);
@@ -77,7 +77,7 @@ describe('orders model tests', () => {
     );
 
     const rawConsolidation = MockData.getRawConsolidationOrder();
-    const summary = getCaseSummaryFromConsolidationOrderCaseYuck(rawConsolidation);
+    const summary = getCaseSummaryFromConsolidationOrderCase(rawConsolidation);
 
     for (const idx in summaryProperties) {
       expect(summary).toHaveProperty(summaryProperties[idx]);

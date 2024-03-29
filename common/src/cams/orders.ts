@@ -27,7 +27,7 @@ export type TransferOrder = CaseSummary & {
 };
 
 // TODO: Helper function while we are in transition to remodel "has a".
-export function getCaseSummaryFromTransferOrderYuck(order: TransferOrder) {
+export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
   return {
     caseId: order.caseId,
     caseTitle: order.caseTitle,
@@ -74,7 +74,7 @@ export type ConsolidationOrderCase = CaseSummary & {
   orderDate: string;
 };
 
-export function getCaseSummaryFromConsolidationOrderCaseYuck(
+export function getCaseSummaryFromConsolidationOrderCase(
   order: RawConsolidationOrder | ConsolidationOrderCase,
 ): CaseSummary {
   const temp: RawConsolidationOrder = { ...(order as RawConsolidationOrder) };
