@@ -24,7 +24,7 @@ else
     changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
 fi
 
-if [[ $changes != "" || $rg_response == "" || $deploy_flag == true  ]]; then
+if [[ $changes != "" || $rg_response == "" || $deploy_flag == true || $deploy_flag == "true" ]]; then #
     deployBicep=true
 fi
 
