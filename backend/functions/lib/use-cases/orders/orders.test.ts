@@ -16,7 +16,7 @@ import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
   ConsolidationOrderActionApproval,
-  getCaseSummaryFromTransferOrderYuck,
+  getCaseSummaryFromTransferOrder,
   TransferOrder,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
@@ -95,7 +95,7 @@ describe('Orders use case', () => {
 
     const transferIn: TransferFrom = {
       caseId: order.newCase.caseId,
-      otherCase: getCaseSummaryFromTransferOrderYuck(order),
+      otherCase: getCaseSummaryFromTransferOrder(order),
       orderDate: order.orderDate,
       documentType: 'TRANSFER_FROM',
     };

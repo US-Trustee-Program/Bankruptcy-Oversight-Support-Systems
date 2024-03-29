@@ -19,8 +19,8 @@ import {
   ConsolidationOrderActionApproval,
   TransferOrderAction,
   ConsolidationType,
-  getCaseSummaryFromTransferOrderYuck,
-  getCaseSummaryFromConsolidationOrderCaseYuck,
+  getCaseSummaryFromTransferOrder,
+  getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../../common/src/cams/orders';
 import {
   ConsolidationFrom,
@@ -108,7 +108,7 @@ export class OrdersUseCase {
       if (order.status === 'approved') {
         const transferFrom: TransferFrom = {
           caseId: order.newCase.caseId,
-          otherCase: getCaseSummaryFromTransferOrderYuck(order),
+          otherCase: getCaseSummaryFromTransferOrder(order),
           orderDate: order.orderDate,
           documentType: 'TRANSFER_FROM',
         };
@@ -359,7 +359,7 @@ export class OrdersUseCase {
         // Add the reference to the lead case to the child case.
         const consolidationTo: ConsolidationTo = {
           caseId: childCase.caseId,
-          otherCase: getCaseSummaryFromConsolidationOrderCaseYuck(newConsolidation.leadCase),
+          otherCase: getCaseSummaryFromConsolidationOrderCase(newConsolidation.leadCase),
           orderDate: childCase.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_TO',
@@ -369,7 +369,7 @@ export class OrdersUseCase {
         // Add the reference to the child case to the lead case.
         const consolidationFrom: ConsolidationFrom = {
           caseId: newConsolidation.leadCase.caseId,
-          otherCase: getCaseSummaryFromConsolidationOrderCaseYuck(childCase),
+          otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
           orderDate: childCase.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_FROM',
