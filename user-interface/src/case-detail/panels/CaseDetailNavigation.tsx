@@ -8,6 +8,8 @@ export function mapNavState(path: string) {
       return NavState.COURT_DOCKET;
     case 'audit-history':
       return NavState.AUDIT_HISTORY;
+    case 'associated-cases':
+      return NavState.ASSOCIATED_CASES;
     default:
       return NavState.BASIC_INFO;
   }
@@ -15,6 +17,7 @@ export function mapNavState(path: string) {
 
 export interface CaseDetailNavigationProps {
   caseId: string | undefined;
+  showAssociatedCasesList: boolean;
   initiallySelectedNavLink: NavState;
   className?: string;
 }
@@ -23,6 +26,7 @@ export enum NavState {
   BASIC_INFO,
   COURT_DOCKET,
   AUDIT_HISTORY,
+  ASSOCIATED_CASES,
 }
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
@@ -31,6 +35,7 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 
 function CaseDetailNavigationComponent({
   caseId,
+  showAssociatedCasesList,
   initiallySelectedNavLink,
   className,
 }: CaseDetailNavigationProps) {
@@ -74,6 +79,20 @@ function CaseDetailNavigationComponent({
               Audit History
             </Link>
           </li>
+          {showAssociatedCasesList && (
+            <li className="usa-sidenav__item">
+              <Link
+                className={setCurrentNav(activeNav, NavState.ASSOCIATED_CASES)}
+                to={`/case-detail/${caseId}/associated-cases`}
+                onClick={() => {
+                  return setActiveNav(NavState.ASSOCIATED_CASES);
+                }}
+                data-testid="associated-cases-link"
+              >
+                Associated Cases
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
     </>

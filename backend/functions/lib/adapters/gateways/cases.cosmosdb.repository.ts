@@ -3,7 +3,12 @@ import { getCosmosDbClient, getCosmosConfig } from '../../factory';
 import { CosmosConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from '../../../../../common/src/cams/events';
 import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -25,7 +30,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
   async getTransfers(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<Array<TransferIn | TransferOut>> {
+  ): Promise<Array<TransferFrom | TransferTo>> {
     const query = "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'TRANSFER_%'";
     const querySpec = {
       query,
@@ -36,21 +41,56 @@ export class CasesCosmosDbRepository implements CasesRepository {
         },
       ],
     };
-    const response = await this.queryData<TransferIn | TransferOut>(context, querySpec);
+    const response = await this.queryData<TransferFrom | TransferTo>(context, querySpec);
     return response;
   }
 
-  async createTransferIn(context: ApplicationContext, transferIn: TransferIn): Promise<TransferIn> {
-    return this.create<TransferIn>(context, transferIn);
-  }
-
-  async createTransferOut(
+  async createTransferFrom(
     context: ApplicationContext,
-    transferOut: TransferOut,
-  ): Promise<TransferOut> {
-    return this.create<TransferOut>(context, transferOut);
+    transferFrom: TransferFrom,
+  ): Promise<TransferFrom> {
+    return this.create<TransferFrom>(context, transferFrom);
   }
 
+  async createTransferTo(
+    context: ApplicationContext,
+    transferOut: TransferTo,
+  ): Promise<TransferTo> {
+    return this.create<TransferTo>(context, transferOut);
+  }
+
+  async getConsolidation(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+    const query =
+      "SELECT * FROM c WHERE c.caseId = @caseId AND c.documentType LIKE 'CONSOLIDATION_%'";
+    const querySpec = {
+      query,
+      parameters: [
+        {
+          name: '@caseId',
+          value: caseId,
+        },
+      ],
+    };
+    const response = await this.queryData<ConsolidationTo | ConsolidationFrom>(context, querySpec);
+    return response;
+  }
+
+  async createConsolidationTo(
+    context: ApplicationContext,
+    consolidationIn: ConsolidationTo,
+  ): Promise<ConsolidationTo> {
+    return this.create<ConsolidationTo>(context, consolidationIn);
+  }
+
+  async createConsolidationFrom(
+    context: ApplicationContext,
+    consoldiationOut: ConsolidationFrom,
+  ): Promise<ConsolidationFrom> {
+    return this.create<ConsolidationFrom>(context, consoldiationOut);
+  }
   async getCaseHistory(context: ApplicationContext, caseId: string): Promise<Array<CaseHistory>> {
     const query =
       'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';

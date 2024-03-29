@@ -52,7 +52,7 @@ function _ConsolidationCaseTable(
           <th scope="col">Case Number (Division)</th>
           <th scope="col">Debtor</th>
           <th scope="col">Chapter</th>
-          <th scope="col">Filed</th>
+          <th scope="col">Case Filed</th>
           <th scope="col">Assigned Staff</th>
         </tr>
       </thead>

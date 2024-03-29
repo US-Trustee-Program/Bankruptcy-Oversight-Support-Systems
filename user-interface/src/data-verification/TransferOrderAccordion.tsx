@@ -386,7 +386,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <span className="padding-right-1">{order.caseTitle}</span>
               <span className="text-bold">Chapter: </span>
               <span className="padding-right-1">{order.chapter}</span>
-              <span className="text-bold">Filed Date: </span>
+              <span className="text-bold">Case Filed: </span>
               <span className="padding-right-1">
                 {originalCaseSummary && formatDate(originalCaseSummary.dateFiled)}
               </span>

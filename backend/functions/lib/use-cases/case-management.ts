@@ -72,6 +72,7 @@ export class CaseManagement {
   ): Promise<CaseDetailsDbResult> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
     caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
+    caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
     caseDetails.assignments = await this.getCaseAssigneeNames(applicationContext, caseDetails);
     caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivision);
 

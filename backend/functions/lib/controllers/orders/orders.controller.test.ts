@@ -226,6 +226,19 @@ describe('orders controller tests', () => {
       controller.approveConsolidation(applicationContext, mockConsolidationOrderActionApproval),
     ).rejects.toThrow(CamsError);
 
+    // setup missing consolidation type
+    const mockConsolidationOrder2 = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionApproval2: ConsolidationOrderActionApproval = {
+      ...mockConsolidationOrder2,
+      approvedCases: [],
+      leadCase: mockConsolidationOrder.childCases[0],
+      consolidationType: undefined,
+    };
+
+    expect(
+      controller.approveConsolidation(applicationContext, mockConsolidationOrderActionApproval2),
+    ).rejects.toThrow(CamsError);
+
     // setup missing lead case
     mockConsolidationOrderActionApproval.approvedCases = ['11-11111'];
     mockConsolidationOrderActionApproval.leadCase = undefined;

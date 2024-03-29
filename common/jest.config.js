@@ -10,6 +10,7 @@ module.exports = {
     'coverage/',
     'dist/',
     '<rootDir>/node_modules/',
+    '.dependency-cruiser.js',
     'jest.config.js',
     '.*test.[jt]s',
     '.*.d.ts',
