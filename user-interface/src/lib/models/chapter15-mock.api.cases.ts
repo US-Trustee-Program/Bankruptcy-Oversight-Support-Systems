@@ -157,8 +157,6 @@ export default class Chapter15MockApi extends Api {
           },
         },
       };
-      console.log('response', response);
-      console.log('consolidation', this.consolidation);
     } else if (path.match(/\/cases\/[\d-]+\/docket/)) {
       response = {
         message: '',
