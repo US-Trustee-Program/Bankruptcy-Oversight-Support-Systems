@@ -65,6 +65,10 @@ while [[ $# -gt 0 ]]; do
         branch_hash_id="${2}"
         shift 2
         ;;
+    --databaseName)
+        database_name="${2}"
+        shift 2
+        ;;
 
     *)
         exit 2 # error on unknown flag/switch
@@ -82,7 +86,12 @@ az functionapp deployment slot create --name "$api_name" --resource-group "$app_
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="cams-e2e-${branch_hash_id}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+e2eDatabaseName="$database_name-e2e"
+if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
+    e2eDatabaseName="$e2eDatabaseName-$branch_hash_id"
+fi
+az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$e2eDatabaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+
 
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
