@@ -15,6 +15,7 @@ import Input from '@/lib/components/uswds/Input';
 import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
+import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -193,7 +194,7 @@ function ConsolidationOrderModalComponent(
                 value="administrative"
                 onChange={handleSelectConsolidationType}
                 ref={administrativeConsolidationRef}
-                label="Joint Administration"
+                label={consolidationTypeMap.get('administrative')!}
               />
             </div>
             <div>
@@ -203,7 +204,7 @@ function ConsolidationOrderModalComponent(
                 value="substantive"
                 onChange={handleSelectConsolidationType}
                 ref={substantiveConsolidationRef}
-                label="Substantive Consolidation"
+                label={consolidationTypeMap.get('substantive')!}
               />
             </div>
           </div>

@@ -19,8 +19,15 @@ import {
   ConsolidationOrderActionApproval,
   TransferOrderAction,
   ConsolidationType,
+  getCaseSummaryFromTransferOrder,
+  getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../../common/src/cams/orders';
-import { TransferIn, TransferOut } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CasesInterface } from '../cases.interface';
 import { CamsError } from '../../common-errors/cams-error';
@@ -97,29 +104,24 @@ export class OrdersUseCase {
       await this.ordersRepo.updateOrder(context, id, data);
       order = await this.ordersRepo.getOrder(context, id, data.caseId);
     }
-
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
-        const transferIn: TransferIn = {
+        const transferFrom: TransferFrom = {
           caseId: order.newCase.caseId,
-          otherCaseId: order.caseId,
-          divisionName: order.courtDivisionName,
-          courtName: order.courtName,
+          otherCase: getCaseSummaryFromTransferOrder(order),
           orderDate: order.orderDate,
-          documentType: 'TRANSFER_IN',
+          documentType: 'TRANSFER_FROM',
         };
 
-        const transferOut: TransferOut = {
+        const transferTo: TransferTo = {
           caseId: order.caseId,
-          otherCaseId: order.newCase.caseId,
-          divisionName: order.newCase.courtDivisionName,
-          courtName: order.newCase.courtName,
+          otherCase: order.newCase,
           orderDate: order.orderDate,
-          documentType: 'TRANSFER_OUT',
+          documentType: 'TRANSFER_TO',
         };
 
-        await this.casesRepo.createTransferIn(context, transferIn);
-        await this.casesRepo.createTransferOut(context, transferOut);
+        await this.casesRepo.createTransferFrom(context, transferFrom);
+        await this.casesRepo.createTransferTo(context, transferTo);
       }
       const caseHistory: CaseHistory = {
         caseId: order.caseId,
@@ -344,6 +346,7 @@ export class OrdersUseCase {
     const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
       if (childCase.caseId !== leadCase.caseId) {
+        // Add the child case history.
         const caseHistory = await this.buildHistory(
           context,
           childCase,
@@ -352,10 +355,34 @@ export class OrdersUseCase {
           leadCaseSummary,
         );
         await this.casesRepo.createCaseHistory(context, caseHistory);
+
+        // Add the reference to the lead case to the child case.
+        const consolidationTo: ConsolidationTo = {
+          caseId: childCase.caseId,
+          otherCase: getCaseSummaryFromConsolidationOrderCase(newConsolidation.leadCase),
+          orderDate: childCase.orderDate,
+          consolidationType: newConsolidation.consolidationType,
+          documentType: 'CONSOLIDATION_TO',
+        };
+        await this.casesRepo.createConsolidationTo(context, consolidationTo);
+
+        // Add the reference to the child case to the lead case.
+        const consolidationFrom: ConsolidationFrom = {
+          caseId: newConsolidation.leadCase.caseId,
+          otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
+          orderDate: childCase.orderDate,
+          consolidationType: newConsolidation.consolidationType,
+          documentType: 'CONSOLIDATION_FROM',
+        };
+        await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
+
+        // Add the child case lead case history.
         const { docketEntries: _docketEntries, ...caseSummary } = childCase;
         childCaseSummaries.push(caseSummary);
       }
     }
+
+    // Add the lead case history.
     const leadCaseHistory = await this.buildHistory(
       context,
       leadCaseSummary,
@@ -388,6 +415,7 @@ export class OrdersUseCase {
           if (maybeLeadCase) {
             caseMap.set(maybeLeadCaseId, {
               ...maybeLeadCase,
+              orderDate: order.orderDate,
               docketEntries: [],
             });
           }
@@ -399,6 +427,7 @@ export class OrdersUseCase {
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
       const consolidationId = crypto.randomUUID();
+      // TODO: Maybe grab the earliest date from all the case summaries, rather than just the first one.
       const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
@@ -406,7 +435,6 @@ export class OrdersUseCase {
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',
-        docketEntries: firstOrder.docketEntries,
         divisionCode: firstOrder.divisionCode,
         courtName: firstOrder.courtName,
         jobId,

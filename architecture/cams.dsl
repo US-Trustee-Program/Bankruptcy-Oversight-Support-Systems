@@ -26,6 +26,7 @@ workspace {
                 ordersSuggestions = component "Orders Suggestions" "Orders Suggestions API"
                 ordersSync = component "Sync" "Creates events in CAMS based on orders to transfer transactions in DXTR"
                 consolidations = component "Consolidations" "Consolidation Orders API"
+                associatedCases = component "Associated Cases" "Associated Cases API"
 
             }
             dxtrsql = container "DXTR DB" "DXTR SQL Database"
@@ -60,6 +61,7 @@ workspace {
         webapp -> ordersManualSync "Triggers order sync via HTTP"
         webapp -> ordersSuggestions "Reads case summaries for data verification"
         webapp -> consolidations "Reads and writes consolidation order data"
+        webapp -> associatedCases "Reads associated orders from consolidation"
 
         nodeapi -> cosmos "Reads and writes case assignments, orders, cases, etc."
 
@@ -78,6 +80,8 @@ workspace {
         caseHistory -> casesCosmosContainer "Reads case audit logs"
 
         caseSummary -> dxtrsql "Reads case summaries"
+
+        associatedCases -> casesCosmosContainer "Reads associated case references"
 
         offices -> dxtrsql "Reads USTP office information"
 

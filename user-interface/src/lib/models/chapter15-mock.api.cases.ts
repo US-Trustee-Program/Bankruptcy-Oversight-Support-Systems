@@ -1,3 +1,4 @@
+import { ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import {
   Chapter15CaseDetailsResponseData,
@@ -59,6 +60,33 @@ export default class Chapter15MockApi extends Api {
   static caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
   static caseDetails = MockData.getCaseDetail();
   static offices = MockData.getOffices().slice(0, 5);
+
+  // Consolidated Lead Case
+  static consolidationLeadCaseId = '999-99-00001';
+  static consolidationLeadCaseSummary = MockData.getCaseSummary({
+    override: { caseId: Chapter15MockApi.consolidationLeadCaseId },
+  });
+  static consolidation: Array<ConsolidationTo | ConsolidationFrom> = [
+    MockData.getConsolidationReference({
+      override: {
+        otherCase: Chapter15MockApi.consolidationLeadCaseSummary,
+        documentType: 'CONSOLIDATION_TO',
+      },
+    }),
+    MockData.getConsolidationReference({
+      override: { caseId: Chapter15MockApi.consolidationLeadCaseId },
+    }),
+    MockData.getConsolidationReference({
+      override: { caseId: Chapter15MockApi.consolidationLeadCaseId },
+    }),
+  ];
+  static consolidationLeadCase = MockData.getCaseDetail({
+    override: {
+      ...Chapter15MockApi.consolidationLeadCaseSummary,
+      consolidation: Chapter15MockApi.consolidation,
+    },
+  });
+
   static orders = [
     MockData.getTransferOrder({ override: { id: 'guid-0' } }),
     MockData.getTransferOrder({ override: { id: 'guid-1', status: 'approved' } }),
@@ -68,7 +96,11 @@ export default class Chapter15MockApi extends Api {
       override: {
         id: 'guid-4',
         status: 'approved',
-        leadCase: { ...MockData.getCaseSummary(), docketEntries: [] },
+        leadCase: {
+          ...this.consolidationLeadCaseSummary,
+          docketEntries: [],
+          orderDate: MockData.getDateBeforeToday().toISOString(),
+        },
       },
     }),
     MockData.getConsolidationOrder({ override: { id: 'guid-5', status: 'rejected' } }),
@@ -108,6 +140,23 @@ export default class Chapter15MockApi extends Api {
       return Promise.reject(new Error());
     } else if (path.match(/\/cases\/001-77-77777\/summary/)) {
       return Promise.reject({ message: 'Case summary not found for the case ID.' });
+    } else if (path.match(/\/cases\/999-99-00001\/associated/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: this.consolidation,
+      };
+    } else if (path.match(/\/cases\/999-99-00001/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: {
+          caseDetails: {
+            ...this.consolidationLeadCase,
+            consolidation: this.consolidation,
+          },
+        },
+      };
     } else if (path.match(/\/cases\/[\d-]+\/docket/)) {
       response = {
         message: '',
@@ -119,6 +168,12 @@ export default class Chapter15MockApi extends Api {
         message: '',
         count: 1,
         body: Chapter15MockApi.caseDetails,
+      };
+    } else if (path.match(/\/cases\/[\d-]+\/associated/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: [],
       };
     } else if (path.match(/\/cases\/[\d-]+/)) {
       response = {
