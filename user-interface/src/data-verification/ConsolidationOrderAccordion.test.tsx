@@ -208,7 +208,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     fireEvent.click(adminRadioButton);
 
-    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    const modalApproveButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    // click "continue" button on first screen of the modal.
+    fireEvent.click(modalApproveButton);
+    // click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
@@ -264,7 +270,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     fireEvent.click(adminRadioButton);
 
-    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    const modalApproveButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+    // Click button on First screen of Modal
+    fireEvent.click(modalApproveButton);
+    // Click button on Second screen of Modal
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {

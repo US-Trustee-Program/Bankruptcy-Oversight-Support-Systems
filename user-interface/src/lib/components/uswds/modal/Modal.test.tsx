@@ -134,7 +134,7 @@ describe('Test Modal component', () => {
 
     expect(modal).toHaveClass('is-visible');
 
-    const cancelButton = screen.getByTestId(`toggle-modal-button-cancel`);
+    const cancelButton = screen.getByTestId(`button-${modalId}-cancel-button`);
     fireEvent.click(cancelButton);
 
     expect(modal).toHaveClass('is-hidden');
@@ -146,7 +146,7 @@ describe('Test Modal component', () => {
 
   test('should run onClick handler when submit button is clicked', async () => {
     const openButton = screen.getByTestId('toggle-modal-button-open-test');
-    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     fireEvent.click(openButton);
