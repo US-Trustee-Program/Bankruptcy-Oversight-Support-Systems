@@ -491,7 +491,7 @@ jobs:
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ needs.build-info.outputs.environmentHash }}
+            --branchHashId ${{ needs.build-info.outputs.environmentHash || 'DOES_NOT_EXIST' }}
 
       - name: Check deployment and set params
         id: set-deploy-params
@@ -688,7 +688,7 @@ jobs:
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             echo "Print api healthcheck response"
-            curl https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/healthcheck?x-ms-routing-name=${{ inputs.slotName }}
+            curl https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }}
             exit 0
           else
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
