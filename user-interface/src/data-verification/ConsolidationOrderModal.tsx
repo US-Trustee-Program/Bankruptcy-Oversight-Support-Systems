@@ -5,14 +5,10 @@ import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
-import useFeatureFlags, {
-  CONSOLIDATIONS_ENABLED,
-  CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import SearchableSelect from '@/lib/components/SearchableSelect';
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
 import Input from '@/lib/components/uswds/Input';
-import { getFullName } from '@common/name-helper';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
 import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
@@ -235,23 +231,6 @@ function ConsolidationOrderModalComponent(
             ref={leadCaseNumberRef}
           />
         </div>
-        {featureFlags[CONSOLIDATIONS_ASSIGN_ATTORNEYS_ENABLED] && (
-          <div id="lead-case-court-container">
-            <label htmlFor={'lead-attorney'} className="usa-label">
-              All cases will be assigned to
-            </label>
-            <SearchableSelect
-              id={'lead-attorney'}
-              options={options.attorneys.map((attorney) => {
-                const fullName = getFullName(attorney);
-                return {
-                  value: fullName,
-                  label: fullName,
-                };
-              })}
-            ></SearchableSelect>
-          </div>
-        )}
       </div>
     );
   }

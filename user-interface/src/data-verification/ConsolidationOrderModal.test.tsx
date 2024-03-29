@@ -129,9 +129,6 @@ describe('ConsolidationOrderModalComponent', () => {
       expect(caseNumberInput).toHaveValue(leadCaseNumber);
     });
 
-    // Select attorney
-    selectItemInMockSelect(`lead-attorney`, 1);
-
     expect(approveButton).toBeEnabled();
     fireEvent.click(approveButton);
 
