@@ -12,11 +12,10 @@ import { ApplicationContext } from '../../types/basic';
 import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
 
 function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
-  const earliestDate = docket.reduce<string>((earliestDate, de) => {
+  return docket.reduce<string>((earliestDate, de) => {
     if (!earliestDate || earliestDate > de.dateFiled) return de.dateFiled;
     return earliestDate;
   }, null);
-  return earliestDate;
 }
 
 const dxtrTransferCaseDocketEntries: DxtrOrderDocketEntry[] = [
