@@ -91,8 +91,8 @@ describe('ConsolidationOrderModalComponent', () => {
     const modal = screen.getByTestId('modal-test');
     expect(modal).toHaveClass('is-visible');
 
-    const approveButton = screen.getByTestId('toggle-modal-button-submit');
-    expect(approveButton).toBeDisabled();
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(continueButton).toBeDisabled();
 
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');
@@ -111,12 +111,12 @@ describe('ConsolidationOrderModalComponent', () => {
 
     fireEvent.click(radioSubstantiveClickTarget!);
 
-    expect(approveButton).toBeDisabled();
+    expect(continueButton).toBeDisabled();
 
     // Select lead case court.
     selectItemInMockSelect(`lead-case-court`, 1);
 
-    expect(approveButton).toBeDisabled();
+    expect(continueButton).toBeDisabled();
 
     // Enter case number.
     const leadCaseNumber = caseIds[0];
@@ -129,8 +129,17 @@ describe('ConsolidationOrderModalComponent', () => {
       expect(caseNumberInput).toHaveValue(leadCaseNumber);
     });
 
-    expect(approveButton).toBeEnabled();
-    fireEvent.click(approveButton);
+    expect(continueButton).toBeEnabled();
+    fireEvent.click(continueButton);
+
+    await waitFor(() => {
+      const secondHeading = document.querySelector('.usa-modal__heading');
+      expect(secondHeading).toHaveTextContent('Consolidate Cases');
+    });
+
+    const verifyButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(verifyButton).toBeEnabled();
+    fireEvent.click(verifyButton);
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-hidden');
@@ -154,7 +163,7 @@ describe('ConsolidationOrderModalComponent', () => {
       ref.current?.show({ status: 'rejected', caseIds });
     });
 
-    const button = screen.queryByTestId(`toggle-modal-button-cancel`);
+    const button = screen.queryByTestId(`button-${id}-cancel-button`);
     fireEvent.click(button as Element);
 
     await waitFor(() => {

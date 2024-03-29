@@ -12,6 +12,7 @@ import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
 import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
+import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -28,6 +29,8 @@ export interface ConsolidationOrderModalProps {
   onCancel: () => void;
   onConfirm: (results: ConfirmActionResults) => void;
 }
+
+type ConfirmationSteps = 'pick-lead-case' | 'confirm';
 
 type ShowOptionParams = {
   status: OrderStatus;
@@ -53,6 +56,8 @@ function ConsolidationOrderModalComponent(
 
   const modalRef = useRef<ModalRefType>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+
+  const [step, setStep] = useState<ConfirmationSteps>('pick-lead-case');
   const [reason] = useState<string>('');
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
@@ -69,32 +74,39 @@ function ConsolidationOrderModalComponent(
   const substantiveConsolidationRef = useRef<RadioRef>(null);
   const featureFlags = useFeatureFlags();
 
-  function clearReason() {
-    if (reasonRef.current) reasonRef.current.value = '';
-  }
+  const confirmStep2 = () => {
+    onConfirm({
+      status: options.status,
+      rejectionReason: reasonRef.current?.value,
+      leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
+      // onConfirm should never be called unless the button is enabled.
+      // The button should never be enabled unless a consolidationType is selected
+      consolidationType: consolidationType!,
+    });
+  };
 
-  const actionButtonGroup = {
+  const confirmStep1 = () => {
+    setStep('confirm');
+    setOptions({
+      ...options,
+      heading: 'Consolidate Cases',
+    });
+  };
+
+  const actionButtonGroup: SubmitCancelBtnProps = {
     modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
     submitButton: {
-      label: 'Approve',
-      onClick: () => {
-        onConfirm({
-          status: options.status,
-          rejectionReason: reasonRef.current?.value,
-          leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
-          // onConfirm should never be called unless the button is enabled.
-          // The button should never be enabled unless a consolidationType is selected
-          consolidationType: consolidationType!,
-        });
-      },
+      label: step === 'pick-lead-case' ? 'Continue' : 'Verify',
+      onClick: step === 'pick-lead-case' ? confirmStep1 : confirmStep2,
       className: options.status === 'rejected' ? 'usa-button--secondary' : '',
+      closeOnClick: step !== 'pick-lead-case',
+      disabled: step === 'pick-lead-case',
     },
     cancelButton: {
       label: 'Go back',
       onClick: () => {
-        clearReason();
-        hide();
+        reset();
         onCancel();
       },
     },
@@ -117,17 +129,16 @@ function ConsolidationOrderModalComponent(
     }
   }
 
-  function hide() {
-    if (modalRef.current?.hide) {
-      modalRef.current?.hide({});
-      setConsolidationType(null);
-      administrativeConsolidationRef.current?.checked(false);
-      substantiveConsolidationRef.current?.checked(false);
-      setLeadCaseDivisionCode('');
-      leadCaseDivisionRef.current?.clearValue();
-      setLeadCaseNumber('');
-      leadCaseNumberRef.current?.clearValue();
-    }
+  function reset() {
+    if (reasonRef.current) reasonRef.current.value = '';
+    setConsolidationType(null);
+    administrativeConsolidationRef.current?.checked(false);
+    substantiveConsolidationRef.current?.checked(false);
+    setLeadCaseDivisionCode('');
+    leadCaseDivisionRef.current?.clearValue();
+    setLeadCaseNumber('');
+    leadCaseNumberRef.current?.clearValue();
+    setStep('pick-lead-case');
   }
 
   function handleSelectConsolidationType(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -152,7 +163,7 @@ function ConsolidationOrderModalComponent(
 
   useImperativeHandle(ConfirmationModalRef, () => ({
     show,
-    hide,
+    hide: reset,
   }));
 
   function showRejectedContent() {
@@ -235,6 +246,10 @@ function ConsolidationOrderModalComponent(
     );
   }
 
+  function showApprovedContentStep2() {
+    return <></>;
+  }
+
   return (
     <Modal
       ref={modalRef}
@@ -242,11 +257,12 @@ function ConsolidationOrderModalComponent(
       className="confirm-modal consolidation-order-modal"
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
-      onClose={clearReason}
+      onClose={reset}
       content={
         <>
           {options.status === 'rejected' && showRejectedContent()}
-          {options.status === 'approved' && showApprovedContentStep1()}
+          {options.status === 'approved' && step === 'pick-lead-case' && showApprovedContentStep1()}
+          {options.status === 'approved' && step === 'confirm' && showApprovedContentStep2()}
         </>
       }
       actionButtonGroup={actionButtonGroup}

@@ -331,7 +331,9 @@ describe('TransferOrderAccordion', () => {
 
     let confirmModal: HTMLElement;
     await waitFor(async () => {
-      confirmModal = screen.getByTestId('toggle-modal-button-submit');
+      confirmModal = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-submit-button`,
+      );
       expect(confirmModal).toBeInTheDocument();
       expect(confirmModal).toBeVisible();
     });
@@ -414,7 +416,9 @@ describe('TransferOrderAccordion', () => {
       fireEvent.change(rejectionReasonInput!, { target: { value: rejectionValue } });
       expect(rejectionReasonInput).toHaveValue(rejectionValue);
 
-      confirmModal = screen.getByTestId('toggle-modal-button-submit');
+      confirmModal = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-submit-button`,
+      );
       expect(confirmModal).toBeInTheDocument();
     });
     fireEvent.click(confirmModal!);
@@ -492,7 +496,9 @@ describe('TransferOrderAccordion', () => {
     });
     let goBack: HTMLElement;
     await waitFor(async () => {
-      goBack = screen.getByTestId('toggle-modal-button-cancel');
+      goBack = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-cancel-button`,
+      );
       expect(goBack).toBeInTheDocument();
       expect(goBack).toBeVisible();
     });
@@ -558,7 +564,9 @@ describe('TransferOrderAccordion', () => {
 
     let confirmModal: HTMLElement;
     await waitFor(async () => {
-      confirmModal = screen.getByTestId('toggle-modal-button-submit');
+      confirmModal = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-submit-button`,
+      );
       expect(confirmModal).toBeInTheDocument();
     });
     fireEvent.click(confirmModal!);
@@ -611,7 +619,9 @@ describe('TransferOrderAccordion', () => {
 
     let confirmModal: HTMLElement;
     await waitFor(async () => {
-      confirmModal = screen.getByTestId('toggle-modal-button-submit');
+      confirmModal = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-submit-button`,
+      );
       expect(confirmModal).toBeInTheDocument();
     });
     fireEvent.click(confirmModal!);
@@ -664,7 +674,9 @@ describe('TransferOrderAccordion', () => {
     // Use the "go back" link to close the modal.
     let goBack: HTMLElement;
     await waitFor(async () => {
-      goBack = screen.getByTestId('toggle-modal-button-cancel');
+      goBack = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-cancel-button`,
+      );
       expect(goBack).toBeInTheDocument();
       expect(goBack).toBeVisible();
     });
@@ -792,7 +804,9 @@ describe('TransferOrderAccordion', () => {
 
     let confirmModal: HTMLElement;
     await waitFor(async () => {
-      confirmModal = screen.getByTestId('toggle-modal-button-submit');
+      confirmModal = screen.getByTestId(
+        `button-confirm-modal-confirmation-modal-${order.id}-submit-button`,
+      );
       expect(confirmModal).toBeInTheDocument();
       expect(confirmModal).toBeVisible();
     });
