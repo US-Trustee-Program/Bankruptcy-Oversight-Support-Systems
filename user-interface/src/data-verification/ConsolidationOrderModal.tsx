@@ -14,6 +14,9 @@ import Radio from '@/lib/components/uswds/Radio';
 import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import Api from '@/lib/models/api';
+import { CaseAssignment } from '@common/cams/assignments';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -49,6 +52,29 @@ export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
+export async function getCaseAssignments(caseId: string): Promise<Array<CaseAssignment>> {
+  const response = await Api.get(`/case-assignments/${caseId}`);
+  return response.body as CaseAssignment[];
+}
+
+export async function fetchLeadCaseAttorneys(leadCaseId: string): Promise<Array<string>> {
+  const assignments = await getCaseAssignments(leadCaseId);
+  const attorneys = assignments.map((assignment) => assignment.name);
+  return attorneys;
+}
+
+function addOxfordCommas(attorneys: string[]) {
+  const newAttorneyList = [...attorneys];
+  if (newAttorneyList.length === 0) {
+    return '(unassigned)';
+  } else if (newAttorneyList.length < 3) {
+    return newAttorneyList.join(' and ');
+  }
+  newAttorneyList[newAttorneyList.length - 1] =
+    'and ' + newAttorneyList[newAttorneyList.length - 1];
+  return newAttorneyList.join(', ');
+}
+
 function ConsolidationOrderModalComponent(
   props: ConsolidationOrderModalProps,
   ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
@@ -69,13 +95,15 @@ function ConsolidationOrderModalComponent(
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
   const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
+  const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const leadCaseNumberRef = useRef<InputRef>(null);
   const leadCaseDivisionRef = useRef<InputRef>(null);
   const administrativeConsolidationRef = useRef<RadioRef>(null);
   const substantiveConsolidationRef = useRef<RadioRef>(null);
   const featureFlags = useFeatureFlags();
 
-  const confirmStep2 = () => {
+  const confirmStep2 = async () => {
     onConfirm({
       status: options.status,
       rejectionReason: reasonRef.current?.value,
@@ -86,7 +114,7 @@ function ConsolidationOrderModalComponent(
     });
   };
 
-  const confirmStep1 = () => {
+  const confirmStep1 = async () => {
     setStep('confirm');
     setOptions({
       ...options,
@@ -146,7 +174,7 @@ function ConsolidationOrderModalComponent(
     setConsolidationType(ev.target.value as ConsolidationType);
   }
 
-  function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
     leadCaseNumberRef.current?.setValue(joinedInput);
     if (caseNumber) {
@@ -157,9 +185,19 @@ function ConsolidationOrderModalComponent(
   }
 
   useEffect(() => {
-    modalRef.current?.buttons?.current?.disableSubmitButton(
-      consolidationType === null || leadCaseNumber.length !== CASE_NUMBER_LENGTH,
-    );
+    const hasRequiredFields =
+      !!consolidationType && !!leadCaseDivisionCode && leadCaseNumber.length === CASE_NUMBER_LENGTH;
+
+    const leadCaseId = `${leadCaseDivisionCode}-${leadCaseNumber}`;
+    if (hasRequiredFields) {
+      setIsLoading(true);
+      fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
+        setLeadCaseAttorneys(attorneys);
+        modalRef.current?.buttons?.current?.disableSubmitButton(false);
+        setIsLoading(false);
+      });
+    }
+    modalRef.current?.buttons?.current?.disableSubmitButton(true);
   }, [consolidationType, leadCaseNumber]);
 
   useImperativeHandle(ConfirmationModalRef, () => ({
@@ -244,6 +282,9 @@ function ConsolidationOrderModalComponent(
             aria-label="Lead case number"
             ref={leadCaseNumberRef}
           />
+          {isLoading && (
+            <LoadingSpinner id="loading-indicator" caption="Loading case assignments..." />
+          )}
         </div>
       </div>
     );
@@ -268,8 +309,7 @@ function ConsolidationOrderModalComponent(
         </div>
         <div>
           with <span className="text-bold">{leadCaseNumber}</span> as the Lead Case. All cases will
-          be assigned to
-          {/* TODO: We need this to be a comma delimited list for 2 or more attorneys with the last attorney prefixed with an Oxford comma and "and".  */}
+          be assigned to <span className="text-bold">{addOxfordCommas(leadCaseAttorneys)}</span>.
         </div>
       </div>
     );
