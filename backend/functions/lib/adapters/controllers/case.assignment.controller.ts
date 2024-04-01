@@ -22,7 +22,8 @@ export class CaseAssignmentController {
   public async getTrialAttorneyAssignments(caseId: string) {
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
-      return assignmentUseCase.getTrialAttorneyAssignments(this.applicationContext, caseId);
+      const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
+      return assignments;
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
@@ -40,12 +41,13 @@ export class CaseAssignmentController {
     this.validateRequestParameters(params);
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
-      return assignmentUseCase.createTrialAttorneyAssignments(
+      const response = await assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
         params.caseId,
         params.listOfAttorneyNames,
         params.role,
       );
+      return response;
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {

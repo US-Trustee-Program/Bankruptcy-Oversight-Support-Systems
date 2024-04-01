@@ -3,6 +3,7 @@ import { applicationContextCreator } from '../utils/application-context-creator'
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
+import { CamsError } from '../../common-errors/cams-error';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -95,12 +96,35 @@ describe('Case Assignment Creation Tests', () => {
   test('should fetch a list of assignments when a GET request is called', async () => {
     const mockAttorneyAssignments = MockData.buildArray(MockData.getAttorneyAssignments, 3);
     jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'getTrialAttorneyAssignments')
+      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
       .mockResolvedValue(mockAttorneyAssignments);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const result = await assignmentController.getTrialAttorneyAssignments('001-18-12345');
     expect(result).toEqual(mockAttorneyAssignments);
+  });
+
+  test('should rethrow CAMS errors on findAssignmentsByCaseId', async () => {
+    const errorMessage = 'A CAMS error';
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
+      .mockRejectedValue(new CamsError('TEST', { message: errorMessage }));
+    const assignmentController = new CaseAssignmentController(applicationContext);
+
+    await expect(assignmentController.getTrialAttorneyAssignments('001-18-12345')).rejects.toThrow(
+      errorMessage,
+    );
+  });
+
+  test('should throw any other errors on findAssignmentsByCaseId', async () => {
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
+      .mockRejectedValue(new Error('An error'));
+    const assignmentController = new CaseAssignmentController(applicationContext);
+
+    await expect(assignmentController.getTrialAttorneyAssignments('001-18-12345')).rejects.toThrow(
+      'Unknown error',
+    );
   });
 
   test('should throw a CAMS permission error', async () => {
