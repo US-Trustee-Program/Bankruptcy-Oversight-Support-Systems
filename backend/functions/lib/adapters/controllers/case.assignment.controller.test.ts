@@ -2,8 +2,7 @@ import { CaseAssignmentController } from './case.assignment.controller';
 import { applicationContextCreator } from '../utils/application-context-creator';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
-import { CaseAssignment } from '../../../../../common/src/cams/assignments';
-import { ApplicationContext } from '../types/basic';
+import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -12,23 +11,6 @@ describe('Case Assignment Creation Tests', () => {
   const trialAttorneyRole = 'TrialAttorney';
   let applicationContext;
   beforeEach(async () => {
-    jest.mock('../../use-cases/case.assignment', () => {
-      return {
-        CaseAssignmentUseCase: jest
-          .fn()
-          .mockImplementation((_applicationContext: ApplicationContext) => {
-            return {
-              getTrialAttorneyAssignments: (
-                _applicationContext: ApplicationContext,
-                _caseId: string,
-              ) => {
-                return Promise.resolve(MockData.getAttorneyAssignments(3));
-              },
-            };
-          }),
-      };
-    });
-
     process.env = {
       ...env,
       DATABASE_MOCK: 'true',
@@ -111,31 +93,14 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should fetch a list of assignments when a GET request is called', async () => {
-    const mockAssignments: CaseAssignment[] = MockData.getAttorneyAssignments(3);
-
-    /*
-    jest.mock('../../use-cases/case.assignment', () => {
-      return {
-        CaseAssignmentUseCase: jest
-          .fn()
-          .mockImplementation((_applicationContext: ApplicationContext) => {
-            return {
-              getTrialAttorneyAssignments: (
-                _applicationContext: ApplicationContext,
-                _caseId: string,
-              ) => {
-                return Promise.resolve(mockAssignments);
-              },
-            };
-          }),
-      };
-    });
-    */
+    const mockAttorneyAssignments = MockData.buildArray(MockData.getAttorneyAssignments, 3);
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'getTrialAttorneyAssignments')
+      .mockResolvedValue(mockAttorneyAssignments);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
-    expect(assignmentController.getTrialAttorneyAssignments('001-18-12345')).toHaveReturnedWith(
-      mockAssignments,
-    );
+    const result = await assignmentController.getTrialAttorneyAssignments('001-18-12345');
+    expect(result).toEqual(mockAttorneyAssignments);
   });
 
   test('should throw a CAMS permission error', async () => {
