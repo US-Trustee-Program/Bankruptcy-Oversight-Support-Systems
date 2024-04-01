@@ -20,13 +20,6 @@ export class CaseAssignmentUseCase {
     this.casesRepository = getCasesRepository(applicationContext);
   }
 
-  public async getTrialAttorneyAssignments(
-    _applicationContext: ApplicationContext,
-    caseId: string,
-  ) {
-    return this.assignmentRepository.findAssignmentsByCaseId(caseId);
-  }
-
   public async createTrialAttorneyAssignments(
     applicationContext: ApplicationContext,
     caseId: string,
