@@ -10,14 +10,17 @@ param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
 param linkVnetIds array = []
 
+// var pepSubnetName = 'snet-pep-cams'
+// var pepSubnetAddress = '10.10.20.0/28'
+
 @description('Set to true to deploy web module resources. This should be set to false for Azure slot deployments.')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
 param webappResourceGroupName string
 param webappSubnetName string = 'snet-${webappName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
-param webappPrivateEndpointSubnetName string = 'snet-${webappName}-pep'
-param webappPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
+param webappPrivateEndpointSubnetName string = 'snet-pep-cams' //'snet-${webappName}-pep' // TODO CAMS-315 Subnet related stuff
+param webappPrivateEndpointSubnetAddressPrefix string = '10.10.20.0/28' //'10.10.11.0/28' // TODO CAMS-315 Subnet related stuff
 param webappPlanName string = 'plan-${webappName}'
 @description('Plan type to determine webapp service plan Sku')
 @allowed([
@@ -33,8 +36,8 @@ param apiName string = '${appName}-node-api'
 param apiFunctionsResourceGroupName string
 param apiFunctionsSubnetName string = 'snet-${apiName}'
 param apiFunctionsSubnetAddressPrefix string = '10.10.12.0/28'
-param apiPrivateEndpointSubnetName string = 'snet-${apiName}-pep'
-param apiPrivateEndpointSubnetAddressPrefix string = '10.10.13.0/28'
+param apiPrivateEndpointSubnetName string = 'snet-pep-cams' // 'snet-${apiName}-pep'     // TODO CAMS-315 Subnet related stuff
+param apiPrivateEndpointSubnetAddressPrefix string = '10.10.20.0/28' // '10.10.13.0/28'  // TODO CAMS-315 Subnet related stuff
 param apiPlanName string = 'plan-${apiName}'
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
