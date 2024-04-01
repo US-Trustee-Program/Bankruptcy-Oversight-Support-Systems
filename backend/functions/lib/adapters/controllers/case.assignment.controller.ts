@@ -19,6 +19,19 @@ export class CaseAssignmentController {
     this.applicationContext = context;
   }
 
+  public async getTrialAttorneyAssignments(caseId: string) {
+    try {
+      const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
+      return assignmentUseCase.getTrialAttorneyAssignments(this.applicationContext, caseId);
+    } catch (exception) {
+      this.applicationContext.logger.error(MODULE_NAME, exception.message);
+      if (exception instanceof CamsError) {
+        throw exception;
+      }
+      throw new UnknownError(MODULE_NAME, { originalError: exception });
+    }
+  }
+
   public async createTrialAttorneyAssignments(params: {
     caseId: string;
     listOfAttorneyNames: string[];

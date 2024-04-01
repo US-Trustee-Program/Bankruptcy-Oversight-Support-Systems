@@ -11,6 +11,7 @@ import { OFFICES } from './offices.mock';
 import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import { ConsolidationFrom, ConsolidationTo } from '../events';
+import { CaseAssignment } from '../assignments';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -265,6 +266,23 @@ function getDebtorAttorney(): DebtorAttorney {
   };
 }
 
+function getAttorneyAssignments(count = 2): CaseAssignment[] {
+  const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const assignments = [];
+  for (let i = 0; i < count; ++i) {
+    assignments.push({
+      id: randomInt(100000),
+      documentType: 'ASSIGNMENT',
+      caseId: randomCaseId(),
+      name: faker.person.fullName(),
+      role: 'TrialAttorney',
+      assignedOn: firstDate,
+      unassignedOn: someDateAfterThisDate(firstDate, 28),
+    });
+  }
+  return assignments;
+}
+
 function buildArray(fn: () => void, size: number) {
   const arr = [];
   for (let i = 0; i < size; i++) {
@@ -291,6 +309,7 @@ function getDateBeforeToday() {
 
 export const MockData = {
   randomCaseId,
+  getAttorneyAssignments,
   getCaseSummary,
   getCaseDetail,
   getOffices,

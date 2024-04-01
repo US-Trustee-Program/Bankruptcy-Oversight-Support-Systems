@@ -270,7 +270,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   onClick={() =>
                     confirmationModalRef.current?.show({
                       status: 'rejected',
-                      caseIds: order.childCases.map((c) => c.caseId),
+                      cases: order.childCases.map((c) => c),
                     })
                   }
                   disabled={true}
@@ -291,7 +291,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 <Button
                   id={`accordion-approve-button-${order.id}`}
                   onClick={() =>
-                    confirmationModalRef.current?.show({ status: 'approved', attorneys })
+                    confirmationModalRef.current?.show({
+                      status: 'approved',
+                      cases: selectedCases,
+                      attorneys,
+                    })
                   }
                   disabled={true}
                   ref={approveButtonRef}
