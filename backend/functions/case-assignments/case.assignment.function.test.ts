@@ -4,6 +4,8 @@ import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import { CaseAssignment } from '../../../common/src/cams/assignments';
+import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 
 describe('Case Assignment Function Tests', () => {
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
@@ -218,5 +220,29 @@ describe('Case Assignment Function Tests', () => {
     await httpTrigger(applicationContext, request);
 
     expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
+  });
+
+  test('Should return a list a assignments when valid caseId is supplied for GET request', async () => {
+    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    const caseId = '001-67-89012';
+    const request = {
+      method: 'GET',
+      params: {
+        id: caseId,
+      },
+    };
+    const assignments: CaseAssignment[] = MockData.getAttorneyAssignments(3);
+
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(
+      applicationContext,
+    );
+
+    const getAssignmentRequestSpy = jest
+      .spyOn(Object.getPrototypeOf(assignmentController), 'getTrialAttorneyAssignments')
+      .mockReturnValue(assignments);
+    await httpTrigger(applicationContext, request);
+
+    expect(getAssignmentRequestSpy).toHaveBeenCalledWith(caseId);
+    expect(getAssignmentRequestSpy).toHaveReturnedWith(assignments);
   });
 });

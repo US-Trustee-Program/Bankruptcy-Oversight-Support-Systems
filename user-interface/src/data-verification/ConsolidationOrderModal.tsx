@@ -1,6 +1,6 @@
 import './ConsolidationOrderModal.scss';
 import { OfficeDetails } from '@common/cams/courts';
-import { ConsolidationType, OrderStatus } from '@common/cams/orders';
+import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
 import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -34,7 +35,7 @@ type ConfirmationSteps = 'pick-lead-case' | 'confirm';
 
 type ShowOptionParams = {
   status: OrderStatus;
-  caseIds: string[];
+  cases: ConsolidationOrderCase[];
   attorneys: AttorneyInfo[];
 };
 
@@ -65,7 +66,7 @@ function ConsolidationOrderModalComponent(
     attorneys: [],
   });
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
-  const [caseIds, setCaseIds] = useState<string[]>([]);
+  const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
   const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const leadCaseNumberRef = useRef<InputRef>(null);
@@ -122,7 +123,7 @@ function ConsolidationOrderModalComponent(
           : 'Reject Case Consolidation?',
       attorneys: options.attorneys,
     });
-    setCaseIds(options.caseIds);
+    setCases(options.cases);
 
     if (modalRef.current?.show) {
       modalRef.current?.show({});
@@ -169,7 +170,9 @@ function ConsolidationOrderModalComponent(
   function showRejectedContent() {
     return (
       <div>
-        <div data-testid={`confirm-modal-${id}-caseIds`}>{caseIds.join(', ')}</div>
+        <div data-testid={`confirm-modal-${id}-caseIds`}>
+          {cases.map((bCase) => getCaseNumber(bCase.caseId)).join(', ')}
+        </div>
         <label htmlFor={`rejection-reason-${id}`} className="usa-label">
           Reason for rejection
         </label>
@@ -247,7 +250,29 @@ function ConsolidationOrderModalComponent(
   }
 
   function showApprovedContentStep2() {
-    return <></>;
+    return (
+      <div>
+        <div>
+          This will confirm the{' '}
+          <span className="text-bold">{consolidationTypeMap.get(consolidationType!)}</span> of
+        </div>
+        {/* TODO: This DIV needs to be a scrollable div!!  */}
+        <div>
+          <ul>
+            {cases.map((bCase) => (
+              <li key={bCase.caseId}>
+                {getCaseNumber(bCase.caseId)} {bCase.caseTitle}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          with <span className="text-bold">{leadCaseNumber}</span> as the Lead Case. All cases will
+          be assigned to
+          {/* TODO: We need this to be a comma delimited list for 2 or more attorneys with the last attorney prefixed with an Oxford comma and "and".  */}
+        </div>
+      </div>
+    );
   }
 
   return (
