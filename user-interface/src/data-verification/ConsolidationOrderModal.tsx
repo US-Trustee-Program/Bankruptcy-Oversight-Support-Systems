@@ -1,7 +1,6 @@
 import './ConsolidationOrderModal.scss';
 import { OfficeDetails } from '@common/cams/courts';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
@@ -14,9 +13,9 @@ import Radio from '@/lib/components/uswds/Radio';
 import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import Api from '@/lib/models/api';
 import { CaseAssignment } from '@common/cams/assignments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { useApi } from '@/lib/hooks/UseApi';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -39,13 +38,11 @@ type ConfirmationSteps = 'pick-lead-case' | 'confirm';
 type ShowOptionParams = {
   status: OrderStatus;
   cases: ConsolidationOrderCase[];
-  attorneys: AttorneyInfo[];
 };
 
 type ShowOptions = {
   status: OrderStatus;
   heading: string;
-  attorneys: AttorneyInfo[];
 };
 
 export type ConfirmationModalImperative = ModalRefType & {
@@ -53,7 +50,8 @@ export type ConfirmationModalImperative = ModalRefType & {
 };
 
 export async function getCaseAssignments(caseId: string): Promise<Array<CaseAssignment>> {
-  const response = await Api.get(`/case-assignments/${caseId}`);
+  const api = useApi();
+  const response = await api.get(`/case-assignments/${caseId}`);
   return response.body as CaseAssignment[];
 }
 
@@ -63,7 +61,7 @@ export async function fetchLeadCaseAttorneys(leadCaseId: string): Promise<Array<
   return attorneys;
 }
 
-function addOxfordCommas(attorneys: string[]) {
+export function addOxfordCommas(attorneys: string[]) {
   const newAttorneyList = [...attorneys];
   if (newAttorneyList.length === 0) {
     return '(unassigned)';
@@ -89,7 +87,6 @@ function ConsolidationOrderModalComponent(
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
     heading: '',
-    attorneys: [],
   });
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
@@ -149,7 +146,6 @@ function ConsolidationOrderModalComponent(
         options.status === 'approved'
           ? 'Additional Consolidation Information'
           : 'Reject Case Consolidation?',
-      attorneys: options.attorneys,
     });
     setCases(options.cases);
 
