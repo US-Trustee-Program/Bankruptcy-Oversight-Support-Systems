@@ -82,10 +82,11 @@ export interface TransferOrderAccordionProps {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
+  hidden?: boolean;
 }
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
-  const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const { order, hidden, statusType, orderType, officesList, expandedId, onExpand } = props;
   const [activeButtonId, setActiveButtonId] = useState<string>(`suggested-cases-${order.id}`);
 
   const api = useApi();
@@ -339,6 +340,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         expandedId={expandedId}
         onExpand={onExpand}
         onCollapse={onCollapse}
+        hidden={hidden}
       >
         <section
           className="accordion-heading grid-row grid-gap-lg"
