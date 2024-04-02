@@ -318,7 +318,10 @@ function ConsolidationOrderModalComponent(
       className="confirm-modal consolidation-order-modal"
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
-      onClose={reset}
+      onClose={() => {
+        reset();
+        onCancel();
+      }}
       content={
         <>
           {options.status === 'rejected' && showRejectedContent()}
