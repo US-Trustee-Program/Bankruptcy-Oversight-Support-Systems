@@ -40,6 +40,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure Network**                          | ---                    | ---              | ---                                                                                                         |
 | AZ_PRIVATE_DNS_ZONE                        | Variable               | ---              | Private DNS Zone name                                                                                       |
+| AZ_PRIVATE_DNS_ZONE_RG                     | Variable               | ---              | Private DNS Zone Azure resource group name                                                                  |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure SQL Server**                       | ---                    | ---              | ---                                                                                                         |
 | AZ_SQL_CONN_STR                            | Secret                 | ---              | ---                                                                                                         |
