@@ -73,7 +73,7 @@ export type ConsolidationOrder = {
 export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
   orderDate: string;
-  attorneyAssigments?: CaseAssignment[];
+  attorneyAssignments?: CaseAssignment[];
 };
 
 export function getCaseSummaryFromConsolidationOrderCase(

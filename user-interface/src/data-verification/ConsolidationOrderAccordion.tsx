@@ -91,7 +91,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     if (!isAssignmentLoaded) {
       for (const bCase of order.childCases) {
         const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
-        bCase.attorneyAssigments = (assignmentsResponse as CaseAssignmentResponseData).body;
+        bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
       }
       // Ensure the loaded assignments are stored in state on the order and not overridden
       // should the parent data consolidation screen refresh the accordion.
