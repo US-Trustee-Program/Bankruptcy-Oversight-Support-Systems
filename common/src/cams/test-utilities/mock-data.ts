@@ -251,7 +251,7 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
-function getDebtorAttorney(): DebtorAttorney {
+function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorney {
   return {
     name: faker.person.fullName(),
     address1: faker.location.streetAddress(),
@@ -263,27 +263,25 @@ function getDebtorAttorney(): DebtorAttorney {
     phone: faker.phone.number(),
     email: faker.internet.email(),
     office: faker.company.name(),
+    ...override,
   };
 }
 
-function getAttorneyAssignments(count = 2): CaseAssignment[] {
+function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssignment {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
-  const assignments = [];
-  for (let i = 0; i < count; ++i) {
-    assignments.push({
-      id: randomInt(100000),
-      documentType: 'ASSIGNMENT',
-      caseId: randomCaseId(),
-      name: faker.person.fullName(),
-      role: 'TrialAttorney',
-      assignedOn: firstDate,
-      unassignedOn: someDateAfterThisDate(firstDate, 28),
-    });
-  }
-  return assignments;
+  return {
+    id: `guid-${('00000' + randomInt(100000)).slice(-5)}`,
+    documentType: 'ASSIGNMENT',
+    caseId: randomCaseId(),
+    name: faker.person.fullName(),
+    role: 'TrialAttorney',
+    assignedOn: firstDate,
+    unassignedOn: someDateAfterThisDate(firstDate, 28),
+    ...override,
+  };
 }
 
-function buildArray(fn: () => void, size: number) {
+function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
     arr.push(fn());
@@ -309,7 +307,7 @@ function getDateBeforeToday() {
 
 export const MockData = {
   randomCaseId,
-  getAttorneyAssignments,
+  getAttorneyAssignment,
   getCaseSummary,
   getCaseDetail,
   getOffices,

@@ -1,11 +1,17 @@
-export interface SimpleResponseData {
+// export interface SimpleResponseData {
+//   success: boolean;
+//   body: Array<object>;
+// }
+
+export interface SimpleResponseData<T = object> {
   success: boolean;
-  body: Array<object>;
+  body: T;
 }
-export interface ResponseData {
+
+export interface ResponseData<T = object> {
   message: string;
   count: number;
-  body: object | Array<object>;
+  body: T | Array<T>;
 }
 
 export interface ResponseError {

@@ -1,7 +1,8 @@
-import { ResponseData } from './api';
+import { SimpleResponseData, ResponseData } from './api';
 import * as CommonOrders from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import { EventCaseReference } from '@common/cams/events';
+import { CaseAssignment } from '@common/cams/assignments';
 
 export interface Chapter15Type {
   caseId: string;
@@ -120,6 +121,8 @@ export interface OrderResponseData extends ResponseData {
 export interface OfficesResponseData extends ResponseData {
   body: OfficeDetails[];
 }
+
+export type CaseAssignmentResponseData = SimpleResponseData<Array<CaseAssignment>>;
 
 export interface RegionDetails {
   regionId: string;

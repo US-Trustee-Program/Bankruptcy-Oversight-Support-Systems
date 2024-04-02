@@ -171,6 +171,12 @@ describe('ConsolidationOrderAccordion tests', () => {
       status: 'approved',
     };
 
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [MockData.getAttorneyAssignment()],
+    });
+
     vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
       message: '',
       count: 1,
@@ -212,6 +218,10 @@ describe('ConsolidationOrderAccordion tests', () => {
       `button-confirmation-modal-${order.id}-submit-button`,
     );
 
+    await waitFor(() => {
+      expect(modalApproveButton).toBeEnabled();
+    });
+
     // click "continue" button on first screen of the modal.
     fireEvent.click(modalApproveButton);
     // click "verify" button on second screen of the modal.
@@ -235,6 +245,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
 
     const leadCase = order.childCases[0];
+
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [MockData.getAttorneyAssignment()],
+    });
 
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
@@ -273,6 +289,11 @@ describe('ConsolidationOrderAccordion tests', () => {
     const modalApproveButton = screen.getByTestId(
       `button-confirmation-modal-${order.id}-submit-button`,
     );
+
+    await waitFor(() => {
+      expect(modalApproveButton).toBeEnabled();
+    });
+
     // Click button on First screen of Modal
     fireEvent.click(modalApproveButton);
     // Click button on Second screen of Modal
