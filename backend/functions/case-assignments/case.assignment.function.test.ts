@@ -231,7 +231,7 @@ describe('Case Assignment Function Tests', () => {
         id: caseId,
       },
     };
-    const assignments: CaseAssignment[] = MockData.getAttorneyAssignments(3);
+    const assignments: CaseAssignment[] = MockData.buildArray(MockData.getAttorneyAssignment, 3);
 
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(
       applicationContext,
