@@ -295,7 +295,7 @@ function ConsolidationOrderModalComponent(
         </div>
         {/* TODO: This DIV needs to be a scrollable div!!  */}
         <div>
-          <ul>
+          <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
               <li key={bCase.caseId}>
                 {getCaseNumber(bCase.caseId)} {bCase.caseTitle}
