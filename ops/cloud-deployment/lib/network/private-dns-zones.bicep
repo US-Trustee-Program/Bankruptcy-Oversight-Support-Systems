@@ -5,8 +5,8 @@
 @description('Provide a name used for labeling related resources')
 param stackName string
 
-@description('Application\'s target virtual network name')
-param virtualNetworkName string
+@description('Application\'s target virtual network resource id')
+param virtualNetworkId string
 
 @description('Private DNS Zone name for private link')
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
@@ -15,16 +15,8 @@ param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 param linkVnetIds array = []
 
 /*
-  USTP BOSS Virtual Network
-*/
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
-  name: virtualNetworkName
-}
-
-/*
   Private DNS Zone and linked virtual networks
 */
-
 resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateDnsZoneName
   location: 'global'
@@ -36,7 +28,7 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
   properties: {
     registrationEnabled: false
     virtualNetwork: {
-      id: ustpVirtualNetwork.id
+      id: virtualNetworkId
     }
   }
   name: '${privateDnsZoneName}-vnet-link-${stackName}'
@@ -57,5 +49,4 @@ resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetwor
   }
 ]
 
-output virtualNetworkName string = ustpVirtualNetwork.name
 output privateDnsZoneName string = ustpPrivateDnsZone.name
