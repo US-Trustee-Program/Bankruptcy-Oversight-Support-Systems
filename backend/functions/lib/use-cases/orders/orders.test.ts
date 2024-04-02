@@ -32,6 +32,7 @@ import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.reposi
 import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
+import { CaseAssignmentUseCase } from '../case.assignment';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -149,6 +150,7 @@ describe('Orders use case', () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 3);
 
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
+    const rawConsolidationOrders = MockData.buildArray(MockData.getRawConsolidationOrder, 3);
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
@@ -156,7 +158,7 @@ describe('Orders use case', () => {
     });
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
-      consolidations,
+      consolidations: rawConsolidationOrders,
       transfers,
       maxTxId: '3000',
     });
@@ -229,6 +231,7 @@ describe('Orders use case', () => {
   test('should handle a missing order runtime state when a starting transaction ID is provided', async () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 3);
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
+    const rawConsolidations = MockData.buildArray(MockData.getRawConsolidationOrder, 3);
 
     const id = 'guid-id';
     const txId = '1234';
@@ -249,7 +252,7 @@ describe('Orders use case', () => {
     const mockGetOrderSync = jest
       .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
       .mockResolvedValue({
-        consolidations,
+        consolidations: rawConsolidations,
         transfers,
         maxTxId: '3000',
       });
@@ -376,6 +379,11 @@ describe('Orders use case', () => {
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
 
+    const mockCreateAssignment = jest.spyOn(
+      CaseAssignmentUseCase.prototype,
+      'createTrialAttorneyAssignments',
+    );
+
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
@@ -391,8 +399,9 @@ describe('Orders use case', () => {
         caseId: pendingConsolidation.childCases[1].caseId,
       }),
     );
-    expect(mockCreateHistory.mock.calls[2][1]).toEqual(expect.objectContaining(leadCaseHistory));
+    expect(mockCreateHistory.mock.calls[3][1]).toEqual(expect.objectContaining(leadCaseHistory));
     expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length + 1);
+    expect(mockCreateAssignment).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
     expect(actual).toEqual([newConsolidation]);
   });
 
