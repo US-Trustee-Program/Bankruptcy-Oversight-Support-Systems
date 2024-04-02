@@ -88,10 +88,17 @@ function _ConsolidationCaseTable(
                 </td>
                 <td scope="row">{formatDate(bCase.dateFiled)}</td>
                 <td scope="row" className="text-no-wrap">
-                  {!props.isAssignmentLoaded && <LoadingSpinner caption="Loading..." />}
+                  {!props.isAssignmentLoaded && (
+                    <LoadingSpinner
+                      id={`loading-spinner-case-asignment-${bCase.caseId}`}
+                      caption="Loading..."
+                    />
+                  )}
                   {props.isAssignmentLoaded && (
                     <ul className="usa-list--unstyled">
-                      {bCase.attorneyAssigments?.map((att, idx) => <li key={idx}>{att.name}</li>)}
+                      {bCase.attorneyAssignments?.map
+                        ? bCase.attorneyAssignments.map((att, idx) => <li key={idx}>{att.name}</li>)
+                        : ''}
                     </ul>
                   )}
                 </td>

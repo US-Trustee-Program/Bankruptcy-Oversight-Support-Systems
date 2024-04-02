@@ -592,7 +592,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       <div className="grid-col-10">
                         {loadingCaseSummary && (
                           <LoadingSpinner
-                            id="loading-spinner"
+                            id={`loading-spinner-${order.id}-case-verification`}
                             caption="Loading cases..."
                           ></LoadingSpinner>
                         )}
@@ -623,7 +623,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                         <div className="grid-col-1"></div>
                         <div className="grid-col-10">
                           <LoadingSpinner
-                            id="loading-spinner"
+                            id={`loading-spinner-${order.id}-suggestions`}
                             caption="Loading suggestions..."
                           ></LoadingSpinner>
                         </div>

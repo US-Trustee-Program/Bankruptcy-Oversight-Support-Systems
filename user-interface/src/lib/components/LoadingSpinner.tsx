@@ -7,11 +7,11 @@ interface LoadingSpinnerProps {
 }
 
 export function LoadingSpinner(props: LoadingSpinnerProps) {
-  const id = props.id || 'loading-spinner';
+  const id = props.id || 'loading-spinner-' + Date.now();
   return (
     <div id={id} className={`loading-spinner ${props.className ?? ''}`} data-testid={id}>
       <svg
-        id="loading-spinner-svg"
+        id={`${id}-svg`}
         className="animate-spin"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"

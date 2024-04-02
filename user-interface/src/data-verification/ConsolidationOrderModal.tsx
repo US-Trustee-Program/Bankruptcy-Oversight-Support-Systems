@@ -279,7 +279,10 @@ function ConsolidationOrderModalComponent(
             ref={leadCaseNumberRef}
           />
           {isLoading && (
-            <LoadingSpinner id="loading-indicator" caption="Loading case assignments..." />
+            <LoadingSpinner
+              id="loading-indicator-consolidation-order-modal"
+              caption="Loading case assignments..."
+            />
           )}
         </div>
       </div>
