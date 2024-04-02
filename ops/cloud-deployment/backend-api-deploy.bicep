@@ -41,6 +41,9 @@ param functionName string
 @description('Existing Private DNS Zone used for application')
 param privateDnsZoneName string
 
+@description('Resource group of target Private DNS Zone')
+param privateDnsZoneResourceGroup string
+
 @description('Existing virtual network name')
 param virtualNetworkName string
 
@@ -200,6 +203,7 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     location: location
     virtualNetworkName: virtualNetworkName
     privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateEndpointSubnetName: privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
     privateLinkServiceId: functionApp.id

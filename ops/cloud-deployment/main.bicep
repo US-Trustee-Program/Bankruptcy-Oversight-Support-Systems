@@ -48,6 +48,7 @@ param apiPlanName string = 'plan-${apiName}'
 param apiPlanType string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneResourceGroup string
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
@@ -118,7 +119,7 @@ module targetVnet './lib/network/vnet.bicep' = if (deployVnet && createVnet) {
 
 module ustpNetwork './lib/network/private-dns-zones.bicep' = if (deployNetwork) {
   name: '${appName}-network-module'
-  scope: resourceGroup(networkResourceGroupName)
+  scope: resourceGroup(privateDnsZoneResourceGroup)
   params: {
     stackName: appName
     virtualNetworkName: virtualNetworkName
@@ -138,6 +139,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
     webappName: webappName
     location: location
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     virtualNetworkName: ustpNetwork.outputs.virtualNetworkName
     virtualNetworkResourceGroupName: networkResourceGroupName
     webappSubnetName: webappSubnetName
@@ -183,6 +185,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams
     privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
     privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     databaseConnectionString: databaseConnectionString
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName

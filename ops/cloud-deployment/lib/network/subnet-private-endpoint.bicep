@@ -7,6 +7,7 @@ param virtualNetworkName string
 param privateEndpointSubnetName string
 param privateEndpointSubnetAddressPrefix string
 param privateDnsZoneName string
+param privateDnsZoneResourceGroup string
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
 @description('Group for private link service')
@@ -64,6 +65,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
 */
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
   name: privateDnsZoneName
+  scope:resourceGroup(privateDnsZoneResourceGroup)
 }
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
   parent: privateEndpoint
@@ -71,7 +73,7 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
   properties: {
     privateDnsZoneConfigs: [
       {
-        name: 'privatelink_azurewebsites'
+        name: 'privatelink_azurewebsites_${stackName}'
         properties: {
           privateDnsZoneId: privateDnsZone.id
         }

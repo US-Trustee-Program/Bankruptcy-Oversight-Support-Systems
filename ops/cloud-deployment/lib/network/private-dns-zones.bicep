@@ -28,9 +28,6 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
 resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateDnsZoneName
   location: 'global'
-  tags: {
-    appName: stackName
-  }
 }
 
 resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
@@ -42,21 +39,23 @@ resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNe
       id: ustpVirtualNetwork.id
     }
   }
-  name: '${privateDnsZoneName}-vnet-link'
+  name: '${privateDnsZoneName}-vnet-link-${stackName}'
 }
 
 // optional step to include additional link to existing PrivateDnsZone
-resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for vnetId in linkVnetIds: {
-  parent: ustpPrivateDnsZone
-  location: 'global'
-  properties: {
-    registrationEnabled: false
-    virtualNetwork: {
-      id: vnetId
+resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [
+  for vnetId in linkVnetIds: {
+    parent: ustpPrivateDnsZone
+    location: 'global'
+    properties: {
+      registrationEnabled: false
+      virtualNetwork: {
+        id: vnetId
+      }
     }
+    name: 'vnet-link-${uniqueString(resourceGroup().id, vnetId)}'
   }
-  name: 'vnet-link-${uniqueString(resourceGroup().id, vnetId)}'
-}]
+]
 
 output virtualNetworkName string = ustpVirtualNetwork.name
 output privateDnsZoneName string = ustpPrivateDnsZone.name
