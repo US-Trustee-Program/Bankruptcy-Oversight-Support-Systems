@@ -94,14 +94,18 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should fetch a list of assignments when a GET request is called', async () => {
-    const mockAttorneyAssignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
+    const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
+    const assignmentResponse = {
+      body: assignments,
+      success: true,
+    };
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockResolvedValue(mockAttorneyAssignments);
+      .mockResolvedValue(assignments);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const result = await assignmentController.getTrialAttorneyAssignments('001-18-12345');
-    expect(result).toEqual(mockAttorneyAssignments);
+    expect(result).toEqual(assignmentResponse);
   });
 
   test('should rethrow CAMS errors on findAssignmentsByCaseId', async () => {
