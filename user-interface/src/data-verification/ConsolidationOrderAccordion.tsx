@@ -28,6 +28,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
+import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -45,9 +46,10 @@ export interface ConsolidationOrderAccordionProps {
 }
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
-  const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const { order, statusType, orderType, officesList, expandedId } = props;
   const caseTable = useRef<CaseTableImperative>(null);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
+  const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
@@ -79,6 +81,20 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   function handleAddNewCaseNumber(_ev: ChangeEvent<HTMLInputElement>): void {
     throw new Error('Function not implemented.');
+  }
+
+  async function handleOnExpand() {
+    if (!isAssignmentLoaded) {
+      for (const bCase of order.childCases) {
+        const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
+        bCase.attorneyAssigments = (assignmentsResponse as CaseAssignmentResponseData).body;
+        console.log(bCase.caseId, bCase.attorneyAssigments);
+      }
+      setIsAssignmentLoaded(true);
+    }
+    if (props.onExpand) {
+      props.onExpand(`order-list-${order.id}`);
+    }
   }
 
   function clearInputs(): void {
@@ -127,7 +143,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       key={order.id}
       id={`order-list-${order.id}`}
       expandedId={expandedId}
-      onExpand={onExpand}
+      onExpand={handleOnExpand}
       onCollapse={clearInputs}
     >
       <section
@@ -192,6 +208,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
                   onSelect={handleIncludeCase}
+                  isAssignmentLoaded={isAssignmentLoaded}
                   ref={caseTable}
                 ></ConsolidationCaseTable>
               </div>
