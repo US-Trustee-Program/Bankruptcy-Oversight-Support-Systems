@@ -16,7 +16,6 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from './dataVerificationHelper';
 import { OfficeDetails } from '@common/cams/courts';
 import Input from '@/lib/components/uswds/Input';
-import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
@@ -43,18 +42,20 @@ export interface ConsolidationOrderAccordionProps {
   ) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
+  hidden?: boolean;
 }
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
-  const { order, statusType, orderType, officesList, expandedId } = props;
+  const { hidden, statusType, orderType, officesList, expandedId } = props;
   const caseTable = useRef<CaseTableImperative>(null);
+
+  const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
-  const [attorneys] = useState<AttorneyInfo[]>([]);
   const featureFlags = useFeatureFlags();
 
   const api = useApi();
@@ -84,16 +85,18 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   async function handleOnExpand() {
+    if (props.onExpand) {
+      props.onExpand(`order-list-${order.id}`);
+    }
     if (!isAssignmentLoaded) {
       for (const bCase of order.childCases) {
         const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
         bCase.attorneyAssigments = (assignmentsResponse as CaseAssignmentResponseData).body;
-        console.log(bCase.caseId, bCase.attorneyAssigments);
       }
+      // Ensure the loaded assignments are stored in state on the order and not overridden
+      // should the parent data consolidation screen refresh the accordion.
+      setOrder({ ...order });
       setIsAssignmentLoaded(true);
-    }
-    if (props.onExpand) {
-      props.onExpand(`order-list-${order.id}`);
     }
   }
 
@@ -145,6 +148,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       expandedId={expandedId}
       onExpand={handleOnExpand}
       onCollapse={clearInputs}
+      hidden={hidden}
     >
       <section
         className="accordion-heading grid-row grid-gap-lg"
@@ -311,7 +315,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     confirmationModalRef.current?.show({
                       status: 'approved',
                       cases: selectedCases,
-                      attorneys,
                     })
                   }
                   disabled={true}

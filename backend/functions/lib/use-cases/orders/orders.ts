@@ -79,18 +79,8 @@ export class OrdersUseCase {
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    //const assignmentsUseCase = new CaseAssignmentUseCase(context);
-
     const transferOrders = await this.ordersRepo.getOrders(context);
     const consolidationOrders = await this.consolidationsRepo.getAll(context);
-    /*
-    for (const order of consolidationOrders) {
-      for (const child of order.childCases) {
-        child.attorneyAssigments = await assignmentsUseCase.findAssignmentsByCaseId(child.caseId);
-      }
-    }
-    */
-
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
