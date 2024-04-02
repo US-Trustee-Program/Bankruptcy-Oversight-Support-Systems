@@ -148,7 +148,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       location: location
       privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-      virtualNetworkName: ustpNetwork.outputs.virtualNetworkName
+      virtualNetworkName: virtualNetworkName
       virtualNetworkResourceGroupName: networkResourceGroupName
       webappSubnetName: webappSubnetName
       webappSubnetAddressPrefix: webappSubnetAddressPrefix
