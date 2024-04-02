@@ -318,7 +318,7 @@ describe('Review Orders screen', () => {
     await waitFor(async () => {
       for (const order of transferOrders) {
         const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
-        expect(heading).not.toBeInTheDocument();
+        expect(heading).not.toBeVisible();
       }
 
       for (const order of consolidationOrders) {
@@ -346,7 +346,7 @@ describe('Review Orders screen', () => {
     for (const order of consolidationOrders) {
       await waitFor(async () => {
         const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
-        expect(heading).not.toBeInTheDocument();
+        expect(heading).not.toBeVisible();
       });
     }
   });
