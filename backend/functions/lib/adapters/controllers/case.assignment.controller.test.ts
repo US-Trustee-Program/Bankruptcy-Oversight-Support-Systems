@@ -94,7 +94,7 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should fetch a list of assignments when a GET request is called', async () => {
-    const mockAttorneyAssignments = MockData.buildArray(MockData.getAttorneyAssignments, 3);
+    const mockAttorneyAssignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
       .mockResolvedValue(mockAttorneyAssignments);
