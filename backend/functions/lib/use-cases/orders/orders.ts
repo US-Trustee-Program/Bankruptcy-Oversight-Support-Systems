@@ -38,6 +38,7 @@ import {
   ConsolidationOrderSummary,
   isConsolidationHistory,
 } from '../../../../../common/src/cams/history';
+import { CaseAssignmentUseCase } from '../case.assignment';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -342,7 +343,12 @@ export class OrdersUseCase {
 
     const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
     response.push(createdConsolidation);
+
     const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const assignmentUseCase = new CaseAssignmentUseCase(context);
+    const leadCaseAssignments = await assignmentUseCase.findAssignmentsByCaseId(leadCase.caseId);
+    const leadCaseAttorneys = leadCaseAssignments.map((assignment) => assignment.name);
+
     const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
       if (childCase.caseId !== leadCase.caseId) {
@@ -375,6 +381,14 @@ export class OrdersUseCase {
           documentType: 'CONSOLIDATION_FROM',
         };
         await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
+
+        // Assign lead case attorneys to the child case.
+        assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          childCase.caseId,
+          leadCaseAttorneys,
+          'TrialAttorney',
+        );
 
         // Add the child case lead case history.
         const { docketEntries: _docketEntries, ...caseSummary } = childCase;
