@@ -94,13 +94,19 @@ function _ConsolidationCaseTable(
                       caption="Loading..."
                     />
                   )}
-                  {props.isAssignmentLoaded && (
-                    <ul className="usa-list--unstyled">
-                      {bCase.attorneyAssignments?.map
-                        ? bCase.attorneyAssignments.map((att, idx) => <li key={idx}>{att.name}</li>)
-                        : ''}
-                    </ul>
-                  )}
+                  {props.isAssignmentLoaded &&
+                    bCase.attorneyAssignments &&
+                    bCase.attorneyAssignments.length > 0 && (
+                      <ul className="usa-list--unstyled">
+                        {bCase.attorneyAssignments.map((att, idx) => (
+                          <li key={idx}>{att.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                  {props.isAssignmentLoaded &&
+                    bCase.attorneyAssignments &&
+                    !bCase.attorneyAssignments.length &&
+                    '(unassigned)'}
                 </td>
               </tr>,
             );
