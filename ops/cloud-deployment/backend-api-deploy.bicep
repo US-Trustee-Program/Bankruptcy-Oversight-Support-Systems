@@ -42,7 +42,10 @@ param functionName string
 param privateDnsZoneName string
 
 @description('Resource group of target Private DNS Zone')
-param privateDnsZoneResourceGroup string
+param privateDnsZoneResourceGroup string = resourceGroup().name
+
+@description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Existing virtual network name')
 param virtualNetworkName string
@@ -204,6 +207,7 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     virtualNetworkName: virtualNetworkName
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     privateEndpointSubnetName: privateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
     privateLinkServiceId: functionApp.id
@@ -229,16 +233,17 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
 }
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
-module appInsights './lib/app-insights/app-insights.bicep' = if (createApplicationInsights) {
-  name: '${functionName}-application-insights-module'
-  params: {
-    location: location
-    kind: 'web'
-    appInsightsName: 'appi-${functionName}'
-    applicationType: 'web'
-    workspaceResourceId: analyticsWorkspaceId
+module appInsights './lib/app-insights/app-insights.bicep' =
+  if (createApplicationInsights) {
+    name: '${functionName}-application-insights-module'
+    params: {
+      location: location
+      kind: 'web'
+      appInsightsName: 'appi-${functionName}'
+      applicationType: 'web'
+      workspaceResourceId: analyticsWorkspaceId
+    }
   }
-}
 
 module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = {
   name: '${functionName}-diagnostic-settings-module'
@@ -251,36 +256,38 @@ module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
     functionApp
   ]
 }
-module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${functionName}-healthcheck-alert-rule-module'
-  params: {
-    alertName: '${functionName}-health-check-alert'
-    appId: functionApp.id
-    timeAggregation: 'Average'
-    operator: 'LessThan'
-    targetResourceType: 'Microsoft.Web/sites'
-    metricName: 'HealthCheckStatus'
-    severity: 2
-    threshold: 100
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: actionGroupResourceGroupName
+module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
+  if (createAlerts) {
+    name: '${functionName}-healthcheck-alert-rule-module'
+    params: {
+      alertName: '${functionName}-health-check-alert'
+      appId: functionApp.id
+      timeAggregation: 'Average'
+      operator: 'LessThan'
+      targetResourceType: 'Microsoft.Web/sites'
+      metricName: 'HealthCheckStatus'
+      severity: 2
+      threshold: 100
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: actionGroupResourceGroupName
+    }
   }
-}
-module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${functionName}-http-error-alert-rule-module'
-  params: {
-    alertName: '${functionName}-http-error-alert'
-    appId: functionApp.id
-    timeAggregation: 'Total'
-    operator: 'GreaterThanOrEqual'
-    targetResourceType: 'Microsoft.Web/sites'
-    metricName: 'Http5xx'
-    severity: 1
-    threshold: 1
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: actionGroupResourceGroupName
+module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
+  if (createAlerts) {
+    name: '${functionName}-http-error-alert-rule-module'
+    params: {
+      alertName: '${functionName}-http-error-alert'
+      appId: functionApp.id
+      timeAggregation: 'Total'
+      operator: 'GreaterThanOrEqual'
+      targetResourceType: 'Microsoft.Web/sites'
+      metricName: 'Http5xx'
+      severity: 1
+      threshold: 1
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: actionGroupResourceGroupName
+    }
   }
-}
 
 /*
   Create functionapp
@@ -288,7 +295,8 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (cr
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
-  }, createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
+  },
+  createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
@@ -310,7 +318,8 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     sqlIdentity
   ]
 }
-var applicationSettings = concat([
+var applicationSettings = concat(
+  [
     {
       name: 'AzureWebJobsStorage'
       value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
@@ -324,23 +333,33 @@ var applicationSettings = concat([
       value: functionsRuntime
     }
   ],
-  !empty(databaseConnectionString) ? [ { name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString } ] : [],
-  createApplicationInsights ? [ { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString } ] : []
+  !empty(databaseConnectionString) ? [{ name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString }] : [],
+  createApplicationInsights
+    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
+    : []
 )
-var ipSecurityRestrictionsRules = concat([ {
+var ipSecurityRestrictionsRules = concat(
+  [
+    {
       ipAddress: 'Any'
       action: 'Deny'
       priority: 2147483647
       name: 'Deny all'
       description: 'Deny all access'
-    } ],
-  allowVeracodeScan ? [ {
-      ipAddress: '3.32.105.199/32'
-      action: 'Allow'
-      priority: 1000
-      name: 'Veracode Agent'
-      description: 'Allow Veracode DAST Scans'
-    } ] : [])
+    }
+  ],
+  allowVeracodeScan
+    ? [
+        {
+          ipAddress: '3.32.105.199/32'
+          action: 'Allow'
+          priority: 1000
+          name: 'Veracode Agent'
+          description: 'Allow Veracode DAST Scans'
+        }
+      ]
+    : []
+)
 resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
@@ -372,27 +391,31 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
-module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
-  scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${functionName}-sql-vnet-rule-module'
-  params: {
-    stackName: functionName
-    sqlServerName: sqlServerName
-    subnetId: subnet.outputs.subnetId
+module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' =
+  if (createSqlServerVnetRule) {
+    scope: resourceGroup(sqlServerResourceGroupName)
+    name: '${functionName}-sql-vnet-rule-module'
+    params: {
+      stackName: functionName
+      sqlServerName: sqlServerName
+      subnetId: subnet.outputs.subnetId
+    }
   }
-}
 
 // Creates a managed identity that would be used to grant access to functionapp instance
 var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${functionName}-readonly'
-var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName) ? sqlServerIdentityResourceGroupName : sqlServerResourceGroupName
-module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
-  scope: resourceGroup(sqlIdentityRG)
-  name: '${functionName}-sql-identity-module'
-  params: {
-    managedIdentityName: sqlIdentityName
-    location: location
+var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
+  ? sqlServerIdentityResourceGroupName
+  : sqlServerResourceGroupName
+module sqlManagedIdentity './lib/identity/managed-identity.bicep' =
+  if (createSqlServerVnetRule) {
+    scope: resourceGroup(sqlIdentityRG)
+    name: '${functionName}-sql-identity-module'
+    params: {
+      managedIdentityName: sqlIdentityName
+      location: location
+    }
   }
-}
 resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: sqlIdentityName
   scope: resourceGroup(sqlIdentityRG)
