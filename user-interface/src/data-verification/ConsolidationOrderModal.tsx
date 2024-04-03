@@ -16,6 +16,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseAssignment } from '@common/cams/assignments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useApi } from '@/lib/hooks/UseApi';
+import useWindowSize from '@/lib/hooks/UseWindowSize';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -97,11 +98,14 @@ function ConsolidationOrderModalComponent(
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [consolidatedCasesDivHeight, setConsolidatedCasesDivHeight] = useState<string>('');
+  const [modalHeight, setModalHeight] = useState<number>(0);
   const leadCaseNumberRef = useRef<InputRef>(null);
   const leadCaseDivisionRef = useRef<InputRef>(null);
   const administrativeConsolidationRef = useRef<RadioRef>(null);
   const substantiveConsolidationRef = useRef<RadioRef>(null);
   const featureFlags = useFeatureFlags();
+  const windowSize = useWindowSize();
 
   const confirmStep2 = async () => {
     onConfirm({
@@ -199,6 +203,31 @@ function ConsolidationOrderModalComponent(
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
   }, [consolidationType, leadCaseNumber]);
 
+  useEffect(() => {
+    // get height of modal top section above scrolling div
+    const modalWindowPadding = 100;
+    const outerModalMargin = 200;
+
+    const modalContent = document.querySelector(`#${id}`);
+    if (modalContent) {
+      const consolidationTypeDiv = modalContent.querySelector(`.modal-step2-consolidation-type`);
+      const assignmentsListDiv = modalContent.querySelector(`.modal-step2-assignments-list`);
+      const button = modalContent.querySelector(`#${id}-submit-button`);
+
+      if (consolidationTypeDiv && assignmentsListDiv && button) {
+        const overallHeightOfModal =
+          outerModalMargin +
+          modalWindowPadding +
+          consolidationTypeDiv.clientHeight +
+          assignmentsListDiv.clientHeight +
+          button.clientHeight;
+        const finalSize = windowSize.height! - overallHeightOfModal;
+        setConsolidatedCasesDivHeight(`${finalSize}px`);
+        setModalHeight(modalContent.clientHeight);
+      }
+    }
+  }, [windowSize]);
+
   useImperativeHandle(ConfirmationModalRef, () => ({
     show,
     hide: reset,
@@ -295,12 +324,14 @@ function ConsolidationOrderModalComponent(
   function showApprovedContentStep2() {
     return (
       <div>
-        <div>
+        <div className="modal-step2-consolidation-type">
           This will confirm the{' '}
           <span className="text-bold">{consolidationTypeMap.get(consolidationType!)}</span> of
         </div>
-        {/* TODO: This DIV needs to be a scrollable div!!  */}
-        <div className="modal-case-list-container">
+        <div
+          className="modal-case-list-container"
+          style={{ maxHeight: consolidatedCasesDivHeight }}
+        >
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
               <li key={bCase.caseId}>
@@ -309,9 +340,10 @@ function ConsolidationOrderModalComponent(
             ))}
           </ul>
         </div>
-        <div>
+        <div className="modal-step2-assignments-list">
           with <span className="text-bold">{leadCaseNumber}</span> as the Lead Case. All cases will
-          be assigned to <span className="text-bold">{addOxfordCommas(leadCaseAttorneys)}</span>.
+          be assigned to{' '}
+          <span className="text-bold oxford-comma">{addOxfordCommas(leadCaseAttorneys)}</span>.
         </div>
       </div>
     );
@@ -321,7 +353,8 @@ function ConsolidationOrderModalComponent(
     <Modal
       ref={modalRef}
       modalId={id}
-      className="confirm-modal consolidation-order-modal"
+      className={`confirm-modal consolidation-order-modal`}
+      dataMisc={modalHeight}
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
       onClose={() => {
