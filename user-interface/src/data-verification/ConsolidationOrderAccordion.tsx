@@ -95,7 +95,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
         } catch {
           // The case assignments are not critical to perform the consolidation. Catch any error
-          // and silently return an empty list so the page doesn't crash.
+          // and don't set the attorney assignment for this specific case.
         }
       }
       // Ensure the loaded assignments are stored in state on the order and not overridden
