@@ -50,9 +50,16 @@ export type ConfirmationModalImperative = ModalRefType & {
 };
 
 export async function getCaseAssignments(caseId: string): Promise<Array<CaseAssignment>> {
-  const api = useApi();
-  const response = await api.get(`/case-assignments/${caseId}`);
-  return response.body as CaseAssignment[];
+  try {
+    const api = useApi();
+    const response = await api.get(`/case-assignments/${caseId}`);
+    return response.body as CaseAssignment[];
+  } catch {
+    // The case assignments are not critical to perform the consolidation.
+    // Catch any error and silntly return an empty list so the page doesn't
+    // crash.
+    return [];
+  }
 }
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string): Promise<Array<string>> {
