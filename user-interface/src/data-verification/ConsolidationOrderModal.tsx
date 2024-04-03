@@ -92,6 +92,7 @@ function ConsolidationOrderModalComponent(
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
   const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
+  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
   const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [leadCaseSummary, setLeadCaseSummary] = useState<CaseSummary | null>(null);
@@ -169,6 +170,7 @@ function ConsolidationOrderModalComponent(
     setLeadCaseNumber('');
     leadCaseNumberRef.current?.clearValue();
     setLeadCaseSummary(null);
+    setLeadCaseNumberError('');
     setStep('pick-lead-case');
   }
 
@@ -193,6 +195,7 @@ function ConsolidationOrderModalComponent(
     const leadCaseId = `${leadCaseDivisionCode}-${leadCaseNumber}`;
     if (hasRequiredFields) {
       setIsLoading(true);
+      setLeadCaseNumberError('');
       getCaseSummary(leadCaseId)
         .then((caseSummary) => {
           fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
@@ -203,6 +206,7 @@ function ConsolidationOrderModalComponent(
           });
         })
         .catch((error) => {
+          setLeadCaseNumberError(error.message);
           setIsLoading(false);
           console.error(error);
         });
@@ -317,6 +321,7 @@ function ConsolidationOrderModalComponent(
             aria-label="Lead case number"
             ref={leadCaseNumberRef}
           />
+          {leadCaseNumberError}
           {isLoading && (
             <LoadingSpinner
               id="loading-indicator-consolidation-order-modal"
