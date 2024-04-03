@@ -94,9 +94,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
         } catch {
-          // The case assignments are not critical to perform the consolidation.
-          // Catch any error and silntly return an empty list so the page doesn't
-          // crash.
+          // The case assignments are not critical to perform the consolidation. Catch any error
+          // and silently return an empty list so the page doesn't crash.
         }
       }
       // Ensure the loaded assignments are stored in state on the order and not overridden
