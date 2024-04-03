@@ -89,21 +89,20 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       props.onExpand(`order-list-${order.id}`);
     }
     if (!isAssignmentLoaded) {
-      try {
-        for (const bCase of order.childCases) {
+      for (const bCase of order.childCases) {
+        try {
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
+        } catch {
+          // The case assignments are not critical to perform the consolidation.
+          // Catch any error and silntly return an empty list so the page doesn't
+          // crash.
         }
-        // Ensure the loaded assignments are stored in state on the order and not overridden
-        // should the parent data consolidation screen refresh the accordion.
-        setOrder({ ...order });
-      } catch {
-        // The case assignments are not critical to perform the consolidation.
-        // Catch any error and silntly return an empty list so the page doesn't
-        // crash.
-      } finally {
-        setIsAssignmentLoaded(true);
       }
+      // Ensure the loaded assignments are stored in state on the order and not overridden
+      // should the parent data consolidation screen refresh the accordion.
+      setOrder({ ...order });
+      setIsAssignmentLoaded(true);
     }
   }
 
