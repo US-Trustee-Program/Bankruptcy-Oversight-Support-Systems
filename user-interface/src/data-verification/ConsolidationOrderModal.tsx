@@ -15,7 +15,8 @@ import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelB
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseAssignment } from '@common/cams/assignments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useGenericApi } from '@/lib/hooks/UseApi';
+import { CaseSummary } from '@common/cams/cases';
 import useWindowSize from '@/lib/hooks/UseWindowSize';
 
 export const CASE_NUMBER_LENGTH = 8;
@@ -23,7 +24,7 @@ export const CASE_NUMBER_LENGTH = 8;
 export type ConfirmActionResults = {
   status: OrderStatus;
   rejectionReason?: string;
-  leadCaseId?: string;
+  leadCaseSummary: CaseSummary;
   consolidationType: ConsolidationType;
 };
 
@@ -50,22 +51,17 @@ export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
-export async function getCaseAssignments(caseId: string): Promise<Array<CaseAssignment>> {
-  try {
-    const api = useApi();
-    const response = await api.get(`/case-assignments/${caseId}`);
-    return response.body as CaseAssignment[];
-  } catch {
-    // TODO: If this API call fails because the case ID cannot be found then this is an invalid case.
-    // TODO: For all other failures we cannot infer the case is valid to continue as the lead case.
-    return [];
-  }
+export async function getCaseSummary(caseId: string) {
+  return useGenericApi().get<CaseSummary>(`/cases/${caseId}/summary`);
 }
 
-export async function fetchLeadCaseAttorneys(leadCaseId: string): Promise<Array<string>> {
-  const assignments = await getCaseAssignments(leadCaseId);
-  const attorneys = assignments.map((assignment) => assignment.name);
-  return attorneys;
+export async function getCaseAssignments(caseId: string) {
+  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
+}
+
+export async function fetchLeadCaseAttorneys(leadCaseId: string) {
+  const caseAssignments = await getCaseAssignments(leadCaseId);
+  return caseAssignments.map((assignment) => assignment.name);
 }
 
 export function addOxfordCommas(attorneys: string[]) {
@@ -98,6 +94,8 @@ function ConsolidationOrderModalComponent(
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [leadCaseSummary, setLeadCaseSummary] = useState<CaseSummary | null>(null);
+
   const [consolidatedCasesDivHeight, setConsolidatedCasesDivHeight] = useState<string>('');
   const [modalHeight, setModalHeight] = useState<number>(0);
   const leadCaseNumberRef = useRef<InputRef>(null);
@@ -111,7 +109,7 @@ function ConsolidationOrderModalComponent(
     onConfirm({
       status: options.status,
       rejectionReason: reasonRef.current?.value,
-      leadCaseId: `${leadCaseDivisionCode}-${leadCaseNumber}`,
+      leadCaseSummary: leadCaseSummary!,
       // onConfirm should never be called unless the button is enabled.
       // The button should never be enabled unless a consolidationType is selected
       consolidationType: consolidationType!,
@@ -170,6 +168,7 @@ function ConsolidationOrderModalComponent(
     leadCaseDivisionRef.current?.clearValue();
     setLeadCaseNumber('');
     leadCaseNumberRef.current?.clearValue();
+    setLeadCaseSummary(null);
     setStep('pick-lead-case');
   }
 
@@ -194,11 +193,19 @@ function ConsolidationOrderModalComponent(
     const leadCaseId = `${leadCaseDivisionCode}-${leadCaseNumber}`;
     if (hasRequiredFields) {
       setIsLoading(true);
-      fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
-        setLeadCaseAttorneys(attorneys);
-        modalRef.current?.buttons?.current?.disableSubmitButton(false);
-        setIsLoading(false);
-      });
+      getCaseSummary(leadCaseId)
+        .then((caseSummary) => {
+          fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
+            setLeadCaseSummary(caseSummary);
+            setLeadCaseAttorneys(attorneys);
+            setIsLoading(false);
+            modalRef.current?.buttons?.current?.disableSubmitButton(false);
+          });
+        })
+        .catch((error) => {
+          setIsLoading(false);
+          console.error(error);
+        });
     }
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
   }, [consolidationType, leadCaseNumber]);

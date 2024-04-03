@@ -111,15 +111,19 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases([]);
   }
 
-  function confirmAction({ status, leadCaseId, consolidationType }: ConfirmActionResults): void {
+  function confirmAction({
+    status,
+    leadCaseSummary,
+    consolidationType,
+  }: ConfirmActionResults): void {
     if (status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
         consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCaseId),
-        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseId)!,
+          .filter((caseId) => caseId !== leadCaseSummary.caseId),
+        leadCase: leadCaseSummary,
       };
 
       api

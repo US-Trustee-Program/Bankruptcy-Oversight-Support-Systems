@@ -12,7 +12,7 @@ export type ConsolidationOrderActionRejection = ConsolidationOrder & {
 
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
   approvedCases: Array<string>;
-  leadCase: ConsolidationOrderCase;
+  leadCase: CaseSummary;
 };
 
 // TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
@@ -65,7 +65,7 @@ export type ConsolidationOrder = {
   divisionCode: string;
   jobId: number;
   leadCaseIdHint?: string;
-  leadCase?: ConsolidationOrderCase;
+  leadCase?: CaseSummary;
   childCases: Array<ConsolidationOrderCase>;
   reason?: string;
 };
