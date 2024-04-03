@@ -300,7 +300,7 @@ function ConsolidationOrderModalComponent(
           <span className="text-bold">{consolidationTypeMap.get(consolidationType!)}</span> of
         </div>
         {/* TODO: This DIV needs to be a scrollable div!!  */}
-        <div>
+        <div className="modal-case-list-container">
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
               <li key={bCase.caseId}>
