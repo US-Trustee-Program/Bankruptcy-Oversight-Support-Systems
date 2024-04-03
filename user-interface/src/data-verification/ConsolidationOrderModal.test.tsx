@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
   ConsolidationOrderModal,
@@ -17,6 +17,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import * as UseWindowSize from '@/lib/hooks/UseWindowSize';
 
 vi.mock(
   '../lib/components/SearchableSelect',
@@ -166,6 +167,85 @@ describe('ConsolidationOrderModalComponent', () => {
       leadCaseId: `${courts[0].courtDivision}-${leadCaseNumber}`,
       consolidationType: 'substantive',
     });
+  });
+
+  test('should resize modal and consolidated cases list inside modal when window size changes', async () => {
+    const id = 'test';
+    const cases = MockData.buildArray(MockData.getCaseSummary, 25);
+    const courts = MockData.getOffices().slice(0, 3);
+    vi.spyOn(UseWindowSize, 'default').mockReturnValue({ width: 0, height: 500 });
+
+    const assignmentResponse: SimpleResponseData<CaseAssignment[]> = {
+      success: true,
+      body: MockData.buildArray(MockData.getAttorneyAssignment, 10),
+    };
+
+    vitest.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce(assignmentResponse);
+
+    // Render and activate the modal.
+    const ref = renderModalWithProps({ id, courts });
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', cases });
+    });
+
+    const modal = document.querySelector('.confirm-modal');
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+
+    // Select consolidation type
+    const radioSubstantiveClickTarget = screen.queryByTestId(
+      `radio-substantive-${id}-click-target`,
+    );
+
+    fireEvent.click(radioSubstantiveClickTarget!);
+
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    // Enter case number.
+    const leadCaseNumber = getCaseNumber(cases[0].caseId);
+    const caseNumberInput = findCaseNumberInputInModal(id);
+    await waitFor(() => {
+      enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
+    });
+
+    await waitFor(() => {
+      expect(caseNumberInput).toHaveValue(leadCaseNumber);
+    });
+
+    await waitFor(() => {
+      expect(continueButton).toBeEnabled();
+    });
+    fireEvent.click(continueButton);
+
+    await waitFor(() => {
+      const secondHeading = document.querySelector('.usa-modal__heading');
+      expect(secondHeading).toHaveTextContent('Consolidate Cases');
+    });
+
+    const modalCaseList = document.querySelector('.modal-case-list');
+    expect(modalCaseList?.children.length).toEqual(25);
+
+    const modalAttorneyList = document.querySelector('.modal-step2-assignments-list .oxford-comma');
+    expect(modalAttorneyList?.textContent?.split(',').length).toEqual(10);
+
+    //resize window and validate it has the correct size according to calculations
+    const originalWindowHeight = Number(global.innerHeight);
+    const caseListModalDiv = document.querySelector('.modal-case-list-container');
+    const modalHeight = modal?.getAttribute('data-misc');
+
+    console.log('original window height: ', originalWindowHeight);
+    console.log('original modal height: ', modalHeight);
+
+    act(() => {
+      window.innerHeight = 500;
+      window.innerWidth = 500;
+    });
+    fireEvent(window, new Event('resize'));
+
+    console.log('new window height: ', global.innerHeight);
+    console.log('original modal height: ', modalHeight);
+    console.log('Case List Modal Container height: ', caseListModalDiv!.getAttribute('style'));
+    console.log(modalHeight);
   });
 
   test('should call onCancel callback when cancel button is clicked', async () => {
