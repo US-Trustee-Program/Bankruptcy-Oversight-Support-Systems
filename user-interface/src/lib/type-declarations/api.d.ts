@@ -1,8 +1,3 @@
-// export interface SimpleResponseData {
-//   success: boolean;
-//   body: Array<object>;
-// }
-
 export interface SimpleResponseData<T = object> {
   success: boolean;
   body: T;
