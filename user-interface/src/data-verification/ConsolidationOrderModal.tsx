@@ -62,15 +62,12 @@ export async function fetchLeadCaseAttorneys(leadCaseId: string): Promise<Array<
 }
 
 export function addOxfordCommas(attorneys: string[]) {
-  const newAttorneyList = [...attorneys];
-  if (newAttorneyList.length === 0) {
+  if (attorneys.length === 0) {
     return '(unassigned)';
-  } else if (newAttorneyList.length < 3) {
-    return newAttorneyList.join(' and ');
+  } else if (attorneys.length < 3) {
+    return attorneys.join(' and ');
   }
-  newAttorneyList[newAttorneyList.length - 1] =
-    'and ' + newAttorneyList[newAttorneyList.length - 1];
-  return newAttorneyList.join(', ');
+  return attorneys.slice(0, -1).join(', ') + ', and ' + attorneys[attorneys.length - 1];
 }
 
 function ConsolidationOrderModalComponent(
