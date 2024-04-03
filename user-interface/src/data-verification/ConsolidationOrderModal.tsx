@@ -55,9 +55,8 @@ export async function getCaseAssignments(caseId: string): Promise<Array<CaseAssi
     const response = await api.get(`/case-assignments/${caseId}`);
     return response.body as CaseAssignment[];
   } catch {
-    // The case assignments are not critical to perform the consolidation.
-    // Catch any error and silntly return an empty list so the page doesn't
-    // crash.
+    // TODO: If this API call fails because the case ID cannot be found then this is an invalid case.
+    // TODO: For all other failures we cannot infer the case is valid to continue as the lead case.
     return [];
   }
 }
