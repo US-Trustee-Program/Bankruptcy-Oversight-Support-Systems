@@ -1,10 +1,21 @@
 .consolidation-order-modal {
+  max-height: 90vh;
+  min-height: 330px;
+
   input[type=radio] {
     margin-right: 0.5rem;
   }
 
-  .modal-case-list {
-    padding-top: .5rem;
-    padding-bottom: .5rem;
+  .modal-case-list-container {
+    overflow-y: auto;
+    max-height: calc(90vh - 350px);
+    min-height: 50px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    margin: 0.5rem 0;
+
+    .modal-case-list {
+      padding: .25rem 0.35rem;
+    }
   }
 }
