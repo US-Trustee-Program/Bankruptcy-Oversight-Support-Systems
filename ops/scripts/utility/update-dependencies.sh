@@ -59,7 +59,7 @@ else
   git pull --rebase
 fi
 
-PROJECTS=("common" "test/e2e" "user-interface" "backend/functions" "dev-tools")
+PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
@@ -68,30 +68,6 @@ for str in "${PROJECTS[@]}"; do
   npm update --save
   popd || exit
 done
-
-#pushd common || exit
-#npm run clean
-#npm ci
-#npm update --save
-#popd || exit
-#
-#pushd user-interface || exit
-#npm run clean
-#npm ci
-#npm update --save
-#popd || exit
-#
-#pushd backend/functions || exit
-#npm run clean
-#npm ci
-#npm update --save
-#popd || exit
-#
-#pushd dev-tools || exit
-#npm run clean
-#npm ci
-#npm update --save
-#popd || exit
 
 git add .
 git commit -m "Update all npm projects"
