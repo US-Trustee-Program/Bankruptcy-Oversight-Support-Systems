@@ -21,7 +21,8 @@ jobs:
       path: common
     secrets: inherit # pragma: allowlist secret
 
-  sast-scan-repository:
+  sast-pipeline-scan:
+    name: SAST Pipelien Scan
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -73,3 +74,23 @@ jobs:
         run: |
           az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
           az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+
+  sast-scan-and-upload:
+    name: SAST Scan Uploaded
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Package source code for scan
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
+
+      - name: Veracode Upload And Scan
+        uses: veracode/veracode-uploadandscan-action@0.2.6
+        with:
+          appname: "CAMS"
+          createprofile: false
+          filepath: "cams.zip"
+          vid: "${{ secrets.VERACODE_API_ID }}"
+          vkey: "${{ secrets.VERACODE_API_KEY }}"
+          criticality: "Medium"
