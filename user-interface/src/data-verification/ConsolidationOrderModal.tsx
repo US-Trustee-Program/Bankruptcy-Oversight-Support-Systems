@@ -335,17 +335,20 @@ function ConsolidationOrderModalComponent(
           {leadCaseNumberError && (
             <Alert
               message={leadCaseNumberError}
-              role="alert"
               type={UswdsAlertStyle.Error}
               show={true}
+              noIcon={true}
+              slim={true}
               inline={true}
             ></Alert>
           )}
-          <LoadingSpinner
-            id="loading-indicator-consolidation-order-modal"
-            caption="Verifying lead case number..."
-            hidden={!isLoading}
-          />
+          {!leadCaseNumberError && (
+            <LoadingSpinner
+              caption="Verifying lead case number..."
+              height="40px"
+              hidden={!isLoading}
+            />
+          )}
         </div>
       </div>
     );

@@ -200,7 +200,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   <Alert
                     inline={true}
                     show={true}
-                    slim={true}
                     message="Mark the cases to include in a consolidation. When finished, click Continue to
                     choose the consolidation type, pick a lead case, and assign the cases to a staff
                     member."
