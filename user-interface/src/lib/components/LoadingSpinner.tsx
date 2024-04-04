@@ -5,16 +5,21 @@ interface LoadingSpinnerProps {
   caption?: string;
   className?: string;
   hidden?: boolean;
+  height?: string;
 }
 
 export function LoadingSpinner(props: LoadingSpinnerProps) {
   const id = props.id || 'loading-spinner-' + Date.now();
+
   return (
     <div
       id={id}
       className={`loading-spinner ${props.className ?? ''}`}
       data-testid={id}
-      style={{ visibility: props.hidden === true ? 'hidden' : 'visible' }}
+      style={{
+        visibility: props.hidden === true ? 'hidden' : 'visible',
+        height: props.height ? props.height : undefined,
+      }}
     >
       <svg
         id={`${id}-svg`}

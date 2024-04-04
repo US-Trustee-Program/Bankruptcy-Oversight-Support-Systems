@@ -91,6 +91,7 @@ function _ConsolidationCaseTable(
                   {!props.isAssignmentLoaded && (
                     <LoadingSpinner
                       id={`loading-spinner-case-asignment-${bCase.caseId}`}
+                      height="1rem"
                       caption="Loading..."
                     />
                   )}
