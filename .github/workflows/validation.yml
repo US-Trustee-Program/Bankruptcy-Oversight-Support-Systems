@@ -1,0 +1,22 @@
+name: Validations
+
+on: workflow_call
+
+jobs:
+  frontend:
+    uses: ./.github/workflows/validation-unit-test.yml
+    with:
+      path: user-interface
+      node-version: 18.17.1
+
+  backend:
+    uses: ./.github/workflows/validation-unit-test.yml
+    with:
+      path: backend/functions
+      node-version: 18.17.1
+
+  common:
+    uses: ./.github/workflows/validation-unit-test.yml
+    with:
+      path: common
+      node-version: 18.17.1

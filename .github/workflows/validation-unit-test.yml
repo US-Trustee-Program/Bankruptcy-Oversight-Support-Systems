@@ -1,0 +1,32 @@
+name: Execute Node Project Unit Tests
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        required: true
+        type: string
+      node-version:
+        required: true
+        type: string
+
+jobs:
+  unit-test:
+    name: Unit test ${{ inputs.path }}
+    defaults:
+        run:
+          working-directory: ${{ inputs.path }}
+    runs-on: ubuntu-latest
+    env:
+        CI: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: ${{ inputs.path }}/package-lock.json
+      - name: Run unit tests with code coverage
+        run: |
+          npm ci
+          npm run coverage

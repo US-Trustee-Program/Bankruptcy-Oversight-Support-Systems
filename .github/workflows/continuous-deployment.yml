@@ -185,6 +185,10 @@ jobs:
     uses: ./.github/workflows/security-scan.yml
     secrets: inherit # pragma: allowlist secret
 
+  validation:
+    name: Validation
+    uses: ./.github/workflows/validation.yml
+
   build-frontend:
     defaults:
       run:
