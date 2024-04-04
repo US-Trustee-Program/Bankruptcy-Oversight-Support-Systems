@@ -1,0 +1,75 @@
+name: Veracode Security
+
+on: workflow_call
+
+jobs:
+  sca-scan-frontend:
+    uses: ./.github/workflows/security-sca-scan.yml
+    with:
+      path: user-interface
+    secrets: inherit # pragma: allowlist secret
+
+  sca-scan-backend:
+    uses: ./.github/workflows/security-sca-scan.yml
+    with:
+      path: backend/functions
+    secrets: inherit # pragma: allowlist secret
+
+  sca-scan-common:
+    uses: ./.github/workflows/security-sca-scan.yml
+    with:
+      path: common
+    secrets: inherit # pragma: allowlist secret
+
+  sast-scan-repository:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Package source code for scan
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch pipeline-scan tool
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip -o pipeline-scan-LATEST.zip
+          java -jar pipeline-scan.jar --version
+
+      - name: Download baseline file
+        run: |
+          az storage blob download \
+          --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
+          --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
+          -c baseline \
+          -n results-latest.json \
+          -f ./results-latest.json
+
+      - name: Download Veracode policy file
+        run: |
+          java -jar pipeline-scan.jar \
+          -vid ${{ secrets.VERACODE_API_ID }} \
+          -vkey ${{ secrets.VERACODE_API_KEY }} \
+          --request_policy="${{ secrets.VERACODE_SAST_POLICY }}"
+
+      - name: Execute pipeline-scan
+        id: pipeline-scan
+        run: |
+          java -jar pipeline-scan.jar \
+          -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
+          -bf results-latest.json \
+          -jf results.json \
+          -fjf filtered_results.json \
+          -pf Veracode_Medium_+_SCA_+_OWASP.json \
+          --file cams.zip
+
+      - name: Upload to storage account
+        if: always()
+        run: |
+          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json

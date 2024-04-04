@@ -1,4 +1,4 @@
-name: Static Code Analysis Scan
+name: Veracode Static Code Analysis Scan
 
 on:
   workflow_call:
@@ -8,9 +8,9 @@ on:
         type: string
 
 jobs:
-  security-sca-scan:
+  sca-scan:
     runs-on: ubuntu-latest
-    name: Scan repository ${{ inputs.path }} lib with Veracode SCA
+    name: SCA Scan ${{ inputs.path }}
 
     steps:
       - name: Checkout
