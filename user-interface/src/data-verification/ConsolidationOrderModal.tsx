@@ -89,7 +89,6 @@ function ConsolidationOrderModalComponent(
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
   const [leadCaseSummary, setLeadCaseSummary] = useState<CaseSummary | null>(null);
-  const [modalHeight, setModalHeight] = useState<number>(0);
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
     heading: '',
@@ -211,7 +210,6 @@ function ConsolidationOrderModalComponent(
         let finalSize = windowSize.height! - overallHeightOfModal;
         if (finalSize < minChildCasesDivHeight) finalSize = minChildCasesDivHeight;
         setChildCasesDivHeight(`${finalSize}px`);
-        setModalHeight(modalContent.clientHeight);
       }
     }
   }
@@ -384,7 +382,6 @@ function ConsolidationOrderModalComponent(
       ref={modalRef}
       modalId={id}
       className={`confirm-modal consolidation-order-modal ${step}`}
-      dataMisc={modalHeight}
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
       onClose={() => {
