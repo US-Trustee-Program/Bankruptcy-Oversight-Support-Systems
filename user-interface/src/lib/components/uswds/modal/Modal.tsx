@@ -15,7 +15,6 @@ export interface ModalProps {
   actionButtonGroup: SubmitCancelBtnProps;
   onOpen?: () => void;
   onClose?: () => void;
-  dataMisc?: number;
 }
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
@@ -154,7 +153,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           ref={modalShellRef}
           onKeyDown={handleShiftTab}
           data-testid={`modal-content-${props.modalId}`}
-          data-misc={props.dataMisc}
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
