@@ -14,10 +14,11 @@ Help()
    # Display Help
    echo "This script runs 'npm update' for all Node projects in the repository."
    echo
-   echo "Syntax: ./ops/scripts/utility/update-dependencies.sh [-h|r]"
+   echo "Syntax: ./ops/scripts/utility/update-dependencies.sh [-h|r|u]"
    echo "options:"
    echo "h     Print this Help and exit."
    echo "r     Run the script but remain on dependency-updates branch."
+   echo "u     Run the script but keep the existing dependency-updates branch."
    echo
 }
 
@@ -26,18 +27,21 @@ Help()
 # Main program                                             #
 ############################################################
 ############################################################
-while getopts ":hr" option; do
-   case $option in
-      h) # display help
-         Help
-         exit;;
-      r) # stay on dependency-updates branch upon completion
-         REMAIN=true
-         ;;
-      \?) # Invalid option
-         echo "'-r' is the only supported option. It is used to remain on the dependency-updates branch at the end of the script."
-         ;;
-   esac
+while getopts ":hru" option; do
+  case $option in
+    h) # display help
+      Help
+      exit;;
+    r) # stay on dependency-updates branch upon completion
+      REMAIN=true
+      ;;
+    u) # update existing dependency-updates branch
+      UPDATE=true
+      ;;
+    \?) # Invalid option
+      echo "'-r' is the only supported option. It is used to remain on the dependency-updates branch at the end of the script."
+      ;;
+  esac
 done
 
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -45,10 +49,15 @@ if [[ -n $(git status -s) ]]; then
   STASHED_CHANGE=true
   git stash
 fi
-git checkout main
-git pull --rebase
-git branch -D dependency-updates
-git checkout -b dependency-updates
+if [[ -z "${UPDATE}" ]]; then
+  git checkout main
+  git pull --rebase
+  git branch -D dependency-updates
+  git checkout -b dependency-updates
+else
+  git checkout dependency-updates
+  git pull --rebase
+fi
 
 pushd common || exit
 npm run clean
