@@ -1,23 +1,23 @@
-import './ConsolidationOrderModal.scss';
-import { OfficeDetails } from '@common/cams/courts';
-import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
-import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import SearchableSelect from '@/lib/components/SearchableSelect';
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import SearchableSelect from '@/lib/components/SearchableSelect';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
-import Radio from '@/lib/components/uswds/Radio';
-import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseAssignment } from '@common/cams/assignments';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Radio from '@/lib/components/uswds/Radio';
 import { useGenericApi } from '@/lib/hooks/UseApi';
-import { CaseSummary } from '@common/cams/cases';
+import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import useWindowSize from '@/lib/hooks/UseWindowSize';
+import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { consolidationType as consolidationTypeMap } from '@/lib/utils/labels';
+import { CaseAssignment } from '@common/cams/assignments';
+import { CaseSummary } from '@common/cams/cases';
+import { OfficeDetails } from '@common/cams/courts';
+import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import './ConsolidationOrderModal.scss';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -79,30 +79,30 @@ function ConsolidationOrderModalComponent(
 ) {
   const { id, onConfirm, onCancel }: ConsolidationOrderModalProps = props;
 
-  const modalRef = useRef<ModalRefType>(null);
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
-
-  const [step, setStep] = useState<ConfirmationSteps>('pick-lead-case');
-  const [reason] = useState<string>('');
+  const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
+  const [consolidatedCasesDivHeight, setConsolidatedCasesDivHeight] = useState<string>('');
+  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
+  const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
+  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
+  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
+  const [leadCaseSummary, setLeadCaseSummary] = useState<CaseSummary | null>(null);
+  const [modalHeight, setModalHeight] = useState<number>(0);
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
     heading: '',
   });
-  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
-  const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
-  const [leadCaseDivisionCode, setLeadCaseDivisionCode] = useState<string>('');
-  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
-  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
-  const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [leadCaseSummary, setLeadCaseSummary] = useState<CaseSummary | null>(null);
+  const [reason] = useState<string>('');
+  const [step, setStep] = useState<ConfirmationSteps>('pick-lead-case');
 
-  const [consolidatedCasesDivHeight, setConsolidatedCasesDivHeight] = useState<string>('');
-  const [modalHeight, setModalHeight] = useState<number>(0);
-  const leadCaseNumberRef = useRef<InputRef>(null);
-  const leadCaseDivisionRef = useRef<InputRef>(null);
   const administrativeConsolidationRef = useRef<RadioRef>(null);
+  const leadCaseDivisionRef = useRef<InputRef>(null);
+  const leadCaseNumberRef = useRef<InputRef>(null);
+  const modalRef = useRef<ModalRefType>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const substantiveConsolidationRef = useRef<RadioRef>(null);
+
   const featureFlags = useFeatureFlags();
   const windowSize = useWindowSize();
 
