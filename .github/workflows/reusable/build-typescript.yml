@@ -1,0 +1,20 @@
+name: Build Typescript Projects
+
+on:
+    workflow_call:
+        input:
+            environment:
+                type: string
+                required: true
+                default: ''
+
+jobs:
+    build:
+        environment: 'something here'
+        runs-on: ubuntu-latest
+        env:
+            key: 'value'
+        defaults:
+            run:
+                working-directory: 'test/testdir'
+        steps:
