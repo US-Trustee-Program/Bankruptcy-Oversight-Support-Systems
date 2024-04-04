@@ -18,6 +18,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './ConsolidationOrderModal.scss';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export const CASE_NUMBER_LENGTH = 8;
 
@@ -206,9 +207,11 @@ function ConsolidationOrderModalComponent(
           });
         })
         .catch((error) => {
-          setLeadCaseNumberError(error.message);
+          // Brittle way to determine if we have encountred a 404...
+          const isNotFound = (error.message as string).startsWith('404');
+          const message = isNotFound ? 'Lead case not found.' : 'Cannot verify lead case number.';
+          setLeadCaseNumberError(message);
           setIsLoading(false);
-          console.error(error);
         });
     }
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
@@ -321,11 +324,19 @@ function ConsolidationOrderModalComponent(
             aria-label="Lead case number"
             ref={leadCaseNumberRef}
           />
-          {leadCaseNumberError}
+          {leadCaseNumberError && (
+            <Alert
+              message={leadCaseNumberError}
+              role="alert"
+              type={UswdsAlertStyle.Error}
+              show={true}
+              inline={true}
+            ></Alert>
+          )}
           {isLoading && (
             <LoadingSpinner
               id="loading-indicator-consolidation-order-modal"
-              caption="Loading case assignments..."
+              caption="Verifying lead case number..."
             />
           )}
         </div>
