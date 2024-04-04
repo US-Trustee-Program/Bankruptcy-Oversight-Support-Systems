@@ -61,7 +61,7 @@ export async function getCaseAssignments(caseId: string) {
 }
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments = await getCaseAssignments(leadCaseId);
+  const caseAssignments: CaseAssignment[] = await getCaseAssignments(leadCaseId);
   return caseAssignments.map((assignment) => assignment.name);
 }
 
@@ -81,7 +81,7 @@ function ConsolidationOrderModalComponent(
   const { id, onConfirm, onCancel }: ConsolidationOrderModalProps = props;
 
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
-  const [consolidatedCasesDivHeight, setConsolidatedCasesDivHeight] = useState<string>('');
+  const [childCasesDivHeight, setChildCasesDivHeight] = useState<string>('');
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
@@ -189,6 +189,33 @@ function ConsolidationOrderModalComponent(
     }
   }
 
+  function resizeModal() {
+    // get height of modal top section above scrolling div
+    const modalWindowPadding = 100;
+    const outerModalMargin = 220;
+    const minChildCasesDivHeight = 50;
+
+    const modalContent = document.querySelector(`#${id}`);
+    if (modalContent) {
+      const consolidationTypeDiv = modalContent.querySelector(`.modal-step2-consolidation-type`);
+      const assignmentsListDiv = modalContent.querySelector(`.modal-step2-assignments-list`);
+      const button = modalContent.querySelector(`#${id}-submit-button`);
+
+      if (consolidationTypeDiv && assignmentsListDiv && button) {
+        const overallHeightOfModal =
+          outerModalMargin +
+          modalWindowPadding +
+          consolidationTypeDiv.clientHeight +
+          assignmentsListDiv.clientHeight +
+          button.clientHeight;
+        let finalSize = windowSize.height! - overallHeightOfModal;
+        if (finalSize < minChildCasesDivHeight) finalSize = minChildCasesDivHeight;
+        setChildCasesDivHeight(`${finalSize}px`);
+        setModalHeight(modalContent.clientHeight);
+      }
+    }
+  }
+
   useEffect(() => {
     const hasRequiredFields =
       !!consolidationType && !!leadCaseDivisionCode && leadCaseNumber.length === CASE_NUMBER_LENGTH;
@@ -218,29 +245,10 @@ function ConsolidationOrderModalComponent(
   }, [consolidationType, leadCaseNumber]);
 
   useEffect(() => {
-    // get height of modal top section above scrolling div
-    const modalWindowPadding = 100;
-    const outerModalMargin = 200;
-
-    const modalContent = document.querySelector(`#${id}`);
-    if (modalContent) {
-      const consolidationTypeDiv = modalContent.querySelector(`.modal-step2-consolidation-type`);
-      const assignmentsListDiv = modalContent.querySelector(`.modal-step2-assignments-list`);
-      const button = modalContent.querySelector(`#${id}-submit-button`);
-
-      if (consolidationTypeDiv && assignmentsListDiv && button) {
-        const overallHeightOfModal =
-          outerModalMargin +
-          modalWindowPadding +
-          consolidationTypeDiv.clientHeight +
-          assignmentsListDiv.clientHeight +
-          button.clientHeight;
-        const finalSize = windowSize.height! - overallHeightOfModal;
-        setConsolidatedCasesDivHeight(`${finalSize}px`);
-        setModalHeight(modalContent.clientHeight);
-      }
+    if (step !== 'pick-lead-case') {
+      resizeModal();
     }
-  }, [windowSize]);
+  }, [windowSize, step]);
 
   useImperativeHandle(ConfirmationModalRef, () => ({
     show,
@@ -333,12 +341,11 @@ function ConsolidationOrderModalComponent(
               inline={true}
             ></Alert>
           )}
-          {isLoading && (
-            <LoadingSpinner
-              id="loading-indicator-consolidation-order-modal"
-              caption="Verifying lead case number..."
-            />
-          )}
+          <LoadingSpinner
+            id="loading-indicator-consolidation-order-modal"
+            caption="Verifying lead case number..."
+            hidden={!isLoading}
+          />
         </div>
       </div>
     );
@@ -351,10 +358,7 @@ function ConsolidationOrderModalComponent(
           This will confirm the{' '}
           <span className="text-bold">{consolidationTypeMap.get(consolidationType!)}</span> of
         </div>
-        <div
-          className="modal-case-list-container"
-          style={{ maxHeight: consolidatedCasesDivHeight }}
-        >
+        <div className="modal-case-list-container" style={{ maxHeight: childCasesDivHeight }}>
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
               <li key={bCase.caseId}>
@@ -376,7 +380,7 @@ function ConsolidationOrderModalComponent(
     <Modal
       ref={modalRef}
       modalId={id}
-      className={`confirm-modal consolidation-order-modal`}
+      className={`confirm-modal consolidation-order-modal ${step}`}
       dataMisc={modalHeight}
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}

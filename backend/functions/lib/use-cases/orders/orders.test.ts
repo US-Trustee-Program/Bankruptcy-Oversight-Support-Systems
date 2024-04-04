@@ -314,14 +314,13 @@ describe('Orders use case', () => {
     const mockDelete = jest
       .spyOn(CosmosDbRepository.prototype, 'delete')
       .mockResolvedValue(pendingConsolidation);
-    const leadCase = MockData.getConsolidatedOrderCase();
-    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...pendingConsolidation,
       approvedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
-      leadCase,
+      leadCase: leadCaseSummary,
     };
     const newConsolidation = {
       ...pendingConsolidation,
@@ -414,12 +413,11 @@ describe('Orders use case', () => {
     const mockDelete = jest
       .spyOn(CosmosDbRepository.prototype, 'delete')
       .mockResolvedValue(originalConsolidation);
-    const leadCase = MockData.getConsolidatedOrderCase();
-    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...originalConsolidation,
       approvedCases: [originalConsolidation.childCases[0].caseId],
-      leadCase,
+      leadCase: leadCaseSummary,
     };
 
     const approvedConsolidation = {

@@ -4,12 +4,18 @@ interface LoadingSpinnerProps {
   id?: string;
   caption?: string;
   className?: string;
+  hidden?: boolean;
 }
 
 export function LoadingSpinner(props: LoadingSpinnerProps) {
   const id = props.id || 'loading-spinner-' + Date.now();
   return (
-    <div id={id} className={`loading-spinner ${props.className ?? ''}`} data-testid={id}>
+    <div
+      id={id}
+      className={`loading-spinner ${props.className ?? ''}`}
+      data-testid={id}
+      style={{ visibility: props.hidden === true ? 'hidden' : 'visible' }}
+    >
       <svg
         id={`${id}-svg`}
         className="animate-spin"
