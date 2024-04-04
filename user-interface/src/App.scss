@@ -28,6 +28,12 @@ body {
       text-align: left;
     }
 
+    table {
+      td {
+        vertical-align: top;
+      }
+    }
+
     table.case-list {
       td {
         .mobile-title {

@@ -1,7 +1,4 @@
 .consolidation-order-modal {
-  max-height: 90vh;
-  min-height: 330px;
-
   input[type=radio] {
     margin-right: 0.5rem;
   }
@@ -16,5 +13,23 @@
     .modal-case-list {
       padding: .25rem 0.35rem;
     }
+  }
+
+  .loading-indicator-consolidation-order-modal {
+    min-height: 40px;
+    height: 40px;
+  }
+
+  .usa-modal__footer {
+    margin-top: 0;
+  }
+}
+
+.consolidation-order-modal.confirm {
+  max-height: 90vh;
+  min-height: 350px;
+
+  .modal-step2-assignments-list {
+    margin-bottom: 1rem;
   }
 }
