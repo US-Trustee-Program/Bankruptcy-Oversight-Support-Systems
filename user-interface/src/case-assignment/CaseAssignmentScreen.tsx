@@ -205,7 +205,6 @@ export const CaseAssignment = () => {
               message={assignmentAlert.message}
               type={assignmentAlert.type}
               role="status"
-              slim={true}
               ref={alertRef}
               timeout={assignmentAlert.timeOut}
             />

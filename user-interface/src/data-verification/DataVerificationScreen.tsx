@@ -150,7 +150,6 @@ export default function DataVerificationScreen() {
         message={reviewOrderAlert.message}
         type={reviewOrderAlert.type}
         role="status"
-        slim={true}
         ref={alertRef}
         timeout={reviewOrderAlert.timeOut}
       />

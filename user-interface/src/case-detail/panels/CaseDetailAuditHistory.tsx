@@ -25,7 +25,6 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
                   message="There are no assignments in the case history."
                   type={UswdsAlertStyle.Info}
                   role={'status'}
-                  slim={true}
                   timeout={0}
                   title=""
                   show={true}

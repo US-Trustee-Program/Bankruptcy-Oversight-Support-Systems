@@ -603,7 +603,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           <Alert
                             inline={true}
                             show={true}
-                            slim={true}
                             message="We couldn't find a case with that number"
                             type={UswdsAlertStyle.Error}
                             role="status"
@@ -675,7 +674,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 <Alert
                                   inline={true}
                                   show={true}
-                                  slim={true}
                                   title="No Matching Cases"
                                   message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
                                   type={UswdsAlertStyle.Warning}
