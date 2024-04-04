@@ -4,7 +4,19 @@
 
 # Usage
 #   From the root directory, run the following command:
-#     ./ops/scripts/utility/update-dependencies.sh
+#     ./ops/scripts/utility/update-dependencies.sh [-r]
+
+while getopts ":r:" option; do
+   case $option in
+      r) # stay on dependency-updates branch upon completion
+         REMAIN=true
+         ;;
+      \?) # Invalid option
+         echo "'-r' is the only supported option. It is used to remain on the dependency-updates branch at the end of the script."
+         ;;
+   esac
+done
+
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [[ -n $(git status -s) ]]; then
   STASHED_CHANGE=true
@@ -43,9 +55,13 @@ git add .
 git commit -m "Update all npm projects"
 git push -u origin dependency-updates
 
-git checkout "$CURRENT_BRANCH"
-if [[ -n "${STASHED_CHANGE}" ]]; then
-  git stash pop
+if [[ -z "${REMAIN}" ]]; then
+  git checkout "$CURRENT_BRANCH"
+  if [[ -n "${STASHED_CHANGE}" ]]; then
+    git stash pop
+  fi
+elif [[ -n "${STASHED_CHANGE}" ]]; then
+  echo "Remaining on 'dependency-updates' branch, but don't forget you have changes to ${CURRENT_BRANCH} that were stashed."
 fi
 
 open "https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/compare/main...dependency-updates?template=dependencies.md";
