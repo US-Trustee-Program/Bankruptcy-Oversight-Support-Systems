@@ -6,8 +6,31 @@
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/update-dependencies.sh [-r]
 
-while getopts ":r:" option; do
+############################################################
+# Help                                                     #
+############################################################
+Help()
+{
+   # Display Help
+   echo "This script runs 'npm update' for all Node projects in the repository."
+   echo
+   echo "Syntax: ./ops/scripts/utility/update-dependencies.sh [-h|r]"
+   echo "options:"
+   echo "h     Print this Help and exit."
+   echo "r     Run the script but remain on dependency-updates branch."
+   echo
+}
+
+############################################################
+############################################################
+# Main program                                             #
+############################################################
+############################################################
+while getopts ":hr" option; do
    case $option in
+      h) # display help
+         Help
+         exit;;
       r) # stay on dependency-updates branch upon completion
          REMAIN=true
          ;;
