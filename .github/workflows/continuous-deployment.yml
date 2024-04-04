@@ -253,59 +253,9 @@ jobs:
           az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
           az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
 
-  security-sca-scan-frontend:
-    runs-on: ubuntu-latest
-    name: Scan repository frontend with Veracode SCA
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Run Veracode SCA for frontend
-        env:
-          SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
-          SRCCLR_REGION: ${{ secrets.SRCCLR_REGION }}
-        uses: veracode/veracode-sca@v2.1.6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          create-issues: false
-          path: user-interface/
-
-  security-sca-scan-backend:
-    runs-on: ubuntu-latest
-    name: Scan repository backend with Veracode SCA
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Run Veracode SCA for backend
-        env:
-          SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
-          SRCCLR_REGION: ${{ secrets.SRCCLR_REGION }}
-        uses: veracode/veracode-sca@v2.1.6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          create-issues: false
-          path: backend/functions/
-
-  security-sca-scan-common:
-    runs-on: ubuntu-latest
-    name: Scan repository common lib with Veracode SCA
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Run Veracode SCA for common
-        env:
-          SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
-          SRCCLR_REGION: ${{ secrets.SRCCLR_REGION }}
-        uses: veracode/veracode-sca@v2.1.6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          create-issues: false
-          path: common/
+  security-sca-scan:
+    uses: ./.github/workflows/security-sca-scan-grp.yml
+    secrets: inherit # pragma: allowlist secret
 
   build-frontend:
     defaults:
@@ -423,9 +373,7 @@ jobs:
         build-common,
         accessibility-test,
         security-sast-scan,
-        security-sca-scan-frontend,
-        security-sca-scan-backend,
-        security-sca-scan-common,
+        security-sca-scan,
       ]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
