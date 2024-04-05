@@ -197,13 +197,13 @@ jobs:
     needs: [build-info]
     uses: ./.github/workflows/sub-build.yml
     with:
-      node-version: ${{ vars.NODE_VERSION }}
-      api-name: ${{ needs.build-info.outputs.apiName }}
-      cams-server-hostname: ${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
-      cams-server-port: ${{ vars.CAMS_SERVER_PORT }}
-      cams-server-protocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
-      cams-base-path: ${{ vars.CAMS_BASE_PATH }}
-      webapp-name: ${{ needs.build-info.outputs.webappName }}
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      apiName: ${{ needs.build-info.outputs.apiName }}
+      camsServerHostname: ${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ needs.build-info.outputs.webappName }}
       environment: ${{ needs.build-info.outputs.environment }}
 
   deploy:
