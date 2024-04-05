@@ -2,4 +2,29 @@
   input[type=radio] {
     margin-right: 0.5rem;
   }
+
+  .modal-case-list-container {
+    overflow-y: auto;
+    min-height: 50px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    margin: 0.5rem 0;
+
+    .modal-case-list {
+      padding: .25rem 0.35rem;
+    }
+  }
+
+  .usa-modal__footer {
+    margin-top: 0;
+  }
+}
+
+.consolidation-order-modal.confirm {
+  max-height: 90vh;
+  min-height: 350px;
+
+  .modal-step2-assignments-list {
+    margin-bottom: 1rem;
+  }
 }

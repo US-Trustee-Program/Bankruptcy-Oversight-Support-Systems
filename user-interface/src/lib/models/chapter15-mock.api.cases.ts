@@ -98,8 +98,6 @@ export default class Chapter15MockApi extends Api {
         status: 'approved',
         leadCase: {
           ...this.consolidationLeadCaseSummary,
-          docketEntries: [],
-          orderDate: MockData.getDateBeforeToday().toISOString(),
         },
       },
     }),

@@ -13,4 +13,6 @@ export default function deleteOrders() {
   deleteDocuments('consolidations', 'consolidationId', 'SELECT * FROM c');
 }
 
-deleteOrders();
+if (require.main === module) {
+  deleteOrders();
+}

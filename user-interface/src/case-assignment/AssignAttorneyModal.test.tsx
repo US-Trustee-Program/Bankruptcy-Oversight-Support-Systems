@@ -58,7 +58,7 @@ describe('Test Assign Attorney Modal Component', () => {
     );
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
-    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
 
     fireEvent.click(button);
 
@@ -140,7 +140,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
-    const submitButton = screen.getByTestId('toggle-modal-button-submit');
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
     fireEvent.click(button);
 
     await waitFor(() => {

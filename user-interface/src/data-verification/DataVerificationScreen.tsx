@@ -150,7 +150,6 @@ export default function DataVerificationScreen() {
         message={reviewOrderAlert.message}
         type={reviewOrderAlert.type}
         role="status"
-        slim={true}
         ref={alertRef}
         timeout={reviewOrderAlert.timeOut}
       />
@@ -215,10 +214,10 @@ export default function DataVerificationScreen() {
                       return true;
                     }
                   })
-                  .filter((o) => typeFilter.includes(o.orderType))
-                  .filter((o) => statusFilter.includes(o.status))
                   .sort((a, b) => sortDates(a.orderDate, b.orderDate))
                   .map((order) => {
+                    const isHidden =
+                      !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);
                     return isTransferOrder(order) ? (
                       <TransferOrderAccordion
                         key={`accordion-${order.id}`}
@@ -228,6 +227,7 @@ export default function DataVerificationScreen() {
                         orderType={orderType}
                         statusType={orderStatusType}
                         onOrderUpdate={handleTransferOrderUpdate}
+                        hidden={isHidden}
                       ></TransferOrderAccordion>
                     ) : (
                       <ConsolidationOrderAccordion
@@ -238,6 +238,7 @@ export default function DataVerificationScreen() {
                         orderType={orderType}
                         statusType={orderStatusType}
                         onOrderUpdate={handleConsolidationOrderUpdate}
+                        hidden={isHidden}
                       ></ConsolidationOrderAccordion>
                     );
                   })}

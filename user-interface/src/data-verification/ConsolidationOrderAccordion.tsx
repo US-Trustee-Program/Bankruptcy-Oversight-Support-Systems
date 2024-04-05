@@ -16,7 +16,6 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from './dataVerificationHelper';
 import { OfficeDetails } from '@common/cams/courts';
 import Input from '@/lib/components/uswds/Input';
-import { AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
@@ -28,6 +27,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
+import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -42,17 +42,20 @@ export interface ConsolidationOrderAccordionProps {
   ) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
+  hidden?: boolean;
 }
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
-  const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const { hidden, statusType, orderType, officesList, expandedId } = props;
   const caseTable = useRef<CaseTableImperative>(null);
+
+  const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
+  const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const courtSelectionRef = useRef<InputRef>(null);
   const caseIdRef = useRef<InputRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
-  const [attorneys] = useState<AttorneyInfo[]>([]);
   const featureFlags = useFeatureFlags();
 
   const api = useApi();
@@ -80,6 +83,27 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function handleAddNewCaseNumber(_ev: ChangeEvent<HTMLInputElement>): void {
     throw new Error('Function not implemented.');
   }
+  function setOrderWithAssignments(order: ConsolidationOrder) {
+    setOrder({ ...order });
+  }
+  async function handleOnExpand() {
+    if (props.onExpand) {
+      props.onExpand(`order-list-${order.id}`);
+    }
+    if (!isAssignmentLoaded) {
+      for (const bCase of order.childCases) {
+        try {
+          const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
+          bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
+        } catch {
+          // The case assignments are not critical to perform the consolidation. Catch any error
+          // and don't set the attorney assignment for this specific case.
+        }
+      }
+      setOrderWithAssignments(order);
+      setIsAssignmentLoaded(true);
+    }
+  }
 
   function clearInputs(): void {
     caseTable.current?.clearSelection();
@@ -87,15 +111,19 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases([]);
   }
 
-  function confirmAction({ status, leadCaseId, consolidationType }: ConfirmActionResults): void {
+  function confirmAction({
+    status,
+    leadCaseSummary,
+    consolidationType,
+  }: ConfirmActionResults): void {
     if (status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
         consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCaseId),
-        leadCase: order.childCases.find((bCase) => bCase.caseId === leadCaseId)!,
+          .filter((caseId) => caseId !== leadCaseSummary.caseId),
+        leadCase: leadCaseSummary,
       };
 
       api
@@ -127,8 +155,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       key={order.id}
       id={`order-list-${order.id}`}
       expandedId={expandedId}
-      onExpand={onExpand}
+      onExpand={handleOnExpand}
       onCollapse={clearInputs}
+      hidden={hidden}
     >
       <section
         className="accordion-heading grid-row grid-gap-lg"
@@ -171,7 +200,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   <Alert
                     inline={true}
                     show={true}
-                    slim={true}
                     message="Mark the cases to include in a consolidation. When finished, click Continue to
                     choose the consolidation type, pick a lead case, and assign the cases to a staff
                     member."
@@ -192,6 +220,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
                   onSelect={handleIncludeCase}
+                  isAssignmentLoaded={isAssignmentLoaded}
                   ref={caseTable}
                 ></ConsolidationCaseTable>
               </div>
@@ -270,7 +299,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   onClick={() =>
                     confirmationModalRef.current?.show({
                       status: 'rejected',
-                      caseIds: order.childCases.map((c) => c.caseId),
+                      cases: order.childCases.map((c) => c),
                     })
                   }
                   disabled={true}
@@ -291,7 +320,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 <Button
                   id={`accordion-approve-button-${order.id}`}
                   onClick={() =>
-                    confirmationModalRef.current?.show({ status: 'approved', attorneys })
+                    confirmationModalRef.current?.show({
+                      status: 'approved',
+                      cases: selectedCases,
+                    })
                   }
                   disabled={true}
                   ref={approveButtonRef}

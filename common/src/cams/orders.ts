@@ -1,3 +1,4 @@
+import { CaseAssignment } from './assignments';
 import { CaseDocketEntry, CaseSummary } from './cases';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
@@ -11,7 +12,7 @@ export type ConsolidationOrderActionRejection = ConsolidationOrder & {
 
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
   approvedCases: Array<string>;
-  leadCase: ConsolidationOrderCase;
+  leadCase: CaseSummary;
 };
 
 // TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
@@ -64,7 +65,7 @@ export type ConsolidationOrder = {
   divisionCode: string;
   jobId: number;
   leadCaseIdHint?: string;
-  leadCase?: ConsolidationOrderCase;
+  leadCase?: CaseSummary;
   childCases: Array<ConsolidationOrderCase>;
   reason?: string;
 };
@@ -72,6 +73,7 @@ export type ConsolidationOrder = {
 export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
   orderDate: string;
+  attorneyAssignments?: CaseAssignment[];
 };
 
 export function getCaseSummaryFromConsolidationOrderCase(

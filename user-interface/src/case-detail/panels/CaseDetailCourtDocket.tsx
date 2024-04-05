@@ -117,7 +117,6 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
         message={alertOptions?.message || ''}
         type={alertOptions?.type || UswdsAlertStyle.Error}
         role={'status'}
-        slim={true}
         ref={alertRef}
         timeout={0}
         title={alertOptions?.title || ''}
