@@ -4,25 +4,25 @@ on: workflow_call
 
 jobs:
   sca-scan-frontend:
-    uses: ./.github/workflows/security-sca-scan.yml
+    uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: user-interface
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-backend:
-    uses: ./.github/workflows/security-sca-scan.yml
+    uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend/functions
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-common:
-    uses: ./.github/workflows/security-sca-scan.yml
+    uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: common
     secrets: inherit # pragma: allowlist secret
 
   sast-pipeline-scan:
-    name: SAST Pipelien Scan
+    name: SAST Pipeline Scan
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:

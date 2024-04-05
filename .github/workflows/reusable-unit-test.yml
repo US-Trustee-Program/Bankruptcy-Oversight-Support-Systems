@@ -30,4 +30,4 @@ jobs:
       - name: Run unit tests with code coverage
         run: |
           npm ci
-          npm run coverage
+          npm run coverage:ci

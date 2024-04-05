@@ -9,19 +9,19 @@ on:
 
 jobs:
   frontend:
-    uses: ./.github/workflows/validation-unit-test.yml
+    uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: user-interface
       node-version: ${{ inputs.node-version }}
 
   backend:
-    uses: ./.github/workflows/validation-unit-test.yml
+    uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: backend/functions
       node-version: ${{ inputs.node-version }}
 
   common:
-    uses: ./.github/workflows/validation-unit-test.yml
+    uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: common
       node-version: ${{ inputs.node-version }}

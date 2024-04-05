@@ -66,52 +66,17 @@ jobs:
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpApp }}
 
-  playwright-e2e-test-job:
-    needs: [build-info]
-    env:
+  execute-e2e-test-pre-swap:
+    needs: [build-info, deploy-webapp-slot, deploy-service-slot]
+    uses: ./.github/workflows/reusable-e2e.yml
+    with:
+      apiName: ${{ needs.build-info.outputs.apiName }}
+      slotName: ${{ needs.build-info.outputs.slotName }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       stackName: ${{ needs.build-info.outputs.stackName }}
-      priority: 201
-    defaults:
-      run:
-        working-directory: test/e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get source code
-        uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - name: Install Node dependencies
-        run: |
-          npm ci
-          npx playwright install chromium msedge
-      - name: Run the test
-        run: |
-          TARGET_HOST=https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: test/e2e/playwright-report/
-          retention-days: 15
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+      azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
+      azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
+      deploymentEnvironment: ${{ needs.build-info.outputs.environment }}
+      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret

@@ -97,6 +97,7 @@ jobs:
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           # Stack name used downstream to label build artifacts and Azure resources
+
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
@@ -182,101 +183,32 @@ jobs:
 
   security-scan:
     name: Security
-    uses: ./.github/workflows/security-scan.yml
+    uses: ./.github/workflows/sub-security-scan.yml
     secrets: inherit # pragma: allowlist secret
 
   validation:
     name: Validation
-    uses: ./.github/workflows/validation.yml
+    uses: ./.github/workflows/sub-validation.yml
     with:
       node-version: ${{ vars.NODE_VERSION }}
 
-  build-frontend:
-    defaults:
-      run:
-        working-directory: user-interface
-    runs-on: ubuntu-latest
+  build:
+    name: Build
     needs: [build-info]
-    environment: ${{ needs.build-info.outputs.environment }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ vars.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: user-interface/package-lock.json
-      - name: Execute Build
-        run: |
-          pushd ../common
-          npm ci
-          popd
-
-          npm ci
-          export CAMS_SERVER_HOSTNAME="${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"
-          export CAMS_SERVER_PORT=${{ vars.CAMS_SERVER_PORT }}
-          export CAMS_SERVER_PROTOCOL=${{ vars.CAMS_SERVER_PROTOCOL }}
-          export CAMS_BASE_PATH=${{ vars.CAMS_BASE_PATH }}
-          export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
-          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
-          export CAMS_INFO_SHA=${{ github.sha }}
-          npm run build --if-present
-      - name: Package
-        run: |
-          pushd ./build
-          zip -r ./${{ needs.build-info.outputs.webappName }}.zip .
-          popd
-          mkdir ./artifacts
-          mv ./build/${{ needs.build-info.outputs.webappName }}.zip ./artifacts/
-      - name: Upload Frontend Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ needs.build-info.outputs.webappName }}-build
-          path: user-interface/artifacts/
-          if-no-files-found: error
-
-  build-service:
-    defaults:
-      run:
-        working-directory: backend/functions
-
-    runs-on: ubuntu-latest
-    needs: [build-info]
-    environment: ${{ needs.build-info.outputs.environment }}
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Execute Build
-        run: |
-          pushd ../../common
-          npm ci
-          popd
-
-          npm ci
-          npm run build
-
-      - name: Package Application
-        run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
-
-      - name: Upload Node Azure Functions Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ needs.build-info.outputs.apiName }}-build
-          path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
-          if-no-files-found: error
+    uses: ./.github/workflows/sub-build.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+      api-name: ${{ needs.build-info.outputs.apiName }}
+      cams-server-hostname: ${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      cams-server-port: ${{ vars.CAMS_SERVER_PORT }}
+      cams-server-protocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      cams-base-path: ${{ vars.CAMS_BASE_PATH }}
+      webapp-name: ${{ needs.build-info.outputs.webappName }}
+      environment: ${{ needs.build-info.outputs.environment }}
 
   deploy:
     runs-on: ubuntu-latest
-    needs:
-      [
-        build-info,
-        build-frontend,
-        build-service,
-        accessibility-test,
-        security-scan,
-        validation,
-      ]
+    needs: [build-info, build, accessibility-test, security-scan, validation]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
@@ -678,7 +610,7 @@ jobs:
 
   execute-e2e-test-pre-swap:
     needs: [build-info, deploy-webapp-slot, deploy-service-slot]
-    uses: ./.github/workflows/e2e-reusable.yml
+    uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiName: ${{ needs.build-info.outputs.apiName }}
       slotName: ${{ needs.build-info.outputs.slotName }}
