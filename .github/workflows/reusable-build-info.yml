@@ -34,6 +34,12 @@ on:
       environmentHash:
         description: ""
         value: ${{ jobs.build-info.outputs.environmentHash }}
+      slotDeploymentEnabled:
+          description: ""
+          value: ${{ jobs.build-info.outputs.slotDeploymentEnabled }}
+      execVnetDeploy:
+        description: ""
+        value: ${{ jobs.build-info.outputs.execVnetDeploy }}
       ghaEnvironment:
         description: ""
         value: ${{ inputs.environment }}

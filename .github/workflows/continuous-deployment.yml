@@ -60,106 +60,6 @@ jobs:
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
       deployVnet: ${{ inputs.deployVnet }}
 
-  build-info:
-    runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
-    outputs:
-      environment: ${{ vars.ENVIRONMENT }}
-      stackName: ${{ steps.build-info.outputs.stackName }}
-      webappName: ${{ steps.build-info.outputs.webappName }}
-      apiName: ${{ steps.build-info.outputs.apiName }}
-      execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
-      azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
-      azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
-      environmentHash: ${{ steps.check-env.outputs.environmentHash }}
-      slotName: ${{ vars.SLOT_NAME }}
-      slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
-      deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Check environment
-        id: check-env
-        if: ${{ vars.ENVIRONMENT != 'Main-Gov' }} # Generate deterministic hash to append to resource group names
-        run: |
-          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
-          shortHash="${hash:0:6}"
-          echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
-          echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - name: Print build info
-        id: build-info
-        run: |
-          echo "Printing build info"
-          echo "Azure Plan Type: ${{ vars.AZ_PLAN_TYPE }}"
-          echo "Environment: ${{ vars.ENVIRONMENT }}"
-          echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
-          echo "Git SHA: ${{ github.sha }}"
-          # Generate resource group name(s)
-          echo "Env Hash: ${{ steps.check-env.outputs.environmentHash }}"
-          resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
-          echo "Resource group appended with the following: ${resourceGroupSuffix}"
-          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-          # Stack name used downstream to label build artifacts and Azure resources
-
-          stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ vars.ENVIRONMENT }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
-          echo "Stack Name: $stackName"
-          echo "stackName=${stackName}" >> $GITHUB_OUTPUT
-
-          # Expected build artifact naming
-          webappName="${stackName}-webapp"
-          echo "Webapp Artifact: $webappName"
-          echo "webappName=${webappName}" >> $GITHUB_OUTPUT
-          apiName="${stackName}-node-api"
-          echo "Api Artifact: $apiName"
-          echo "apiName=${apiName}" >> $GITHUB_OUTPUT
-
-          echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
-          echo "Slot deployment is enabled: ${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}"
-          echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
-          echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
-          # Set to true to attempt to create a new virtual network
-          execVnetDeploy=${{ inputs.deployVnet || 'true' }}
-          echo "Execute virtual network deployment: ${execVnetDeploy}"
-          echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-
-          # Some debug output
-          echo "Github event action: ${{ github.event.action }}"
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: encode
-          in: ${{ steps.build-info.outputs.azResourceGrpApp }}
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgNetwork
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: encode
-          in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgAppDecode
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ steps.rgApp.outputs.out }}
-
-      - name: Check Bicep Deployment
-        id: check-bicep
-        run: |
-          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
-          echo "Deploy Bicep: $deployBicep"
-          echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
   accessibility-test:
     defaults:
       run:
@@ -216,12 +116,12 @@ jobs:
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ needs.setup.outputs.webappName }}
-      environment: ${{ needs.setup.outputs.environment }}
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-info, build, accessibility-test, security-scan, validation]
-    environment: ${{ needs.build-info.outputs.environment }}
+    needs: [setup, build, accessibility-test, security-scan, validation]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     outputs:
       cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
@@ -242,50 +142,50 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgNetwork
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpNetworkEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
 
       - name: Create Azure resource groups
         id: azure-resource-group
-        if: needs.build-info.outputs.deployBicep == 'true'
+        if: needs.setup.outputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ needs.build-info.outputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch || false}}' \
+            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ needs.setup.outputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch || false}}' \
             -l ${{ secrets.AZ_LOCATION }}
 
       - name: Deploy Azure resources
         id: azure-deploy
-        if: needs.build-info.outputs.deployBicep == 'true'
+        if: needs.setup.outputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/main.bicep \
-            --parameters 'appName=${{ needs.build-info.outputs.stackName }} deployVnet=${{ needs.build-info.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.build-info.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ vars.ENVIRONMENT != 'Main-Gov' }} createActionGroup=${{ vars.ENVIRONMENT != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
+            --parameters 'appName=${{ needs.setup.outputs.stackName }} deployVnet=${{ needs.setup.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} createActionGroup=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
       - name: Deploy database
         id: azure-db-deploy
         run: |
-          allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.build-info.outputs.apiName }} --query id -o tsv)
+          allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.setup.outputs.apiName }} --query id -o tsv)
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \
             --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
             --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            --environmentName ${{ vars.ENVIRONMENT }} \
+            --environmentName ${{ needs.setup.outputs.ghaEnvironment }} \
             --allowedSubnet "${allowedSubnet}" \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ needs.build-info.outputs.environmentHash || 'DOES_NOT_EXIST' }}
+            --branchHashId ${{ needs.setup.outputs.environmentHash || 'DOES_NOT_EXIST' }}
 
       - name: Check deployment and set params
         id: set-deploy-params
@@ -297,7 +197,7 @@ jobs:
           echo "CosmosDbPrincipalId: $cosmosDbPrincipalId"
           cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
           echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
-          webappSubnetName=snet-${{ needs.build-info.outputs.webappName }}
+          webappSubnetName=snet-${{ needs.setup.outputs.webappName }}
           echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
       - uses: cloudposse/github-action-secret-outputs@main
         id: cosmosPrincipalId
@@ -306,48 +206,48 @@ jobs:
           op: encode
           in: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
       - name: Create Webapp Slot Resource
-        if: (needs.build-info.outputs.slotDeploymentEnabled == 'true')
+        if: (needs.setup.outputs.slotDeploymentEnabled == 'true')
         run: |
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
-            --webappName ${{ needs.build-info.outputs.webappName }} \
-            --apiName ${{ needs.build-info.outputs.apiName }} \
+            --webappName ${{ needs.setup.outputs.webappName }} \
+            --apiName ${{ needs.setup.outputs.apiName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --slotName ${{ needs.build-info.outputs.slotName }} \
+            --slotName ${{ needs.setup.outputs.slotName }} \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
             --network-rg ${{ steps.rgNetwork.outputs.out }} \
             --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --subnet ${{ steps.set-deploy-params.outputs.webappSubnetName }}
 
       - name: Create API Slot Resource
-        if: (needs.build-info.outputs.slotDeploymentEnabled == 'true')
+        if: (needs.setup.outputs.slotDeploymentEnabled == 'true')
         run: |
-          slotStorageAccountName=ustpslot${{ needs.build-info.outputs.environmentHash }}
+          slotStorageAccountName=ustpslot${{ needs.setup.outputs.environmentHash }}
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
-            --apiName ${{ needs.build-info.outputs.apiName }} \
-            --webappName ${{ needs.build-info.outputs.webappName }} \
+            --apiName ${{ needs.setup.outputs.apiName }} \
+            --webappName ${{ needs.setup.outputs.webappName }} \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
             --idResourceGroup ${{ secrets.AZURE_RG }} \
-            --slotName ${{ needs.build-info.outputs.slotName }} \
+            --slotName ${{ needs.setup.outputs.slotName }} \
             --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
             --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --cosmosIdName ${{ steps.set-deploy-params.outputs.cosmosDbManagedIdName }} \
-            --branchHashId ${{ needs.build-info.outputs.environmentHash || 'DOES_NOT_EXIST' }} \
+            --branchHashId ${{ needs.setup.outputs.environmentHash || 'DOES_NOT_EXIST' }} \
             --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --storageAccName ${slotStorageAccountName:0:24}
 
   deploy-webapp:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy]
-    environment: ${{ needs.build-info.outputs.environment }}
-    if: needs.build-info.outputs.slotDeploymentEnabled == 'false'
+    needs: [setup, deploy]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
+    if: needs.setup.outputs.slotDeploymentEnabled == 'false'
     steps:
       - uses: actions/checkout@main
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.build-info.outputs.webappName }}-build
+          name: ${{ needs.setup.outputs.webappName }}-build
 
       - uses: azure/login@v1
         with:
@@ -359,38 +259,38 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
         continue-on-error: true
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.zip \
+          --src ./${{ needs.setup.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.webappName }}
+          -n ${{ needs.setup.outputs.webappName }}
 
       - name: Retry Deploy to Azure WebApp
         if: steps.deploy-webapp-step.outcome != 'success'
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.zip \
+          --src ./${{ needs.setup.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.webappName }}
+          -n ${{ needs.setup.outputs.webappName }}
 
   deploy-service:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy]
-    environment: ${{ needs.build-info.outputs.environment }}
-    if: needs.build-info.outputs.slotDeploymentEnabled == 'false'
+    needs: [setup, deploy]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
+    if: needs.setup.outputs.slotDeploymentEnabled == 'false'
     steps:
       - uses: actions/checkout@main
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.build-info.outputs.apiName }}-build
+          name: ${{ needs.setup.outputs.apiName }}-build
 
       - uses: azure/login@v1
         with:
@@ -402,7 +302,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: cosmosPrincipalId
@@ -417,8 +317,8 @@ jobs:
         run: |
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.apiName }} \
-          --src ./${{ needs.build-info.outputs.apiName }}.zip \
+          -n ${{ needs.setup.outputs.apiName }} \
+          --src ./${{ needs.setup.outputs.apiName }}.zip \
           --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
           --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
           --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
@@ -435,8 +335,8 @@ jobs:
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.apiName }} \
-          --src ./${{ needs.build-info.outputs.apiName }}.zip \
+          -n ${{ needs.setup.outputs.apiName }} \
+          --src ./${{ needs.setup.outputs.apiName }}.zip \
           --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
           --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
           --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
@@ -449,13 +349,13 @@ jobs:
 
   smoke-test-application:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy-webapp, deploy-service]
-    environment: ${{ needs.build-info.outputs.environment }}
+    needs: [setup, deploy-webapp, deploy-service]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     env:
-      stackName: ${{ needs.build-info.outputs.stackName }}
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      apiName: ${{ needs.build-info.outputs.apiName }}
-      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      branchHashId: ${{ needs.setup.outputs.environmentHash }}
       priority: 200
     steps:
       - uses: actions/checkout@v3
@@ -468,7 +368,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: |
           ops/scripts/pipeline/dev-add-allowed-ip.sh \
@@ -506,11 +406,11 @@ jobs:
 
   enable-access:
     runs-on: ubuntu-latest
-    needs: [build-info, smoke-test-application]
-    environment: ${{ needs.build-info.outputs.environment }}
+    needs: [setup, smoke-test-application]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     env:
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      apiName: ${{ needs.build-info.outputs.apiName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
     steps:
       - uses: azure/login@v1
         with:
@@ -521,7 +421,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       - name: Enable access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
@@ -531,16 +431,16 @@ jobs:
 
   deploy-webapp-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy]
-    environment: ${{ needs.build-info.outputs.environment }}
-    if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
+    needs: [setup, deploy]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
+    if: needs.setup.outputs.slotDeploymentEnabled == 'true'
     steps:
       - uses: actions/checkout@main
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.build-info.outputs.webappName }}-build
+          name: ${{ needs.setup.outputs.webappName }}-build
 
       - uses: azure/login@v1
         with:
@@ -552,40 +452,40 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-slot-step
         continue-on-error: true
         run: |
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.zip \
+          --src ./${{ needs.setup.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.webappName }} \
-          --slotName ${{ needs.build-info.outputs.slotName }}
+          -n ${{ needs.setup.outputs.webappName }} \
+          --slotName ${{ needs.setup.outputs.slotName }}
 
       - name: Retry Deploy to Azure WebApp slot
         if: steps.deploy-webapp-slot-step.outcome != 'success'
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
-          --src ./${{ needs.build-info.outputs.webappName }}.zip \
+          --src ./${{ needs.setup.outputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.webappName }} \
-          --slotName ${{ needs.build-info.outputs.slotName }}
+          -n ${{ needs.setup.outputs.webappName }} \
+          --slotName ${{ needs.setup.outputs.slotName }}
 
   deploy-service-slot:
     runs-on: ubuntu-latest
-    needs: [build-info, deploy]
-    environment: ${{ needs.build-info.outputs.environment }}
-    if: needs.build-info.outputs.slotDeploymentEnabled == 'true'
+    needs: [setup, deploy]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
+    if: needs.setup.outputs.slotDeploymentEnabled == 'true'
     steps:
       - uses: actions/checkout@main
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.build-info.outputs.apiName }}-build
+          name: ${{ needs.setup.outputs.apiName }}-build
 
       - uses: azure/login@v1
         with:
@@ -597,7 +497,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-step
@@ -605,9 +505,9 @@ jobs:
         run: |
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.apiName }} \
-          --src ./${{ needs.build-info.outputs.apiName }}.zip \
-          --slotName ${{ needs.build-info.outputs.slotName }} \
+          -n ${{ needs.setup.outputs.apiName }} \
+          --src ./${{ needs.setup.outputs.apiName }}.zip \
+          --slotName ${{ needs.setup.outputs.slotName }} \
           --settings "INFO_SHA=${{ github.sha }}"
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-retry
@@ -615,39 +515,39 @@ jobs:
         run: |
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.build-info.outputs.apiName }} \
-          --src ./${{ needs.build-info.outputs.apiName }}.zip \
-          --slotName ${{ needs.build-info.outputs.slotName }} \
+          -n ${{ needs.setup.outputs.apiName }} \
+          --src ./${{ needs.setup.outputs.apiName }}.zip \
+          --slotName ${{ needs.setup.outputs.slotName }} \
           --settings "INFO_SHA=${{ github.sha }}"
 
   execute-e2e-test-pre-swap:
-    needs: [build-info, deploy-webapp-slot, deploy-service-slot]
+    needs: [setup, deploy-webapp-slot, deploy-service-slot]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
-      apiName: ${{ needs.build-info.outputs.apiName }}
-      slotName: ${{ needs.build-info.outputs.slotName }}
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      stackName: ${{ needs.build-info.outputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
       azureHostnameSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
-      deploymentEnvironment: ${{ needs.build-info.outputs.environment }}
-      branchHashId: ${{ needs.build-info.outputs.environmentHash }}
+      deploymentEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      branchHashId: ${{ needs.setup.outputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
     needs:
       [
-        build-info,
+        setup,
         deploy-webapp-slot,
         deploy-service-slot,
         execute-e2e-test-pre-swap,
       ]
-    environment: ${{ needs.build-info.outputs.environment }}
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     env:
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      slotName: ${{ needs.build-info.outputs.slotName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
     steps:
       - uses: azure/login@v1
         with:
@@ -658,7 +558,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       - name: Swap Deployment Slot
         run: |
           az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
@@ -667,15 +567,15 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       [
-        build-info,
+        setup,
         deploy-webapp-slot,
         deploy-service-slot,
         execute-e2e-test-pre-swap,
       ]
-    environment: ${{ needs.build-info.outputs.environment }}
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     env:
-      apiName: ${{ needs.build-info.outputs.apiName }}
-      slotName: ${{ needs.build-info.outputs.slotName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
     steps:
       - uses: azure/login@v1
         with:
@@ -686,7 +586,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       - name: Swap Deployment Slot
         run: |
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
@@ -694,14 +594,13 @@ jobs:
 
   smoke-test-application-post-swap:
     runs-on: ubuntu-latest
-    needs:
-      [build-info, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
-    environment: ${{ needs.build-info.outputs.environment }}
+    needs: [setup, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     env:
-      stackName: ${{ needs.build-info.outputs.stackName }}
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      apiName: ${{ needs.build-info.outputs.apiName }}
-      slotName: ${{ needs.build-info.outputs.slotName }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
       priority: 200
     steps:
       - uses: actions/checkout@v3
@@ -714,7 +613,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ needs.build-info.outputs.azResourceGrpAppEncrypted }}
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: |
           ops/scripts/pipeline/dev-add-allowed-ip.sh \
