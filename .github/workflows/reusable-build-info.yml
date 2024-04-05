@@ -34,6 +34,9 @@ on:
       environmentHash:
         description: ""
         value: ${{ jobs.build-info.outputs.environmentHash }}
+      slotName:
+        description: ""
+        value: ${{ jobs.build-info.outputs.slotName }}
       slotDeploymentEnabled:
           description: ""
           value: ${{ jobs.build-info.outputs.slotDeploymentEnabled }}
@@ -60,6 +63,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
+      slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
     steps:
@@ -117,7 +121,7 @@ jobs:
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
           echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
-
+          echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
