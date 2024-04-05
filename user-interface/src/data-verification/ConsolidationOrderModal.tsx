@@ -17,15 +17,28 @@ import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import './ConsolidationOrderModal.scss';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import './ConsolidationOrderModal.scss';
 
-export type ConfirmActionResults = {
-  status: OrderStatus;
+export type ConfirmActionPendingResults = {
+  status: 'pending';
+};
+
+export type ConfirmActionRejectionResults = {
+  status: 'rejected';
   rejectionReason?: string;
+};
+
+export type ConfirmActionApprovalResults = {
+  status: 'approved';
   leadCaseSummary: CaseSummary;
   consolidationType: ConsolidationType;
 };
+
+export type ConfirmActionResults =
+  | ConfirmActionApprovalResults
+  | ConfirmActionRejectionResults
+  | ConfirmActionPendingResults;
 
 export interface ConsolidationOrderModalProps {
   id: string;
@@ -76,7 +89,7 @@ function ConsolidationOrderModalComponent(
   props: ConsolidationOrderModalProps,
   ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
 ) {
-  const { id, onConfirm, onCancel }: ConsolidationOrderModalProps = props;
+  const { id, onConfirm, onCancel } = props;
 
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
   const [childCasesDivHeight, setChildCasesDivHeight] = useState<string>('');
@@ -104,30 +117,52 @@ function ConsolidationOrderModalComponent(
   const featureFlags = useFeatureFlags();
   const windowSize = useWindowSize();
 
-  const confirmStep2 = async () => {
+  async function reject() {
     onConfirm({
-      status: options.status,
+      status: 'rejected',
       rejectionReason: reasonRef.current?.value,
+    });
+  }
+
+  async function confirmStep2() {
+    onConfirm({
+      status: 'approved',
       leadCaseSummary: leadCaseSummary!,
       consolidationType: consolidationType!,
     });
-  };
+  }
 
-  const confirmStep1 = async () => {
+  async function confirmStep1() {
     setStep('confirm');
     setOptions({
       ...options,
       heading: 'Consolidate Cases',
     });
+  }
+
+  const rejectActionButtonGroup: SubmitCancelBtnProps = {
+    modalId: `confirmation-modal-${id}`,
+    modalRef: modalRef,
+    submitButton: {
+      label: 'Reject',
+      onClick: reject,
+      className: 'usa-button--secondary',
+    },
+    cancelButton: {
+      label: 'Go back',
+      onClick: () => {
+        reset();
+        onCancel();
+      },
+    },
   };
 
-  const actionButtonGroup: SubmitCancelBtnProps = {
+  const approveActionButtonGroup: SubmitCancelBtnProps = {
     modalId: `confirmation-modal-${id}`,
     modalRef: modalRef,
     submitButton: {
       label: step === 'pick-lead-case' ? 'Continue' : 'Verify',
       onClick: step === 'pick-lead-case' ? confirmStep1 : confirmStep2,
-      className: options.status === 'rejected' ? 'usa-button--secondary' : '',
       closeOnClick: step !== 'pick-lead-case',
       disabled: step === 'pick-lead-case',
     },
@@ -141,16 +176,24 @@ function ConsolidationOrderModalComponent(
   };
 
   function show(options: ShowOptionParams) {
-    modalRef.current?.buttons?.current?.disableSubmitButton(true);
-    setOptions({
-      status: options.status,
-      heading:
-        options.status === 'approved'
-          ? 'Additional Consolidation Information'
-          : 'Reject Case Consolidation?',
-    });
     setCases(options.cases);
+    switch (options.status) {
+      case 'approved':
+        modalRef.current?.buttons?.current?.disableSubmitButton(true);
+        setOptions({
+          status: options.status,
+          heading: 'Additional Consolidation Information',
+        });
+        break;
 
+      case 'rejected':
+        modalRef.current?.buttons?.current?.disableSubmitButton(false);
+        setOptions({
+          status: options.status,
+          heading: 'Reject Case Consolidation?',
+        });
+        break;
+    }
     if (modalRef.current?.show) {
       modalRef.current?.show({});
     }
@@ -263,13 +306,20 @@ function ConsolidationOrderModalComponent(
   function showRejectedContent() {
     return (
       <div>
-        <div data-testid={`confirm-modal-${id}-caseIds`}>
-          {cases.map((bCase) => getCaseNumber(bCase.caseId)).join(', ')}
+        <div data-testid="modal-rejection-notice-container">
+          The following cases will not be consolidated
         </div>
-        <label htmlFor={`rejection-reason-${id}`} className="usa-label">
-          Reason for rejection
-        </label>
-        <div>
+        <div className="modal-case-list-container" style={{ maxHeight: childCasesDivHeight }}>
+          <ul className="usa-list--unstyled modal-case-list">
+            {cases.map((bCase) => (
+              <li key={bCase.caseId}>
+                {getCaseNumber(bCase.caseId)} {bCase.caseTitle}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div data-testid="modal-rejection-reason-container">
+          <label>Reason for rejection</label>
           <textarea
             id={`rejection-reason-${id}`}
             data-testid={`rejection-reason-input-${id}`}
@@ -401,7 +451,9 @@ function ConsolidationOrderModalComponent(
           {options.status === 'approved' && step === 'confirm' && showApprovedContentStep2()}
         </>
       }
-      actionButtonGroup={actionButtonGroup}
+      actionButtonGroup={
+        options.status === 'approved' ? approveActionButtonGroup : rejectActionButtonGroup
+      }
     ></Modal>
   );
 }
