@@ -249,7 +249,7 @@ function ConsolidationOrderModalComponent(
         });
     }
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
-  }, [consolidationType, leadCaseNumber]);
+  }, [consolidationType, leadCaseNumber, leadCaseDivisionCode]);
 
   useEffect(() => {
     if (step !== 'pick-lead-case') {

@@ -1,5 +1,6 @@
 .usa-alert--info .usa-alert__body::before {
   background: transparent;
+  background-size: 2rem;
   background-image: url(/assets/styles/img/usa-icons/info.svg);
   background-repeat: no-repeat;
   mask-image: url(/assets/styles/img/usa-icons/info.svg), linear-gradient(transparent, transparent);
@@ -7,20 +8,25 @@
 
 .usa-alert--warning .usa-alert__body::before {
   background: transparent;
+  background-size: 2rem;
   background-image: url(/assets/styles/img/usa-icons/warning.svg);
   background-repeat: no-repeat;
-  mask-image: url(/assets/styles/img/usa-icons/warning.svg), linear-gradient(transparent, transparent);
+  mask-image: url(/assets/styles/img/usa-icons/warning.svg),
+    linear-gradient(transparent, transparent);
 }
 
 .usa-alert--success .usa-alert__body::before {
   background: transparent;
+  background-size: 2rem;
   background-image: url(/assets/styles/img/usa-icons/check_circle.svg);
   background-repeat: no-repeat;
-  mask-image: url(/assets/styles/img/usa-icons/check_circle.svg), linear-gradient(transparent, transparent);
+  mask-image: url(/assets/styles/img/usa-icons/check_circle.svg),
+    linear-gradient(transparent, transparent);
 }
 
 .usa-alert--error .usa-alert__body::before {
   background: transparent;
+  background-size: 2rem;
   background-image: url(/assets/styles/img/usa-icons/error.svg);
   background-repeat: no-repeat;
   mask-image: url(/assets/styles/img/usa-icons/error.svg), linear-gradient(transparent, transparent);
@@ -46,7 +52,7 @@
   width: 75%;
   max-width: 800px;
   margin: 0.5rem auto;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, .5);
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
 }
 
 .usa-alert__unset {
