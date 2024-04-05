@@ -222,9 +222,6 @@ jobs:
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
-      - name: Execute Coverage
-        run: |
-          CI=true npm run coverage
       - name: Package
         run: |
           pushd ./build
@@ -259,10 +256,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Execute Coverage
-        run: |
-          npm run coverage
-
       - name: Package Application
         run: OUT=${{ needs.build-info.outputs.apiName }} npm run pack
 
@@ -273,30 +266,6 @@ jobs:
           path: backend/functions/${{ needs.build-info.outputs.apiName }}.zip
           if-no-files-found: error
 
-  build-common:
-    defaults:
-      run:
-        working-directory: common
-    runs-on: ubuntu-latest
-    needs: [build-info]
-    environment: ${{ needs.build-info.outputs.environment }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ vars.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: common/package-lock.json
-      - name: Execute Build
-        run: |
-          npm ci
-          npm run build --if-present
-      - name: Execute Coverage
-        run: |
-          CI=true npm run coverage
-
   deploy:
     runs-on: ubuntu-latest
     needs:
@@ -304,9 +273,9 @@ jobs:
         build-info,
         build-frontend,
         build-service,
-        build-common,
         accessibility-test,
         security-scan,
+        validation,
       ]
     environment: ${{ needs.build-info.outputs.environment }}
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
