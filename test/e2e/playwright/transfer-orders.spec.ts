@@ -114,8 +114,7 @@ test('test', async ({ page }) => {
   ).not.toBeDisabled();
   await page.getByTestId(`button-accordion-approve-button-${firstOrderId}`).click();
   await page
-    .getByTestId(`modal-content-confirm-modal-confirmation-modal-${firstOrderId}`)
-    .getByTestId('toggle-modal-button-cancel')
+    .getByTestId(`button-confirm-modal-confirmation-modal-${firstOrderId}-cancel-button`)
     .click();
   await page.getByTestId(`button-accordion-reject-button-${firstOrderId}`).click();
   await page.getByTestId(`rejection-reason-input-confirmation-modal-${firstOrderId}`).click();
