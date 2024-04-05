@@ -40,6 +40,9 @@ on:
       execVnetDeploy:
         description: ""
         value: ${{ jobs.build-info.outputs.execVnetDeploy }}
+      deployBicep:
+        description: ""
+        value: ${{ jobs.build-info.outputs.deployBicep }}
       ghaEnvironment:
         description: ""
         value: ${{ inputs.environment }}

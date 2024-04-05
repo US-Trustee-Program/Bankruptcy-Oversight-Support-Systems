@@ -51,7 +51,7 @@ on:
 
 jobs:
   setup:
-    name: build-info
+    name: Setup
     uses: ./.github/workflows/reusable-build-info.yml
     secrets: inherit # pragma: allowlist secret
     with:
