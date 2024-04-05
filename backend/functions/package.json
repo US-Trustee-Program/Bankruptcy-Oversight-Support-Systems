@@ -42,13 +42,13 @@
     "prestart": "npm run build",
     "start": "func start --typescript",
     "start:dev": "nodemon --esm src/server.ts",
-    "test": "npm run build-common && DATABASE_MOCK='true' jest -c jest.config.js",
+    "test": "npm config set script-shell=/bin/bash && npm run build-common && DATABASE_MOCK='true' jest -c jest.config.js",
     "test:integration": "DATABASE_MOCK='true' jest -c jest.integration.config.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
-    "coverage": "npm run build-common && DATABASE_MOCK='true' jest -c jest.config.js --coverage",
+    "coverage": "npm config set script-shell=/bin/bash && npm run build-common && DATABASE_MOCK='true' jest -c jest.config.js --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_api_${current_time}.svg",
     "dependency-cruiser-ci": "npx depcruise --output-type err-long attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib "
   }
