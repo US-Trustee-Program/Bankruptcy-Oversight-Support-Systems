@@ -38,6 +38,7 @@ import {
   ConsolidationOrderSummary,
   isConsolidationHistory,
 } from '../../../../../common/src/cams/history';
+import { CaseAssignmentUseCase } from '../case.assignment';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -302,7 +303,7 @@ export class OrdersUseCase {
     provisionalOrder: ConsolidationOrder,
     includedCases: string[],
     consolidationType?: ConsolidationType,
-    leadCase?: ConsolidationOrderCase,
+    leadCase?: CaseSummary,
   ): Promise<ConsolidationOrder[]> {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
@@ -342,24 +343,22 @@ export class OrdersUseCase {
 
     const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
     response.push(createdConsolidation);
-    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+
+    const assignmentUseCase = new CaseAssignmentUseCase(context);
+    const leadCaseAssignments = await assignmentUseCase.findAssignmentsByCaseId(leadCase.caseId);
+    const leadCaseAttorneys = leadCaseAssignments.map((assignment) => assignment.name);
+
     const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
       if (childCase.caseId !== leadCase.caseId) {
         // Add the child case history.
-        const caseHistory = await this.buildHistory(
-          context,
-          childCase,
-          status,
-          [],
-          leadCaseSummary,
-        );
+        const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
         await this.casesRepo.createCaseHistory(context, caseHistory);
 
         // Add the reference to the lead case to the child case.
         const consolidationTo: ConsolidationTo = {
           caseId: childCase.caseId,
-          otherCase: getCaseSummaryFromConsolidationOrderCase(newConsolidation.leadCase),
+          otherCase: leadCase,
           orderDate: childCase.orderDate,
           consolidationType: newConsolidation.consolidationType,
           documentType: 'CONSOLIDATION_TO',
@@ -376,6 +375,14 @@ export class OrdersUseCase {
         };
         await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
 
+        // Assign lead case attorneys to the child case.
+        assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          childCase.caseId,
+          leadCaseAttorneys,
+          'TrialAttorney',
+        );
+
         // Add the child case lead case history.
         const { docketEntries: _docketEntries, ...caseSummary } = childCase;
         childCaseSummaries.push(caseSummary);
@@ -383,12 +390,7 @@ export class OrdersUseCase {
     }
 
     // Add the lead case history.
-    const leadCaseHistory = await this.buildHistory(
-      context,
-      leadCaseSummary,
-      status,
-      childCaseSummaries,
-    );
+    const leadCaseHistory = await this.buildHistory(context, leadCase, status, childCaseSummaries);
     await this.casesRepo.createCaseHistory(context, leadCaseHistory);
     return response;
   }

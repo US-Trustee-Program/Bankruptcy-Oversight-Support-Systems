@@ -4,7 +4,11 @@ import { AssignmentError } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
-import { AttorneyAssignmentResponseInterface } from '../../../../../common/src/cams/assignments';
+import {
+  AttorneyAssignmentResponseInterface,
+  CaseAssignment,
+} from '../../../../../common/src/cams/assignments';
+import { CamsResponse } from '../../controllers/controller-types';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -12,11 +16,32 @@ const INVALID_ROLE_MESSAGE =
 const VALID_CASEID_PATTERN = RegExp(/^\d{3}-\d{2}-\d{5}$/);
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345.';
 
+type GetTrialAttorneyAssignmentsResponse = CamsResponse<Array<CaseAssignment>>;
+
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
 
   constructor(context: ApplicationContext) {
     this.applicationContext = context;
+  }
+
+  public async getTrialAttorneyAssignments(
+    caseId: string,
+  ): Promise<GetTrialAttorneyAssignmentsResponse> {
+    try {
+      const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
+      const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
+      return {
+        success: true,
+        body: assignments,
+      };
+    } catch (exception) {
+      this.applicationContext.logger.error(MODULE_NAME, exception.message);
+      if (exception instanceof CamsError) {
+        throw exception;
+      }
+      throw new UnknownError(MODULE_NAME, { originalError: exception });
+    }
   }
 
   public async createTrialAttorneyAssignments(params: {
@@ -27,12 +52,13 @@ export class CaseAssignmentController {
     this.validateRequestParameters(params);
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
-      return assignmentUseCase.createTrialAttorneyAssignments(
+      const response = await assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
         params.caseId,
         params.listOfAttorneyNames,
         params.role,
       );
+      return response;
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {

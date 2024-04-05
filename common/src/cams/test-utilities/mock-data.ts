@@ -11,6 +11,7 @@ import { OFFICES } from './offices.mock';
 import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import { ConsolidationFrom, ConsolidationTo } from '../events';
+import { CaseAssignment } from '../assignments';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -250,7 +251,7 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
-function getDebtorAttorney(): DebtorAttorney {
+function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorney {
   return {
     name: faker.person.fullName(),
     address1: faker.location.streetAddress(),
@@ -262,10 +263,25 @@ function getDebtorAttorney(): DebtorAttorney {
     phone: faker.phone.number(),
     email: faker.internet.email(),
     office: faker.company.name(),
+    ...override,
   };
 }
 
-function buildArray(fn: () => void, size: number) {
+function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssignment {
+  const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  return {
+    id: `guid-${('00000' + randomInt(100000)).slice(-5)}`,
+    documentType: 'ASSIGNMENT',
+    caseId: randomCaseId(),
+    name: faker.person.fullName(),
+    role: 'TrialAttorney',
+    assignedOn: firstDate,
+    unassignedOn: someDateAfterThisDate(firstDate, 28),
+    ...override,
+  };
+}
+
+function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
     arr.push(fn());
@@ -291,6 +307,7 @@ function getDateBeforeToday() {
 
 export const MockData = {
   randomCaseId,
+  getAttorneyAssignment,
   getCaseSummary,
   getCaseDetail,
   getOffices,

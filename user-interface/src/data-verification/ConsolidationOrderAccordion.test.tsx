@@ -171,6 +171,12 @@ describe('ConsolidationOrderAccordion tests', () => {
       status: 'approved',
     };
 
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [MockData.getAttorneyAssignment()],
+    });
+
     vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
       message: '',
       count: 1,
@@ -208,7 +214,17 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     fireEvent.click(adminRadioButton);
 
-    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    const modalApproveButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    await waitFor(() => {
+      expect(modalApproveButton).toBeEnabled();
+    });
+
+    // click "continue" button on first screen of the modal.
+    fireEvent.click(modalApproveButton);
+    // click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
@@ -229,6 +245,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
 
     const leadCase = order.childCases[0];
+
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [MockData.getAttorneyAssignment()],
+    });
 
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
@@ -264,7 +286,17 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     fireEvent.click(adminRadioButton);
 
-    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    const modalApproveButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    await waitFor(() => {
+      expect(modalApproveButton).toBeEnabled();
+    });
+
+    //click "continue" button on first screen of the modal.
+    fireEvent.click(modalApproveButton);
+    //click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {

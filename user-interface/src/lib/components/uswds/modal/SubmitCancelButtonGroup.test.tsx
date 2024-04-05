@@ -27,11 +27,11 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const submit = screen.getByTestId('toggle-modal-button-submit');
+    const submit = screen.getByTestId('button-fake-modal-submit-button');
     expect(submit.className).toContain(BUTTON_BASE_CLASS);
     expect(submit.className).toContain(UswdsButtonStyle.Cool);
 
-    const cancel = screen.getByTestId('toggle-modal-button-cancel');
+    const cancel = screen.getByTestId('button-fake-modal-cancel-button');
     expect(cancel.className).toContain(BUTTON_BASE_CLASS);
     expect(cancel.className).toContain(UswdsButtonStyle.Cool);
   });
@@ -51,10 +51,10 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const submit = screen.getByTestId('toggle-modal-button-submit');
+    const submit = screen.getByTestId('button-fake-modal-submit-button');
     expect(submit.className).toContain(BUTTON_BASE_CLASS);
 
-    const cancel = screen.getByTestId('toggle-modal-button-cancel');
+    const cancel = screen.getByTestId('button-fake-modal-cancel-button');
     expect(cancel.className).toContain(BUTTON_BASE_CLASS);
     expect(cancel.className).toContain(UswdsButtonStyle.Unstyled);
   });
@@ -72,7 +72,7 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const cancel = screen.queryByTestId('toggle-modal-button-cancel');
+    const cancel = screen.queryByTestId('button-fake-modal-cancel-button');
     expect(cancel).not.toBeInTheDocument();
   });
 
@@ -91,11 +91,11 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const submit = screen.getByTestId('toggle-modal-button-submit');
+    const submit = screen.getByTestId('button-fake-modal-submit-button');
     expect(submit.className).toContain(BUTTON_BASE_CLASS);
     expect(submit.className).toContain('test-class-one');
 
-    const cancel = screen.getByTestId('toggle-modal-button-cancel');
+    const cancel = screen.getByTestId('button-fake-modal-cancel-button');
     expect(cancel.className).toContain(BUTTON_BASE_CLASS);
     expect(cancel.className).toContain(UswdsButtonStyle.Unstyled);
     expect(cancel.className).toContain('test-class-two');
@@ -116,7 +116,7 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const submit = screen.getByTestId('toggle-modal-button-submit');
+    const submit = screen.getByTestId('button-fake-modal-submit-button');
     expect(submit).toBeDisabled();
   });
 
@@ -133,7 +133,7 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const submit = screen.getByTestId('toggle-modal-button-submit');
+    const submit = screen.getByTestId('button-fake-modal-submit-button');
     expect(submit).not.toBeDisabled();
   });
 
@@ -150,7 +150,7 @@ describe('Submit cancel button group tests', () => {
       </BrowserRouter>,
     );
 
-    const submit = screen.getByTestId('toggle-modal-button-submit');
+    const submit = screen.getByTestId('button-fake-modal-submit-button');
     expect(submit).not.toBeDisabled();
   });
 });

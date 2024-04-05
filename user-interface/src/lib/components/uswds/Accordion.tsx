@@ -44,9 +44,11 @@ interface AccordionProps extends PropsWithChildren {
   expandedId?: string;
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
+  hidden?: boolean;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {
+  const { hidden } = props;
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
 
   return (
     <>
-      <h4 className="usa-accordion__heading" data-testid={`accordion-${props.id}`}>
+      <h4 className="usa-accordion__heading" data-testid={`accordion-${props.id}`} hidden={hidden}>
         <button
           type="button"
           className="usa-accordion__button"
@@ -81,7 +83,7 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
         id={`accordion-${props.id}`}
         className="usa-accordion__content usa-prose no-overflow"
         data-testid={`accordion-content-${props.id}`}
-        hidden={!expanded}
+        hidden={!!hidden || !expanded}
       >
         {props.children[1]}
       </div>

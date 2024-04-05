@@ -1,8 +1,8 @@
 import { deleteDocuments } from './lib';
 
 export default function deleteAssignments() {
-  deleteDocuments('assignments', 'SELECT * FROM c');
-  deleteDocuments('cases', 'SELECT * FROM c WHERE c.documentType = "AUDIT_ASSIGNMENT"');
+  deleteDocuments('assignments', 'caseId', 'SELECT * FROM c');
+  deleteDocuments('cases', 'caseId', 'SELECT * FROM c WHERE c.documentType = "AUDIT_ASSIGNMENT"');
 }
 
 if (require.main === module) {

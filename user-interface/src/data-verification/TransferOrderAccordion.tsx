@@ -82,10 +82,11 @@ export interface TransferOrderAccordionProps {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
+  hidden?: boolean;
 }
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
-  const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const { order, hidden, statusType, orderType, officesList, expandedId, onExpand } = props;
   const [activeButtonId, setActiveButtonId] = useState<string>(`suggested-cases-${order.id}`);
 
   const api = useApi();
@@ -339,6 +340,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         expandedId={expandedId}
         onExpand={onExpand}
         onCollapse={onCollapse}
+        hidden={hidden}
       >
         <section
           className="accordion-heading grid-row grid-gap-lg"
@@ -590,7 +592,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       <div className="grid-col-10">
                         {loadingCaseSummary && (
                           <LoadingSpinner
-                            id="loading-spinner"
+                            id={`loading-spinner-${order.id}-case-verification`}
                             caption="Loading cases..."
                           ></LoadingSpinner>
                         )}
@@ -601,7 +603,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           <Alert
                             inline={true}
                             show={true}
-                            slim={true}
                             message="We couldn't find a case with that number"
                             type={UswdsAlertStyle.Error}
                             role="status"
@@ -621,7 +622,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                         <div className="grid-col-1"></div>
                         <div className="grid-col-10">
                           <LoadingSpinner
-                            id="loading-spinner"
+                            id={`loading-spinner-${order.id}-suggestions`}
                             caption="Loading suggestions..."
                           ></LoadingSpinner>
                         </div>
@@ -673,7 +674,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 <Alert
                                   inline={true}
                                   show={true}
-                                  slim={true}
                                   title="No Matching Cases"
                                   message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
                                   type={UswdsAlertStyle.Warning}

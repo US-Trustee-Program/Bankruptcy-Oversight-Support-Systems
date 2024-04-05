@@ -4,6 +4,7 @@ import { ConsolidationOrderCase } from '@common/cams/orders';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export type OrderTableImperative = {
   clearSelection: () => void;
@@ -13,6 +14,7 @@ interface ConsolidationCaseTableProps {
   id: string;
   cases: Array<ConsolidationOrderCase>;
   onSelect: (bCase: ConsolidationOrderCase) => void;
+  isAssignmentLoaded: boolean;
   displayDocket?: boolean;
 }
 
@@ -45,7 +47,11 @@ function _ConsolidationCaseTable(
   }));
 
   return (
-    <table className="usa-table usa-table--borderless" id={id} data-testid={id}>
+    <table
+      className="usa-table usa-table--borderless consolidation-cases-table"
+      id={id}
+      data-testid={id}
+    >
       <thead>
         <tr>
           <th scope="col">Include</th>
@@ -82,7 +88,26 @@ function _ConsolidationCaseTable(
                 </td>
                 <td scope="row">{formatDate(bCase.dateFiled)}</td>
                 <td scope="row" className="text-no-wrap">
-                  {''}
+                  {!props.isAssignmentLoaded && (
+                    <LoadingSpinner
+                      id={`loading-spinner-case-asignment-${bCase.caseId}`}
+                      height="1rem"
+                      caption="Loading..."
+                    />
+                  )}
+                  {props.isAssignmentLoaded &&
+                    bCase.attorneyAssignments &&
+                    bCase.attorneyAssignments.length > 0 && (
+                      <ul className="usa-list--unstyled">
+                        {bCase.attorneyAssignments.map((att, idx) => (
+                          <li key={`${bCase.caseId}-${idx}`}>{att.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                  {props.isAssignmentLoaded &&
+                    bCase.attorneyAssignments &&
+                    !bCase.attorneyAssignments.length &&
+                    '(unassigned)'}
                 </td>
               </tr>,
             );
