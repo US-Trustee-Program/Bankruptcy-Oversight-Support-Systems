@@ -16,6 +16,7 @@ jobs:
     defaults:
         run:
           working-directory: ${{ inputs.path }}
+          shell: bash
     runs-on: ubuntu-latest
     env:
         CI: true
