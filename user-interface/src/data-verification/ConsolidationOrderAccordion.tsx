@@ -96,7 +96,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
         } catch {
-          // The case assignments are not critical to perform the consolidation. Catch any error
+          // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }
       }
@@ -111,19 +111,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases([]);
   }
 
-  function confirmAction({
-    status,
-    leadCaseSummary,
-    consolidationType,
-  }: ConfirmActionResults): void {
-    if (status === 'approved') {
+  function confirmAction(action: ConfirmActionResults): void {
+    if (action.status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
-        consolidationType,
+        consolidationType: action.consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCaseSummary.caseId),
-        leadCase: leadCaseSummary,
+          .filter((caseId) => caseId !== action.leadCaseSummary.caseId),
+        leadCase: action.leadCaseSummary,
       };
 
       api
@@ -302,8 +298,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                       cases: order.childCases.map((c) => c),
                     })
                   }
-                  disabled={true}
-                  //Disabled until we get to story CAMS-301
                   uswdsStyle={UswdsButtonStyle.Secondary}
                 >
                   Reject
