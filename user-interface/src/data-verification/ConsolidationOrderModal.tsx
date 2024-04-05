@@ -20,8 +20,6 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import './ConsolidationOrderModal.scss';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
-export const CASE_NUMBER_LENGTH = 8;
-
 export type ConfirmActionResults = {
   status: OrderStatus;
   rejectionReason?: string;
@@ -214,12 +212,21 @@ function ConsolidationOrderModalComponent(
     }
   }
 
-  useEffect(() => {
-    const hasRequiredFields =
-      !!consolidationType && !!leadCaseDivisionCode && leadCaseNumber.length === CASE_NUMBER_LENGTH;
+  function getCurrentLeadCaseId() {
+    return leadCaseDivisionCode && leadCaseNumber
+      ? `${leadCaseDivisionCode}-${leadCaseNumber}`
+      : undefined;
+  }
 
-    const leadCaseId = `${leadCaseDivisionCode}-${leadCaseNumber}`;
-    if (hasRequiredFields) {
+  function disableLeadCaseForm(disable: boolean) {
+    leadCaseNumberRef.current?.disable(disable);
+    leadCaseDivisionRef.current?.disable(disable);
+  }
+
+  useEffect(() => {
+    const leadCaseId = getCurrentLeadCaseId();
+    if (leadCaseId && !!consolidationType) {
+      disableLeadCaseForm(true);
       setIsLoading(true);
       setLeadCaseNumberError('');
       getCaseSummary(leadCaseId)
@@ -229,6 +236,7 @@ function ConsolidationOrderModalComponent(
             setLeadCaseAttorneys(attorneys);
             setIsLoading(false);
             modalRef.current?.buttons?.current?.disableSubmitButton(false);
+            disableLeadCaseForm(false);
           });
         })
         .catch((error) => {
@@ -237,6 +245,7 @@ function ConsolidationOrderModalComponent(
           const message = isNotFound ? 'Lead case not found.' : 'Cannot verify lead case number.';
           setLeadCaseNumberError(message);
           setIsLoading(false);
+          disableLeadCaseForm(false);
         });
     }
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
@@ -330,7 +339,7 @@ function ConsolidationOrderModalComponent(
             aria-label="Lead case number"
             ref={leadCaseNumberRef}
           />
-          {leadCaseNumberError && (
+          {leadCaseNumberError ? (
             <Alert
               message={leadCaseNumberError}
               type={UswdsAlertStyle.Error}
@@ -339,8 +348,7 @@ function ConsolidationOrderModalComponent(
               slim={true}
               inline={true}
             ></Alert>
-          )}
-          {!leadCaseNumberError && (
+          ) : (
             <LoadingSpinner
               caption="Verifying lead case number..."
               height="40px"
