@@ -216,11 +216,6 @@ jobs:
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       environment: ${{ needs.build-info.outputs.environment }}
-      azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
-      azurePlanType: ${{ vars.AZ_PLAN_TYPE }}
-      appName: ${{ vars.APP_NAME }}
-      devSuffix: ${{ vars.DEV_SUFFIX }}
-      slotName: ${{ vars.SLOT_NAME }}
 
   deploy:
     runs-on: ubuntu-latest
