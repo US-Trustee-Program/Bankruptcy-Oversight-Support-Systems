@@ -72,13 +72,13 @@ describe('ConsolidationOrderModalComponent', () => {
     await waitFor(() => {
       ref.current?.show({ status: 'rejected', cases });
     });
-
+    screen.debug();
     // Check heading
     const heading = document.querySelector('.usa-modal__heading');
     expect(heading).toHaveTextContent('Reject Case Consolidation?');
 
     // Check case Ids
-    const caseIdDiv = screen.queryByTestId(`confirm-modal-${id}-caseIds`);
+    const caseIdDiv = screen.queryByTestId(`modal-case-list-container`);
     expect(caseIdDiv).toBeInTheDocument();
     cases.forEach((bCase) => {
       expect(caseIdDiv).toHaveTextContent(getCaseNumber(bCase.caseId));

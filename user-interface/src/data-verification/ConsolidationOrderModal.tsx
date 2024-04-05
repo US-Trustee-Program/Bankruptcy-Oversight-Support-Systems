@@ -309,7 +309,11 @@ function ConsolidationOrderModalComponent(
         <div data-testid="modal-rejection-notice-container">
           The following cases will not be consolidated
         </div>
-        <div className="modal-case-list-container" style={{ maxHeight: childCasesDivHeight }}>
+        <div
+          data-testid="modal-case-list-container"
+          className="modal-case-list-container"
+          style={{ maxHeight: childCasesDivHeight }}
+        >
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
               <li key={bCase.caseId}>
@@ -415,7 +419,11 @@ function ConsolidationOrderModalComponent(
           This will confirm the{' '}
           <span className="text-bold">{consolidationTypeMap.get(consolidationType!)}</span> of
         </div>
-        <div className="modal-case-list-container" style={{ maxHeight: childCasesDivHeight }}>
+        <div
+          data-testid="modal-case-list-container"
+          className="modal-case-list-container"
+          style={{ maxHeight: childCasesDivHeight }}
+        >
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
               <li key={bCase.caseId}>
