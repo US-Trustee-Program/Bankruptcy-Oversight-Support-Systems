@@ -162,10 +162,10 @@ jobs:
       - name: Get source code
         uses: actions/checkout@v3
 
-      - name: Use Node.js 18.20.1
+      - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18.20.1
+          node-version: ${{ vars.NODE_VERSION }}
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
 
@@ -188,6 +188,8 @@ jobs:
   validation:
     name: Validation
     uses: ./.github/workflows/validation.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
 
   build-frontend:
     defaults:
@@ -199,10 +201,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Use Node.js 18.20.1
+      - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18.20.1
+          node-version: ${{ vars.NODE_VERSION }}
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
       - name: Execute Build
@@ -281,10 +283,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Use Node.js 18.20.1
+      - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18.20.1
+          node-version: ${{ vars.NODE_VERSION }}
           cache: "npm"
           cache-dependency-path: common/package-lock.json
       - name: Execute Build
