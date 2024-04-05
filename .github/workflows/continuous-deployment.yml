@@ -48,9 +48,10 @@ on:
         options:
           - "false"
           - "true"
+
 jobs:
-  build-info-reusable:
-    name: reusable-build-info
+  setup:
+    name: build-info
     uses: ./.github/workflows/reusable-build-info.yml
     secrets: inherit # pragma: allowlist secret
     with:
@@ -204,18 +205,18 @@ jobs:
 
   build:
     name: Build
-    needs: [build-info]
+    needs: [setup]
     uses: ./.github/workflows/sub-build.yml
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
-      apiName: ${{ needs.build-info.outputs.apiName }}
-      camsServerHostname: ${{ needs.build-info.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      camsServerHostname: ${{ needs.setup.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
-      webappName: ${{ needs.build-info.outputs.webappName }}
-      environment: ${{ needs.build-info.outputs.environment }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      environment: ${{ needs.setup.outputs.environment }}
 
   deploy:
     runs-on: ubuntu-latest

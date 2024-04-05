@@ -34,6 +34,9 @@ on:
       environmentHash:
         description: ""
         value: ${{ jobs.build-info.outputs.environmentHash }}
+      ghaEnvironment:
+        description: ""
+        value: ${{ inputs.environment }}
 
 jobs:
   build-info:
