@@ -30,7 +30,7 @@ on:
           - "true"
       enableSlotDeployment:
         description:
-          "False for full deployment of Azure resources. True will deploy to existing enviroment
+          "False for full deployment of Azure resources. True will deploy to existing environment
           with Slots resources."
         required: true
         default: "false"
@@ -49,6 +49,16 @@ on:
           - "false"
           - "true"
 jobs:
+  build-info-reusable:
+    name: reusable-build-info
+    uses: ./.github/workflows/reusable-build-info.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+      enableSlotDeployment: ${{ inputs.enableSlotDeployment }}
+      enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
+      deployVnet: ${{ inputs.deployVnet }}
+
   build-info:
     runs-on: ubuntu-latest
     environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
@@ -196,6 +206,7 @@ jobs:
     name: Build
     needs: [build-info]
     uses: ./.github/workflows/sub-build.yml
+    secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       apiName: ${{ needs.build-info.outputs.apiName }}
@@ -205,6 +216,11 @@ jobs:
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ needs.build-info.outputs.webappName }}
       environment: ${{ needs.build-info.outputs.environment }}
+      azureEnvironment: ${{ vars.AZURE_ENVIRONMENT }}
+      azurePlanType: ${{ vars.AZ_PLAN_TYPE }}
+      appName: ${{ vars.APP_NAME }}
+      devSuffix: ${{ vars.DEV_SUFFIX }}
+      slotName: ${{ vars.SLOT_NAME }}
 
   deploy:
     runs-on: ubuntu-latest
