@@ -4,7 +4,7 @@ import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
   ConsolidationOrderModalProps,
-  addOxfordCommas,
+  formatListforDisplay,
   getCaseAssignments,
   fetchLeadCaseAttorneys,
 } from '@/data-verification/ConsolidationOrderModal';
@@ -224,19 +224,19 @@ describe('ConsolidationOrderModalComponent', () => {
   test('should render Oxford comma for attorney list.', async () => {
     const nameList: string[] = [];
 
-    const noNames = addOxfordCommas(nameList);
+    const noNames = formatListforDisplay(nameList);
     expect(noNames).toEqual('(unassigned)');
 
     nameList.push('Abe');
-    const oneName = addOxfordCommas(nameList);
+    const oneName = formatListforDisplay(nameList);
     expect(oneName).toEqual('Abe');
 
     nameList.push('Ben');
-    const twoNames = addOxfordCommas(nameList);
+    const twoNames = formatListforDisplay(nameList);
     expect(twoNames).toEqual('Abe and Ben');
 
     nameList.push('Charles');
-    const threeNames = addOxfordCommas(nameList);
+    const threeNames = formatListforDisplay(nameList);
     expect(threeNames).toEqual('Abe, Ben, and Charles');
   });
 

@@ -83,7 +83,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function handleAddNewCaseNumber(_ev: ChangeEvent<HTMLInputElement>): void {
     throw new Error('Function not implemented.');
   }
-
+  function setOrderWithAssignments(order: ConsolidationOrder) {
+    setOrder({ ...order });
+  }
   async function handleOnExpand() {
     if (props.onExpand) {
       props.onExpand(`order-list-${order.id}`);
@@ -98,9 +100,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           // and don't set the attorney assignment for this specific case.
         }
       }
-      // Ensure the loaded assignments are stored in state on the order and not overridden
-      // should the parent data consolidation screen refresh the accordion.
-      setOrder({ ...order });
+      setOrderWithAssignments(order);
       setIsAssignmentLoaded(true);
     }
   }
