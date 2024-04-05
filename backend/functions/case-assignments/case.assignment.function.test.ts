@@ -222,7 +222,7 @@ describe('Case Assignment Function Tests', () => {
     expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
   });
 
-  test('Should return a list a assignments when valid caseId is supplied for GET request', async () => {
+  test('Should return a list of assignments when valid caseId is supplied for GET request', async () => {
     const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const caseId = '001-67-89012';
     const request = {

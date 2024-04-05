@@ -47,6 +47,7 @@ export interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<T>;
 }
 
+//This allows us to use generics and avoid typing using the "as" keyword to specify return types throughout the rest of the application
 export function useGenericApi(): GenericApiClient {
   return {
     async get<T>(path: string, options?: ObjectKeyVal): Promise<T> {

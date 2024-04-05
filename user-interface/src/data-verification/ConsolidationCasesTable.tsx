@@ -100,7 +100,7 @@ function _ConsolidationCaseTable(
                     bCase.attorneyAssignments.length > 0 && (
                       <ul className="usa-list--unstyled">
                         {bCase.attorneyAssignments.map((att, idx) => (
-                          <li key={idx}>{att.name}</li>
+                          <li key={`${bCase.caseId}-${idx}`}>{att.name}</li>
                         ))}
                       </ul>
                     )}

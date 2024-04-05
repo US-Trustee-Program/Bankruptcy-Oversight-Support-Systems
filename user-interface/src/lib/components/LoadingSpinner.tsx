@@ -22,7 +22,7 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
       }}
     >
       <svg
-        id={`${id}-svg`}
+        id={`${id}-loading-spinner-svg`}
         className="animate-spin"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"

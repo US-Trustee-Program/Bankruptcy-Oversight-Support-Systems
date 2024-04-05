@@ -63,7 +63,7 @@ export async function fetchLeadCaseAttorneys(leadCaseId: string) {
   return caseAssignments.map((assignment) => assignment.name);
 }
 
-export function addOxfordCommas(attorneys: string[]) {
+export function formatListforDisplay(attorneys: string[]) {
   if (attorneys.length === 0) {
     return '(unassigned)';
   } else if (attorneys.length < 3) {
@@ -109,8 +109,6 @@ function ConsolidationOrderModalComponent(
       status: options.status,
       rejectionReason: reasonRef.current?.value,
       leadCaseSummary: leadCaseSummary!,
-      // onConfirm should never be called unless the button is enabled.
-      // The button should never be enabled unless a consolidationType is selected
       consolidationType: consolidationType!,
     });
   };
@@ -379,7 +377,7 @@ function ConsolidationOrderModalComponent(
         <div className="modal-step2-assignments-list">
           with <span className="text-bold">{leadCaseNumber}</span> as the Lead Case. All cases will
           be assigned to{' '}
-          <span className="text-bold oxford-comma">{addOxfordCommas(leadCaseAttorneys)}</span>.
+          <span className="text-bold">{formatListforDisplay(leadCaseAttorneys)}</span>.
         </div>
       </div>
     );

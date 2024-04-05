@@ -294,9 +294,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalApproveButton).toBeEnabled();
     });
 
-    // Click button on First screen of Modal
+    //click "continue" button on first screen of the modal.
     fireEvent.click(modalApproveButton);
-    // Click button on Second screen of Modal
+    //click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
