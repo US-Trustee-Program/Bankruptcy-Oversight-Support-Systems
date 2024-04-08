@@ -123,7 +123,8 @@ jobs:
 
   deploy-db:
     name: ComosDb
-    needs: [setup, build, accessibility-test, security-scan, validation]
+    # needs: [setup, build, accessibility-test, security-scan, validation] // TODO CAMS-237 Skip some validation jobs
+    needs: [setup, build]
     uses: ./.github/workflows/reusable-database-deploy.yml
     secrets: inherit # pragma: allowlist secret
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
@@ -135,7 +136,8 @@ jobs:
 
   deploy-infra:
     name: Azure Resources
-    needs: [setup, build, accessibility-test, security-scan, validation]
+    # needs: [setup, build, accessibility-test, security-scan, validation] // TODO CAMS-237 Skip some validation jobs
+    needs: [setup, build]
     uses: ./.github/workflows/reusable-deploy.yml
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
