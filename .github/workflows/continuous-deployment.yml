@@ -118,6 +118,18 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
 
+  deploy-db:
+    name: ComosDb
+    needs: [setup, build, accessibility-test, security-scan, validation]
+    uses: ./.github/workflows/reusable-database-deploy.yml
+    secrets: inherit # pragma: allowlist secret
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    with:
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+
   deploy:
     runs-on: ubuntu-latest
     needs: [setup, build, accessibility-test, security-scan, validation]
@@ -171,21 +183,21 @@ jobs:
             --file ./ops/cloud-deployment/main.bicep \
             --parameters 'appName=${{ needs.setup.outputs.stackName }} deployVnet=${{ needs.setup.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} createActionGroup=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
-      - name: Deploy database
-        id: azure-db-deploy
-        run: |
-          allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.setup.outputs.apiName }} --query id -o tsv)
+      # - name: Deploy database
+      #   id: azure-db-deploy
+      #   run: |
+      #     allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ needs.setup.outputs.apiName }} --query id -o tsv)
 
-          ./ops/scripts/pipeline/az-cosmos-deploy.sh \
-            -g ${{ secrets.AZURE_RG }} \
-            --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
-            --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            --environmentName ${{ needs.setup.outputs.ghaEnvironment }} \
-            --allowedSubnet "${allowedSubnet}" \
-            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
-            --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
-            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ needs.setup.outputs.environmentHash || 'DOES_NOT_EXIST' }}
+      #     ./ops/scripts/pipeline/az-cosmos-deploy.sh \
+      #       -g ${{ secrets.AZURE_RG }} \
+      #       --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+      #       --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+      #       --environmentName ${{ needs.setup.outputs.ghaEnvironment }} \
+      #       --allowedSubnet "${allowedSubnet}" \
+      #       --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
+      #       --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
+      #       --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+      #       --branchHashId ${{ needs.setup.outputs.environmentHash || 'DOES_NOT_EXIST' }}
 
       - name: Check deployment and set params
         id: set-deploy-params
