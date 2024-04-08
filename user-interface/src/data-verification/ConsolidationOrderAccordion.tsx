@@ -414,7 +414,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           >
             <div className="grid-row grid-gap-lg consolidation-text">
               <div className="grid-col-1"></div>
-              <div className="grid-col-10">Consolidation for the following cases is rejected.</div>
+              <div className="grid-col-10">
+                Consolidation order is rejected for the following cases.
+              </div>
               <div className="grid-col-1"></div>
             </div>
             <div className="grid-row grid-gap-lg">
