@@ -16,6 +16,7 @@ import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
   ConsolidationOrderActionApproval,
+  getCaseSummaryFromConsolidationOrderCase,
   getCaseSummaryFromTransferOrder,
   TransferOrder,
   TransferOrderAction,
@@ -334,10 +335,9 @@ describe('Orders use case', () => {
       status: 'pending',
       childCases: [],
     };
-    const childCaseSummaries = newConsolidation.childCases.map((bCase) => {
-      const { docketEntries: _docketEntries, ...bCaseSummary } = bCase;
-      return bCaseSummary;
-    });
+    const childCaseSummaries = newConsolidation.childCases.map((bCase) =>
+      getCaseSummaryFromConsolidationOrderCase(bCase),
+    );
     const leadCaseAfter: ConsolidationOrderSummary = {
       status: 'approved',
       childCases: childCaseSummaries,
@@ -440,10 +440,9 @@ describe('Orders use case', () => {
       status: 'pending',
       childCases: [],
     };
-    const childCaseSummaries = approvedConsolidation.childCases.map((bCase) => {
-      const { docketEntries: _docketEntries, ...bCaseSummary } = bCase;
-      return bCaseSummary;
-    });
+    const childCaseSummaries = approvedConsolidation.childCases.map((bCase) =>
+      getCaseSummaryFromConsolidationOrderCase(bCase),
+    );
     const leadCaseAfter: ConsolidationOrderSummary = {
       status: 'approved',
       childCases: [childCaseSummaries[0]],
