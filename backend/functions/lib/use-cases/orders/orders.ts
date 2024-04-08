@@ -255,9 +255,6 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ): Promise<ConsolidationOrder[]> {
-    // TODO CAMS-301
-    // - valid case id supplied (Noticed a reject record got created when passing a list of invalid string values)
-
     const { rejectedCases, ...provisionalOrder } = data;
     return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
@@ -344,54 +341,65 @@ export class OrdersUseCase {
     const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
     response.push(createdConsolidation);
 
-    const assignmentUseCase = new CaseAssignmentUseCase(context);
-    const leadCaseAssignments = await assignmentUseCase.findAssignmentsByCaseId(leadCase.caseId);
-    const leadCaseAttorneys = leadCaseAssignments.map((assignment) => assignment.name);
-
-    const childCaseSummaries = [];
     for (const childCase of newConsolidation.childCases) {
       if (childCase.caseId !== leadCase.caseId) {
-        // Add the child case history.
         const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
         await this.casesRepo.createCaseHistory(context, caseHistory);
-
-        // Add the reference to the lead case to the child case.
-        const consolidationTo: ConsolidationTo = {
-          caseId: childCase.caseId,
-          otherCase: leadCase,
-          orderDate: childCase.orderDate,
-          consolidationType: newConsolidation.consolidationType,
-          documentType: 'CONSOLIDATION_TO',
-        };
-        await this.casesRepo.createConsolidationTo(context, consolidationTo);
-
-        // Add the reference to the child case to the lead case.
-        const consolidationFrom: ConsolidationFrom = {
-          caseId: newConsolidation.leadCase.caseId,
-          otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
-          orderDate: childCase.orderDate,
-          consolidationType: newConsolidation.consolidationType,
-          documentType: 'CONSOLIDATION_FROM',
-        };
-        await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
-
-        // Assign lead case attorneys to the child case.
-        assignmentUseCase.createTrialAttorneyAssignments(
-          context,
-          childCase.caseId,
-          leadCaseAttorneys,
-          'TrialAttorney',
-        );
-
-        // Add the child case lead case history.
-        const { docketEntries: _docketEntries, ...caseSummary } = childCase;
-        childCaseSummaries.push(caseSummary);
       }
     }
 
-    // Add the lead case history.
-    const leadCaseHistory = await this.buildHistory(context, leadCase, status, childCaseSummaries);
-    await this.casesRepo.createCaseHistory(context, leadCaseHistory);
+    if (status === 'approved') {
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      const leadCaseAssignments = await assignmentUseCase.findAssignmentsByCaseId(leadCase.caseId);
+      const leadCaseAttorneys = leadCaseAssignments.map((assignment) => assignment.name);
+
+      const childCaseSummaries = [];
+      for (const childCase of newConsolidation.childCases) {
+        if (childCase.caseId !== leadCase.caseId) {
+          // Add the reference to the lead case to the child case.
+          const consolidationTo: ConsolidationTo = {
+            caseId: childCase.caseId,
+            otherCase: leadCase,
+            orderDate: childCase.orderDate,
+            consolidationType: newConsolidation.consolidationType,
+            documentType: 'CONSOLIDATION_TO',
+          };
+          await this.casesRepo.createConsolidationTo(context, consolidationTo);
+
+          // Add the reference to the child case to the lead case.
+          const consolidationFrom: ConsolidationFrom = {
+            caseId: newConsolidation.leadCase.caseId,
+            otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
+            orderDate: childCase.orderDate,
+            consolidationType: newConsolidation.consolidationType,
+            documentType: 'CONSOLIDATION_FROM',
+          };
+          await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
+
+          // Assign lead case attorneys to the child case.
+          assignmentUseCase.createTrialAttorneyAssignments(
+            context,
+            childCase.caseId,
+            leadCaseAttorneys,
+            'TrialAttorney',
+          );
+
+          // Add the child case lead case history.
+          const childCaseSummary = getCaseSummaryFromConsolidationOrderCase(childCase);
+          childCaseSummaries.push(childCaseSummary);
+        }
+      }
+
+      // Add the lead case history.
+      const leadCaseHistory = await this.buildHistory(
+        context,
+        leadCase,
+        status,
+        childCaseSummaries,
+      );
+      await this.casesRepo.createCaseHistory(context, leadCaseHistory);
+    }
+
     return response;
   }
 
