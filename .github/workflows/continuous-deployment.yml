@@ -60,6 +60,30 @@ jobs:
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
       deployVnet: ${{ inputs.deployVnet }}
 
+  smoke-test-no-slot:
+    name: smoke
+    needs: [setup]
+    uses: ./.github/workflows/reusable-smoketest.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+  smoke-test-slot:
+    name: smoke
+    needs: [setup]
+    uses: ./.github/workflows/reusable-smoketest.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+
   accessibility-test:
     defaults:
       run:
@@ -346,6 +370,17 @@ jobs:
           INFO_SHA=${{ github.sha }}" \
           --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
+  smoke-test-app-reusable:
+    name: Smoke Test App
+    needs: [setup, deploy-webapp, deploy-service]
+    uses: ./.github/workflows/reusable-smoketest.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
   smoke-test-application:
     runs-on: ubuntu-latest
@@ -591,6 +626,19 @@ jobs:
         run: |
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
+
+  smoke-test-post-swap:
+    name: smoke
+    needs: [setup, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+    uses: ./.github/workflows/reusable-smoketest.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
 
   smoke-test-application-post-swap:
     runs-on: ubuntu-latest
