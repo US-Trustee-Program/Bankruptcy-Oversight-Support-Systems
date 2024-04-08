@@ -391,8 +391,7 @@ jobs:
           INFO_SHA=${{ github.sha }}" \
           --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
-  smoke-test-app-reusable:
-    name: Smoke Test App
+  smoke-test-application:
     needs: [setup, deploy-webapp, deploy-service]
     uses: ./.github/workflows/reusable-smoketest.yml
     secrets: inherit # pragma: allowlist secret
@@ -403,62 +402,62 @@ jobs:
       apiName: ${{ needs.setup.outputs.apiName }}
       azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
-  smoke-test-application:
-    runs-on: ubuntu-latest
-    needs: [setup, deploy-webapp, deploy-service]
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
-    env:
-      stackName: ${{ needs.setup.outputs.stackName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      branchHashId: ${{ needs.setup.outputs.environmentHash }}
-      priority: 200
-    steps:
-      - uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - name: Health check api
-        run: |
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} )
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck )
+  # smoke-test-application:
+  #   runs-on: ubuntu-latest
+  #   needs: [setup, deploy-webapp, deploy-service]
+  #   environment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #   env:
+  #     stackName: ${{ needs.setup.outputs.stackName }}
+  #     webappName: ${{ needs.setup.outputs.webappName }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     branchHashId: ${{ needs.setup.outputs.environmentHash }}
+  #     priority: 200
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgApp
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  #     - name: Enable GHA runner access
+  #       run: |
+  #         ops/scripts/pipeline/dev-add-allowed-ip.sh \
+  #         -g ${{ steps.rgApp.outputs.out }} \
+  #         -s ${{ env.stackName }} \
+  #         -p ${{ env.priority }} \
+  #         --is-cicd
+  #     - name: Health check api
+  #       run: |
+  #         webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} )
+  #         apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck )
 
-          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
-            echo "Print api healthcheck response"
-            curl https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }}
-            exit 0
-          else
-            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
-            exit 1
-          fi
+  #         if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+  #           echo "Print api healthcheck response"
+  #           curl https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }}
+  #           exit 0
+  #         else
+  #           echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+  #           exit 1
+  #         fi
 
-      - name: Execute Integration Tests
-        run: |
-          pushd backend/functions
-          npm ci
-          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-          npm run test:integration
-          popd
+  #     - name: Execute Integration Tests
+  #       run: |
+  #         pushd backend/functions
+  #         npm ci
+  #         export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+  #         npm run test:integration
+  #         popd
 
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+  #     - name: Disable GHA runner access
+  #       if: always()
+  #       run: |
+  #         name="gha-${{ env.priority }}-${{ env.stackName }}"
+  #         ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   enable-access:
     runs-on: ubuntu-latest
@@ -648,8 +647,7 @@ jobs:
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
 
-  smoke-test-post-swap:
-    name: smoke
+  smoke-test-application-post-swap:
     needs: [setup, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
     uses: ./.github/workflows/reusable-smoketest.yml
     secrets: inherit # pragma: allowlist secret
@@ -661,59 +659,59 @@ jobs:
       azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       slotName: ${{ needs.setup.outputs.slotName }}
 
-  smoke-test-application-post-swap:
-    runs-on: ubuntu-latest
-    needs: [setup, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
-    env:
-      stackName: ${{ needs.setup.outputs.stackName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      priority: 200
-    steps:
-      - uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - name: Health check api
-        run: |
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} )
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck )
+  # smoke-test-application-post-swap:
+  #   runs-on: ubuntu-latest
+  #   needs: [setup, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+  #   environment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #   env:
+  #     stackName: ${{ needs.setup.outputs.stackName }}
+  #     webappName: ${{ needs.setup.outputs.webappName }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     slotName: ${{ needs.setup.outputs.slotName }}
+  #     priority: 200
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgApp
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  #     - name: Enable GHA runner access
+  #       run: |
+  #         ops/scripts/pipeline/dev-add-allowed-ip.sh \
+  #         -g ${{ steps.rgApp.outputs.out }} \
+  #         -s ${{ env.stackName }} \
+  #         -p ${{ env.priority }} \
+  #         --is-cicd
+  #     - name: Health check api
+  #       run: |
+  #         webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} )
+  #         apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck )
 
-          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
-            echo "Print api healthcheck response"
-            curl https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }}
-            exit 0
-          else
-            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
-            exit 1
-          fi
+  #         if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+  #           echo "Print api healthcheck response"
+  #           curl https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck?x-ms-routing-name=${{ env.slotName }}
+  #           exit 0
+  #         else
+  #           echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+  #           exit 1
+  #         fi
 
-      - name: Execute Integration Tests
-        run: |
-          pushd backend/functions
-          npm ci
-          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-          npm run test:integration
-          popd
+  #     - name: Execute Integration Tests
+  #       run: |
+  #         pushd backend/functions
+  #         npm ci
+  #         export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
+  #         npm run test:integration
+  #         popd
 
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
+  #     - name: Disable GHA runner access
+  #       if: always()
+  #       run: |
+  #         name="gha-${{ env.priority }}-${{ env.stackName }}"
+  #         ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
