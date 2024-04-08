@@ -1,4 +1,4 @@
-name: Azure Deployment - Frontend Slot Creation
+name: Azure Deployment - Frontend Slot Resource Creation
 
 on:
   workflow_call:
@@ -25,7 +25,7 @@ on:
         required: true
         type: string
 jobs:
-  deploy-azure-infrastructure:
+  deploy-frontend-slot-resources:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:

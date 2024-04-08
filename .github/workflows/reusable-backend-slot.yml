@@ -24,8 +24,11 @@ on:
       slotDeploymentEnabled:
         required: true
         type: string
+      environmentHash:
+        required: true
+        type: string
 jobs:
-  deploy-azure-infrastructure:
+  deploy-backend-slot-resources:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
@@ -47,6 +50,7 @@ jobs:
         if: (inputs.slotDeploymentEnabled == 'true')
         run: |
           slotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          cosmosDbManageIdName="id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user"
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
               --apiName ${{ inputs.apiName }} \
@@ -56,7 +60,7 @@ jobs:
               --slotName ${{ inputs.slotName }} \
               --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
               --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --cosmosIdName ${{ steps.set-deploy-params.outputs.cosmosDbManagedIdName }} \
+              --cosmosIdName ${cosmosDbManageIdName} \
               --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
               --storageAccName ${slotStorageAccountName:0:24}
