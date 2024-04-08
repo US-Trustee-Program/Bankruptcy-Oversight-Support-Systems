@@ -25,8 +25,8 @@ on:
         required: true
         type: string
       deployBranch:
-        default: false
-        type: boolean
+        default: "false"
+        type: string
       deployBicep:
         required: true
         type: string
@@ -35,7 +35,6 @@ jobs:
   deploy-azure-infrastructure:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
-
     steps:
       - uses: actions/checkout@main
 
