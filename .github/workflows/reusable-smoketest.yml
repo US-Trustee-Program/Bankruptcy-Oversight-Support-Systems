@@ -18,7 +18,7 @@ on:
       slotName:
         required: false
         type: string
-      azRgEncrypted:
+      azResourceGrpAppEncrypted:
         required: true
         type: string
 
@@ -43,7 +43,7 @@ jobs:
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
-          in: ${{ inputs.azRgEncrypted }}
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
       - name: Enable GHA runner access
         run: |
           ops/scripts/pipeline/dev-add-allowed-ip.sh \

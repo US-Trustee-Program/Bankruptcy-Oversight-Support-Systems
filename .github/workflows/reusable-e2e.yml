@@ -18,14 +18,7 @@ on:
       azResourceGrpAppEncrypted:
         required: true
         type: string
-      azureEnvironment:
-        required: true
-        type: string
-      azureHostnameSuffix:
-        default: '.us'
-        required: false
-        type: string
-      deploymentEnvironment:
+      ghaEnvironment:
         required: true
         type: string
       branchHashId:
@@ -33,8 +26,20 @@ on:
         type: string
 
 jobs:
+  smoke-test:
+    uses: ./.github/workflows/reusable-smoketest.yml
+    with:
+      environment: ${{ inputs.ghaEnvironment }}
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ inputs.slotName }}
+    secrets: inherit # pragma: allowlist secret
+
   playwright-e2e-test:
-    environment: ${{ inputs.deploymentEnvironment }}
+    needs: [smoke-test]
+    environment: ${{ inputs.ghaEnvironment }}
     runs-on: ubuntu-latest
     env:
       priority: 201
@@ -48,7 +53,7 @@ jobs:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ inputs.azureEnvironment }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
@@ -65,23 +70,9 @@ jobs:
           -p ${{ env.priority }} \
           --is-cicd
 
-      - name: Smoke test application
-        run: |
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ inputs.webappName }}.azurewebsites${{ inputs.azureHostnameSuffix }}?x-ms-routing-name=${{ inputs.slotName }} )
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/healthcheck?x-ms-routing-name=${{ inputs.slotName }} )
-
-          if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
-            echo "Print api healthcheck response"
-            curl https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/healthcheck?x-ms-routing-name=${{ inputs.slotName }}
-            exit 0
-          else
-            echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
-            exit 1
-          fi
-
       - name: Seed e2e database
         run: |
-          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ inputs.azureHostnameSuffix }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
+          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
       - name: Install Node dependencies
         run: |
@@ -90,7 +81,7 @@ jobs:
 
       - name: Run the test
         run: |
-          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ inputs.azureHostnameSuffix }} npx playwright test --reporter=list,html
+          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -110,7 +101,7 @@ jobs:
         if: always()
         run: |
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
-          if [[ ${{ inputs.deploymentEnvironment }} != "Main-Gov" ]]; then
+          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
