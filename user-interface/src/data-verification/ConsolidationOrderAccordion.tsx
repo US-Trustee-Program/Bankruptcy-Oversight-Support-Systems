@@ -1,9 +1,9 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
-import { CaseTable, CaseTableImperative } from './CaseTable';
+import { CaseTable } from './CaseTable';
 import { useEffect, useRef, useState } from 'react';
-import { ConsolidationCaseTable } from './ConsolidationCasesTable';
+import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
 import {
   ConsolidationOrder,
@@ -43,7 +43,7 @@ export interface ConsolidationOrderAccordionProps {
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   const { hidden, statusType, orderType, officesList, expandedId } = props;
-  const caseTable = useRef<CaseTableImperative>(null);
+  const caseTable = useRef<OrderTableImperative>(null);
 
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
@@ -58,10 +58,27 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const api = useApi();
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
+    console.log(`Adding ${bCase.caseId} to selectedCases`, selectedCases.length);
     if (selectedCases.includes(bCase)) {
       setSelectedCases(selectedCases.filter((aCase) => bCase !== aCase));
     } else {
+      console.log('selectedCases was empty');
       setSelectedCases([...selectedCases, bCase]);
+      console.log(selectedCases);
+    }
+  }
+
+  function toggleAllCheckBoxes() {
+    if (selectedCases.length > 0) {
+      setSelectedCases([]);
+      caseTable.current?.clearSelection();
+    } else {
+      const caseList = caseTable.current?.selectAll();
+      if (caseList) {
+        setSelectedCases(caseList);
+      } else {
+        setSelectedCases([]);
+      }
     }
   }
 
@@ -242,6 +259,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
+                <div>
+                  <h3>Cases</h3>
+                  <Button uswdsStyle={UswdsButtonStyle.Outline} onClick={toggleAllCheckBoxes}>
+                    Include/Exclude All
+                  </Button>
+                </div>
                 <ConsolidationCaseTable
                   id={`${order.id}-case-list`}
                   data-testid={`${order.id}-case-list`}

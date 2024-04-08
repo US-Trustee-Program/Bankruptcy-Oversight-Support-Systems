@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export type OrderTableImperative = {
   clearSelection: () => void;
+  selectAll: () => ConsolidationOrderCase[];
 };
 
 interface ConsolidationCaseTableProps {
@@ -42,8 +43,25 @@ function _ConsolidationCaseTable(
     setIncluded([]);
   }
 
+  function selectAll() {
+    const newIdList = [];
+    const newCaseList = [];
+    let bCase = 0;
+    const checkboxes = document.querySelectorAll(`#${id}.consolidation-cases-table input`);
+    if (checkboxes) {
+      for (const checkBox of checkboxes) {
+        bCase = parseInt((checkBox as HTMLInputElement).value);
+        newIdList.push(bCase);
+        newCaseList.push(cases[bCase]);
+      }
+    }
+    setIncluded(newIdList);
+    return newCaseList;
+  }
+
   useImperativeHandle(OrderTableRef, () => ({
     clearSelection,
+    selectAll,
   }));
 
   return (
