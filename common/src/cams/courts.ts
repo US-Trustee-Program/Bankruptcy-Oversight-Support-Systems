@@ -11,3 +11,12 @@ export interface OfficeDetails {
   regionName: string;
   state?: string;
 }
+
+export function filterCourtByDivision(divisionCode: string, officeList: OfficeDetails[]) {
+  const divisionOffice = officeList.find((office) => office.courtDivision === divisionCode);
+  if (divisionOffice) {
+    return officeList.filter((office) => office.courtId === divisionOffice.courtId);
+  } else {
+    return null;
+  }
+}
