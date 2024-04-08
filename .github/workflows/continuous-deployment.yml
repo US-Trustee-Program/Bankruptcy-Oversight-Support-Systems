@@ -400,7 +400,7 @@ jobs:
       stackName: ${{ needs.setup.outputs.stackName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       apiName: ${{ needs.setup.outputs.apiName }}
-      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
   # smoke-test-application:
   #   runs-on: ubuntu-latest
