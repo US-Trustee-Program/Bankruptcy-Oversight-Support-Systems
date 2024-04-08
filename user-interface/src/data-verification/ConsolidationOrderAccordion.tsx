@@ -8,6 +8,7 @@ import './TransferOrderAccordion.scss';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
   ConsolidationOrderCase,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -112,6 +113,17 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function confirmAction(action: ConfirmActionResults): void {
+    switch (action.status) {
+      case 'approved':
+        approveConsolidation(action);
+        break;
+      case 'rejected':
+        rejectConsolidation(action);
+        break;
+    }
+  }
+
+  function approveConsolidation(action: ConfirmActionResults) {
     if (action.status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
@@ -132,6 +144,35 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               message: `Consolidation to lead case ${getCaseNumber(approvedOrder.leadCase?.caseId)} in ${
                 approvedOrder.leadCase?.courtName
               } (${approvedOrder.leadCase?.courtDivisionName}) was successful.`,
+              type: UswdsAlertStyle.Success,
+              timeOut: 8,
+            },
+            newOrders,
+            order,
+          );
+        })
+        .catch((reason) => {
+          // TODO: make the error message more meaningful
+          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        });
+    }
+  }
+
+  function rejectConsolidation(action: ConfirmActionResults) {
+    if (action.status === 'rejected') {
+      const data: ConsolidationOrderActionRejection = {
+        ...order,
+        rejectedCases: selectedCases.map((bCase) => bCase.caseId),
+        reason: action.rejectionReason,
+      };
+
+      api
+        .put('/consolidations/reject', data)
+        .then((response) => {
+          const newOrders = response.body as ConsolidationOrder[];
+          props.onOrderUpdate(
+            {
+              message: `Rejection of consolidation order was successful.`,
               type: UswdsAlertStyle.Success,
               timeOut: 8,
             },
