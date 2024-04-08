@@ -1,4 +1,4 @@
-name: CosmosDb Account Deployment
+name: Azure Deployment - CosmosDB
 
 on:
   workflow_call:
@@ -20,9 +20,6 @@ jobs:
   deploy-db:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
-    outputs:
-      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalIdEncrypted: ${{ steps.cosmosPrincipalId.outputs.out }}
     steps:
       - uses: actions/checkout@main
 
