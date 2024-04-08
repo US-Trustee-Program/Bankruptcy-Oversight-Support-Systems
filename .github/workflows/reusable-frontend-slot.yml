@@ -1,0 +1,58 @@
+name: Azure Deployment - Frontend Slot Creation
+
+on:
+  workflow_call:
+    inputs:
+      webAppName:
+        required: true
+        type: string
+      apiName:
+        required: true
+        type: string
+      ghaEnvironment:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      azResourceGrpNetworkEncrypted:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+      slotDeploymentEnabled:
+        required: true
+        type: string
+jobs:
+  deploy-azure-infrastructure:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetwork
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpNetworkEncrypted  }}
+      - name: Create Webapp Slot Resource
+        if: (inputs.slotDeploymentEnabled == 'true')
+        run: |
+          webAppSubnetName="snet-${{ inputs.webAppName }}"
+
+          ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
+              --webappName ${{ inputs.webappName }} \
+              --apiName ${{ inputs.apiName }} \
+              --resourceGroup ${{ steps.rgApp.outputs.out }} \
+              --slotName ${{ inputs.slotName }} \
+              --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
+              --network-rg ${{ steps.rgNetwork.outputs.out }} \
+              --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
+              --subnet $webAppSubnetName

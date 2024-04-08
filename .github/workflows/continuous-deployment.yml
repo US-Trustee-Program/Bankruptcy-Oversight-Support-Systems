@@ -141,10 +141,33 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      execVnetDeploy:  ${{ needs.setup.outputs.execVnetDeploy }}
+      execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
       slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-frontend-slot-resources:
+    name: Deploy
+    needs:
+      [
+        setup,
+        build,
+        accessibility-test,
+        security-scan,
+        validation,
+        deploy-infra,
+      ]
+    uses: ./.github/workflows/reusable-frontend-slot.yml
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    with:
+      webAppName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
     secrets: inherit # pragma: allowlist secret
 
   deploy:
