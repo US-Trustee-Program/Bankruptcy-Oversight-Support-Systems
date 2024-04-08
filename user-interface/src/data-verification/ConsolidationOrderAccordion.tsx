@@ -2,26 +2,22 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import { CaseTable, CaseTableImperative } from './CaseTable';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
   ConsolidationOrderCase,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
-import { InputRef } from '@/lib/type-declarations/input-fields';
-import { getOfficeList } from './dataVerificationHelper';
 import { OfficeDetails } from '@common/cams/courts';
-import Input from '@/lib/components/uswds/Input';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
   ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
-import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -52,21 +48,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
-  const courtSelectionRef = useRef<InputRef>(null);
-  const caseIdRef = useRef<InputRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
-  const featureFlags = useFeatureFlags();
+  const rejectButtonRef = useRef<ButtonRef>(null);
 
   const api = useApi();
-
-  useEffect(() => {
-    if (selectedCases.length == 0) {
-      approveButtonRef.current?.disableButton(true);
-    } else {
-      approveButtonRef.current?.disableButton(false);
-    }
-  }, [selectedCases]);
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
     if (selectedCases.includes(bCase)) {
@@ -76,13 +62,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function handleAddNewCaseDivisionCode(_newValue: SearchableSelectOption): void {
-    throw new Error('Function not implemented.');
-  }
-
-  function handleAddNewCaseNumber(_ev: ChangeEvent<HTMLInputElement>): void {
-    throw new Error('Function not implemented.');
-  }
   function setOrderWithAssignments(order: ConsolidationOrder) {
     setOrder({ ...order });
   }
@@ -96,7 +75,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
         } catch {
-          // The case assignments are not critical to perform the consolidation. Catch any error
+          // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }
       }
@@ -107,23 +86,30 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   function clearInputs(): void {
     caseTable.current?.clearSelection();
-    approveButtonRef.current?.disableButton(true);
+    disableButtons(true);
     setSelectedCases([]);
   }
 
-  function confirmAction({
-    status,
-    leadCaseSummary,
-    consolidationType,
-  }: ConfirmActionResults): void {
-    if (status === 'approved') {
+  function confirmAction(action: ConfirmActionResults): void {
+    switch (action.status) {
+      case 'approved':
+        approveConsolidation(action);
+        break;
+      case 'rejected':
+        rejectConsolidation(action);
+        break;
+    }
+  }
+
+  function approveConsolidation(action: ConfirmActionResults) {
+    if (action.status === 'approved') {
       const data: ConsolidationOrderActionApproval = {
         ...order,
-        consolidationType,
+        consolidationType: action.consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCaseSummary.caseId),
-        leadCase: leadCaseSummary,
+          .filter((caseId) => caseId !== action.leadCaseSummary.caseId),
+        leadCase: action.leadCaseSummary,
       };
 
       api
@@ -149,6 +135,44 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
         });
     }
   }
+
+  function rejectConsolidation(action: ConfirmActionResults) {
+    if (action.status === 'rejected') {
+      const data: ConsolidationOrderActionRejection = {
+        ...order,
+        rejectedCases: selectedCases.map((bCase) => bCase.caseId),
+        reason: action.rejectionReason,
+      };
+
+      api
+        .put('/consolidations/reject', data)
+        .then((response) => {
+          const newOrders = response.body as ConsolidationOrder[];
+          props.onOrderUpdate(
+            {
+              message: `Rejection of consolidation order was successful.`,
+              type: UswdsAlertStyle.Success,
+              timeOut: 8,
+            },
+            newOrders,
+            order,
+          );
+        })
+        .catch((reason) => {
+          // TODO: make the error message more meaningful
+          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        });
+    }
+  }
+
+  function disableButtons(disable: boolean) {
+    approveButtonRef.current?.disableButton(disable);
+    rejectButtonRef.current?.disableButton(disable);
+  }
+
+  useEffect(() => {
+    disableButtons(selectedCases.length === 0);
+  }, [selectedCases]);
 
   return (
     <Accordion
@@ -227,70 +251,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
             </div>
 
-            {featureFlags[CONSOLIDATIONS_ADD_CASE_ENABLED] && (
-              <>
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    <h3>Add Case</h3>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-
-                <div className="court-selection grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    <div className="form-row">
-                      <div className="select-container court-select-container">
-                        <label htmlFor={`court-selection-${order.id}`}>Court</label>
-                        <div
-                          className="usa-combo-box"
-                          data-testid={`court-selection-usa-combo-box-${order.id}`}
-                        >
-                          <SearchableSelect
-                            id={`court-selection-${order.id}`}
-                            data-testid={`court-selection-${order.id}`}
-                            className="new-court__select"
-                            closeMenuOnSelect={true}
-                            label="Select new court"
-                            ref={courtSelectionRef}
-                            onChange={handleAddNewCaseDivisionCode}
-                            //getOfficeList might need pulled into its own file
-                            options={getOfficeList(officesList)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-
-                <div className="case-selection grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-
-                  <div className="grid-col-10">
-                    <div className="form-row">
-                      <div>
-                        <label htmlFor={`new-case-input-${order.id}`}>Case Number</label>
-                        <div>
-                          <Input
-                            id={`new-case-input-${order.id}`}
-                            data-testid={`new-case-input-${order.id}`}
-                            className="usa-input"
-                            value=""
-                            onChange={handleAddNewCaseNumber}
-                            aria-label="New case ID"
-                            ref={caseIdRef}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-              </>
-            )}
-
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-5">
@@ -299,12 +259,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   onClick={() =>
                     confirmationModalRef.current?.show({
                       status: 'rejected',
-                      cases: order.childCases.map((c) => c),
+                      cases: selectedCases,
                     })
                   }
-                  disabled={true}
-                  //Disabled until we get to story CAMS-301
                   uswdsStyle={UswdsButtonStyle.Secondary}
+                  ref={rejectButtonRef}
                 >
                   Reject
                 </Button>
@@ -357,6 +316,38 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   openLinkIn="new-window"
                 ></CaseNumber>{' '}
                 {order.leadCase?.caseTitle}.
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-10">
+                <CaseTable
+                  id={`order-${order.id}-child-cases`}
+                  cases={order.childCases}
+                ></CaseTable>
+              </div>
+              <div className="grid-col-1"></div>
+            </div>
+          </section>
+        )}
+        {order.status === 'rejected' && (
+          <section
+            className="accordion-content order-form"
+            data-testid={`accordion-content-${order.id}`}
+          >
+            <div className="grid-row grid-gap-lg consolidation-text">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-10">
+                Rejected the consolidation of the cases below
+                {order.reason && order.reason.length && (
+                  <>
+                    {' '}
+                    for the following reason:
+                    <blockquote>{order.reason}</blockquote>
+                  </>
+                )}
+                {!order.reason && <>.</>}
               </div>
               <div className="grid-col-1"></div>
             </div>
