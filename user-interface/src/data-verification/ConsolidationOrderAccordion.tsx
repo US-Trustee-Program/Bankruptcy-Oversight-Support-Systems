@@ -416,6 +416,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 Consolidation order is rejected for the following cases.
+                {order.reason && <p>&quot;{order.reason}&quot;</p>}
               </div>
               <div className="grid-col-1"></div>
             </div>
