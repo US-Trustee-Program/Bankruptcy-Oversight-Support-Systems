@@ -38,6 +38,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
+    secrets: inherit # pragma: allowlist secret
 
   deploy-backend-slot-resources:
     uses: ./.github/workflows/reusable-backend-slot.yml
@@ -50,3 +51,4 @@ jobs:
       slotName: ${{ inputs.slotName }}
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       environmentHash: ${{ inputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret
