@@ -50,16 +50,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
+  const rejectButtonRef = useRef<ButtonRef>(null);
 
   const api = useApi();
-
-  useEffect(() => {
-    if (selectedCases.length == 0) {
-      approveButtonRef.current?.disableButton(true);
-    } else {
-      approveButtonRef.current?.disableButton(false);
-    }
-  }, [selectedCases]);
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
     if (selectedCases.includes(bCase)) {
@@ -93,7 +86,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   function clearInputs(): void {
     caseTable.current?.clearSelection();
-    approveButtonRef.current?.disableButton(true);
+    disableButtons(true);
     setSelectedCases([]);
   }
 
@@ -171,6 +164,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
         });
     }
   }
+
+  function disableButtons(disable: boolean) {
+    approveButtonRef.current?.disableButton(disable);
+    rejectButtonRef.current?.disableButton(disable);
+  }
+
+  useEffect(() => {
+    disableButtons(selectedCases.length === 0);
+  }, [selectedCases]);
 
   return (
     <Accordion
@@ -257,10 +259,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   onClick={() =>
                     confirmationModalRef.current?.show({
                       status: 'rejected',
-                      cases: order.childCases.map((c) => c),
+                      cases: selectedCases,
                     })
                   }
                   uswdsStyle={UswdsButtonStyle.Secondary}
+                  ref={rejectButtonRef}
                 >
                   Reject
                 </Button>
