@@ -2,7 +2,7 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import { CaseTable, CaseTableImperative } from './CaseTable';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
 import {
@@ -12,17 +12,12 @@ import {
   ConsolidationOrderCase,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
-import { InputRef } from '@/lib/type-declarations/input-fields';
-import { getOfficeList } from './dataVerificationHelper';
 import { OfficeDetails } from '@common/cams/courts';
-import Input from '@/lib/components/uswds/Input';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
   ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
-import useFeatureFlags, { CONSOLIDATIONS_ADD_CASE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -53,11 +48,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
-  const courtSelectionRef = useRef<InputRef>(null);
-  const caseIdRef = useRef<InputRef>(null);
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
-  const featureFlags = useFeatureFlags();
 
   const api = useApi();
 
@@ -77,13 +69,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function handleAddNewCaseDivisionCode(_newValue: SearchableSelectOption): void {
-    throw new Error('Function not implemented.');
-  }
-
-  function handleAddNewCaseNumber(_ev: ChangeEvent<HTMLInputElement>): void {
-    throw new Error('Function not implemented.');
-  }
   function setOrderWithAssignments(order: ConsolidationOrder) {
     setOrder({ ...order });
   }
@@ -263,70 +248,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               </div>
               <div className="grid-col-1"></div>
             </div>
-
-            {featureFlags[CONSOLIDATIONS_ADD_CASE_ENABLED] && (
-              <>
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    <h3>Add Case</h3>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-
-                <div className="court-selection grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    <div className="form-row">
-                      <div className="select-container court-select-container">
-                        <label htmlFor={`court-selection-${order.id}`}>Court</label>
-                        <div
-                          className="usa-combo-box"
-                          data-testid={`court-selection-usa-combo-box-${order.id}`}
-                        >
-                          <SearchableSelect
-                            id={`court-selection-${order.id}`}
-                            data-testid={`court-selection-${order.id}`}
-                            className="new-court__select"
-                            closeMenuOnSelect={true}
-                            label="Select new court"
-                            ref={courtSelectionRef}
-                            onChange={handleAddNewCaseDivisionCode}
-                            //getOfficeList might need pulled into its own file
-                            options={getOfficeList(officesList)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-
-                <div className="case-selection grid-row grid-gap-lg">
-                  <div className="grid-col-1"></div>
-
-                  <div className="grid-col-10">
-                    <div className="form-row">
-                      <div>
-                        <label htmlFor={`new-case-input-${order.id}`}>Case Number</label>
-                        <div>
-                          <Input
-                            id={`new-case-input-${order.id}`}
-                            data-testid={`new-case-input-${order.id}`}
-                            className="usa-input"
-                            value=""
-                            onChange={handleAddNewCaseNumber}
-                            aria-label="New case ID"
-                            ref={caseIdRef}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-              </>
-            )}
 
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
