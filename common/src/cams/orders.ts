@@ -7,7 +7,6 @@ export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = ConsolidationOrder & {
   rejectedCases: Array<string>;
-  leadCase: undefined;
 };
 
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
