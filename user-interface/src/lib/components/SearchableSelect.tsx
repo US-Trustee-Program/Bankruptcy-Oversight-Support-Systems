@@ -130,6 +130,10 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
     };
   });
 
+  useEffect(() => {
+    if (initialValue) setValue(initialValue);
+  }, []);
+
   return (
     <ReactSelect
       aria-label={props.label}
