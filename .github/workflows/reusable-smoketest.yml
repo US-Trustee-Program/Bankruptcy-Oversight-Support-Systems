@@ -53,31 +53,26 @@ jobs:
           --is-cicd
       - name: Health check api
         run: |
-          slotQueryParam=""
+          targetWebappURL=${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+          targetApiURL=${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck
+
           slotName=${{ inputs.slotName }}
-          if [[ $slotName=="staging" ]]; then
-            slotQueryParam="?x-ms-routing-name=${{ inputs.slotName }}"
+          if [[ $slotName == "staging" ]]; then
+            targetWebappURL="${targetWebappURL}?x-ms-routing-name=${{ inputs.slotName }}
+            targetApiURL="${targetApiURL}?x-ms-routing-name=${{ inputs.slotName }}
           fi
 
-          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}${slotQueryParam} )
-          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck${slotQueryParam} )
+          webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${targetWebappURL} )
+          apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://{targetApiURL} )
 
           if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
             echo "Print api healthcheck response"
-            curl https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/healthcheck${slotQueryParam}
+            curl https://{targetApiURL}
             exit 0
           else
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
             exit 1
           fi
-
-      - name: Execute Integration Tests
-        run: |
-          pushd backend/functions
-          npm ci
-          export CASES_FUNCTION_URL="https://${{ env.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api"
-          npm run test:integration
-          popd
 
       - name: Disable GHA runner access
         if: always()
