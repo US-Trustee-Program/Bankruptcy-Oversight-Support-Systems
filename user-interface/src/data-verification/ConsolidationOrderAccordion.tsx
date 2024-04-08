@@ -12,7 +12,7 @@ import {
   ConsolidationOrderCase,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { OfficeDetails } from '@common/cams/courts';
+import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
@@ -48,6 +48,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
+  const [filteredOfficesList] = useState<OfficeDetails[] | null>(
+    filterCourtByDivision(props.order.divisionCode, officesList),
+  );
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const rejectButtonRef = useRef<ButtonRef>(null);
@@ -295,7 +298,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <ConsolidationOrderModal
               ref={confirmationModalRef}
               id={`confirmation-modal-${order.id}`}
-              courts={officesList}
+              courts={filteredOfficesList ?? props.officesList}
               onCancel={clearInputs}
               onConfirm={confirmAction}
             ></ConsolidationOrderModal>
