@@ -377,6 +377,7 @@ function ConsolidationOrderModalComponent(
               setLeadCaseDivisionCode(ev?.value || '');
             }}
             ref={leadCaseDivisionRef}
+            value={props.courts.length === 1 ? props.courts[0].courtDivision : undefined}
           ></SearchableSelect>
         </div>
         <div className="lead-case-number-containter">
