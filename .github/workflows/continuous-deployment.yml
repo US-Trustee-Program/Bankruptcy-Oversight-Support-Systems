@@ -143,7 +143,7 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       execVnetDeploy:  ${{ needs.setup.outputs.execVnetDeploy }}
       slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
-      deployBranch: ${{ needs.setup.outputs.deployBranch }}
+      deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
 
