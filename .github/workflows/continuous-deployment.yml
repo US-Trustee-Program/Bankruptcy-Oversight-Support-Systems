@@ -654,7 +654,7 @@ jobs:
       stackName: ${{ needs.setup.outputs.stackName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       apiName: ${{ needs.setup.outputs.apiName }}
-      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       slotName: ${{ needs.setup.outputs.slotName }}
 
   # smoke-test-application-post-swap:
