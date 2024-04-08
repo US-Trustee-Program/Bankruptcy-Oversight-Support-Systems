@@ -342,7 +342,7 @@ export class OrdersUseCase {
     response.push(createdConsolidation);
 
     for (const childCase of newConsolidation.childCases) {
-      if (childCase.caseId !== leadCase.caseId) {
+      if (!leadCase || childCase.caseId !== leadCase.caseId) {
         const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
