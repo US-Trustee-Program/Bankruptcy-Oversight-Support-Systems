@@ -1,0 +1,86 @@
+name: Provision and Configure Cloud Resources
+
+on:
+  workflow_call:
+    inputs:
+      ghaEnvironment:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      azResourceGrpNetworkEncrypted:
+        required: true
+        type: string
+      stackName:
+        required: true
+        type: string
+      apiName:
+        required: true
+        type: string
+      webAppName:
+        required: true
+        type: string
+      environmentHash:
+        required: true
+        type: string
+      execVnetDeploy:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+      slotDeploymentEnabled:
+        required: true
+        type: string
+      deployBranch:
+        required: true
+        type: string
+      deployBicep:
+        required: true
+        type: string
+
+jobs:
+  deploy-infra:
+    name: Azure Infrastructure
+    uses: ./.github/workflows/reusable-deploy.yml
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    with:
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      stackName: ${{ inputs.stackName }}
+      environmentHash: ${{ inputs.environmentHash }}
+      execVnetDeploy: ${{ inputs.execVnetDeploy }}
+      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
+      deployBranch: ${{ inputs.deployBranch }}
+      deployBicep: ${{ inputs.deployBicep }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-db:
+    name: ComosDb
+    uses: ./.github/workflows/reusable-database-deploy.yml
+    needs: [deploy-infra]
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    with:
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      environmentHash: ${{ inputs.environmentHash }}
+      apiName: ${{ inputs.apiName }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-slot-resources:
+    name: Slot Resources
+    uses: ./.github/workflows/sub-deploy-slot-resources.yml
+    needs: [deploy-infra]
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    with:
+      webAppName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      slotName: ${{ inputs.slotName }}
+      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
+      environmentHash: ${{ inputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret
