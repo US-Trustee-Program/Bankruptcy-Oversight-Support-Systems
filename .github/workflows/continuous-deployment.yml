@@ -129,6 +129,7 @@ jobs:
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
+      apiName: ${{ needs.setup.outputs.apiName }}
 
   deploy-infra:
     name: Azure Resources
