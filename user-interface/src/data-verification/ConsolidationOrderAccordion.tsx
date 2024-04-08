@@ -415,8 +415,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="grid-row grid-gap-lg consolidation-text">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                Consolidation order is rejected for the following cases.
-                {order.reason && <p>&quot;{order.reason}&quot;</p>}
+                Rejected the consolidation of the cases below
+                {order.reason && order.reason.length && (
+                  <>
+                    {' '}
+                    for the following reason:
+                    <blockquote>{order.reason}</blockquote>
+                  </>
+                )}
+                {!order.reason && <>.</>}
               </div>
               <div className="grid-col-1"></div>
             </div>
