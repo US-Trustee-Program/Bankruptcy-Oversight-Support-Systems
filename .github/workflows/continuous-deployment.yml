@@ -139,7 +139,6 @@ jobs:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
-      apiName: ${{ needs.setup.outputs.apiName }}
       stackName: ${{ needs.setup.outputs.stackName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       execVnetDeploy:  ${{ needs.setup.outputs.execVnetDeploy }}
