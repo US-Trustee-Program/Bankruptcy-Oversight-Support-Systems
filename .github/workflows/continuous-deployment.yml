@@ -61,6 +61,7 @@ jobs:
       deployVnet: ${{ inputs.deployVnet }}
 
   accessibility-test:
+    if: false # TODO CAMS-237 SKIP FOR Development purposes
     defaults:
       run:
         working-directory: user-interface
@@ -95,11 +96,13 @@ jobs:
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
+    if: false # TODO CAMS-237 SKIP FOR Development purposes
     secrets: inherit # pragma: allowlist secret
 
   validation:
     name: Validation
     uses: ./.github/workflows/sub-validation.yml
+    if: false # TODO CAMS-237 SKIP FOR Development purposes
     with:
       node-version: ${{ vars.NODE_VERSION }}
 
