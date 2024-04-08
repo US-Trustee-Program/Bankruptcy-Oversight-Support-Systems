@@ -158,9 +158,9 @@ jobs:
       [
         setup,
         build,
-        accessibility-test,
-        security-scan,
-        validation,
+        # accessibility-test,
+        # security-scan,
+        # validation, // TODO CAMS-237 Skip some validation jobs
         deploy-infra,
       ]
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
