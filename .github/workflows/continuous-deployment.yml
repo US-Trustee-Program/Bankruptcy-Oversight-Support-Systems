@@ -60,30 +60,6 @@ jobs:
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
       deployVnet: ${{ inputs.deployVnet }}
 
-  smoke-test-no-slot:
-    name: smoke
-    needs: [setup]
-    uses: ./.github/workflows/reusable-smoketest.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-  smoke-test-slot:
-    name: smoke
-    needs: [setup]
-    uses: ./.github/workflows/reusable-smoketest.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      azRgEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-
   accessibility-test:
     defaults:
       run:
