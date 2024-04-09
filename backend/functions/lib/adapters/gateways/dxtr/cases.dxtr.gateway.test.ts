@@ -246,7 +246,7 @@ describe('Test DXTR Gateway', () => {
 
     expect(actualResult).toStrictEqual(expectedResult);
     expect(actualResult.regionId).toEqual(testCase.regionId);
-    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
+    expect(actualResult.courtDivisionCode).toEqual(testCase.courtDivisionCode);
     expect(actualResult.courtName).toEqual(testCase.courtName);
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
     expect(actualResult.closedDate).toEqual(closedDate);
@@ -326,7 +326,7 @@ describe('Test DXTR Gateway', () => {
 
     expect(actualResult.regionId).toEqual(testCase.regionId);
     expect(actualResult.courtName).toEqual(testCase.courtName);
-    expect(actualResult.courtDivision).toEqual(testCase.courtDivision);
+    expect(actualResult.courtDivisionCode).toEqual(testCase.courtDivisionCode);
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });

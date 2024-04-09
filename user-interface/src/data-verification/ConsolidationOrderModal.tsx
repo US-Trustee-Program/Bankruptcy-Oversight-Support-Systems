@@ -76,6 +76,14 @@ export async function fetchLeadCaseAttorneys(leadCaseId: string) {
   return caseAssignments.map((assignment) => assignment.name);
 }
 
+export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
+  const divisionCodeSet = cases.reduce((set, bCase) => {
+    set.add(bCase.courtDivisionCode);
+    return set;
+  }, new Set<string>());
+  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
+}
+
 export function formatListforDisplay(attorneys: string[]) {
   if (attorneys.length === 0) {
     return '(unassigned)';
@@ -377,7 +385,7 @@ function ConsolidationOrderModalComponent(
               setLeadCaseDivisionCode(ev?.value || '');
             }}
             ref={leadCaseDivisionRef}
-            value={props.courts.length === 1 ? props.courts[0].courtDivision : undefined}
+            value={getUniqueDivisionCodeOrUndefined(cases)}
           ></SearchableSelect>
         </div>
         <div className="lead-case-number-containter">

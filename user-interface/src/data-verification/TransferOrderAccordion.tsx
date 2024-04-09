@@ -60,8 +60,8 @@ export function updateOrderTransfer(
     regionName: office?.regionName,
     courtName: office?.courtName,
     courtDivisionName: office?.courtDivisionName,
-    courtDivision: office?.courtDivision,
-    caseId: `${office?.courtDivision}-${caseNumber}`,
+    courtDivisionCode: office?.courtDivisionCode,
+    caseId: `${office?.courtDivisionCode}-${caseNumber}`,
   };
 
   return updated;
@@ -169,7 +169,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   // uses the previously set case number, rather than the value in the New Case input field.
   // as a result, you get the wrong case summary listed.
   function handleCourtSelection(selection: SearchableSelectOption) {
-    const office = officesList.find((o) => o.courtDivision === selection?.value) || null;
+    const office = officesList.find((o) => o.courtDivisionCode === selection?.value) || null;
     setNewCaseDivision(office);
     if (!office) {
       setValidationState(ValidationStates.notValidated);
