@@ -103,7 +103,7 @@ function getCaseSummary(
   const caseSummary: CaseSummary = {
     ...office,
     dxtrId: '0', // NEED TO REFACTOR THIS OUT OF THE MODEL AND STOP LEAKING FROM THE API
-    caseId: randomCaseId(office.courtDivision),
+    caseId: randomCaseId(office.courtDivisionCode),
     chapter: randomChapter(),
     caseTitle: debtor.name,
     dateFiled: randomDate(),
@@ -166,7 +166,7 @@ function getConsolidationOrder(
     orderType: 'consolidation',
     orderDate: someDateAfterThisDate(summary.dateFiled),
     status: override.status || 'pending',
-    courtDivision: summary.courtDivision,
+    courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),
     childCases: [getConsolidatedOrderCase(), getConsolidatedOrderCase()],
   };

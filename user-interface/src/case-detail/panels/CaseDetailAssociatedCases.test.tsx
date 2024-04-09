@@ -12,7 +12,7 @@ function getAssociatedCasesMock(caseId: string, consolidationType: Consolidation
     {
       caseId: '081-93-87181',
       otherCase: MockData.getCaseSummary({
-        override: { caseId, caseTitle: 'Mr Joe', courtDivision: '001' },
+        override: { caseId, caseTitle: 'Mr Joe', courtDivisionCode: '001' },
       }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_TO',
@@ -20,21 +20,21 @@ function getAssociatedCasesMock(caseId: string, consolidationType: Consolidation
     } as ConsolidationTo,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivision: '001' } }),
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivision: '001' } }),
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivision: '001' } }),
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,

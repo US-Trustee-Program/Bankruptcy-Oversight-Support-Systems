@@ -57,7 +57,7 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail.debtor = debtors.get(caseDetail.caseId);
       caseDetail.debtorAttorney = debtorAttorneys.get(caseDetail.caseId);
       caseDetail.judgeName = 'Bob Seger';
-      caseDetail.courtDivision = '081';
+      caseDetail.courtDivisionCode = '081';
       caseDetail.courtDivisionName = 'Manhattan';
       caseDetail.courtName = 'Southern District of New York';
       caseDetail.regionId = '02';
@@ -88,7 +88,7 @@ export class CasesLocalGateway implements CasesInterface {
       caseDetail.dateFiled = caseDetail.dateFiled
         ? getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled))
         : undefined;
-      caseDetail.courtDivision = '081';
+      caseDetail.courtDivisionCode = '081';
       caseDetail.courtDivisionName = 'Manhattan';
       caseDetail.courtName = 'Southern District of New York';
       caseDetail.regionId = '02';

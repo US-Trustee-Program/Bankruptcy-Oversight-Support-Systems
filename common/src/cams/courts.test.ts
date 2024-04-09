@@ -4,16 +4,16 @@ import { OFFICES } from './test-utilities/offices.mock';
 describe('common court library tests', () => {
   test('should filter court offices list by court division', async () => {
     const expected2ndOffice = {
-      courtDivision: 'G00',
-      groupDesignator: 'GP',
       courtId: '001-',
-      officeName: '',
-      officeCode: '1',
-      state: 'AK',
       courtName: 'Test District Group 0',
+      courtDivisionCode: 'G00',
       courtDivisionName: 'Ketchikan',
+      groupDesignator: 'GP',
+      officeCode: '1',
+      officeName: '',
       regionId: '01',
       regionName: 'SEATTLE',
+      state: 'AK',
     };
     const newOfficeList = filterCourtByDivision('G00', OFFICES);
 

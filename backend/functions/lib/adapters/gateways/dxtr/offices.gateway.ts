@@ -22,7 +22,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     const input: DbTableFieldSpec[] = [];
 
     const query = `
-    SELECT a.[CS_DIV] AS courtDivision
+    SELECT a.[CS_DIV] AS courtDivisionCode
       ,a.[GRP_DES] AS groupDesignator
       ,a.[COURT_ID] AS courtId
       ,a.[OFFICE_CODE] AS officeCode

@@ -3,7 +3,7 @@ import { CaseSummary } from '../../../../../common/src/cams/cases';
 export const CASE_SUMMARIES: CaseSummary[] = [
   {
     dxtrId: '0',
-    courtDivision: '081',
+    courtDivisionCode: '081',
     caseId: '081-11-06541',
     caseTitle: 'Crawford, Turner and Garrett',
     dateFiled: '2023-05-20',

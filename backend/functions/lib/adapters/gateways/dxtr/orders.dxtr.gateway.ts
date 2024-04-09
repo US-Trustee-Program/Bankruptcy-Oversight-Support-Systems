@@ -330,7 +330,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         CS.CS_DIV + '-' + CS.CASE_ID AS caseId,
         CS.CS_SHORT_TITLE AS caseTitle,
         FORMAT(CS.CS_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
-        CS.CS_DIV as courtDivision,
+        CS.CS_DIV as courtDivisionCode,
         CS.CS_CHAPTER AS chapter,
         C.COURT_NAME AS courtName,
         O.OFFICE_NAME AS courtDivisionName,
