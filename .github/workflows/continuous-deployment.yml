@@ -164,7 +164,7 @@ jobs:
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
       - name: Enable staging slot access
-        if: ${{ inputs.slotDeploymentEnabled == 'true' }}
+        if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'true' }}
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ needs.setup.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --slot ${{ needs.setup.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
@@ -252,7 +252,7 @@ jobs:
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ needs.deploy.outputs.cosmosDbClientId }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
       - name: Retry Deploy Azure Functions backend
@@ -270,7 +270,7 @@ jobs:
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
   smoke-test-application:
     needs: [setup, deploy-webapp, deploy-service]
