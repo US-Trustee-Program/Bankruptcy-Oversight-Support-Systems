@@ -345,7 +345,6 @@ function ConsolidationOrderModalComponent(
   }
 
   function showApprovedContentStep1() {
-    const defaultLeadCaseCourtValue = getUniqueDivisionCodeOrUndefined(cases);
     return (
       <div>
         {featureFlags[CONSOLIDATIONS_ENABLED] && (
@@ -386,7 +385,7 @@ function ConsolidationOrderModalComponent(
               setLeadCaseDivisionCode(ev?.value || '');
             }}
             ref={leadCaseDivisionRef}
-            value={defaultLeadCaseCourtValue}
+            value={getUniqueDivisionCodeOrUndefined(cases)}
           ></SearchableSelect>
         </div>
         <div className="lead-case-number-containter">
