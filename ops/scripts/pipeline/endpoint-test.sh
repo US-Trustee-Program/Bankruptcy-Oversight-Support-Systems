@@ -20,10 +20,6 @@ while [[ $# -gt 0 ]]; do
         echo "./endpoint-test.sh -resourceGroup resourceGroupName --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
         exit 0
         ;;
-    --resourceGroup)
-        app_rg="${2}"
-        shift 2
-        ;;
 
     --apiName)
         api_name="${2}"
@@ -44,42 +40,38 @@ while [[ $# -gt 0 ]]; do
         slot_name="${2}"
         shift 2
         ;;
-
-    --stackName)
-        stack_name="${2}"
-        shift 2
-        ;;
-
-    --priority)
-        priority="${2}"
-        shift 2
-        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
     esac
 done
 
+webStatusCode=""
+apiStatusCode=""
+targetApiURL="https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
+targetWebAppURL="https://${webapp_name}.azurewebsites${host_suffix}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-webCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f https://${webapp_name}.azurewebsites${host_suffix}"
+webCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetWebAppURL}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-apiCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
+apiCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetApiURL}"
 
 if [[ -z ${slot_name} ]]; then
-    ./dev-add-allowed-ip.sh -g "$app_rg" -s "$stack_name" -p "$priority" --is-cicd
     echo "No Slot Provided"
     webStatusCode=$($webCmd)
     apiStatusCode=$($apiCmd)
+
 else
-    ./slots/dev-add-allowed-ip.sh -g "$app_rg" -s "$stack_name" -p "$priority" --slot-name "$slot_name" --is-cicd
     webCmd="${webCmd}?x-ms-routing-name=${slot_name}"
-    apiCmd="${webCmd}?x-ms-routing-name=${slot_name}"
+    apiCmd="${apiCmd}?x-ms-routing-name=${slot_name}"
     webStatusCode=$($webCmd)
     apiStatusCode=$($apiCmd)
+    targetApiURL+="?x-ms-routing-name=${slot_name}"
 fi
 
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
-    echo "Responded 200"
+    echo "Print api healthcheck response"
+    # shellcheck disable=SC2086 # REASON: Wants to quote http_code
+    curl https://$targetApiURL
     exit 0
 else
     echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"

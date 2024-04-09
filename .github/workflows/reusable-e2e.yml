@@ -30,10 +30,9 @@ jobs:
     uses: ./.github/workflows/reusable-smoketest.yml
     with:
       environment: ${{ inputs.ghaEnvironment }}
-      stackName: ${{ inputs.stackName }}
+      hostSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
       webappName: ${{ inputs.webappName }}
       apiName: ${{ inputs.apiName }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       slotName: ${{ inputs.slotName }}
     secrets: inherit # pragma: allowlist secret
 

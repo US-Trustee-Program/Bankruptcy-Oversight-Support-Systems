@@ -272,16 +272,16 @@ jobs:
           INFO_SHA=${{ github.sha }}" \
           --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
+
   smoke-test-application:
     needs: [setup, deploy-webapp, deploy-service]
     uses: ./.github/workflows/reusable-smoketest.yml
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      stackName: ${{ needs.setup.outputs.stackName }}
+      hostSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
       webappName: ${{ needs.setup.outputs.webappName }}
       apiName: ${{ needs.setup.outputs.apiName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
   ##### Below are GHA jobs related to Azure Slot deployments #####
 
@@ -452,8 +452,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      stackName: ${{ needs.setup.outputs.stackName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       apiName: ${{ needs.setup.outputs.apiName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      hostSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
       slotName: ${{ needs.setup.outputs.slotName }}
