@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import Checkbox, { CheckboxProps, CheckboxRef } from './Checkbox';
+import Checkbox, { CheckboxProps, CheckboxRef, CheckBoxState } from './Checkbox';
 
 describe('Test Checkbox component', async () => {
   function renderWithProps(props?: Partial<CheckboxProps>, ref?: React.Ref<CheckboxRef>) {
@@ -70,5 +70,32 @@ describe('Test Checkbox component', async () => {
       cbRef.current?.setChecked(false);
     });
     expect(checkbox).not.toBeChecked();
+  });
+
+  test('Should check box when calling ref.setChecked(CheckBoxState.CHECKED), uncheck when calling ref.setChecked(CheckBoxState.UNCHECKED), and set to intermediate state when calling ref.setChecked(CheckBoxState.INTERMEDIATE)', async () => {
+    const cbRef = React.createRef<CheckboxRef>();
+    renderWithProps({}, cbRef);
+
+    const checkbox = document.querySelector('input[type="checkbox"]');
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).not.toHaveAttribute('data-intermediate', 'true');
+
+    await vi.waitFor(() => {
+      cbRef.current?.setChecked(CheckBoxState.CHECKED);
+    });
+    expect(checkbox).toBeChecked();
+    expect(checkbox).not.toHaveAttribute('data-intermediate', 'true');
+
+    await vi.waitFor(() => {
+      cbRef.current?.setChecked(CheckBoxState.UNCHECKED);
+    });
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).not.toHaveAttribute('data-intermediate', 'true');
+
+    await vi.waitFor(() => {
+      cbRef.current?.setChecked(CheckBoxState.INTERMEDIATE);
+    });
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toHaveAttribute('data-intermediate', 'true');
   });
 });

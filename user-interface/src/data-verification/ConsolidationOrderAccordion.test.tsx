@@ -140,7 +140,9 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should correctly enable/disable buttons', async () => {
     renderWithProps();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
 
     const includeAllButton = document.querySelector(`#${order.id}-checkbox-toggle-button`);
 
@@ -191,7 +193,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-approve-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -214,7 +218,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -250,7 +256,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -300,7 +308,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -360,7 +370,9 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -432,7 +444,9 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -491,8 +505,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    const checkbox1: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
-    const checkbox2: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+    const checkbox1: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
+    const checkbox2: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-1`,
+    );
 
     fireEvent.click(checkbox1);
     fireEvent.click(checkbox2);
@@ -519,8 +537,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    let checkbox1: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
-    let checkbox2: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+    let checkbox1: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-0`,
+    );
+    let checkbox2: HTMLInputElement = screen.getByTestId(
+      `checkbox-${order.id}-case-list-case-selection-1`,
+    );
 
     fireEvent.click(checkbox1);
     fireEvent.click(checkbox2);
@@ -534,8 +556,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordian
 
     fireEvent.click(collapseButton as HTMLButtonElement);
-    checkbox1 = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
-    checkbox2 = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+    checkbox1 = screen.getByTestId(`checkbox-${order.id}-case-list-case-selection-0`);
+    checkbox2 = screen.getByTestId(`checkbox-${order.id}-case-list-case-selection-1`);
 
     await waitFor(() => {
       expect(checkbox1.checked).toBeFalsy();
