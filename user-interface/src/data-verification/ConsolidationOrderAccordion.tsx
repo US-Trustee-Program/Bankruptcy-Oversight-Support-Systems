@@ -24,7 +24,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
-import { CheckboxState } from '@/lib/components/uswds/Checkbox';
+import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -46,18 +46,24 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const { hidden, statusType, orderType, officesList, expandedId } = props;
   const caseTable = useRef<OrderTableImperative>(null);
 
+  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
+  const approveButtonRef = useRef<ButtonRef>(null);
+  const rejectButtonRef = useRef<ButtonRef>(null);
+  const toggleCheckboxRef = useRef<CheckboxRef>(null);
+
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
-  const [checkboxGroupState, setCheckboxGroupState] = useState<CheckboxState>(
+  const [checkboxGroupState, _setCheckboxGroupState] = useState<CheckboxState>(
     CheckboxState.UNCHECKED,
   );
+  const setCheckboxGroupState = (groupState: CheckboxState) => {
+    toggleCheckboxRef.current?.setChecked(groupState);
+    _setCheckboxGroupState(groupState);
+  };
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
-  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
-  const approveButtonRef = useRef<ButtonRef>(null);
-  const rejectButtonRef = useRef<ButtonRef>(null);
 
   const api = useApi();
 
@@ -70,9 +76,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
     setSelectedCases(tempSelectedCases);
     const total = tempSelectedCases.length;
-    if (total === 0) setCheckboxGroupState(CheckboxState.UNCHECKED);
-    else if (total < order.childCases.length) setCheckboxGroupState(CheckboxState.INDETERMINATE);
-    else if (total === order.childCases.length) setCheckboxGroupState(CheckboxState.CHECKED);
+    if (total === 0) {
+      setCheckboxGroupState(CheckboxState.UNCHECKED);
+    } else if (total < order.childCases.length) {
+      setCheckboxGroupState(CheckboxState.INDETERMINATE);
+    } else if (total === order.childCases.length) {
+      setCheckboxGroupState(CheckboxState.CHECKED);
+    }
   }
 
   function selectAllCheckboxes() {
@@ -89,8 +99,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setCheckboxGroupState(CheckboxState.UNCHECKED);
   }
 
-  function toggleAllCheckBoxes() {
-    if (checkboxGroupState === CheckboxState.CHECKED) {
+  function toggleAllCheckBoxes(ev: React.ChangeEvent<HTMLInputElement>) {
+    if (!ev.target.checked && checkboxGroupState === CheckboxState.CHECKED) {
       clearAllCheckboxes();
     } else {
       selectAllCheckboxes();
@@ -276,14 +286,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-10">
                 <div>
                   <h3>Cases</h3>
-                  <Button
-                    id={`checkbox-toggle-button-${order.id}`}
-                    uswdsStyle={UswdsButtonStyle.Outline}
-                    onClick={toggleAllCheckBoxes}
-                  >
-                    {checkboxGroupState === CheckboxState.CHECKED && <>Exclude All</>}
-                    {checkboxGroupState !== CheckboxState.CHECKED && <>Include All</>}
-                  </Button>
+                  <Checkbox
+                    id={`${order.id}-checkbox-toggle-button`}
+                    onChange={toggleAllCheckBoxes}
+                    value={checkboxGroupState}
+                    label={
+                      checkboxGroupState === CheckboxState.CHECKED ? 'Exclude All' : 'Include All'
+                    }
+                    ref={toggleCheckboxRef}
+                  ></Checkbox>
                 </div>
                 <ConsolidationCaseTable
                   id={`${order.id}-case-list`}
