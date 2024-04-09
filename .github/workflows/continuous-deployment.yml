@@ -121,7 +121,7 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
 
-  deploy-cloud:
+  deploy:
     uses: ./.github/workflows/sub-deploy.yml
     # needs: [setup, build, accessibility-test, security-scan, validation] // TODO CAMS-237 Skip some validation jobs
     needs: [setup, build]
