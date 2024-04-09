@@ -88,18 +88,18 @@ export default class Chapter15MockApi extends Api {
   });
 
   static orders = [
-    MockData.getTransferOrder({ override: { id: 'guid-0', orderDate: '2024-12-01' } }),
+    MockData.getTransferOrder({ override: { id: 'guid-0', orderDate: '2024-01-01' } }),
     MockData.getTransferOrder({
-      override: { id: 'guid-1', orderDate: '2024-11-01', status: 'approved' },
+      override: { id: 'guid-1', orderDate: '2024-02-01', status: 'approved' },
     }),
     MockData.getTransferOrder({
-      override: { id: 'guid-2', orderDate: '2024-10-01', status: 'rejected' },
+      override: { id: 'guid-2', orderDate: '2024-03-01', status: 'rejected' },
     }),
-    MockData.getConsolidationOrder({ override: { id: 'guid-3', orderDate: '2024-09-01' } }),
+    MockData.getConsolidationOrder({ override: { id: 'guid-3', orderDate: '2024-04-01' } }),
     MockData.getConsolidationOrder({
       override: {
         id: 'guid-4',
-        orderDate: '2024-08-01',
+        orderDate: '2024-05-01',
         status: 'approved',
         leadCase: {
           ...this.consolidationLeadCaseSummary,
@@ -109,7 +109,7 @@ export default class Chapter15MockApi extends Api {
     MockData.getConsolidationOrder({
       override: {
         id: 'guid-5',
-        orderDate: '2024-07-01',
+        orderDate: '2024-06-01',
         status: 'rejected',
         reason: 'This is a rejection reason.',
       },
