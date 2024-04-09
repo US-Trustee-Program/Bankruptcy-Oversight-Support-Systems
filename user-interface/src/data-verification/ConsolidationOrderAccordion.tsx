@@ -80,9 +80,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     if (caseList) {
       setSelectedCases(caseList);
       setCheckboxGroupState(CheckBoxState.CHECKED);
-    } else {
-      setSelectedCases([]);
-      setCheckboxGroupState(CheckBoxState.UNCHECKED);
     }
   }
 
