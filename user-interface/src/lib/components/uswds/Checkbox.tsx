@@ -1,5 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
+export enum CheckBoxState {
+  UNCHECKED = -1,
+  INTERMEDIATE = 0,
+  CHECKED = 1,
+}
+
 export interface CheckboxProps {
   id: string;
   label?: string;

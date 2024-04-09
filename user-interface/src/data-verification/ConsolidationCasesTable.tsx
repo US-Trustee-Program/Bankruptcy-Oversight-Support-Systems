@@ -7,8 +7,8 @@ import { formatDate } from '@/lib/utils/datetime';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export type OrderTableImperative = {
-  clearSelection: () => void;
-  selectAll: () => ConsolidationOrderCase[];
+  clearAllCheckboxes: () => void;
+  selectAllCheckboxes: () => ConsolidationOrderCase[];
 };
 
 export interface ConsolidationCaseTableProps {
@@ -39,11 +39,11 @@ function _ConsolidationCaseTable(
     if (onSelect) onSelect(_case);
   }
 
-  function clearSelection() {
+  function clearAllCheckboxes() {
     setIncluded([]);
   }
 
-  function selectAll() {
+  function selectAllCheckboxes() {
     const newIdList = [];
     const newCaseList = [];
     let bCase = 0;
@@ -60,8 +60,8 @@ function _ConsolidationCaseTable(
   }
 
   useImperativeHandle(OrderTableRef, () => ({
-    clearSelection,
-    selectAll,
+    clearAllCheckboxes,
+    selectAllCheckboxes,
   }));
 
   return (
