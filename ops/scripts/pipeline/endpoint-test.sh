@@ -2,7 +2,7 @@
 
 # Title:        az-app-deploy.sh
 # Description:  Helper script to deploy webapp build artifact to existing Azure site
-# Usage:        ./endpoint-test.sh -resourceGroup resourceGroupName --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix
+# Usage:        ./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix
 #
 # Exitcodes
 # ==========
@@ -17,7 +17,7 @@ slot_name=''
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "./endpoint-test.sh -resourceGroup resourceGroupName --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
+        echo "./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
         exit 0
         ;;
 

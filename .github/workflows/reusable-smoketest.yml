@@ -24,5 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - uses: actions/checkout@v3
       - name: Health check api
-        run: ./ops/scripts/pipeline/endpoint-test.sh --apiName ${{ inputs.apiName }} --webappName ${{ inputs.webappName }} --hostSuffix ${{ inputs.hostSuffix }} --slotName ${{ inputs.slotName }}
+        run: |
+          ./ops/scripts/pipeline/endpoint-test.sh \
+          --apiName ${{ inputs.apiName }} \
+          --webappName ${{ inputs.webappName }} \
+          --hostSuffix ${{ inputs.hostSuffix }} \
+          --slotName ${{ inputs.slotName }}
