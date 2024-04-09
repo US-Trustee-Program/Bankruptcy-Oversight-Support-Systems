@@ -61,7 +61,7 @@ export type ConsolidationOrder = {
   orderDate: string;
   status: OrderStatus;
   courtName: string;
-  divisionCode: string;
+  courtDivision: string;
   jobId: number;
   leadCaseIdHint?: string;
   leadCase?: CaseSummary;

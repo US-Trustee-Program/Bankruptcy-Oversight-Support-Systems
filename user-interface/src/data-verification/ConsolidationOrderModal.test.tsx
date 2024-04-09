@@ -7,6 +7,7 @@ import {
   formatListforDisplay,
   getCaseAssignments,
   fetchLeadCaseAttorneys,
+  getUniqueDivisionCodeOrUndefined,
 } from '@/data-verification/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -356,6 +357,26 @@ describe('ConsolidationOrderModalComponent', () => {
     nameList.push('Charles');
     const threeNames = formatListforDisplay(nameList);
     expect(threeNames).toEqual('Abe, Ben, and Charles');
+  });
+
+  test('should return a unique division code or undefined', () => {
+    const cases: CaseSummary[] = [];
+    const expectedDivisionCode = '081';
+
+    const noDivisionCodes = getUniqueDivisionCodeOrUndefined(cases);
+    expect(noDivisionCodes).toBeUndefined();
+
+    cases.push(MockData.getCaseSummary({ override: { courtDivision: expectedDivisionCode } }));
+    const oneDivisionCode = getUniqueDivisionCodeOrUndefined(cases);
+    expect(oneDivisionCode).toEqual(expectedDivisionCode);
+
+    cases.push(MockData.getCaseSummary({ override: { courtDivision: expectedDivisionCode } }));
+    const sameDivisionCode = getUniqueDivisionCodeOrUndefined(cases);
+    expect(sameDivisionCode).toEqual(expectedDivisionCode);
+
+    cases.push(MockData.getCaseSummary({ override: { courtDivision: '999' } }));
+    const differentDivisionCodes = getUniqueDivisionCodeOrUndefined(cases);
+    expect(differentDivisionCodes).toBeUndefined();
   });
 
   test('should return case assignments from the api', async () => {
