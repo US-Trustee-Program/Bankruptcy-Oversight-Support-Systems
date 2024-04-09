@@ -58,8 +58,8 @@ jobs:
 
           slotName=${{ inputs.slotName }}
           if [[ $slotName == "staging" ]]; then
-            targetWebappURL="${targetWebappURL}?x-ms-routing-name=${{ inputs.slotName }}
-            targetApiURL="${targetApiURL}?x-ms-routing-name=${{ inputs.slotName }}
+            targetWebappURL="${targetWebappURL}?x-ms-routing-name=${{ inputs.slotName }}"
+            targetApiURL="${targetApiURL}?x-ms-routing-name=${{ inputs.slotName }}"
           fi
 
           webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${targetWebappURL} )
