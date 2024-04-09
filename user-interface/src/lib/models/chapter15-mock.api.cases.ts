@@ -88,20 +88,32 @@ export default class Chapter15MockApi extends Api {
   });
 
   static orders = [
-    MockData.getTransferOrder({ override: { id: 'guid-0' } }),
-    MockData.getTransferOrder({ override: { id: 'guid-1', status: 'approved' } }),
-    MockData.getTransferOrder({ override: { id: 'guid-2', status: 'rejected' } }),
-    MockData.getConsolidationOrder({ override: { id: 'guid-3' } }),
+    MockData.getTransferOrder({ override: { id: 'guid-0', orderDate: '2024-12-01' } }),
+    MockData.getTransferOrder({
+      override: { id: 'guid-1', orderDate: '2024-11-01', status: 'approved' },
+    }),
+    MockData.getTransferOrder({
+      override: { id: 'guid-2', orderDate: '2024-10-01', status: 'rejected' },
+    }),
+    MockData.getConsolidationOrder({ override: { id: 'guid-3', orderDate: '2024-09-01' } }),
     MockData.getConsolidationOrder({
       override: {
         id: 'guid-4',
+        orderDate: '2024-08-01',
         status: 'approved',
         leadCase: {
           ...this.consolidationLeadCaseSummary,
         },
       },
     }),
-    MockData.getConsolidationOrder({ override: { id: 'guid-5', status: 'rejected' } }),
+    MockData.getConsolidationOrder({
+      override: {
+        id: 'guid-5',
+        orderDate: '2024-07-01',
+        status: 'rejected',
+        reason: 'This is a rejection reason.',
+      },
+    }),
   ];
 
   public static async list(path: string): Promise<ResponseData> {
