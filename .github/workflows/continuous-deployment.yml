@@ -336,13 +336,6 @@ jobs:
           op: decode
           in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: cosmosPrincipalId
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.deploy.outputs.cosmosDbPrincipalIdEncrypted }}
-
       - name: Deploy Azure Functions backend
         id: deploy-backend-step
         continue-on-error: true
@@ -358,7 +351,7 @@ jobs:
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
+          --identities "${{ needs.deploy.outputs.cosmosDbClientId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
       - name: Retry Deploy Azure Functions backend

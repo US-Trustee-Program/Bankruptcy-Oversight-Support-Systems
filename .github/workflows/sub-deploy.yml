@@ -39,6 +39,13 @@ on:
       deployBicep:
         required: true
         type: string
+    outputs:
+      cosmosDbClientId:
+        description: "CosmosDB Principal ID"
+        value: ${{ jobs.deploy-db.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId:
+        description: "CosmosDB Principal ID"
+        value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
 
 jobs:
   deploy-infra:

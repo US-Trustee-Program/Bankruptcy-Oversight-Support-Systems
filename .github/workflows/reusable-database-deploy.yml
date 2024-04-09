@@ -15,11 +15,20 @@ on:
       environmentHash:
         required: true
         type: string
-
+    outputs:
+      cosmosDbClientId:
+        description: "CosmosDB Client ID"
+        value: ${{ jobs.deploy-db.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId:
+        description: "CosmosDB Principal ID"
+        value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
 jobs:
   deploy-db:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
+    outputs:
+      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
     steps:
       - uses: actions/checkout@main
 
@@ -50,3 +59,16 @@ jobs:
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+      - name: Check deployment and set params
+        id: set-deploy-params
+        run: |
+          cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
+          cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
+
+      # cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
+      # echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
+      # webappSubnetName=snet-${{ needs.setup.outputs.webappName }}
+      # echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
+      # if need be return these to the pipeline, should beset in their corresponding
