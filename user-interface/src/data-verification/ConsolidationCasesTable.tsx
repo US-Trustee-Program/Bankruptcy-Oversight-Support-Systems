@@ -5,6 +5,7 @@ import { SyntheticEvent, forwardRef, useImperativeHandle, useState, ReactNode } 
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Checkbox from '@/lib/components/uswds/Checkbox';
 
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
@@ -88,15 +89,14 @@ function _ConsolidationCaseTable(
               <tr key={`${key}-case-info`} data-testid={`${key}-case-info`} className="case-info">
                 {onSelect && (
                   <td scope="row">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      id={`${id}-case-selection-${idx}`}
                       onChange={handleCaseSelection}
-                      value={idx}
                       name="case-selection"
-                      data-testid={`${id}-checkbox-${idx}`}
-                      checked={included.includes(idx)}
+                      value={idx}
                       title={`select ${bCase.caseTitle}`}
-                    ></input>
+                      checked={included.includes(idx)}
+                    ></Checkbox>
                   </td>
                 )}
                 <td scope="row">

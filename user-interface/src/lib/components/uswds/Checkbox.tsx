@@ -9,7 +9,9 @@ export enum CheckBoxState {
 export interface CheckboxProps {
   id: string;
   label?: string;
-  value: string;
+  name?: string;
+  value: string | number;
+  title?: string;
   checked: boolean;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
@@ -17,12 +19,14 @@ export interface CheckboxProps {
 }
 
 export interface CheckboxRef {
-  setChecked: (value: boolean) => void;
+  setChecked: (value: boolean | CheckBoxState) => void;
   getLabel: () => string;
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
   const [isChecked, setIsChecked] = useState(props.checked);
+  const [intermediateState, setIntermediateState] = useState<boolean>(false);
+
   let classes = 'usa-checkbox ';
 
   if (props.className) {
@@ -46,13 +50,26 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     return props.label ?? '';
   }
 
-  function setChecked(value: boolean) {
-    setIsChecked(value);
+  function setChecked(value: boolean | CheckBoxState) {
+    let intermediate = false;
+    if (value === true || value === false) {
+      setIsChecked(value);
+    } else {
+      if (value === CheckBoxState.CHECKED) {
+        setIsChecked(true);
+      } else if (value === CheckBoxState.UNCHECKED) {
+        setIsChecked(false);
+      } else if (value === CheckBoxState.INTERMEDIATE) {
+        setIsChecked(false);
+        intermediate = true;
+      }
+    }
+    setIntermediateState(intermediate);
   }
 
   useEffect(() => {
     // initializing isChecked above as a default doesn't work for some reason.
-    if (props.checked) setIsChecked(true);
+    setIsChecked(props.checked);
   }, [props.checked]);
 
   useImperativeHandle(
@@ -76,12 +93,13 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         checked={isChecked}
         onChange={checkHandler}
         onFocus={focusHandler}
+        data-intermediate={intermediateState}
+        name={props.name}
+        title={props.title}
       />
-      {props.label && (
-        <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
-          {props.label}
-        </label>
-      )}
+      <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
+        {props.label}
+      </label>
     </div>
   );
 };
