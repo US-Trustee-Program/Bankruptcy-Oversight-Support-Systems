@@ -51,29 +51,28 @@ apiStatusCode=""
 targetApiURL="https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
 targetWebAppURL="https://${webapp_name}.azurewebsites${host_suffix}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-webCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetWebAppURL}"
+webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetWebAppURL}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-apiCmd="curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetApiURL}"
+apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetApiURL}"
 
 if [[ -z ${slot_name} ]]; then
-    echo "No Slot Provided"
-    webStatusCode=$($webCmd)
-    apiStatusCode=$($apiCmd)
-
+  echo "No Slot Provided"
+  webStatusCode=$($webCmd)
+  apiStatusCode=$($apiCmd)
 else
-    webCmd="${webCmd}?x-ms-routing-name=${slot_name}"
-    apiCmd="${apiCmd}?x-ms-routing-name=${slot_name}"
-    webStatusCode=$($webCmd)
-    apiStatusCode=$($apiCmd)
-    targetApiURL+="?x-ms-routing-name=${slot_name}"
+  webCmd="${webCmd}?x-ms-routing-name=${slot_name}"
+  apiCmd="${apiCmd}?x-ms-routing-name=${slot_name}"
+  webStatusCode=$($webCmd)
+  apiStatusCode=$($apiCmd)
+  targetApiURL+="?x-ms-routing-name=${slot_name}"
 fi
 
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
-    echo "Print api healthcheck response"
-    # shellcheck disable=SC2086 # REASON: Wants to quote http_code
-    curl ${targetApiURL}
-    exit 0
+  echo "Print api healthcheck response"
+  curl "${targetApiURL}"
+  echo ""
+  exit 0
 else
-    echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
-    exit 1
+  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+  exit 1
 fi

@@ -274,14 +274,17 @@ jobs:
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   smoke-test-application:
-    needs: [setup, deploy-webapp, deploy-service]
-    uses: ./.github/workflows/reusable-smoketest.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      hostSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Health check api
+        run: |
+          ./ops/scripts/pipeline/endpoint-test.sh \
+          --apiName ${{ inputs.apiName }} \
+          --webappName ${{ inputs.webappName }} \
+          --hostSuffix ${{ inputs.hostSuffix }} \
+          --slotName ${{ inputs.slotName }}
 
   ##### Below are GHA jobs related to Azure Slot deployments #####
 
@@ -447,12 +450,14 @@ jobs:
           az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
 
   smoke-test-application-post-swap:
-    needs: [setup, swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
-    uses: ./.github/workflows/reusable-smoketest.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      hostSuffix: ${{ vars.AZ_HOSTNAME_SUFFIX }}
-      slotName: ${{ needs.setup.outputs.slotName }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Health check api
+        run: |
+          ./ops/scripts/pipeline/endpoint-test.sh \
+          --apiName ${{ inputs.apiName }} \
+          --webappName ${{ inputs.webappName }} \
+          --hostSuffix ${{ inputs.hostSuffix }} \
+          --slotName ${{ inputs.slotName }}
