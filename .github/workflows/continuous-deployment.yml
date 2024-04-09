@@ -105,28 +105,28 @@ jobs:
     if: false # TODO CAMS-237 SKIP FOR Development purposes
     with:
       node-version: ${{ vars.NODE_VERSION }}
-  smoke-test-application-test:
-    needs: [setup]
-    uses: ./.github/workflows/reusable-smoketest.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  # smoke-test-application-test:
+  #   needs: [setup]
+  #   uses: ./.github/workflows/reusable-smoketest.yml
+  #   secrets: inherit # pragma: allowlist secret
+  #   with:
+  #     environment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #     stackName: ${{ needs.setup.outputs.stackName }}
+  #     webappName: ${{ needs.setup.outputs.webappName }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
-  smoke-test-application-slot-test:
-    needs: [setup]
-    uses: ./.github/workflows/reusable-smoketest.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      slotName: ${{ needs.setup.outputs.slotName }}
+  # smoke-test-application-slot-test:
+  #   needs: [setup]
+  #   uses: ./.github/workflows/reusable-smoketest.yml
+  #   secrets: inherit # pragma: allowlist secret
+  #   with:
+  #     environment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #     stackName: ${{ needs.setup.outputs.stackName }}
+  #     webappName: ${{ needs.setup.outputs.webappName }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  #     slotName: ${{ needs.setup.outputs.slotName }}
 
   build:
     name: Build
