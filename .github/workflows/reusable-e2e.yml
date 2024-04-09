@@ -36,7 +36,7 @@ jobs:
           ./ops/scripts/pipeline/endpoint-test.sh \
           --apiName ${{ inputs.apiName }} \
           --webappName ${{ inputs.webappName }} \
-          --hostSuffix ${{ inputs.hostSuffix }} \
+          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
           --slotName ${{ inputs.slotName }}
 
   playwright-e2e-test:
