@@ -13,7 +13,7 @@ export type OrderTableImperative = {
 interface ConsolidationCaseTableProps {
   id: string;
   cases: Array<ConsolidationOrderCase>;
-  onSelect: (bCase: ConsolidationOrderCase) => void;
+  onSelect?: (bCase: ConsolidationOrderCase) => void;
   isAssignmentLoaded: boolean;
   displayDocket?: boolean;
 }
@@ -35,7 +35,7 @@ function _ConsolidationCaseTable(
       setIncluded([...included, idx]);
     }
     const _case = cases[idx];
-    onSelect(_case);
+    if (onSelect) onSelect(_case);
   }
 
   function clearSelection() {
@@ -54,7 +54,7 @@ function _ConsolidationCaseTable(
     >
       <thead>
         <tr>
-          <th scope="col">Include</th>
+          {onSelect && <th scope="col">Include</th>}
           <th scope="col">Case Number (Division)</th>
           <th scope="col">Debtor</th>
           <th scope="col">Chapter</th>
@@ -68,17 +68,19 @@ function _ConsolidationCaseTable(
             const key = `${id}-row-${idx}`;
             accumulator.push(
               <tr key={`${key}-case-info`} data-testid={`${key}-case-info`} className="case-info">
-                <td scope="row">
-                  <input
-                    type="checkbox"
-                    onChange={handleCaseSelection}
-                    value={idx}
-                    name="case-selection"
-                    data-testid={`${id}-checkbox-${idx}`}
-                    checked={included.includes(idx)}
-                    title={`select ${bCase.caseTitle}`}
-                  ></input>
-                </td>
+                {onSelect && (
+                  <td scope="row">
+                    <input
+                      type="checkbox"
+                      onChange={handleCaseSelection}
+                      value={idx}
+                      name="case-selection"
+                      data-testid={`${id}-checkbox-${idx}`}
+                      checked={included.includes(idx)}
+                      title={`select ${bCase.caseTitle}`}
+                    ></input>
+                  </td>
+                )}
                 <td scope="row">
                   <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
                 </td>
@@ -117,7 +119,7 @@ function _ConsolidationCaseTable(
                 data-testid={`${key}-docket-entry`}
                 className="docket-entry"
               >
-                <td></td>
+                {onSelect && <td></td>}
                 <td colSpan={5} className="measure-6">
                   {!bCase.docketEntries && <>No docket entries</>}
                   {bCase.docketEntries &&
