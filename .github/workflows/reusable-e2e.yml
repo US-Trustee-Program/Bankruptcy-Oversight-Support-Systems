@@ -55,21 +55,6 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
-      - name: Enable GHA runner access
-        run: |
-          ../../ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ inputs.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-
       - name: Seed e2e database
         run: |
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
@@ -90,12 +75,6 @@ jobs:
           name: playwright-report
           path: test/e2e/playwright-report/
           retention-days: 30
-
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ inputs.stackName }}"
-          ../../ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ inputs.stackName }} ${name:0:32}
 
       - name: Clean up e2e test database
         if: always()

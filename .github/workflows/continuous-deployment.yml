@@ -140,6 +140,7 @@ jobs:
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
+
   enable-access:
     runs-on: ubuntu-latest
     needs: [setup, smoke-test-application]
@@ -158,29 +159,12 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable access
+      - name: Enable production slot access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-  enable-access-slots:
-    runs-on: ubuntu-latest
-    needs: [setup, smoke-test-application]
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
-    env:
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-    steps:
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      - name: Enable access
+      - name: Enable staging slot access
+        if: ${{ inputs.slotDeploymentEnabled == 'true' }}
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ needs.setup.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --slot ${{ needs.setup.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

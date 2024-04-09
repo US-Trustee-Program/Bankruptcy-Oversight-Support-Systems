@@ -33,35 +33,6 @@ jobs:
       slotName: ${{ inputs.slotName }}
       priority: 200
     steps:
-      - uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        if: ${{ !inputs.slotName }}
-        run: |
-          ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - name: Enable GHA runner access to slot
-        if: ${{ inputs.slotName }}
-        run: |
-          ops/scripts/pipeline/slots/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          --slot-name ${{ inputs.slotName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-
       - name: Health check api
         run: |
           targetWebappURL=${{ env.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
@@ -85,14 +56,3 @@ jobs:
             echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
             exit 1
           fi
-
-      - name: Disable GHA runner access
-        if: always() && ${{ !inputs.slotName }}
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
-      - name: Disable GHA runner access slot
-        if: always() && ${{ inputs.slotName }}
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32} ${{ inputs.slotName }}
