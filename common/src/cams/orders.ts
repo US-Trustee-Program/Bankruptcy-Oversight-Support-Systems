@@ -32,7 +32,7 @@ export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
     caseId: order.caseId,
     caseTitle: order.caseTitle,
     courtId: order.courtId,
-    courtDivision: order.courtDivision,
+    courtDivisionCode: order.courtDivisionCode,
     courtDivisionName: order.courtDivisionName,
     courtName: order.courtName,
     chapter: order.chapter,
@@ -61,7 +61,7 @@ export type ConsolidationOrder = {
   orderDate: string;
   status: OrderStatus;
   courtName: string;
-  divisionCode: string;
+  courtDivisionCode: string;
   jobId: number;
   leadCaseIdHint?: string;
   leadCase?: CaseSummary;

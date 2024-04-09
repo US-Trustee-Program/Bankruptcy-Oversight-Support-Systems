@@ -40,7 +40,7 @@ describe('Review Orders screen', () => {
   test('should sort offices', () => {
     const testOffices: OfficeDetails[] = [
       {
-        courtDivision: '001',
+        courtDivisionCode: '001',
         groupDesignator: 'AA',
         courtId: '0101',
         officeCode: '1',
@@ -52,7 +52,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        courtDivision: '003',
+        courtDivisionCode: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -64,7 +64,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        courtDivision: '003',
+        courtDivisionCode: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -76,7 +76,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        courtDivision: '002',
+        courtDivisionCode: '002',
         groupDesignator: 'AB',
         courtId: '0102',
         officeCode: '2',
@@ -90,7 +90,7 @@ describe('Review Orders screen', () => {
     ];
     const expectedOffices: OfficeDetails[] = [
       {
-        courtDivision: '001',
+        courtDivisionCode: '001',
         groupDesignator: 'AA',
         courtId: '0101',
         officeCode: '1',
@@ -102,7 +102,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        courtDivision: '002',
+        courtDivisionCode: '002',
         groupDesignator: 'AB',
         courtId: '0102',
         officeCode: '2',
@@ -114,7 +114,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        courtDivision: '003',
+        courtDivisionCode: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',
@@ -126,7 +126,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
       {
-        courtDivision: '003',
+        courtDivisionCode: '003',
         groupDesignator: 'AC',
         courtId: '0103',
         officeCode: '3',

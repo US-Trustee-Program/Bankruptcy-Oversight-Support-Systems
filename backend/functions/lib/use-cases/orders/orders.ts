@@ -445,7 +445,7 @@ export class OrdersUseCase {
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',
-        divisionCode: firstOrder.divisionCode,
+        courtDivisionCode: firstOrder.courtDivisionCode,
         courtName: firstOrder.courtName,
         jobId,
         childCases: Array.from(jobToCaseMap.get(jobId).values()),

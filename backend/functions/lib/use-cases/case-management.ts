@@ -74,7 +74,7 @@ export class CaseManagement {
     caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
     caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
     caseDetails.assignments = await this.getCaseAssigneeNames(applicationContext, caseDetails);
-    caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivision);
+    caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivisionCode);
 
     return {
       success: true,
@@ -90,7 +90,7 @@ export class CaseManagement {
     caseId: string,
   ): Promise<CaseDetail> {
     const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-    caseSummary.officeName = this.officesGateway.getOffice(caseSummary.courtDivision);
+    caseSummary.officeName = this.officesGateway.getOffice(caseSummary.courtDivisionCode);
     return caseSummary;
   }
 
