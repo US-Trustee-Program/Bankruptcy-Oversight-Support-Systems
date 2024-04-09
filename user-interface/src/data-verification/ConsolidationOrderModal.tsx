@@ -77,11 +77,11 @@ export async function fetchLeadCaseAttorneys(leadCaseId: string) {
 }
 
 export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
-  const courtDivisionSet = cases.reduce((set, bCase) => {
-    set.add(bCase.courtDivision);
+  const divisionCodeSet = cases.reduce((set, bCase) => {
+    set.add(bCase.courtDivisionCode);
     return set;
   }, new Set<string>());
-  return courtDivisionSet.size === 1 ? Array.from<string>(courtDivisionSet)[0] : undefined;
+  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
 }
 
 export function formatListforDisplay(attorneys: string[]) {

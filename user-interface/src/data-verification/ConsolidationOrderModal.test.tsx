@@ -366,15 +366,15 @@ describe('ConsolidationOrderModalComponent', () => {
     const noDivisionCodes = getUniqueDivisionCodeOrUndefined(cases);
     expect(noDivisionCodes).toBeUndefined();
 
-    cases.push(MockData.getCaseSummary({ override: { courtDivision: expectedDivisionCode } }));
+    cases.push(MockData.getCaseSummary({ override: { courtDivisionCode: expectedDivisionCode } }));
     const oneDivisionCode = getUniqueDivisionCodeOrUndefined(cases);
     expect(oneDivisionCode).toEqual(expectedDivisionCode);
 
-    cases.push(MockData.getCaseSummary({ override: { courtDivision: expectedDivisionCode } }));
+    cases.push(MockData.getCaseSummary({ override: { courtDivisionCode: expectedDivisionCode } }));
     const sameDivisionCode = getUniqueDivisionCodeOrUndefined(cases);
     expect(sameDivisionCode).toEqual(expectedDivisionCode);
 
-    cases.push(MockData.getCaseSummary({ override: { courtDivision: '999' } }));
+    cases.push(MockData.getCaseSummary({ override: { courtDivisionCode: '999' } }));
     const differentDivisionCodes = getUniqueDivisionCodeOrUndefined(cases);
     expect(differentDivisionCodes).toBeUndefined();
   });

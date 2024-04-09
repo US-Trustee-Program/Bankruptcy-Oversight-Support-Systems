@@ -81,7 +81,7 @@ describe('TransferOrderAccordion', () => {
   regionMap.set('02', 'NEW YORK');
   const testOffices: OfficeDetails[] = [
     {
-      courtDivision: '001',
+      courtDivisionCode: '001',
       groupDesignator: 'AA',
       courtId: '0101',
       officeCode: '1',
@@ -93,7 +93,7 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
     {
-      courtDivision: '003',
+      courtDivisionCode: '003',
       groupDesignator: 'AC',
       courtId: '0103',
       officeCode: '3',
@@ -105,7 +105,7 @@ describe('TransferOrderAccordion', () => {
       regionName: 'NEW YORK',
     },
     {
-      courtDivision: '002',
+      courtDivisionCode: '002',
       groupDesignator: 'AB',
       courtId: '0102',
       officeCode: '2',
@@ -347,8 +347,8 @@ describe('TransferOrderAccordion', () => {
       caseId: order.caseId,
       id: order.id,
       newCase: {
-        caseId: `${testOffices[0].courtDivision}-${caseNumber}`,
-        courtDivision: testOffices[0].courtDivision,
+        caseId: `${testOffices[0].courtDivisionCode}-${caseNumber}`,
+        courtDivisionCode: testOffices[0].courtDivisionCode,
         courtDivisionName: testOffices[0].courtDivisionName,
         courtName: testOffices[0].courtName,
         regionId: testOffices[0].regionId,
@@ -971,7 +971,7 @@ describe('TransferOrderAccordion', () => {
     ];
 
     const sortedTestOffices = [...testOffices].sort((a, b) =>
-      a.courtDivision < b.courtDivision ? -1 : 1,
+      a.courtDivisionCode < b.courtDivisionCode ? -1 : 1,
     );
 
     const actualOptions = getOfficeList(sortedTestOffices);

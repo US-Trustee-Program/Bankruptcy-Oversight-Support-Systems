@@ -185,11 +185,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     input.push({
       name: 'originalDivision',
       type: mssql.VarChar,
-      value: bCase.courtDivision,
+      value: bCase.courtDivisionCode,
     });
 
     const CASE_SUGGESTION_QUERY = `SELECT
-        cs.CS_DIV as courtDivision,
+        cs.CS_DIV as courtDivisionCode,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
         cs.CS_SHORT_TITLE as caseTitle,
         FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
@@ -315,7 +315,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
 
     const CASE_DETAIL_QUERY = `SELECT
-        cs.CS_DIV as courtDivision,
+        cs.CS_DIV as courtDivisionCode,
         cs.CS_DIV+'-'+cs.CASE_ID as caseId,
         cs.CS_SHORT_TITLE as caseTitle,
         FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
