@@ -29,7 +29,7 @@ describe('test ConsolidationCasesTable component', () => {
     );
   }
 
-  test('should select all checkboxes when ref.selectAll() is called and clear them when ref.clearSelection() is called', async () => {
+  test('should select all checkboxes when ref.selectAllCheckboxes() is called and clear them when ref.clearAllCheckboxes() is called', async () => {
     const tableRef = React.createRef<OrderTableImperative>();
     let checkboxes: NodeListOf<HTMLInputElement>;
     let checkbox: HTMLInputElement;
@@ -50,7 +50,7 @@ describe('test ConsolidationCasesTable component', () => {
       }
     }
 
-    const selectedItems = tableRef.current?.selectAll();
+    const selectedItems = tableRef.current?.selectAllCheckboxes();
 
     expect(selectedItems).toEqual(props.cases);
 
@@ -61,7 +61,7 @@ describe('test ConsolidationCasesTable component', () => {
       }
     });
 
-    tableRef.current?.clearSelection();
+    tableRef.current?.clearAllCheckboxes();
 
     await vi.waitFor(() => {
       checkboxes = document.querySelectorAll(`.consolidation-cases-table input`);
