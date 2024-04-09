@@ -141,165 +141,110 @@ jobs:
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
 
-  # deploy-db:
-  #   name: ComosDb
-  #   # needs: [setup, build, accessibility-test, security-scan, validation] // TODO CAMS-237 Skip some validation jobs
-  #   needs: [setup, build]
-  #   uses: ./.github/workflows/reusable-database-deploy.yml
-  #   secrets: inherit # pragma: allowlist secret
-  #   if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
-  #   with:
-  #     ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-  #     azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
-  #     environmentHash: ${{ needs.setup.outputs.environmentHash }}
-  #     apiName: ${{ needs.setup.outputs.apiName }}
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: [setup, build, accessibility-test, security-scan, validation]
+  #   environment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #   # if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+  #   if: false # TODO CAMS-237 disable this for now
+  #   outputs:
+  #     cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
+  #     cosmosDbPrincipalIdEncrypted: ${{ steps.cosmosPrincipalId.outputs.out }}
 
-  # deploy-infra:
-  #   name: Azure Resources
-  #   # needs: [setup, build, accessibility-test, security-scan, validation] // TODO CAMS-237 Skip some validation jobs
-  #   needs: [setup, build]
-  #   uses: ./.github/workflows/reusable-deploy.yml
-  #   if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
-  #   with:
-  #     ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-  #     azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-  #     azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
-  #     stackName: ${{ needs.setup.outputs.stackName }}
-  #     environmentHash: ${{ needs.setup.outputs.environmentHash }}
-  #     execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
-  #     slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
-  #     deployBranch: ${{ inputs.deployBranch }}
-  #     deployBicep: ${{ needs.setup.outputs.deployBicep }}
-  #   secrets: inherit # pragma: allowlist secret
+  #   steps:
+  #     - run: echo "Current git reference ${{ github.ref_name }}"
 
-  # deploy-slot-resources:
-  #   name: Deploy Slot Resources
-  #   needs:
-  #     [
-  #       setup,
-  #       build,
-  #       # accessibility-test,
-  #       # security-scan,
-  #       # validation, // TODO CAMS-237 Skip some validation jobs
-  #       deploy-infra,
-  #     ]
-  #   uses: ./.github/workflows/sub-deploy-slot-resources.yml
-  #   if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
-  #   with:
-  #     webAppName: ${{ needs.setup.outputs.webappName }}
-  #     apiName: ${{ needs.setup.outputs.apiName }}
-  #     ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-  #     azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-  #     azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
-  #     slotName: ${{ needs.setup.outputs.slotName }}
-  #     slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
-  #     environmentHash: ${{ needs.setup.outputs.environmentHash }}
-  #   secrets: inherit # pragma: allowlist secret
+  #     - uses: actions/checkout@main
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [setup, build, accessibility-test, security-scan, validation]
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
-    # if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
-    if: false # TODO CAMS-237 disable this for now
-    outputs:
-      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalIdEncrypted: ${{ steps.cosmosPrincipalId.outputs.out }}
+  #     - uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-    steps:
-      - run: echo "Current git reference ${{ github.ref_name }}"
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgApp
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
-      - uses: actions/checkout@main
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgNetwork
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
 
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
+  #     - name: Create Azure resource groups
+  #       id: azure-resource-group
+  #       if: needs.setup.outputs.deployBicep == 'true'
+  #       run: |
+  #         ./ops/scripts/pipeline/azure-deploy-rg.sh \
+  #           --show-what-if \
+  #           --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
+  #           --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ needs.setup.outputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch || false}}' \
+  #           -l ${{ secrets.AZ_LOCATION }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  #     - name: Deploy Azure resources
+  #       id: azure-deploy
+  #       if: needs.setup.outputs.deployBicep == 'true'
+  #       run: |
+  #         ./ops/scripts/pipeline/azure-deploy.sh \
+  #           --show-what-if \
+  #           --resource-group ${{ steps.rgApp.outputs.out }} \
+  #           --file ./ops/cloud-deployment/main.bicep \
+  #           --parameters 'appName=${{ needs.setup.outputs.stackName }} deployVnet=${{ needs.setup.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} createActionGroup=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
 
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgNetwork
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
+  #     ##Need to remove managedIdName and subNet name from output params
+  #     - name: Check deployment and set params
+  #       id: set-deploy-params
+  #       run: |
+  #         cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+  #         echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
+  #         cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+  #         echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
+  #         echo "CosmosDbPrincipalId: $cosmosDbPrincipalId"
+  #         cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
+  #         echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
+  #         webappSubnetName=snet-${{ needs.setup.outputs.webappName }}
+  #         echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
 
-      - name: Create Azure resource groups
-        id: azure-resource-group
-        if: needs.setup.outputs.deployBicep == 'true'
-        run: |
-          ./ops/scripts/pipeline/azure-deploy-rg.sh \
-            --show-what-if \
-            --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ needs.setup.outputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch || false}}' \
-            -l ${{ secrets.AZ_LOCATION }}
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: cosmosPrincipalId
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: encode
+  #         in: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
+  #     - name: Create Webapp Slot Resource
+  #       if: (needs.setup.outputs.slotDeploymentEnabled == 'true')
+  #       run: |
+  #         ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
+  #           --webappName ${{ needs.setup.outputs.webappName }} \
+  #           --apiName ${{ needs.setup.outputs.apiName }} \
+  #           --resourceGroup ${{ steps.rgApp.outputs.out }} \
+  #           --slotName ${{ needs.setup.outputs.slotName }} \
+  #           --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
+  #           --network-rg ${{ steps.rgNetwork.outputs.out }} \
+  #           --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
+  #           --subnet ${{ steps.set-deploy-params.outputs.webappSubnetName }}
 
-      - name: Deploy Azure resources
-        id: azure-deploy
-        if: needs.setup.outputs.deployBicep == 'true'
-        run: |
-          ./ops/scripts/pipeline/azure-deploy.sh \
-            --show-what-if \
-            --resource-group ${{ steps.rgApp.outputs.out }} \
-            --file ./ops/cloud-deployment/main.bicep \
-            --parameters 'appName=${{ needs.setup.outputs.stackName }} deployVnet=${{ needs.setup.outputs.execVnetDeploy }} deployNetwork=true networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} virtualNetworkName=${{ vars.AZ_NETWORK_VNET_NAME }} deployWebapp=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} deployFunctions=${{ needs.setup.outputs.slotDeploymentEnabled == 'false' }} apiFunctionsResourceGroupName=${{ steps.rgApp.outputs.out }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} privateDnsZoneName=${{ vars.AZ_PRIVATE_DNS_ZONE }} deployAppInsights=true analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} createActionGroup=${{ needs.setup.outputs.ghaEnvironment != 'Main-Gov' }} azHostSuffix=${{ vars.AZ_HOSTNAME_SUFFIX }} camsReactSelectHash=${{ secrets.CAMS_REACT_SELECT_HASH }} ustpIssueCollectorHash=${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} idKeyvaultAppConfiguration=${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} kvAppConfigResourceGroupName=${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }}'
+  #     - name: Create API Slot Resource
+  #       if: (needs.setup.outputs.slotDeploymentEnabled == 'true')
+  #       run: |
+  #         slotStorageAccountName=ustpslot${{ needs.setup.outputs.environmentHash }}
 
-      ##Need to remove managedIdName and subNet name from output params
-      - name: Check deployment and set params
-        id: set-deploy-params
-        run: |
-          cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
-          echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
-          cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
-          echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
-          echo "CosmosDbPrincipalId: $cosmosDbPrincipalId"
-          cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
-          echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
-          webappSubnetName=snet-${{ needs.setup.outputs.webappName }}
-          echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: cosmosPrincipalId
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: encode
-          in: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
-      - name: Create Webapp Slot Resource
-        if: (needs.setup.outputs.slotDeploymentEnabled == 'true')
-        run: |
-          ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
-            --webappName ${{ needs.setup.outputs.webappName }} \
-            --apiName ${{ needs.setup.outputs.apiName }} \
-            --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --slotName ${{ needs.setup.outputs.slotName }} \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
-            --network-rg ${{ steps.rgNetwork.outputs.out }} \
-            --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
-            --subnet ${{ steps.set-deploy-params.outputs.webappSubnetName }}
-
-      - name: Create API Slot Resource
-        if: (needs.setup.outputs.slotDeploymentEnabled == 'true')
-        run: |
-          slotStorageAccountName=ustpslot${{ needs.setup.outputs.environmentHash }}
-
-          ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
-            --apiName ${{ needs.setup.outputs.apiName }} \
-            --webappName ${{ needs.setup.outputs.webappName }} \
-            --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --idResourceGroup ${{ secrets.AZURE_RG }} \
-            --slotName ${{ needs.setup.outputs.slotName }} \
-            --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
-            --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-            --cosmosIdName ${{ steps.set-deploy-params.outputs.cosmosDbManagedIdName }} \
-            --branchHashId ${{ needs.setup.outputs.environmentHash || 'DOES_NOT_EXIST' }} \
-            --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            --storageAccName ${slotStorageAccountName:0:24}
+  #         ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
+  #           --apiName ${{ needs.setup.outputs.apiName }} \
+  #           --webappName ${{ needs.setup.outputs.webappName }} \
+  #           --resourceGroup ${{ steps.rgApp.outputs.out }} \
+  #           --idResourceGroup ${{ secrets.AZURE_RG }} \
+  #           --slotName ${{ needs.setup.outputs.slotName }} \
+  #           --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
+  #           --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
+  #           --cosmosIdName ${{ steps.set-deploy-params.outputs.cosmosDbManagedIdName }} \
+  #           --branchHashId ${{ needs.setup.outputs.environmentHash || 'DOES_NOT_EXIST' }} \
+  #           --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+  #           --storageAccName ${slotStorageAccountName:0:24}
 
   deploy-webapp:
     runs-on: ubuntu-latest
