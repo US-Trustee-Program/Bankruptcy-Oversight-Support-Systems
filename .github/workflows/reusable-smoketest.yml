@@ -61,6 +61,7 @@ jobs:
             targetWebappURL="${targetWebappURL}?x-ms-routing-name=${{ inputs.slotName }}"
             targetApiURL="${targetApiURL}?x-ms-routing-name=${{ inputs.slotName }}"
           fi
+          echo "Target App URL: ${targetWebappURL}    Target API URL: ${targetApiURL}"
 
           webStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://${targetWebappURL} )
           apiStatusCode=$(curl -q -o -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f https://{targetApiURL} )
