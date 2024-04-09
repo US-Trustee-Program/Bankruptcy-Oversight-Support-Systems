@@ -279,7 +279,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-10">
                 <div>
                   <h3>Cases</h3>
-                  <Button uswdsStyle={UswdsButtonStyle.Outline} onClick={toggleAllCheckBoxes}>
+                  <Button
+                    id={`${order.id}-checkbox-toggle-button`}
+                    uswdsStyle={UswdsButtonStyle.Outline}
+                    onClick={toggleAllCheckBoxes}
+                  >
                     {checkboxGroupState === CheckBoxState.CHECKED && <>Exclude All</>}
                     {checkboxGroupState !== CheckBoxState.CHECKED && <>Include All</>}
                   </Button>
