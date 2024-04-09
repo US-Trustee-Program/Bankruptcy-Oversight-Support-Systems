@@ -60,6 +60,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
+
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,

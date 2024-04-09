@@ -58,13 +58,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const api = useApi();
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
-    console.log(`Adding ${bCase.caseId} to selectedCases`, selectedCases.length);
     if (selectedCases.includes(bCase)) {
       setSelectedCases(selectedCases.filter((aCase) => bCase !== aCase));
     } else {
-      console.log('selectedCases was empty');
       setSelectedCases([...selectedCases, bCase]);
-      console.log(selectedCases);
     }
   }
 

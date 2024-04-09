@@ -11,7 +11,7 @@ export type OrderTableImperative = {
   selectAll: () => ConsolidationOrderCase[];
 };
 
-interface ConsolidationCaseTableProps {
+export interface ConsolidationCaseTableProps {
   id: string;
   cases: Array<ConsolidationOrderCase>;
   onSelect?: (bCase: ConsolidationOrderCase) => void;
