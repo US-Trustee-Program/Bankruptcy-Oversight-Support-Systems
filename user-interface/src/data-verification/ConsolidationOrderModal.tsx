@@ -76,6 +76,14 @@ export async function fetchLeadCaseAttorneys(leadCaseId: string) {
   return caseAssignments.map((assignment) => assignment.name);
 }
 
+export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
+  const courtDivisionSet = cases.reduce((set, bCase) => {
+    set.add(bCase.courtDivision);
+    return set;
+  }, new Set<string>());
+  return courtDivisionSet.size === 1 ? Array.from<string>(courtDivisionSet)[0] : undefined;
+}
+
 export function formatListforDisplay(attorneys: string[]) {
   if (attorneys.length === 0) {
     return '(unassigned)';
@@ -337,6 +345,7 @@ function ConsolidationOrderModalComponent(
   }
 
   function showApprovedContentStep1() {
+    const defaultLeadCaseCourtValue = getUniqueDivisionCodeOrUndefined(cases);
     return (
       <div>
         {featureFlags[CONSOLIDATIONS_ENABLED] && (
@@ -377,7 +386,7 @@ function ConsolidationOrderModalComponent(
               setLeadCaseDivisionCode(ev?.value || '');
             }}
             ref={leadCaseDivisionRef}
-            value={props.courts.length === 1 ? props.courts[0].courtDivision : undefined}
+            value={defaultLeadCaseCourtValue}
           ></SearchableSelect>
         </div>
         <div className="lead-case-number-containter">

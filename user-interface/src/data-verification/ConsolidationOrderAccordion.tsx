@@ -49,7 +49,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
-    filterCourtByDivision(props.order.divisionCode, officesList),
+    filterCourtByDivision(props.order.courtDivision, officesList),
   );
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
