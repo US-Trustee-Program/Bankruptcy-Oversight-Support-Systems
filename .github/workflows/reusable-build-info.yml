@@ -52,6 +52,7 @@ on:
 
 jobs:
   build-info:
+    name: Run Info
     runs-on: ubuntu-latest
     ##We can access gitHub Env Vars as long as we set the environment: variable on the job
     environment: ${{ inputs.environment }}
