@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Title:        az-app-deploy.sh
-# Description:  Helper script to deploy webapp build artifact to existing Azure site
+# Title:        endpoint-test.sh
+# Description:  Verify 200 response from frontend and backend
 # Usage:        ./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix
 #
 # Exitcodes
