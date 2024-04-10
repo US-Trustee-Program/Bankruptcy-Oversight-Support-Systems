@@ -78,17 +78,6 @@ jobs:
           name: playwright-report
           path: test/e2e/playwright-report/
           retention-days: 30
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
-      - name: Update NodeAPI Cosmos DB Name
-        if: always()
-        run: |
-          az functionapp config appsettings set --name ${{ inputs.apiName }} --resource-group ${{steps.rgApp.outputs.out }} --slot-settings COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }}
 
       - name: Clean up e2e test database
         if: always()

@@ -25,6 +25,7 @@ jobs:
       deployVnet: "false"
 
   deploy-db:
+    if: ${{ inputs.runSlotTests == 'true' }}
     name: ComosDb
     uses: ./.github/workflows/reusable-database-deploy.yml
     needs: [setup]
