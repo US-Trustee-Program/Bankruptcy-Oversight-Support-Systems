@@ -101,7 +101,7 @@ test.describe('Consolidation Orders', () => {
       )
       .check();
 
-    await page.locator('#lead-case-court div').filter({ hasText: 'Select...' }).first().click();
+    await page.locator('#lead-case-court div').first().click();
     await page.getByRole('option', { name: /Manhattan/ }).click();
 
     await page
