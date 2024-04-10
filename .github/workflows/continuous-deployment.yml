@@ -91,6 +91,7 @@ jobs:
 
       - name: Run pa11y Test
         run: ../ops/scripts/pipeline/accessibility-test.sh
+
   unit-test-frontend:
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
@@ -149,8 +150,9 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   enable-access:
+    if: false
     runs-on: ubuntu-latest
-    needs: [setup, smoke-test-application]
+    # needs: [setup, smoke-test-application]
     environment: ${{ needs.setup.outputs.ghaEnvironment }}
     env:
       webappName: ${{ needs.setup.outputs.webappName }}
@@ -176,122 +178,21 @@ jobs:
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ needs.setup.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --slot ${{ needs.setup.outputs.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
 
-  deploy-webapp:
-    runs-on: ubuntu-latest
+
+  deploy-code:
+    uses: ./.github/workflows/sub-deploy-code.yml
     needs: [setup, deploy]
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     if: needs.setup.outputs.slotDeploymentEnabled == 'false'
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ needs.setup.outputs.webappName }}-build
-
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-
-      - name: Deploy to Azure WebApp
-        id: deploy-webapp-step
-        continue-on-error: true
-        run: |
-          ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.setup.outputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.setup.outputs.webappName }}
-
-      - name: Retry Deploy to Azure WebApp
-        if: steps.deploy-webapp-step.outcome != 'success'
-        run: |
-          sleep 30 &&
-          ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ needs.setup.outputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.setup.outputs.webappName }}
-
-  deploy-service:
-    runs-on: ubuntu-latest
-    needs: [setup, deploy]
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
-    if: needs.setup.outputs.slotDeploymentEnabled == 'false'
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ needs.setup.outputs.apiName }}-build
-
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-
-      - name: Deploy Azure Functions backend
-        id: deploy-backend-step
-        continue-on-error: true
-        run: |
-          ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.setup.outputs.apiName }} \
-          --src ./${{ needs.setup.outputs.apiName }}.zip \
-          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
-          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
-          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
-          INFO_SHA=${{ github.sha }}" \
-          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
-          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
-
-      - name: Retry Deploy Azure Functions backend
-        if: steps.deploy-backend-step.outcome != 'success'
-        run: |
-          sleep 30 &&
-          ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ needs.setup.outputs.apiName }} \
-          --src ./${{ needs.setup.outputs.apiName }}.zip \
-          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
-          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
-          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ needs.deploy.outputs.cosmosDbClientId }} \
-          INFO_SHA=${{ github.sha }}" \
-          --identities "${{ needs.deploy.outputs.cosmosDbPrincipalId }}" \
-          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
-
-  smoke-test-application:
-    needs: [setup, deploy-webapp, deploy-service]
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Health check api
-        run: |
-          ./ops/scripts/pipeline/endpoint-test.sh \
-          --apiName ${{ needs.setup.outputs.apiName }} \
-          --webappName ${{ needs.setup.outputs.webappName }} \
-          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }}
+    with:
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      webAppName: ${{ needs.setup.outputs.webappName }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+      cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
+    secrets: inherit # pragma: allowlist secret
 
   ##### Below are GHA jobs related to Azure Slot deployments #####
 
