@@ -51,7 +51,7 @@ jobs:
   deploy-infra:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{ inputs.deployBicep == 'true' }}
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -80,7 +80,7 @@ jobs:
     name: Slot Resources
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
     needs: [deploy-infra]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{ inputs.deployBicep =='true' }}
     with:
       webAppName: ${{ inputs.webappName }}
       apiName: ${{ inputs.apiName }}

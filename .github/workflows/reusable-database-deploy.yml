@@ -66,9 +66,3 @@ jobs:
           echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
           cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
           echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
-
-      # cosmosDbManagedIdName=id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user
-      # echo "cosmosDbManagedIdName=${cosmosDbManagedIdName}" >> $GITHUB_OUTPUT
-      # webappSubnetName=snet-${{ needs.setup.outputs.webappName }}
-      # echo "webappSubnetName=${webappSubnetName}" >> $GITHUB_OUTPUT
-      # if need be return these to the pipeline, should beset in their corresponding
