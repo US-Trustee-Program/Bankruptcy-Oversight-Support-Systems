@@ -48,7 +48,9 @@ function _ConsolidationCaseTable(
     const newIdList = [];
     const newCaseList = [];
     let bCase = 0;
-    const checkboxes = document.querySelectorAll(`#${id}.consolidation-cases-table input`);
+    const checkboxes = document.querySelectorAll(
+      `#consolidation-cases-${id}.consolidation-cases-table input`,
+    );
     if (checkboxes) {
       for (const checkBox of checkboxes) {
         bCase = parseInt((checkBox as HTMLInputElement).value);
@@ -68,7 +70,7 @@ function _ConsolidationCaseTable(
   return (
     <table
       className="usa-table usa-table--borderless consolidation-cases-table"
-      id={id}
+      id={`consolidation-cases-${id}`}
       data-testid={id}
     >
       <thead>
