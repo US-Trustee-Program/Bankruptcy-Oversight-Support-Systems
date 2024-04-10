@@ -343,12 +343,11 @@ describe('Orders use case', () => {
       status: 'approved',
       childCases: childCaseSummaries,
     };
-    const leadCaseHistory: CaseHistory = {
+    const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: newConsolidation.leadCase.caseId,
       before: leadCaseBefore,
       after: leadCaseAfter,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const before: ConsolidationOrderSummary = {
       status: 'pending',
@@ -359,12 +358,11 @@ describe('Orders use case', () => {
       leadCase: newConsolidation.leadCase,
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
       after,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
@@ -451,12 +449,11 @@ describe('Orders use case', () => {
       status: 'approved',
       childCases: [childCaseSummaries[0]],
     };
-    const leadCaseHistory: CaseHistory = {
+    const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: approvedConsolidation.leadCase.caseId,
       before: leadCaseBefore,
       after: leadCaseAfter,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const before: ConsolidationOrderSummary = {
       status: 'pending',
@@ -467,12 +464,11 @@ describe('Orders use case', () => {
       leadCase: approvedConsolidation.leadCase,
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: originalConsolidation.childCases[0].caseId,
       before,
       after,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
@@ -537,12 +533,11 @@ describe('Orders use case', () => {
       status: 'rejected',
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
       after,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
