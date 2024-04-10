@@ -24,7 +24,6 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
-import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -49,17 +48,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const rejectButtonRef = useRef<ButtonRef>(null);
-  const toggleCheckboxRef = useRef<CheckboxRef>(null);
 
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
-  const [checkboxGroupState, _setCheckboxGroupState] = useState<CheckboxState>(
-    CheckboxState.UNCHECKED,
-  );
-  const setCheckboxGroupState = (groupState: CheckboxState) => {
-    toggleCheckboxRef.current?.setChecked(groupState);
-    _setCheckboxGroupState(groupState);
-  };
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
@@ -75,36 +66,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       tempSelectedCases = [...selectedCases, bCase];
     }
     setSelectedCases(tempSelectedCases);
-    const total = tempSelectedCases.length;
-    if (total === 0) {
-      setCheckboxGroupState(CheckboxState.UNCHECKED);
-    } else if (total < order.childCases.length) {
-      setCheckboxGroupState(CheckboxState.INDETERMINATE);
-    } else if (total === order.childCases.length) {
-      setCheckboxGroupState(CheckboxState.CHECKED);
-    }
   }
 
-  function selectAllCheckboxes() {
-    const caseList = caseTable.current?.selectAllCheckboxes();
-    if (caseList) {
-      setSelectedCases(caseList);
-      setCheckboxGroupState(CheckboxState.CHECKED);
-    }
-  }
-
-  function clearAllCheckboxes() {
-    setSelectedCases([]);
-    caseTable.current?.clearAllCheckboxes();
-    setCheckboxGroupState(CheckboxState.UNCHECKED);
-  }
-
-  function toggleAllCheckBoxes(ev: React.ChangeEvent<HTMLInputElement>) {
-    if (!ev.target.checked && checkboxGroupState === CheckboxState.CHECKED) {
-      clearAllCheckboxes();
-    } else {
-      selectAllCheckboxes();
-    }
+  function updateAllSelections(caseList: ConsolidationOrderCase[]) {
+    setSelectedCases(caseList);
   }
 
   function setOrderWithAssignments(order: ConsolidationOrder) {
@@ -284,23 +249,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <div>
-                  <h3>Cases</h3>
-                  <Checkbox
-                    id={`${order.id}-checkbox-toggle-button`}
-                    onChange={toggleAllCheckBoxes}
-                    value={checkboxGroupState}
-                    label={
-                      checkboxGroupState === CheckboxState.CHECKED ? 'Exclude All' : 'Include All'
-                    }
-                    ref={toggleCheckboxRef}
-                  ></Checkbox>
-                </div>
                 <ConsolidationCaseTable
                   id={`${order.id}-case-list`}
                   data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
                   onSelect={handleIncludeCase}
+                  updateAllSelections={updateAllSelections}
                   isAssignmentLoaded={isAssignmentLoaded}
                   ref={caseTable}
                 ></ConsolidationCaseTable>
