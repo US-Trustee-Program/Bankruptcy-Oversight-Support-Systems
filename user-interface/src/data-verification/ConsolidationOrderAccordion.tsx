@@ -358,10 +358,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <CaseTable
-                  id={`order-${order.id}-child-cases`}
+                <ConsolidationCaseTable
+                  id={`${order.id}-case-list`}
+                  data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
-                ></CaseTable>
+                  isAssignmentLoaded={isAssignmentLoaded}
+                ></ConsolidationCaseTable>
               </div>
               <div className="grid-col-1"></div>
             </div>
