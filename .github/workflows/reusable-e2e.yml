@@ -28,7 +28,7 @@ on:
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@v3
       - name: Health check api
@@ -39,6 +39,7 @@ jobs:
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
           --slotName ${{ inputs.slotName }}
 
+  ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
   playwright-e2e-test:
     needs: [smoke-test]
     environment: ${{ inputs.ghaEnvironment }}
@@ -77,6 +78,17 @@ jobs:
           name: playwright-report
           path: test/e2e/playwright-report/
           retention-days: 30
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Update NodeAPI Cosmos DB Name
+        if: always()
+        run: |
+          az functionapp config appsettings set --name ${{ inputs.apiName }} --resource-group ${{steps.rgApp.outputs.out }} --slot-settings COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }}
 
       - name: Clean up e2e test database
         if: always()
