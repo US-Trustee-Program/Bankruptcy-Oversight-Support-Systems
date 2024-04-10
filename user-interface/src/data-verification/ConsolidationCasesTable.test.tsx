@@ -17,6 +17,7 @@ describe('test ConsolidationCasesTable component', () => {
       id: 'test-consolidation-cases-table',
       cases: props?.cases ?? [],
       onSelect: props?.onSelect ?? vi.fn(),
+      updateAllSelections: props?.updateAllSelections ?? vi.fn(),
       isAssignmentLoaded: props?.isAssignmentLoaded ?? true,
       displayDocket: props?.displayDocket ?? false,
     };
@@ -36,6 +37,7 @@ describe('test ConsolidationCasesTable component', () => {
 
     const props = {
       cases: MockData.buildArray(() => MockData.getConsolidatedOrderCase(), 5),
+      updateAllSelections: vi.fn(),
     };
 
     renderWithProps(props, tableRef);
@@ -50,9 +52,9 @@ describe('test ConsolidationCasesTable component', () => {
       }
     }
 
-    const selectedItems = tableRef.current?.selectAllCheckboxes();
+    tableRef.current?.selectAllCheckboxes();
 
-    expect(selectedItems).toEqual(props.cases);
+    expect(props.updateAllSelections).toHaveBeenCalledWith(props.cases);
 
     await waitFor(() => {
       checkboxes = document.querySelectorAll(`.consolidation-cases-table input`);
@@ -69,6 +71,7 @@ describe('test ConsolidationCasesTable component', () => {
         expect((checkbox as HTMLInputElement).checked).toBeFalsy();
       }
     });
+    expect(props.updateAllSelections).toHaveBeenCalledWith([]);
   });
 
   test('should have text (unassigned) when no assignments are passed in', async () => {
