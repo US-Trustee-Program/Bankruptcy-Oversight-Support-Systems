@@ -131,7 +131,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     }
 
     order.childCases.forEach((bCase, idx) => {
-      const tableRow = screen.queryByTestId(`order-${order.id}-child-cases-row-${idx}`);
+      const tableRow = screen.queryByTestId(`${order.id}-case-list-row-${idx}-case-info`);
       expect(tableRow).toBeInTheDocument();
       expect(tableRow?.textContent).toContain(bCase.caseTitle);
     });
