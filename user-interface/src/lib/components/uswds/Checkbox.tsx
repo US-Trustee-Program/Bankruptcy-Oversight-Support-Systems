@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export enum CheckBoxState {
   UNCHECKED = -1,
-  INTERMEDIATE = 0,
+  INDETERMINATE = 0,
   CHECKED = 1,
 }
 
@@ -12,7 +12,7 @@ export interface CheckboxProps {
   name?: string;
   value: string | number;
   title?: string;
-  checked: boolean;
+  checked?: boolean;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
   className?: string;
@@ -51,7 +51,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   }
 
   function setChecked(value: boolean | CheckBoxState) {
-    let intermediate = false;
+    let indeterminate = false;
     if (value === true || value === false) {
       setIsChecked(value);
     } else {
@@ -59,12 +59,12 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         setIsChecked(true);
       } else if (value === CheckBoxState.UNCHECKED) {
         setIsChecked(false);
-      } else if (value === CheckBoxState.INTERMEDIATE) {
+      } else if (value === CheckBoxState.INDETERMINATE) {
         setIsChecked(false);
-        intermediate = true;
+        indeterminate = true;
       }
     }
-    setIntermediateState(intermediate);
+    setIntermediateState(indeterminate);
   }
 
   useEffect(() => {
@@ -93,7 +93,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         checked={isChecked}
         onChange={checkHandler}
         onFocus={focusHandler}
-        data-intermediate={intermediateState}
+        data-indeterminate={intermediateState}
         name={props.name}
         title={props.title}
       />

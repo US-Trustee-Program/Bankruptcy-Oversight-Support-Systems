@@ -71,7 +71,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases(tempSelectedCases);
     const total = tempSelectedCases.length;
     if (total === 0) setCheckboxGroupState(CheckBoxState.UNCHECKED);
-    else if (total < order.childCases.length) setCheckboxGroupState(CheckBoxState.INTERMEDIATE);
+    else if (total < order.childCases.length) setCheckboxGroupState(CheckBoxState.INDETERMINATE);
     else if (total === order.childCases.length) setCheckboxGroupState(CheckBoxState.CHECKED);
   }
 

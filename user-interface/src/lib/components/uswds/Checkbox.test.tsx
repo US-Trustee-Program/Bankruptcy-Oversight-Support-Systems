@@ -72,30 +72,30 @@ describe('Test Checkbox component', async () => {
     expect(checkbox).not.toBeChecked();
   });
 
-  test('Should check box when calling ref.setChecked(CheckBoxState.CHECKED), uncheck when calling ref.setChecked(CheckBoxState.UNCHECKED), and set to intermediate state when calling ref.setChecked(CheckBoxState.INTERMEDIATE)', async () => {
+  test('Should check box when calling ref.setChecked(CheckBoxState.CHECKED), uncheck when calling ref.setChecked(CheckBoxState.UNCHECKED), and set to indeterminate state when calling ref.setChecked(CheckBoxState.INDETERMINATE)', async () => {
     const cbRef = React.createRef<CheckboxRef>();
     renderWithProps({}, cbRef);
 
     const checkbox = document.querySelector('input[type="checkbox"]');
     expect(checkbox).not.toBeChecked();
-    expect(checkbox).not.toHaveAttribute('data-intermediate', 'true');
+    expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
     await vi.waitFor(() => {
       cbRef.current?.setChecked(CheckBoxState.CHECKED);
     });
     expect(checkbox).toBeChecked();
-    expect(checkbox).not.toHaveAttribute('data-intermediate', 'true');
+    expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
     await vi.waitFor(() => {
       cbRef.current?.setChecked(CheckBoxState.UNCHECKED);
     });
     expect(checkbox).not.toBeChecked();
-    expect(checkbox).not.toHaveAttribute('data-intermediate', 'true');
+    expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
     await vi.waitFor(() => {
-      cbRef.current?.setChecked(CheckBoxState.INTERMEDIATE);
+      cbRef.current?.setChecked(CheckBoxState.INDETERMINATE);
     });
     expect(checkbox).not.toBeChecked();
-    expect(checkbox).toHaveAttribute('data-intermediate', 'true');
+    expect(checkbox).toHaveAttribute('data-indeterminate', 'true');
   });
 });
