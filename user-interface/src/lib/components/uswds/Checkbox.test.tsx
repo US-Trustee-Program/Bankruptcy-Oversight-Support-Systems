@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import Checkbox, { CheckboxProps, CheckboxRef, CheckBoxState } from './Checkbox';
+import Checkbox, { CheckboxProps, CheckboxRef, CheckboxState } from './Checkbox';
 
 describe('Test Checkbox component', async () => {
   function renderWithProps(props?: Partial<CheckboxProps>, ref?: React.Ref<CheckboxRef>) {
@@ -72,7 +72,7 @@ describe('Test Checkbox component', async () => {
     expect(checkbox).not.toBeChecked();
   });
 
-  test('Should check box when calling ref.setChecked(CheckBoxState.CHECKED), uncheck when calling ref.setChecked(CheckBoxState.UNCHECKED), and set to indeterminate state when calling ref.setChecked(CheckBoxState.INDETERMINATE)', async () => {
+  test('Should check box when calling ref.setChecked(CheckboxState.CHECKED), uncheck when calling ref.setChecked(CheckboxState.UNCHECKED), and set to indeterminate state when calling ref.setChecked(CheckboxState.INDETERMINATE)', async () => {
     const cbRef = React.createRef<CheckboxRef>();
     renderWithProps({}, cbRef);
 
@@ -81,19 +81,19 @@ describe('Test Checkbox component', async () => {
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
     await vi.waitFor(() => {
-      cbRef.current?.setChecked(CheckBoxState.CHECKED);
+      cbRef.current?.setChecked(CheckboxState.CHECKED);
     });
     expect(checkbox).toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
     await vi.waitFor(() => {
-      cbRef.current?.setChecked(CheckBoxState.UNCHECKED);
+      cbRef.current?.setChecked(CheckboxState.UNCHECKED);
     });
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
     await vi.waitFor(() => {
-      cbRef.current?.setChecked(CheckBoxState.INDETERMINATE);
+      cbRef.current?.setChecked(CheckboxState.INDETERMINATE);
     });
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAttribute('data-indeterminate', 'true');

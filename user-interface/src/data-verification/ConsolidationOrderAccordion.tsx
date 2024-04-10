@@ -24,7 +24,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
-import { CheckBoxState } from '@/lib/components/uswds/Checkbox';
+import { CheckboxState } from '@/lib/components/uswds/Checkbox';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -48,8 +48,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
-  const [checkboxGroupState, setCheckboxGroupState] = useState<CheckBoxState>(
-    CheckBoxState.UNCHECKED,
+  const [checkboxGroupState, setCheckboxGroupState] = useState<CheckboxState>(
+    CheckboxState.UNCHECKED,
   );
   const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
@@ -70,27 +70,27 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
     setSelectedCases(tempSelectedCases);
     const total = tempSelectedCases.length;
-    if (total === 0) setCheckboxGroupState(CheckBoxState.UNCHECKED);
-    else if (total < order.childCases.length) setCheckboxGroupState(CheckBoxState.INDETERMINATE);
-    else if (total === order.childCases.length) setCheckboxGroupState(CheckBoxState.CHECKED);
+    if (total === 0) setCheckboxGroupState(CheckboxState.UNCHECKED);
+    else if (total < order.childCases.length) setCheckboxGroupState(CheckboxState.INDETERMINATE);
+    else if (total === order.childCases.length) setCheckboxGroupState(CheckboxState.CHECKED);
   }
 
   function selectAllCheckboxes() {
     const caseList = caseTable.current?.selectAllCheckboxes();
     if (caseList) {
       setSelectedCases(caseList);
-      setCheckboxGroupState(CheckBoxState.CHECKED);
+      setCheckboxGroupState(CheckboxState.CHECKED);
     }
   }
 
   function clearAllCheckboxes() {
     setSelectedCases([]);
     caseTable.current?.clearAllCheckboxes();
-    setCheckboxGroupState(CheckBoxState.UNCHECKED);
+    setCheckboxGroupState(CheckboxState.UNCHECKED);
   }
 
   function toggleAllCheckBoxes() {
-    if (checkboxGroupState === CheckBoxState.CHECKED) {
+    if (checkboxGroupState === CheckboxState.CHECKED) {
       clearAllCheckboxes();
     } else {
       selectAllCheckboxes();
@@ -277,12 +277,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 <div>
                   <h3>Cases</h3>
                   <Button
-                    id={`${order.id}-checkbox-toggle-button`}
+                    id={`checkbox-toggle-button-${order.id}`}
                     uswdsStyle={UswdsButtonStyle.Outline}
                     onClick={toggleAllCheckBoxes}
                   >
-                    {checkboxGroupState === CheckBoxState.CHECKED && <>Exclude All</>}
-                    {checkboxGroupState !== CheckBoxState.CHECKED && <>Include All</>}
+                    {checkboxGroupState === CheckboxState.CHECKED && <>Exclude All</>}
+                    {checkboxGroupState !== CheckboxState.CHECKED && <>Include All</>}
                   </Button>
                 </div>
                 <ConsolidationCaseTable
