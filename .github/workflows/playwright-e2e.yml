@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       runSlotTests:
-        description: "Input to run E2E tests"
+        description: "Run Tests on Deployment Slot? True runs on staging slot false runs on production"
         required: true
         default: "true"
         type: choice
