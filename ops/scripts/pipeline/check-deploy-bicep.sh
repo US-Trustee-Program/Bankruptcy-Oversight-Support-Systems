@@ -19,9 +19,9 @@ branch=$(git branch --show-current)
 lastMergeCommitSha=$(git log ${branch} --first-parent --pretty=format:"%H" --merges -n 1)
 if [[ $lastMergeCommitSha != "" && $branch == "main" ]] ; then
     # shellcheck disable=SC2086 # REASON: Qoutes render the commit sha unusable
-    changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+    changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/)
 else
-    changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+    changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/)
 fi
 
 if [[ $changes != "" || $rg_response == "" || $deploy_flag == true || $deploy_flag == "true" ]]; then #
