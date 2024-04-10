@@ -61,7 +61,6 @@ jobs:
       deployVnet: ${{ inputs.deployVnet }}
 
   accessibility-test:
-    if: false # TODO CAMS-237 SKIP FOR Development purposes
     defaults:
       run:
         working-directory: user-interface
@@ -92,19 +91,19 @@ jobs:
 
       - name: Run pa11y Test
         run: ../ops/scripts/pipeline/accessibility-test.sh
-  frontend:
+  unit-test-frontend:
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: user-interface
       node-version: ${{ vars.NODE_VERSION }}
 
-  backend:
+  unit-test-backend:
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: backend/functions
       node-version: ${{ vars.NODE_VERSION }}
 
-  common:
+  unit-test-common:
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: common
@@ -113,7 +112,6 @@ jobs:
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
-    if: false # TODO CAMS-237 SKIP FOR Development purposes
     secrets: inherit # pragma: allowlist secret
 
   build:
@@ -133,8 +131,7 @@ jobs:
 
   deploy:
     uses: ./.github/workflows/sub-deploy.yml
-    # needs: [setup, build, accessibility-test, security-scan, validation] // TODO CAMS-237 Skip some validation jobs
-    needs: [setup, build]
+    needs: [setup, build, accessibility-test, security-scan, unit-test-frontend, unit-test-backend, unit-test-common]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
