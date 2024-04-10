@@ -24,7 +24,7 @@ export interface CheckboxRef {
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
-  const [isChecked, setIsChecked] = useState(props.checked);
+  const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
   const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
 
   let classes = 'usa-checkbox ';
@@ -69,7 +69,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
 
   useEffect(() => {
     // initializing isChecked above as a default doesn't work for some reason.
-    setIsChecked(props.checked);
+    setIsChecked(props.checked ?? false);
   }, [props.checked]);
 
   useImperativeHandle(
