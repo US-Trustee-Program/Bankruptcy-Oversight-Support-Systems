@@ -51,9 +51,9 @@ apiStatusCode=""
 targetApiURL="https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
 targetWebAppURL="https://${webapp_name}.azurewebsites${host_suffix}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetWebAppURL}"
+webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetWebAppURL}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
-apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-connrefused -f ${targetApiURL}"
+apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetApiURL}"
 
 if [[ -z ${slot_name} ]]; then
   echo "No Slot Provided"
