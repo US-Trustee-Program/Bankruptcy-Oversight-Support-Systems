@@ -25,14 +25,14 @@ describe('CaseNumber component', () => {
     expect(link.attributes.getNamedItem('target')?.value).toEqual('_self');
   });
 
-  test('should open a link in the same window if specified', () => {
+  test('should open a link in a new window if specified', () => {
     renderWithProps(defaultProps);
 
     const link = screen.getByTestId(linkTestId);
     expect(link).toBeInTheDocument();
     expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseId}/`);
     expect(link.attributes.getNamedItem('title')?.value).toEqual(`Open case ${caseId}`);
-    expect(link.attributes.getNamedItem('target')?.value).toEqual('_blank');
+    expect(link.attributes.getNamedItem('target')?.value).toEqual(`CAMS-case-detail-${caseId}`);
 
     const span = screen.getByTestId(testId);
     expect(span).toBeInTheDocument();
