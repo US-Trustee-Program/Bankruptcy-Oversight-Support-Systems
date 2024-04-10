@@ -129,6 +129,7 @@ export class OrdersUseCase {
         documentType: 'AUDIT_TRANSFER',
         before: initialOrder as TransferOrder,
         after: order,
+        occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -195,6 +196,7 @@ export class OrdersUseCase {
           documentType: 'AUDIT_TRANSFER',
           before: null,
           after: order,
+          occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
         };
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
@@ -218,6 +220,7 @@ export class OrdersUseCase {
         documentType: 'AUDIT_CONSOLIDATION',
         before: null,
         after: history,
+        occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -291,6 +294,7 @@ export class OrdersUseCase {
       documentType: 'AUDIT_CONSOLIDATION',
       before: isConsolidationHistory(before) ? before : null,
       after,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
   }
 

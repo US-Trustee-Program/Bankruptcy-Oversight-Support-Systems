@@ -1,13 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import { CaseStaffAssignment, CaseHistory } from '@/lib/type-declarations/chapter-15';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { CaseHistory } from '@common/cams/history';
+import { CaseAssignment } from '@common/cams/assignments';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
   const pendingOrder = MockData.getTransferOrder({ override: { caseId, status: 'pending' } });
   const approvedOrder = MockData.getTransferOrder({ override: { caseId, status: 'approved' } });
-  const assignmentBefore: CaseStaffAssignment[] = [
+  const assignmentBefore: CaseAssignment[] = [
     {
       caseId,
       documentType: 'ASSIGNMENT',
@@ -23,7 +24,7 @@ describe('audit history tests', () => {
       assignedOn: '2023-12-25T00:00:00.000Z',
     },
   ];
-  const assignmentAfter: CaseStaffAssignment[] = [
+  const assignmentAfter: CaseAssignment[] = [
     {
       caseId,
       documentType: 'ASSIGNMENT',

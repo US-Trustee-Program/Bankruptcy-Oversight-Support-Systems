@@ -348,6 +348,7 @@ describe('Orders use case', () => {
       caseId: newConsolidation.leadCase.caseId,
       before: leadCaseBefore,
       after: leadCaseAfter,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const before: ConsolidationOrderSummary = {
       status: 'pending',
@@ -363,12 +364,14 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
       after,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -453,6 +456,7 @@ describe('Orders use case', () => {
       caseId: approvedConsolidation.leadCase.caseId,
       before: leadCaseBefore,
       after: leadCaseAfter,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const before: ConsolidationOrderSummary = {
       status: 'pending',
@@ -468,12 +472,14 @@ describe('Orders use case', () => {
       caseId: originalConsolidation.childCases[0].caseId,
       before,
       after,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: originalConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -536,12 +542,14 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
       after,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
