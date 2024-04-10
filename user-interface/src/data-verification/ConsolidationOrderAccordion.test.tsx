@@ -144,7 +144,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
 
-    const includeAllButton = document.querySelector(`#checkbox-toggle-button-${order.id}`);
+    const includeAllButton = document.querySelector(`.checkbox-toggle label`);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
@@ -571,7 +571,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const includeAllButton = document.querySelector(`#checkbox-toggle-button-${order.id}`);
+    const includeAllButton = document.querySelector(`.checkbox-toggle label`);
 
     const checkboxList: NodeListOf<HTMLInputElement> = document.querySelectorAll(
       'table input[type="checkbox"]',
