@@ -25,7 +25,7 @@ export interface CheckboxRef {
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
   const [isChecked, setIsChecked] = useState(props.checked);
-  const [intermediateState, setIntermediateState] = useState<boolean>(false);
+  const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
 
   let classes = 'usa-checkbox ';
 
@@ -64,7 +64,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         indeterminate = true;
       }
     }
-    setIntermediateState(indeterminate);
+    setIndeterminateState(indeterminate);
   }
 
   useEffect(() => {
@@ -93,7 +93,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         checked={isChecked}
         onChange={checkHandler}
         onFocus={focusHandler}
-        data-indeterminate={intermediateState}
+        data-indeterminate={indeterminateState || null}
         name={props.name}
         title={props.title}
       />
