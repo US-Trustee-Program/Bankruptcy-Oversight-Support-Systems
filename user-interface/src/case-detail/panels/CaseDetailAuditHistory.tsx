@@ -1,8 +1,8 @@
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseHistory } from '@/lib/type-declarations/chapter-15';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { orderStatusType } from '@/lib/utils/labels';
+import { CaseAssignmentHistory, CaseHistory, CaseTransferHistory } from '@common/cams/history';
 
 export interface CaseDetailAuditHistoryProps {
   caseHistory: CaseHistory[];
@@ -11,6 +11,62 @@ export interface CaseDetailAuditHistoryProps {
 
 export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProps) {
   const { caseHistory, isAuditHistoryLoading } = props;
+
+  function showCaseAssignmentHistory(history: CaseAssignmentHistory, idx: number) {
+    return (
+      <tr key={idx}>
+        <td>Staff</td>
+        <td data-testid={`previous-assignment-${idx}`}>
+          {history.before.length === 0 && <>(none)</>}
+          {history.before
+            .map((assignment) => {
+              return assignment.name;
+            })
+            .join(', ')}
+        </td>
+        <td data-testid={`new-assignment-${idx}`}>
+          {history.after.length === 0 && <>(none)</>}
+          {history.after
+            .map((assignment) => {
+              return assignment.name;
+            })
+            .join(', ')}
+        </td>
+        <td data-testid={`change-date-${idx}`}>
+          <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
+        </td>
+      </tr>
+    );
+  }
+
+  function showCaseTransferHistory(history: CaseTransferHistory, idx: number) {
+    return (
+      <tr key={idx}>
+        <td>Order</td>
+        <td data-testid={`previous-order-${idx}`}>
+          {!history.before && <>(none)</>}
+          {history.before && orderStatusType.get(history.before.status)}
+        </td>
+        <td data-testid={`new-order-${idx}`}>
+          {history.after && orderStatusType.get(history.after.status)}
+        </td>
+        <td data-testid={`change-date-${idx}`}>
+          <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
+        </td>
+      </tr>
+    );
+  }
+
+  function renderCaseHistory() {
+    return caseHistory.map((history, idx: number) => {
+      switch (history.documentType) {
+        case 'AUDIT_ASSIGNMENT':
+          return showCaseAssignmentHistory(history, idx);
+        case 'AUDIT_TRANSFER':
+          return showCaseTransferHistory(history, idx);
+      }
+    });
+  }
 
   return (
     <div className="case-audit-history">
@@ -43,57 +99,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
                   </tr>
                 </thead>
                 <tbody>
-                  <>
-                    {caseHistory &&
-                      caseHistory.map((history, idx: number) => {
-                        if (history.documentType === 'AUDIT_ASSIGNMENT') {
-                          return (
-                            <tr key={idx}>
-                              <td>Staff</td>
-                              <td data-testid={`previous-assignment-${idx}`}>
-                                {history.before.length === 0 && <>(none)</>}
-                                {history.before
-                                  .map((assignment) => {
-                                    return assignment.name;
-                                  })
-                                  .join(', ')}
-                              </td>
-                              <td data-testid={`new-assignment-${idx}`}>
-                                {history.after.length === 0 && <>(none)</>}
-                                {history.after
-                                  .map((assignment) => {
-                                    return assignment.name;
-                                  })
-                                  .join(', ')}
-                              </td>
-                              <td data-testid={`change-date-${idx}`}>
-                                <span className="text-no-wrap">
-                                  {formatDate(history.occurredAtTimestamp)}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        } else if (history.documentType === 'AUDIT_TRANSFER') {
-                          return (
-                            <tr key={idx}>
-                              <td>Order</td>
-                              <td data-testid={`previous-order-${idx}`}>
-                                {!history.before && <>(none)</>}
-                                {history.before && orderStatusType.get(history.before.status)}
-                              </td>
-                              <td data-testid={`new-order-${idx}`}>
-                                {history.after && orderStatusType.get(history.after.status)}
-                              </td>
-                              <td data-testid={`change-date-${idx}`}>
-                                <span className="text-no-wrap">
-                                  {formatDate(history.occurredAtTimestamp)}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        }
-                      })}
-                  </>
+                  <>{renderCaseHistory()}</>
                 </tbody>
               </table>
             )}
