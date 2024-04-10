@@ -2,7 +2,12 @@ import { formatDate } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { orderStatusType } from '@/lib/utils/labels';
-import { CaseAssignmentHistory, CaseHistory, CaseTransferHistory } from '@common/cams/history';
+import {
+  CaseAssignmentHistory,
+  CaseConsolidationHistory,
+  CaseHistory,
+  CaseTransferHistory,
+} from '@common/cams/history';
 
 export interface CaseDetailAuditHistoryProps {
   caseHistory: CaseHistory[];
@@ -42,7 +47,25 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
   function showCaseTransferHistory(history: CaseTransferHistory, idx: number) {
     return (
       <tr key={idx}>
-        <td>Order</td>
+        <td>Transfer</td>
+        <td data-testid={`previous-order-${idx}`}>
+          {!history.before && <>(none)</>}
+          {history.before && orderStatusType.get(history.before.status)}
+        </td>
+        <td data-testid={`new-order-${idx}`}>
+          {history.after && orderStatusType.get(history.after.status)}
+        </td>
+        <td data-testid={`change-date-${idx}`}>
+          <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
+        </td>
+      </tr>
+    );
+  }
+
+  function showCaseConsolidationHistory(history: CaseConsolidationHistory, idx: number) {
+    return (
+      <tr key={idx}>
+        <td>Consolidation</td>
         <td data-testid={`previous-order-${idx}`}>
           {!history.before && <>(none)</>}
           {history.before && orderStatusType.get(history.before.status)}
@@ -64,6 +87,8 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
           return showCaseAssignmentHistory(history, idx);
         case 'AUDIT_TRANSFER':
           return showCaseTransferHistory(history, idx);
+        case 'AUDIT_CONSOLIDATION':
+          return showCaseConsolidationHistory(history, idx);
       }
     });
   }

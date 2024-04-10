@@ -35,7 +35,7 @@ export type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, Tran
   documentType: 'AUDIT_TRANSFER';
 };
 
-type CaseConsolidationHistory = AbstractCaseHistory<
+export type CaseConsolidationHistory = AbstractCaseHistory<
   ConsolidationOrderSummary | null,
   ConsolidationOrderSummary
 > & {
