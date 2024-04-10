@@ -92,19 +92,29 @@ jobs:
 
       - name: Run pa11y Test
         run: ../ops/scripts/pipeline/accessibility-test.sh
+  frontend:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: user-interface
+      node-version: ${{ vars.NODE_VERSION }}
+
+  backend:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: backend/functions
+      node-version: ${{ vars.NODE_VERSION }}
+
+  common:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: common
+      node-version: ${{ vars.NODE_VERSION }}
 
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
     if: false # TODO CAMS-237 SKIP FOR Development purposes
     secrets: inherit # pragma: allowlist secret
-
-  validation:
-    name: Validation
-    uses: ./.github/workflows/sub-validation.yml
-    if: false # TODO CAMS-237 SKIP FOR Development purposes
-    with:
-      node-version: ${{ vars.NODE_VERSION }}
 
   build:
     name: Build
