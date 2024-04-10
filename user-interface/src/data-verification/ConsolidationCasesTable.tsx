@@ -92,7 +92,7 @@ function _ConsolidationCaseTable(
                 {onSelect && (
                   <td scope="row">
                     <Checkbox
-                      id={`${id}-case-selection-${idx}`}
+                      id={`case-selection-${id}-${idx}`}
                       onChange={handleCaseSelection}
                       name="case-selection"
                       value={idx}

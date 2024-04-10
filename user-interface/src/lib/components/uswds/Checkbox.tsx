@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
-export enum CheckBoxState {
+export enum CheckboxState {
   UNCHECKED = -1,
   INDETERMINATE = 0,
   CHECKED = 1,
@@ -19,7 +19,7 @@ export interface CheckboxProps {
 }
 
 export interface CheckboxRef {
-  setChecked: (value: boolean | CheckBoxState) => void;
+  setChecked: (value: boolean | CheckboxState) => void;
   getLabel: () => string;
 }
 
@@ -50,16 +50,16 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     return props.label ?? '';
   }
 
-  function setChecked(value: boolean | CheckBoxState) {
+  function setChecked(value: boolean | CheckboxState) {
     let indeterminate = false;
     if (value === true || value === false) {
       setIsChecked(value);
     } else {
-      if (value === CheckBoxState.CHECKED) {
+      if (value === CheckboxState.CHECKED) {
         setIsChecked(true);
-      } else if (value === CheckBoxState.UNCHECKED) {
+      } else if (value === CheckboxState.UNCHECKED) {
         setIsChecked(false);
-      } else if (value === CheckBoxState.INDETERMINATE) {
+      } else if (value === CheckboxState.INDETERMINATE) {
         setIsChecked(false);
         indeterminate = true;
       }
