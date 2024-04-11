@@ -56,6 +56,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
+          --slot-name ${{ inputs.slotName }}
           --is-cicd
       - uses: actions/checkout@v3
       - name: Health check api
@@ -69,8 +70,11 @@ jobs:
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
-
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -r ${name:0:32} \
+          --slot-name ${{ inputs.slotName }}
   ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
   playwright-e2e-test:
     needs: [smoke-test-application-slot]

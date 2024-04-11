@@ -10,11 +10,12 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 ci=
 ip=
+slot_name=
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         printf ""
-        printf "Usage: dev-add-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -p <priority:int> --is-cicd <isCICD:bool> -ip <IP_Address>"
+        printf "Usage: dev-add-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -p <priority:int> --is-cicd <isCICD:bool> -ip <IP_Address> --slot-name slotName"
         printf ""
         shift
         ;;
@@ -24,6 +25,11 @@ while [[ $# -gt 0 ]]; do
         ;;
     -s | --stack-name)
         stack_name="${2}"
+        shift 2
+        ;;
+
+    --slot-name)
+        slot_name="${2}"
         shift 2
         ;;
     -p | --priority)
@@ -63,8 +69,13 @@ fi
 
 ruleName=${ruleName:0:32} # trim up to 32 character limit
 echo "Attempting to add Ip allow rule (${ruleName})"
-az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
-
-az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
-
+if [[ ${slot_name} == 'staging' ]]; then
+    echo "Adding IP to staging deployment slot..."
+    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --slot "${slot_name}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
+    az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --slot "${slot_name}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
+else
+    echo "Adding IP to main deployment slot..."
+    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
+    az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
+fi
 echo "Done"

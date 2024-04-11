@@ -169,8 +169,10 @@ jobs:
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
-
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -r ${name:0:32} \
   enable-access:
     runs-on: ubuntu-latest
     needs: [smoke-test-application]
