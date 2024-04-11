@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import DatePicker, { DatePickerProps } from './DatePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
@@ -31,8 +31,36 @@ describe('Test DatePicker component', async () => {
   }
 
   test('should clear when clearValue() is called', () => {
-    const ref = renderWithProps();
+    const initialValue = '2024-01-01';
+
+    const ref = renderWithProps({ value: initialValue });
+
+    const datePicker = screen.getByTestId(DEFAULT_ID);
+    const step1 = datePicker.attributes.getNamedItem('value')?.value;
+    expect(step1).toEqual(initialValue);
+
     ref.clearValue();
+    waitFor(() => {
+      const step2 = datePicker.attributes.getNamedItem('value')?.value;
+      expect(step2).toEqual('');
+    });
+  });
+
+  test('should set the value when setValue() is called', () => {
+    const initialValue = '2024-01-01';
+    const updatedValue = '2024-01-02';
+
+    const ref = renderWithProps({ value: initialValue });
+
+    const datePicker = screen.getByTestId(DEFAULT_ID);
+    const step1 = datePicker.attributes.getNamedItem('value')?.value;
+    expect(step1).toEqual(initialValue);
+
+    ref.setValue(updatedValue);
+    waitFor(() => {
+      const step2 = datePicker.attributes.getNamedItem('value')?.value;
+      expect(step2).toEqual(updatedValue);
+    });
   });
 
   test('should reset when resetValue() is called', () => {
@@ -41,34 +69,36 @@ describe('Test DatePicker component', async () => {
     const ref = renderWithProps({ value: initialValue });
 
     const datePicker = screen.getByTestId(DEFAULT_ID);
-    screen.debug(datePicker);
     const step1 = datePicker.attributes.getNamedItem('value')?.value;
     expect(step1).toEqual(initialValue);
 
     ref.setValue(updatedValue);
-    const step2 = datePicker.attributes.getNamedItem('value')?.value;
-    expect(step2).toEqual(updatedValue);
+    waitFor(() => {
+      const step2 = datePicker.attributes.getNamedItem('value')?.value;
+      expect(step2).toEqual(updatedValue);
+    });
 
     ref.resetValue();
-    const step3 = datePicker.attributes.getNamedItem('value')?.value;
-    expect(step3).toEqual(initialValue);
+    waitFor(() => {
+      const step3 = datePicker.attributes.getNamedItem('value')?.value;
+      expect(step3).toEqual(initialValue);
+    });
   });
 
-  test('should set the value when setValue() is called', () => {
-    const ref = renderWithProps();
-    ref.setValue('');
-  });
-
-  test('should be disabled when disable() is called', () => {
+  test('should be disabled when disable() is called', async () => {
     const ref = renderWithProps();
 
     const datePicker = screen.getByTestId(DEFAULT_ID);
     expect(datePicker).toBeEnabled();
 
     ref.disable(true);
-    expect(datePicker).not.toBeEnabled();
+    await waitFor(() => {
+      expect(datePicker).not.toBeEnabled();
+    });
 
     ref.disable(false);
-    expect(datePicker).toBeEnabled();
+    await waitFor(() => {
+      expect(datePicker).toBeEnabled();
+    });
   });
 });
