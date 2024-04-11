@@ -1,13 +1,16 @@
+import './forms.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export interface CheckboxProps {
   id: string;
   label?: string;
   value: string;
-  checked: boolean;
+  name?: string;
+  checked?: boolean;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
   className?: string;
+  required?: boolean;
 }
 
 export interface CheckboxRef {
@@ -16,12 +19,7 @@ export interface CheckboxRef {
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
-  const [isChecked, setIsChecked] = useState(props.checked);
-  let classes = 'usa-checkbox ';
-
-  if (props.className) {
-    classes += props.className;
-  }
+  const [isChecked, setIsChecked] = useState(props.checked ?? false);
 
   const checkHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
     if (props.onChange) {
@@ -60,16 +58,18 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   const checkboxTestId = `checkbox-${props.id}`;
   const labelTestId = `checkbox-label-${props.id}`;
   return (
-    <div className={classes}>
+    <div className={`usa-form-group uswds-form usa-checkbox ${props.className ?? ''}`}>
       <input
         type="checkbox"
         data-testid={checkboxTestId}
         id={props.id}
         className="usa-checkbox__input"
+        name={props.name ?? ''}
         value={props.value}
         checked={isChecked}
         onChange={checkHandler}
         onFocus={focusHandler}
+        required={props.required}
       />
       {props.label && (
         <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>

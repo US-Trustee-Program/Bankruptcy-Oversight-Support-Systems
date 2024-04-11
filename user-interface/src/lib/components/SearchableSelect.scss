@@ -1,3 +1,5 @@
+$secondary-dark: #B50909;
+
 .cams-searchable-select {
   > div {
     margin-top: 10px;
@@ -6,5 +8,12 @@
   }
   div:last-child {
     z-index: 1000;
+  }
+}
+
+.usa-form-group {
+  label[data-required="true"]:has(+ .cams-searchable-select)::after {
+    content: ' *';
+    color: $secondary-dark;
   }
 }

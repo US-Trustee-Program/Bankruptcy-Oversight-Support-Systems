@@ -1,6 +1,7 @@
-import './input.scss';
+import './forms.scss';
 import { ChangeEventHandler, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
+import Icon from './Icon';
 
 // Alias for readability.
 //const debounce = setTimeout;
@@ -22,6 +23,7 @@ export interface InputProps {
   value?: string;
   inputmode?: 'search' | 'text' | 'email' | 'tel' | 'url' | 'none' | 'numeric' | 'decimal';
   required?: boolean;
+  icon?: string;
 }
 
 const BLANK = '';
@@ -63,28 +65,35 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, disable }));
 
   return (
-    <div className="usa-form-group uswds-input">
+    <div className="usa-form-group uswds-form">
       <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
         {props.label}
       </label>
-      <input
-        className={`usa-input usa-tooltip ${props.className}`}
-        id={props.id}
-        type={props.type}
-        name={props.name}
-        title={props.title}
-        data-position="right"
-        autoComplete={props.autocomplete}
-        onChange={handleOnChange}
-        data-testid={props.id}
-        disabled={inputDisabled}
-        min={props.min}
-        max={props.max}
-        pattern={props.pattern}
-        inputMode={props.inputmode}
-        value={inputValue}
-        required={props.required}
-      />
+      <div className="usa-input-group">
+        {props.icon && (
+          <div className="usa-input-prefix" aria-hidden="true">
+            <Icon className={props.className ?? ''} focusable={false} name={props.icon}></Icon>
+          </div>
+        )}
+        <input
+          className={`usa-input usa-tooltip ${props.className ?? ''}`}
+          id={props.id}
+          type={props.type}
+          name={props.name}
+          title={props.title}
+          data-position={props.position ?? 'right'}
+          autoComplete={props.autocomplete}
+          onChange={handleOnChange}
+          data-testid={props.id}
+          disabled={inputDisabled}
+          min={props.min}
+          max={props.max}
+          pattern={props.pattern}
+          inputMode={props.inputmode}
+          value={inputValue}
+          required={props.required}
+        />
+      </div>
     </div>
   );
 }

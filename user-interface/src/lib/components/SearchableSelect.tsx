@@ -16,6 +16,7 @@ export interface SearchableSelectProps {
   options: Record<string, string>[];
   label?: string;
   value?: string;
+  required?: boolean;
 }
 
 function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<InputRef>) {
@@ -23,6 +24,15 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
 
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (props.required !== undefined && props.required === true) {
+      const inputEl = document.querySelector(`#${props.id} input`);
+      if (inputEl) {
+        inputEl.setAttribute('required', 'true');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (props.value !== undefined) {
@@ -135,19 +145,30 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
   }, []);
 
   return (
-    <ReactSelect
-      aria-label={props.label}
-      options={props.options}
-      closeMenuOnSelect={props.closeMenuOnSelect}
-      onChange={props.onChange}
-      className={`${props.className || ''} cams-searchable-select`}
-      styles={customStyles}
-      id={props.id}
-      data-testid={props.id}
-      ref={searchableSelectRef}
-      isSearchable={true}
-      isDisabled={isDisabled}
-    ></ReactSelect>
+    <div className="usa-form-group uswds-form">
+      <label
+        className="usa-label"
+        id={props.id + '-label'}
+        htmlFor={props.id}
+        data-required={props.required ? 'true' : null}
+      >
+        {props.label}
+      </label>
+      <ReactSelect
+        aria-label={props.label}
+        options={props.options}
+        closeMenuOnSelect={props.closeMenuOnSelect}
+        onChange={props.onChange}
+        className={`${props.className || ''} cams-searchable-select`}
+        styles={customStyles}
+        id={props.id}
+        data-testid={props.id}
+        ref={searchableSelectRef}
+        isSearchable={true}
+        isDisabled={isDisabled}
+        required={props.required ?? false}
+      ></ReactSelect>
+    </div>
   );
 }
 
