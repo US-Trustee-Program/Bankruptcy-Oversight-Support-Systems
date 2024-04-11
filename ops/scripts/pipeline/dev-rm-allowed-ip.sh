@@ -13,7 +13,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         printf ""
-        printf "Usage: dev-add-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -p <priority:int> --is-cicd <isCICD:bool> -ip <IP_Address> --slot-name slotName"
+        printf "Usage: dev-rm-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -r <rule_name:str> --slot-name <slot_name:str>"
         printf ""
         shift
         ;;

@@ -4,12 +4,11 @@
 # Prerequisite:
 #   - curl
 #   - Azure CLI
-# Usage: dev-add-allowed-ip.sh <resource_group_name:str> <stack_name:str> <priority:int> <isCICD:bool>
+# Usage: dev-add-allowed-ip.sh <resource_group_name:str> <stack_name:str> <priority:int> <isCICD:bool> <slot_name:str>
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 ci=
-ip=
 slot_name=
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -40,10 +39,7 @@ while [[ $# -gt 0 ]]; do
         ci=true
         shift
         ;;
-    -ip | --ip-address)
-        ip="${2}"
-        shift 2
-        ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -55,11 +51,9 @@ if [[ -z "${app_rg}" || -z "${stack_name}" || -z "${priority}" ]]; then
     exit 1
 fi
 
-if [[ -z "${ip}" ]]; then
-    agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
-else
-    agentIp=${ip}
-fi
+
+agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
+
 
 if [[ -z "${ci}" ]]; then
     ruleName="dev-agent-${agentIp}"
