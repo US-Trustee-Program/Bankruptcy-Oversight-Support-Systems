@@ -59,12 +59,12 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
         <input
           type="date"
           className="usa-input"
-          id={id + '-date'}
+          id={id}
           name={props.name ?? ''}
           aria-labelledby={id + '-date-label'}
           aria-describedby={id + '-date-hint'}
           onChange={props.onChange}
-          data-testid={id + '-date'}
+          data-testid={id}
           min={minDate}
           max={maxDate}
           value={dateValue === null ? undefined : dateValue}
