@@ -213,8 +213,7 @@ jobs:
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --slot-name ${{ inputs.slotName }} \
+          -p ${{ env.priority }}
           --is-cicd
 
       - name: Health check api
@@ -223,7 +222,9 @@ jobs:
           --apiName ${{ inputs.apiName }} \
           --webappName ${{ inputs.webappName }} \
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName ${{ inputs.slotName }}
+          --slotName self \
+          --git-sha ${{ github.sha }}
+
       - name: Disable GHA runner access
         if: always()
         run: |
@@ -231,5 +232,4 @@ jobs:
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
-          -r ${name:0:32} \
-          --slot-name ${{ inputs.slotName }}
+          -r ${name:0:32}
