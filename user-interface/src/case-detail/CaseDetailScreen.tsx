@@ -10,7 +10,10 @@ import {
   CaseAssociatedCasesResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
-import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
+import CamsSelect, {
+  CamsSelectOptionList,
+  MultiSelectOptionList,
+} from '@/lib/components/CamsSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
@@ -296,8 +299,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     return;
   }
 
-  function handleSelectedFacet(newValue: MultiSelectOptionList<Record<string, string>>) {
-    const selected = newValue.map((value: Record<string, string>) => {
+  function handleSelectedFacet(newValue: CamsSelectOptionList) {
+    const selected = (newValue as MultiSelectOptionList).map((value: Record<string, string>) => {
       const { value: selection } = value;
       return selection;
     });
@@ -453,14 +456,15 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         data-testid="facet-multi-select-container-test-id"
                       >
                         <label>Filter by Summary</label>
-                        <MultiSelect
+                        <CamsSelect
                           id="facet-multi-select"
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
                           closeMenuOnSelect={false}
                           onChange={handleSelectedFacet}
                           label="Filter by Summary"
                           ref={facetPickerRef}
-                        ></MultiSelect>
+                          isMulti={true}
+                        ></CamsSelect>
                       </div>
                       <div className="in-docket-search form-field" data-testid="docket-date-range">
                         <DateRangePicker

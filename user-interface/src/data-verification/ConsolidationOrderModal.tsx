@@ -1,6 +1,5 @@
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import SearchableSelect from '@/lib/components/SearchableSelect';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -20,6 +19,10 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './ConsolidationOrderModal.scss';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
+import CamsSelect, {
+  CamsSelectOptionList,
+  SearchableSelectOption,
+} from '@/lib/components/CamsSelect';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -236,6 +239,10 @@ function ConsolidationOrderModalComponent(
     }
   }
 
+  function handleSelectLeadCaseCourt(ev: CamsSelectOptionList) {
+    setLeadCaseDivisionCode((ev as SearchableSelectOption)?.value || '');
+  }
+
   function resizeModal() {
     // get height of modal top section above scrolling div
     const modalWindowPadding = 100;
@@ -375,17 +382,16 @@ function ConsolidationOrderModalComponent(
           </RadioGroup>
         )}
         <div className="lead-case-court-container">
-          <SearchableSelect
+          <CamsSelect
             id={'lead-case-court'}
             required={true}
             options={getOfficeList(props.courts)}
-            onChange={(ev) => {
-              setLeadCaseDivisionCode(ev?.value || '');
-            }}
+            onChange={handleSelectLeadCaseCourt}
             ref={leadCaseDivisionRef}
             label="Lead Case Court"
             value={getUniqueDivisionCodeOrUndefined(cases)}
-          ></SearchableSelect>
+            isSearchable={true}
+          />
         </div>
         <div className="lead-case-number-containter">
           <Input
