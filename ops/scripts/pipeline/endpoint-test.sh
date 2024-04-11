@@ -13,37 +13,42 @@
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 slot_name=''
-
+expected_git_sha=''
 while [[ $# -gt 0 ]]; do
-    case $1 in
-    -h | --help)
-        echo "./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
-        exit 0
-        ;;
+  case $1 in
+  -h | --help)
+    echo "./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
+    exit 0
+    ;;
 
-    --apiName)
-        api_name="${2}"
-        shift 2
-        ;;
+  --apiName)
+    api_name="${2}"
+    shift 2
+    ;;
 
-    --webappName)
-        webapp_name="${2}"
-        shift 2
-        ;;
+  --webappName)
+    webapp_name="${2}"
+    shift 2
+    ;;
 
-    --hostSuffix)
-        host_suffix="${2}"
-        shift 2
-        ;;
+  --hostSuffix)
+    host_suffix="${2}"
+    shift 2
+    ;;
 
-    --slotName)
-        slot_name="${2}"
-        shift 2
-        ;;
-    *)
-        exit 2 # error on unknown flag/switch
-        ;;
-    esac
+  --slotName)
+    slot_name="${2}"
+    shift 2
+    ;;
+
+  --git-sha)
+    expected_git_sha="${2}"
+    shift 2
+    ;;
+  *)
+    exit 2 # error on unknown flag/switch
+    ;;
+  esac
 done
 
 webStatusCode=""
@@ -65,6 +70,22 @@ else
   webStatusCode=$($webCmd)
   apiStatusCode=$($apiCmd)
   targetApiURL+="?x-ms-routing-name=${slot_name}"
+
+  if [[ -n "${expected_git_sha}" ]]; then
+    echo "Expect sha ${expected_git_sha}"
+    retry=0
+    currentGitSha=""
+    while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ $retry -le 2 ]; do
+      ((retry++))
+      # shellcheck disable=SC2086 # REASON: Wants to quote targetApiURL
+      currentGitSha=$(curl ${targetApiURL} | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['sha'])")
+      echo "Current sha ${currentGitSha}"
+    done
+
+    if [[ "${expected_git_sha}" != "${currentGitSha}" ]]; then
+      apiStatusCode=500 # if version does not match set to a non 200 status code
+    fi
+  fi
 fi
 
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
