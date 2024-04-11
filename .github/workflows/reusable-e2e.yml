@@ -85,9 +85,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       priority: 201
-    defaults:
-      run:
-        working-directory: test/e2e
     steps:
       - name: Get source code
         uses: actions/checkout@v3
@@ -118,11 +115,13 @@ jobs:
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
       - name: Install Node dependencies
+        working-directory: test/e2e
         run: |
           npm ci
           npx playwright install chromium msedge
 
       - name: Run the test
+        working-directory: test/e2e
         run: |
           TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
 
