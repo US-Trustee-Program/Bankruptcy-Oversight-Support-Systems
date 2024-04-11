@@ -118,16 +118,16 @@ jobs:
           path: test/e2e/playwright-report/
           retention-days: 30
 
-      - name: Clean up e2e test database
-        if: always()
-        run: |
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
-          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
-            echo "Adding suffix to database name"
-            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
-          fi
-          az cosmosdb sql database delete \
-          --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
-          --name "${e2eDatabaseName}" \
-          --resource-group  ${{ secrets.AZURE_RG }} \
-          --yes
+      # - name: Clean up e2e test database
+      #   if: always()
+      #   run: |
+      #     e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+      #     if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+      #       echo "Adding suffix to database name"
+      #       e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+      #     fi
+      #     az cosmosdb sql database delete \
+      #     --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+      #     --name "${e2eDatabaseName}" \
+      #     --resource-group  ${{ secrets.AZURE_RG }} \
+      #     --yes
