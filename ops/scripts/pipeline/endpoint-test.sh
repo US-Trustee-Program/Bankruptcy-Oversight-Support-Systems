@@ -77,7 +77,7 @@ else
     currentGitSha=""
     while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
       echo "Debug 01"
-      ((retry++))
+      retry=$((retry+1))
       echo "Debug 02"
       # shellcheck disable=SC2086 # REASON: Wants to quote targetApiURL
       curl ${targetApiURL} | tee api_response.json
