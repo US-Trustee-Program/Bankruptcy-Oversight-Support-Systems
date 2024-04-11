@@ -82,7 +82,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
       data-max-date={props.maxDate}
     >
       <DatePicker
-        id={`start-${id}`}
+        id={`${id}-date-start`}
         minDate={minDate}
         maxDate={internalDateRange.end}
         onChange={onStartDateChange}
@@ -93,7 +93,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
         required={props.required}
       />
       <DatePicker
-        id={`end-${id}`}
+        id={`${id}-date-end`}
         minDate={internalDateRange.start}
         maxDate={maxDate}
         onChange={onEndDateChange}
