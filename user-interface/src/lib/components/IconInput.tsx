@@ -1,82 +1,35 @@
-import { ChangeEventHandler, forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef } from 'react';
 import './IconInput.scss';
 import Icon from './uswds/Icon';
 import { InputRef } from '../type-declarations/input-fields';
+import Input, { InputProps } from './uswds/Input';
 
-export interface IconInputProps {
-  id: string;
-  className?: string;
-  type?: string;
-  name?: string;
-  title?: string;
+export interface IconInputProps extends InputProps {
   icon: string;
   autocomplete?: 'off';
   position?: 'left' | 'right';
-  onChange?: ChangeEventHandler<HTMLInputElement>;
-  disabled?: boolean;
-  min?: number;
-  max?: number;
-  pattern?: string;
-  inputmode?: 'search' | 'text' | 'email' | 'tel' | 'url' | 'none' | 'numeric' | 'decimal';
 }
 
 function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
-  //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string>('');
-  const [isDisabled, setIsDisabled] = useState<boolean>(
-    props.disabled !== undefined ? props.disabled : false,
-  );
-
-  function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInputValue(ev.target.value ?? '');
-    if (props.onChange) {
-      props.onChange(ev);
-    }
-  }
-
-  function clearValue() {
-    setInputValue('');
-  }
-
-  function resetValue() {
-    throw new Error('Not implemented');
-  }
-
-  function setValue() {
-    throw new Error('Not implemented');
-  }
-
-  function disable(value: boolean) {
-    setIsDisabled(value);
-  }
-
-  useImperativeHandle(ref, () => {
-    return {
-      clearValue,
-      resetValue,
-      setValue,
-      disable,
-    };
-  });
-
   return (
     <div className="ustp-icon-input">
-      <input
+      <Input
         className={`usa-input usa-tooltip ${props.className}`}
         id={props.id}
         type={props.type}
         name={props.name}
         title={props.title}
         data-position="right"
-        autoComplete={props.autocomplete}
-        onChange={handleOnChange}
+        autocomplete={props.autocomplete}
+        onChange={props.onChange}
         data-testid={props.id}
-        disabled={isDisabled}
+        disabled={props.disabled}
         min={props.min}
         max={props.max}
         pattern={props.pattern}
-        inputMode={props.inputmode}
-        value={inputValue === null ? undefined : inputValue}
+        inputmode={props.inputmode}
+        value={props.value}
+        ref={ref}
       />
       <Icon className={`usa-icon ${props.className}`} name={props.icon}></Icon>
     </div>

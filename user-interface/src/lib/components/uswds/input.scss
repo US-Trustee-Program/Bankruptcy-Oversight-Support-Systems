@@ -1,0 +1,6 @@
+.uswds-input.usa-form-group {
+  label:has(+ input)::after {
+      content: ' *';
+      color: #B50909;
+    }
+}

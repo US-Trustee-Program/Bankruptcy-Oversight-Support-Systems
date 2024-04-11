@@ -1,3 +1,4 @@
+import './input.scss';
 import { ChangeEventHandler, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 
@@ -10,6 +11,7 @@ export interface InputProps {
   type?: string;
   name?: string;
   title?: string;
+  label?: string;
   autocomplete?: 'off';
   position?: 'left' | 'right';
   onChange?: ChangeEventHandler<HTMLInputElement>;
@@ -19,6 +21,7 @@ export interface InputProps {
   pattern?: string;
   value?: string;
   inputmode?: 'search' | 'text' | 'email' | 'tel' | 'url' | 'none' | 'numeric' | 'decimal';
+  required?: boolean;
 }
 
 const BLANK = '';
@@ -60,23 +63,29 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, disable }));
 
   return (
-    <input
-      className={`usa-input usa-tooltip ${props.className}`}
-      id={props.id}
-      type={props.type}
-      name={props.name}
-      title={props.title}
-      data-position="right"
-      autoComplete={props.autocomplete}
-      onChange={handleOnChange}
-      data-testid={props.id}
-      disabled={inputDisabled}
-      min={props.min}
-      max={props.max}
-      pattern={props.pattern}
-      inputMode={props.inputmode}
-      value={inputValue}
-    />
+    <div className="usa-form-group uswds-input">
+      <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+        {props.label}
+      </label>
+      <input
+        className={`usa-input usa-tooltip ${props.className}`}
+        id={props.id}
+        type={props.type}
+        name={props.name}
+        title={props.title}
+        data-position="right"
+        autoComplete={props.autocomplete}
+        onChange={handleOnChange}
+        data-testid={props.id}
+        disabled={inputDisabled}
+        min={props.min}
+        max={props.max}
+        pattern={props.pattern}
+        inputMode={props.inputmode}
+        value={inputValue}
+        required={props.required}
+      />
+    </div>
   );
 }
 
