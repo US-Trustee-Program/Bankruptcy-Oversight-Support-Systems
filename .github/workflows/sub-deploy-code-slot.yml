@@ -214,7 +214,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
-          --slot-name ${{ inputs.slotName }}
+          --slot-name ${{ inputs.slotName }} \
           --is-cicd
       - uses: actions/checkout@v3
       - name: Health check api
