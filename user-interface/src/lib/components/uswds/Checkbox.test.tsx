@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Checkbox, { CheckboxProps, CheckboxRef, CheckboxState } from './Checkbox';
@@ -61,12 +61,12 @@ describe('Test Checkbox component', async () => {
     const checkbox = document.querySelector('input[type="checkbox"]');
     expect(checkbox).not.toBeChecked();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       cbRef.current?.setChecked(true);
     });
     expect(checkbox).toBeChecked();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       cbRef.current?.setChecked(false);
     });
     expect(checkbox).not.toBeChecked();
@@ -80,19 +80,19 @@ describe('Test Checkbox component', async () => {
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       cbRef.current?.setChecked(CheckboxState.CHECKED);
     });
     expect(checkbox).toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       cbRef.current?.setChecked(CheckboxState.UNCHECKED);
     });
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       cbRef.current?.setChecked(CheckboxState.INDETERMINATE);
     });
     expect(checkbox).not.toBeChecked();
