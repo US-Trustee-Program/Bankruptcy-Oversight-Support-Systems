@@ -44,28 +44,13 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
     );
   }
 
-  function showCaseTransferHistory(history: CaseTransferHistory, idx: number) {
+  function showCaseOrderHistory(
+    history: CaseTransferHistory | CaseConsolidationHistory,
+    idx: number,
+  ) {
     return (
       <tr key={idx}>
-        <td>Transfer</td>
-        <td data-testid={`previous-order-${idx}`}>
-          {!history.before && <>(none)</>}
-          {history.before && orderStatusType.get(history.before.status)}
-        </td>
-        <td data-testid={`new-order-${idx}`}>
-          {history.after && orderStatusType.get(history.after.status)}
-        </td>
-        <td data-testid={`change-date-${idx}`}>
-          <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
-        </td>
-      </tr>
-    );
-  }
-
-  function showCaseConsolidationHistory(history: CaseConsolidationHistory, idx: number) {
-    return (
-      <tr key={idx}>
-        <td>Consolidation</td>
+        <td>{history.documentType === 'AUDIT_TRANSFER' ? 'Transfer' : 'Consolidation'} </td>
         <td data-testid={`previous-order-${idx}`}>
           {!history.before && <>(none)</>}
           {history.before && orderStatusType.get(history.before.status)}
@@ -86,9 +71,8 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         case 'AUDIT_ASSIGNMENT':
           return showCaseAssignmentHistory(history, idx);
         case 'AUDIT_TRANSFER':
-          return showCaseTransferHistory(history, idx);
         case 'AUDIT_CONSOLIDATION':
-          return showCaseConsolidationHistory(history, idx);
+          return showCaseOrderHistory(history, idx);
       }
     });
   }
