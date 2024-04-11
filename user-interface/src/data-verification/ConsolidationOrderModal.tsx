@@ -389,15 +389,14 @@ function ConsolidationOrderModalComponent(
           ></SearchableSelect>
         </div>
         <div className="lead-case-number-containter">
-          <label htmlFor={`lead-case-input-${props.id}`} className="usa-label">
-            Lead Case Number
-          </label>
           <Input
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
             className="usa-input"
             onChange={handleLeadCaseInputChange}
             aria-label="Lead case number"
+            required={true}
+            label="Lead Case Number"
             ref={leadCaseNumberRef}
           />
           {leadCaseNumberError ? (
