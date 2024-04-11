@@ -4,7 +4,7 @@ import {
   ConsolidationCaseTableProps,
   OrderTableImperative,
 } from './ConsolidationCasesTable';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import React from 'react';
 
@@ -54,7 +54,7 @@ describe('test ConsolidationCasesTable component', () => {
 
     expect(selectedItems).toEqual(props.cases);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       checkboxes = document.querySelectorAll(`.consolidation-cases-table input`);
       for (checkbox of checkboxes) {
         expect((checkbox as HTMLInputElement).checked).toBeTruthy();
@@ -63,7 +63,7 @@ describe('test ConsolidationCasesTable component', () => {
 
     tableRef.current?.clearAllCheckboxes();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       checkboxes = document.querySelectorAll(`.consolidation-cases-table input`);
       for (checkbox of checkboxes) {
         expect((checkbox as HTMLInputElement).checked).toBeFalsy();
