@@ -1,7 +1,7 @@
 $secondary-dark: #B50909;
 
 .usa-form-group {
-  label:has(+ input[required])::after {
+  label:has(+ .usa-input-group input[required])::after {
     content: ' *';
     color: $secondary-dark;
   }
