@@ -75,10 +75,15 @@ else
     echo "Expect sha ${expected_git_sha}"
     retry=0
     currentGitSha=""
-    while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ $retry -le 2 ]; do
+    while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
+      echo "Debug 01"
       ((retry++))
+      echo "Debug 02"
       # shellcheck disable=SC2086 # REASON: Wants to quote targetApiURL
-      currentGitSha=$(curl ${targetApiURL} | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['sha'])")
+      curl ${targetApiURL} | tee api_response.json
+      echo "Debug 03"
+      # shellcheck disable=SC2002
+      currentGitSha=$(cat api_response.json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['sha'])")
       echo "Current sha ${currentGitSha}"
     done
 
