@@ -13,7 +13,7 @@ import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetail
 import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
-import IconInput from '@/lib/components/IconInput';
+import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
@@ -437,7 +437,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       >
                         <div className="usa-search usa-search--small">
                           <label htmlFor="basic-search-field">Find in Docket</label>
-                          <IconInput
+                          <Input
                             className="search-icon"
                             id="basic-search-field"
                             name="basic-search"
@@ -482,7 +482,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           <label htmlFor="document-number-search-field">
                             Go to Document Number
                           </label>
-                          <IconInput
+                          <Input
                             pattern="^[0-9]*$"
                             inputmode="numeric"
                             title="Enter numbers only"

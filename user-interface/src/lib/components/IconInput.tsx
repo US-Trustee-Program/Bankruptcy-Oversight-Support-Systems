@@ -12,9 +12,12 @@ export interface IconInputProps extends InputProps {
 
 function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
   return (
-    <div className="ustp-icon-input">
+    <div className="usa-form-group icon-input">
+      <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+        {props.label}
+      </label>
       <Input
-        className={`usa-input usa-tooltip ${props.className}`}
+        className={`usa-input usa-tooltip ${props.className ?? ''}`}
         id={props.id}
         type={props.type}
         name={props.name}
@@ -29,9 +32,10 @@ function IconInputComponent(props: IconInputProps, ref: React.Ref<InputRef>) {
         pattern={props.pattern}
         inputmode={props.inputmode}
         value={props.value}
+        required={props.required}
         ref={ref}
       />
-      <Icon className={`usa-icon ${props.className}`} name={props.icon}></Icon>
+      <Icon className={`usa-icon ${props.className ?? ''}`} name={props.icon}></Icon>
     </div>
   );
 }

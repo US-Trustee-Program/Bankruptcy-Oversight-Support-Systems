@@ -19,6 +19,7 @@ import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './ConsolidationOrderModal.scss';
+import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -348,43 +349,41 @@ function ConsolidationOrderModalComponent(
     return (
       <div>
         {featureFlags[CONSOLIDATIONS_ENABLED] && (
-          <div className="consolidation-type-container">
-            <div className="consolidation-type-radio">
-              <label htmlFor={'consolidation-type'} className="usa-label">
-                Consolidation Type
-              </label>
-              <Radio
-                id={`radio-administrative-${id}`}
-                name="consolidation-type"
-                value="administrative"
-                onChange={handleSelectConsolidationType}
-                ref={administrativeConsolidationRef}
-                label={consolidationTypeMap.get('administrative')!}
-              />
-            </div>
-            <div>
-              <Radio
-                id={`radio-substantive-${id}`}
-                name="consolidation-type"
-                value="substantive"
-                onChange={handleSelectConsolidationType}
-                ref={substantiveConsolidationRef}
-                label={consolidationTypeMap.get('substantive')!}
-              />
-            </div>
-          </div>
+          <RadioGroup
+            className="consolidation-type-container"
+            label="Consolidation Type"
+            required={true}
+          >
+            <Radio
+              id={`radio-administrative-${id}`}
+              name="consolidation-type"
+              value="administrative"
+              onChange={handleSelectConsolidationType}
+              ref={administrativeConsolidationRef}
+              label={consolidationTypeMap.get('administrative')!}
+              required={true}
+            />
+            <Radio
+              id={`radio-substantive-${id}`}
+              name="consolidation-type"
+              value="substantive"
+              onChange={handleSelectConsolidationType}
+              ref={substantiveConsolidationRef}
+              label={consolidationTypeMap.get('substantive')!}
+              required={true}
+            />
+          </RadioGroup>
         )}
         <div className="lead-case-court-container">
-          <label htmlFor={'lead-case-court'} className="usa-label">
-            Lead Case Court
-          </label>
           <SearchableSelect
             id={'lead-case-court'}
+            required={true}
             options={getOfficeList(props.courts)}
             onChange={(ev) => {
               setLeadCaseDivisionCode(ev?.value || '');
             }}
             ref={leadCaseDivisionRef}
+            label="Lead Case Court"
             value={getUniqueDivisionCodeOrUndefined(cases)}
           ></SearchableSelect>
         </div>

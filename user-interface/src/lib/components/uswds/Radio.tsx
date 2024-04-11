@@ -10,6 +10,7 @@ export interface RadioProps {
   disabled?: boolean;
   value: string;
   checked?: boolean;
+  required?: boolean;
 }
 
 function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
@@ -34,9 +35,9 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   useImperativeHandle(ref, () => ({ checked, disable }));
 
   return (
-    <div className="usa-radio">
+    <div className={`usa-form-group uswds-form usa-radio ${props.className ?? ''}`}>
       <input
-        className={`usa-input usa-tooltip ${props.className} usa-radio__input`}
+        className={`usa-input usa-tooltip usa-radio__input`}
         id={props.id}
         type="radio"
         name={props.name}
@@ -45,6 +46,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         disabled={isDisabled}
         value={props.value}
         checked={isChecked}
+        required={props.required}
       />
       <label
         className="usa-radio__label"
