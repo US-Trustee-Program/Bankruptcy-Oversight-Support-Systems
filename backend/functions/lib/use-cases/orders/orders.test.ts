@@ -343,7 +343,7 @@ describe('Orders use case', () => {
       status: 'approved',
       childCases: childCaseSummaries,
     };
-    const leadCaseHistory: CaseHistory = {
+    const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: newConsolidation.leadCase.caseId,
       before: leadCaseBefore,
@@ -358,7 +358,7 @@ describe('Orders use case', () => {
       leadCase: newConsolidation.leadCase,
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
@@ -369,6 +369,7 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -448,7 +449,7 @@ describe('Orders use case', () => {
       status: 'approved',
       childCases: [childCaseSummaries[0]],
     };
-    const leadCaseHistory: CaseHistory = {
+    const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: approvedConsolidation.leadCase.caseId,
       before: leadCaseBefore,
@@ -463,7 +464,7 @@ describe('Orders use case', () => {
       leadCase: approvedConsolidation.leadCase,
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: originalConsolidation.childCases[0].caseId,
       before,
@@ -474,6 +475,7 @@ describe('Orders use case', () => {
       caseId: originalConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -531,7 +533,7 @@ describe('Orders use case', () => {
       status: 'rejected',
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
@@ -542,6 +544,7 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')

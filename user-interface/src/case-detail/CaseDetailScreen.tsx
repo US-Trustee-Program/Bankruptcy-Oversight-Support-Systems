@@ -7,7 +7,6 @@ import {
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
   Chapter15CaseDocketResponseData,
-  CaseHistory,
   CaseAssociatedCasesResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
@@ -24,6 +23,7 @@ import { useApi } from '@/lib/hooks/UseApi';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
+import { CaseHistory } from '@common/cams/history';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
