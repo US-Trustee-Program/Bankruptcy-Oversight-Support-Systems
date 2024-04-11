@@ -72,7 +72,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
       <div className="usa-input-group">
         {props.icon && (
           <div className="usa-input-prefix" aria-hidden="true">
-            <Icon className={props.className ?? ''} focusable={false} name={props.icon}></Icon>
+            <Icon focusable={false} name={props.icon}></Icon>
           </div>
         )}
         <input
