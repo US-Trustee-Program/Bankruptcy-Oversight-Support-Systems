@@ -1,18 +1,20 @@
 import './forms.scss';
 import { PropsWithChildren, ReactElement } from 'react';
 
-export interface LegendProps extends PropsWithChildren {
+export interface RadioGroupProps extends PropsWithChildren {
   label: string;
   required?: boolean;
-  htmlFor?: string;
   className?: string;
-  children: ReactElement | Array<ReactElement>;
+  children?: ReactElement | Array<ReactElement>;
 }
 
-export const RadioGroup = (props: LegendProps) => {
+export const RadioGroup = (props: RadioGroupProps) => {
+  const required = props.required ? 'true' : null;
+  const classes = props.className ?? '';
+
   return (
-    <fieldset className={`usa-fieldset uswds-form ${props.className ?? ''}`}>
-      <legend className="usa-legend" data-required={props.required ? 'true' : null}>
+    <fieldset className={`usa-fieldset ${classes}`}>
+      <legend className="usa-legend" data-required={required}>
         {props.label}
       </legend>
       {props.children}
