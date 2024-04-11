@@ -24,12 +24,39 @@ on:
       branchHashId:
         required: true
         type: string
+      environmentHash:
+        required: true
+        type: string
 
 jobs:
-  smoke-test:
+  smoke-test-application-slot:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
+    env:
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      branchHashId: ${{ inputs.environmentHash }}
+      priority: 200
     steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Enable GHA runner access
+        run: |
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+          --is-cicd
       - uses: actions/checkout@v3
       - name: Health check api
         run: |
@@ -38,10 +65,15 @@ jobs:
           --webappName ${{ inputs.webappName }} \
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
           --slotName ${{ inputs.slotName }}
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
 
   ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
   playwright-e2e-test:
-    needs: [smoke-test]
+    needs: [smoke-test-application-slot]
     environment: ${{ inputs.ghaEnvironment }}
     runs-on: ubuntu-latest
     env:

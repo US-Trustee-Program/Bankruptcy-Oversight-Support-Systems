@@ -131,6 +131,7 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       branchHashId: ${{ inputs.environmentHash }}
+      environmentHash: ${{ inputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
@@ -198,13 +199,41 @@ jobs:
   smoke-test-application-post-swap:
     needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.ghaEnvironment }}
+    env:
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      branchHashId: ${{ inputs.environmentHash }}
+      priority: 200
     steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Enable GHA runner access
+        run: |
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+          --is-cicd
       - uses: actions/checkout@v3
       - name: Health check api
         run: |
           ./ops/scripts/pipeline/endpoint-test.sh \
           --apiName ${{ inputs.apiName }} \
           --webappName ${{ inputs.webappName }} \
-          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName ${{ inputs.slotName }}
+          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }}
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ops/scripts/pipeline/dev-rm-allowed-ip.sh ${{ steps.rgApp.outputs.out }} ${{ env.stackName }} ${name:0:32}
