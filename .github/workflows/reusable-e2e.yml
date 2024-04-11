@@ -67,7 +67,8 @@ jobs:
           --apiName ${{ inputs.apiName }} \
           --webappName ${{ inputs.webappName }} \
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName ${{ inputs.slotName }}
+          --slotName ${{ inputs.slotName }} \
+          --git-sha ${{ github.sha }}
 
       - name: Disable GHA runner access
         if: always()
