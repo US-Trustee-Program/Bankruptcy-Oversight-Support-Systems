@@ -6,8 +6,9 @@
       "direction": "in",
       "name": "req",
       "cardinality": "many",
-      "route": "case-assignments",
+      "route": "case-assignments/{id?}",
       "methods": [
+        "get",
         "post"
       ]
     },

@@ -91,9 +91,7 @@ test.describe('Consolidation Orders', () => {
       page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
     ).toBeVisible();
     expect(
-      page
-        .getByTestId(`modal-content-confirmation-modal-${pendingConsolidationOrder.id}`)
-        .getByTestId('toggle-modal-button-submit'),
+      page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
     ).toBeDisabled();
 
     // Action fill modal dialog form
@@ -103,8 +101,8 @@ test.describe('Consolidation Orders', () => {
       )
       .check();
 
-    await page.locator('#lead-case-court div').filter({ hasText: 'Select...' }).first().click();
-    await page.getByRole('option', { name: /Brooklyn/ }).click();
+    await page.locator('#lead-case-court div').first().click();
+    await page.getByRole('option', { name: /Manhattan/ }).click();
 
     await page
       .getByTestId(`lead-case-input-confirmation-modal-${pendingConsolidationOrder.id}`)
@@ -112,8 +110,7 @@ test.describe('Consolidation Orders', () => {
 
     // Action click cancel
     await page
-      .getByTestId(`modal-content-confirmation-modal-${pendingConsolidationOrder.id}`)
-      .getByTestId('toggle-modal-button-cancel')
+      .getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-cancel-button`)
       .click();
 
     // Assert modal closed and approve button is disabled

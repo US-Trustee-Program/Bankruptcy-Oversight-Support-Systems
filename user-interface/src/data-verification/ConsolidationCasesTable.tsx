@@ -4,6 +4,7 @@ import { ConsolidationOrderCase } from '@common/cams/orders';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export type OrderTableImperative = {
   clearSelection: () => void;
@@ -12,7 +13,8 @@ export type OrderTableImperative = {
 interface ConsolidationCaseTableProps {
   id: string;
   cases: Array<ConsolidationOrderCase>;
-  onSelect: (bCase: ConsolidationOrderCase) => void;
+  onSelect?: (bCase: ConsolidationOrderCase) => void;
+  isAssignmentLoaded: boolean;
   displayDocket?: boolean;
 }
 
@@ -33,7 +35,7 @@ function _ConsolidationCaseTable(
       setIncluded([...included, idx]);
     }
     const _case = cases[idx];
-    onSelect(_case);
+    if (onSelect) onSelect(_case);
   }
 
   function clearSelection() {
@@ -45,10 +47,14 @@ function _ConsolidationCaseTable(
   }));
 
   return (
-    <table className="usa-table usa-table--borderless" id={id} data-testid={id}>
+    <table
+      className="usa-table usa-table--borderless consolidation-cases-table"
+      id={id}
+      data-testid={id}
+    >
       <thead>
         <tr>
-          <th scope="col">Include</th>
+          {onSelect && <th scope="col">Include</th>}
           <th scope="col">Case Number (Division)</th>
           <th scope="col">Debtor</th>
           <th scope="col">Chapter</th>
@@ -62,17 +68,19 @@ function _ConsolidationCaseTable(
             const key = `${id}-row-${idx}`;
             accumulator.push(
               <tr key={`${key}-case-info`} data-testid={`${key}-case-info`} className="case-info">
-                <td scope="row">
-                  <input
-                    type="checkbox"
-                    onChange={handleCaseSelection}
-                    value={idx}
-                    name="case-selection"
-                    data-testid={`${id}-checkbox-${idx}`}
-                    checked={included.includes(idx)}
-                    title={`select ${bCase.caseTitle}`}
-                  ></input>
-                </td>
+                {onSelect && (
+                  <td scope="row">
+                    <input
+                      type="checkbox"
+                      onChange={handleCaseSelection}
+                      value={idx}
+                      name="case-selection"
+                      data-testid={`${id}-checkbox-${idx}`}
+                      checked={included.includes(idx)}
+                      title={`select ${bCase.caseTitle}`}
+                    ></input>
+                  </td>
+                )}
                 <td scope="row">
                   <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
                 </td>
@@ -82,7 +90,26 @@ function _ConsolidationCaseTable(
                 </td>
                 <td scope="row">{formatDate(bCase.dateFiled)}</td>
                 <td scope="row" className="text-no-wrap">
-                  {''}
+                  {!props.isAssignmentLoaded && (
+                    <LoadingSpinner
+                      id={`loading-spinner-case-asignment-${bCase.caseId}`}
+                      height="1rem"
+                      caption="Loading..."
+                    />
+                  )}
+                  {props.isAssignmentLoaded &&
+                    bCase.attorneyAssignments &&
+                    bCase.attorneyAssignments.length > 0 && (
+                      <ul className="usa-list--unstyled">
+                        {bCase.attorneyAssignments.map((att, idx) => (
+                          <li key={`${bCase.caseId}-${idx}`}>{att.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                  {props.isAssignmentLoaded &&
+                    bCase.attorneyAssignments &&
+                    !bCase.attorneyAssignments.length &&
+                    '(unassigned)'}
                 </td>
               </tr>,
             );
@@ -92,7 +119,7 @@ function _ConsolidationCaseTable(
                 data-testid={`${key}-docket-entry`}
                 className="docket-entry"
               >
-                <td></td>
+                {onSelect && <td></td>}
                 <td colSpan={5} className="measure-6">
                   {!bCase.docketEntries && <>No docket entries</>}
                   {bCase.docketEntries &&

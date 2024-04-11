@@ -85,10 +85,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   };
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
-    if (props.actionButtonGroup.submitButton.onClick) {
-      props.actionButtonGroup.submitButton.onClick(e);
-    }
-    close(e);
+    const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
+    if (onClick) onClick(e);
+    if (closeOnClick !== false) close(e);
   }
 
   function cancelBtnClick(e: React.MouseEvent<HTMLButtonElement>) {

@@ -105,18 +105,44 @@ describe('ConsolidationOrderAccordion tests', () => {
   });
 
   test('should display approved order content', () => {
-    // TODO: test rendering an approved order.
+    const leadCase = MockData.getCaseSummary();
+    const order = MockData.getConsolidationOrder({ override: { status: 'approved', leadCase } });
+    renderWithProps({ order });
+
+    const leadCaseLink = screen.queryByTestId(`lead-case-number-link`);
+    expect(leadCaseLink).toBeInTheDocument();
+
+    order.childCases.forEach((bCase, idx) => {
+      const tableRow = screen.queryByTestId(`order-${order.id}-child-cases-row-${idx}`);
+      expect(tableRow).toBeInTheDocument();
+      expect(tableRow?.textContent).toContain(bCase.caseTitle);
+    });
   });
 
   test('should display rejected order content', () => {
-    // TODO: test rendering a rejected order.
+    const order = MockData.getConsolidationOrder({
+      override: { status: 'rejected', reason: 'Test.' },
+    });
+    renderWithProps({ order });
+
+    if (order.reason) {
+      const blockQuote = document.querySelector('blockquote');
+      expect(blockQuote?.textContent).toContain(order.reason);
+    }
+
+    order.childCases.forEach((bCase, idx) => {
+      const tableRow = screen.queryByTestId(`${order.id}-case-list-row-${idx}-case-info`);
+      expect(tableRow).toBeInTheDocument();
+      expect(tableRow?.textContent).toContain(bCase.caseTitle);
+    });
   });
 
-  test('should correctly enable/disable approve button', async () => {
+  test('should correctly enable/disable buttons', async () => {
     renderWithProps();
+    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -125,11 +151,24 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
     });
+
+    const rejectButton = document.querySelector(`#accordion-reject-button-${order.id}`);
+    expect(rejectButton).not.toBeEnabled();
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(rejectButton).toBeEnabled();
+    });
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(rejectButton).not.toBeEnabled();
+    });
   });
 
   test('should open approval modal when approve button is clicked', async () => {
     renderWithProps();
-    const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    const approveButton = document.querySelector(
+      `#accordion-approve-button-${order.id}`,
+    ) as HTMLButtonElement;
     expect(approveButton).not.toBeEnabled();
     const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
     fireEvent.click(checkbox);
@@ -137,7 +176,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
     });
 
-    fireEvent.click(approveButton as HTMLButtonElement);
+    fireEvent.click(approveButton);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
     await waitFor(() => {
@@ -148,20 +187,135 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should not show add case when add case consolidation feature flag is false', async () => {
-    mockFeatureFlags = {
-      ...mockFeatureFlags,
-      'consolidations-add-case': false,
-    };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
+  test('should open rejection modal when reject button is clicked', async () => {
     renderWithProps();
+    const rejectButton = document.querySelector(
+      `#accordion-reject-button-${order.id}`,
+    ) as HTMLButtonElement;
+    expect(rejectButton).not.toBeEnabled();
+    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(rejectButton).toBeEnabled();
+    });
 
-    const courtSelectDiv = screen.queryByTestId(`court-selection-usa-combo-box-${order.id}`);
-    expect(courtSelectDiv).not.toBeInTheDocument();
+    fireEvent.click(rejectButton);
+
+    const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
+    await waitFor(() => {
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveClass('is-visible');
+      // for some reason, toBeVisible() doesn't work.
+      expect(modal).toHaveStyle({ display: 'block' });
+    });
   });
 
-  test('should call orderUpdate with expected parameters when approval process is completed', async () => {
+  test('should call orderUpdate for rejection', async () => {
+    renderWithProps();
+
+    const expectedOrderRejected: ConsolidationOrder = {
+      ...order,
+      status: 'rejected',
+      reason: 'Test.',
+    };
+
+    vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [expectedOrderRejected],
+    });
+
+    const rejectButton = document.querySelector(
+      `#accordion-reject-button-${order.id}`,
+    ) as HTMLButtonElement;
+    expect(rejectButton).not.toBeEnabled();
+    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(rejectButton).toBeEnabled();
+    });
+    fireEvent.click(rejectButton);
+
+    const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
+
+    await waitFor(() => {
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveClass('is-visible');
+      // for some reason, toBeVisible() doesn't work.
+      expect(modal).toHaveStyle({ display: 'block' });
+    });
+
+    const modalRejectButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    await waitFor(() => {
+      expect(modalRejectButton).toBeEnabled();
+    });
+
+    fireEvent.click(modalRejectButton);
+
+    await waitFor(() => {
+      expect(onOrderUpdateMockFunc).toHaveBeenCalled();
+      expect(onOrderUpdateMockFunc).toHaveBeenCalledWith(
+        {
+          message: `Rejection of consolidation order was successful.`,
+          timeOut: 8,
+          type: UswdsAlertStyle.Success,
+        },
+        [expectedOrderRejected],
+        order,
+      );
+    });
+  });
+
+  test('should handle api exception for rejection', async () => {
+    renderWithProps();
+
+    const errorMessage = 'Some random error';
+    vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
+
+    const rejectButton = document.querySelector(
+      `#accordion-reject-button-${order.id}`,
+    ) as HTMLButtonElement;
+    expect(rejectButton).not.toBeEnabled();
+    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(rejectButton).toBeEnabled();
+    });
+    fireEvent.click(rejectButton);
+
+    const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
+
+    await waitFor(() => {
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveClass('is-visible');
+      // for some reason, toBeVisible() doesn't work.
+      expect(modal).toHaveStyle({ display: 'block' });
+    });
+
+    const modalRejectButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    await waitFor(() => {
+      expect(modalRejectButton).toBeEnabled();
+    });
+
+    fireEvent.click(modalRejectButton);
+
+    await waitFor(() => {
+      expect(onOrderUpdateMockFunc).toHaveBeenCalled();
+      expect(onOrderUpdateMockFunc).toHaveBeenCalledWith({
+        message: errorMessage,
+        timeOut: 8,
+        type: UswdsAlertStyle.Error,
+      });
+    });
+  });
+
+  test('should call orderUpdate for approval', async () => {
     renderWithProps();
 
     const leadCase = order.childCases[0];
@@ -170,6 +324,12 @@ describe('ConsolidationOrderAccordion tests', () => {
       leadCase,
       status: 'approved',
     };
+
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [MockData.getAttorneyAssignment()],
+    });
 
     vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
       message: '',
@@ -208,7 +368,17 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     fireEvent.click(adminRadioButton);
 
-    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    const modalApproveButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    await waitFor(() => {
+      expect(modalApproveButton).toBeEnabled();
+    });
+
+    // click "continue" button on first screen of the modal.
+    fireEvent.click(modalApproveButton);
+    // click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
@@ -225,10 +395,16 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should call orderUpdate with expected parameters when approval process is completed and handle api exception', async () => {
+  test('should handle api exception for approval', async () => {
     renderWithProps();
 
     const leadCase = order.childCases[0];
+
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: '',
+      count: 1,
+      body: [MockData.getAttorneyAssignment()],
+    });
 
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
@@ -264,7 +440,17 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     fireEvent.click(adminRadioButton);
 
-    const modalApproveButton = screen.getByTestId('toggle-modal-button-submit');
+    const modalApproveButton = screen.getByTestId(
+      `button-confirmation-modal-${order.id}-submit-button`,
+    );
+
+    await waitFor(() => {
+      expect(modalApproveButton).toBeEnabled();
+    });
+
+    //click "continue" button on first screen of the modal.
+    fireEvent.click(modalApproveButton);
+    //click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
