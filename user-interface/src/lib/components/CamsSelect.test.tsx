@@ -1,16 +1,16 @@
 import React from 'react';
-import SearchableSelect from './SearchableSelect';
+import CamsSelect from './CamsSelect';
 import { InputRef } from '../type-declarations/input-fields';
 import { render, screen, waitFor } from '@testing-library/react';
 
-describe('Tests for humble SearchableSelect component', () => {
+describe('Tests for humble CamsSelect component', () => {
   const ref = React.createRef<InputRef>();
   const youChangedMe = vi.fn();
 
   beforeEach(() => {
     render(
       <div>
-        <SearchableSelect
+        <CamsSelect
           ref={ref}
           id="select-1"
           label="Searchable Select"
@@ -30,7 +30,7 @@ describe('Tests for humble SearchableSelect component', () => {
               label: 'Option 2',
             },
           ]}
-        ></SearchableSelect>
+        ></CamsSelect>
       </div>,
     );
   });

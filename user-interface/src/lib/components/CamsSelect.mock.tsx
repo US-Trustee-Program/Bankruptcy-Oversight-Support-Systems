@@ -1,15 +1,15 @@
-import './SearchableSelect.scss';
+import './CamsSelect.scss';
 import { SingleValue } from 'react-select';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 import { fireEvent } from '@testing-library/react';
 
-export type SearchableSelectOption = SingleValue<Record<string, string>>;
+export type CamsSelectOption = SingleValue<Record<string, string>>;
 
-export interface SearchableSelectProps {
+export interface CamsSelectProps {
   id: string;
-  onChange?: (newValue: SearchableSelectOption) => void;
+  onChange?: (newValue: CamsSelectOption) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
   options: Record<string, string>[];
@@ -21,10 +21,7 @@ type SelectRef = InputRef & {
   setValue: (option: Record<string, string>, foo: string) => void;
 };
 
-export function MockSearchableSelectComponent(
-  props: SearchableSelectProps,
-  ref: React.Ref<InputRef>,
-) {
+export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
   const searchableSelectRef = React.useRef<SelectRef>(null);
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
@@ -75,7 +72,7 @@ export function MockSearchableSelectComponent(
 
   return (
     <>
-      {props.options.map((option: SearchableSelectOption, idx: number) => {
+      {props.options.map((option: CamsSelectOption, idx: number) => {
         return (
           <button
             id={`${props.id}-${idx}`}
@@ -92,8 +89,8 @@ export function MockSearchableSelectComponent(
   );
 }
 
-const SearchableSelect = forwardRef(MockSearchableSelectComponent);
-export default SearchableSelect;
+const CamsSelect = forwardRef(MockCamsSelectComponent);
+export default CamsSelect;
 
 export function selectItemInMockSelect(id: string, index: number) {
   const selectButton = document.querySelector(`#${id}-${index}`);

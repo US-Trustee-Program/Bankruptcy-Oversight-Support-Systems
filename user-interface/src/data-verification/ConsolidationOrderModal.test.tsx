@@ -11,7 +11,7 @@ import {
 } from '@/data-verification/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { selectItemInMockSelect } from '@/lib/components/SearchableSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -20,10 +20,7 @@ import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseSummary } from '@common/cams/cases';
 
-vi.mock(
-  '../lib/components/SearchableSelect',
-  () => import('../lib/components/SearchableSelect.mock'),
-);
+vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
 describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();

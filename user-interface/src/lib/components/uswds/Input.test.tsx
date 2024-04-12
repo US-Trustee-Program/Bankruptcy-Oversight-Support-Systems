@@ -84,4 +84,28 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       expect(inputEl).toHaveValue('');
     });
   });
+
+  describe('Input styling', () => {
+    test('should set the className if provided', () => {
+      const expectedClassName = 'classNameTest';
+      render(
+        <div>
+          <Input id="input-1" className={expectedClassName}></Input>
+        </div>,
+      );
+      const inputEl = screen.getByTestId('input-1');
+      expect(inputEl).toHaveClass(expectedClassName);
+    });
+    test('should have a default classes if not className provided', () => {
+      render(
+        <div>
+          <Input id="input-1"></Input>
+        </div>,
+      );
+      const inputEl = screen.getByTestId('input-1');
+      screen.debug(inputEl);
+      expect(inputEl).toHaveClass('usa-input');
+      expect(inputEl).toHaveClass('usa-tooltip');
+    });
+  });
 });
