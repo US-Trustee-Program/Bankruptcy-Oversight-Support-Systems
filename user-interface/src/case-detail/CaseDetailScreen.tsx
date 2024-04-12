@@ -18,8 +18,8 @@ import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDoc
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
+import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 import { CaseDetail } from '@common/cams/cases';
 import { useApi } from '@/lib/hooks/UseApi';
@@ -199,7 +199,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
-  const dateRangeRef = useRef<InputRef>(null);
+  const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<InputRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
