@@ -23,6 +23,7 @@ import CamsSelect, {
   CamsSelectOptionList,
   SearchableSelectOption,
 } from '@/lib/components/CamsSelect';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -355,6 +356,13 @@ function ConsolidationOrderModalComponent(
   function showApprovedContentStep1() {
     return (
       <div>
+        <div className="header-text">
+          <p>
+            Specify the type of consolidation and the lead case to continue. You may optionally
+            assign the consolidated cases to a staff member.
+          </p>
+          <FormRequirementsNotice />
+        </div>
         {featureFlags[CONSOLIDATIONS_ENABLED] && (
           <RadioGroup
             className="consolidation-type-container"

@@ -13,7 +13,7 @@ export const RadioGroup = (props: RadioGroupProps) => {
   const classes = props.className ?? '';
 
   return (
-    <fieldset className={`usa-fieldset ${classes}`}>
+    <fieldset className={`usa-fieldset radio-group ${classes}`}>
       <legend className="usa-legend" data-required={required}>
         {props.label}
       </legend>
