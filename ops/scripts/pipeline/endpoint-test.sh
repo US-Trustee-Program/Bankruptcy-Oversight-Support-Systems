@@ -85,11 +85,13 @@ else
       # shellcheck disable=SC2002
       currentGitSha=$(cat api_response.json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['sha'])")
       echo "Current sha ${currentGitSha}"
+      if [[ "${expected_git_sha}" != "${currentGitSha}" ]]; then
+        apiStatusCode=500 # if version does not match set to a non 200 status code
+        sleep 10
+      fi
     done
 
-    if [[ "${expected_git_sha}" != "${currentGitSha}" ]]; then
-      apiStatusCode=500 # if version does not match set to a non 200 status code
-    fi
+
   fi
 fi
 

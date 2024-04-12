@@ -213,7 +213,7 @@ jobs:
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ env.stackName }} \
-          -p ${{ env.priority }}
+          -p ${{ env.priority }} \
           --is-cicd
 
       - name: Health check api
