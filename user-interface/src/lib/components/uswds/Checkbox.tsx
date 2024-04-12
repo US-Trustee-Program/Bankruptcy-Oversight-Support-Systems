@@ -58,7 +58,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   const checkboxTestId = `checkbox-${props.id}`;
   const labelTestId = `checkbox-label-${props.id}`;
   return (
-    <div className={`usa-form-group uswds-form usa-checkbox ${props.className ?? ''}`}>
+    <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`}>
       <input
         type="checkbox"
         data-testid={checkboxTestId}

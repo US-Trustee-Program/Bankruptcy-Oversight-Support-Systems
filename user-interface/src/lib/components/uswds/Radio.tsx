@@ -35,7 +35,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   useImperativeHandle(ref, () => ({ checked, disable }));
 
   return (
-    <div className={`usa-form-group uswds-form usa-radio ${props.className ?? ''}`}>
+    <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
       <input
         className={`usa-input usa-tooltip usa-radio__input`}
         id={props.id}
