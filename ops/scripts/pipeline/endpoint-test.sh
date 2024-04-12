@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
     shift 2
     ;;
 
-  --git-sha)
+  --gitSha)
     expected_git_sha="${2}"
     shift 2
     ;;
