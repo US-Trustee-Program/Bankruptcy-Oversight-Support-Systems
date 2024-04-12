@@ -28,7 +28,7 @@ describe('Test RadioGroup', () => {
     renderWithProps();
 
     const fieldSet = document.querySelector('fieldset');
-    expect(fieldSet).toHaveAttribute('class', 'usa-fieldset ');
+    expect(fieldSet).toHaveAttribute('class', 'usa-fieldset radio-group ');
   });
 
   test('Should have data-required attribute when required is true', () => {

@@ -34,3 +34,13 @@ $secondary-dark: #B50909;
     }
   }
 }
+
+.usa-fieldset.radio-group {
+  .usa-form-group.usa-radio {
+    margin-top: 0;
+  }
+}
+
+.required-form-field {
+  color: $secondary-dark;
+}
