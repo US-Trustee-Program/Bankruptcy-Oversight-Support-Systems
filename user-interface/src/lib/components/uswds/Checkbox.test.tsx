@@ -84,7 +84,6 @@ describe('Test Checkbox component', async () => {
     const checkbox = screen.getByTestId('checkbox-test');
     const parent = checkbox.parentNode;
     expect(parent).toHaveClass('usa-form-group');
-    expect(parent).toHaveClass('uswds-form');
     expect(parent).toHaveClass('usa-checkbox');
   });
 });

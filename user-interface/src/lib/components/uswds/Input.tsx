@@ -65,7 +65,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, disable }));
 
   return (
-    <div className="usa-form-group uswds-form">
+    <div className="usa-form-group">
       <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
         {props.label}
       </label>
