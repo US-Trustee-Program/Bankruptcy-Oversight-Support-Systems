@@ -1,4 +1,4 @@
-import { sortDates, sortDatesReverse } from './date-helper';
+import { isValidDateString, sortDates, sortDatesReverse } from './date-helper';
 
 describe('date helper tests', () => {
   test('should sort dates newest first', () => {
@@ -23,5 +23,15 @@ describe('date helper tests', () => {
     expect(dates[1]).toEqual(middle);
     expect(dates[2]).toEqual(newest);
     expect(dates[3]).toEqual(newest);
+  });
+
+  test('should filter date strings', () => {
+    expect(isValidDateString(undefined)).toBeFalsy();
+    expect(isValidDateString(null)).toBeFalsy();
+    expect(isValidDateString('')).toBeFalsy();
+    expect(isValidDateString('bogus')).toBeFalsy();
+    expect(isValidDateString('01/01/2024')).toBeFalsy();
+
+    expect(isValidDateString('2024-01-01')).toBeTruthy();
   });
 });
