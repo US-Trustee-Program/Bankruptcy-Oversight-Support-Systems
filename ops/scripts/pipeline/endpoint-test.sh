@@ -88,6 +88,8 @@ else
       if [[ "${expected_git_sha}" != "${currentGitSha}" ]]; then
         apiStatusCode=500 # if version does not match set to a non 200 status code
         sleep 10
+      else
+        apiStatusCode=200
       fi
     done
 
