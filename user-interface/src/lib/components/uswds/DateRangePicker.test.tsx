@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DateRangePicker from './DateRangePicker';
+import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 
 describe('Test DateRangePicker component', async () => {
   test('should call change handlers when either date is changed', async () => {
@@ -94,49 +95,63 @@ describe('Test DateRangePicker component', async () => {
     expect(endDateText).toHaveAttribute('min', '01/01/2020');
   });
 
-  /*
+  // TODO: There is a weird unexplainable behavior in vitest it seems.
+  // if we console.log the value, we see the correct value.
+  // The internal state changes properly with the debugger.
+  // However, the assertion fails with an incorect return value
   test('should reset values to what was passed in props when calling resetValue()', async () => {
+    const initialStartDate = '2021-01-01';
+    const initialEndDate = '2028-01-23';
+    const newStartDate = '2022-05-01';
+    const newEndDate = '2026-01-01';
+
+    const mockHandlerStart = vi.fn();
+    const mockHandlerEnd = vi.fn();
     const rangeRef = React.createRef<DateRangePickerRef>();
     render(
       <React.StrictMode>
         <DateRangePicker
           id={'date-picker'}
-          value={{ start: '2024-01-01', end: '2024-01-23' }}
+          value={{ start: initialStartDate, end: initialEndDate }}
           ref={rangeRef}
+          onStartDateChange={mockHandlerStart}
+          onEndDateChange={mockHandlerEnd}
         ></DateRangePicker>
       </React.StrictMode>,
     );
 
-    let startDateText = screen.getByTestId('date-picker-date-start');
-    let endDateText = screen.getByTestId('date-picker-date-end');
+    const startDateText = screen.getByTestId('date-picker-date-start');
     expect(startDateText).toBeInTheDocument();
-    expect(startDateText).toHaveValue('2024-01-01');
-    expect(endDateText).toHaveValue('2024-01-23');
+    expect(startDateText).toHaveValue(initialStartDate);
 
-    fireEvent.change(startDateText, { target: { value: '2022-05-01' } });
+    const endDateText = screen.getByTestId('date-picker-date-end');
+    expect(endDateText).toBeInTheDocument();
+    expect(endDateText).toHaveValue(initialEndDate);
 
+    fireEvent.change(startDateText, { target: { value: newStartDate } });
+    /*
     await waitFor(() => {
-      startDateText = screen.getByTestId('date-picker-date-start');
-      expect(startDateText).toHaveValue('2022-05-01');
+      expect(mockHandlerStart).toHaveBeenCalledTimes(1);
+      expect(mockHandlerStart).toHaveBeenCalledWith(
+        expect.objectContaining({ target: expect.objectContaining({ value: newStartDate }) }),
+      );
     });
+    */
 
-    fireEvent.change(endDateText, { target: { value: '2026-01-01' } });
-
-    endDateText = screen.getByTestId('date-picker-date-end');
-
+    fireEvent.change(endDateText, { target: { value: newEndDate } });
+    /*
     await waitFor(() => {
-      expect(endDateText).toHaveValue('2026-01-01');
+      expect(mockHandlerStart).toHaveBeenCalledTimes(1);
+      expect(mockHandlerEnd).toHaveBeenCalledWith(
+        expect.objectContaining({ target: expect.objectContaining({ value: newEndDate }) }),
+      );
     });
+    */
 
     rangeRef.current?.resetValue();
-
-    startDateText = screen.getByTestId('date-picker-date-start');
-    endDateText = screen.getByTestId('date-picker-date-end');
-
     await waitFor(() => {
-      expect(startDateText).toHaveValue('2024-01-01');
-      expect(endDateText).toHaveValue('2024-01-23');
+      expect(startDateText).toHaveValue(initialStartDate);
+      expect(endDateText).toHaveValue(initialEndDate);
     });
   });
-  */
 });
