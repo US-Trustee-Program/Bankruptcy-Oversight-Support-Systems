@@ -3,7 +3,7 @@
 # Title:        check-deploy-bicep.sh
 # Description:  Helper script to check if bicep changes have been made and if bicep should be deployed
 
-set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+set -xeuo pipefail # ensure job step fails in CI pipeline when error occurs
 
 app_rg=$1
 deploy_flag=$2 #workflow dispatch parameter enableBicepDeployment from GHA
