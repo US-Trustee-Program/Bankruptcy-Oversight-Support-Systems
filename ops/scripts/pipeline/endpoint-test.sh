@@ -76,12 +76,9 @@ else
     retry=0
     currentGitSha=""
     while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
-      echo "Debug 01"
       retry=$((retry+1))
-      echo "Debug 02"
       # shellcheck disable=SC2086 # REASON: Wants to quote targetApiURL
       curl ${targetApiURL} | tee api_response.json
-      echo "Debug 03"
       # shellcheck disable=SC2002
       currentGitSha=$(cat api_response.json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['sha'])")
       echo "Current sha ${currentGitSha}"
@@ -98,9 +95,6 @@ else
 fi
 
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
-  echo "Print api healthcheck response"
-  curl "${targetApiURL}"
-  echo ""
   exit 0
 else
   echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
