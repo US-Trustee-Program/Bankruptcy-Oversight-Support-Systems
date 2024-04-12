@@ -47,11 +47,7 @@ function _ConsolidationCaseTable(
   }));
 
   return (
-    <table
-      className="usa-table usa-table--borderless consolidation-cases-table"
-      id={id}
-      data-testid={id}
-    >
+    <table className="usa-table usa-table--borderless" id={id} data-testid={id}>
       <thead>
         <tr>
           {onSelect && <th scope="col">Include</th>}
@@ -138,7 +134,7 @@ function _ConsolidationCaseTable(
                             )}
                             {bCase.courtName} - {docketEntry.summaryText}
                           </Link>
-                          <p tabIndex={0} className="measure-6">
+                          <p tabIndex={0} className="measure-6 text-wrap">
                             {docketEntry.fullText}
                           </p>
                           {docketEntry.documents && (
