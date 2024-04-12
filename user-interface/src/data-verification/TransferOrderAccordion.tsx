@@ -30,6 +30,7 @@ import CamsSelect, {
   CamsSelectOptionList,
   SearchableSelectOption,
 } from '@/lib/components/CamsSelect';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -530,6 +531,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           </span>
                           to
                         </div>
+                        <div>
+                          <FormRequirementsNotice />
+                        </div>
                         <div className="form-row">
                           <div className="select-container court-select-container">
                             <label htmlFor={`court-selection-${order.id}`}>New Court</label>
@@ -546,6 +550,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 onChange={handleCourtSelection}
                                 options={getOfficeList(officesList)}
                                 isSearchable={true}
+                                required={true}
                               />
                             </div>
                           </div>
@@ -577,7 +582,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     <div className="case-selection grid-row grid-gap-lg">
                       <div className="grid-col-1"></div>
                       <div className="grid-col-4">
-                        <label htmlFor={`new-case-input-${order.id}`}>New Case</label>
                         <div>
                           <Input
                             id={`new-case-input-${order.id}`}
@@ -588,6 +592,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             aria-label="New case ID"
                             ref={caseNumberRef}
                             disabled={true}
+                            required={true}
+                            label="New Case"
                           />
                         </div>
                       </div>
