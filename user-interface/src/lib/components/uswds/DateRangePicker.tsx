@@ -1,4 +1,4 @@
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { DateRange, DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 import './DateRangePicker.scss';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import DatePicker, { DatePickerProps } from './DatePicker';
@@ -6,27 +6,23 @@ import DatePicker, { DatePickerProps } from './DatePicker';
 // Alias for readability.
 const debounce = setTimeout;
 
-export interface DateRange {
-  start?: string;
-  end?: string;
-}
-
-export interface DateRangePickerProps extends DatePickerProps {
+export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   onStartDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   startDateLabel?: string;
   endDateLabel?: string;
+  value?: DateRange;
 }
 
-function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<InputRef>) {
+function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
   const { id, startDateLabel, endDateLabel, minDate, maxDate } = props;
 
   const [internalDateRange, setInternalDateRange] = useState<DateRange>({
     start: minDate,
     end: maxDate,
   });
-  const [startDateValue, setStartDateValue] = useState<string | null>(null);
-  const [endDateValue, setEndDateValue] = useState<string | null>(null);
+  const [startDateValue, setStartDateValue] = useState<string | null>(props.value?.start ?? null);
+  const [endDateValue, setEndDateValue] = useState<string | null>(props.value?.end ?? null);
   const [isDisabled, setIsDisabled] = useState<boolean>(
     props.disabled !== undefined ? props.disabled : false,
   );
@@ -54,11 +50,18 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
   }
 
   function resetValue() {
-    throw new Error('Not implemented');
+    if (props.value) {
+      setStartDateValue(props.value.start ?? '');
+      setStartDateValue(props.value.end ?? '');
+    } else {
+      clearValue();
+    }
   }
 
-  function setValue() {
-    throw new Error('Not implemented');
+  // this should take 2 arguments, a start date and an end date and set the values.
+  function setValue(options: { start?: string; end?: string } = {}) {
+    setStartDateValue(options.start ?? '');
+    setStartDateValue(options.end ?? '');
   }
 
   function disable(value: boolean) {
