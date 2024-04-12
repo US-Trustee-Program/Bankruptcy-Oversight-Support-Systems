@@ -410,7 +410,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           </div>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
-            <div className="order-legal-statement grid-col-10">
+            <div className="grid-col-10">
               {order.docketEntries.map((docketEntry, idx) => {
                 return (
                   <div key={idx}>
@@ -424,7 +424,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       )}
                       {formatDate(order.orderDate)} - {docketEntry.summaryText}
                     </Link>
-                    <p tabIndex={0} className="measure-6">
+                    <p tabIndex={0} className="measure-6 text-wrap">
                       {docketEntry.fullText}
                     </p>
                     {docketEntry.documents && (
