@@ -1,9 +1,0 @@
-Missing USWDS Form Components:
-  1. Combo box
-  3. File input
-  4. input prefix or suffix - this is a decoration added around an input in a div with class usa-input-prefix or usa-input-suffix
-            this would need to be added to all form inputs as an option passed in as a prop perhaps.
-  5. Memorable date
-  6. Range slider
-  7. Select
-  8. Textarea
