@@ -25,7 +25,7 @@
         "set field #basic-search-field to joint",
         "set field #document-number-search-field to 10000",
         "clear field #document-number-search-field",
-        "click element .cams-multi-select"
+        "click element [aria-label='Filter by Summary']"
       ],
       "viewport": {
         "width": 1280,

@@ -54,15 +54,14 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }
 
   useEffect(() => {
+    const classNames = props.className ?? '';
     if (isVisible === IsVisible.True) {
-      setContainerClasses(
-        `${props.className?.length ? props.className : ''} ${isInlineClass} visible`,
-      );
+      setContainerClasses(`${classNames} ${isInlineClass} visible`);
       if (!!props.timeout && props.timeout > 0) {
         setTimeout(hide, props.timeout * 1000);
       }
     } else {
-      setContainerClasses(`${props.className?.length ? props.className : ''} ${isInlineClass}`);
+      setContainerClasses(`${classNames} ${isInlineClass}`);
     }
   }, [isVisible === IsVisible.True]);
 

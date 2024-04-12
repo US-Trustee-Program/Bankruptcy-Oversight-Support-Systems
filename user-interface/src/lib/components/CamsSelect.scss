@@ -1,0 +1,19 @@
+$secondary-dark: #B50909;
+
+.cams-select {
+  > div {
+    margin-top: 10px;
+    border: 1px solid black;
+    border-radius: 0;
+  }
+  div:last-child {
+    z-index: 1000;
+  }
+}
+
+.usa-form-group {
+  label[data-required="true"]:has(+ .cams-select)::after {
+    content: ' *';
+    color: $secondary-dark;
+  }
+}

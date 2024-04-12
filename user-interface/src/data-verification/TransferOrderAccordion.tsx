@@ -13,7 +13,6 @@ import { OrderStatus } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
@@ -27,6 +26,11 @@ import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
 import { useApi } from '@/lib/hooks/UseApi';
+import CamsSelect, {
+  CamsSelectOptionList,
+  SearchableSelectOption,
+} from '@/lib/components/CamsSelect';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -168,8 +172,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   // TODO: fmadden 03/11/24 - When a court selection is made, getCaseSummary() seems to be getting called and
   // uses the previously set case number, rather than the value in the New Case input field.
   // as a result, you get the wrong case summary listed.
-  function handleCourtSelection(selection: SearchableSelectOption) {
-    const office = officesList.find((o) => o.courtDivisionCode === selection?.value) || null;
+  function handleCourtSelection(selection: CamsSelectOptionList) {
+    const office =
+      officesList.find(
+        (o) => o.courtDivisionCode === (selection as SearchableSelectOption)?.value,
+      ) || null;
     setNewCaseDivision(office);
     if (!office) {
       setValidationState(ValidationStates.notValidated);
@@ -524,6 +531,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           </span>
                           to
                         </div>
+                        <div>
+                          <FormRequirementsNotice />
+                        </div>
                         <div className="form-row">
                           <div className="select-container court-select-container">
                             <label htmlFor={`court-selection-${order.id}`}>New Court</label>
@@ -531,7 +541,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                               className="usa-combo-box"
                               data-testid={`court-selection-usa-combo-box-${order.id}`}
                             >
-                              <SearchableSelect
+                              <CamsSelect
                                 id={`court-selection-${order.id}`}
                                 className="new-court__select"
                                 closeMenuOnSelect={true}
@@ -539,6 +549,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 ref={courtSelectionRef}
                                 onChange={handleCourtSelection}
                                 options={getOfficeList(officesList)}
+                                isSearchable={true}
+                                required={true}
                               />
                             </div>
                           </div>
@@ -570,7 +582,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     <div className="case-selection grid-row grid-gap-lg">
                       <div className="grid-col-1"></div>
                       <div className="grid-col-4">
-                        <label htmlFor={`new-case-input-${order.id}`}>New Case</label>
                         <div>
                           <Input
                             id={`new-case-input-${order.id}`}
@@ -581,6 +592,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             aria-label="New case ID"
                             ref={caseNumberRef}
                             disabled={true}
+                            required={true}
+                            label="New Case"
                           />
                         </div>
                       </div>
