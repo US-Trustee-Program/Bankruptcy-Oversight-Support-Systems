@@ -93,4 +93,50 @@ describe('Test DateRangePicker component', async () => {
     expect(startDateText).toHaveAttribute('max', '01/01/2035');
     expect(endDateText).toHaveAttribute('min', '01/01/2020');
   });
+
+  /*
+  test('should reset values to what was passed in props when calling resetValue()', async () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <React.StrictMode>
+        <DateRangePicker
+          id={'date-picker'}
+          value={{ start: '2024-01-01', end: '2024-01-23' }}
+          ref={rangeRef}
+        ></DateRangePicker>
+      </React.StrictMode>,
+    );
+
+    let startDateText = screen.getByTestId('date-picker-date-start');
+    let endDateText = screen.getByTestId('date-picker-date-end');
+    expect(startDateText).toBeInTheDocument();
+    expect(startDateText).toHaveValue('2024-01-01');
+    expect(endDateText).toHaveValue('2024-01-23');
+
+    fireEvent.change(startDateText, { target: { value: '2022-05-01' } });
+
+    await waitFor(() => {
+      startDateText = screen.getByTestId('date-picker-date-start');
+      expect(startDateText).toHaveValue('2022-05-01');
+    });
+
+    fireEvent.change(endDateText, { target: { value: '2026-01-01' } });
+
+    endDateText = screen.getByTestId('date-picker-date-end');
+
+    await waitFor(() => {
+      expect(endDateText).toHaveValue('2026-01-01');
+    });
+
+    rangeRef.current?.resetValue();
+
+    startDateText = screen.getByTestId('date-picker-date-start');
+    endDateText = screen.getByTestId('date-picker-date-end');
+
+    await waitFor(() => {
+      expect(startDateText).toHaveValue('2024-01-01');
+      expect(endDateText).toHaveValue('2024-01-23');
+    });
+  });
+  */
 });
