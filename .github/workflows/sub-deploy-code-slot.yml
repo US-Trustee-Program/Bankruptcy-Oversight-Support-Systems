@@ -216,12 +216,13 @@ jobs:
           -p ${{ env.priority }} \
           --is-cicd
 
-      - name: Health check api
+      - name: Health check production api
         run: |
           ./ops/scripts/pipeline/endpoint-test.sh \
           --apiName ${{ inputs.apiName }} \
           --webappName ${{ inputs.webappName }} \
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
+          --slotName self \
           --gitSha ${{ github.sha }}
 
       - name: Disable GHA runner access

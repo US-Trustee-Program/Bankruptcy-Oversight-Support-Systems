@@ -61,7 +61,7 @@ jobs:
           --slot-name ${{ inputs.slotName }} \
           --is-cicd
 
-      - name: Health check api
+      - name: Health check slot api
         run: |
           ./ops/scripts/pipeline/endpoint-test.sh \
           --apiName ${{ inputs.apiName }} \
