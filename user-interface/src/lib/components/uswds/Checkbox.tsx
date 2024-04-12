@@ -19,7 +19,7 @@ export interface CheckboxRef {
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
-  const [isChecked, setIsChecked] = useState(props.checked ?? false);
+  const [isChecked, setIsChecked] = useState<boolean>(!!props.checked);
 
   const checkHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
     if (props.onChange) {
