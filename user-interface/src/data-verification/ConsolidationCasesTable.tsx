@@ -164,7 +164,7 @@ function _ConsolidationCaseTable(
                   <td scope="row" className="text-no-wrap">
                     {!props.isAssignmentLoaded && (
                       <LoadingSpinner
-                        id={`loading-spinner-case-asignment-${bCase.caseId}`}
+                        id={`loading-spinner-case-assignment-${bCase.caseId}`}
                         height="1rem"
                         caption="Loading..."
                       />
