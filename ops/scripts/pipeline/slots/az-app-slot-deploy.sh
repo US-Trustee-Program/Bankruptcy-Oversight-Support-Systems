@@ -56,7 +56,7 @@ function on_exit() {
 trap on_exit EXIT
 
 # allow build agent access to execute deployment
-agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
+agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
 rule_name="agent-${app_name:0:26}"
 echo "Adding rule: ${rule_name} to webapp"
 az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null

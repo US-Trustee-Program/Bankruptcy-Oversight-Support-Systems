@@ -38,7 +38,7 @@ We run `pa11y` to validate accessibility compliance with Web Content Accessibili
 1. Ensure the url for the pages you are working on are listed in `/user-interface/.pa11yci`
 1. Ensure any mock data necessary for the pages you are working on are handled in the mock API
 1. Execute `npm run start:pa11y`
-1. In a separate shell, execute `npm run pa11y:ci`
+1. In a separate shell, execute `npm run pa11y-ci`
     1. Ensure that the output does not reflect any errors
 
 ## Node Version

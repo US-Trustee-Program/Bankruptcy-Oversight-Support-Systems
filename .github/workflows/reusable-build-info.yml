@@ -1,0 +1,153 @@
+name: Build Info
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      enableSlotDeployment:
+        required: true
+        type: string
+      enableBicepDeployment:
+        required: true
+        type: string
+      deployVnet:
+        required: true
+        type: string
+    outputs:
+      stackName:
+        description: "Application name"
+        value: ${{ jobs.build-info.outputs.stackName }}
+      webappName:
+        description: "Expected Web Application name [used for Azure Resource]"
+        value: ${{ jobs.build-info.outputs.webappName }}
+      apiName:
+        description: ""
+        value: ${{ jobs.build-info.outputs.apiName }}
+      azResourceGrpAppEncrypted:
+        description: ""
+        value: ${{ jobs.build-info.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted:
+        description: ""
+        value: ${{ jobs.build-info.outputs.azResourceGrpNetworkEncrypted }}
+      environmentHash:
+        description: ""
+        value: ${{ jobs.build-info.outputs.environmentHash }}
+      slotName:
+        description: ""
+        value: ${{ jobs.build-info.outputs.slotName }}
+      slotDeploymentEnabled:
+          description: ""
+          value: ${{ jobs.build-info.outputs.slotDeploymentEnabled }}
+      execVnetDeploy:
+        description: ""
+        value: ${{ jobs.build-info.outputs.execVnetDeploy }}
+      deployBicep:
+        description: ""
+        value: ${{ jobs.build-info.outputs.deployBicep }}
+      ghaEnvironment:
+        description: ""
+        value: ${{ inputs.environment }}
+
+jobs:
+  build-info:
+    name: Run Info
+    runs-on: ubuntu-latest
+    ##We can access gitHub Env Vars as long as we set the environment: variable on the job
+    environment: ${{ inputs.environment }}
+    outputs:
+      stackName: ${{ steps.build-info.outputs.stackName }}
+      webappName: ${{ steps.build-info.outputs.webappName }}
+      apiName: ${{ steps.build-info.outputs.apiName }}
+      azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
+      azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
+      environmentHash: ${{ steps.check-env.outputs.environmentHash }}
+      execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
+      slotName: ${{ steps.build-info.outputs.slotName }}
+      slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
+      deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Check environment
+        id: check-env
+        if: ${{ inputs.environment != 'Main-Gov' }} # Generate deterministic hash to append to resource group names
+        run: |
+          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
+          shortHash="${hash:0:6}"
+          echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
+          echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: Print build info
+        id: build-info
+        run: |
+          echo "Printing build info"
+
+          echo "Azure Plan Type: ${{ vars.AZ_PLAN_TYPE }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
+          echo "Git SHA: ${{ github.sha }}"
+
+          # Generate resource group name(s)
+          echo "Env Hash: ${{ steps.check-env.outputs.environmentHash }}"
+          resourceGroupSuffix=${{ steps.check-env.outputs.resourceGroupSuffix || '' }}
+          echo "Resource group appended with the following: ${resourceGroupSuffix}"
+
+          # Stack name used downstream to label build artifacts and Azure resources
+          stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ inputs.environment }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
+          echo "Stack Name: $stackName"
+          webappName="${stackName}-webapp"
+          echo "Webapp Artifact: $webappName"
+          apiName="${stackName}-node-api"
+          echo "Api Artifact: $apiName"
+
+          # Deployment flags
+          echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
+          echo "Slot deployment is enabled: ${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}"
+          echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
+          execVnetDeploy=${{ inputs.deployVnet || 'true' }} # Set to true to attempt to create a new virtual network
+          echo "Execute virtual network deployment: ${execVnetDeploy}"
+
+          # Expected job output values
+          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
+          echo "stackName=${stackName}" >> $GITHUB_OUTPUT
+          echo "webappName=${webappName}" >> $GITHUB_OUTPUT
+          echo "apiName=${apiName}" >> $GITHUB_OUTPUT
+          echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
+          echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
+          echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.build-info.outputs.azResourceGrpApp }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetwork
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgAppDecode
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ steps.rgApp.outputs.out }}
+
+      - name: Check Bicep Deployment
+        id: check-bicep
+        run: |
+          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
+          echo "Deploy Bicep: $deployBicep"
+          echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT

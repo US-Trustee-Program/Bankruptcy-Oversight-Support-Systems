@@ -1,0 +1,158 @@
+name: End-to-end Tests
+
+on:
+  workflow_call:
+    inputs:
+      apiName:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+      webappName:
+        required: true
+        type: string
+      stackName:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      ghaEnvironment:
+        required: true
+        type: string
+      branchHashId:
+        required: true
+        type: string
+      environmentHash:
+        required: true
+        type: string
+
+jobs:
+  smoke-test-application-slot:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    env:
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      branchHashId: ${{ inputs.environmentHash }}
+      priority: 200
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Enable GHA runner access
+        run: |
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+          --slot-name ${{ inputs.slotName }} \
+          --is-cicd
+
+      - name: Health check slot api
+        run: |
+          ./ops/scripts/pipeline/endpoint-test.sh \
+          --apiName ${{ inputs.apiName }} \
+          --webappName ${{ inputs.webappName }} \
+          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
+          --slotName ${{ inputs.slotName }} \
+          --gitSha ${{ github.sha }}
+
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -r ${name:0:32} \
+          --slot-name ${{ inputs.slotName }}
+  ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
+  playwright-e2e-test:
+    needs: [smoke-test-application-slot]
+    environment: ${{ inputs.ghaEnvironment }}
+    runs-on: ubuntu-latest
+    env:
+      priority: 201
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v3
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Enable GHA runner access
+        run: |
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ inputs.stackName }} \
+          -p ${{ env.priority }} \
+          --slot-name ${{ inputs.slotName }} \
+          --is-cicd
+
+      - name: Seed e2e database
+        run: |
+          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
+
+      - name: Install Node dependencies
+        working-directory: test/e2e
+        run: |
+          npm ci
+          npx playwright install chromium msedge
+
+      - name: Run the test
+        working-directory: test/e2e
+        run: |
+          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: test/e2e/playwright-report/
+          retention-days: 30
+
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ inputs.stackName }}"
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ inputs.stackName }} \
+          -r ${name:0:32} \
+          --slot-name ${{ inputs.slotName }}
+      - name: Clean up e2e test database
+        if: always()
+        run: |
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+            echo "Adding suffix to database name"
+            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+          fi
+          az cosmosdb sql database delete \
+          --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+          --name "${e2eDatabaseName}" \
+          --resource-group  ${{ secrets.AZURE_RG }} \
+          --yes
