@@ -258,7 +258,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     setOrderTransfer(getOrderTransferFromOrder(order));
     setNewCaseSummary(null);
     setValidationState(ValidationStates.notValidated);
-    if (suggestedCasesRef.current) suggestedCasesRef.current.clearSelection();
+    if (suggestedCasesRef.current) suggestedCasesRef.current.clearAllCheckboxes();
     setLoadingCaseSummary(false);
     approveButtonRef.current?.disableButton(true);
   }
