@@ -57,6 +57,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
+
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
@@ -136,14 +137,20 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should correctly enable/disable buttons', async () => {
     renderWithProps();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
+
+    const includeAllButton = document.querySelector(`.checkbox-toggle label`);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
+
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
+
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
@@ -155,9 +162,25 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
+
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).not.toBeEnabled();
+    });
+
+    fireEvent.click(includeAllButton!);
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+
+    fireEvent.click(includeAllButton!);
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+    });
+
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
     });
   });
 
@@ -167,7 +190,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-approve-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -190,7 +215,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -226,7 +253,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -276,7 +305,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -336,7 +367,9 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -408,7 +441,9 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -467,8 +502,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    const checkbox1: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
-    const checkbox2: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+    const checkbox1: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
+    const checkbox2: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-1`,
+    );
 
     fireEvent.click(checkbox1);
     fireEvent.click(checkbox2);
@@ -495,8 +534,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    let checkbox1: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
-    let checkbox2: HTMLInputElement = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+    let checkbox1: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-0`,
+    );
+    let checkbox2: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-${order.id}-case-list-1`,
+    );
 
     fireEvent.click(checkbox1);
     fireEvent.click(checkbox2);
@@ -510,13 +553,55 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordian
 
     fireEvent.click(collapseButton as HTMLButtonElement);
-    checkbox1 = screen.getByTestId(`${order.id}-case-list-checkbox-0`);
-    checkbox2 = screen.getByTestId(`${order.id}-case-list-checkbox-1`);
+    checkbox1 = screen.getByTestId(`checkbox-case-selection-${order.id}-case-list-0`);
+    checkbox2 = screen.getByTestId(`checkbox-case-selection-${order.id}-case-list-1`);
 
     await waitFor(() => {
       expect(checkbox1.checked).toBeFalsy();
       expect(checkbox2.checked).toBeFalsy();
       expect(approveButton).not.toBeEnabled();
+    });
+  });
+
+  test('should select all checkboxes and enable approve button when Include All button is clicked', async () => {
+    renderWithProps();
+
+    const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    expect(approveButton).not.toBeEnabled();
+    const includeAllButton = document.querySelector(`.checkbox-toggle label`);
+
+    const checkboxList: NodeListOf<HTMLInputElement> = document.querySelectorAll(
+      'table input[type="checkbox"]',
+    );
+
+    fireEvent.click(includeAllButton!);
+
+    await waitFor(() => {
+      for (const checkbox of checkboxList) {
+        expect(checkbox.checked).toBeTruthy();
+      }
+      expect(approveButton).toBeEnabled();
+    });
+
+    fireEvent.click(checkboxList[0]);
+    await waitFor(() => {
+      expect(checkboxList[0].checked).toBeFalsy();
+    });
+
+    fireEvent.click(includeAllButton!);
+    await waitFor(() => {
+      for (const checkbox of checkboxList) {
+        expect(checkbox.checked).toBeTruthy();
+      }
+      expect(approveButton).toBeEnabled();
+    });
+
+    fireEvent.click(includeAllButton!);
+    await waitFor(() => {
+      for (const checkbox of checkboxList) {
+        expect(checkbox.checked).toBeFalsy();
+      }
+      expect(approveButton).toBeDisabled();
     });
   });
 });
