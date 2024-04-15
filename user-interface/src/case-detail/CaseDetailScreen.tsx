@@ -10,13 +10,16 @@ import {
   CaseAssociatedCasesResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
-import MultiSelect, { MultiSelectOptionList } from '@/lib/components/MultiSelect';
+import CamsSelect, {
+  CamsSelectOptionList,
+  MultiSelectOptionList,
+} from '@/lib/components/CamsSelect';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
-import IconInput from '@/lib/components/IconInput';
+import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import DateRangePicker, { DateRange } from '@/lib/components/uswds/DateRangePicker';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
+import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 import { CaseDetail } from '@common/cams/cases';
 import { useApi } from '@/lib/hooks/UseApi';
@@ -196,7 +199,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
-  const dateRangeRef = useRef<InputRef>(null);
+  const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<InputRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
@@ -296,8 +299,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     return;
   }
 
-  function handleSelectedFacet(newValue: MultiSelectOptionList<Record<string, string>>) {
-    const selected = newValue.map((value: Record<string, string>) => {
+  function handleSelectedFacet(newValue: CamsSelectOptionList) {
+    const selected = (newValue as MultiSelectOptionList).map((value: Record<string, string>) => {
       const { value: selection } = value;
       return selection;
     });
@@ -436,11 +439,11 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         data-testid="docket-entry-search"
                       >
                         <div className="usa-search usa-search--small">
-                          <label htmlFor="basic-search-field">Find in Docket</label>
-                          <IconInput
+                          <Input
                             className="search-icon"
                             id="basic-search-field"
                             name="basic-search"
+                            label="Find in Docket"
                             icon="search"
                             autocomplete="off"
                             onChange={searchDocketText}
@@ -452,15 +455,15 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         className="docket-summary-facets form-field"
                         data-testid="facet-multi-select-container-test-id"
                       >
-                        <label>Filter by Summary</label>
-                        <MultiSelect
+                        <CamsSelect
                           id="facet-multi-select"
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
                           closeMenuOnSelect={false}
                           onChange={handleSelectedFacet}
                           label="Filter by Summary"
                           ref={facetPickerRef}
-                        ></MultiSelect>
+                          isMulti={true}
+                        ></CamsSelect>
                       </div>
                       <div className="in-docket-search form-field" data-testid="docket-date-range">
                         <DateRangePicker
@@ -479,10 +482,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         data-testid="docket-number-search"
                       >
                         <div className="usa-search usa-search--small">
-                          <label htmlFor="document-number-search-field">
-                            Go to Document Number
-                          </label>
-                          <IconInput
+                          <Input
                             pattern="^[0-9]*$"
                             inputmode="numeric"
                             title="Enter numbers only"
@@ -490,6 +490,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                             id="document-number-search-field"
                             type="number"
                             name="search-by-document-number"
+                            label="Go to Document Number"
                             icon="search"
                             autocomplete="off"
                             onChange={searchDocumentNumber}

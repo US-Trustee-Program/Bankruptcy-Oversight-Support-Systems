@@ -10,7 +10,7 @@ export interface IconProps {
 
 export default function Icon(props: IconProps) {
   const link = `/assets/styles/img/sprite.svg#${props.name}`;
-  const isFocusable = props.focusable ? 'true' : 'false';
+  const isFocusable = !!props.focusable;
 
   return (
     <svg
@@ -18,6 +18,7 @@ export default function Icon(props: IconProps) {
       aria-hidden="true"
       focusable={isFocusable}
       role="img"
+      data-testid="icon"
     >
       <use xlinkHref={link}></use>
     </svg>
