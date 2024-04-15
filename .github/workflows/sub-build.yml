@@ -1,0 +1,103 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      nodeVersion:
+        required: true
+        type: string
+      apiName:
+        required: true
+        type: string
+      camsServerHostname:
+        required: true
+        type: string
+      camsServerPort:
+        required: true
+        type: string
+      camsServerProtocol:
+        required: true
+        type: string
+      camsBasePath:
+        required: true
+        type: string
+      webappName:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+
+jobs:
+  frontend:
+    defaults:
+      run:
+        working-directory: user-interface
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
+      - name: Execute Build
+        run: |
+          pushd ../common
+          npm ci
+          popd
+
+          npm ci
+          export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
+          export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
+          export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
+          export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
+          export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
+          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
+          export CAMS_INFO_SHA=${{ github.sha }}
+          npm run build --if-present
+      - name: Package
+        run: |
+          pushd ./build
+          zip -r ./${{ inputs.webappName }}.zip .
+          popd
+          mkdir ./artifacts
+          mv ./build/${{ inputs.webappName }}.zip ./artifacts/
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.webappName }}-build
+          path: user-interface/artifacts/
+          if-no-files-found: error
+
+  backend:
+    defaults:
+      run:
+        working-directory: backend/functions
+
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Execute Build
+        run: |
+          pushd ../../common
+          npm ci
+          popd
+
+          npm ci
+          npm run build
+
+      - name: Package Application
+        run: OUT=${{ inputs.apiName }} npm run pack
+
+      - name: Upload Node Azure Functions Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.apiName }}-build
+          path: backend/functions/${{ inputs.apiName }}.zip
+          if-no-files-found: error
