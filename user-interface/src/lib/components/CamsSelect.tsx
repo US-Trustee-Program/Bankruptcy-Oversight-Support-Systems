@@ -1,28 +1,45 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // refactor - let's find a way to avoid using any
-import './SearchableSelect.scss';
-import ReactSelect, { SingleValue } from 'react-select';
+import './CamsSelect.scss';
+import ReactSelect, { MultiValue, SingleValue } from 'react-select';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
 
 export type SearchableSelectOption = SingleValue<Record<string, string>>;
+export type MultiSelectOptionList = MultiValue<Record<string, string>>;
+export type CamsSelectOptionList = SearchableSelectOption | MultiSelectOptionList;
 
-export interface SearchableSelectProps {
+export interface CamsSelectProps {
   id: string;
-  onChange?: (newValue: SearchableSelectOption) => void;
+  onChange?: (newValue: CamsSelectOptionList) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
   options: Record<string, string>[];
   label?: string;
   value?: string;
+  required?: boolean;
+  isSearchable?: boolean;
+  isMulti?: boolean;
 }
 
-function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<InputRef>) {
-  const searchableSelectRef = React.useRef(null);
+function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
+  const camsSelectRef = React.useRef(null);
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
 
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
+
+  let classes = 'cams-select';
+  if (props.className) classes += ` ${props.className}`;
+
+  useEffect(() => {
+    if (props.required !== undefined && props.required === true) {
+      const inputEl = document.querySelector(`#${props.id} input`);
+      if (inputEl) {
+        inputEl.setAttribute('required', 'true');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (props.value !== undefined) {
@@ -86,8 +103,8 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
   };
 
   function clearValue() {
-    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'clearValue')) {
-      (searchableSelectRef.current as InputRef).clearValue();
+    if (camsSelectRef.current && Object.hasOwn(camsSelectRef.current, 'clearValue')) {
+      (camsSelectRef.current as InputRef).clearValue();
     }
   }
 
@@ -96,10 +113,10 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
       setValue: (option: Record<string, string>, foo: string) => void;
     };
 
-    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
+    if (camsSelectRef.current && Object.hasOwn(camsSelectRef.current, 'setValue')) {
       const option = props.options.find((option) => option.value == initialValue);
       if (option) {
-        (searchableSelectRef.current as SelectRef).setValue(option, 'select-option');
+        (camsSelectRef.current as SelectRef).setValue(option, 'select-option');
       }
     }
   }
@@ -109,10 +126,10 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
       setValue: (option: Record<string, string>, foo: string) => void;
     };
 
-    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
+    if (camsSelectRef.current && Object.hasOwn(camsSelectRef.current, 'setValue')) {
       const option = props.options.find((option) => option.value == value);
       if (option) {
-        (searchableSelectRef.current as SelectRef).setValue(option, 'select-option');
+        (camsSelectRef.current as SelectRef).setValue(option, 'select-option');
       }
     }
   }
@@ -135,21 +152,33 @@ function SearchableSelectComponent(props: SearchableSelectProps, ref: React.Ref<
   }, []);
 
   return (
-    <ReactSelect
-      aria-label={props.label}
-      options={props.options}
-      closeMenuOnSelect={props.closeMenuOnSelect}
-      onChange={props.onChange}
-      className={`${props.className || ''} cams-searchable-select`}
-      styles={customStyles}
-      id={props.id}
-      data-testid={props.id}
-      ref={searchableSelectRef}
-      isSearchable={true}
-      isDisabled={isDisabled}
-    ></ReactSelect>
+    <div className="usa-form-group">
+      <label
+        className="usa-label"
+        id={props.id + '-label'}
+        htmlFor={props.id}
+        data-required={props.required ? 'true' : null}
+      >
+        {props.label}
+      </label>
+      <ReactSelect
+        aria-label={props.label}
+        options={props.options}
+        closeMenuOnSelect={props.closeMenuOnSelect}
+        onChange={props.onChange}
+        className={classes}
+        styles={customStyles}
+        id={props.id}
+        data-testid={props.id}
+        ref={camsSelectRef}
+        isSearchable={props.isSearchable}
+        isMulti={props.isMulti}
+        isDisabled={isDisabled}
+        required={props.required}
+      ></ReactSelect>
+    </div>
   );
 }
 
-const SearchableSelect = forwardRef(SearchableSelectComponent);
-export default SearchableSelect;
+const CamsSelect = forwardRef(CamsSelectComponent);
+export default CamsSelect;

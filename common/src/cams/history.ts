@@ -22,7 +22,7 @@ export function isConsolidationHistory(history: unknown): history is Consolidati
 type AbstractCaseHistory<B, A> = {
   id?: string;
   caseId: string;
-  occurredAtTimestamp?: string;
+  occurredAtTimestamp: string;
   before: B;
   after: A;
 };
@@ -31,11 +31,11 @@ export type CaseAssignmentHistory = AbstractCaseHistory<CaseAssignment[], CaseAs
   documentType: 'AUDIT_ASSIGNMENT';
 };
 
-type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrder> & {
+export type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrder> & {
   documentType: 'AUDIT_TRANSFER';
 };
 
-type CaseConsolidationHistory = AbstractCaseHistory<
+export type CaseConsolidationHistory = AbstractCaseHistory<
   ConsolidationOrderSummary | null,
   ConsolidationOrderSummary
 > & {

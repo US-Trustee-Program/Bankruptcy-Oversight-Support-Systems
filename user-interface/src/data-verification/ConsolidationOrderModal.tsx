@@ -1,6 +1,5 @@
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import SearchableSelect from '@/lib/components/SearchableSelect';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -19,6 +18,12 @@ import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './ConsolidationOrderModal.scss';
+import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
+import CamsSelect, {
+  CamsSelectOptionList,
+  SearchableSelectOption,
+} from '@/lib/components/CamsSelect';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -235,6 +240,10 @@ function ConsolidationOrderModalComponent(
     }
   }
 
+  function handleSelectLeadCaseCourt(ev: CamsSelectOptionList) {
+    setLeadCaseDivisionCode((ev as SearchableSelectOption)?.value || '');
+  }
+
   function resizeModal() {
     // get height of modal top section above scrolling div
     const modalWindowPadding = 100;
@@ -347,57 +356,60 @@ function ConsolidationOrderModalComponent(
   function showApprovedContentStep1() {
     return (
       <div>
+        <div className="header-text">
+          <p>
+            Specify the type of consolidation and the lead case to continue. You may optionally
+            assign the consolidated cases to a staff member.
+          </p>
+          <FormRequirementsNotice />
+        </div>
         {featureFlags[CONSOLIDATIONS_ENABLED] && (
-          <div className="consolidation-type-container">
-            <div className="consolidation-type-radio">
-              <label htmlFor={'consolidation-type'} className="usa-label">
-                Consolidation Type
-              </label>
-              <Radio
-                id={`radio-administrative-${id}`}
-                name="consolidation-type"
-                value="administrative"
-                onChange={handleSelectConsolidationType}
-                ref={administrativeConsolidationRef}
-                label={consolidationTypeMap.get('administrative')!}
-              />
-            </div>
-            <div>
-              <Radio
-                id={`radio-substantive-${id}`}
-                name="consolidation-type"
-                value="substantive"
-                onChange={handleSelectConsolidationType}
-                ref={substantiveConsolidationRef}
-                label={consolidationTypeMap.get('substantive')!}
-              />
-            </div>
-          </div>
+          <RadioGroup
+            className="consolidation-type-container"
+            label="Consolidation Type"
+            required={true}
+          >
+            <Radio
+              id={`radio-administrative-${id}`}
+              name="consolidation-type"
+              value="administrative"
+              onChange={handleSelectConsolidationType}
+              ref={administrativeConsolidationRef}
+              label={consolidationTypeMap.get('administrative')!}
+              required={true}
+            />
+            <Radio
+              id={`radio-substantive-${id}`}
+              name="consolidation-type"
+              value="substantive"
+              onChange={handleSelectConsolidationType}
+              ref={substantiveConsolidationRef}
+              label={consolidationTypeMap.get('substantive')!}
+              required={true}
+            />
+          </RadioGroup>
         )}
         <div className="lead-case-court-container">
-          <label htmlFor={'lead-case-court'} className="usa-label">
-            Lead Case Court
-          </label>
-          <SearchableSelect
+          <CamsSelect
             id={'lead-case-court'}
+            required={true}
             options={getOfficeList(props.courts)}
-            onChange={(ev) => {
-              setLeadCaseDivisionCode(ev?.value || '');
-            }}
+            onChange={handleSelectLeadCaseCourt}
             ref={leadCaseDivisionRef}
+            label="Lead Case Court"
             value={getUniqueDivisionCodeOrUndefined(cases)}
-          ></SearchableSelect>
+            isSearchable={true}
+          />
         </div>
         <div className="lead-case-number-containter">
-          <label htmlFor={`lead-case-input-${props.id}`} className="usa-label">
-            Lead Case Number
-          </label>
           <Input
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
             className="usa-input"
             onChange={handleLeadCaseInputChange}
             aria-label="Lead case number"
+            required={true}
+            label="Lead Case Number"
             ref={leadCaseNumberRef}
           />
           {leadCaseNumberError ? (

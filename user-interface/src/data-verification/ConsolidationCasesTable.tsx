@@ -210,7 +210,7 @@ function _ConsolidationCaseTable(
                               )}
                               {bCase.courtName} - {docketEntry.summaryText}
                             </Link>
-                            <p tabIndex={0} className="measure-6">
+                            <p tabIndex={0} className="measure-6 text-wrap">
                               {docketEntry.fullText}
                             </p>
                             {docketEntry.documents && (
