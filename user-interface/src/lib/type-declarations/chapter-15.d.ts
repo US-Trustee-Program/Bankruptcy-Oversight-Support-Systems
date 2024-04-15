@@ -33,25 +33,6 @@ export interface DebtorAttorney {
   office?: string;
 }
 
-export interface CaseStaffAssignment {
-  id?: string;
-  documentType: 'ASSIGNMENT';
-  caseId: string;
-  name: string;
-  role: string;
-  assignedOn: string;
-  unassignedOn?: string;
-}
-
-export interface CaseAssignmentHistory {
-  id?: string;
-  documentType: 'AUDIT_ASSIGNMENT';
-  caseId: string;
-  occurredAtTimestamp: string;
-  before: CaseStaffAssignment[];
-  after: CaseStaffAssignment[];
-}
-
 export interface CaseDocketSummaryFacet {
   text: string;
   count: number;
@@ -128,21 +109,3 @@ export interface RegionDetails {
   regionId: string;
   regionName: string;
 }
-
-type AbstractCaseHistory<B, A> = {
-  id?: string;
-  caseId: string;
-  occurredAtTimestamp: string;
-  before: B;
-  after: A;
-};
-
-type CaseAssignmentHistory = AbstractCaseHistory<CaseStaffAssignment[], CaseStaffAssignment[]> & {
-  documentType: 'AUDIT_ASSIGNMENT';
-};
-
-type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrder> & {
-  documentType: 'AUDIT_TRANSFER';
-};
-
-export type CaseHistory = CaseAssignmentHistory | CaseTransferHistory;

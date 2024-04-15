@@ -1,38 +1,30 @@
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations/input-fields';
+import DatePicker, { DatePickerProps } from './DatePicker';
 import './DateRangePicker.scss';
-import { forwardRef, useImperativeHandle, useState } from 'react';
 
 // Alias for readability.
 const debounce = setTimeout;
 
-export interface DateRange {
-  start?: string;
-  end?: string;
-}
-
-export interface DateRangePickerProps {
-  id: string;
-  minDate?: string;
-  maxDate?: string;
+export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   onStartDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   startDateLabel?: string;
   endDateLabel?: string;
+  value?: DateRange;
   disabled?: boolean;
 }
 
-function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<InputRef>) {
-  const { id, startDateLabel, endDateLabel, minDate, maxDate } = props;
+function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
+  const { id, startDateLabel, endDateLabel, minDate, maxDate, value, disabled, required } = props;
 
   const [internalDateRange, setInternalDateRange] = useState<DateRange>({
     start: minDate,
     end: maxDate,
   });
-  const [startDateValue, setStartDateValue] = useState<string | null>(null);
-  const [endDateValue, setEndDateValue] = useState<string | null>(null);
-  const [isDisabled, setIsDisabled] = useState<boolean>(
-    props.disabled !== undefined ? props.disabled : false,
-  );
+
+  const startDateRef = useRef<InputRef>(null);
+  const endDateRef = useRef<InputRef>(null);
 
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
@@ -46,26 +38,29 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
 
   function clearValue() {
     setInternalDateRange(internalDateRange);
-    setStartDateValue('');
-    setEndDateValue('');
+    startDateRef.current?.clearValue();
+    endDateRef.current?.clearValue();
 
     // debounce to solve some funky weirdness with the date type input handling keyboard events after a reset.
     debounce(() => {
-      setStartDateValue(null);
-      setEndDateValue(null);
+      startDateRef.current?.clearValue();
+      endDateRef.current?.clearValue();
     }, 250);
   }
 
   function resetValue() {
-    throw new Error('Not implemented');
+    startDateRef.current?.resetValue();
+    endDateRef.current?.resetValue();
   }
 
-  function setValue() {
-    throw new Error('Not implemented');
+  function setValue(options: { start?: string; end?: string } = {}) {
+    startDateRef.current?.setValue(options.start ?? '');
+    endDateRef.current?.setValue(options.end ?? '');
   }
 
   function disable(value: boolean) {
-    setIsDisabled(value);
+    startDateRef.current?.disable(value);
+    endDateRef.current?.disable(value);
   }
 
   useImperativeHandle(ref, () => {
@@ -80,51 +75,34 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<In
   return (
     <div
       id={id}
-      className="usa-date-range-picker cams-date-picker"
+      className="usa-date-range-picker"
       data-min-date={props.minDate}
       data-max-date={props.maxDate}
     >
-      <div className="usa-form-group">
-        <label className="usa-label" id={id + '-date-start-label'} htmlFor={id + '-date-start'}>
-          {startDateLabel || 'Start date'}
-        </label>
-        <div className="usa-date-picker">
-          <input
-            type="date"
-            className="usa-input"
-            id={id + '-date-start'}
-            name="event-date-start"
-            aria-labelledby={id + '-date-start-label'}
-            aria-describedby={id + '-date-start-hint'}
-            onChange={onStartDateChange}
-            min={minDate}
-            max={internalDateRange.end}
-            data-testid={id + '-date-start'}
-            value={startDateValue === null ? undefined : startDateValue}
-            disabled={isDisabled}
-          />
-        </div>
-      </div>
-      <div className="usa-form-group">
-        <label className="usa-label" id={id + '-date-end-label'} htmlFor={id + '-date-end'}>
-          {endDateLabel || 'End date'}
-        </label>
-        <div className="usa-date-picker">
-          <input
-            type="date"
-            className="usa-input"
-            id={id + '-date-end'}
-            name="event-date-end"
-            aria-labelledby={id + '-date-end-label'}
-            aria-describedby={id + '-date-end-hint'}
-            onChange={onEndDateChange}
-            min={internalDateRange.start}
-            max={maxDate}
-            data-testid={id + '-date-end'}
-            value={endDateValue === null ? undefined : endDateValue}
-          />
-        </div>
-      </div>
+      <DatePicker
+        ref={startDateRef}
+        id={`${id}-date-start`}
+        minDate={minDate}
+        maxDate={internalDateRange.end}
+        onChange={onStartDateChange}
+        label={startDateLabel || 'Start date'}
+        name="event-date-start"
+        value={value?.start}
+        disabled={disabled}
+        required={required}
+      />
+      <DatePicker
+        ref={endDateRef}
+        id={`${id}-date-end`}
+        minDate={internalDateRange.start}
+        maxDate={maxDate}
+        onChange={onEndDateChange}
+        label={endDateLabel || 'End date'}
+        name="event-date-end"
+        value={value?.end}
+        disabled={disabled}
+        required={required}
+      />
     </div>
   );
 }

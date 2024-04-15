@@ -18,7 +18,7 @@ export function CaseNumber(props: CaseNumberProps) {
     </span>
   );
   if (renderAs === 'link') {
-    const target = openLinkIn === 'new-window' ? '_blank' : '_self';
+    const target = openLinkIn === 'new-window' ? `CAMS-case-detail-${caseId}` : '_self';
     return (
       <Link
         to={`/case-detail/${caseId}/`}

@@ -10,16 +10,13 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { selectItemInMockSelect } from '../lib/components/SearchableSelect.mock';
+import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
 
-vi.mock(
-  '../lib/components/SearchableSelect',
-  () => import('../lib/components/SearchableSelect.mock'),
-);
+vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);

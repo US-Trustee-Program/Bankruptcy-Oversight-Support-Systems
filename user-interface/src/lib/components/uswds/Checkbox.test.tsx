@@ -11,7 +11,6 @@ describe('Test Checkbox component', async () => {
       checked: false,
       onChange: () => {},
       onFocus: () => {},
-      className: '',
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -97,5 +96,21 @@ describe('Test Checkbox component', async () => {
     });
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAttribute('data-indeterminate', 'true');
+  });
+
+  test('should add a class if className is provided', () => {
+    const addedClassName = 'test-class';
+    renderWithProps({ id: 'test', className: addedClassName });
+    screen.debug();
+    const checkbox = screen.getByTestId('checkbox-test');
+    expect(checkbox.parentNode).toHaveClass(addedClassName);
+  });
+
+  test('should have the default class', () => {
+    renderWithProps({ id: 'test' });
+    const checkbox = screen.getByTestId('checkbox-test');
+    const parent = checkbox.parentNode;
+    expect(parent).toHaveClass('usa-form-group');
+    expect(parent).toHaveClass('usa-checkbox');
   });
 });
