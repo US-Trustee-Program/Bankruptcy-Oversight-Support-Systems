@@ -86,7 +86,7 @@ else
         apiStatusCode=$($apiCmd)
       else
         apiStatusCode=500 # if version does not match set to a non 200 status code
-        sleep 10
+        sleep 60
       fi
     done
 

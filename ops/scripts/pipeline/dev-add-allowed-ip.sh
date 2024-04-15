@@ -52,7 +52,7 @@ if [[ -z "${app_rg}" || -z "${stack_name}" || -z "${priority}" ]]; then
 fi
 
 
-agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused https://api.ipify.org)
+agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
 
 
 if [[ -z "${ci}" ]]; then
