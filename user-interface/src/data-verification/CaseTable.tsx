@@ -4,7 +4,7 @@ import { CaseSummary } from '@common/cams/cases';
 import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CaseTableImperative = {
-  clearSelection: () => void;
+  clearAllCheckboxes: () => void;
 };
 
 interface CaseTableProps {
@@ -26,12 +26,12 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
     if (onSelect) onSelect(bCase);
   }
 
-  function clearSelection() {
+  function clearAllCheckboxes() {
     setSelectedIdx(null);
   }
 
   useImperativeHandle(CaseTableRef, () => ({
-    clearSelection,
+    clearAllCheckboxes,
   }));
 
   return (

@@ -1,11 +1,18 @@
 import './forms.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
+export enum CheckboxState {
+  UNCHECKED = -1,
+  INDETERMINATE = 0,
+  CHECKED = 1,
+}
+
 export interface CheckboxProps {
   id: string;
   label?: string;
-  value: string;
   name?: string;
+  value: string | number;
+  title?: string;
   checked?: boolean;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
@@ -14,12 +21,13 @@ export interface CheckboxProps {
 }
 
 export interface CheckboxRef {
-  setChecked: (value: boolean) => void;
+  setChecked: (value: boolean | CheckboxState) => void;
   getLabel: () => string;
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
-  const [isChecked, setIsChecked] = useState<boolean>(!!props.checked);
+  const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
+  const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
 
   const checkHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
     if (props.onChange) {
@@ -38,13 +46,26 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     return props.label ?? '';
   }
 
-  function setChecked(value: boolean) {
-    setIsChecked(value);
+  function setChecked(value: boolean | CheckboxState) {
+    let indeterminate = false;
+    if (value === true || value === false) {
+      setIsChecked(value);
+    } else {
+      if (value === CheckboxState.CHECKED) {
+        setIsChecked(true);
+      } else if (value === CheckboxState.UNCHECKED) {
+        setIsChecked(false);
+      } else if (value === CheckboxState.INDETERMINATE) {
+        setIsChecked(false);
+        indeterminate = true;
+      }
+    }
+    setIndeterminateState(indeterminate);
   }
 
   useEffect(() => {
     // initializing isChecked above as a default doesn't work for some reason.
-    if (props.checked) setIsChecked(true);
+    setIsChecked(props.checked ?? false);
   }, [props.checked]);
 
   useImperativeHandle(
@@ -66,16 +87,17 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         className="usa-checkbox__input"
         name={props.name ?? ''}
         value={props.value}
+        aria-label={props.label ?? `check ${props.value}`}
         checked={isChecked}
         onChange={checkHandler}
         onFocus={focusHandler}
+        data-indeterminate={indeterminateState || null}
+        title={props.title}
         required={props.required}
       />
-      {props.label && (
-        <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
-          {props.label}
-        </label>
-      )}
+      <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
+        {props.label}
+      </label>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import CaseDetailAssociatedCases from './CaseDetailAssociatedCases';
 import { ConsolidationFrom, ConsolidationTo, EventCaseReference } from '@common/cams/events';
@@ -77,7 +77,7 @@ describe('associated cases tests', () => {
     const sortedMock = sortMock(mock);
 
     let header3, header4;
-    await vi.waitFor(() => {
+    await waitFor(() => {
       header3 = document.querySelector('.associated-cases h3');
       header4 = document.querySelector('.associated-cases h4');
     });
