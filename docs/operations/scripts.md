@@ -4,6 +4,10 @@
 
 Shared scripts that execute in CI/CD pipeline on both the Flexion and USTP environment.
 
+### slots
+
+Shared scripts that are utilized for slot deployments in Flexion and USTP environments.
+
 ## utility
 
 Adhoc helper scripts
@@ -42,3 +46,7 @@ See [here](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) for addition
 ### fix-import-data.sql
 
 Fix known anonymized data set issues. This may be required after loading SQL server database from a data file.
+
+### update-dependencies.sh
+
+Script to run when starting dependency updates for the entire repository (backend/functions, common, dev-tools, test/e2e, user-interface).

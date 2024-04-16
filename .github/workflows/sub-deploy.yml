@@ -74,6 +74,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       environmentHash: ${{ inputs.environmentHash }}
       apiName: ${{ inputs.apiName }}
+      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-slot-resources:
