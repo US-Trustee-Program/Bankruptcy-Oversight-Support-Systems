@@ -17,6 +17,7 @@ analyticsWorkspaceId=
 actionGroupResourceGroup=
 actionGroupName=
 branchHashId=
+slotDeploymentEnabled='false'
 
 while [[ $# -gt 0 ]]; do
     case $1 in
