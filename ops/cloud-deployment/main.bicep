@@ -100,6 +100,7 @@ param camsReactSelectHash string
 @secure()
 param idKeyvaultAppConfiguration string
 
+//TODO: break out ActionGroup and Alerts into their own bicep
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createActionGroup) {
     name: '${actionGroupName}-action-group-module'
