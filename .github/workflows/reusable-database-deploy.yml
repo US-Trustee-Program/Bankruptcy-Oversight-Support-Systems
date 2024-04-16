@@ -15,6 +15,9 @@ on:
       environmentHash:
         required: true
         type: string
+      slotDeploymentEnabled:
+        required: true
+        type: string
     outputs:
       cosmosDbClientId:
         description: "CosmosDB Client ID"
@@ -58,7 +61,9 @@ jobs:
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+            --slotDeploymentEnabled ${{ inputs.slotDeploymentEnabled }}
+
       - name: Check deployment and set params
         id: set-deploy-params
         run: |
