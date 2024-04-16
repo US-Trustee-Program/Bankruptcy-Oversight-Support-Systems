@@ -147,7 +147,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       planType: webappPlanType
       webappName: webappName
       location: location
-      privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
+      privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       virtualNetworkName: virtualNetworkName
@@ -196,7 +196,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
       functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
       privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
       privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
-      privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
+      privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       databaseConnectionString: databaseConnectionString
