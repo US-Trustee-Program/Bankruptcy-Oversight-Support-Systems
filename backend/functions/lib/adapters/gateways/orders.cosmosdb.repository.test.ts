@@ -23,7 +23,7 @@ const testNewOrderTransferData: TransferOrderAction = {
     caseId: '000-01-12345',
     courtName: 'New Court Name',
     courtDivisionName: 'New Division',
-    courtDivision: '081',
+    courtDivisionCode: '081',
     regionId: '02',
     regionName: 'NEW YORK',
   },

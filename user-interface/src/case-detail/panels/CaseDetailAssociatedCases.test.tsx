@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import CaseDetailAssociatedCases from './CaseDetailAssociatedCases';
 import { ConsolidationFrom, ConsolidationTo, EventCaseReference } from '@common/cams/events';
@@ -12,7 +12,7 @@ function getAssociatedCasesMock(caseId: string, consolidationType: Consolidation
     {
       caseId: '081-93-87181',
       otherCase: MockData.getCaseSummary({
-        override: { caseId, caseTitle: 'Mr Joe', courtDivision: '001' },
+        override: { caseId, caseTitle: 'Mr Joe', courtDivisionCode: '001' },
       }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_TO',
@@ -20,21 +20,21 @@ function getAssociatedCasesMock(caseId: string, consolidationType: Consolidation
     } as ConsolidationTo,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivision: '001' } }),
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivision: '001' } }),
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivision: '001' } }),
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
@@ -77,7 +77,7 @@ describe('associated cases tests', () => {
     const sortedMock = sortMock(mock);
 
     let header3, header4;
-    await vi.waitFor(() => {
+    await waitFor(() => {
       header3 = document.querySelector('.associated-cases h3');
       header4 = document.querySelector('.associated-cases h4');
     });

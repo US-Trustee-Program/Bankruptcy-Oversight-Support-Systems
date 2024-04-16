@@ -42,8 +42,17 @@ test.describe('Consolidation Orders', () => {
     }
 
     for (let i = 0; i < childCaseCount; ++i) {
-      const checkbox = page.getByTestId(`${pendingConsolidationOrder.id}-case-list-checkbox-${i}`);
-      await checkbox.check();
+      // The following is neccessary because the USWDS checkbox input is rendered hidden off-screen.
+      // Therefore playwright can't check the box if it can't see it using the normal page.getByTestId.
+      // So using this method, you can locate the checkbox and fire a click event.
+      // I tried getting the label by test id, but it can't click on the label because the checkbox
+      // image is rendered in a css pseudo class, and javascript can not access the pseudo class.
+      // Clicking the label did not seem to fire the click event on the checkbox input.
+      await page
+        .locator(
+          `input[data-testid="checkbox-case-selection-${pendingConsolidationOrder.id}-case-list-${i}"]`,
+        )
+        .dispatchEvent('click');
     }
 
     const approveButton = page.getByTestId(
@@ -80,7 +89,11 @@ test.describe('Consolidation Orders', () => {
     // Action open accordian
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
 
-    await page.getByTestId(`${pendingConsolidationOrder.id}-case-list-checkbox-0`).check();
+    await page
+      .locator(
+        `input[data-testid="checkbox-case-selection-${pendingConsolidationOrder.id}-case-list-0"]`,
+      )
+      .dispatchEvent('click');
 
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
@@ -91,9 +104,7 @@ test.describe('Consolidation Orders', () => {
       page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
     ).toBeVisible();
     expect(
-      page
-        .getByTestId(`modal-content-confirmation-modal-${pendingConsolidationOrder.id}`)
-        .getByTestId('toggle-modal-button-submit'),
+      page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
     ).toBeDisabled();
 
     // Action fill modal dialog form
@@ -103,8 +114,8 @@ test.describe('Consolidation Orders', () => {
       )
       .check();
 
-    await page.locator('#lead-case-court div').filter({ hasText: 'Select...' }).first().click();
-    await page.getByRole('option', { name: /Brooklyn/ }).click();
+    await page.locator('#lead-case-court div').first().click();
+    await page.getByRole('option', { name: /Manhattan/ }).click();
 
     await page
       .getByTestId(`lead-case-input-confirmation-modal-${pendingConsolidationOrder.id}`)
@@ -112,8 +123,7 @@ test.describe('Consolidation Orders', () => {
 
     // Action click cancel
     await page
-      .getByTestId(`modal-content-confirmation-modal-${pendingConsolidationOrder.id}`)
-      .getByTestId('toggle-modal-button-cancel')
+      .getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-cancel-button`)
       .click();
 
     // Assert modal closed and approve button is disabled

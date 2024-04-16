@@ -1,0 +1,54 @@
+name: Azure Deployment - Backend Slot Creation
+
+on:
+  workflow_call:
+    inputs:
+      webAppName:
+        required: true
+        type: string
+      apiName:
+        required: true
+        type: string
+      ghaEnvironment:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      azResourceGrpNetworkEncrypted:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+      slotDeploymentEnabled:
+        required: true
+        type: string
+      environmentHash:
+        required: true
+        type: string
+jobs:
+  deploy-frontend-slot-resources:
+    uses: ./.github/workflows/reusable-frontend-slot.yml
+    with:
+      webAppName: ${{ inputs.webAppName }}
+      apiName: ${{ inputs.apiName }}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      slotName: ${{ inputs.slotName }}
+      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-backend-slot-resources:
+    uses: ./.github/workflows/reusable-backend-slot.yml
+    with:
+      webAppName: ${{ inputs.webAppName }}
+      apiName: ${{ inputs.apiName }}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      slotName: ${{ inputs.slotName }}
+      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
+      environmentHash: ${{ inputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret

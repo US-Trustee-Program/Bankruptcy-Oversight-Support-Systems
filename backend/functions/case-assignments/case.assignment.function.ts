@@ -15,13 +15,15 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const caseId = request.body.caseId;
-  const listOfAttorneyNames = request.body.attorneyList;
-  const role = request.body.role;
-
   const applicationContext = await applicationContextCreator(functionContext);
   try {
-    await handlePostMethod(applicationContext, caseId, listOfAttorneyNames, role);
+    if (request.method === 'POST') {
+      const listOfAttorneyNames = request.body.attorneyList;
+      const role = request.body.role;
+      await handlePostMethod(applicationContext, request.body.caseId, listOfAttorneyNames, role);
+    } else {
+      await handleGetMethod(applicationContext, request.params['id']);
+    }
     functionContext.res = applicationContext.res;
   } catch (originalError) {
     const error =
@@ -32,6 +34,17 @@ const httpTrigger: AzureFunction = async function (
     functionContext.res = httpError(error);
   }
 };
+
+async function handleGetMethod(applicationContext, caseId) {
+  const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
+    applicationContext,
+  );
+
+  const trialAttorneyAssignmentResponse =
+    await caseAssignmentController.getTrialAttorneyAssignments(caseId);
+
+  applicationContext.res = httpSuccess(trialAttorneyAssignmentResponse);
+}
 
 async function handlePostMethod(
   applicationContext: ApplicationContext,

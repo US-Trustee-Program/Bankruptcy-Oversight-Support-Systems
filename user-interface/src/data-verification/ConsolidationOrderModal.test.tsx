@@ -4,16 +4,23 @@ import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
   ConsolidationOrderModalProps,
+  formatListforDisplay,
+  getCaseAssignments,
+  fetchLeadCaseAttorneys,
+  getUniqueDivisionCodeOrUndefined,
 } from '@/data-verification/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { selectItemInMockSelect } from '@/lib/components/SearchableSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
+import { CaseAssignment } from '@common/cams/assignments';
+import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
+import { SimpleResponseData } from '@/lib/type-declarations/api';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { CaseSummary } from '@common/cams/cases';
 
-vi.mock(
-  '../lib/components/SearchableSelect',
-  () => import('../lib/components/SearchableSelect.mock'),
-);
+vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
 describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();
@@ -54,14 +61,17 @@ describe('ConsolidationOrderModalComponent', () => {
     vitest.clearAllMocks();
   });
 
-  test('should show rejection modal', async () => {
+  test('should allow user to reject a consolidation', async () => {
     const id = 'test';
-    const caseIds = ['11-11111', '22-22222'];
+    const cases = MockData.buildArray(MockData.getCaseSummary, 2);
+
+    const onConfirmSpy = vitest.fn();
+    const onCancelSpy = vitest.fn();
 
     // Render and activate the modal.
-    const ref = renderModalWithProps({ id });
+    const ref = renderModalWithProps({ id, onConfirm: onConfirmSpy, onCancel: onCancelSpy });
     await waitFor(() => {
-      ref.current?.show({ status: 'rejected', caseIds });
+      ref.current?.show({ status: 'rejected', cases });
     });
 
     // Check heading
@@ -69,30 +79,68 @@ describe('ConsolidationOrderModalComponent', () => {
     expect(heading).toHaveTextContent('Reject Case Consolidation?');
 
     // Check case Ids
-    const caseIdDiv = screen.queryByTestId(`confirm-modal-${id}-caseIds`);
-    expect(caseIdDiv).toBeInTheDocument();
-    caseIds.forEach((caseId) => {
-      expect(caseIdDiv).toHaveTextContent(caseId);
+    const caseIdDiv = screen.getByTestId(`modal-case-list-container`);
+    cases.forEach((bCase) => {
+      expect(caseIdDiv).toHaveTextContent(getCaseNumber(bCase.caseId));
     });
+
+    const rejectionReasonText = screen.getByTestId(`rejection-reason-input-${id}`);
+    expect(rejectionReasonText).toBeVisible();
+    expect(rejectionReasonText).not.toBeDisabled();
+    const rejectionTextValue = 'This is a test';
+    fireEvent.change(rejectionReasonText, { target: { value: rejectionTextValue } });
+
+    const rejectButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(rejectButton).toBeVisible();
+    expect(rejectButton).not.toBeDisabled();
+    fireEvent.click(rejectButton!);
+    expect(onConfirmSpy).toHaveBeenCalledWith({
+      status: 'rejected',
+      rejectionReason: rejectionTextValue,
+    });
+
+    await waitFor(() => {
+      ref.current?.show({ status: 'rejected', cases });
+    });
+    const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
+    expect(cancelButton).toBeVisible();
+    expect(cancelButton).not.toBeDisabled();
+    fireEvent.click(cancelButton!);
+    expect(onCancelSpy).toHaveBeenCalled();
   });
 
-  test('should show approved modal and allow user to submit modal after completing form', async () => {
+  test('should allow user to approve a consolidation', async () => {
     const id = 'test';
-    const caseIds = ['11-11111', '22-22222'];
+    const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
     const courts = MockData.getOffices().slice(0, 3);
-    const attorneys = MockData.getTrialAttorneys();
+
+    const leadCase = MockData.getCaseSummary();
+    const leadCaseResponse: SimpleResponseData<CaseSummary> = {
+      success: true,
+      body: leadCase,
+    };
+    const assignmentResponse: SimpleResponseData<CaseAssignment[]> = {
+      success: true,
+      body: MockData.buildArray(MockData.getAttorneyAssignment, 2),
+    };
+
+    // Setup API calls to fetch the lead case summary and lead case assignments.
+    vitest
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce(leadCaseResponse)
+      .mockResolvedValueOnce(assignmentResponse);
 
     // Render and activate the modal.
     const ref = renderModalWithProps({ id, courts });
     await waitFor(() => {
-      ref.current?.show({ status: 'approved', caseIds, attorneys });
+      ref.current?.show({ status: 'approved', cases: childCases });
     });
 
     const modal = screen.getByTestId('modal-test');
     expect(modal).toHaveClass('is-visible');
 
-    const approveButton = screen.getByTestId('toggle-modal-button-submit');
-    expect(approveButton).toBeDisabled();
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(continueButton).toBeDisabled();
 
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');
@@ -111,16 +159,19 @@ describe('ConsolidationOrderModalComponent', () => {
 
     fireEvent.click(radioSubstantiveClickTarget!);
 
-    expect(approveButton).toBeDisabled();
+    expect(continueButton).toBeDisabled();
 
     // Select lead case court.
     selectItemInMockSelect(`lead-case-court`, 1);
 
-    expect(approveButton).toBeDisabled();
+    expect(continueButton).toBeDisabled();
 
     // Enter case number.
-    const leadCaseNumber = caseIds[0];
+    const leadCaseNumber = getCaseNumber(childCases[0].caseId);
     const caseNumberInput = findCaseNumberInputInModal(id);
+    await waitFor(() => {
+      enterCaseNumberInModal(caseNumberInput, '12-');
+    });
     await waitFor(() => {
       enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
     });
@@ -129,11 +180,19 @@ describe('ConsolidationOrderModalComponent', () => {
       expect(caseNumberInput).toHaveValue(leadCaseNumber);
     });
 
-    // Select attorney
-    selectItemInMockSelect(`lead-attorney`, 1);
+    await waitFor(() => {
+      expect(continueButton).toBeEnabled();
+    });
+    fireEvent.click(continueButton);
 
-    expect(approveButton).toBeEnabled();
-    fireEvent.click(approveButton);
+    await waitFor(() => {
+      const secondHeading = document.querySelector('.usa-modal__heading');
+      expect(secondHeading).toHaveTextContent('Consolidate Cases');
+    });
+
+    const verifyButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(verifyButton).toBeEnabled();
+    fireEvent.click(verifyButton);
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-hidden');
@@ -141,23 +200,112 @@ describe('ConsolidationOrderModalComponent', () => {
 
     expect(onConfirmSpy).toHaveBeenCalledWith({
       status: 'approved',
-      courtDivision: undefined,
-      leadCaseId: `${courts[0].courtDivision}-${leadCaseNumber}`,
+      rejectionReason: undefined,
+      leadCaseSummary: leadCase,
       consolidationType: 'substantive',
     });
+
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', cases: childCases });
+    });
+    const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
+    expect(cancelButton).toBeVisible();
+    expect(cancelButton).not.toBeDisabled();
+    fireEvent.click(cancelButton!);
+    expect(onCancelSpy).toHaveBeenCalled();
+  });
+
+  test('should show an error if the lead case does not exist', async () => {
+    const id = 'test';
+    const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
+    const courts = MockData.getOffices().slice(0, 3);
+
+    // Render and activate the modal.
+    const ref = renderModalWithProps({ id, courts });
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', cases: childCases });
+    });
+
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(continueButton).toBeDisabled();
+
+    const radioSubstantiveClickTarget = screen.queryByTestId(
+      `radio-substantive-${id}-click-target`,
+    );
+    fireEvent.click(radioSubstantiveClickTarget!);
+
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    let errorMessage;
+    const leadCaseNumber = '11-11111';
+    const caseNumberInput = findCaseNumberInputInModal(id);
+
+    vitest.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('404 Error'));
+
+    // Test the 404 case.
+    await waitFor(() => {
+      enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
+    });
+    await waitFor(() => {
+      errorMessage = screen.queryByTestId('alert-message');
+    });
+    expect(errorMessage).toBeInTheDocument();
+    expect(errorMessage).toHaveTextContent('Lead case not found.');
+    expect(continueButton).toBeDisabled();
+  });
+
+  test('should show an error if the lead case cannot be verified', async () => {
+    const id = 'test';
+    const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
+    const courts = MockData.getOffices().slice(0, 3);
+
+    // Render and activate the modal.
+    const ref = renderModalWithProps({ id, courts });
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', cases: childCases });
+    });
+
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+    expect(continueButton).toBeDisabled();
+
+    const radioSubstantiveClickTarget = screen.queryByTestId(
+      `radio-substantive-${id}-click-target`,
+    );
+    fireEvent.click(radioSubstantiveClickTarget!);
+
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    let errorMessage;
+    const leadCaseNumber = '11-11111';
+    const caseNumberInput = findCaseNumberInputInModal(id);
+
+    vitest.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('500 Error'));
+
+    // Test error other than 404.
+    await waitFor(() => {
+      enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
+    });
+    await waitFor(() => {
+      errorMessage = screen.queryByTestId('alert-message');
+    });
+    expect(errorMessage).toBeInTheDocument();
+    expect(errorMessage).toHaveTextContent('Cannot verify lead case number.');
+    expect(continueButton).toBeDisabled();
   });
 
   test('should call onCancel callback when cancel button is clicked', async () => {
     const id = 'test';
-    const caseIds = ['11-11111', '22-22222'];
+    const cases = MockData.buildArray(MockData.getCaseSummary, 2);
 
     const ref = renderModalWithProps({ id });
 
     await waitFor(() => {
-      ref.current?.show({ status: 'rejected', caseIds });
+      ref.current?.show({ status: 'rejected', cases });
     });
 
-    const button = screen.queryByTestId(`toggle-modal-button-cancel`);
+    const button = screen.queryByTestId(`button-${id}-cancel-button`);
     fireEvent.click(button as Element);
 
     await waitFor(() => {
@@ -172,14 +320,13 @@ describe('ConsolidationOrderModalComponent', () => {
     vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
     const id = 'test';
-    const caseIds = ['11-11111', '22-22222'];
+    const cases = MockData.buildArray(MockData.getCaseSummary, 2);
     const courts = MockData.getOffices().slice(0, 3);
-    const attorneys = MockData.getTrialAttorneys();
 
     // Render and activate the modal.
     const ref = renderModalWithProps({ id, courts });
     await waitFor(() => {
-      ref.current?.show({ status: 'approved', caseIds, attorneys });
+      ref.current?.show({ status: 'approved', cases });
     });
 
     // Select consolidation type
@@ -188,5 +335,65 @@ describe('ConsolidationOrderModalComponent', () => {
 
     expect(radioAdministrative).not.toBeInTheDocument();
     expect(radioSubstantive).not.toBeInTheDocument();
+  });
+
+  test('should render Oxford comma for attorney list.', async () => {
+    const nameList: string[] = [];
+
+    const noNames = formatListforDisplay(nameList);
+    expect(noNames).toEqual('(unassigned)');
+
+    nameList.push('Abe');
+    const oneName = formatListforDisplay(nameList);
+    expect(oneName).toEqual('Abe');
+
+    nameList.push('Ben');
+    const twoNames = formatListforDisplay(nameList);
+    expect(twoNames).toEqual('Abe and Ben');
+
+    nameList.push('Charles');
+    const threeNames = formatListforDisplay(nameList);
+    expect(threeNames).toEqual('Abe, Ben, and Charles');
+  });
+
+  test('should return a unique division code or undefined', () => {
+    const cases: CaseSummary[] = [];
+    const expectedDivisionCode = '081';
+
+    const noDivisionCodes = getUniqueDivisionCodeOrUndefined(cases);
+    expect(noDivisionCodes).toBeUndefined();
+
+    cases.push(MockData.getCaseSummary({ override: { courtDivisionCode: expectedDivisionCode } }));
+    const oneDivisionCode = getUniqueDivisionCodeOrUndefined(cases);
+    expect(oneDivisionCode).toEqual(expectedDivisionCode);
+
+    cases.push(MockData.getCaseSummary({ override: { courtDivisionCode: expectedDivisionCode } }));
+    const sameDivisionCode = getUniqueDivisionCodeOrUndefined(cases);
+    expect(sameDivisionCode).toEqual(expectedDivisionCode);
+
+    cases.push(MockData.getCaseSummary({ override: { courtDivisionCode: '999' } }));
+    const differentDivisionCodes = getUniqueDivisionCodeOrUndefined(cases);
+    expect(differentDivisionCodes).toBeUndefined();
+  });
+
+  test('should return case assignments from the api', async () => {
+    const mockResponse: CaseAssignmentResponseData = {
+      success: true,
+      body: MockData.buildArray(MockData.getAttorneyAssignment, 3),
+    };
+    vitest.spyOn(Chapter15MockApi, 'get').mockResolvedValue(mockResponse);
+    const response = await getCaseAssignments('leadCaseId');
+    expect(response).toEqual(mockResponse.body);
+  });
+
+  test('should return names from the case assignments', async () => {
+    const mockResponse: CaseAssignmentResponseData = {
+      success: true,
+      body: MockData.buildArray<CaseAssignment>(MockData.getAttorneyAssignment, 3),
+    };
+    const nameList = mockResponse.body.map((assignment) => assignment.name);
+    vitest.spyOn(Chapter15MockApi, 'get').mockResolvedValue(mockResponse);
+    const response = await fetchLeadCaseAttorneys('leadCaseId');
+    expect(response).toEqual(nameList);
   });
 });

@@ -1,13 +1,25 @@
 import { render, screen } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import { CaseStaffAssignment, CaseHistory } from '@/lib/type-declarations/chapter-15';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { CaseHistory } from '@common/cams/history';
+import { CaseAssignment } from '@common/cams/assignments';
+import { ConsolidationOrder } from '@common/cams/orders';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
-  const pendingOrder = MockData.getTransferOrder({ override: { caseId, status: 'pending' } });
-  const approvedOrder = MockData.getTransferOrder({ override: { caseId, status: 'approved' } });
-  const assignmentBefore: CaseStaffAssignment[] = [
+  const pendingTransferOrder = MockData.getTransferOrder({
+    override: { caseId, status: 'pending' },
+  });
+  const approvedTransferOrder = MockData.getTransferOrder({
+    override: { caseId, status: 'approved' },
+  });
+  const pendingConsolidationOrder: ConsolidationOrder = MockData.getConsolidationOrder();
+  const rejectedConsolidationOrder: ConsolidationOrder = {
+    ...pendingConsolidationOrder,
+    status: 'rejected',
+    reason: 'This order is rejected',
+  };
+  const assignmentBefore: CaseAssignment[] = [
     {
       caseId,
       documentType: 'ASSIGNMENT',
@@ -23,7 +35,7 @@ describe('audit history tests', () => {
       assignedOn: '2023-12-25T00:00:00.000Z',
     },
   ];
-  const assignmentAfter: CaseStaffAssignment[] = [
+  const assignmentAfter: CaseAssignment[] = [
     {
       caseId,
       documentType: 'ASSIGNMENT',
@@ -60,8 +72,24 @@ describe('audit history tests', () => {
       documentType: 'AUDIT_TRANSFER',
       caseId,
       occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
-      before: pendingOrder,
-      after: approvedOrder,
+      before: pendingTransferOrder,
+      after: approvedTransferOrder,
+    },
+    {
+      id: '1234567890',
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId,
+      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      before: null,
+      after: pendingConsolidationOrder,
+    },
+    {
+      id: '1234567890',
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId,
+      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      before: pendingConsolidationOrder,
+      after: rejectedConsolidationOrder,
     },
   ];
 
@@ -135,8 +163,8 @@ describe('audit history tests', () => {
         documentType: 'AUDIT_TRANSFER',
         caseId,
         occurredAtTimestamp: '2024-01-31T12:00:00Z',
-        before: pendingOrder,
-        after: approvedOrder,
+        before: pendingTransferOrder,
+        after: approvedTransferOrder,
       },
       {
         id: '',
@@ -144,7 +172,7 @@ describe('audit history tests', () => {
         caseId,
         occurredAtTimestamp: '2024-01-29T12:00:00Z',
         before: null,
-        after: pendingOrder,
+        after: pendingTransferOrder,
       },
     ];
 

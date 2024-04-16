@@ -1,7 +1,8 @@
-import { ResponseData } from './api';
+import { SimpleResponseData, ResponseData } from './api';
 import * as CommonOrders from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import { EventCaseReference } from '@common/cams/events';
+import { CaseAssignment } from '@common/cams/assignments';
 
 export interface Chapter15Type {
   caseId: string;
@@ -30,25 +31,6 @@ export interface DebtorAttorney {
   phone?: string;
   email?: string;
   office?: string;
-}
-
-export interface CaseStaffAssignment {
-  id?: string;
-  documentType: 'ASSIGNMENT';
-  caseId: string;
-  name: string;
-  role: string;
-  assignedOn: string;
-  unassignedOn?: string;
-}
-
-export interface CaseAssignmentHistory {
-  id?: string;
-  documentType: 'AUDIT_ASSIGNMENT';
-  caseId: string;
-  occurredAtTimestamp: string;
-  before: CaseStaffAssignment[];
-  after: CaseStaffAssignment[];
 }
 
 export interface CaseDocketSummaryFacet {
@@ -121,25 +103,9 @@ export interface OfficesResponseData extends ResponseData {
   body: OfficeDetails[];
 }
 
+export type CaseAssignmentResponseData = SimpleResponseData<Array<CaseAssignment>>;
+
 export interface RegionDetails {
   regionId: string;
   regionName: string;
 }
-
-type AbstractCaseHistory<B, A> = {
-  id?: string;
-  caseId: string;
-  occurredAtTimestamp: string;
-  before: B;
-  after: A;
-};
-
-type CaseAssignmentHistory = AbstractCaseHistory<CaseStaffAssignment[], CaseStaffAssignment[]> & {
-  documentType: 'AUDIT_ASSIGNMENT';
-};
-
-type CaseTransferHistory = AbstractCaseHistory<TransferOrder | null, TransferOrder> & {
-  documentType: 'AUDIT_TRANSFER';
-};
-
-export type CaseHistory = CaseAssignmentHistory | CaseTransferHistory;

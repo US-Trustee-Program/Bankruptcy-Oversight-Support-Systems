@@ -1,7 +1,6 @@
 import { MouseEventHandler, forwardRef, useImperativeHandle, useRef } from 'react';
-import { ToggleModalButton } from './ToggleModalButton';
-import { UswdsButtonStyle } from '../Button';
-import { ModalRefType, SubmitCancelButtonGroupRef, ToggleModalButtonRef } from './modal-refs';
+import Button, { ButtonRef, UswdsButtonStyle } from '../Button';
+import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
 
 export type SubmitCancelBtnProps = {
   modalId: string;
@@ -10,6 +9,7 @@ export type SubmitCancelBtnProps = {
   submitButton: {
     label: string;
     onClick?: MouseEventHandler<HTMLButtonElement>;
+    closeOnClick?: boolean;
     className?: string;
     uswdsStyle?: UswdsButtonStyle;
     disabled?: boolean;
@@ -23,10 +23,10 @@ export type SubmitCancelBtnProps = {
 };
 
 function SubmitCancelButtonGroupComponent(
-  { modalId, modalRef, className, submitButton, cancelButton }: SubmitCancelBtnProps,
+  { modalId, className, submitButton, cancelButton }: SubmitCancelBtnProps,
   ref: React.Ref<SubmitCancelButtonGroupRef>,
 ) {
-  const toggleSubmitButtonRef = useRef<ToggleModalButtonRef>(null);
+  const toggleSubmitButtonRef = useRef<ButtonRef>(null);
 
   const classes = `usa-button-group ${className ?? ''}`;
 
@@ -42,33 +42,27 @@ function SubmitCancelButtonGroupComponent(
     <>
       <ul className={classes}>
         <li className="usa-button-group__item">
-          <ToggleModalButton
+          <Button
+            id={`${modalId}-submit-button`}
             ref={toggleSubmitButtonRef}
-            toggleAction="close"
-            buttonIndex="submit"
-            modalId={modalId}
-            modalRef={modalRef}
             uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
             className={submitButton.className ?? ''}
-            onClick={submitButton.onClick ?? close}
+            onClick={submitButton.onClick}
             disabled={submitButton.disabled ?? false}
           >
             {submitButton.label.length > 0 ? submitButton.label : 'Submit'}
-          </ToggleModalButton>
+          </Button>
         </li>
         {cancelButton && (
           <li className="usa-button-group__item">
-            <ToggleModalButton
-              toggleAction="close"
-              buttonIndex="cancel"
-              modalId={modalId}
-              modalRef={modalRef}
+            <Button
+              id={`${modalId}-cancel-button`}
               uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
               className={cancelButton.className ?? ' padding-105 text-center '}
               onClick={cancelButton.onClick ?? close}
             >
               {cancelButton.label.length > 0 ? cancelButton.label : 'Go back'}
-            </ToggleModalButton>
+            </Button>
           </li>
         )}
       </ul>

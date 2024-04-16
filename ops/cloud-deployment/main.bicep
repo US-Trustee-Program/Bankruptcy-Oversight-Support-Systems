@@ -1,10 +1,13 @@
 param appName string
 param location string = resourceGroup().location
 
+@description('Disable creating Azure virtual network by default.')
 param deployVnet bool = false
-param createVnet bool = false // NOTE: Set flag to false when vnet already exists
-param vnetAddressPrefix array = ['10.10.0.0/16']
+@description('Create Azure virtual network. Set flag to false when vnet already exists.')
+param createVnet bool = false
+param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
+@description('Setup Azure resources for Private DNS Zone. Link virtual networks to zone.')
 param deployNetwork bool = true
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'

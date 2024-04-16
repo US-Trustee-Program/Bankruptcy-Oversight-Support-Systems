@@ -16,6 +16,8 @@ import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
   ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
+  getCaseSummaryFromConsolidationOrderCase,
   getCaseSummaryFromTransferOrder,
   TransferOrder,
   TransferOrderAction,
@@ -32,6 +34,7 @@ import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.reposi
 import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
+import { CaseAssignmentUseCase } from '../case.assignment';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -149,6 +152,7 @@ describe('Orders use case', () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 3);
 
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
+    const rawConsolidationOrders = MockData.buildArray(MockData.getRawConsolidationOrder, 3);
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
@@ -156,7 +160,7 @@ describe('Orders use case', () => {
     });
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
-      consolidations,
+      consolidations: rawConsolidationOrders,
       transfers,
       maxTxId: '3000',
     });
@@ -229,6 +233,7 @@ describe('Orders use case', () => {
   test('should handle a missing order runtime state when a starting transaction ID is provided', async () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 3);
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
+    const rawConsolidations = MockData.buildArray(MockData.getRawConsolidationOrder, 3);
 
     const id = 'guid-id';
     const txId = '1234';
@@ -249,7 +254,7 @@ describe('Orders use case', () => {
     const mockGetOrderSync = jest
       .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
       .mockResolvedValue({
-        consolidations,
+        consolidations: rawConsolidations,
         transfers,
         maxTxId: '3000',
       });
@@ -311,14 +316,13 @@ describe('Orders use case', () => {
     const mockDelete = jest
       .spyOn(CosmosDbRepository.prototype, 'delete')
       .mockResolvedValue(pendingConsolidation);
-    const leadCase = MockData.getConsolidatedOrderCase();
-    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...pendingConsolidation,
       approvedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
-      leadCase,
+      leadCase: leadCaseSummary,
     };
     const newConsolidation = {
       ...pendingConsolidation,
@@ -332,15 +336,14 @@ describe('Orders use case', () => {
       status: 'pending',
       childCases: [],
     };
-    const childCaseSummaries = newConsolidation.childCases.map((bCase) => {
-      const { docketEntries: _docketEntries, ...bCaseSummary } = bCase;
-      return bCaseSummary;
-    });
+    const childCaseSummaries = newConsolidation.childCases.map((bCase) =>
+      getCaseSummaryFromConsolidationOrderCase(bCase),
+    );
     const leadCaseAfter: ConsolidationOrderSummary = {
       status: 'approved',
       childCases: childCaseSummaries,
     };
-    const leadCaseHistory: CaseHistory = {
+    const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: newConsolidation.leadCase.caseId,
       before: leadCaseBefore,
@@ -355,7 +358,7 @@ describe('Orders use case', () => {
       leadCase: newConsolidation.leadCase,
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
@@ -366,6 +369,7 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -375,6 +379,11 @@ describe('Orders use case', () => {
     const mockCreateHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
+
+    const mockCreateAssignment = jest.spyOn(
+      CaseAssignmentUseCase.prototype,
+      'createTrialAttorneyAssignments',
+    );
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockDelete).toHaveBeenCalled();
@@ -391,8 +400,9 @@ describe('Orders use case', () => {
         caseId: pendingConsolidation.childCases[1].caseId,
       }),
     );
-    expect(mockCreateHistory.mock.calls[2][1]).toEqual(expect.objectContaining(leadCaseHistory));
+    expect(mockCreateHistory.mock.calls[3][1]).toEqual(expect.objectContaining(leadCaseHistory));
     expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length + 1);
+    expect(mockCreateAssignment).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
     expect(actual).toEqual([newConsolidation]);
   });
 
@@ -405,12 +415,11 @@ describe('Orders use case', () => {
     const mockDelete = jest
       .spyOn(CosmosDbRepository.prototype, 'delete')
       .mockResolvedValue(originalConsolidation);
-    const leadCase = MockData.getConsolidatedOrderCase();
-    const { docketEntries: _docketEntries, ...leadCaseSummary } = leadCase;
+    const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...originalConsolidation,
       approvedCases: [originalConsolidation.childCases[0].caseId],
-      leadCase,
+      leadCase: leadCaseSummary,
     };
 
     const approvedConsolidation = {
@@ -433,15 +442,14 @@ describe('Orders use case', () => {
       status: 'pending',
       childCases: [],
     };
-    const childCaseSummaries = approvedConsolidation.childCases.map((bCase) => {
-      const { docketEntries: _docketEntries, ...bCaseSummary } = bCase;
-      return bCaseSummary;
-    });
+    const childCaseSummaries = approvedConsolidation.childCases.map((bCase) =>
+      getCaseSummaryFromConsolidationOrderCase(bCase),
+    );
     const leadCaseAfter: ConsolidationOrderSummary = {
       status: 'approved',
       childCases: [childCaseSummaries[0]],
     };
-    const leadCaseHistory: CaseHistory = {
+    const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: approvedConsolidation.leadCase.caseId,
       before: leadCaseBefore,
@@ -456,7 +464,7 @@ describe('Orders use case', () => {
       leadCase: approvedConsolidation.leadCase,
       childCases: [],
     };
-    const childCaseHistory: CaseHistory = {
+    const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: originalConsolidation.childCases[0].caseId,
       before,
@@ -467,6 +475,7 @@ describe('Orders use case', () => {
       caseId: originalConsolidation.childCases[0].caseId,
       before: null,
       after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -491,6 +500,78 @@ describe('Orders use case', () => {
     expect(actual).toEqual([newPendingConsolidation, approvedConsolidation]);
   });
 
-  test('should reject a consolidation order', () => {});
+  test('should reject a consolidation order', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder({
+      override: {
+        status: 'rejected',
+      },
+    });
+    const mockDelete = jest
+      .spyOn(CosmosDbRepository.prototype, 'delete')
+      .mockResolvedValue(pendingConsolidation);
+    const leadCaseSummary = MockData.getCaseSummary();
+
+    const rejectionReason = 'test';
+    const rejection: ConsolidationOrderActionRejection = {
+      ...pendingConsolidation,
+      rejectedCases: pendingConsolidation.childCases.map((bCase) => bCase.caseId),
+      reason: rejectionReason,
+    };
+    const newConsolidation = {
+      ...pendingConsolidation,
+      leadCase: leadCaseSummary,
+      id: crypto.randomUUID(),
+    };
+    const mockPut = jest
+      .spyOn(CosmosDbRepository.prototype, 'put')
+      .mockResolvedValue(newConsolidation);
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const after: ConsolidationOrderSummary = {
+      status: 'rejected',
+      childCases: [],
+    };
+    const childCaseHistory: Partial<CaseHistory> = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before,
+      after,
+    };
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
+    };
+    const mockGetHistory = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+    const mockCreateHistory = jest
+      .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue(crypto.randomUUID());
+
+    const actual = await useCase.rejectConsolidation(mockContext, rejection);
+    expect(mockDelete).toHaveBeenCalled();
+    expect(mockPut).toHaveBeenCalled();
+    expect(mockCreateHistory.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[0].caseId,
+      }),
+    );
+    expect(mockCreateHistory.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[1].caseId,
+      }),
+    );
+    expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
+    expect(actual).toEqual([newConsolidation]);
+  });
   test('should reject a split consolidation order', () => {});
 });

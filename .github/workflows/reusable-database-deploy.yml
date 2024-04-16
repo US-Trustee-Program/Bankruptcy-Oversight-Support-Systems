@@ -1,0 +1,73 @@
+name: Azure Deployment - CosmosDB
+
+on:
+  workflow_call:
+    inputs:
+      ghaEnvironment:
+        required: true
+        type: string
+      azResourceGrpNetworkEncrypted:
+        required: true
+        type: string
+      apiName:
+        required: true
+        type: string
+      environmentHash:
+        required: true
+        type: string
+      slotDeploymentEnabled:
+        required: true
+        type: string
+    outputs:
+      cosmosDbClientId:
+        description: "CosmosDB Client ID"
+        value: ${{ jobs.deploy-db.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId:
+        description: "CosmosDB Principal ID"
+        value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
+jobs:
+  deploy-db:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    outputs:
+      cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetwork
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpNetworkEncrypted }}
+
+      - name: Deploy database
+        id: azure-db-deploy
+        run: |
+          allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ inputs.apiName }} --query id -o tsv)
+
+          ./ops/scripts/pipeline/az-cosmos-deploy.sh \
+            -g ${{ secrets.AZURE_RG }} \
+            --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+            --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            --environmentName ${{ inputs.ghaEnvironment }} \
+            --allowedSubnet "${allowedSubnet}" \
+            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
+            --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
+            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+            --slotDeploymentEnabled ${{ inputs.slotDeploymentEnabled }}
+
+      - name: Check deployment and set params
+        id: set-deploy-params
+        run: |
+          cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
+          cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT

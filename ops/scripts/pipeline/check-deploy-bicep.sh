@@ -3,7 +3,7 @@
 # Title:        check-deploy-bicep.sh
 # Description:  Helper script to check if bicep changes have been made and if bicep should be deployed
 
-set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+set -xeuo pipefail # ensure job step fails in CI pipeline when error occurs
 
 app_rg=$1
 deploy_flag=$2 #workflow dispatch parameter enableBicepDeployment from GHA
@@ -19,9 +19,9 @@ branch=$(git branch --show-current)
 lastMergeCommitSha=$(git log ${branch} --first-parent --pretty=format:"%H" --merges -n 1)
 if [[ $lastMergeCommitSha != "" && $branch == "main" ]] ; then
     # shellcheck disable=SC2086 # REASON: Qoutes render the commit sha unusable
-    changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+    changes=$(git diff ${lastMergeCommitSha} HEAD -- ./ops/cloud-deployment/ ./.github/workflows/)
 else
-    changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/continuous-deployment.yml)
+    changes=$(git diff HEAD origin/main -- ./ops/cloud-deployment/ ./.github/workflows/)
 fi
 
 if [[ $changes != "" || $rg_response == "" || $deploy_flag == true || $deploy_flag == "true" ]]; then #

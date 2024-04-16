@@ -1,0 +1,71 @@
+name: Azure Deployment - Backend Slot Creation
+
+on:
+  workflow_call:
+    inputs:
+      webAppName:
+        required: true
+        type: string
+      apiName:
+        required: true
+        type: string
+      ghaEnvironment:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      azResourceGrpNetworkEncrypted:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+      slotDeploymentEnabled:
+        required: true
+        type: string
+      environmentHash:
+        required: true
+        type: string
+jobs:
+  deploy-backend-slot-resources:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetwork
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpNetworkEncrypted  }}
+
+      - name: Create API Slot Resource
+        if: (inputs.slotDeploymentEnabled == 'true')
+        run: |
+          slotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          cosmosDbManageIdName="id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user"
+
+          ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
+              --apiName ${{ inputs.apiName }} \
+              --webappName ${{ inputs.webappName }} \
+              --resourceGroup ${{ steps.rgApp.outputs.out }} \
+              --idResourceGroup ${{ secrets.AZURE_RG }} \
+              --slotName ${{ inputs.slotName }} \
+              --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
+              --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
+              --cosmosIdName ${cosmosDbManageIdName} \
+              --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+              --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+              --storageAccName ${slotStorageAccountName:0:24}

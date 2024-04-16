@@ -23,12 +23,10 @@ const httpTrigger: AzureFunction = async function (
   const casesController = new CasesController(applicationContext);
 
   // Process request message
-  const caseId = casesRequest?.params?.caseId;
-
   try {
     let responseBody: CaseDetailsDbResult | CaseListDbResult;
 
-    if (caseId) {
+    if (casesRequest.params.caseId && casesRequest.params.caseId) {
       // return case details
       responseBody = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,

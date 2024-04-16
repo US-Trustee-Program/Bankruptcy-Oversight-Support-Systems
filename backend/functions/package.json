@@ -6,10 +6,10 @@
     "@faker-js/faker": "^8.4.1",
     "@types/jest": "^29.5.12",
     "@types/mssql": "^9.1.5",
-    "@types/node": "^20.11.30",
-    "@typescript-eslint/eslint-plugin": "^7.4.0",
+    "@types/node": "^20.12.6",
+    "@typescript-eslint/eslint-plugin": "^7.6.0",
     "azure-function-context-mock": "^0.0.7",
-    "dependency-cruiser": "^16.2.4",
+    "dependency-cruiser": "^16.3.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
@@ -19,7 +19,7 @@
     "jest": "^29.7.0",
     "prettier": "^3.2.5",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.4"
   },
   "dependencies": {
     "@azure/cosmos": "3.17.3",
@@ -37,18 +37,19 @@
   "scripts": {
     "clean": "rm -rf ./dist & rm -rf ./node_modules & rm -rf ./coverage",
     "build": "tsc --build tsconfig.build.json",
+    "build-common": "pushd ../../common && npm ci && npm run build && popd",
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
     "start": "func start --typescript",
     "start:dev": "nodemon --esm src/server.ts",
     "test": "DATABASE_MOCK='true' jest -c jest.config.js",
-    "test:integration": "DATABASE_MOCK='true' jest -c jest.integration.config.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
-    "coverage": "DATABASE_MOCK='true' jest --coverage",
+    "coverage": "DATABASE_MOCK='true' jest -c jest.config.js --coverage",
+    "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && DATABASE_MOCK='true' jest -c jest.config.js --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_api_${current_time}.svg",
-    "dependency-cruiser-ci": "npx depcruise --output-type err-long attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib "
+    "dependency-cruiser:ci": "npx depcruise --output-type err-long attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib "
   }
 }

@@ -13,7 +13,6 @@ import { OrderStatus } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import SearchableSelect, { SearchableSelectOption } from '@/lib/components/SearchableSelect';
 import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './TransferOrderAccordion.scss';
@@ -27,6 +26,11 @@ import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
 import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
 import { useApi } from '@/lib/hooks/UseApi';
+import CamsSelect, {
+  CamsSelectOptionList,
+  SearchableSelectOption,
+} from '@/lib/components/CamsSelect';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -60,8 +64,8 @@ export function updateOrderTransfer(
     regionName: office?.regionName,
     courtName: office?.courtName,
     courtDivisionName: office?.courtDivisionName,
-    courtDivision: office?.courtDivision,
-    caseId: `${office?.courtDivision}-${caseNumber}`,
+    courtDivisionCode: office?.courtDivisionCode,
+    caseId: `${office?.courtDivisionCode}-${caseNumber}`,
   };
 
   return updated;
@@ -82,10 +86,11 @@ export interface TransferOrderAccordionProps {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
   expandedId?: string;
+  hidden?: boolean;
 }
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
-  const { order, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const { order, hidden, statusType, orderType, officesList, expandedId, onExpand } = props;
   const [activeButtonId, setActiveButtonId] = useState<string>(`suggested-cases-${order.id}`);
 
   const api = useApi();
@@ -167,8 +172,11 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   // TODO: fmadden 03/11/24 - When a court selection is made, getCaseSummary() seems to be getting called and
   // uses the previously set case number, rather than the value in the New Case input field.
   // as a result, you get the wrong case summary listed.
-  function handleCourtSelection(selection: SearchableSelectOption) {
-    const office = officesList.find((o) => o.courtDivision === selection?.value) || null;
+  function handleCourtSelection(selection: CamsSelectOptionList) {
+    const office =
+      officesList.find(
+        (o) => o.courtDivisionCode === (selection as SearchableSelectOption)?.value,
+      ) || null;
     setNewCaseDivision(office);
     if (!office) {
       setValidationState(ValidationStates.notValidated);
@@ -250,7 +258,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     setOrderTransfer(getOrderTransferFromOrder(order));
     setNewCaseSummary(null);
     setValidationState(ValidationStates.notValidated);
-    if (suggestedCasesRef.current) suggestedCasesRef.current.clearSelection();
+    if (suggestedCasesRef.current) suggestedCasesRef.current.clearAllCheckboxes();
     setLoadingCaseSummary(false);
     approveButtonRef.current?.disableButton(true);
   }
@@ -339,6 +347,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         expandedId={expandedId}
         onExpand={onExpand}
         onCollapse={onCollapse}
+        hidden={hidden}
       >
         <section
           className="accordion-heading grid-row grid-gap-lg"
@@ -401,7 +410,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           </div>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
-            <div className="order-legal-statement grid-col-10">
+            <div className="grid-col-10">
               {order.docketEntries.map((docketEntry, idx) => {
                 return (
                   <div key={idx}>
@@ -415,7 +424,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       )}
                       {formatDate(order.orderDate)} - {docketEntry.summaryText}
                     </Link>
-                    <p tabIndex={0} className="measure-6">
+                    <p tabIndex={0} className="measure-6 text-wrap">
                       {docketEntry.fullText}
                     </p>
                     {docketEntry.documents && (
@@ -522,6 +531,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           </span>
                           to
                         </div>
+                        <div>
+                          <FormRequirementsNotice />
+                        </div>
                         <div className="form-row">
                           <div className="select-container court-select-container">
                             <label htmlFor={`court-selection-${order.id}`}>New Court</label>
@@ -529,7 +541,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                               className="usa-combo-box"
                               data-testid={`court-selection-usa-combo-box-${order.id}`}
                             >
-                              <SearchableSelect
+                              <CamsSelect
                                 id={`court-selection-${order.id}`}
                                 className="new-court__select"
                                 closeMenuOnSelect={true}
@@ -537,6 +549,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 ref={courtSelectionRef}
                                 onChange={handleCourtSelection}
                                 options={getOfficeList(officesList)}
+                                isSearchable={true}
+                                required={true}
                               />
                             </div>
                           </div>
@@ -568,7 +582,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                     <div className="case-selection grid-row grid-gap-lg">
                       <div className="grid-col-1"></div>
                       <div className="grid-col-4">
-                        <label htmlFor={`new-case-input-${order.id}`}>New Case</label>
                         <div>
                           <Input
                             id={`new-case-input-${order.id}`}
@@ -579,6 +592,8 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             aria-label="New case ID"
                             ref={caseNumberRef}
                             disabled={true}
+                            required={true}
+                            label="New Case"
                           />
                         </div>
                       </div>
@@ -590,7 +605,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       <div className="grid-col-10">
                         {loadingCaseSummary && (
                           <LoadingSpinner
-                            id="loading-spinner"
+                            id={`loading-spinner-${order.id}-case-verification`}
                             caption="Loading cases..."
                           ></LoadingSpinner>
                         )}
@@ -601,7 +616,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                           <Alert
                             inline={true}
                             show={true}
-                            slim={true}
                             message="We couldn't find a case with that number"
                             type={UswdsAlertStyle.Error}
                             role="status"
@@ -621,7 +635,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                         <div className="grid-col-1"></div>
                         <div className="grid-col-10">
                           <LoadingSpinner
-                            id="loading-spinner"
+                            id={`loading-spinner-${order.id}-suggestions`}
                             caption="Loading suggestions..."
                           ></LoadingSpinner>
                         </div>
@@ -673,7 +687,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                                 <Alert
                                   inline={true}
                                   show={true}
-                                  slim={true}
                                   title="No Matching Cases"
                                   message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
                                   type={UswdsAlertStyle.Warning}
