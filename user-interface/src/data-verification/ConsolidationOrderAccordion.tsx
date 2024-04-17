@@ -89,15 +89,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
           const associatedResponse = await api.get(`/cases/${bCase.caseId}/associated`);
           bCase.associations = associatedResponse.body as Consolidation[];
-
-          // TODO: Delete this console log.
-          console.log(
-            bCase.caseId,
-            'is consolidated?',
-            !!bCase.associations.length,
-            'associated cases',
-            bCase.associations,
-          );
         } catch {
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
