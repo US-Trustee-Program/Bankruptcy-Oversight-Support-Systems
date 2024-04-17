@@ -19,7 +19,7 @@ describe('test ConsolidationCasesTable component', () => {
       cases: props?.cases ?? [],
       onSelect: props?.onSelect ?? vi.fn(),
       updateAllSelections: props?.updateAllSelections ?? vi.fn(),
-      isAssignmentLoaded: props?.isAssignmentLoaded ?? true,
+      isDataEnhanced: props?.isDataEnhanced ?? true,
       displayDocket: props?.displayDocket ?? false,
     };
 

@@ -280,7 +280,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   cases={order.childCases}
                   onSelect={handleIncludeCase}
                   updateAllSelections={updateAllSelections}
-                  isAssignmentLoaded={isDataEnhanced}
+                  isDataEnhanced={isDataEnhanced}
                   ref={caseTable}
                 ></ConsolidationCaseTable>
               </div>
@@ -395,7 +395,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   id={`${order.id}-case-list`}
                   data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
-                  isAssignmentLoaded={isDataEnhanced}
+                  isDataEnhanced={isDataEnhanced}
                 ></ConsolidationCaseTable>
               </div>
               <div className="grid-col-1"></div>
