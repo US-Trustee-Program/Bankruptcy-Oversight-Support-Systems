@@ -53,19 +53,19 @@ export interface OrdersRepository {
 }
 
 export interface CasesRepository {
-  createTransferFrom(context: ApplicationContext, transfer: TransferFrom): Promise<TransferFrom>;
-  createTransferTo(context: ApplicationContext, transfer: TransferTo): Promise<TransferTo>;
+  createTransferFrom(context: ApplicationContext, reference: TransferFrom): Promise<TransferFrom>;
+  createTransferTo(context: ApplicationContext, reference: TransferTo): Promise<TransferTo>;
   getTransfers(
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<TransferFrom | TransferTo>>;
   createConsolidationTo(
     context: ApplicationContext,
-    transfer: ConsolidationTo,
+    reference: ConsolidationTo,
   ): Promise<ConsolidationTo>;
   createConsolidationFrom(
     context: ApplicationContext,
-    transfer: ConsolidationFrom,
+    reference: ConsolidationFrom,
   ): Promise<ConsolidationFrom>;
   getConsolidation(
     context: ApplicationContext,

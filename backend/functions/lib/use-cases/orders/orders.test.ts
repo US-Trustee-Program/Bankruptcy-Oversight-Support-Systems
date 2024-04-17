@@ -12,9 +12,10 @@ import {
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
-import { OrderSyncState } from '../gateways.types';
+import { CasesRepository, ConsolidationOrdersRepository, OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
+  ConsolidationOrder,
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
   getCaseSummaryFromConsolidationOrderCase,
@@ -22,7 +23,12 @@ import {
   TransferOrder,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
-import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/mock.cases.gateway';
@@ -35,6 +41,89 @@ import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case.assignment';
+import { LocalCasesRepository } from '../../testing/local-data/local-cases-repository';
+import { LocalConsolidationOrdersRepository } from '../../testing/local-data/local-consolidation-orders-repository';
+
+import * as FactoryModule from '../../factory';
+
+function setupCasesRepoMock(repo: CasesRepository) {
+  return jest
+    .spyOn(FactoryModule, 'getCasesRepository')
+    .mockImplementation((_context: ApplicationContext): CasesRepository => {
+      return repo;
+    });
+}
+
+function setupConsolidationsRepoMock(repo: ConsolidationOrdersRepository) {
+  return jest
+    .spyOn(FactoryModule, 'getConsolidationOrdersRepository')
+    .mockImplementation((_context: ApplicationContext): ConsolidationOrdersRepository => {
+      return repo;
+    });
+}
+
+const leadCase1 = '081-22-12345';
+const consolidation1ChildA = '081-23-35256';
+const consolidation1ChildB = '081-23-38972';
+const consolidation1ChildC = '081-23-38935';
+const leadCase = MockData.getCaseSummary({ override: { caseId: leadCase1 } });
+const childCase1 = MockData.getConsolidatedOrderCase({
+  override: { caseId: consolidation1ChildA },
+});
+const childCase2 = MockData.getConsolidatedOrderCase({
+  override: { caseId: consolidation1ChildB },
+});
+const childCase3 = MockData.getConsolidatedOrderCase({
+  override: { caseId: consolidation1ChildC },
+});
+const childCases = [childCase1, childCase2, childCase3];
+
+const approvedConsolidation = MockData.getConsolidationOrder({
+  override: { status: 'approved', childCases, leadCase },
+});
+
+const pendingConsolidation = MockData.getConsolidationOrder({
+  override: { status: 'pending', childCases },
+});
+
+async function setupConsolidationCaseReferences(
+  context: ApplicationContext,
+  repo: CasesRepository,
+  order: ConsolidationOrder,
+): Promise<CasesRepository> {
+  for (const childCase of order.childCases) {
+    await repo.createConsolidationTo(
+      context,
+      MockData.getConsolidationReference({
+        override: {
+          documentType: 'CONSOLIDATION_TO',
+          caseId: childCase.caseId,
+          otherCase: order.leadCase,
+        },
+      }) as ConsolidationTo,
+    );
+    await repo.createConsolidationFrom(
+      context,
+      MockData.getConsolidationReference({
+        override: {
+          documentType: 'CONSOLIDATION_FROM',
+          caseId: order.leadCase.caseId,
+          otherCase: childCase,
+        },
+      }) as ConsolidationFrom,
+    );
+  }
+  return repo;
+}
+
+async function setupConsolidationOrder(
+  context: ApplicationContext,
+  repo: ConsolidationOrdersRepository,
+  order: ConsolidationOrder,
+): Promise<ConsolidationOrdersRepository> {
+  await repo.put(context, order);
+  return repo;
+}
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -573,5 +662,59 @@ describe('Orders use case', () => {
     expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
     expect(actual).toEqual([newConsolidation]);
   });
+
   test('should reject a split consolidation order', () => {});
+
+  test('should not create a second lead case for an existing consolidation', async () => {
+    // Spy/mock the factory functions so we can return a LOCAL database of our choosing for the test.
+    // We need a generic LOCAL gateway implementation that we return via the mocked factory function.
+    const localCasesRepo = new LocalCasesRepository();
+    const localConsolidationsRepo = new LocalConsolidationOrdersRepository();
+
+    const _casesRepoSpy = setupCasesRepoMock(localCasesRepo);
+    const _consolidationsSpy = setupConsolidationsRepoMock(localConsolidationsRepo);
+
+    await setupConsolidationCaseReferences(mockContext, localCasesRepo, approvedConsolidation);
+    await setupConsolidationOrder(mockContext, localConsolidationsRepo, approvedConsolidation);
+
+    await setupConsolidationOrder(mockContext, localConsolidationsRepo, pendingConsolidation);
+    const _historySpy = jest.spyOn(localCasesRepo, 'getCaseHistory');
+    const consolidationPutSpy = jest.spyOn(localConsolidationsRepo, 'put');
+    const consolidationDeleteSpy = jest.spyOn(localConsolidationsRepo, 'delete');
+    const casesCreateHistorySpy = jest.spyOn(localCasesRepo, 'createCaseHistory');
+    const casesCreateConsolidationToSpy = jest.spyOn(localCasesRepo, 'createConsolidationTo');
+    const casesCreateConsolidationFromSpy = jest.spyOn(localCasesRepo, 'createConsolidationFrom');
+
+    const incorrectLeadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase: incorrectLeadCase,
+    };
+
+    const localUseCase = new OrdersUseCase(
+      localCasesRepo,
+      casesGateway,
+      ordersRepo,
+      ordersGateway,
+      runtimeStateRepo,
+      localConsolidationsRepo,
+    );
+
+    // attempt to set up a consolidation with a different lead case
+    // casesRepo.getConsolidation(context, leadCase1);
+    const actual = await localUseCase.approveConsolidation(mockContext, approval);
+
+    // verify that the attempt fails (hint, it won't currently)
+    expect(consolidationPutSpy).not.toHaveBeenCalled();
+    expect(consolidationDeleteSpy).not.toHaveBeenCalled();
+    expect(casesCreateHistorySpy).not.toHaveBeenCalled();
+    expect(casesCreateConsolidationToSpy).not.toHaveBeenCalled();
+    expect(casesCreateConsolidationFromSpy).not.toHaveBeenCalled();
+    expect(actual).toBeFalsy();
+  });
+
+  test('should not consolidate a case that has already been consolidated', () => {});
 });
