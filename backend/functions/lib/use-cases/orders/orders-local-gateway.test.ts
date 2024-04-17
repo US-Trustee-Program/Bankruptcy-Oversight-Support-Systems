@@ -162,7 +162,12 @@ describe('orders use case tests', () => {
       }),
       leadCase: incorrectLeadCase,
     };
-    const actual = await useCase.approveConsolidation(mockContext, approval);
+
+    const expectedErrorMessage =
+      'Cannot consolidate order. A child case has already been consolidated.';
+    await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
+      expectedErrorMessage,
+    );
 
     // verify that the attempt fails (hint, it won't currently)
     expect(consolidationSpy.put).not.toHaveBeenCalled();
@@ -170,7 +175,6 @@ describe('orders use case tests', () => {
     expect(casesRepoSpy.createCaseHistory).not.toHaveBeenCalled();
     expect(casesRepoSpy.createConsolidationTo).not.toHaveBeenCalled();
     expect(casesRepoSpy.createConsolidationFrom).not.toHaveBeenCalled();
-    expect(actual).toBeFalsy();
   });
 
   test('should not consolidate a case that has already been consolidated', () => {});

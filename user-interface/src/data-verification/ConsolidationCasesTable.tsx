@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
@@ -219,6 +220,16 @@ function _ConsolidationCaseTable(
                           </div>
                         );
                       })}
+                    {(bCase.associations?.length ?? 0) > 0 && (
+                      <Alert
+                        inline={true}
+                        show={true}
+                        message={
+                          'This case is already part of a consolidation. Uncheck it to consolidate the other cases.'
+                        }
+                        type={UswdsAlertStyle.Warning}
+                      ></Alert>
+                    )}
                   </td>
                 </tr>,
               );
