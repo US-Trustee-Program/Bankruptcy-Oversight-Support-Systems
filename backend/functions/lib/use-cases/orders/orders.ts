@@ -309,6 +309,11 @@ export class OrdersUseCase {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
+    for (const caseId of includedCases) {
+      const existing = await this.casesRepo.getConsolidation(context, caseId);
+      // TODO: I'm not sure this is really what we want to do.
+      if (existing) return;
+    }
     const remainingChildCases = provisionalOrder.childCases.filter(
       (c) => !includedCases.includes(c.caseId),
     );
