@@ -14,7 +14,7 @@ The person who associated a work with this deed has dedicated the work to the pu
 
 You can copy, modify, distribute, and perform the work, even for commercial purposes, all without asking permission.
 
-### Other Relevant Information 
+### Other Relevant Information
 
 In no way are the patent or trademark rights of any person affected by CC0, nor are the rights that other persons may have in the work or in how the work is used, such as publicity or privacy rights.
 
