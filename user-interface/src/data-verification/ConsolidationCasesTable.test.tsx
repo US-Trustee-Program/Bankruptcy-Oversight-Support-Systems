@@ -4,9 +4,10 @@ import {
   ConsolidationCaseTableProps,
   OrderTableImperative,
 } from './ConsolidationCasesTable';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, screen } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import React from 'react';
+import { ConsolidationFrom } from '@common/cams/events';
 
 describe('test ConsolidationCasesTable component', () => {
   function renderWithProps(
@@ -104,5 +105,46 @@ describe('test ConsolidationCasesTable component', () => {
     renderWithProps(props);
 
     expect(document.body).toHaveTextContent('No docket entries');
+  });
+
+  test('Should display "Already part of consolidation" alert if a case in a consolidation order is a part of another consolidation', () => {
+    const props = {
+      cases: [
+        MockData.getConsolidatedOrderCase({
+          override: {
+            associations: [
+              MockData.getConsolidationReference({
+                override: {
+                  caseId: '11-1111',
+                } as ConsolidationFrom,
+              }),
+            ],
+          },
+        }),
+      ],
+    };
+
+    renderWithProps(props);
+
+    expect(screen.getByTestId('alert-container')).toHaveTextContent(
+      'This case is already part of a consolidation. Uncheck it to consolidate the other cases.',
+    );
+  });
+
+  test('Should not display alert if the case not a part of another consolidation', async () => {
+    const props = {
+      cases: [
+        MockData.getConsolidatedOrderCase({
+          override: {
+            associations: [],
+          },
+        }),
+      ],
+    };
+
+    renderWithProps(props);
+
+    const alert = screen.queryByTestId('alert-container');
+    expect(alert).not.toBeInTheDocument();
   });
 });

@@ -39,6 +39,7 @@ import {
   isConsolidationHistory,
 } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case.assignment';
+import { BadRequestError } from '../../common-errors/bad-request';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -309,10 +310,16 @@ export class OrdersUseCase {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
+
+    // TODO: This is where we should accumulate and throw a Problem Detail...
+    // TODO: https://datatracker.ietf.org/doc/html/rfc7807
     for (const caseId of includedCases) {
-      const existing = await this.casesRepo.getConsolidation(context, caseId);
-      // TODO: I'm not sure this is really what we want to do.
-      if (existing) return;
+      const references = await this.casesRepo.getConsolidation(context, caseId);
+      if (references.length > 0) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Cannot consolidate order. A child case has already been consolidated.`,
+        });
+      }
     }
     const remainingChildCases = provisionalOrder.childCases.filter(
       (c) => !includedCases.includes(c.caseId),
