@@ -1,5 +1,6 @@
 * @US-Trustee-Program/ustp-team @US-Trustee-Program/flexion
 
+CODEOWNERS @US-Trustee-Program/ustp-team
 LICENSE.md @US-Trustee-Program/ustp-team
 
 *.bicep @US-Trustee-Program/enterprise-architecture
