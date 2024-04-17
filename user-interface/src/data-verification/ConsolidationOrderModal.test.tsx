@@ -19,6 +19,7 @@ import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseSummary } from '@common/cams/cases';
+import { Consolidation } from '@common/cams/events';
 
 vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
@@ -123,11 +124,16 @@ describe('ConsolidationOrderModalComponent', () => {
       success: true,
       body: MockData.buildArray(MockData.getAttorneyAssignment, 2),
     };
+    const associatedCasesResponse: SimpleResponseData<Consolidation[]> = {
+      success: true,
+      body: [],
+    };
 
     // Setup API calls to fetch the lead case summary and lead case assignments.
     vitest
       .spyOn(Chapter15MockApi, 'get')
       .mockResolvedValueOnce(leadCaseResponse)
+      .mockResolvedValueOnce(associatedCasesResponse)
       .mockResolvedValueOnce(assignmentResponse);
 
     // Render and activate the modal.
