@@ -384,12 +384,10 @@ describe('Orders use case', () => {
       CaseAssignmentUseCase.prototype,
       'createTrialAttorneyAssignments',
     );
-
-    const _getConsolidationSpy = jest
-      .spyOn(casesRepo, 'getConsolidation')
-      .mockResolvedValue(undefined);
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length + 1);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][1]).toEqual(
@@ -489,12 +487,10 @@ describe('Orders use case', () => {
     const mockCreateHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
-
-    const _getConsolidationSpy = jest
-      .spyOn(casesRepo, 'getConsolidation')
-      .mockResolvedValue(undefined);
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][1]).toEqual(
@@ -562,12 +558,10 @@ describe('Orders use case', () => {
     const mockCreateHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
-
-    const _getConsolidationSpy = jest
-      .spyOn(casesRepo, 'getConsolidation')
-      .mockResolvedValue(undefined);
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.rejectConsolidation(mockContext, rejection);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(0);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][1]).toEqual(

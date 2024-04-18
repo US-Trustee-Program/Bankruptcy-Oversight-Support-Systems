@@ -311,26 +311,26 @@ export class OrdersUseCase {
       includedCases.includes(c.caseId),
     );
 
-    // TODO: This is where we should accumulate and throw a Problem Detail...
-    // TODO: https://datatracker.ietf.org/doc/html/rfc7807
-    for (const caseId of includedCases) {
-      const references = await this.casesRepo.getConsolidation(context, caseId);
-      if (references.length > 0) {
+    if (status === 'approved') {
+      for (const caseId of includedCases) {
+        const references = await this.casesRepo.getConsolidation(context, caseId);
+        if (references.length > 0) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: `Cannot consolidate order. A child case has already been consolidated.`,
+          });
+        }
+      }
+      const leadCaseReferences = await this.casesRepo.getConsolidation(context, leadCase.caseId);
+      const isLeadCaseAChildCase = leadCaseReferences
+        .filter((reference) => reference.caseId === leadCase.caseId)
+        .reduce((isChildCase, reference) => {
+          return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
+        }, false);
+      if (isLeadCaseAChildCase) {
         throw new BadRequestError(MODULE_NAME, {
-          message: `Cannot consolidate order. A child case has already been consolidated.`,
+          message: `Cannot consolidate order. The lead case is a child case of another consolidation.`,
         });
       }
-    }
-    const leadCaseReferences = await this.casesRepo.getConsolidation(context, leadCase.caseId);
-    const isLeadCaseAChildCase = leadCaseReferences
-      .filter((reference) => reference.caseId === leadCase.caseId)
-      .reduce((isChildCase, reference) => {
-        return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
-      }, false);
-    if (isLeadCaseAChildCase) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: `Cannot consolidate order. The lead case is a child case of another consolidation.`,
-      });
     }
 
     const remainingChildCases = provisionalOrder.childCases.filter(
