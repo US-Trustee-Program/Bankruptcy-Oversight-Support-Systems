@@ -321,6 +321,18 @@ export class OrdersUseCase {
         });
       }
     }
+    const leadCaseReferences = await this.casesRepo.getConsolidation(context, leadCase.caseId);
+    const isLeadCaseAChildCase = leadCaseReferences
+      .filter((reference) => reference.caseId === leadCase.caseId)
+      .reduce((isChildCase, reference) => {
+        return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
+      }, false);
+    if (isLeadCaseAChildCase) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Cannot consolidate order. The lead case is a child case of another consolidation.`,
+      });
+    }
+
     const remainingChildCases = provisionalOrder.childCases.filter(
       (c) => !includedCases.includes(c.caseId),
     );

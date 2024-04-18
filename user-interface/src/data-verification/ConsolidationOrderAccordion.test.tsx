@@ -10,11 +10,14 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
+import { SimpleResponseData } from '@/lib/type-declarations/api';
+import { CaseAssignment } from '@common/cams/assignments';
+import { Consolidation } from '@common/cams/events';
 
 vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
@@ -39,6 +42,31 @@ function findAccordionContent(id: string, visible: boolean) {
 function openAccordion(orderId: string) {
   const header: HTMLElement = screen.getByTestId(`accordion-heading-${orderId}`);
   fireEvent.click(header);
+}
+
+function setupApiGetMock() {
+  // Assigned attorneys and associated cases.
+  vi.spyOn(Chapter15MockApi, 'get').mockImplementation((path: string) => {
+    if (path.includes('/case-assignments/')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 1,
+        body: [MockData.getAttorneyAssignment()],
+      } as SimpleResponseData<CaseAssignment[]>);
+    } else if (path.includes('/associated')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 0,
+        body: [],
+      } as SimpleResponseData<Consolidation[]>);
+    }
+    return Promise.resolve({
+      success: false,
+      body: {},
+    });
+  });
 }
 
 describe('ConsolidationOrderAccordion tests', () => {
@@ -363,18 +391,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       status: 'approved',
     };
 
-    // Assigned attorneys and asssociated cases.
-    vi.spyOn(Chapter15MockApi, 'get')
-      .mockResolvedValue({
-        message: '',
-        count: 1,
-        body: [MockData.getAttorneyAssignment()],
-      })
-      .mockResolvedValue({
-        message: '',
-        count: 1,
-        body: [],
-      });
+    setupApiGetMock();
 
     vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
       message: '',
@@ -444,15 +461,10 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should handle api exception for approval', async () => {
     renderWithProps();
+    openAccordion(order.id!);
 
     const leadCase = order.childCases[0];
-
-    // Assigned attorneys
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: '',
-      count: 1,
-      body: [MockData.getAttorneyAssignment()],
-    });
+    setupApiGetMock();
 
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
@@ -570,7 +582,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
     });
 
-    fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordian
+    fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordion
 
     fireEvent.click(collapseButton as HTMLButtonElement);
     checkbox1 = screen.getByTestId(`checkbox-case-selection-${order.id}-case-list-0`);
