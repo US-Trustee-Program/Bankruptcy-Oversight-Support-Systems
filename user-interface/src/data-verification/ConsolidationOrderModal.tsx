@@ -294,11 +294,10 @@ function ConsolidationOrderModalComponent(
       setLeadCaseNumberError('');
       getCaseSummary(leadCaseId)
         .then((caseSummary) => {
-          getCaseAssociations(leadCaseId)
+          getCaseAssociations(caseSummary.caseId)
             .then((associations) => {
-              // is the case a child case?
               const isConsolidationChildCase = associations
-                .filter((reference) => reference.caseId === leadCaseId)
+                .filter((reference) => reference.caseId === caseSummary.caseId)
                 .reduce((isIt, reference) => {
                   return isIt || reference.documentType === 'CONSOLIDATION_TO';
                 }, false);
@@ -307,19 +306,19 @@ function ConsolidationOrderModalComponent(
                 setLeadCaseNumberError(message);
                 setIsLoading(false);
                 disableLeadCaseForm(false);
-                return;
+              } else {
+                fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
+                  setLeadCaseSummary(caseSummary);
+                  setLeadCaseAttorneys(attorneys);
+                  setIsLoading(false);
+                  modalRef.current?.buttons?.current?.disableSubmitButton(false);
+                  disableLeadCaseForm(false);
+                });
               }
-              fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
-                setLeadCaseSummary(caseSummary);
-                setLeadCaseAttorneys(attorneys);
-                setIsLoading(false);
-                modalRef.current?.buttons?.current?.disableSubmitButton(false);
-                disableLeadCaseForm(false);
-              });
             })
             .catch((error) => {
               const message =
-                'Cannot verify lead case is not part of another consolidation.' + error.message;
+                'Cannot verify lead case is not part of another consolidation. ' + error.message;
               setLeadCaseNumberError(message);
               setIsLoading(false);
               disableLeadCaseForm(false);
@@ -429,7 +428,7 @@ function ConsolidationOrderModalComponent(
             isSearchable={true}
           />
         </div>
-        <div className="lead-case-number-containter">
+        <div className="lead-case-number-container">
           <Input
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
