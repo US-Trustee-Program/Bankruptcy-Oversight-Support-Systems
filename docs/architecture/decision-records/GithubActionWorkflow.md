@@ -2,7 +2,7 @@
 
 ## Context
 
-The main GHA workflow file `continuous-deployment.yml` has grown in size and complexity. To improve readability and maintainability, job steps will be grouped into reusable workflows. In order to use GHA reusable workflow yaml **must** reside directly under the folder path `.github/workflows`. Therefore, subfolders cannot be used to organize files in this path.
+The main GHA workflow file `continuous-deployment.yml` has grown in size and complexity, making changes difficult for someone unfamiliar with the details. To improve readability and maintainability, job steps will be grouped into reusable workflows. In order to use GHA reusable workflow yaml **must** reside directly under the folder path `.github/workflows`. Therefore, subfolders cannot be used to organize files in this path.
 
 ## Decision
 
