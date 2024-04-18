@@ -8,11 +8,11 @@ import {
   getCaseAssignments,
   fetchLeadCaseAttorneys,
   getUniqueDivisionCodeOrUndefined,
+  getCaseAssociations,
 } from '@/data-verification/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 import { CaseAssignment } from '@common/cams/assignments';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
@@ -59,7 +59,7 @@ describe('ConsolidationOrderModalComponent', () => {
   }
 
   beforeEach(() => {
-    vitest.clearAllMocks();
+    vitest.resetAllMocks();
   });
 
   test('should allow user to reject a consolidation', async () => {
@@ -319,30 +319,6 @@ describe('ConsolidationOrderModalComponent', () => {
     });
   });
 
-  test('should not show consolidation type input when feature flag is false', async () => {
-    const mockFeatureFlags = {
-      'consolidations-assign-attorney': false,
-    };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
-    const id = 'test';
-    const cases = MockData.buildArray(MockData.getCaseSummary, 2);
-    const courts = MockData.getOffices().slice(0, 3);
-
-    // Render and activate the modal.
-    const ref = renderModalWithProps({ id, courts });
-    await waitFor(() => {
-      ref.current?.show({ status: 'approved', cases });
-    });
-
-    // Select consolidation type
-    const radioAdministrative = screen.queryByTestId(`radio-administrative-${id}`);
-    const radioSubstantive = screen.queryByTestId(`radio-substantive-${id}`);
-
-    expect(radioAdministrative).not.toBeInTheDocument();
-    expect(radioSubstantive).not.toBeInTheDocument();
-  });
-
   test('should render Oxford comma for attorney list.', async () => {
     const nameList: string[] = [];
 
@@ -401,5 +377,131 @@ describe('ConsolidationOrderModalComponent', () => {
     vitest.spyOn(Chapter15MockApi, 'get').mockResolvedValue(mockResponse);
     const response = await fetchLeadCaseAttorneys('leadCaseId');
     expect(response).toEqual(nameList);
+  });
+
+  test('should get case associations', async () => {
+    const mockResponse = {
+      success: true,
+      body: MockData.buildArray<Consolidation>(MockData.getConsolidationReference, 3),
+    };
+    vitest.spyOn(Chapter15MockApi, 'get').mockResolvedValue(mockResponse);
+    const response = await getCaseAssociations('leadCaseId');
+    expect(response).toEqual(mockResponse.body);
+  });
+
+  test('should show an alert if the lead case is a child case of another consolidation', async () => {
+    const id = 'test';
+    const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
+    const courts = MockData.getOffices().slice(0, 3);
+
+    const leadCase = MockData.getCaseSummary();
+    const leadCaseResponse: SimpleResponseData<CaseSummary> = {
+      success: true,
+      body: leadCase,
+    };
+    const assignmentResponse: SimpleResponseData<CaseAssignment[]> = {
+      success: true,
+      body: [],
+    };
+    const associatedCasesResponse: SimpleResponseData<Consolidation[]> = {
+      success: true,
+      body: [
+        MockData.getConsolidationReference({
+          override: { documentType: 'CONSOLIDATION_TO', caseId: leadCase.caseId },
+        }),
+      ],
+    };
+
+    // Setup API calls to fetch the lead case summary and lead case assignments.
+    vitest
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce(leadCaseResponse)
+      .mockResolvedValueOnce(associatedCasesResponse)
+      .mockResolvedValueOnce(assignmentResponse);
+
+    // Render and activate the modal.
+    const ref = renderModalWithProps({ id, courts });
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', cases: childCases });
+    });
+
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+
+    // Select the consolidation type.
+    const radioButton = screen.getByTestId(`radio-substantive-${id}-click-target`);
+    fireEvent.click(radioButton);
+
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    // Enter case number.
+    const leadCaseNumber = getCaseNumber(leadCase.caseId);
+    const caseNumberInput = findCaseNumberInputInModal(id);
+    await waitFor(() => {
+      enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
+    });
+
+    await waitFor(() => {
+      expect(caseNumberInput).toHaveValue(leadCaseNumber);
+    });
+
+    const alertElement = screen.queryByTestId('alert-message');
+    expect(alertElement).toHaveTextContent('Case is a child case of another consolidation.');
+    expect(continueButton).not.toBeEnabled();
+  });
+
+  test('should show an alert if an API error occurs in the child case check', async () => {
+    const id = 'test';
+    const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
+    const courts = MockData.getOffices().slice(0, 3);
+
+    const leadCase = MockData.getCaseSummary();
+    const leadCaseResponse: SimpleResponseData<CaseSummary> = {
+      success: true,
+      body: leadCase,
+    };
+    const assignmentResponse: SimpleResponseData<CaseAssignment[]> = {
+      success: true,
+      body: [],
+    };
+
+    // Setup API calls to fetch the lead case summary and lead case assignments.
+    vitest
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValueOnce(leadCaseResponse)
+      .mockRejectedValueOnce(new Error('Test error.'))
+      .mockResolvedValueOnce(assignmentResponse);
+
+    // Render and activate the modal.
+    const ref = renderModalWithProps({ id, courts });
+    await waitFor(() => {
+      ref.current?.show({ status: 'approved', cases: childCases });
+    });
+
+    const continueButton = screen.getByTestId(`button-${id}-submit-button`);
+
+    // Select the consolidation type.
+    const radioButton = screen.getByTestId(`radio-substantive-${id}-click-target`);
+    fireEvent.click(radioButton);
+
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    // Enter case number.
+    const leadCaseNumber = getCaseNumber(leadCase.caseId);
+    const caseNumberInput = findCaseNumberInputInModal(id);
+    await waitFor(() => {
+      enterCaseNumberInModal(caseNumberInput, leadCaseNumber);
+    });
+
+    await waitFor(() => {
+      expect(caseNumberInput).toHaveValue(leadCaseNumber);
+    });
+
+    const alertElement = screen.queryByTestId('alert-message');
+    expect(alertElement).toHaveTextContent(
+      'Cannot verify lead case is not part of another consolidation. Test error.',
+    );
+    expect(continueButton).not.toBeEnabled();
   });
 });
