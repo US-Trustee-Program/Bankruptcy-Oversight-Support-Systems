@@ -297,9 +297,11 @@ function ConsolidationOrderModalComponent(
           getCaseAssociations(leadCaseId)
             .then((associations) => {
               // is the case a child case?
-              const isConsolidationChildCase = associations.reduce((isIt, reference) => {
-                return isIt || reference.documentType === 'CONSOLIDATION_TO';
-              }, false);
+              const isConsolidationChildCase = associations
+                .filter((reference) => reference.caseId === leadCaseId)
+                .reduce((isIt, reference) => {
+                  return isIt || reference.documentType === 'CONSOLIDATION_TO';
+                }, false);
               if (isConsolidationChildCase) {
                 const message = 'Case is a child case of another consolidation.';
                 setLeadCaseNumberError(message);
