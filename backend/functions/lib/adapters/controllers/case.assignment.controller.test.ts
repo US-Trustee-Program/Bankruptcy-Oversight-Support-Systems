@@ -4,6 +4,8 @@ import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 import { CamsError } from '../../common-errors/cams-error';
+import { CaseAssignmentCosmosDbRepository } from '../gateways/case.assignment.cosmosdb.repository';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -47,6 +49,15 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should assign all attorneys in the list', async () => {
+    jest
+      .spyOn(CaseAssignmentCosmosDbRepository.prototype, 'findAssignmentsByCaseId')
+      .mockImplementation((_caseId: string): Promise<CaseAssignment[]> => {
+        console.log(
+          '=== Case Assignment Cosmos Db Repo findAssignmentsByCaseId mock was called. ===',
+        );
+        return Promise.resolve([]);
+      });
+
     const listOfAttorneyNames = ['Jane', 'Tom', 'Adrian'];
     const testCaseAssignment = {
       caseId: '001-18-12345',
