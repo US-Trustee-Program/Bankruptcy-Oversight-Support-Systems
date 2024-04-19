@@ -4,8 +4,7 @@ import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 import { CamsError } from '../../common-errors/cams-error';
-import { CaseAssignmentCosmosDbRepository } from '../gateways/case.assignment.cosmosdb.repository';
-import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
 
 const functionContext = require('azure-function-context-mock');
 
@@ -22,7 +21,7 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   test('A case is assigned to an attorney when requested', async () => {
@@ -49,15 +48,6 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should assign all attorneys in the list', async () => {
-    jest
-      .spyOn(CaseAssignmentCosmosDbRepository.prototype, 'findAssignmentsByCaseId')
-      .mockImplementation((_caseId: string): Promise<CaseAssignment[]> => {
-        console.log(
-          '=== Case Assignment Cosmos Db Repo findAssignmentsByCaseId mock was called. ===',
-        );
-        return Promise.resolve([]);
-      });
-
     const listOfAttorneyNames = ['Jane', 'Tom', 'Adrian'];
     const testCaseAssignment = {
       caseId: '001-18-12345',
@@ -131,6 +121,23 @@ describe('Case Assignment Creation Tests', () => {
     );
   });
 
+  test('should throw a CAMS permission error', async () => {
+    const testCaseAssignment = {
+      caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
+      listOfAttorneyNames: [],
+      role: trialAttorneyRole,
+    };
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
+      .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
+
+    const assignmentController = new CaseAssignmentController(applicationContext);
+
+    await expect(
+      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+    ).rejects.toThrow('Failed to authenticate to Azure');
+  });
+
   test('should throw any other errors on findAssignmentsByCaseId', async () => {
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
@@ -140,19 +147,5 @@ describe('Case Assignment Creation Tests', () => {
     await expect(assignmentController.getTrialAttorneyAssignments('001-18-12345')).rejects.toThrow(
       'Unknown error',
     );
-  });
-
-  test('should throw a CAMS permission error', async () => {
-    const testCaseAssignment = {
-      caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
-      listOfAttorneyNames: [],
-      role: trialAttorneyRole,
-    };
-
-    const assignmentController = new CaseAssignmentController(applicationContext);
-
-    await expect(
-      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
-    ).rejects.toThrow('Failed to authenticate to Azure');
   });
 });

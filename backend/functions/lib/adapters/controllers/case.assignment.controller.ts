@@ -38,6 +38,7 @@ export class CaseAssignmentController {
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
+        console.log('---------------- CAMS ERROR');
         throw exception;
       }
       throw new UnknownError(MODULE_NAME, { originalError: exception });
