@@ -7,7 +7,6 @@ import {
 import { render, waitFor, screen } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import React from 'react';
-import { ConsolidationFrom } from '@common/cams/events';
 
 describe('test ConsolidationCasesTable component', () => {
   function renderWithProps(
@@ -116,7 +115,8 @@ describe('test ConsolidationCasesTable component', () => {
               MockData.getConsolidationReference({
                 override: {
                   caseId: '11-1111',
-                } as ConsolidationFrom,
+                  documentType: 'CONSOLIDATION_FROM',
+                },
               }),
             ],
           },
