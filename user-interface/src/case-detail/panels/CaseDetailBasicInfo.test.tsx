@@ -1,11 +1,13 @@
 import { BrowserRouter } from 'react-router-dom';
-import CaseDetailBasicInfo from './CaseDetailBasicInfo';
-import { render, screen } from '@testing-library/react';
+import CaseDetailBasicInfo, { CaseDetailBasicInfoProps } from './CaseDetailBasicInfo';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { Attorney } from '@/lib/type-declarations/attorneys';
+import { getFullName } from '@common/name-helper';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -35,20 +37,57 @@ const TRANSFER_TO: Transfer = {
   documentType: 'TRANSFER_TO',
 };
 
-describe('Case detail basic information panel', () => {
-  describe('With expected case detail properties', () => {
-    beforeEach(() => {
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={BASE_TEST_CASE_DETAIL} showReopenDate={false} />
-        </BrowserRouter>,
-      );
-    });
+const attorneyList: Attorney[] = [
+  {
+    firstName: 'Joe',
+    lastName: 'Bob',
+    office: 'Your office',
+  },
+  {
+    firstName: 'Francis',
+    lastName: 'Jones',
+    office: 'His office',
+  },
+];
 
+describe('Case detail basic information panel', () => {
+  function renderWithProps(props?: Partial<CaseDetailBasicInfoProps>) {
+    const defaultProps: CaseDetailBasicInfoProps = {
+      caseDetail: BASE_TEST_CASE_DETAIL,
+      showReopenDate: false,
+      attorneyList: attorneyList,
+    };
+
+    const renderProps = { ...defaultProps, ...props };
+    render(
+      <BrowserRouter>
+        <CaseDetailBasicInfo {...renderProps} />
+      </BrowserRouter>,
+    );
+  }
+
+  describe('With expected case detail properties', () => {
     test('should show debtor counsel office', () => {
+      renderWithProps();
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).toBeInTheDocument();
       expect(element?.textContent).toEqual(BASE_TEST_CASE_DETAIL.debtorAttorney?.office);
+    });
+
+    test('should show edit button for trial attorney assignments and open modal with correct trial attorney info', () => {
+      renderWithProps();
+      const element = screen.getByTestId('toggle-modal-button');
+      expect(element).toBeInTheDocument();
+      expect(element).toBeVisible();
+      fireEvent.click(element);
+      const attorneyModal = document.querySelector('.assign-attorney-modal');
+      expect(attorneyModal).toBeInTheDocument();
+      expect(attorneyModal).toBeVisible();
+
+      attorneyList.forEach((attorney, idx) => {
+        const attorneyLabel = screen.getByTestId(`checkbox-label-${idx}-checkbox`);
+        expect(attorneyLabel).toHaveTextContent(getFullName(attorney));
+      });
     });
   });
 
@@ -58,11 +97,7 @@ describe('Case detail basic information panel', () => {
       const debtorAttorney = testCaseDetail.debtorAttorney!;
       delete debtorAttorney.office;
 
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={testCaseDetail} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+      renderWithProps({ caseDetail: testCaseDetail, showReopenDate: false });
 
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).not.toBeInTheDocument();
@@ -75,11 +110,8 @@ describe('Case detail basic information panel', () => {
         ...BASE_TEST_CASE_DETAIL,
         transfers: [TRANSFER_FROM],
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={transferredCase} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
 
       const oldCaseIdLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(oldCaseIdLink).toBeInTheDocument();
@@ -101,11 +133,8 @@ describe('Case detail basic information panel', () => {
         ...BASE_TEST_CASE_DETAIL,
         transfers: [TRANSFER_TO],
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={transferredCase} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
 
       const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(newCaseNumberLink).toBeInTheDocument();
@@ -127,11 +156,8 @@ describe('Case detail basic information panel', () => {
         ...BASE_TEST_CASE_DETAIL,
         transfers: [TRANSFER_FROM, TRANSFER_TO],
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={transferredCase} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
 
       const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(newCaseNumberLink).toBeInTheDocument();
