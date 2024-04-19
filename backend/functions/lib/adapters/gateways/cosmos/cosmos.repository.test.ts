@@ -4,9 +4,9 @@ import { ApplicationContext } from '../../types/basic';
 import { getCosmosDbCrudRepository } from '../../../factory';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
-import { CosmosDbRepository } from './cosmos.repository';
 import { ErrorResponse } from '@azure/cosmos';
 import { ID_ALREADY_EXISTS } from './cosmos.helper';
+import { DocumentRepository } from '../../../use-cases/gateways.types';
 
 interface TestType {
   id?: string;
@@ -16,7 +16,7 @@ interface TestType {
 const moduleName = 'COSMOS_TEST';
 describe('Test generic cosmosdb repository', () => {
   let mockDbContext: ApplicationContext;
-  let cosmosCrudRepo: CosmosDbRepository<TestType>;
+  let cosmosCrudRepo: DocumentRepository<TestType>;
 
   beforeEach(async () => {
     mockDbContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });

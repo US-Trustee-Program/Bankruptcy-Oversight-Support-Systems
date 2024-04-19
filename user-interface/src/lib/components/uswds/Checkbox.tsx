@@ -18,6 +18,7 @@ export interface CheckboxProps {
   onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
   className?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export interface CheckboxRef {
@@ -94,6 +95,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         data-indeterminate={indeterminateState || null}
         title={props.title}
         required={props.required}
+        disabled={props.disabled}
       />
       <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
         {props.label}
