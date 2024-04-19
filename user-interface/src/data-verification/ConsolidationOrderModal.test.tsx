@@ -395,6 +395,7 @@ describe('ConsolidationOrderModalComponent', () => {
     const courts = MockData.getOffices().slice(0, 3);
 
     const leadCase = MockData.getCaseSummary();
+    const otherLeadCase = MockData.getCaseSummary();
     const leadCaseResponse: SimpleResponseData<CaseSummary> = {
       success: true,
       body: leadCase,
@@ -407,7 +408,11 @@ describe('ConsolidationOrderModalComponent', () => {
       success: true,
       body: [
         MockData.getConsolidationReference({
-          override: { documentType: 'CONSOLIDATION_TO', caseId: leadCase.caseId },
+          override: {
+            documentType: 'CONSOLIDATION_TO',
+            caseId: leadCase.caseId,
+            otherCase: otherLeadCase,
+          },
         }),
       ],
     };
@@ -446,7 +451,9 @@ describe('ConsolidationOrderModalComponent', () => {
     });
 
     const alertElement = screen.queryByTestId('alert-message');
-    expect(alertElement).toHaveTextContent('Case is a child case of another consolidation.');
+    expect(alertElement).toHaveTextContent(
+      `Case ${leadCaseNumber} is a consolidated child case of case ${getCaseNumber(otherLeadCase.caseId)}.`,
+    );
     expect(continueButton).not.toBeEnabled();
   });
 
