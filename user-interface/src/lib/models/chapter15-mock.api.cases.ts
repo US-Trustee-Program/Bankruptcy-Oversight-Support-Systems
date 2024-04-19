@@ -167,25 +167,25 @@ export default class Chapter15MockApi extends Api {
           },
         },
       };
-    } else if (path.match(/\/cases\/[\d-]+\/docket/)) {
+    } else if (path.match(/\/cases\/[A-Z\d-]+\/docket/)) {
       response = {
         message: '',
         count: 1,
         body: Chapter15MockApi.caseDocketEntries,
       };
-    } else if (path.match(/\/cases\/[\d-]+\/summary/)) {
+    } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
       response = {
         message: '',
         count: 1,
         body: Chapter15MockApi.caseDetails,
       };
-    } else if (path.match(/\/cases\/[\d-]+\/associated/)) {
+    } else if (path.match(/\/cases\/[A-Z\d-]+\/associated/)) {
       response = {
         message: '',
         count: 1,
         body: [],
       };
-    } else if (path.match(/\/cases\/[\d-]+/)) {
+    } else if (path.match(/\/cases\/[A-Z\d-]+/)) {
       response = {
         message: '',
         count: 1,
@@ -193,7 +193,7 @@ export default class Chapter15MockApi extends Api {
           caseDetails: Chapter15MockApi.caseDetails,
         },
       };
-    } else if (path.match(/\/orders-suggestions\/[\d-]+/)) {
+    } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
       response = {
         success: true,
         body: [Chapter15MockApi.caseDetails],

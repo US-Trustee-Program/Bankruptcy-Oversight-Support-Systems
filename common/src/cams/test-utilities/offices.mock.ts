@@ -1,5 +1,12 @@
 import { OfficeDetails } from '../courts';
 
+/***************************************************************************\
+ * !! The Following Offices are aligend with legitimate court divisions
+ *    as found in the adapters/gateways/dxtr/dxtr.constants.ts file.
+ *    Because many of our tests will take an office at random out of
+ *    this list, and then do a lookup in dxtr.constants.ts ( which is
+ *    used in our live system ), DO NOT ADD mock offices to this file.
+ \***************************************************************************/
 export const OFFICES: OfficeDetails[] = [
   {
     courtDivisionCode: '710',
@@ -59,42 +66,6 @@ export const OFFICES: OfficeDetails[] = [
     courtName: 'District of Alaska',
     courtDivisionName: 'Ketchikan',
     regionId: '18',
-    regionName: 'SEATTLE',
-  },
-  {
-    courtDivisionCode: 'G00',
-    groupDesignator: 'GP',
-    courtId: '001-',
-    officeName: '',
-    officeCode: '0',
-    state: 'AK',
-    courtName: 'Test District Group 0',
-    courtDivisionName: 'Ketchikan',
-    regionId: '01',
-    regionName: 'SEATTLE',
-  },
-  {
-    courtDivisionCode: 'G00',
-    groupDesignator: 'GP',
-    courtId: '001-',
-    officeName: '',
-    officeCode: '1',
-    state: 'AK',
-    courtName: 'Test District Group 0',
-    courtDivisionName: 'Ketchikan',
-    regionId: '01',
-    regionName: 'SEATTLE',
-  },
-  {
-    courtDivisionCode: 'G00',
-    groupDesignator: 'GP',
-    courtId: '001-',
-    officeName: '',
-    officeCode: '2',
-    state: 'AK',
-    courtName: 'Test District Group 0',
-    courtDivisionName: 'Ketchikan',
-    regionId: '01',
     regionName: 'SEATTLE',
   },
   {

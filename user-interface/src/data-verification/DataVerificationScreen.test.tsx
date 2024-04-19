@@ -5,7 +5,6 @@ import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import {
-  Order,
   isTransferOrder,
   TransferOrder,
   ConsolidationOrder,
@@ -15,19 +14,6 @@ import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 describe('Review Orders screen', () => {
-  let orders: Order[];
-  let transferOrders: TransferOrder[];
-  let consolidationOrders: ConsolidationOrder[];
-
-  beforeAll(async () => {
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    orders = ordersResponse.body;
-    transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
-    consolidationOrders = orders.filter((order) =>
-      isConsolidationOrder(order),
-    ) as ConsolidationOrder[];
-  });
-
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
   });
@@ -143,6 +129,9 @@ describe('Review Orders screen', () => {
   });
 
   test('should render a list of orders', async () => {
+    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    const orders = ordersResponse.body;
+
     render(
       <BrowserRouter>
         <DataVerificationScreen />
@@ -215,6 +204,13 @@ describe('Review Orders screen', () => {
   });
 
   test('should not show consolidation orders when consolidation feature flag is false', async () => {
+    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    const orders = ordersResponse.body;
+    const transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
+    const consolidationOrders = orders.filter((order) =>
+      isConsolidationOrder(order),
+    ) as ConsolidationOrder[];
+
     const mockFeatureFlags = {
       'consolidations-enabled': false,
     };
@@ -279,6 +275,12 @@ describe('Review Orders screen', () => {
       'consolidations-enabled': true,
     };
     vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
+    const orders = ordersResponse.body;
+    const transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
+    const consolidationOrders = orders.filter((order) =>
+      isConsolidationOrder(order),
+    ) as ConsolidationOrder[];
 
     render(
       <BrowserRouter>

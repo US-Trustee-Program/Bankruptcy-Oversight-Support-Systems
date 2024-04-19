@@ -101,7 +101,6 @@ describe('Test Checkbox component', async () => {
   test('should add a class if className is provided', () => {
     const addedClassName = 'test-class';
     renderWithProps({ id: 'test', className: addedClassName });
-    screen.debug();
     const checkbox = screen.getByTestId('checkbox-test');
     expect(checkbox.parentNode).toHaveClass(addedClassName);
   });

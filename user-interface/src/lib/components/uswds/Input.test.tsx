@@ -103,7 +103,6 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
         </div>,
       );
       const inputEl = screen.getByTestId('input-1');
-      screen.debug(inputEl);
       expect(inputEl).toHaveClass('usa-input');
       expect(inputEl).toHaveClass('usa-tooltip');
     });
