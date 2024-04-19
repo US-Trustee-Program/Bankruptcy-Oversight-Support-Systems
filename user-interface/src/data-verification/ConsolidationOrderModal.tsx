@@ -296,13 +296,21 @@ function ConsolidationOrderModalComponent(
         .then((caseSummary) => {
           getCaseAssociations(caseSummary.caseId)
             .then((associations) => {
-              const isConsolidationChildCase = associations
+              type Facts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
+              const facts = associations
                 .filter((reference) => reference.caseId === caseSummary.caseId)
-                .reduce((isIt, reference) => {
-                  return isIt || reference.documentType === 'CONSOLIDATION_TO';
-                }, false);
-              if (isConsolidationChildCase) {
-                const message = 'Case is a child case of another consolidation.';
+                .reduce(
+                  (acc: Facts, reference) => {
+                    if (reference.documentType === 'CONSOLIDATION_TO') {
+                      acc.isConsolidationChildCase = true;
+                      acc.leadCase = reference.otherCase;
+                    }
+                    return acc || reference.documentType === 'CONSOLIDATION_TO';
+                  },
+                  { isConsolidationChildCase: false },
+                );
+              if (facts.isConsolidationChildCase) {
+                const message = `Case ${getCaseNumber(caseSummary.caseId)} is a consolidated child case of case ${getCaseNumber(facts.leadCase!.caseId)}.`;
                 setLeadCaseNumberError(message);
                 setIsLoading(false);
                 disableLeadCaseForm(false);
