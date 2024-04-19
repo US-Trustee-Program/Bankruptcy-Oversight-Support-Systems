@@ -24,6 +24,7 @@ import CamsSelect, {
   SearchableSelectOption,
 } from '@/lib/components/CamsSelect';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
+import { Consolidation } from '@common/cams/events';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -74,6 +75,10 @@ export async function getCaseSummary(caseId: string) {
 
 export async function getCaseAssignments(caseId: string) {
   return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
+}
+
+export async function getCaseAssociations(caseId: string) {
+  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
 }
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
@@ -289,13 +294,43 @@ function ConsolidationOrderModalComponent(
       setLeadCaseNumberError('');
       getCaseSummary(leadCaseId)
         .then((caseSummary) => {
-          fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
-            setLeadCaseSummary(caseSummary);
-            setLeadCaseAttorneys(attorneys);
-            setIsLoading(false);
-            modalRef.current?.buttons?.current?.disableSubmitButton(false);
-            disableLeadCaseForm(false);
-          });
+          getCaseAssociations(caseSummary.caseId)
+            .then((associations) => {
+              type Facts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
+              const facts = associations
+                .filter((reference) => reference.caseId === caseSummary.caseId)
+                .reduce(
+                  (acc: Facts, reference) => {
+                    if (reference.documentType === 'CONSOLIDATION_TO') {
+                      acc.isConsolidationChildCase = true;
+                      acc.leadCase = reference.otherCase;
+                    }
+                    return acc || reference.documentType === 'CONSOLIDATION_TO';
+                  },
+                  { isConsolidationChildCase: false },
+                );
+              if (facts.isConsolidationChildCase) {
+                const message = `Case ${getCaseNumber(caseSummary.caseId)} is a consolidated child case of case ${getCaseNumber(facts.leadCase!.caseId)}.`;
+                setLeadCaseNumberError(message);
+                setIsLoading(false);
+                disableLeadCaseForm(false);
+              } else {
+                fetchLeadCaseAttorneys(leadCaseId).then((attorneys) => {
+                  setLeadCaseSummary(caseSummary);
+                  setLeadCaseAttorneys(attorneys);
+                  setIsLoading(false);
+                  modalRef.current?.buttons?.current?.disableSubmitButton(false);
+                  disableLeadCaseForm(false);
+                });
+              }
+            })
+            .catch((error) => {
+              const message =
+                'Cannot verify lead case is not part of another consolidation. ' + error.message;
+              setLeadCaseNumberError(message);
+              setIsLoading(false);
+              disableLeadCaseForm(false);
+            });
         })
         .catch((error) => {
           // Brittle way to determine if we have encountred a 404...
@@ -401,7 +436,7 @@ function ConsolidationOrderModalComponent(
             isSearchable={true}
           />
         </div>
-        <div className="lead-case-number-containter">
+        <div className="lead-case-number-container">
           <Input
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}

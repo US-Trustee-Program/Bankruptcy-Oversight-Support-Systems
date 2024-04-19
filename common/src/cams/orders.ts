@@ -1,5 +1,6 @@
 import { CaseAssignment } from './assignments';
 import { CaseDocketEntry, CaseSummary } from './cases';
+import { Consolidation } from './events';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
@@ -73,6 +74,7 @@ export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
   orderDate: string;
   attorneyAssignments?: CaseAssignment[];
+  associations?: Consolidation[];
 };
 
 export function getCaseSummaryFromConsolidationOrderCase(

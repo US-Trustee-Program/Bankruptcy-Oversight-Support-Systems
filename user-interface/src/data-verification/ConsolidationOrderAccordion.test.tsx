@@ -10,11 +10,14 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
+import { SimpleResponseData } from '@/lib/type-declarations/api';
+import { CaseAssignment } from '@common/cams/assignments';
+import { Consolidation } from '@common/cams/events';
 
 vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
@@ -34,6 +37,36 @@ function findAccordionContent(id: string, visible: boolean) {
     expect(content).not.toBeVisible();
   }
   return content;
+}
+
+function openAccordion(orderId: string) {
+  const header: HTMLElement = screen.getByTestId(`accordion-heading-${orderId}`);
+  fireEvent.click(header);
+}
+
+function setupApiGetMock() {
+  // Assigned attorneys and associated cases.
+  vi.spyOn(Chapter15MockApi, 'get').mockImplementation((path: string) => {
+    if (path.includes('/case-assignments/')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 1,
+        body: [MockData.getAttorneyAssignment()],
+      } as SimpleResponseData<CaseAssignment[]>);
+    } else if (path.includes('/associated')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 0,
+        body: [],
+      } as SimpleResponseData<Consolidation[]>);
+    }
+    return Promise.resolve({
+      success: false,
+      body: {},
+    });
+  });
 }
 
 describe('ConsolidationOrderAccordion tests', () => {
@@ -137,6 +170,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should correctly enable/disable buttons', async () => {
     renderWithProps();
+    openAccordion(order.id!);
+
     const checkbox: HTMLInputElement = screen.getByTestId(
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
@@ -186,6 +221,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should open approval modal when approve button is clicked', async () => {
     renderWithProps();
+    openAccordion(order.id!);
+
     const approveButton = document.querySelector(
       `#accordion-approve-button-${order.id}`,
     ) as HTMLButtonElement;
@@ -345,6 +382,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should call orderUpdate for approval', async () => {
     renderWithProps();
+    openAccordion(order.id!);
 
     const leadCase = order.childCases[0];
     const expectedOrderApproved: ConsolidationOrder = {
@@ -353,11 +391,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       status: 'approved',
     };
 
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: '',
-      count: 1,
-      body: [MockData.getAttorneyAssignment()],
-    });
+    setupApiGetMock();
 
     vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
       message: '',
@@ -427,14 +461,10 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should handle api exception for approval', async () => {
     renderWithProps();
+    openAccordion(order.id!);
 
     const leadCase = order.childCases[0];
-
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: '',
-      count: 1,
-      body: [MockData.getAttorneyAssignment()],
-    });
+    setupApiGetMock();
 
     const errorMessage = 'Some random error';
     vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
@@ -497,6 +527,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should clear checkboxes and disable approve button when cancel is clicked', async () => {
     renderWithProps();
+    openAccordion(order.id!);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
@@ -529,6 +560,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should clear checkboxes and disable approve button when accordion is collapsed', async () => {
     renderWithProps();
+    openAccordion(order.id!);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
@@ -550,7 +582,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
     });
 
-    fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordian
+    fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordion
 
     fireEvent.click(collapseButton as HTMLButtonElement);
     checkbox1 = screen.getByTestId(`checkbox-case-selection-${order.id}-case-list-0`);
@@ -565,6 +597,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should select all checkboxes and enable approve button when Include All button is clicked', async () => {
     renderWithProps();
+    openAccordion(order.id!);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();

@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
@@ -25,7 +26,7 @@ export interface ConsolidationCaseTableProps {
   cases: Array<ConsolidationOrderCase>;
   onSelect?: (bCase: ConsolidationOrderCase) => void;
   updateAllSelections?: (caseList: ConsolidationOrderCase[]) => void;
-  isAssignmentLoaded: boolean;
+  isDataEnhanced: boolean;
   displayDocket?: boolean;
 }
 
@@ -162,14 +163,14 @@ function _ConsolidationCaseTable(
                   </td>
                   <td scope="row">{formatDate(bCase.dateFiled)}</td>
                   <td scope="row" className="text-no-wrap">
-                    {!props.isAssignmentLoaded && (
+                    {!props.isDataEnhanced && (
                       <LoadingSpinner
                         id={`loading-spinner-case-assignment-${bCase.caseId}`}
                         height="1rem"
                         caption="Loading..."
                       />
                     )}
-                    {props.isAssignmentLoaded &&
+                    {props.isDataEnhanced &&
                       bCase.attorneyAssignments &&
                       bCase.attorneyAssignments.length > 0 && (
                         <ul className="usa-list--unstyled">
@@ -178,7 +179,7 @@ function _ConsolidationCaseTable(
                           ))}
                         </ul>
                       )}
-                    {props.isAssignmentLoaded &&
+                    {props.isDataEnhanced &&
                       bCase.attorneyAssignments &&
                       !bCase.attorneyAssignments.length &&
                       '(unassigned)'}
@@ -219,6 +220,16 @@ function _ConsolidationCaseTable(
                           </div>
                         );
                       })}
+                    {(bCase.associations?.length ?? 0) > 0 && (
+                      <Alert
+                        inline={true}
+                        show={true}
+                        message={
+                          'This case is already part of a consolidation. Uncheck it to consolidate the other cases.'
+                        }
+                        type={UswdsAlertStyle.Warning}
+                      ></Alert>
+                    )}
                   </td>
                 </tr>,
               );

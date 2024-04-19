@@ -24,6 +24,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
+import { Consolidation } from '@common/cams/events';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -51,7 +52,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
-  const [isAssignmentLoaded, setIsAssignmentLoaded] = useState<boolean>(false);
+  const [isDataEnhanced, setIsDataEnhanced] = useState<boolean>(false);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
@@ -72,31 +73,35 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases(caseList);
   }
 
-  function setOrderWithAssignments(order: ConsolidationOrder) {
+  function setOrderWithDataEnhancement(order: ConsolidationOrder) {
     setOrder({ ...order });
   }
+
   async function handleOnExpand() {
     if (props.onExpand) {
       props.onExpand(`order-list-${order.id}`);
     }
-    if (!isAssignmentLoaded) {
+    if (!isDataEnhanced) {
       for (const bCase of order.childCases) {
         try {
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
+
+          const associatedResponse = await api.get(`/cases/${bCase.caseId}/associated`);
+          bCase.associations = associatedResponse.body as Consolidation[];
         } catch {
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }
       }
-      setOrderWithAssignments(order);
-      setIsAssignmentLoaded(true);
+      setOrderWithDataEnhancement(order);
+      setIsDataEnhanced(true);
     }
   }
 
   function clearInputs(): void {
     caseTable.current?.clearAllCheckboxes();
-    disableButtons(true);
+    disableButtons();
     setSelectedCases([]);
   }
 
@@ -175,14 +180,34 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function disableButtons(disable: boolean) {
-    approveButtonRef.current?.disableButton(disable);
-    rejectButtonRef.current?.disableButton(disable);
+  function selectedCasesAreConsolidationCases() {
+    return order.childCases.reduce((itDoes, bCase) => {
+      if (!selectedCases.includes(bCase)) {
+        return itDoes;
+      }
+      return itDoes || !!bCase.associations?.length;
+    }, false);
+  }
+
+  function disableButtons() {
+    rejectButtonRef.current?.disableButton(true);
+    approveButtonRef.current?.disableButton(true);
+  }
+
+  function enableButtons() {
+    rejectButtonRef.current?.disableButton(false);
+    approveButtonRef.current?.disableButton(
+      !isDataEnhanced || selectedCasesAreConsolidationCases(),
+    );
   }
 
   useEffect(() => {
-    disableButtons(selectedCases.length === 0);
-  }, [selectedCases]);
+    if (selectedCases.length) {
+      enableButtons();
+    } else {
+      disableButtons();
+    }
+  }, [selectedCases, isDataEnhanced]);
 
   return (
     <Accordion
@@ -255,7 +280,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   cases={order.childCases}
                   onSelect={handleIncludeCase}
                   updateAllSelections={updateAllSelections}
-                  isAssignmentLoaded={isAssignmentLoaded}
+                  isDataEnhanced={isDataEnhanced}
                   ref={caseTable}
                 ></ConsolidationCaseTable>
               </div>
@@ -370,7 +395,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   id={`${order.id}-case-list`}
                   data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
-                  isAssignmentLoaded={isAssignmentLoaded}
+                  isDataEnhanced={isDataEnhanced}
                 ></ConsolidationCaseTable>
               </div>
               <div className="grid-col-1"></div>
