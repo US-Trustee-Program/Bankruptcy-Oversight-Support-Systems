@@ -384,8 +384,10 @@ describe('Orders use case', () => {
       CaseAssignmentUseCase.prototype,
       'createTrialAttorneyAssignments',
     );
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length + 1);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][1]).toEqual(
@@ -485,8 +487,10 @@ describe('Orders use case', () => {
     const mockCreateHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][1]).toEqual(
@@ -554,8 +558,10 @@ describe('Orders use case', () => {
     const mockCreateHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.rejectConsolidation(mockContext, rejection);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(0);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][1]).toEqual(
@@ -573,5 +579,67 @@ describe('Orders use case', () => {
     expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
     expect(actual).toEqual([newConsolidation]);
   });
-  test('should reject a split consolidation order', () => {});
+
+  test('should reject a split consolidation order', () => {
+    // This is the same logic as a split approved consolidation order, except the existing child case guard logic is not executed.
+  });
+
+  test('should throw an error if a child case is part of another consolidation', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      status: 'approved',
+    };
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockResolvedValueOnce([
+        MockData.getConsolidationReference({
+          override: { caseId: approval.childCases[0].caseId, documentType: 'CONSOLIDATION_TO' },
+        }),
+      ])
+      .mockResolvedValue([]);
+
+    // const _actual = useCase.approveConsolidation(mockContext, approval);
+    await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
+      'Cannot consolidate order. A child case has already been consolidated.',
+    );
+    expect(mockGetConsolidation).toHaveBeenCalled();
+  });
+
+  test('should throw an error if a lead case is a child case of another consolidation', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      status: 'approved',
+    };
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockImplementation((_context, caseId: string) => {
+        if (caseId === leadCase.caseId) {
+          return Promise.resolve([
+            MockData.getConsolidationReference({
+              override: { caseId: leadCase.caseId, documentType: 'CONSOLIDATION_TO' },
+            }),
+          ]);
+        } else {
+          return Promise.resolve([]);
+        }
+      });
+
+    // const _actual = useCase.approveConsolidation(mockContext, approval);
+    await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
+      'Cannot consolidate order. The lead case is a child case of another consolidation.',
+    );
+    expect(mockGetConsolidation).toHaveBeenCalled();
+  });
 });

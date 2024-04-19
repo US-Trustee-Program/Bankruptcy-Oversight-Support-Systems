@@ -17,6 +17,7 @@ import { ConnectionPool, config } from 'mssql';
 import {
   CasesRepository,
   ConsolidationOrdersRepository,
+  DocumentRepository,
   OrdersGateway,
   OrdersRepository,
   RuntimeStateRepository,
@@ -130,6 +131,6 @@ export const getCosmosDbCrudRepository = <T>(
   context: ApplicationContext,
   containerName: string,
   moduleName: string,
-) => {
+): DocumentRepository<T> => {
   return new CosmosDbRepository<T>(context, containerName, moduleName);
 };

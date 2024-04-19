@@ -39,6 +39,7 @@ import {
   isConsolidationHistory,
 } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case.assignment';
+import { BadRequestError } from '../../common-errors/bad-request';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -309,6 +310,29 @@ export class OrdersUseCase {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
+
+    if (status === 'approved') {
+      for (const caseId of includedCases) {
+        const references = await this.casesRepo.getConsolidation(context, caseId);
+        if (references.length > 0) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: `Cannot consolidate order. A child case has already been consolidated.`,
+          });
+        }
+      }
+      const leadCaseReferences = await this.casesRepo.getConsolidation(context, leadCase.caseId);
+      const isLeadCaseAChildCase = leadCaseReferences
+        .filter((reference) => reference.caseId === leadCase.caseId)
+        .reduce((isChildCase, reference) => {
+          return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
+        }, false);
+      if (isLeadCaseAChildCase) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Cannot consolidate order. The lead case is a child case of another consolidation.`,
+        });
+      }
+    }
+
     const remainingChildCases = provisionalOrder.childCases.filter(
       (c) => !includedCases.includes(c.caseId),
     );

@@ -40,7 +40,7 @@ describe('Mocking CasesController to get error handling', () => {
   });
 
   // TODO rethink how to trigger a CAMS error for this test
-  test('should call httpError if a CamsError is caught', async () => {
+  test('should call httpError if a CamsError is caught getting a case', async () => {
     const request = {
       params: { caseId: '00000' },
     };
@@ -52,5 +52,18 @@ describe('Mocking CasesController to get error handling', () => {
     expect(context.res.body.message).toEqual('Unknown CAMS Error');
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(CamsError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
+  });
+
+  test('should call httpError if a CamsError is caught getting all cases', async () => {
+    const request = {
+      params: {},
+    };
+
+    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
+    await httpTrigger(context, request);
+
+    expect(context.res.statusCode).toEqual(INTERNAL_SERVER_ERROR);
+    expect(context.res.body.message).toEqual('Unknown error');
+    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 });
