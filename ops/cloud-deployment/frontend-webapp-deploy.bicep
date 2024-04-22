@@ -49,6 +49,8 @@ param privateDnsZoneResourceGroup string = resourceGroup().name
 @description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+param privateDnsZoneId string = ''
+
 @description('Existing virtual network name')
 param virtualNetworkName string
 
@@ -175,6 +177,7 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    privatDnsZoneId: privateDnsZoneId
     privateEndpointSubnetName: webappPrivateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
     privateLinkServiceId: webapp.id
