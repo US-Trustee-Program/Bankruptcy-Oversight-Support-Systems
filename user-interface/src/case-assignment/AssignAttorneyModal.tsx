@@ -3,7 +3,7 @@ import { forwardRef, useRef, useImperativeHandle, useState, RefObject } from 're
 import Modal from '../lib/components/uswds/modal/Modal';
 import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import React from 'react';
-import Checkbox, { CheckboxRef } from '../lib/components/uswds/Checkbox';
+import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
 import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import Api from '../lib/models/api';
@@ -73,11 +73,6 @@ function AssignAttorneyModalComponent(
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
   const [previouslySelectedList, setPreviouslySelectedList] = useState<string[]>([]);
 
-  const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
-  for (let i = 0; i < props.attorneyList.length; i++) {
-    const checkboxRef = useRef<CheckboxRef>(null);
-    checkboxListRefs.push(checkboxRef);
-  }
   const actionButtonGroup = {
     modalId: props.modalId,
     modalRef: ref as React.RefObject<ModalRefType>,
@@ -98,15 +93,6 @@ function AssignAttorneyModalComponent(
         if (showProps.bCase.assignments) {
           setCheckListValues([...showProps.bCase.assignments]);
           setPreviouslySelectedList([...showProps.bCase.assignments]);
-          const assignments = showProps.bCase.assignments;
-          checkboxListRefs.forEach((cbox) => {
-            const label = cbox.current?.getLabel();
-            if (label && assignments.includes(label)) {
-              cbox.current?.setChecked(true);
-            } else {
-              cbox.current?.setChecked(false);
-            }
-          });
         }
       }
     }
@@ -116,9 +102,6 @@ function AssignAttorneyModalComponent(
   }
 
   function hide() {
-    checkboxListRefs.forEach((cbox) => {
-      cbox.current?.setChecked(false);
-    });
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
@@ -270,7 +253,6 @@ function AssignAttorneyModalComponent(
                             checked={checkListValues.includes(name)}
                             className="attorney-list-checkbox"
                             label={name}
-                            ref={checkboxListRefs[idx]}
                           />
                         </td>
                         <td className="assign-attorney-case-count-column">
