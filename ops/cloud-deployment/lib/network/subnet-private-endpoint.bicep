@@ -9,6 +9,7 @@ param privateEndpointSubnetAddressPrefix string
 param privateDnsZoneName string
 param privateDnsZoneResourceGroup string = resourceGroup().name
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+param privatDnsZoneId string = ''
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
 @description('Group for private link service')
@@ -64,10 +65,12 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
 /*
   Add private dns zone group to private endpoint
 */
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (empty(privatDnsZoneId)) {
   name: privateDnsZoneName
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
 }
+
+var dnsZoneId = empty(privateDnsZone.id) ? privateDnsZone.id : privatDnsZoneId
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
   parent: privateEndpoint
   name: 'default'
@@ -76,7 +79,7 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
       {
         name: 'privatelink_azurewebsites_${stackName}'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          privateDnsZoneId: dnsZoneId
         }
       }
     ]
