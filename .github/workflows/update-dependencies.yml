@@ -2,7 +2,7 @@ name: NPM Package Updates
 
 on:
   schedule:
-    - cron: '0 5 * * 1'
+    - cron: '0 5 * * 2'
 
 jobs:
   update-all:
