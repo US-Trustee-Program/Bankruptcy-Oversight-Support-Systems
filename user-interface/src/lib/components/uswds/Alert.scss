@@ -44,7 +44,7 @@
   display: block;
 }
 
-.header-scrolled-out .usa-alert-container {
+.header-scrolled-out .usa-alert-container:not(.inline-alert) {
   top: 0px;
 }
 

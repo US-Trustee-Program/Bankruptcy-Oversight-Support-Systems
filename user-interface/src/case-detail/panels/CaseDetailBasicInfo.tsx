@@ -8,10 +8,12 @@ import { consolidationType } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal, {
   AssignAttorneyModalRefType,
+  CallBackProps,
 } from '@/case-assignment/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { useRef } from 'react';
 import { Attorney } from '@/lib/type-declarations/attorneys';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -20,15 +22,29 @@ export interface CaseDetailBasicInfoProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
   attorneyList: Attorney[];
+  onCaseAssignment: (props: CallBackProps) => void;
+}
+
+function isChildCase(bCase: CaseDetail) {
+  return (
+    bCase.consolidation?.reduce((isChildCase, reference) => {
+      return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
+    }, false) ?? false
+  );
 }
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
-  const { caseDetail, showReopenDate, attorneyList } = props;
+  const { caseDetail, showReopenDate, attorneyList, onCaseAssignment } = props;
 
   const assignmentModalRef = useRef<AssignAttorneyModalRefType>(null);
 
   function sortTransfers(a: Transfer, b: Transfer) {
     return sortDatesReverse(a.orderDate, b.orderDate);
+  }
+
+  function handleCaseAssignment(props: CallBackProps) {
+    onCaseAssignment(props);
+    assignmentModalRef.current?.hide();
   }
 
   return (
@@ -375,7 +391,16 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
         ref={assignmentModalRef}
         attorneyList={attorneyList}
         modalId={'assignmentModalId'}
-        callBack={() => {}}
+        callBack={handleCaseAssignment}
+        alertMessage={
+          isChildCase(caseDetail)
+            ? {
+                message: 'The assignees for this case will not match the lead case.',
+                type: UswdsAlertStyle.Warning,
+                timeOut: 0,
+              }
+            : undefined
+        }
       ></AssignAttorneyModal>
     </>
   );

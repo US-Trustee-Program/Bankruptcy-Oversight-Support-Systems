@@ -1,13 +1,14 @@
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailBasicInfo, { CaseDetailBasicInfoProps } from './CaseDetailBasicInfo';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { Transfer } from '@common/cams/events';
+import { Consolidation, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getFullName } from '@common/name-helper';
+import Api from '@/lib/models/api';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -36,6 +37,21 @@ const TRANSFER_TO: Transfer = {
   orderDate: '01-12-2024',
   documentType: 'TRANSFER_TO',
 };
+const CONSOLIDATE_TO: Consolidation = {
+  caseId: TEST_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
+  orderDate: '01-12-2024',
+  consolidationType: 'administrative',
+  documentType: 'CONSOLIDATION_TO',
+};
+
+const CONSOLIDATE_FROM: Consolidation = {
+  caseId: TEST_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
+  orderDate: '01-12-2024',
+  consolidationType: 'administrative',
+  documentType: 'CONSOLIDATION_FROM',
+};
 
 const attorneyList: Attorney[] = [
   {
@@ -56,6 +72,7 @@ describe('Case detail basic information panel', () => {
       caseDetail: BASE_TEST_CASE_DETAIL,
       showReopenDate: false,
       attorneyList: attorneyList,
+      onCaseAssignment: vi.fn(),
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -101,6 +118,101 @@ describe('Case detail basic information panel', () => {
 
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).not.toBeInTheDocument();
+    });
+  });
+
+  describe('for case assignment', () => {
+    const assignmentModalId = 'assignmentModalId';
+
+    test('should call handleCaseAssignment callback when callback provided', async () => {
+      const apiResult = {
+        message: 'post mock',
+        count: 0,
+        body: {},
+      };
+      vi.spyOn(Api, 'post').mockResolvedValue(apiResult);
+
+      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+
+      const assignedStaffEditButton = screen.getByTestId('toggle-modal-button');
+      fireEvent.click(assignedStaffEditButton);
+
+      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
+      await waitFor(() => {
+        expect(modal).toBeVisible();
+      });
+
+      const checkbox = screen.getByTestId('checkbox-0-checkbox');
+      fireEvent.click(checkbox);
+
+      const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onCaseAssignment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            apiResult,
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(modal).toHaveClass('is-hidden');
+      });
+    });
+  });
+
+  describe('with consolidated case information', () => {
+    const assignmentModalId = 'assignmentModalId';
+
+    test.only('should show lead case summary content', async () => {
+      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+      // TODO: Add assertions for lead case content
+    });
+
+    test.only('should show child case summary content', async () => {
+      const caseDetail: CaseDetail = {
+        ...BASE_TEST_CASE_DETAIL,
+        consolidation: [CONSOLIDATE_FROM],
+      };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+      // TODO: Add assertions for child case content
+    });
+
+    test.only('should show child case warning on case assignment modal', async () => {
+      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+
+      const assignedStaffEditButton = screen.getByTestId('toggle-modal-button');
+      fireEvent.click(assignedStaffEditButton);
+
+      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
+      await waitFor(() => {
+        expect(modal).toBeVisible();
+      });
+
+      const childCaseMessage = screen.getByTestId('alert-message');
+      expect(childCaseMessage).toHaveTextContent(
+        'The assignees for this case will not match the lead case.',
+      );
     });
   });
 
