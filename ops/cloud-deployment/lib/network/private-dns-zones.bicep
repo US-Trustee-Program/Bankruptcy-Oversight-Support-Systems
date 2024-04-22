@@ -9,7 +9,7 @@ param stackName string
 param virtualNetworkId string
 
 @description('Private DNS Zone name for private link')
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 @description('Optional array of resource ids of virtual network to link to private dns zone')
 param linkVnetIds array = []
