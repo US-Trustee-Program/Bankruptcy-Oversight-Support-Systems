@@ -3,7 +3,7 @@ import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import './DataVerificationScreen.scss';
 import { OfficesResponseData, OrderResponseData, Order } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
-import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import Icon from '@/lib/components/uswds/Icon';
@@ -20,12 +20,6 @@ import { OfficeDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { sortDates } from '@/lib/utils/datetime';
 import { useApi } from '@/lib/hooks/UseApi';
-
-export interface AlertDetails {
-  message: string;
-  type: UswdsAlertStyle;
-  timeOut: number;
-}
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
