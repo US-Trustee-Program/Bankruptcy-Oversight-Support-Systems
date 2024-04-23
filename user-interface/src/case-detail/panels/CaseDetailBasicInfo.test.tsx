@@ -170,7 +170,7 @@ describe('Case detail basic information panel', () => {
   describe('with consolidated case information', () => {
     const assignmentModalId = 'assignmentModalId';
 
-    test.only('should show the administrative consolidation header', async () => {
+    test('should show the administrative consolidation header', async () => {
       renderWithProps({
         caseDetail: {
           ...BASE_TEST_CASE_DETAIL,
@@ -183,7 +183,7 @@ describe('Case detail basic information panel', () => {
       expect(administrativeHeader).toHaveTextContent('Joint Administration');
     });
 
-    test.only('should show the substantive consolidation header', async () => {
+    test('should show the substantive consolidation header', async () => {
       renderWithProps({
         caseDetail: {
           ...BASE_TEST_CASE_DETAIL,
