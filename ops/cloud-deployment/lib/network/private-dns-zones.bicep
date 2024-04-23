@@ -27,7 +27,7 @@ resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-0
   name: privateDnsZoneName
 }
 
-module vnetLinks './vnet-links.bicep' = {
+module vnetLinks './vnet-links.bicep' = if (deployNetwork) {
   name: 'vnet-links-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
