@@ -23,7 +23,7 @@ resource ustpPrivateDnsZoneNew 'Microsoft.Network/privateDnsZones@2020-06-01' = 
   name: privateDnsZoneName
   location: 'global'
 }
-resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (deployNetwork) {
+resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (!deployNetwork) {
   name: privateDnsZoneName
 }
 
