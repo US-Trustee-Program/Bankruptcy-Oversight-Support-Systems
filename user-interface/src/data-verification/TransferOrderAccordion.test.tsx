@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { TransferOrder } from '@/lib/type-declarations/chapter-15';
-import { AlertDetails } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -11,7 +10,7 @@ import {
   TransferOrderAccordionProps,
 } from './TransferOrderAccordion';
 import React from 'react';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api from '@/lib/models/api';
 import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
