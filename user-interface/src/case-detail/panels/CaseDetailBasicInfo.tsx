@@ -2,7 +2,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { Transfer } from '@common/cams/events';
+import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { consolidationType } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -23,18 +23,6 @@ export interface CaseDetailBasicInfoProps {
   showReopenDate: boolean;
   attorneyList: Attorney[];
   onCaseAssignment: (props: CallBackProps) => void;
-}
-
-function isJointAdministrationChildCase(bCase: CaseDetail) {
-  return (
-    bCase.consolidation?.reduce((isIt, reference) => {
-      return (
-        isIt ||
-        (reference.documentType === 'CONSOLIDATION_TO' &&
-          reference.consolidationType === 'administrative')
-      );
-    }, false) ?? false
-  );
 }
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
@@ -397,7 +385,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
         modalId={'assignmentModalId'}
         callBack={handleCaseAssignment}
         alertMessage={
-          isJointAdministrationChildCase(caseDetail)
+          isJointAdministrationChildCase(caseDetail.consolidation)
             ? {
                 message: 'The assignees for this case will not match the lead case.',
                 type: UswdsAlertStyle.Warning,
