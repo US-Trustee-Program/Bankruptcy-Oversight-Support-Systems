@@ -170,30 +170,69 @@ describe('Case detail basic information panel', () => {
   describe('with consolidated case information', () => {
     const assignmentModalId = 'assignmentModalId';
 
-    test.only('should show lead case summary content', async () => {
-      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
-      const onCaseAssignment = vi.fn();
+    test('should show the consolidation type', async () => {
       renderWithProps({
-        caseDetail,
-        onCaseAssignment,
+        caseDetail: {
+          ...BASE_TEST_CASE_DETAIL,
+          consolidation: [{ ...CONSOLIDATE_TO, consolidationType: 'administrative' }],
+        },
       });
-      // TODO: Add assertions for lead case content
+      const administrativeHeader = document.querySelector('.consolidation > h4');
+      expect(administrativeHeader).toBeInTheDocument();
+      expect(administrativeHeader).toHaveTextContent('Joint Administration');
+
+      renderWithProps({
+        caseDetail: {
+          ...BASE_TEST_CASE_DETAIL,
+          consolidation: [{ ...CONSOLIDATE_TO, consolidationType: 'substantive' }],
+        },
+      });
+      const substantiveHeader = document.querySelector('.consolidation > h4');
+      expect(substantiveHeader).toBeInTheDocument();
+      expect(substantiveHeader).toHaveTextContent('Joint Administration');
     });
 
-    test.only('should show child case summary content', async () => {
+    test('should show lead case summary content', async () => {
+      const leadCase = CONSOLIDATE_TO.otherCase;
+      renderWithProps({
+        caseDetail: { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] },
+      });
+
+      const link = screen.queryByTestId('case-detail-consolidation-link-link');
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', `/case-detail/${leadCase.caseId}/`);
+
+      const contentLines = document.querySelectorAll('.consolidation > div');
+      expect(contentLines.length).toEqual(2);
+      expect(contentLines[0]).toHaveTextContent(
+        `Lead Case:${getCaseNumber(leadCase.caseId)} ${leadCase.caseTitle}`,
+      );
+      expect(contentLines[1]).toHaveTextContent(
+        `Order Filed:${formatDate(CONSOLIDATE_TO.orderDate)}`,
+      );
+    });
+
+    test('should show child case summary content', async () => {
       const caseDetail: CaseDetail = {
         ...BASE_TEST_CASE_DETAIL,
         consolidation: [CONSOLIDATE_FROM],
       };
-      const onCaseAssignment = vi.fn();
       renderWithProps({
         caseDetail,
-        onCaseAssignment,
       });
-      // TODO: Add assertions for child case content
+
+      const contentLines = document.querySelectorAll('.consolidation > div');
+      expect(contentLines.length).toEqual(3);
+      expect(contentLines[0]).toHaveTextContent('Lead Case: (this case)');
+      expect(contentLines[1]).toHaveTextContent(
+        `Cases Consolidated: ${caseDetail.consolidation!.length + 1}`,
+      );
+      expect(contentLines[2]).toHaveTextContent(
+        `Order Filed:${formatDate(CONSOLIDATE_FROM.orderDate)}`,
+      );
     });
 
-    test.only('should show child case warning on case assignment modal', async () => {
+    test('should show child case warning on case assignment modal', async () => {
       const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
       const onCaseAssignment = vi.fn();
       renderWithProps({
