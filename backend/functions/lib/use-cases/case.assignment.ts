@@ -21,12 +21,41 @@ export class CaseAssignmentUseCase {
   }
 
   public async createTrialAttorneyAssignments(
-    applicationContext: ApplicationContext,
+    context: ApplicationContext,
     caseId: string,
     newAssignments: string[],
     role: string,
   ): Promise<AttorneyAssignmentResponseInterface> {
-    applicationContext.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
+    const assignmentIds = await this.assignTrialAttorneys(context, caseId, newAssignments, role);
+
+    // Reassign all child cases if this is a joint administration lead case.
+    const consolidationReferences = await this.casesRepository.getConsolidation(context, caseId);
+    const childCaseIds = consolidationReferences
+      .filter(
+        (reference) =>
+          reference.documentType === 'CONSOLIDATION_FROM' &&
+          reference.consolidationType === 'administrative',
+      )
+      .map((reference) => reference.otherCase.caseId);
+    for (const childCaseId of childCaseIds) {
+      await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
+    }
+
+    return {
+      success: true,
+      message: 'Trial attorney assignments created.',
+      count: assignmentIds.length,
+      body: assignmentIds,
+    };
+  }
+
+  private async assignTrialAttorneys(
+    context: ApplicationContext,
+    caseId: string,
+    newAssignments: string[],
+    role: string,
+  ): Promise<string[]> {
+    context.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
 
     const listOfAssignments: CaseAssignment[] = [];
     const attorneys = [...new Set(newAssignments)];
@@ -79,21 +108,15 @@ export class CaseAssignmentUseCase {
       before: existingAssignmentRecords,
       after: newAssignmentRecords,
     };
-    await this.casesRepository.createCaseHistory(applicationContext, history);
+    await this.casesRepository.createCaseHistory(context, history);
 
-    applicationContext.logger.info(
+    context.logger.info(
       MODULE_NAME,
       `Updated assignments for case number ${caseId}.`,
       listOfAssignmentIdsCreated,
     );
 
-    // TODO: Maybe return the updated assignment state for the case, i.e. the new attorney list.
-    return {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: listOfAssignmentIdsCreated.length,
-      body: listOfAssignmentIdsCreated,
-    };
+    return listOfAssignmentIdsCreated;
   }
 
   public async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
