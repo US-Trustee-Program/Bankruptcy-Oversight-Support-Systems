@@ -1,6 +1,8 @@
 /*
   Description: Create Private Dns Zone associated to target vnet. Set linkVnetIds to include additional vnet links to dns.
 */
+param privateDnsZoneResourceGroup string = resourceGroup().name
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 param deployNetwork bool
 @description('Provide a name used for labeling related resources')
 param stackName string
@@ -27,6 +29,7 @@ resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-0
 
 module vnetLinks './vnet-links.bicep' = {
   name: 'vnet-links-module'
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
     stackName: stackName
     virtualNetworkId: virtualNetworkId

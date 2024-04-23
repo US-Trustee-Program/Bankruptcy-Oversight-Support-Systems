@@ -50,7 +50,6 @@ param apiPlanType string
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 param privateDnsZoneResourceGroup string = resourceGroup().name
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
-param privateDnsZoneId string = ''
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
@@ -135,6 +134,8 @@ module ustpNetwork './lib/network/private-dns-zones.bicep' ={
       linkVnetIds: linkVnetIds
       privateDnsZoneName: privateDnsZoneName
       deployNetwork: deployNetwork
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
   }
 }
 
