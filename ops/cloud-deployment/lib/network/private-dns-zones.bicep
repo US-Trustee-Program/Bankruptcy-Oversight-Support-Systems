@@ -1,7 +1,7 @@
 /*
   Description: Create Private Dns Zone associated to target vnet. Set linkVnetIds to include additional vnet links to dns.
 */
-
+param deployNetwork bool
 @description('Provide a name used for labeling related resources')
 param stackName string
 
@@ -17,36 +17,21 @@ param linkVnetIds array = []
 /*
   Private DNS Zone and linked virtual networks
 */
-resource ustpPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource ustpPrivateDnsZoneNew 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deployNetwork) {
   name: privateDnsZoneName
   location: 'global'
 }
-
-resource ustpPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: ustpPrivateDnsZone
-  location: 'global'
-  properties: {
-    registrationEnabled: false
-    virtualNetwork: {
-      id: virtualNetworkId
-    }
-  }
-  name: '${privateDnsZoneName}-vnet-link-${stackName}'
+resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (deployNetwork) {
+  name: privateDnsZoneName
 }
 
-// optional step to include additional link to existing PrivateDnsZone
-resource ustpAdditionalVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [
-  for vnetId in linkVnetIds: {
-    parent: ustpPrivateDnsZone
-    location: 'global'
-    properties: {
-      registrationEnabled: false
-      virtualNetwork: {
-        id: vnetId
-      }
-    }
-    name: 'vnet-link-${uniqueString(resourceGroup().id, vnetId)}'
+module vnetLinks './vnet-links.bicep' = {
+  name: 'vnet-links-module'
+  params: {
+    stackName: stackName
+    virtualNetworkId: virtualNetworkId
+    privateDnsZoneName: ((deployNetwork) ? ustpPrivateDnsZoneNew.name : ustpPrivateDnsZoneExisting.name)
+    linkVnetIds: linkVnetIds
   }
-]
-
-output privateDnsZoneName string = ustpPrivateDnsZone.name
+}
+output privateDnsZoneName string = ((deployNetwork) ? ustpPrivateDnsZoneNew.name : ustpPrivateDnsZoneExisting.name)

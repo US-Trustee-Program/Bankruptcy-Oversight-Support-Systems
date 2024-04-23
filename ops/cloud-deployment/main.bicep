@@ -126,8 +126,7 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
   scope: resourceGroup(networkResourceGroupName)
 }
 
-module ustpNetwork './lib/network/private-dns-zones.bicep' =
-  if (deployNetwork) {
+module ustpNetwork './lib/network/private-dns-zones.bicep' ={
     name: '${appName}-network-module'
     scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
     params: {
@@ -135,8 +134,10 @@ module ustpNetwork './lib/network/private-dns-zones.bicep' =
       virtualNetworkId: ustpVirtualNetwork.id
       linkVnetIds: linkVnetIds
       privateDnsZoneName: privateDnsZoneName
-    }
+      deployNetwork: deployNetwork
   }
+}
+
 
 module ustpWebapp 'frontend-webapp-deploy.bicep' =
   if (deployWebapp) {
