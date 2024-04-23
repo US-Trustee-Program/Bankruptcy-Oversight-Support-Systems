@@ -25,10 +25,14 @@ export interface CaseDetailBasicInfoProps {
   onCaseAssignment: (props: CallBackProps) => void;
 }
 
-function isChildCase(bCase: CaseDetail) {
+function isJointAdministrationChildCase(bCase: CaseDetail) {
   return (
-    bCase.consolidation?.reduce((isChildCase, reference) => {
-      return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
+    bCase.consolidation?.reduce((isIt, reference) => {
+      return (
+        isIt ||
+        (reference.documentType === 'CONSOLIDATION_TO' &&
+          reference.consolidationType === 'administrative')
+      );
     }, false) ?? false
   );
 }
@@ -393,7 +397,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
         modalId={'assignmentModalId'}
         callBack={handleCaseAssignment}
         alertMessage={
-          isChildCase(caseDetail)
+          isJointAdministrationChildCase(caseDetail)
             ? {
                 message: 'The assignees for this case will not match the lead case.',
                 type: UswdsAlertStyle.Warning,
