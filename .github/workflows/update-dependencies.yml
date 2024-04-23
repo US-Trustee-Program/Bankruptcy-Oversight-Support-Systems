@@ -1,0 +1,20 @@
+name: NPM Package Updates
+
+on:
+  schedule:
+    - cron: '0 5 * * 3'
+      # Every Wednesday morning at 5 (UTC?)
+
+jobs:
+  update-all:
+    name: Update all NPM projects
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Update
+        run: ./ops/scripts/utility/update-dependencies.sh
+
+      - name: Create PR
+        run: gh pr create --title "Update NPM packages" --template .github/PULL_REQUEST_TEMPLATE/dependencies.md
