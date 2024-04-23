@@ -34,4 +34,4 @@ module vnetLinks './vnet-links.bicep' = {
     linkVnetIds: linkVnetIds
   }
 }
-output privateDnsZoneName string = ((deployNetwork) ? ustpPrivateDnsZoneNew.name : ustpPrivateDnsZoneExisting.name)
+output privateDnsZoneId string = ((deployNetwork) ? ustpPrivateDnsZoneNew.id : ustpPrivateDnsZoneExisting.id)

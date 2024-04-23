@@ -153,7 +153,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      privateDnsZoneId: privateDnsZoneId
+      privateDnsZoneId: ustpNetwork.outputs.privateDnsZoneId
       virtualNetworkName: virtualNetworkName
       virtualNetworkResourceGroupName: networkResourceGroupName
       webappSubnetName: webappSubnetName
@@ -203,7 +203,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      privateDnsZoneId: privateDnsZoneId
+      privateDnsZoneId: ustpNetwork.outputs.privateDnsZoneId
       databaseConnectionString: databaseConnectionString
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
