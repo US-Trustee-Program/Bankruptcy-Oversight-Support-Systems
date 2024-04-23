@@ -178,6 +178,8 @@ export const CaseAssignment = () => {
       setTimeout(() => {
         setInTableTransferMode('');
       }, TABLE_TRANSFER_TIMEOUT * 1000);
+
+      modalRef.current?.hide();
     }
   }
 
