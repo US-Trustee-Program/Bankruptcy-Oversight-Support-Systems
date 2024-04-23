@@ -15,12 +15,12 @@ const jointAdministrationChildCase: Consolidation[] = [
     override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'administrative' },
   }),
 ];
-const substantiveAdministrationLeadCase: Consolidation[] = [
+const substantiveConsolidationLeadCase: Consolidation[] = [
   MockData.getConsolidationReference({
     override: { documentType: 'CONSOLIDATION_FROM', consolidationType: 'substantive' },
   }),
 ];
-const substantiveAdministrationChildCase: Consolidation[] = [
+const substantiveConsolidationChildCase: Consolidation[] = [
   MockData.getConsolidationReference({
     override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'substantive' },
   }),
@@ -35,8 +35,8 @@ describe('Event domain helper functions', () => {
       expect(isJointAdministrationLeadCase([])).toBeFalsy();
       expect(isJointAdministrationLeadCase(undefined)).toBeFalsy();
       expect(isJointAdministrationLeadCase(jointAdministrationChildCase)).toBeFalsy();
-      expect(isJointAdministrationLeadCase(substantiveAdministrationLeadCase)).toBeFalsy();
-      expect(isJointAdministrationLeadCase(substantiveAdministrationChildCase)).toBeFalsy();
+      expect(isJointAdministrationLeadCase(substantiveConsolidationLeadCase)).toBeFalsy();
+      expect(isJointAdministrationLeadCase(substantiveConsolidationChildCase)).toBeFalsy();
     });
   });
   describe('isJointAdministrationChildCase', () => {
@@ -47,8 +47,8 @@ describe('Event domain helper functions', () => {
       expect(isJointAdministrationChildCase([])).toBeFalsy();
       expect(isJointAdministrationChildCase(undefined)).toBeFalsy();
       expect(isJointAdministrationChildCase(jointAdministrationLeadCase)).toBeFalsy();
-      expect(isJointAdministrationChildCase(substantiveAdministrationLeadCase)).toBeFalsy();
-      expect(isJointAdministrationChildCase(substantiveAdministrationChildCase)).toBeFalsy();
+      expect(isJointAdministrationChildCase(substantiveConsolidationLeadCase)).toBeFalsy();
+      expect(isJointAdministrationChildCase(substantiveConsolidationChildCase)).toBeFalsy();
     });
   });
 });
