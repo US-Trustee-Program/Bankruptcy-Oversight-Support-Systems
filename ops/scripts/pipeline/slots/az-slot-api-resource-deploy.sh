@@ -13,6 +13,7 @@
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 sql_id_name=''
+is_ustp_deployment=
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -69,7 +70,10 @@ while [[ $# -gt 0 ]]; do
         database_name="${2}"
         shift 2
         ;;
-
+    --isUstpDeployment)
+        is_ustp_deployment=true
+        shift
+        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -85,12 +89,20 @@ echo "Creating Node API Staging Slot..."
 az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
-# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-e2eDatabaseName="$database_name-e2e"
-if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
-    e2eDatabaseName="$e2eDatabaseName-$branch_hash_id"
+
+databaseName=$database_name
+
+if [ -n "${is_ustp_deployment}" ]; then
+    databaseName="$databaseName-e2e"
+    if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
+        databaseName="$databaseName-$branch_hash_id"
+    fi
+else
+# This logic is to be removed when we do E2E testing on the USTP side
+    echo "USTP Deployment..."
 fi
-az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$e2eDatabaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+
+az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
 
 
 echo "Setting CORS Allowed origins for the API..."
