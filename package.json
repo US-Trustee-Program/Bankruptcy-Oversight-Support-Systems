@@ -6,6 +6,7 @@
   "description": "Bankruptcy Oversight Support System - Parent Project",
   "scripts": {
     "clean:all": "./ops/scripts/utility/clean-all-projects.sh",
+    "ci:all": "./ops/scripts/utility/clean-install-all-projects.sh",
     "start:backend": "cd backend/functions && npm run start",
     "start:frontend": "cd user-interface && npm run start",
     "build": "npm run build:common && npm run build:backend && npm run build:frontend",
