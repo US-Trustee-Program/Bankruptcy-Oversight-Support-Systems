@@ -97,6 +97,17 @@ export const Header = () => {
                 </li>
               )}
             </ul>
+            <section aria-label="Search by case number">
+              <form className="usa-search usa-search--small" role="search">
+                <label className="usa-sr-only" htmlFor="search-field">
+                  Search
+                </label>
+                <input className="usa-input" id="search-field" type="search" name="search" />
+                <button className="usa-button" type="submit">
+                  <img src="/search--white.svg" className="usa-search__submit-icon" alt="Search" />
+                </button>
+              </form>
+            </section>
           </nav>
         </div>
       </header>
