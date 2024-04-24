@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --kvNAme)
+    --kvName)
         kv_name="${2}"
         shift 2
         ;;
