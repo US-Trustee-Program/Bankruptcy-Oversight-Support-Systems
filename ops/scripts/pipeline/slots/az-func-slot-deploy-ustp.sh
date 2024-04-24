@@ -55,6 +55,11 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --kvNAme)
+        kv_name="${2}"
+        shift 2
+        ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
