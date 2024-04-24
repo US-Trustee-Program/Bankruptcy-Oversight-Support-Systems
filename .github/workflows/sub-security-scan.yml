@@ -66,7 +66,7 @@ jobs:
           -bf results-latest.json \
           -jf results.json \
           -fjf filtered_results.json \
-          -pf Veracode_Medium_+_SCA_+_OWASP.json \
+          -pf ${{ secrets.VERACODE_SAST_POLICY }} \
           --file cams.zip
 
       - name: Upload to storage account
