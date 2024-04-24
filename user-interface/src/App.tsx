@@ -13,6 +13,7 @@ import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
+import SearchScreen from './search/SearchScreen';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -49,6 +50,7 @@ function App() {
         <div className="body">
           <Routes>
             <Route path="/" element={<Home />}></Route>
+            <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (
