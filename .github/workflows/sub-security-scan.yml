@@ -24,7 +24,6 @@ jobs:
   sast-pipeline-scan:
     name: SAST Pipeline Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v3
 
