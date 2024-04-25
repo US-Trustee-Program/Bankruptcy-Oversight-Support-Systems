@@ -1,3 +1,3 @@
 describe('search screen', () => {
-  test('should render a list if cases', () => {});
+  test('should render a list cases', () => {});
 });
