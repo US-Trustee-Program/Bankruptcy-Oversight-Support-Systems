@@ -123,14 +123,14 @@ export const TableComponent = (
 ) => {
   const containerClass =
     'usa-table-container' +
-    (className ? ' ' + className : '') +
+    (className ? ' ' + className + ' ' : '') +
     (uswdsStyle?.includes('scrollable') ? ' usa-table-container--scrollable' : '');
 
-  let tableClass = `usa-table` + (className ? ' ' + className : '');
+  let tableClass = `usa-table` + (className ? ' ' + className + ' ' : '');
   if (uswdsStyle) {
     const styleArray: string[] = [];
     uswdsStyle.forEach((style) => styleArray.push(`usa-table--${style}`));
-    tableClass = styleArray.join(' ');
+    tableClass += [tableClass, ...styleArray].join(' ');
   }
 
   return (
