@@ -2,8 +2,8 @@ name: NPM Package Updates
 
 on:
   schedule:
-    - cron: '0 5 * * 3'
-      # Every Wednesday morning at 5 (UTC?)
+    - cron: '0 10 * * 3'
+      # Every Wednesday morning at 5 ET
 
 jobs:
   update-all:
@@ -17,4 +17,6 @@ jobs:
         run: ./ops/scripts/utility/update-dependencies.sh
 
       - name: Create PR
-        run: gh pr create --title "Update NPM packages" --template .github/PULL_REQUEST_TEMPLATE/dependencies.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh pr create --title "Update NPM packages" --body-file .github/PULL_REQUEST_TEMPLATE/dependencies.md
