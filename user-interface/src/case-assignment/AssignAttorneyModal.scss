@@ -11,6 +11,9 @@
 }
 
 .assign-attorney-modal {
+  width: 600px;
+  max-width: 85%;
+
   .visible-headings {
     label {
       display: inline-block;
@@ -19,14 +22,25 @@
       width: 50%;
     }
   }
+  .usa-alert-container {
+    top: 20px;
+    margin-bottom: 1rem;
+  }
+  .usa-modal__footer {
+    margin-top: 0;
+  }
   table.attorney-list {
     width: 100%;
   }
   .usa-table-container--scrollable {
     margin-top: 0;
+    margin-bottom: 10px;
     overflow-x: hidden;
     overflow-y: auto;
     max-height: 250px;
+
+    border: 1px solid #aaa;
+    border-radius: 3px;
 
     thead {
       visibility: hidden;
@@ -41,6 +55,9 @@
     td.assign-attorney-checkbox-column {
       padding-left: 0.5rem;
       padding-right: 1rem;
+      .usa-form-group {
+        margin-top: 0;
+      }
     }
     td.assign-attorney-case-count-column {
       text-align: right;

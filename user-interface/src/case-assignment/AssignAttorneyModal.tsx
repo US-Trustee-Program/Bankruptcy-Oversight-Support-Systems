@@ -3,17 +3,15 @@ import { forwardRef, useRef, useImperativeHandle, useState, RefObject } from 're
 import Modal from '../lib/components/uswds/modal/Modal';
 import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import React from 'react';
-import Checkbox, { CheckboxRef } from '../lib/components/uswds/Checkbox';
+import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
 import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import Api from '../lib/models/api';
 import { ModalRefType, SubmitCancelButtonGroupRef } from '../lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import useFeatureFlags, {
-  CHAPTER_ELEVEN_ENABLED,
-  CHAPTER_TWELVE_ENABLED,
-} from '../lib/hooks/UseFeatureFlags';
 import { getFullName } from '@common/name-helper';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 
 export interface ModalOpenProps {
   bCase: Chapter15Type | undefined;
@@ -29,6 +27,7 @@ export interface AssignAttorneyModalProps {
   attorneyList: Attorney[];
   modalId: string;
   callBack: (props: CallBackProps) => void;
+  alertMessage?: AlertDetails;
 }
 
 export interface AttorneyListResponseData extends ResponseData {
@@ -54,7 +53,6 @@ function AssignAttorneyModalComponent(
     dateFiled: '',
     assignments: [],
   });
-  const flags = useFeatureFlags();
   const modalRef = useRef<ModalRefType>(null);
   const tableContainer = useRef<HTMLTableSectionElement | null>(null);
   const modalHeading = (
@@ -63,21 +61,13 @@ function AssignAttorneyModalComponent(
       <span className="case-number">{getCaseNumber(bCase?.caseId)}</span>
     </>
   );
-  const chapterTwelveEnabled = flags[CHAPTER_TWELVE_ENABLED];
-  const chapterElevenEnabled = flags[CHAPTER_ELEVEN_ENABLED];
-  const caseLoadLabel =
-    chapterTwelveEnabled || chapterElevenEnabled ? 'Case Load' : 'Chapter 15 Cases';
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
 
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
   const [previouslySelectedList, setPreviouslySelectedList] = useState<string[]>([]);
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
 
-  const checkboxListRefs: React.RefObject<CheckboxRef>[] = [];
-  for (let i = 0; i < props.attorneyList.length; i++) {
-    const checkboxRef = useRef<CheckboxRef>(null);
-    checkboxListRefs.push(checkboxRef);
-  }
   const actionButtonGroup = {
     modalId: props.modalId,
     modalRef: ref as React.RefObject<ModalRefType>,
@@ -85,6 +75,7 @@ function AssignAttorneyModalComponent(
       label: 'Assign',
       onClick: submitValues,
       disabled: true,
+      closeOnClick: false,
     },
     cancelButton: {
       label: 'Go back',
@@ -98,15 +89,6 @@ function AssignAttorneyModalComponent(
         if (showProps.bCase.assignments) {
           setCheckListValues([...showProps.bCase.assignments]);
           setPreviouslySelectedList([...showProps.bCase.assignments]);
-          const assignments = showProps.bCase.assignments;
-          checkboxListRefs.forEach((cbox) => {
-            const label = cbox.current?.getLabel();
-            if (label && assignments.includes(label)) {
-              cbox.current?.setChecked(true);
-            } else {
-              cbox.current?.setChecked(false);
-            }
-          });
         }
       }
     }
@@ -116,9 +98,6 @@ function AssignAttorneyModalComponent(
   }
 
   function hide() {
-    checkboxListRefs.forEach((cbox) => {
-      cbox.current?.setChecked(false);
-    });
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
@@ -160,6 +139,8 @@ function AssignAttorneyModalComponent(
   async function submitValues() {
     let finalAttorneyList: string[] = [];
 
+    modalRef.current?.buttons?.current?.disableSubmitButton(true);
+
     // call callback from parent with IDs and names of attorneys, and case id.
     finalAttorneyList = props.attorneyList
       .filter((attorney) => checkListValues.includes(getFullName(attorney)))
@@ -167,9 +148,8 @@ function AssignAttorneyModalComponent(
         return getFullName(atty);
       });
 
-    setCheckListValues([]);
-    modalRef.current?.buttons?.current?.disableSubmitButton(true);
     // send attorney IDs to API
+    setIsUpdatingAssignment(true);
     await Api.post('/case-assignments', {
       caseId: bCase?.caseId,
       attorneyList: finalAttorneyList,
@@ -183,6 +163,8 @@ function AssignAttorneyModalComponent(
           status: 'success',
           apiResult: result,
         });
+        setCheckListValues([]);
+        setIsUpdatingAssignment(false);
       })
       .catch((e: Error) => {
         props.callBack({
@@ -192,6 +174,8 @@ function AssignAttorneyModalComponent(
           status: 'error',
           apiResult: e,
         });
+        setCheckListValues([]);
+        setIsUpdatingAssignment(false);
       });
     thawBackground();
   }
@@ -241,18 +225,12 @@ function AssignAttorneyModalComponent(
         <>
           <div className="visible-headings">
             <label className="attorney-name">Attorney Name</label>
-            <label className="case-load-label text-right" data-testid="case-load-label">
-              {caseLoadLabel}
-            </label>
           </div>
           <div className="usa-table-container--scrollable" ref={tableContainer}>
             <table className="attorney-list">
               <thead>
                 <tr>
                   <th>Attorney Name</th>
-                  <th className="case-load-label" data-testid="case-load-table-header">
-                    {caseLoadLabel}
-                  </th>
                 </tr>
               </thead>
               <tbody data-testid="case-load-table-body">
@@ -270,11 +248,7 @@ function AssignAttorneyModalComponent(
                             checked={checkListValues.includes(name)}
                             className="attorney-list-checkbox"
                             label={name}
-                            ref={checkboxListRefs[idx]}
                           />
-                        </td>
-                        <td className="assign-attorney-case-count-column">
-                          <div className="usa-fieldset">{attorney.caseLoad}</div>
                         </td>
                       </tr>
                     );
@@ -282,6 +256,12 @@ function AssignAttorneyModalComponent(
               </tbody>
             </table>
           </div>
+          {props.alertMessage && <Alert {...props.alertMessage} show={true} inline={true} />}
+          <LoadingSpinner
+            caption="Updating assignment..."
+            height="40px"
+            hidden={!isUpdatingAssignment}
+          />
         </>
       }
       actionButtonGroup={actionButtonGroup}

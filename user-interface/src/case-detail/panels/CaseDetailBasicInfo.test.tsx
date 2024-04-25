@@ -1,11 +1,14 @@
 import { BrowserRouter } from 'react-router-dom';
-import CaseDetailBasicInfo from './CaseDetailBasicInfo';
-import { render, screen } from '@testing-library/react';
+import CaseDetailBasicInfo, { CaseDetailBasicInfoProps } from './CaseDetailBasicInfo';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { Transfer } from '@common/cams/events';
+import { Consolidation, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { Attorney } from '@/lib/type-declarations/attorneys';
+import { getFullName } from '@common/name-helper';
+import Api from '@/lib/models/api';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -34,21 +37,74 @@ const TRANSFER_TO: Transfer = {
   orderDate: '01-12-2024',
   documentType: 'TRANSFER_TO',
 };
+const CONSOLIDATE_TO: Consolidation = {
+  caseId: TEST_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
+  orderDate: '01-12-2024',
+  consolidationType: 'administrative',
+  documentType: 'CONSOLIDATION_TO',
+};
+
+const CONSOLIDATE_FROM: Consolidation = {
+  caseId: TEST_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
+  orderDate: '01-12-2024',
+  consolidationType: 'administrative',
+  documentType: 'CONSOLIDATION_FROM',
+};
+
+const attorneyList: Attorney[] = [
+  {
+    firstName: 'Joe',
+    lastName: 'Bob',
+    office: 'Your office',
+  },
+  {
+    firstName: 'Francis',
+    lastName: 'Jones',
+    office: 'His office',
+  },
+];
 
 describe('Case detail basic information panel', () => {
-  describe('With expected case detail properties', () => {
-    beforeEach(() => {
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={BASE_TEST_CASE_DETAIL} showReopenDate={false} />
-        </BrowserRouter>,
-      );
-    });
+  function renderWithProps(props?: Partial<CaseDetailBasicInfoProps>) {
+    const defaultProps: CaseDetailBasicInfoProps = {
+      caseDetail: BASE_TEST_CASE_DETAIL,
+      showReopenDate: false,
+      attorneyList: attorneyList,
+      onCaseAssignment: vi.fn(),
+    };
 
+    const renderProps = { ...defaultProps, ...props };
+    render(
+      <BrowserRouter>
+        <CaseDetailBasicInfo {...renderProps} />
+      </BrowserRouter>,
+    );
+  }
+
+  describe('With expected case detail properties', () => {
     test('should show debtor counsel office', () => {
+      renderWithProps();
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).toBeInTheDocument();
       expect(element?.textContent).toEqual(BASE_TEST_CASE_DETAIL.debtorAttorney?.office);
+    });
+
+    test('should show edit button for trial attorney assignments and open modal with correct trial attorney info', () => {
+      renderWithProps();
+      const element = screen.getByTestId('toggle-modal-button');
+      expect(element).toBeInTheDocument();
+      expect(element).toBeVisible();
+      fireEvent.click(element);
+      const attorneyModal = document.querySelector('.assign-attorney-modal');
+      expect(attorneyModal).toBeInTheDocument();
+      expect(attorneyModal).toBeVisible();
+
+      attorneyList.forEach((attorney, idx) => {
+        const attorneyLabel = screen.getByTestId(`checkbox-label-${idx}-checkbox`);
+        expect(attorneyLabel).toHaveTextContent(getFullName(attorney));
+      });
     });
   });
 
@@ -58,14 +114,148 @@ describe('Case detail basic information panel', () => {
       const debtorAttorney = testCaseDetail.debtorAttorney!;
       delete debtorAttorney.office;
 
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={testCaseDetail} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+      renderWithProps({ caseDetail: testCaseDetail, showReopenDate: false });
 
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).not.toBeInTheDocument();
+    });
+  });
+
+  describe('for case assignment', () => {
+    const assignmentModalId = 'assignmentModalId';
+
+    test('should call handleCaseAssignment callback when callback provided', async () => {
+      const apiResult = {
+        message: 'post mock',
+        count: 0,
+        body: {},
+      };
+      vi.spyOn(Api, 'post').mockResolvedValue(apiResult);
+
+      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+
+      const assignedStaffEditButton = screen.getByTestId('toggle-modal-button');
+      fireEvent.click(assignedStaffEditButton);
+
+      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
+      await waitFor(() => {
+        expect(modal).toBeVisible();
+      });
+
+      const checkbox = screen.getByTestId('checkbox-0-checkbox');
+      fireEvent.click(checkbox);
+
+      const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onCaseAssignment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            apiResult,
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(modal).toHaveClass('is-hidden');
+      });
+    });
+  });
+
+  describe('with consolidated case information', () => {
+    const assignmentModalId = 'assignmentModalId';
+
+    test('should show the administrative consolidation header', async () => {
+      renderWithProps({
+        caseDetail: {
+          ...BASE_TEST_CASE_DETAIL,
+          consolidation: [{ ...CONSOLIDATE_TO, consolidationType: 'administrative' }],
+        },
+      });
+      const administrativeHeader = document.querySelector('.consolidation > h4');
+      screen.debug(administrativeHeader!);
+      expect(administrativeHeader).toBeInTheDocument();
+      expect(administrativeHeader).toHaveTextContent('Joint Administration');
+    });
+
+    test('should show the substantive consolidation header', async () => {
+      renderWithProps({
+        caseDetail: {
+          ...BASE_TEST_CASE_DETAIL,
+          consolidation: [{ ...CONSOLIDATE_TO, consolidationType: 'substantive' }],
+        },
+      });
+      const substantiveHeader = document.querySelector('.consolidation > h4');
+      screen.debug(substantiveHeader!);
+      expect(substantiveHeader).toBeInTheDocument();
+      expect(substantiveHeader).toHaveTextContent('Substantive Consolidation');
+    });
+
+    test('should show lead case summary content', async () => {
+      const leadCase = CONSOLIDATE_TO.otherCase;
+      renderWithProps({
+        caseDetail: { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] },
+      });
+
+      const link = screen.queryByTestId('case-detail-consolidation-link-link');
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', `/case-detail/${leadCase.caseId}/`);
+
+      const contentLines = document.querySelectorAll('.consolidation > div');
+      expect(contentLines.length).toEqual(2);
+      expect(contentLines[0]).toHaveTextContent(
+        `Lead Case:${getCaseNumber(leadCase.caseId)} ${leadCase.caseTitle}`,
+      );
+      expect(contentLines[1]).toHaveTextContent(
+        `Order Filed:${formatDate(CONSOLIDATE_TO.orderDate)}`,
+      );
+    });
+
+    test('should show child case summary content', async () => {
+      const caseDetail: CaseDetail = {
+        ...BASE_TEST_CASE_DETAIL,
+        consolidation: [CONSOLIDATE_FROM],
+      };
+      renderWithProps({
+        caseDetail,
+      });
+
+      const contentLines = document.querySelectorAll('.consolidation > div');
+      expect(contentLines.length).toEqual(3);
+      expect(contentLines[0]).toHaveTextContent('Lead Case: (this case)');
+      expect(contentLines[1]).toHaveTextContent(
+        `Cases Consolidated: ${caseDetail.consolidation!.length + 1}`,
+      );
+      expect(contentLines[2]).toHaveTextContent(
+        `Order Filed:${formatDate(CONSOLIDATE_FROM.orderDate)}`,
+      );
+    });
+
+    test('should show child case warning on case assignment modal', async () => {
+      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+
+      const assignedStaffEditButton = screen.getByTestId('toggle-modal-button');
+      fireEvent.click(assignedStaffEditButton);
+
+      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
+      await waitFor(() => {
+        expect(modal).toBeVisible();
+      });
+
+      const childCaseMessage = screen.getByTestId('alert-message');
+      expect(childCaseMessage).toHaveTextContent(
+        'The assignees for this case will not match the lead case.',
+      );
     });
   });
 
@@ -75,11 +265,8 @@ describe('Case detail basic information panel', () => {
         ...BASE_TEST_CASE_DETAIL,
         transfers: [TRANSFER_FROM],
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={transferredCase} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
 
       const oldCaseIdLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(oldCaseIdLink).toBeInTheDocument();
@@ -101,11 +288,8 @@ describe('Case detail basic information panel', () => {
         ...BASE_TEST_CASE_DETAIL,
         transfers: [TRANSFER_TO],
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={transferredCase} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
 
       const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(newCaseNumberLink).toBeInTheDocument();
@@ -127,11 +311,8 @@ describe('Case detail basic information panel', () => {
         ...BASE_TEST_CASE_DETAIL,
         transfers: [TRANSFER_FROM, TRANSFER_TO],
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailBasicInfo caseDetail={transferredCase} showReopenDate={false} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
 
       const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(newCaseNumberLink).toBeInTheDocument();

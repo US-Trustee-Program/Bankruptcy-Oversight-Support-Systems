@@ -27,6 +27,9 @@ import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
 import { CaseHistory } from '@common/cams/history';
+import AttorneysApi from '@/lib/models/attorneys-api';
+import { Attorney } from '@/lib/type-declarations/attorneys';
+import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -197,6 +200,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
+  const [attorneysList, setAttorneysList] = useState<Attorney[]>([]);
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
@@ -205,11 +209,18 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
-    api.get(`/cases/${caseId}`, {}).then((data) => {
-      const response = data as Chapter15CaseDetailsResponseData;
-      setCaseBasicInfo(response.body?.caseDetails);
-      setIsLoading(false);
-    });
+    api
+      .get(`/cases/${caseId}`, {})
+      .then((data) => {
+        const response = data as Chapter15CaseDetailsResponseData;
+        setCaseBasicInfo(response.body?.caseDetails);
+      })
+      .then(() => {
+        AttorneysApi.getAttorneys().then((attorneys) => {
+          setAttorneysList(attorneys);
+        });
+        setIsLoading(false);
+      });
   }
 
   async function fetchCaseDocketEntries() {
@@ -313,6 +324,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   function handleEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
+  }
+
+  function handleCaseAssignment(assignment: CallBackProps) {
+    const updatedCaseBasicInfo: CaseDetail = {
+      ...caseBasicInfo!,
+      assignments: assignment.selectedAttorneyList,
+    };
+    setCaseBasicInfo(updatedCaseBasicInfo);
   }
 
   useEffect(() => {
@@ -528,6 +547,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                             caseBasicInfo?.reopenedDate,
                             caseBasicInfo?.closedDate,
                           )}
+                          attorneyList={attorneysList}
+                          onCaseAssignment={handleCaseAssignment}
                         />
                       }
                     />

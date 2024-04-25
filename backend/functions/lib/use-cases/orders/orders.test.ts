@@ -604,7 +604,6 @@ describe('Orders use case', () => {
       ])
       .mockResolvedValue([]);
 
-    // const _actual = useCase.approveConsolidation(mockContext, approval);
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Cannot consolidate order. A child case has already been consolidated.',
     );
@@ -636,7 +635,6 @@ describe('Orders use case', () => {
         }
       });
 
-    // const _actual = useCase.approveConsolidation(mockContext, approval);
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Cannot consolidate order. The lead case is a child case of another consolidation.',
     );

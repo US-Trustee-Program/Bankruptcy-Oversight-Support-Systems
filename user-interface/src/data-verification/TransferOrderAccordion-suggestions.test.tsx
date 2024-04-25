@@ -1,5 +1,4 @@
 import { TransferOrder } from '@/lib/type-declarations/chapter-15';
-import { AlertDetails } from './DataVerificationScreen';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { BrowserRouter } from 'react-router-dom';
 import { screen, fireEvent, render, waitFor } from '@testing-library/react';
@@ -8,6 +7,7 @@ import { MockInstance } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
+import { AlertDetails } from '@/lib/components/uswds/Alert';
 
 describe('Test suggested cases', () => {
   let apiSpy: MockInstance;

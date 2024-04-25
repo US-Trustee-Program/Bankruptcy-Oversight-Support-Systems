@@ -18,6 +18,8 @@ export type TransferTo = EventBase & {
 
 export type Transfer = TransferFrom | TransferTo;
 
+type ConsolidationDocumentTypes = 'CONSOLIDATION_FROM' | 'CONSOLIDATION_TO';
+
 type ConsolidationDetails = {
   consolidationType: ConsolidationType;
 };
@@ -37,3 +39,25 @@ export type ConsolidationFrom = EventBase &
 export type Consolidation = ConsolidationTo | ConsolidationFrom;
 
 export type EventCaseReference = Consolidation | Transfer;
+
+export function isJointAdministrationLeadCase(references?: Consolidation[]): boolean {
+  return consolidationsMatchTypes(references, 'administrative', 'CONSOLIDATION_FROM');
+}
+
+export function isJointAdministrationChildCase(references?: Consolidation[]): boolean {
+  return consolidationsMatchTypes(references, 'administrative', 'CONSOLIDATION_TO');
+}
+
+function consolidationsMatchTypes(
+  references: Consolidation[] | undefined,
+  consolidationType: ConsolidationType,
+  documentType: ConsolidationDocumentTypes,
+): boolean {
+  if (!references || !references.length) return false;
+  return references.reduce((isMatch, reference) => {
+    return (
+      isMatch ||
+      (reference.consolidationType === consolidationType && reference.documentType === documentType)
+    );
+  }, false);
+}
