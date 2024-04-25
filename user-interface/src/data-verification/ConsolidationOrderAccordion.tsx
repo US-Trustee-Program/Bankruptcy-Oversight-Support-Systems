@@ -1,6 +1,5 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
-import { AlertDetails } from '@/data-verification/DataVerificationScreen';
 import { CaseTable } from './CaseTable';
 import { useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
@@ -18,7 +17,7 @@ import {
   ConfirmationModalImperative,
   ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
