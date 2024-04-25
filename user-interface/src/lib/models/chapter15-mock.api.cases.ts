@@ -156,6 +156,12 @@ export default class Chapter15MockApi extends Api {
         count: 1,
         body: this.consolidation,
       };
+    } else if (path.match(/\/cases\/999-99-00001\/docket/)) {
+      response = {
+        message: '',
+        count: 1,
+        body: [],
+      };
     } else if (path.match(/\/cases\/999-99-00001/)) {
       response = {
         message: '',

@@ -2,6 +2,11 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import './Alert.scss';
 import React from 'react';
 
+export interface AlertDetails {
+  message: string;
+  type: UswdsAlertStyle;
+  timeOut: number;
+}
 export interface AlertProps {
   id?: string;
   message: string;

@@ -53,10 +53,10 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   };
 
   function closeModal() {
-    hide();
     if (props.onClose) {
       props.onClose();
     }
+    hide();
     setKeyboardAccessible(100000);
   }
 

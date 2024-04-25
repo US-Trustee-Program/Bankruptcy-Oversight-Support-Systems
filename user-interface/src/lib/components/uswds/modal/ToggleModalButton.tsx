@@ -14,6 +14,7 @@ export interface ModalToggleButtonProps {
   modalId: string;
   modalRef: React.RefObject<ModalRefType>;
   title?: string;
+  ariaLabel?: string;
 }
 
 function ToggleModalButtonComponent(
@@ -30,6 +31,7 @@ function ToggleModalButtonComponent(
     className,
     modalRef,
     title,
+    ariaLabel,
   }: ModalToggleButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
   ref: React.Ref<ToggleModalButtonRef>,
 ) {
@@ -77,6 +79,7 @@ function ToggleModalButtonComponent(
       className={classes}
       onClick={handleOnClick}
       data-testid={`toggle-modal-button${dataTestidSuffix}`}
+      aria-label={ariaLabel}
       aria-disabled={isDisabled}
       disabled={isDisabled}
       title={title}
