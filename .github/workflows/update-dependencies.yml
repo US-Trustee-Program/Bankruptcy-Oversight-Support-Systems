@@ -2,9 +2,8 @@ name: NPM Package Updates
 
 on:
   schedule:
-    - cron: '0 5 * * 3'
-      # Every Wednesday morning at 5 (UTC?)
-  push:
+    - cron: '0 10 * * 3'
+      # Every Wednesday morning at 5 ET
 
 jobs:
   update-all:
@@ -15,7 +14,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Update
-        if: false
         run: ./ops/scripts/utility/update-dependencies.sh
 
       - name: Create PR
