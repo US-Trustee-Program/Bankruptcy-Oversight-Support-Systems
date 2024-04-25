@@ -168,7 +168,6 @@ describe('Table component', () => {
     const table = screen.queryByTestId('test-table');
     expect(table).toBeInTheDocument();
 
-    screen.debug(table!);
     expectedCssClasses.forEach((cssClass) => {
       expect(table).toHaveClass(cssClass);
     });
