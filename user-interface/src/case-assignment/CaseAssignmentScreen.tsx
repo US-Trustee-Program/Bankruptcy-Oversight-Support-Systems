@@ -15,6 +15,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { useApi } from '@/lib/hooks/UseApi';
+import { TableRowSortButton } from '@/lib/components/uswds/Table';
 
 const modalId = 'assign-attorney-modal';
 
@@ -213,6 +214,7 @@ export const CaseAssignment = () => {
               </div>
             )}
             {!isLoading && (
+              // TODO: See new CamsCaseTable.tsx for new table component being built.
               <>
                 {unassignedCaseList.length > 0 && (
                   <div className="usa-table-container--scrollable" tabIndex={0}>
@@ -240,31 +242,10 @@ export const CaseAssignment = () => {
                             aria-label="Filing Date, sortable column, currently sorted descending"
                           >
                             Filing Date
-                            <button
-                              tabIndex={0}
-                              className="usa-table__header__button"
+                            <TableRowSortButton
                               title="Click to sort by Filing Date in ascending order."
-                              disabled={true}
-                            >
-                              <svg
-                                className="usa-icon"
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                              >
-                                <g className="descending" fill="transparent">
-                                  <path d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"></path>
-                                </g>
-                                <g className="ascending" fill="transparent">
-                                  <path
-                                    transform="rotate(180, 12, 12)"
-                                    d="M17 17L15.59 15.59L12.9999 18.17V2H10.9999V18.17L8.41 15.58L7 17L11.9999 22L17 17Z"
-                                  ></path>
-                                </g>
-                                <g className="unsorted" fill="transparent">
-                                  <polygon points="15.17 15 13 17.17 13 6.83 15.17 9 16.58 7.59 12 3 7.41 7.59 8.83 9 11 6.83 11 17.17 8.83 15 7.42 16.41 12 21 16.59 16.41 15.17 15"></polygon>
-                                </g>
-                              </svg>
-                            </button>
+                              direction="descending"
+                            />
                           </th>
                           <th scope="col" role="columnheader">
                             Assign Attorney
