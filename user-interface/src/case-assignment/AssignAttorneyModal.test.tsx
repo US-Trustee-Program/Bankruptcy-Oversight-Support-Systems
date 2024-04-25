@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import AssignAttorneyModal, {
   AssignAttorneyModalProps,
-  AssignAttorneyModalRefType,
+  AssignAttorneyModalRef,
 } from './AssignAttorneyModal';
 import React from 'react';
 import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
@@ -26,7 +26,7 @@ const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
   function renderWithProps(
-    modalRef: React.RefObject<AssignAttorneyModalRefType>,
+    modalRef: React.RefObject<AssignAttorneyModalRef>,
     props: Partial<AssignAttorneyModalProps> = {},
   ) {
     const defaults: AssignAttorneyModalProps = {
@@ -59,7 +59,7 @@ describe('Test Assign Attorney Modal Component', () => {
   }
 
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
-    renderWithProps(React.createRef<AssignAttorneyModalRefType>());
+    renderWithProps(React.createRef<AssignAttorneyModalRef>());
 
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -112,7 +112,7 @@ describe('Test Assign Attorney Modal Component', () => {
         body: {},
       });
     });
-    const modalRef = React.createRef<AssignAttorneyModalRefType>();
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
     modalRef.current?.show({
@@ -158,7 +158,7 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('should show and hide from the imperative api', async () => {
-    const modalRef = React.createRef<AssignAttorneyModalRefType>();
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
     modalRef.current?.show({
@@ -185,7 +185,7 @@ describe('Test Assign Attorney Modal Component', () => {
     vi.spyOn(Api, 'post').mockRejectedValue(error);
     const callBack = vi.fn();
 
-    const modalRef = React.createRef<AssignAttorneyModalRefType>();
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, { callBack });
 
     modalRef.current?.show({
