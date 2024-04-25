@@ -87,6 +87,7 @@ storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$sto
 
 echo "Creating Node API Staging Slot..."
 az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
+az functionapp config appsettings list --name "$api_name" --resource-group "$app_rg" --slot "$slot_name"
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
 
