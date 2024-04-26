@@ -14,6 +14,7 @@ import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButt
 import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import './AssignedCasesTable.scss';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { GenericTable, GenericTableProps } from '@/lib/components/cams/GenericTable/GenericTable';
 
 type AssignedCasesTableProps = {
   caseList: Chapter15Type[];
@@ -21,6 +22,123 @@ type AssignedCasesTableProps = {
   modalRef: React.RefObject<AssignAttorneyModalRef>;
   inTableTransferMode: string;
 };
+
+export function AssignedCasesTableX(props: AssignedCasesTableProps) {
+  const { caseList, modalId, modalRef } = props;
+
+  const assignedAttorneysTransformer = (theCase: Chapter15Type, idx?: number) => {
+    return (
+      <>
+        {theCase.assignments && theCase.assignments.length > 0 && (
+          <div className="table-flex-container">
+            <div className="attorney-list-container">
+              {theCase.assignments?.map((attorney, key: number) => (
+                <div key={key}>
+                  {attorney}
+                  <br />
+                </div>
+              ))}
+            </div>
+            <div className="table-column-toolbar">
+              <ToggleModalButton
+                uswdsStyle={UswdsButtonStyle.Outline}
+                className="case-assignment-modal-toggle"
+                buttonIndex={`${idx}`}
+                toggleAction="open"
+                toggleProps={{
+                  bCase: theCase,
+                }}
+                modalId={`${modalId}`}
+                modalRef={modalRef}
+                title="edit assignments"
+              >
+                Edit
+              </ToggleModalButton>
+            </div>
+          </div>
+        )}
+        {!theCase.assignments ||
+          (!theCase.assignments.length && (
+            <div className="table-flex-container">
+              <div className="attorney-list-container">(unassigned)</div>
+              <div className="table-column-toolbar">
+                <ToggleModalButton
+                  className="case-assignment-modal-toggle"
+                  buttonIndex={`${idx}`}
+                  toggleAction="open"
+                  toggleProps={{
+                    bCase: theCase,
+                  }}
+                  modalId={`${modalId}`}
+                  modalRef={modalRef}
+                  title="add assignments"
+                >
+                  {}
+                  Assign
+                </ToggleModalButton>
+              </div>
+            </div>
+          ))}
+      </>
+    );
+  };
+
+  const tableProps: GenericTableProps<Chapter15Type> = {
+    data: caseList,
+    columns: [
+      {
+        name: 'caseNumber',
+        content: 'Case Number',
+        mobileTitle: 'Case Number',
+        property: 'caseId',
+        transformer: (caseId) => <CaseNumber caseId={caseId as string} openLinkIn="same-window" />,
+      },
+      {
+        name: 'chapter',
+        content: 'Chapter',
+        mobileTitle: 'Chapter',
+        property: 'chapter',
+        transformer: (chapter) => (
+          <>
+            <span className="mobile-title">Chapter:</span>
+            {chapter as string}
+          </>
+        ),
+      },
+      {
+        name: 'caseTitleAndDebtor',
+        content: 'Case Title (Debtor)',
+        mobileTitle: 'Case Title (Debtor)',
+        property: 'caseTitle',
+      },
+      {
+        name: 'filingDate',
+        content: (
+          <>
+            Filing Date
+            <>
+              <TableRowSortButton
+                title="Click to sort by Filing Date in ascending order."
+                direction="descending"
+              />
+            </>
+          </>
+        ),
+        mobileTitle: 'Filing Date',
+        property: 'dateFiled',
+        transformer: (dateFiled) => formatDate(dateFiled as string),
+      },
+      {
+        name: 'assignedAttorneys',
+        content: 'Assign Attorney',
+        mobileTitle: 'Assign Attorney',
+        property: 'assignments',
+        transformer: assignedAttorneysTransformer,
+      },
+    ],
+  };
+  return <GenericTable<Chapter15Type> {...tableProps} />;
+}
 
 export function AssignedCasesTable(props: AssignedCasesTableProps) {
   const { caseList, inTableTransferMode, modalId, modalRef } = props;
