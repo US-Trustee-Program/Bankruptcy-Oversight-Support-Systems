@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
@@ -20,17 +20,37 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
 type CaseNumberInputProps = Omit<InputProps, 'onChange'> & {
   onChange: (caseNumber: string) => void;
   forwardedRef: React.RefObject<InputRef>;
+  allowEnterKey?: boolean;
 };
 
-function CaseNumberInputComponent(props: CaseNumberInputProps) {
+function CaseNumberInputComponent(props: CaseNumberInputProps, _ref: React.Ref<InputRef>) {
+  const [enteredCaseNumber, setEnteredCaseNumber] = useState<string>('');
+
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
     props.forwardedRef?.current?.setValue(joinedInput);
-    if (caseNumber) props.onChange(caseNumber);
+    if (caseNumber) {
+      setEnteredCaseNumber(caseNumber);
+      props.onChange(caseNumber);
+    } else {
+      setEnteredCaseNumber(joinedInput);
+    }
   }
 
-  console.log(props.value);
-  return <Input {...props} ref={props.forwardedRef} onChange={handleOnChange}></Input>;
+  function handleKeyDown(ev: React.KeyboardEvent) {
+    if (props.allowEnterKey === true && ev.key === 'Enter' && enteredCaseNumber.length > 0) {
+      props.onChange(enteredCaseNumber);
+    }
+  }
+
+  return (
+    <Input
+      {...props}
+      ref={props.forwardedRef}
+      onChange={handleOnChange}
+      onKeyDown={handleKeyDown}
+    ></Input>
+  );
 }
 
 const CaseNumberInput = forwardRef(CaseNumberInputComponent);

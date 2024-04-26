@@ -51,6 +51,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />}></Route>
             <Route path="/search" element={<SearchScreen />}></Route>
+            <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (
