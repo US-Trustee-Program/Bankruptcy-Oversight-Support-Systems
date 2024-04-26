@@ -34,10 +34,10 @@ export interface HeaderProps {}
 
 export const Header = () => {
   const navigate = useNavigate();
-  const queryParams = new URLSearchParams(window.location.search);
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
-  const location = useLocation();
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
   const [caseNumber, setCaseNumber] = useState<string>(queryParams.get('caseNumber') ?? '');
@@ -50,13 +50,13 @@ export const Header = () => {
 
   function handleCaseNumberInputChange(caseNumber: string): void {
     setCaseNumber(caseNumber);
-    navigate(`/search?caseNumber=${caseNumber}`);
+    navigate(`/search?caseNumber=${caseNumber}`, { state: { caseNumber: caseNumber } });
   }
 
   function handleCaseNumberInputButtonClick(): void {
     const caseNumberString = caseNumberInputRef.current?.getValue() ?? '';
     setCaseNumber(caseNumberString);
-    navigate(`/search?caseNumber=${caseNumberString}`);
+    navigate(`/search?caseNumber=${caseNumberString}`, { state: { caseNumber: caseNumber } });
   }
 
   return (
@@ -116,7 +116,7 @@ export const Header = () => {
               )}
             </ul>
             <section aria-label="Search by case number">
-              <form className="usa-search usa-search--small" role="search">
+              <div className="usa-search usa-search--small" role="search">
                 <label className="usa-sr-only" htmlFor="search-field">
                   Search
                 </label>
@@ -126,6 +126,7 @@ export const Header = () => {
                   data-testid="cams-global-search-field"
                   type="search"
                   name="search"
+                  allowEnterKey={true}
                   onChange={handleCaseNumberInputChange}
                   forwardedRef={caseNumberInputRef}
                   value={caseNumber}
@@ -138,7 +139,7 @@ export const Header = () => {
                 >
                   <img src="/search--white.svg" className="usa-search__submit-icon" alt="Search" />
                 </button>
-              </form>
+              </div>
             </section>
           </nav>
         </div>

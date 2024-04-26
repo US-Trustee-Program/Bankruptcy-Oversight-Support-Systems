@@ -68,22 +68,13 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
           </div>
         )}
         <input
+          {...props}
           className={`usa-input usa-tooltip ${props.className ?? ''}`}
-          id={props.id}
-          type={props.type}
-          name={props.name}
-          title={props.title}
           data-position={props.position ?? 'right'}
-          autoComplete={props.autocomplete}
           onChange={handleOnChange}
           data-testid={props.id}
           disabled={inputDisabled}
-          min={props.min}
-          max={props.max}
-          pattern={props.pattern}
-          inputMode={props.inputMode}
           value={inputValue}
-          required={props.required}
         />
       </div>
     </div>
