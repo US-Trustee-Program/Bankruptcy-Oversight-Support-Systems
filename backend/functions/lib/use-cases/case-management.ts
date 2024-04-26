@@ -66,6 +66,46 @@ export class CaseManagement {
     }
   }
 
+  async getCasesByCaseNumberPartial(
+    applicationContext: ApplicationContext,
+    caseNumberPartial: string,
+  ): Promise<CaseListDbResult> {
+    try {
+      let startingMonth = parseInt(process.env.STARTING_MONTH);
+      if (startingMonth > 0) {
+        startingMonth = 0 - startingMonth;
+      }
+      const cases = await this.casesGateway.getCasesByCaseNumberPartial(
+        applicationContext,
+        caseNumberPartial,
+      );
+
+      for (const bCase of cases) {
+        bCase.assignments = await this.getCaseAssigneeNames(applicationContext, bCase);
+      }
+
+      return {
+        success: true,
+        message: '',
+        count: cases?.length,
+        body: {
+          caseList: cases as CaseDetail[],
+        },
+      };
+    } catch (originalError) {
+      if (!(originalError instanceof CamsError)) {
+        throw new UnknownError(MODULE_NAME, {
+          message:
+            'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+          originalError,
+          status: 500,
+        });
+      } else {
+        throw originalError;
+      }
+    }
+  }
+
   public async getCaseDetail(
     applicationContext: ApplicationContext,
     caseId: string,

@@ -1,5 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import { CasesController } from '../lib/adapters/controllers/cases.controller';
+import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import * as dotenv from 'dotenv';
@@ -26,11 +26,14 @@ const httpTrigger: AzureFunction = async function (
   try {
     let responseBody: CaseDetailsDbResult | CaseListDbResult;
 
-    if (casesRequest.params.caseId && casesRequest.params.caseId) {
+    if (casesRequest.method === 'GET' && casesRequest.params.caseId && casesRequest.params.caseId) {
       // return case details
       responseBody = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
+    } else if (casesRequest.method === 'POST' && casesRequest.body) {
+      // return search results
+      responseBody = await casesController.searchCases(casesRequest.body);
     } else {
       // return list of all chapter cases
       responseBody = await casesController.getCases();

@@ -279,6 +279,13 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
+  public async getCasesByCaseNumberPartial(
+    _applicationContext: ApplicationContext,
+    _caseId: string,
+  ): Promise<CaseSummary[]> {
+    throw new Error('Not yet implemented');
+  }
+
   async getCaseSummary(
     applicationContext: ApplicationContext,
     caseId: string,
