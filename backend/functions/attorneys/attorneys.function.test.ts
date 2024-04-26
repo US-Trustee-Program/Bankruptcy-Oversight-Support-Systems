@@ -3,7 +3,7 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 const context = require('azure-function-context-mock');
 import httpTrigger from './attorneys.function';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
-import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
+import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import { CamsError } from '../lib/common-errors/cams-error';
 
 describe('Attorneys Azure Function tests', () => {

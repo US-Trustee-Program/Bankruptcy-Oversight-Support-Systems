@@ -1,6 +1,6 @@
 import { describe } from 'node:test';
 import { CaseAssignmentController } from './case.assignment.controller';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { THROW_UNKNOWN_ERROR_CASE_ID } from '../../testing/testing-constants';
 
