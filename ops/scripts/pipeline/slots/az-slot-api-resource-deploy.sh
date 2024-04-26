@@ -13,7 +13,7 @@
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 sql_id_name=''
-is_ustp_deployment=
+is_ustp_deployment=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -93,15 +93,17 @@ echo "Setting deployment slot settings for storage account and cosmos database f
 
 databaseName=$database_name
 
-if [ -n "${is_ustp_deployment}" ]; then
+if [[  ${is_ustp_deployment} == true ]]; then
+# This logic is to be removed when we do E2E testing on the USTP side
+    echo "USTP Deployment..."
+else
     databaseName="$databaseName-e2e"
     if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
         databaseName="$databaseName-$branch_hash_id"
     fi
-else
-# This logic is to be removed when we do E2E testing on the USTP side
-    echo "USTP Deployment..."
 fi
+
+echo "Database Name :${databaseName}"
 
 az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
 
