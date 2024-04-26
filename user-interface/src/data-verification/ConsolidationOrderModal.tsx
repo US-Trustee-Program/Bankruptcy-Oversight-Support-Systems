@@ -1,4 +1,4 @@
-import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
+import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -25,6 +25,7 @@ import CamsSelect, {
 } from '@/lib/components/CamsSelect';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { Consolidation } from '@common/cams/events';
+import { validateCaseNumberInput } from '@/lib/components/CaseNumberInput';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';

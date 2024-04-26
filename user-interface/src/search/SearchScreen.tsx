@@ -7,6 +7,7 @@ import {
   TableRow,
   TableRowData,
 } from '@/lib/components/uswds/Table';
+import { useApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 
@@ -16,7 +17,16 @@ type SearchCaseTableProps = {
 
 export function SearchCaseTable(props: SearchCaseTableProps) {
   const { cases } = props;
+  const queryParams = new URLSearchParams(window.location.search);
+  const caseNumber = queryParams.get('caseNumber');
+  const api = useApi();
 
+  if (caseNumber) {
+    api
+      .get(`/cases/${caseNumber}`)
+      .then((_bCase) => {})
+      .catch((_reason) => {});
+  }
   // TODO: Unmock this.
   const offices = MockData.getOffices();
 
