@@ -74,7 +74,7 @@ param appServiceRuntime string = 'php'
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
 var linuxFxVersionMap = {
-  node: 'NODE|18'
+  node: 'NODE|20'
   php: 'PHP|8.2'
 }
 
