@@ -1,6 +1,6 @@
 import './App.scss';
 import { Routes, Route } from 'react-router-dom';
-import { Header } from './lib/components/uswds/Header';
+import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { reactPlugin } from './ApplicationInsightsService';
 import { useState } from 'react';

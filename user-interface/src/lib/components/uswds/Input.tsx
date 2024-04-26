@@ -1,30 +1,18 @@
 import './forms.scss';
-import { ChangeEventHandler, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 
 // Alias for readability.
 //const debounce = setTimeout;
 
-export interface InputProps {
-  id: string;
-  className?: string;
-  type?: string;
-  name?: string;
-  title?: string;
+export type InputProps = JSX.IntrinsicElements['input'] & {
   label?: string;
   autocomplete?: 'off';
   position?: 'left' | 'right';
-  onChange?: ChangeEventHandler<HTMLInputElement>;
-  disabled?: boolean;
-  min?: number;
-  max?: number;
-  pattern?: string;
   value?: string;
-  inputmode?: 'search' | 'text' | 'email' | 'tel' | 'url' | 'none' | 'numeric' | 'decimal';
-  required?: boolean;
   icon?: string;
-}
+};
 
 const BLANK = '';
 
@@ -34,6 +22,10 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputDisabled, setInputDisabled] = useState<boolean>(
     props.disabled !== undefined ? props.disabled : false,
   );
+
+  function getValue() {
+    return inputValue;
+  }
 
   function resetValue() {
     setInputValue(props.value || BLANK);
@@ -62,7 +54,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputValue(props.value || BLANK);
   }, [props.value]);
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, disable }));
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
 
   return (
     <div className="usa-form-group">
@@ -89,7 +81,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
           min={props.min}
           max={props.max}
           pattern={props.pattern}
-          inputMode={props.inputmode}
+          inputMode={props.inputMode}
           value={inputValue}
           required={props.required}
         />
