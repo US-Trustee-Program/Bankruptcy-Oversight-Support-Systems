@@ -45,15 +45,22 @@ export interface ApiClient {
 
 export interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<T>;
+  post<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<T>;
 }
 
 //This allows us to use generics and avoid typing using the "as" keyword to specify return types throughout the rest of the application
+// TODO: Need to better handle the reponse
 export function useGenericApi(): GenericApiClient {
   return {
     async get<T>(path: string, options?: ObjectKeyVal): Promise<T> {
       const response = await useApi().get(path, options);
       if (response.body) return response.body as T;
       throw new Error(`Data not returned from GET '${path}'.`);
+    },
+    async post<T>(path: string, body: object, options?: ObjectKeyVal): Promise<T> {
+      const response = await useApi().post(path, body, options);
+      if (response.body) return response.body as T;
+      throw new Error(`Data not returned from POST '${path}'.`);
     },
   };
 }

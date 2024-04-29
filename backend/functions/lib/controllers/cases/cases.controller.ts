@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseManagement } from '../../use-cases/case-management';
-import { CaseListDbResult } from '../../adapters/types/cases';
+import { CaseSummaryListDbResult } from '../../adapters/types/cases';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
@@ -22,8 +22,10 @@ export class CasesController {
     return await this.caseManagement.getCases(this.applicationContext);
   }
 
-  public async searchCases(requestQueryFilters: { caseNumber: string }): Promise<CaseListDbResult> {
-    return this.caseManagement.getCasesByCaseNumberPartial(
+  public async searchCases(requestQueryFilters: {
+    caseNumber: string;
+  }): Promise<CaseSummaryListDbResult> {
+    return this.caseManagement.getCasesByCaseNumber(
       this.applicationContext,
       requestQueryFilters.caseNumber,
     );

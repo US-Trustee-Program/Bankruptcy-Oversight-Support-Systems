@@ -5,7 +5,11 @@ import { applicationContextCreator } from '../lib/adapters/utils/application-con
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import { CaseDetailsDbResult, CaseListDbResult } from '../lib/adapters/types/cases';
+import {
+  CaseDetailsDbResult,
+  CaseListDbResult,
+  CaseSummaryListDbResult,
+} from '../lib/adapters/types/cases';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
 dotenv.config();
@@ -24,7 +28,7 @@ const httpTrigger: AzureFunction = async function (
 
   // Process request message
   try {
-    let responseBody: CaseDetailsDbResult | CaseListDbResult;
+    let responseBody: CaseDetailsDbResult | CaseListDbResult | CaseSummaryListDbResult;
 
     if (casesRequest.method === 'GET' && casesRequest.params.caseId && casesRequest.params.caseId) {
       // return case details

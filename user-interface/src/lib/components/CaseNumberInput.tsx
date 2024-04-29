@@ -1,6 +1,8 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
+
+const BLANK = '';
 
 export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
   const allowedCharsPattern = /[0-9]/g;
@@ -19,16 +21,36 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
 
 type CaseNumberInputProps = Omit<InputProps, 'onChange'> & {
   onChange: (caseNumber: string) => void;
-  forwardedRef: React.RefObject<InputRef>;
   allowEnterKey?: boolean;
 };
 
-function CaseNumberInputComponent(props: CaseNumberInputProps, _ref: React.Ref<InputRef>) {
+function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
   const [enteredCaseNumber, setEnteredCaseNumber] = useState<string>('');
+  const forwardedRef = useRef<InputRef>(null);
+
+  function getValue() {
+    return forwardedRef.current?.getValue();
+  }
+
+  function resetValue() {
+    return forwardedRef.current?.setValue(props.value || BLANK);
+  }
+
+  function clearValue() {
+    return forwardedRef.current?.clearValue();
+  }
+
+  function setValue(value: string) {
+    return forwardedRef.current?.setValue(value);
+  }
+
+  function disable(value: boolean) {
+    return forwardedRef.current?.disable(value);
+  }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
-    props.forwardedRef?.current?.setValue(joinedInput);
+    forwardedRef?.current?.setValue(joinedInput);
     if (caseNumber) {
       setEnteredCaseNumber(caseNumber);
       props.onChange(caseNumber);
@@ -43,10 +65,12 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, _ref: React.Ref<I
     }
   }
 
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
+
   return (
     <Input
       {...props}
-      ref={props.forwardedRef}
+      ref={forwardedRef}
       onChange={handleOnChange}
       onKeyDown={handleKeyDown}
     ></Input>

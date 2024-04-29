@@ -111,7 +111,7 @@ export type UswdsTableStyle =
 export type TableProps = PropsWithChildren &
   JSX.IntrinsicElements['table'] & {
     uswdsStyle?: UswdsTableStyle[];
-    scrollable?: boolean;
+    scrollable?: 'true';
     caption?: string;
   };
 

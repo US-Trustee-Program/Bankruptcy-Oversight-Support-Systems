@@ -1,15 +1,17 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import './Header.scss';
-import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from '../hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  CASE_SEARCH_ENABLED,
+  TRANSFER_ORDERS_ENABLED,
+} from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
-import { useEffect, useRef, useState } from 'react';
-import CaseNumberInput from './CaseNumberInput';
-import { InputRef } from '../type-declarations/input-fields';
+import { useEffect, useState } from 'react';
 
 export enum NavState {
   DEFAULT,
   CASES,
   DATA_VERIFICATION,
+  SEARCH,
 }
 
 function mapNavState(path: string) {
@@ -21,6 +23,8 @@ function mapNavState(path: string) {
       return NavState.CASES;
     case 'data-verification':
       return NavState.DATA_VERIFICATION;
+    case 'search':
+      return NavState.SEARCH;
     default:
       return NavState.DEFAULT;
   }
@@ -33,31 +37,16 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 export interface HeaderProps {}
 
 export const Header = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
+  const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
-  const [caseNumber, setCaseNumber] = useState<string>(queryParams.get('caseNumber') ?? '');
-
-  const caseNumberInputRef = useRef<InputRef>(null);
 
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
   }, [location]);
-
-  function handleCaseNumberInputChange(caseNumber: string): void {
-    setCaseNumber(caseNumber);
-    navigate(`/search?caseNumber=${caseNumber}`, { state: { caseNumber: caseNumber } });
-  }
-
-  function handleCaseNumberInputButtonClick(): void {
-    const caseNumberString = caseNumberInputRef.current?.getValue() ?? '';
-    setCaseNumber(caseNumberString);
-    navigate(`/search?caseNumber=${caseNumberString}`, { state: { caseNumber: caseNumber } });
-  }
 
   return (
     <>
@@ -114,33 +103,21 @@ export const Header = () => {
                   </NavLink>
                 </li>
               )}
+              {caseSearchFlag && (
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/search"
+                    data-testid="header-search-link"
+                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                    onClick={() => {
+                      return setActiveNav(NavState.SEARCH);
+                    }}
+                  >
+                    Case Search
+                  </NavLink>
+                </li>
+              )}
             </ul>
-            <section aria-label="Search by case number">
-              <div className="usa-search usa-search--small" role="search">
-                <label className="usa-sr-only" htmlFor="search-field">
-                  Search
-                </label>
-                <CaseNumberInput
-                  className="usa-input"
-                  id="cams-global-search-field"
-                  data-testid="cams-global-search-field"
-                  type="search"
-                  name="search"
-                  allowEnterKey={true}
-                  onChange={handleCaseNumberInputChange}
-                  forwardedRef={caseNumberInputRef}
-                  value={caseNumber}
-                  aria-label="search by case number"
-                />
-                <button
-                  className="usa-button"
-                  type="submit"
-                  onClick={handleCaseNumberInputButtonClick}
-                >
-                  <img src="/search--white.svg" className="usa-search__submit-icon" alt="Search" />
-                </button>
-              </div>
-            </section>
           </nav>
         </div>
       </header>

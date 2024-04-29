@@ -1,5 +1,5 @@
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import './SearchScreen.scss';
-import { CaseNumber } from '@/lib/components/CaseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import {
   Table,
@@ -9,11 +9,12 @@ import {
   TableRow,
   TableRowData,
 } from '@/lib/components/uswds/Table';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useRef, useState } from 'react';
+import { InputRef } from '@/lib/type-declarations/input-fields';
+import { CaseNumber } from '@/lib/components/CaseNumber';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 type AlertProps = {
   show: boolean;
@@ -24,75 +25,121 @@ type AlertProps = {
 type SearchScreenProps = object;
 
 export default function SearchScreen(_props: SearchScreenProps) {
-  const api = useApi();
-  const [caseNumber, setCaseNumber] = useState<string>('');
-  const location = useLocation();
+  const api = useGenericApi();
+  const [cases, setCases] = useState<CaseSummary[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [emptyResponse, setEmptyResponse] = useState<boolean>(false);
+  const [alertInfo, setAlertInfo] = useState<AlertProps>({ show: false, title: '', message: '' });
 
-  let error: AlertProps = { show: false, title: '', message: '' };
+  const caseNumberInputRef = useRef<InputRef>(null);
 
-  // TODO: Unmock this.
-  const cases = MockData.buildArray(MockData.getCaseSummary, 5);
-
-  function updateCaseNumber() {
-    const queryParams = new URLSearchParams(window.location.search);
-    const caseNumber = queryParams.get('caseNumber');
-    if (caseNumber) {
-      setCaseNumber(caseNumber);
-    } else {
-      error = {
+  function handleCaseNumberFilterUpdate(caseNumber: string): void {
+    if (caseNumber.length < 6) {
+      // display error alert indicating that at least 5 digits are neccessary.
+      setAlertInfo({
         show: true,
         title: 'Enter search terms',
-        message: 'Please provide a case number to perform a search',
-      };
+        message: 'Please provide at least 5 digits to search by case number',
+      });
+    } else {
+      setLoading(true);
+      if (caseNumber) {
+        api
+          .post<CaseSummary[]>(`/casesX`, { caseNumber })
+          .then((response) => {
+            if (response.length) {
+              setCases(response);
+              setEmptyResponse(false);
+            } else {
+              setCases([]);
+              setEmptyResponse(true);
+            }
+          })
+          .catch((_reason) => {
+            setCases([]);
+            setAlertInfo({
+              show: true,
+              title: 'Search Results Not Available',
+              message:
+                'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
+            });
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
     }
   }
-
-  if (caseNumber && caseNumber.length < 6) {
-    // display error alert indicating that at least 5 digits are neccessary.
-    error = {
-      show: true,
-      title: 'Enter search terms',
-      message: 'Please provide at least 5 digits to search by case number',
-    };
-  } else {
-    if (caseNumber) {
-      api
-        .get(`/cases/${caseNumber}`)
-        .then((_bCase) => {})
-        .catch((_reason) => {});
-    }
-  }
-
-  useEffect(() => {
-    updateCaseNumber();
-  }, [location.state]);
 
   return (
     <div className="search-screen" data-testid="search">
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
-          <h3>Search Results</h3>
+          <h1>Case Search</h1>
         </div>
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        <div className="grid-col-10">
-          {error.show ? (
+        <div className="grid-col-2">
+          <h4>Search Filters</h4>
+          <div className={`filter-and-search`} data-testid="filter-and-search-panel">
+            <div className="case-number-search form-field" data-testid="case-number-search">
+              <div className="usa-search usa-search--small">
+                <CaseNumberInput
+                  className="search-icon"
+                  id="basic-search-field"
+                  name="basic-search"
+                  label="Case Number"
+                  autoComplete="off"
+                  onChange={handleCaseNumberFilterUpdate}
+                  ref={caseNumberInputRef}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid-col-8">
+          <h3>Search Results</h3>
+          {loading && <LoadingSpinner caption="Searching..." />}
+          {!loading && !caseNumberInputRef.current?.getValue() && (
             <div className="search-alert">
               <Alert
-                message={error.message}
-                title={error.title}
+                message="Use the Search Filters to find cases."
+                title="Enter search terms"
                 type={UswdsAlertStyle.Info}
                 show={true}
                 slim={true}
                 inline={true}
               ></Alert>
             </div>
-          ) : (
-            <SearchCaseTable cases={cases}></SearchCaseTable>
           )}
+          {alertInfo.show && (
+            <div className="search-alert">
+              <Alert
+                message={alertInfo.message}
+                title={alertInfo.title}
+                type={UswdsAlertStyle.Error}
+                show={true}
+                slim={true}
+                inline={true}
+              ></Alert>
+            </div>
+          )}
+          {emptyResponse && (
+            <div className="search-alert">
+              <Alert
+                message="Modify your search criteria to include more cases."
+                title="No cases found"
+                type={UswdsAlertStyle.Info}
+                show={true}
+                slim={true}
+                inline={true}
+              ></Alert>
+            </div>
+          )}
+          {!loading && cases.length > 0 && <SearchCaseTable cases={cases}></SearchCaseTable>}
         </div>
         <div className="grid-col-1"></div>
       </div>
@@ -107,26 +154,20 @@ type SearchCaseTableProps = {
 export function SearchCaseTable(props: SearchCaseTableProps) {
   const { cases } = props;
 
-  // TODO: Unmock this.
-  const offices = MockData.getOffices();
-
   return (
-    <Table>
-      <TableHeader>
+    <Table className="case-list" scrollable="true" uswdsStyle={['striped']}>
+      <TableHeader className="case-headings">
         <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Case Number
+          Case Number (Division)
         </TableHeaderData>
         <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Court (Division)
-        </TableHeaderData>
-        <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Debtor(s)
+          Case Title (Debtor)
         </TableHeaderData>
         <TableHeaderData sortable={true} sort-direction={'ascending'}>
           Chapter
         </TableHeaderData>
         <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Filed Date
+          Case Filed
         </TableHeaderData>
       </TableHeader>
       <TableBody>
@@ -134,12 +175,9 @@ export function SearchCaseTable(props: SearchCaseTableProps) {
           return (
             <TableRow key={idx}>
               <TableRowData>
-                <CaseNumber caseId={bCase.caseId}></CaseNumber>
-              </TableRowData>
-              <TableRowData>
-                {bCase.courtDivisionName} (
-                {offices.find((office) => office.officeCode === bCase.officeCode)?.officeName ?? ''}
-                )
+                <span className="no-wrap">
+                  <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+                </span>
               </TableRowData>
               <TableRowData>{bCase.debtor.name}</TableRowData>
               <TableRowData>{bCase.chapter}</TableRowData>

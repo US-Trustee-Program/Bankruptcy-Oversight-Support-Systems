@@ -1,5 +1,7 @@
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
+import { CaseManagement } from '../../use-cases/case-management';
 import { CasesController } from './cases.controller';
 
 const context = require('azure-function-context-mock');
@@ -13,16 +15,8 @@ const expectedListResult = {
   count: 2,
   body: {
     caseList: [
-      {
-        caseId: caseId2,
-        caseTitle: 'Crawford, Turner and Garrett',
-        dateFiled: '2011-05-20',
-      },
-      {
-        caseId: caseId1,
-        caseTitle: 'Ali-Cruz',
-        dateFiled: '2014-04-23',
-      },
+      MockData.getCaseDetail({ override: { caseId: caseId1 } }),
+      MockData.getCaseDetail({ override: { caseId: caseId2 } }),
     ],
   },
 };
@@ -31,36 +25,18 @@ const expectedDetailResult = {
   success: true,
   message: '',
   body: {
-    caseDetails: {
-      caseId: caseId1,
-      caseTitle: 'Crawford, Turner and Garrett',
-      dateFiled: '2011-05-20',
-      dateClosed: '2011-06-21',
-      assignments: [],
-    },
+    caseDetails: MockData.getCaseDetail({ override: { caseId: caseId1 } }),
   },
 };
-
-jest.mock('../../use-cases/case-management', () => {
-  return {
-    CaseManagement: jest.fn().mockImplementation(() => {
-      return {
-        getCaseDetail: () => {
-          return Promise.resolve(expectedDetailResult);
-        },
-        getCases: () => {
-          return Promise.resolve(expectedListResult);
-        },
-      };
-    }),
-  };
-});
 
 describe('cases controller test', () => {
   let applicationContext: ApplicationContext;
   let controller: CasesController;
 
   beforeAll(async () => {
+    jest.spyOn(CaseManagement.prototype, 'getCaseDetail').mockResolvedValue(expectedDetailResult);
+    jest.spyOn(CaseManagement.prototype, 'getCases').mockResolvedValue(expectedListResult);
+
     applicationContext = await applicationContextCreator(context);
     controller = new CasesController(applicationContext);
   });
@@ -85,15 +61,36 @@ describe('cases controller test', () => {
         success: true,
         message: '',
         count: 0,
-        body: {
-          caseList: [],
-        },
+        body: [],
       };
-      const actual = await controller.searchCases({ caseNumber: '12-12345' });
+      jest.spyOn(CaseManagement.prototype, 'getCasesByCaseNumber').mockResolvedValue(expected);
+
+      const actual = await controller.searchCases({ caseNumber: '00-00000' });
       expect(actual).toEqual(expected);
     });
 
-    test.skip('should return search results for a caseNumber', async () => {});
-    test.skip('should return an error if an error is encountered', async () => {});
+    test('should return search results for a caseNumber', async () => {
+      const caseNumber = '00-00000';
+      const expected = {
+        success: true,
+        message: '',
+        count: 0,
+        body: [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })],
+      };
+
+      jest.spyOn(CaseManagement.prototype, 'getCasesByCaseNumber').mockResolvedValue(expected);
+
+      const actual = await controller.searchCases({ caseNumber });
+      expect(actual).toEqual(expected);
+    });
+
+    test('should return an error if an error is encountered', async () => {
+      const caseNumber = '00-00000';
+      jest
+        .spyOn(CaseManagement.prototype, 'getCasesByCaseNumber')
+        .mockRejectedValue(new Error('some error'));
+
+      await expect(controller.searchCases({ caseNumber })).rejects.toThrow('some error');
+    });
   });
 });

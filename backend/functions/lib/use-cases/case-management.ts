@@ -1,5 +1,9 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseDetailsDbResult, CaseListDbResult } from '../adapters/types/cases';
+import {
+  CaseDetailsDbResult,
+  CaseListDbResult,
+  CaseSummaryListDbResult,
+} from '../adapters/types/cases';
 import { CaseDetail } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
@@ -47,7 +51,7 @@ export class CaseManagement {
       return {
         success: true,
         message: '',
-        count: cases?.length,
+        count: cases.length,
         body: {
           caseList: cases as CaseDetail[],
         },
@@ -66,31 +70,18 @@ export class CaseManagement {
     }
   }
 
-  async getCasesByCaseNumberPartial(
+  public async getCasesByCaseNumber(
     applicationContext: ApplicationContext,
-    caseNumberPartial: string,
-  ): Promise<CaseListDbResult> {
+    caseNumber: string,
+  ): Promise<CaseSummaryListDbResult> {
     try {
-      let startingMonth = parseInt(process.env.STARTING_MONTH);
-      if (startingMonth > 0) {
-        startingMonth = 0 - startingMonth;
-      }
-      const cases = await this.casesGateway.getCasesByCaseNumberPartial(
-        applicationContext,
-        caseNumberPartial,
-      );
-
-      for (const bCase of cases) {
-        bCase.assignments = await this.getCaseAssigneeNames(applicationContext, bCase);
-      }
+      const cases = await this.casesGateway.getCasesByCaseNumber(applicationContext, caseNumber);
 
       return {
         success: true,
         message: '',
-        count: cases?.length,
-        body: {
-          caseList: cases as CaseDetail[],
-        },
+        count: cases.length,
+        body: cases,
       };
     } catch (originalError) {
       if (!(originalError instanceof CamsError)) {

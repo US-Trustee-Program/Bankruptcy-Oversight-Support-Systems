@@ -279,11 +279,77 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
-  public async getCasesByCaseNumberPartial(
-    _applicationContext: ApplicationContext,
-    _caseId: string,
+  public async getCasesByCaseNumber(
+    applicationContext: ApplicationContext,
+    caseNumber: string,
   ): Promise<CaseSummary[]> {
-    throw new Error('Not yet implemented');
+    const input: DbTableFieldSpec[] = [];
+    input.push({
+      name: 'caseNumber',
+      type: mssql.VarChar,
+      value: caseNumber,
+    });
+
+    const CASE_SEARCH_QUERY = `
+      SELECT
+      cs.CS_DIV as courtDivisionCode,
+      cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+      cs.CS_SHORT_TITLE as caseTitle,
+      FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+      cs.CS_CASEID as dxtrId,
+      cs.CS_CHAPTER as chapter,
+      cs.COURT_ID as courtId,
+      court.COURT_NAME as courtName,
+      office.OFFICE_NAME as courtDivisionName,
+      TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
+      TRIM(CONCAT(
+        PY_FIRST_NAME,
+        ' ',
+        PY_MIDDLE_NAME,
+        ' ',
+        PY_LAST_NAME,
+        ' ',
+        PY_GENERATION
+      )) as partyName,
+      grp_des.REGION_ID as regionId,
+      R.REGION_NAME AS regionName,
+      substring(tx.REC,108,2) AS petitionCode,
+      substring(tx.REC,34,2) AS debtorTypeCode
+      FROM [dbo].[AO_CS] AS cs
+      JOIN [dbo].[AO_GRP_DES] AS grp_des
+        ON cs.GRP_DES = grp_des.GRP_DES
+      JOIN [dbo].[AO_COURT] AS court
+        ON cs.COURT_ID = court.COURT_ID
+      JOIN [dbo].[AO_CS_DIV] AS cs_div
+        ON cs.CS_DIV = cs_div.CS_DIV
+      JOIN [dbo].[AO_OFFICE] AS office
+        ON cs.COURT_ID = office.COURT_ID
+        AND cs_div.OFFICE_CODE = office.OFFICE_CODE
+      JOIN [dbo].[AO_PY] AS party
+        ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
+      JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
+      JOIN [dbo].[AO_TX] AS tx ON tx.CS_CASEID=cs.CS_CASEID AND tx.COURT_ID=cs.COURT_ID AND tx.TX_TYPE='1' AND tx.TX_CODE='1'
+      WHERE cs.CASE_ID = @caseNumber
+      ORDER BY cs.CS_DATE_FILED DESC`;
+
+    const queryResult: QueryResults = await executeQuery(
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
+      CASE_SEARCH_QUERY,
+      input,
+    );
+
+    if (queryResult.success) {
+      const foundCases = this.casesQueryCallback(applicationContext, queryResult);
+      for (const sCase of foundCases) {
+        sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
+        sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
+        sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
+      }
+      return foundCases;
+    } else {
+      throw new CamsError(MODULENAME, { message: queryResult.message });
+    }
   }
 
   async getCaseSummary(
