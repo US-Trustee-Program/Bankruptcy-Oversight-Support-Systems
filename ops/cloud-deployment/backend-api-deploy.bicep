@@ -267,6 +267,7 @@ module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
     functionApp
   ]
 }
+
 module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
   if (createAlerts) {
     name: '${functionName}-healthcheck-alert-rule-module'
@@ -310,6 +311,7 @@ var userAssignedIdentities = union(
   },
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
+
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionName
   location: location
@@ -330,6 +332,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     sqlIdentity
   ]
 }
+
 var applicationSettings = concat(
   [
     {
@@ -350,6 +353,7 @@ var applicationSettings = concat(
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
     : []
 )
+
 var ipSecurityRestrictionsRules = concat(
   [
     {
@@ -372,6 +376,7 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
+
 resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: functionApp
   name: 'web'
@@ -402,6 +407,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     appSettings: applicationSettings
   }
 }
+
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
 module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' =
   if (createSqlServerVnetRule) {
@@ -419,6 +425,7 @@ var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'i
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
+
 module sqlManagedIdentity './lib/identity/managed-identity.bicep' =
   if (createSqlServerVnetRule) {
     scope: resourceGroup(sqlIdentityRG)
@@ -428,6 +435,7 @@ module sqlManagedIdentity './lib/identity/managed-identity.bicep' =
       location: location
     }
   }
+
 resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: sqlIdentityName
   scope: resourceGroup(sqlIdentityRG)
