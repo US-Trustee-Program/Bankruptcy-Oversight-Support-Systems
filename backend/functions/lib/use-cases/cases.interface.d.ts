@@ -10,9 +10,9 @@ export interface CasesInterface {
     options: { startingMonth?: number },
   ): Promise<CaseDetail[]>;
 
-  getCasesByCaseNumberPartial(
+  getCasesByCaseNumber(
     applicationContext: ApplicationContext,
-    caseId: string,
+    caseNumber: string,
   ): Promise<CaseSummary[]>;
 
   getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary>;

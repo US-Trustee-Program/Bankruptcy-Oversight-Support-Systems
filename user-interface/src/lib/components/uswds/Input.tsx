@@ -8,7 +8,7 @@ import Icon from './Icon';
 
 export type InputProps = JSX.IntrinsicElements['input'] & {
   label?: string;
-  autocomplete?: 'off';
+  autoComplete?: 'off';
   position?: 'left' | 'right';
   value?: string;
   icon?: string;
