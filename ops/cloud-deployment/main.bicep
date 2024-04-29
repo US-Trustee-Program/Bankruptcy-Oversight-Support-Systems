@@ -100,6 +100,10 @@ param camsReactSelectHash string
 @secure()
 param idKeyvaultAppConfiguration string
 
+@description('Name of the managed identity with read/write access to CosmosDB')
+@secure()
+param cosmosIdentityName string
+
 //TODO: break out ActionGroup and Alerts into their own bicep
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createActionGroup) {
@@ -216,6 +220,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+      cosmosIdentityName: cosmosIdentityName
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
     }
   }

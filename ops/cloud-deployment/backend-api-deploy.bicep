@@ -134,8 +134,16 @@ param createAlerts bool
 @secure()
 param idKeyvaultAppConfiguration string
 
+@description('Name of the managed identity with read/write access to CosmosDB')
+@secure()
+param cosmosIdentityName string
+
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
+  scope: resourceGroup(kvAppConfigResourceGroupName)
+}
+resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: cosmosIdentityName
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
@@ -298,6 +306,7 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
+    '${cosmosIdentity.id}': {}
   },
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
