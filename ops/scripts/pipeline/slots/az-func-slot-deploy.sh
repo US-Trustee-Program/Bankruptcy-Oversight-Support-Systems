@@ -61,8 +61,7 @@ rule_name="agent-${app_name:0:26}" # rule name has a 32 character limit
 
 function on_exit() {
     # always try to remove temporary access
-    config_cmd="az functionapp config access-restriction remove -g ${app_rg} -n ${app_name} --slot ${slot_name} --rule-name ${rule_name} --scm-site true 1>/dev/null"
-    eval "${config_cmd}"
+    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
 
 }
 trap on_exit EXIT
