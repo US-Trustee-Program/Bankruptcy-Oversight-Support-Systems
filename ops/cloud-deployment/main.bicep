@@ -19,7 +19,7 @@ param webappName string = '${appName}-webapp'
 param webappResourceGroupName string
 param webappSubnetName string = 'snet-${webappName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
-param webappPrivateEndpointSubnetName string = 'snet-${webappName}-pep'
+param webappPrivateEndpointSubnetName string = 'snet-${appName}-pep'
 param webappPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
 param webappPlanName string = 'plan-${webappName}'
 @description('Plan type to determine webapp service plan Sku')
@@ -36,8 +36,8 @@ param apiName string = '${appName}-node-api'
 param apiFunctionsResourceGroupName string
 param apiFunctionsSubnetName string = 'snet-${apiName}'
 param apiFunctionsSubnetAddressPrefix string = '10.10.12.0/28'
-param apiPrivateEndpointSubnetName string = 'snet-${apiName}-pep'
-param apiPrivateEndpointSubnetAddressPrefix string = '10.10.13.0/28'
+param apiPrivateEndpointSubnetName string = 'snet-${appName}-pep'
+param apiPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
 param apiPlanName string = 'plan-${apiName}'
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
@@ -48,6 +48,8 @@ param apiPlanName string = 'plan-${apiName}'
 param apiPlanType string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneResourceGroup string = resourceGroup().name
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
@@ -61,7 +63,6 @@ param sqlServerResourceGroupName string = ''
 param sqlServerIdentityName string = ''
 @description('Resource group name for managed identity of database server')
 param sqlServerIdentityResourceGroupName string = ''
-
 
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
@@ -99,63 +100,80 @@ param camsReactSelectHash string
 @secure()
 param idKeyvaultAppConfiguration string
 
-module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' = if (createActionGroup) {
-  name: '${actionGroupName}-action-group-module'
-  scope: resourceGroup(analyticsResourceGroupName)
-  params: {
-    actionGroupName: actionGroupName
+//TODO: break out ActionGroup and Alerts into their own bicep
+module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
+  if (createActionGroup) {
+    name: '${actionGroupName}-action-group-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      actionGroupName: actionGroupName
+    }
   }
-}
-module targetVnet './lib/network/vnet.bicep' = if (deployVnet && createVnet) {
-  name: '${appName}-vnet-module'
+module targetVnet './lib/network/vnet.bicep' =
+  if (deployVnet && createVnet) {
+    name: '${appName}-vnet-module'
+    scope: resourceGroup(networkResourceGroupName)
+    params: {
+      vnetName: virtualNetworkName
+      vnetAddressPrefix: vnetAddressPrefix
+      location: location
+    }
+  }
+
+resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
+  name: virtualNetworkName
   scope: resourceGroup(networkResourceGroupName)
-  params: {
-    vnetName: virtualNetworkName
-    vnetAddressPrefix: vnetAddressPrefix
-    location: location
+}
+
+module ustpNetwork './lib/network/private-dns-zones.bicep' ={
+    name: '${appName}-network-module'
+    scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
+    params: {
+      stackName: appName
+      virtualNetworkId: ustpVirtualNetwork.id
+      linkVnetIds: linkVnetIds
+      privateDnsZoneName: privateDnsZoneName
+      deployNetwork: deployNetwork
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
   }
 }
 
-module ustpNetwork './lib/network/private-dns-zones.bicep' = if (deployNetwork) {
-  name: '${appName}-network-module'
-  scope: resourceGroup(networkResourceGroupName)
-  params: {
-    stackName: appName
-    virtualNetworkName: virtualNetworkName
-    linkVnetIds: linkVnetIds
-    privateDnsZoneName: privateDnsZoneName
-  }
-}
 
-module ustpWebapp 'frontend-webapp-deploy.bicep' = if (deployWebapp) {
-  name: '${appName}-webapp-module'
-  scope: resourceGroup(webappResourceGroupName)
-  params: {
-    deployAppInsights: deployAppInsights
-    analyticsWorkspaceId: analyticsWorkspaceId
-    planName: webappPlanName
-    planType: webappPlanType
-    webappName: webappName
-    location: location
-    privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
-    virtualNetworkName: ustpNetwork.outputs.virtualNetworkName
-    virtualNetworkResourceGroupName: networkResourceGroupName
-    webappSubnetName: webappSubnetName
-    webappSubnetAddressPrefix: webappSubnetAddressPrefix
-    webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
-    webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
-    allowVeracodeScan: allowVeracodeScan
-    createAlerts: createAlerts
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: analyticsResourceGroupName
-    targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix} ${apiName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
-    ustpIssueCollectorHash: ustpIssueCollectorHash
-    camsReactSelectHash: camsReactSelectHash
+module ustpWebapp 'frontend-webapp-deploy.bicep' =
+  if (deployWebapp) {
+    name: '${appName}-webapp-module'
+    scope: resourceGroup(webappResourceGroupName)
+    params: {
+      deployAppInsights: deployAppInsights
+      analyticsWorkspaceId: analyticsWorkspaceId
+      planName: webappPlanName
+      planType: webappPlanType
+      webappName: webappName
+      location: location
+      privateDnsZoneName: privateDnsZoneName
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      privateDnsZoneId: ustpNetwork.outputs.privateDnsZoneId
+      virtualNetworkName: virtualNetworkName
+      virtualNetworkResourceGroupName: networkResourceGroupName
+      webappSubnetName: webappSubnetName
+      webappSubnetAddressPrefix: webappSubnetAddressPrefix
+      webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
+      webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
+      allowVeracodeScan: allowVeracodeScan
+      createAlerts: createAlerts
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: analyticsResourceGroupName
+      targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix} ${apiName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
+      ustpIssueCollectorHash: ustpIssueCollectorHash
+      camsReactSelectHash: camsReactSelectHash
+    }
   }
-}
 
 var funcParams = [
-  {// Define api node function resources
+  {
+    // Define api node function resources
     planName: apiPlanName
     planType: apiPlanType
     functionName: apiName
@@ -166,41 +184,42 @@ var funcParams = [
     privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
   }
 ]
-module ustpFunctions 'backend-api-deploy.bicep' = [for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
-  name: '${appName}-function-module-${i}'
-  scope: resourceGroup(apiFunctionsResourceGroupName)
-  params: {
-    deployAppInsights: deployAppInsights
-    analyticsWorkspaceId: analyticsWorkspaceId
-    location: location
-    planName: funcParams[i].planName
-    functionName: funcParams[i].functionName
-    functionsRuntime: funcParams[i].functionsRuntime
-    virtualNetworkName: virtualNetworkName
-    virtualNetworkResourceGroupName: networkResourceGroupName
-    functionSubnetName: funcParams[i].functionSubnetName
-    functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
-    privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
-    privateDnsZoneName: ustpNetwork.outputs.privateDnsZoneName
-    databaseConnectionString: databaseConnectionString
-    sqlServerName: sqlServerName
-    sqlServerResourceGroupName: sqlServerResourceGroupName
-    sqlServerIdentityName: sqlServerIdentityName
-    sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-    corsAllowOrigins: [ 'https://${ustpWebapp.outputs.webappUrl}' ]
-    allowVeracodeScan: allowVeracodeScan
-    createAlerts: createAlerts
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: analyticsResourceGroupName
-    idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
-    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+module ustpFunctions 'backend-api-deploy.bicep' = [
+  for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
+    name: '${appName}-function-module-${i}'
+    scope: resourceGroup(apiFunctionsResourceGroupName)
+    params: {
+      deployAppInsights: deployAppInsights
+      analyticsWorkspaceId: analyticsWorkspaceId
+      location: location
+      planName: funcParams[i].planName
+      functionName: funcParams[i].functionName
+      functionsRuntime: funcParams[i].functionsRuntime
+      virtualNetworkName: virtualNetworkName
+      virtualNetworkResourceGroupName: networkResourceGroupName
+      functionSubnetName: funcParams[i].functionSubnetName
+      functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
+      privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
+      privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
+      privateDnsZoneName: privateDnsZoneName
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      privateDnsZoneId: ustpNetwork.outputs.privateDnsZoneId
+      databaseConnectionString: databaseConnectionString
+      sqlServerName: sqlServerName
+      sqlServerResourceGroupName: sqlServerResourceGroupName
+      sqlServerIdentityName: sqlServerIdentityName
+      sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+      corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
+      allowVeracodeScan: allowVeracodeScan
+      createAlerts: createAlerts
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: analyticsResourceGroupName
+      idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+      kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    }
   }
-  dependsOn: [
-    ustpWebapp
-  ]
-}]
-
+]
 
 // main.bicep outputs
 

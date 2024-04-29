@@ -11,7 +11,7 @@ param planName string
 ])
 param planType string = 'P1v2'
 
-var premiumPlans = [ 'P1v2' ]
+var premiumPlans = ['P1v2']
 var isPremiumPlanType = contains(premiumPlans, planType)
 var planTypeToSkuMap = {
   P1v2: {
@@ -42,6 +42,14 @@ param webappName string
 
 @description('Private DNS Zone used for application')
 param privateDnsZoneName string
+
+@description('Resource group of target Private DNS Zone')
+param privateDnsZoneResourceGroup string = resourceGroup().name
+
+@description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
+param privateDnsZoneId string = ''
 
 @description('Existing virtual network name')
 param virtualNetworkName string
@@ -167,53 +175,58 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     location: location
     virtualNetworkName: virtualNetworkName
     privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    privatDnsZoneId: privateDnsZoneId
     privateEndpointSubnetName: webappPrivateEndpointSubnetName
     privateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
     privateLinkServiceId: webapp.id
   }
 }
 
-module appInsights './lib/app-insights/app-insights.bicep' = if (deployAppInsights) {
-  name: '${webappName}-application-insights-module'
-  params: {
-    location: location
-    kind: 'web'
-    appInsightsName: 'appi-${webappName}'
-    applicationType: 'web'
-    workspaceResourceId: analyticsWorkspaceId
+module appInsights './lib/app-insights/app-insights.bicep' =
+  if (deployAppInsights) {
+    name: '${webappName}-application-insights-module'
+    params: {
+      location: location
+      kind: 'web'
+      appInsightsName: 'appi-${webappName}'
+      applicationType: 'web'
+      workspaceResourceId: analyticsWorkspaceId
+    }
   }
-}
-module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${webappName}-healthcheck-alert-rule-module'
-  params: {
-    alertName: '${webappName}-health-check-alert'
-    appId: webapp.id
-    timeAggregation: 'Average'
-    operator: 'LessThan'
-    targetResourceType: 'Microsoft.Web/sites'
-    metricName: 'HealthCheckStatus'
-    severity: 2
-    threshold: 100
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: actionGroupResourceGroupName
-
+module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
+  if (createAlerts) {
+    name: '${webappName}-healthcheck-alert-rule-module'
+    params: {
+      alertName: '${webappName}-health-check-alert'
+      appId: webapp.id
+      timeAggregation: 'Average'
+      operator: 'LessThan'
+      targetResourceType: 'Microsoft.Web/sites'
+      metricName: 'HealthCheckStatus'
+      severity: 2
+      threshold: 100
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: actionGroupResourceGroupName
+    }
   }
-}
-module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${webappName}-http-error-alert-rule-module'
-  params: {
-    alertName: '${webappName}-http-error-alert'
-    appId: webapp.id
-    timeAggregation: 'Total'
-    operator: 'GreaterThanOrEqual'
-    targetResourceType: 'Microsoft.Web/sites'
-    metricName: 'Http5xx'
-    severity: 1
-    threshold: 1
-    actionGroupName: actionGroupName
-    actionGroupResourceGroupName: actionGroupResourceGroupName
+module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
+  if (createAlerts) {
+    name: '${webappName}-http-error-alert-rule-module'
+    params: {
+      alertName: '${webappName}-http-error-alert'
+      appId: webapp.id
+      timeAggregation: 'Total'
+      operator: 'GreaterThanOrEqual'
+      targetResourceType: 'Microsoft.Web/sites'
+      metricName: 'Http5xx'
+      severity: 1
+      threshold: 1
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: actionGroupResourceGroupName
+    }
   }
-}
 module diagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep' = {
   name: '${webappName}-diagnostic-settings-module'
   params: {
@@ -240,7 +253,8 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     virtualNetworkSubnetId: webappSubnet.outputs.subnetId
   }
 }
-var applicationSettings = concat([
+var applicationSettings = concat(
+  [
     {
       name: 'CSP_API_SERVER_HOST'
       value: targetApiServerHost
@@ -258,36 +272,47 @@ var applicationSettings = concat([
       value: '$uri'
     }
   ],
-  deployAppInsights ? [
-    {
-      name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
-      value: '~2'
-    }
-    {
-      name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-      value: appInsights.outputs.connectionString
-    }
-  ] : []
+  deployAppInsights
+    ? [
+        {
+          name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+          value: '~2'
+        }
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.outputs.connectionString
+        }
+      ]
+    : []
 )
 
-var ipSecurityRestrictionsRules = concat([ {
+var ipSecurityRestrictionsRules = concat(
+  [
+    {
       ipAddress: 'Any'
       action: 'Deny'
       priority: 2147483647
       name: 'Deny all'
       description: 'Deny all access'
-    } ],
-  allowVeracodeScan ? [ {
-      ipAddress: '3.32.105.199/32'
-      action: 'Allow'
-      priority: 1000
-      name: 'Veracode Agent'
-      description: 'Allow Veracode DAST Scans'
-    } ] : [])
+    }
+  ],
+  allowVeracodeScan
+    ? [
+        {
+          ipAddress: '3.32.105.199/32'
+          action: 'Allow'
+          priority: 1000
+          name: 'Veracode Agent'
+          description: 'Allow Veracode DAST Scans'
+        }
+      ]
+    : []
+)
 resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: webapp
   name: 'web'
-  properties: union({
+  properties: union(
+    {
       appSettings: applicationSettings
       numberOfWorkers: 1
       alwaysOn: true
@@ -323,7 +348,9 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
       ]
       linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
       appCommandLine: appCommandLine
-    }, isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {})
+    },
+    isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
+  )
 }
 
 output webappName string = webapp.name

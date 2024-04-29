@@ -13,6 +13,7 @@ vnet_name=
 subnet_name=
 network_resource_group=
 private_dns_zone=privatelink.azurewebsites.us
+private_dns_zone_id=
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -48,6 +49,11 @@ while [[ $# -gt 0 ]]; do
 
     --dns-zone)
         private_dns_zone="${2}"
+        shift 2
+        ;;
+
+    --dns-zone-id)
+        private_dns_zone_id="${2}"
         shift 2
         ;;
 
@@ -101,5 +107,5 @@ az network private-endpoint dns-zone-group create \
     --resource-group "${network_resource_group}" \
     --endpoint-name pep-stg-"${app_name}" \
     --name zone-group \
-    --private-dns-zone "${private_dns_zone}" \
-    --zone-name webapp
+    --private-dns-zone "${private_dns_zone_id}" \
+    --zone-name "${private_dns_zone}"
