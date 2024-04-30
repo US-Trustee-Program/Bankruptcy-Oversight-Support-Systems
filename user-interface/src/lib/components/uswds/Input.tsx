@@ -14,11 +14,9 @@ export type InputProps = JSX.IntrinsicElements['input'] & {
   icon?: string;
 };
 
-const BLANK = '';
-
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string>(props.value || BLANK);
+  const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
   function getValue() {
@@ -26,11 +24,11 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   }
 
   function resetValue() {
-    setInputValue(props.value || BLANK);
+    setInputValue(props.value || '');
   }
 
   function clearValue() {
-    setInputValue(BLANK);
+    setInputValue('');
   }
 
   function setValue(value: string) {
@@ -49,7 +47,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   }
 
   useEffect(() => {
-    setInputValue(props.value || BLANK);
+    setInputValue(props.value || '');
   }, [props.value]);
 
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
