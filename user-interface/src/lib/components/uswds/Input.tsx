@@ -19,9 +19,7 @@ const BLANK = '';
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string>(props.value || BLANK);
-  const [inputDisabled, setInputDisabled] = useState<boolean>(
-    props.disabled !== undefined ? props.disabled : false,
-  );
+  const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
   function getValue() {
     return inputValue;
