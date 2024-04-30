@@ -10,7 +10,7 @@ describe('Header', () => {
     'case-search-enabled': true,
   });
 
-  test('should be rendered', async () => {
+  function renderWithoutProps() {
     render(
       <React.StrictMode>
         <BrowserRouter>
@@ -18,6 +18,18 @@ describe('Header', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+  }
+
+  function renderWithHistory(url: string) {
+    render(
+      <MemoryRouter initialEntries={[url]}>
+        <Header />
+      </MemoryRouter>,
+    );
+  }
+
+  test('should be rendered', async () => {
+    renderWithoutProps();
     const mainTitle = await screen.findByText('U.S. Trustee Program');
     const subTitle = await screen.findByText('CAse Management System (CAMS)');
     const caseMenu = await screen.findByTestId('header-cases-link');
@@ -36,11 +48,7 @@ describe('Header', () => {
   test.each(highlightTestCases)(
     'should highlight the %s link',
     async (_caseName: string, url: string, linkTestId: string) => {
-      render(
-        <MemoryRouter initialEntries={[url]}>
-          <Header />
-        </MemoryRouter>,
-      );
+      renderWithHistory(url);
 
       const link = await screen.findByTestId(linkTestId);
       expect(link).toBeInTheDocument();
@@ -54,13 +62,7 @@ describe('Header', () => {
   );
 
   test('should not highlight any link when URL is /gibberish', async () => {
-    const badUrl = '/gibberish';
-
-    render(
-      <MemoryRouter initialEntries={[badUrl]}>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithHistory('/gibberish');
 
     const current = document.querySelectorAll('.usa-current .current');
     expect(current).toHaveLength(0);
@@ -72,13 +74,7 @@ describe('Header', () => {
     ['header-search-link'],
   ];
   test.each(linkTestIds)('should activate %s link when clicked', async (linkTestId: string) => {
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <Header />
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
+    renderWithoutProps();
 
     let linkToClick = await screen.findByTestId(linkTestId);
     fireEvent.click(linkToClick);
