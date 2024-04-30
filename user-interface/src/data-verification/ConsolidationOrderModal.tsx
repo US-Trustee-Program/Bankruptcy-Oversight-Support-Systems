@@ -236,7 +236,6 @@ function ConsolidationOrderModalComponent(
   }
 
   async function handleLeadCaseInputChange(caseNumber?: string) {
-    //leadCaseNumberRef.current?.setValue(joinedInput);
     if (caseNumber) {
       setLeadCaseNumber(caseNumber);
     } else {

@@ -49,7 +49,9 @@ export interface GenericApiClient {
 }
 
 //This allows us to use generics and avoid typing using the "as" keyword to specify return types throughout the rest of the application
-// TODO: Need to better handle the reponse
+// TODO: Need to better handle non-200 responses.
+// e.g. a 202 or 204 would result in an error.
+// We are also swallowing any meaningful error responses.
 export function useGenericApi(): GenericApiClient {
   return {
     async get<T>(path: string, options?: ObjectKeyVal): Promise<T> {
