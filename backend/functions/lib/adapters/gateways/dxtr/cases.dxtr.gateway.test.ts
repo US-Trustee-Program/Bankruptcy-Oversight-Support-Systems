@@ -781,14 +781,24 @@ describe('Test DXTR Gateway', () => {
 
     test('should return array of cases', async () => {
       const testCase = MockData.getCaseSummary();
-      const mockTestCaseSummaryResponse = {
+      const testParty = MockData.getParty();
+      const caseSummaryQueryResult = {
         success: true,
         results: {
           recordset: [testCase],
         },
         message: '',
       };
-      querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
+      const partyQueryResult = {
+        success: true,
+        results: {
+          recordset: [testParty],
+        },
+        message: '',
+      };
+      querySpy
+        .mockResolvedValueOnce(caseSummaryQueryResult)
+        .mockResolvedValueOnce(partyQueryResult);
 
       const actual = await testCasesDxtrGateway.getCasesByCaseNumber(
         applicationContext,
