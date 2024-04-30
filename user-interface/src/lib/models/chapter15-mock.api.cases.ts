@@ -247,4 +247,29 @@ export default class Chapter15MockApi extends Api {
     };
     return Promise.resolve(response);
   }
+
+  public static async post(path: string, data: object, _options?: ObjectKeyVal) {
+    let response: ResponseData;
+    if (path.match(/\/cases/)) {
+      const searchRequest = data as { caseNumber: string };
+      if (searchRequest.caseNumber === '99-99999') {
+        return Promise.reject(new Error('api error'));
+      } else if (searchRequest.caseNumber === '00-00000') {
+        response = {
+          message: '',
+          count: 1,
+          body: [MockData.getCaseSummary()],
+        };
+      } else {
+        response = {
+          message: '',
+          count: 0,
+          body: [],
+        };
+      }
+    } else {
+      return Promise.reject(new Error());
+    }
+    return Promise.resolve(response);
+  }
 }

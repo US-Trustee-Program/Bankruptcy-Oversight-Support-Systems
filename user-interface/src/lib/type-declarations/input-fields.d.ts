@@ -3,7 +3,7 @@ export interface InputRef {
   disable: (value: boolean) => void;
   clearValue: () => void;
   resetValue: () => void;
-  getValue: () => void;
+  getValue: () => string;
 }
 
 export interface RadioRef {
