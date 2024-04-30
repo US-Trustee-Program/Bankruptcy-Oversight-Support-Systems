@@ -33,41 +33,32 @@ export default function SearchScreen(_props: SearchScreenProps) {
 
   const caseNumberInputRef = useRef<InputRef>(null);
 
-  function handleCaseNumberFilterUpdate(caseNumber: string): void {
-    if (caseNumber.length < 6) {
-      // display error alert indicating that at least 5 digits are neccessary.
-      setAlertInfo({
-        show: true,
-        title: 'Enter search terms',
-        message: 'Please provide at least 5 digits to search by case number',
-      });
-    } else {
+  function handleCaseNumberFilterUpdate(caseNumber?: string): void {
+    if (caseNumber) {
       setLoading(true);
-      if (caseNumber) {
-        api
-          .post<CaseSummary[]>(`/casesX`, { caseNumber })
-          .then((response) => {
-            if (response.length) {
-              setCases(response);
-              setEmptyResponse(false);
-            } else {
-              setCases([]);
-              setEmptyResponse(true);
-            }
-          })
-          .catch((_reason) => {
+      api
+        .post<CaseSummary[]>(`/cases`, { caseNumber })
+        .then((response) => {
+          if (response.length) {
+            setCases(response);
+            setEmptyResponse(false);
+          } else {
             setCases([]);
-            setAlertInfo({
-              show: true,
-              title: 'Search Results Not Available',
-              message:
-                'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
-            });
-          })
-          .finally(() => {
-            setLoading(false);
+            setEmptyResponse(true);
+          }
+        })
+        .catch((_reason) => {
+          setCases([]);
+          setAlertInfo({
+            show: true,
+            title: 'Search Results Not Available',
+            message:
+              'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
           });
-      }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }
 
@@ -106,6 +97,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
           {!loading && !caseNumberInputRef.current?.getValue() && (
             <div className="search-alert">
               <Alert
+                id="default-state-alert"
                 message="Use the Search Filters to find cases."
                 title="Enter search terms"
                 type={UswdsAlertStyle.Info}
@@ -115,9 +107,10 @@ export default function SearchScreen(_props: SearchScreenProps) {
               ></Alert>
             </div>
           )}
-          {alertInfo.show && (
+          {!loading && alertInfo.show && (
             <div className="search-alert">
               <Alert
+                id="search-error-alert"
                 message={alertInfo.message}
                 title={alertInfo.title}
                 type={UswdsAlertStyle.Error}
@@ -130,6 +123,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
           {emptyResponse && (
             <div className="search-alert">
               <Alert
+                id="no-results-alert"
                 message="Modify your search criteria to include more cases."
                 title="No cases found"
                 type={UswdsAlertStyle.Info}
@@ -139,7 +133,9 @@ export default function SearchScreen(_props: SearchScreenProps) {
               ></Alert>
             </div>
           )}
-          {!loading && cases.length > 0 && <SearchCaseTable cases={cases}></SearchCaseTable>}
+          {!loading && cases.length > 0 && (
+            <SearchCaseTable id="search-results" cases={cases}></SearchCaseTable>
+          )}
         </div>
         <div className="grid-col-1"></div>
       </div>
@@ -148,15 +144,16 @@ export default function SearchScreen(_props: SearchScreenProps) {
 }
 
 type SearchCaseTableProps = {
+  id: string;
   cases: CaseSummary[];
 };
 
 export function SearchCaseTable(props: SearchCaseTableProps) {
-  const { cases } = props;
+  const { id, cases } = props;
 
   return (
-    <Table className="case-list" scrollable="true" uswdsStyle={['striped']}>
-      <TableHeader className="case-headings">
+    <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
+      <TableHeader id={id} className="case-headings">
         <TableHeaderData sortable={true} sort-direction={'ascending'}>
           Case Number (Division)
         </TableHeaderData>
@@ -170,7 +167,7 @@ export function SearchCaseTable(props: SearchCaseTableProps) {
           Case Filed
         </TableHeaderData>
       </TableHeader>
-      <TableBody>
+      <TableBody id={id}>
         {cases.map((bCase, idx) => {
           return (
             <TableRow key={idx}>

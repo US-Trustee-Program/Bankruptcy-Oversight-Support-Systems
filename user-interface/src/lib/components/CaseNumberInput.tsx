@@ -29,7 +29,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   const forwardedRef = useRef<InputRef>(null);
 
   function getValue() {
-    return forwardedRef.current?.getValue();
+    return forwardedRef.current?.getValue() ?? '';
   }
 
   function resetValue() {

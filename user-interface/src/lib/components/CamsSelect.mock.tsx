@@ -57,6 +57,10 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<I
     }
   }
 
+  function getValue(): string {
+    throw new Error('Not implemented');
+  }
+
   function disable(value: boolean) {
     setIsDisabled(value);
   }
@@ -65,6 +69,7 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<I
     return {
       clearValue,
       resetValue,
+      getValue,
       setValue,
       disable,
     };

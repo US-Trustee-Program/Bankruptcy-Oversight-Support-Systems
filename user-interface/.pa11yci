@@ -45,6 +45,18 @@
       ]
     },
     {
+      "url": "http://localhost:3000/search",
+      "actions": [
+        "wait for element .search-screen to be visible",
+        "set field [data-testid='basic-search-field'] to 00-00000",
+        "wait for element #search-results > table to be visible",
+        "set field [data-testid='basic-search-field'] to 11-00000",
+        "wait for element #no-results-alert to be visible",
+        "set field [data-testid='basic-search-field'] to 99-99999",
+        "wait for element #search-error-alert to be visible"
+      ]
+    },
+    {
       "url": "http://localhost:3000/data-verification/",
       "actions": [
         "wait for element [data-testid='data-verification-screen'] to be visible",

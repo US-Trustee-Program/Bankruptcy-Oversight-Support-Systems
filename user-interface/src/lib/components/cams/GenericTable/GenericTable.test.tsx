@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { GenericTable, GenericTableProps } from './GenericTable';
 import { CaseSummary } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -28,7 +28,6 @@ describe('GenericTable component', () => {
     };
 
     render(<GenericTable<CaseSummary> id="generic-table" {...args}></GenericTable>);
-    screen.debug();
   });
 
   test('should render a table with transformers', () => {

@@ -235,7 +235,7 @@ function ConsolidationOrderModalComponent(
     setConsolidationType(ev.target.value as ConsolidationType);
   }
 
-  async function handleLeadCaseInputChange(caseNumber: string) {
+  async function handleLeadCaseInputChange(caseNumber?: string) {
     //leadCaseNumberRef.current?.setValue(joinedInput);
     if (caseNumber) {
       setLeadCaseNumber(caseNumber);
@@ -444,7 +444,7 @@ function ConsolidationOrderModalComponent(
             aria-label="Lead case number"
             required={true}
             label="Lead Case Number"
-            forwardedRef={leadCaseNumberRef}
+            ref={leadCaseNumberRef}
           />
           {leadCaseNumberError ? (
             <Alert

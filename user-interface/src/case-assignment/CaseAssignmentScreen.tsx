@@ -7,7 +7,7 @@ import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useApi } from '@/lib/hooks/UseApi';
-import { AssignedCasesTable } from './AssignedCasesTable';
+import { AssignAttorneyCasesTable } from './AssignAttorneyCasesTable';
 
 const modalId = 'assign-attorney-modal';
 
@@ -183,7 +183,7 @@ export const CaseAssignment = () => {
               </div>
             )}
             {!isLoading && (
-              <AssignedCasesTable
+              <AssignAttorneyCasesTable
                 caseList={caseList}
                 modalId={modalId}
                 modalRef={modalRef}

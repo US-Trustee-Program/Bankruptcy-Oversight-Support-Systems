@@ -12,9 +12,9 @@ import { CaseNumber } from '../lib/components/CaseNumber';
 import { formatDate } from '../lib/utils/datetime';
 import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import { AssignAttorneyModalRef } from './AssignAttorneyModal';
-import './AssignedCasesTable.scss';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { GenericTable, GenericTableProps } from '@/lib/components/cams/GenericTable/GenericTable';
+import './AssignAttorneyCasesTable.scss';
 
 type AssignedCasesTableProps = {
   caseList: Chapter15Type[];
@@ -140,10 +140,10 @@ export function AssignedCasesTableX(props: AssignedCasesTableProps) {
   return <GenericTable<Chapter15Type> {...tableProps} />;
 }
 
-export function AssignedCasesTable(props: AssignedCasesTableProps) {
+export function AssignAttorneyCasesTable(props: AssignedCasesTableProps) {
   const { caseList, inTableTransferMode, modalId, modalRef } = props;
   return (
-    <Table className="case-list" scrollable={true} caption="Case List" uswdsStyle={['striped']}>
+    <Table className="case-list" scrollable="true" caption="Case List" uswdsStyle={['striped']}>
       <TableHeader className="case-headings">
         <TableHeaderData scope="col">Case Number</TableHeaderData>
         <TableHeaderData scope="col" data-testid="chapter-table-header">
@@ -221,28 +221,27 @@ export function AssignedCasesTable(props: AssignedCasesTableProps) {
                     </div>
                   </div>
                 )}
-                {!theCase.assignments ||
-                  (!theCase.assignments.length && (
-                    <div className="table-flex-container">
-                      <div className="attorney-list-container">(unassigned)</div>
-                      <div className="table-column-toolbar">
-                        <ToggleModalButton
-                          className="case-assignment-modal-toggle"
-                          buttonIndex={`${idx}`}
-                          toggleAction="open"
-                          toggleProps={{
-                            bCase: theCase,
-                          }}
-                          modalId={`${modalId}`}
-                          modalRef={modalRef}
-                          title="add assignments"
-                        >
-                          {}
-                          Assign
-                        </ToggleModalButton>
-                      </div>
+                {(!theCase.assignments || !theCase.assignments.length) && (
+                  <div className="table-flex-container">
+                    <div className="attorney-list-container">(unassigned)</div>
+                    <div className="table-column-toolbar">
+                      <ToggleModalButton
+                        className="case-assignment-modal-toggle"
+                        buttonIndex={`${idx}`}
+                        toggleAction="open"
+                        toggleProps={{
+                          bCase: theCase,
+                        }}
+                        modalId={`${modalId}`}
+                        modalRef={modalRef}
+                        title="add assignments"
+                      >
+                        {}
+                        Assign
+                      </ToggleModalButton>
                     </div>
-                  ))}
+                  </div>
+                )}
               </TableRowData>
             </TableRow>
           );
