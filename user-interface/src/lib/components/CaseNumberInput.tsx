@@ -2,8 +2,6 @@ import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-const BLANK = '';
-
 export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
   const allowedCharsPattern = /[0-9]/g;
   const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
@@ -33,7 +31,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   }
 
   function resetValue() {
-    return forwardedRef.current?.setValue(props.value || BLANK);
+    return forwardedRef.current?.setValue(props.value || '');
   }
 
   function clearValue() {

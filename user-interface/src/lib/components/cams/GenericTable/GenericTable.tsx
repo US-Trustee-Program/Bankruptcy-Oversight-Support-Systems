@@ -10,11 +10,6 @@ import {
 
 const defaultTransformer = (v: unknown) => v?.toString() ?? '';
 
-/**
- * name: Column name. Used to coorelate transformers applied to a given column.
- * content: Content to show in the table header element for the column.
- * property: Property from the domain object to pass to a transformer. Pass `@` to pass the entire domain object to the transformer.
- */
 type ColumnInfo<T> = {
   name: string;
   content: React.ReactNode;
