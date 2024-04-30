@@ -28,6 +28,20 @@ module privateEndpointSubnet 'subnet.bicep' = {
     subnetAddressPrefix: privateEndpointSubnetAddressPrefix
     subnetName: privateEndpointSubnetName
     virtualNetworkName: virtualNetworkName
+    subnetServiceEndpoints: [
+      {
+        service: 'Microsoft.Sql'
+        locations: [
+          location
+        ]
+      }
+      {
+        service: 'Microsoft.AzureCosmosDB'
+        locations: [
+          location
+        ]
+      }
+    ]
   }
 }
 
