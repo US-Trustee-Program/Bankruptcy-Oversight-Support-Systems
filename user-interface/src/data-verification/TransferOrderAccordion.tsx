@@ -193,7 +193,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     }
   }
 
-  function handleCaseInputChange(caseNumber: string) {
+  function handleCaseInputChange(caseNumber?: string) {
     if (caseNumber) {
       setNewCaseNumber(caseNumber);
     } else {
@@ -586,7 +586,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                             value={order.docketSuggestedCaseNumber}
                             onChange={handleCaseInputChange}
                             aria-label="New case ID"
-                            forwardedRef={caseNumberRef}
+                            ref={caseNumberRef}
                             disabled={true}
                             required={true}
                             label="New Case"
