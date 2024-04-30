@@ -248,6 +248,7 @@ export default class Chapter15MockApi extends Api {
     return Promise.resolve(response);
   }
 
+  // TODO: add handling of other uses of POST (e.g. case assignment creation)
   public static async post(path: string, data: object, _options?: ObjectKeyVal) {
     let response: ResponseData;
     if (path.match(/\/cases/)) {
