@@ -2,7 +2,7 @@ import './App.scss';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
-import { reactPlugin } from './ApplicationInsightsService';
+import { useAppInsights } from './lib/hooks/UseApplicationInsights';
 import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
@@ -19,6 +19,7 @@ const featureFlagConfig = getFeatureFlagConfiguration();
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
+  const { reactPlugin } = useAppInsights();
   const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();

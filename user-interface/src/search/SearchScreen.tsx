@@ -15,6 +15,8 @@ import { useRef, useState } from 'react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
+import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 type AlertProps = {
   show: boolean;
@@ -30,12 +32,17 @@ export default function SearchScreen(_props: SearchScreenProps) {
   const [loading, setLoading] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(false);
   const [alertInfo, setAlertInfo] = useState<AlertProps>({ show: false, title: '', message: '' });
+  const { reactPlugin } = useAppInsights();
+  const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
 
   const caseNumberInputRef = useRef<InputRef>(null);
 
   function handleCaseNumberFilterUpdate(caseNumber?: string): void {
     if (caseNumber) {
-      setLoading(true);
+      trackSearchEvent({
+        caseNumber,
+      });
+
       api
         .post<CaseSummary[]>(`/cases`, { caseNumber })
         .then((response) => {
@@ -154,24 +161,16 @@ export function SearchCaseTable(props: SearchCaseTableProps) {
   return (
     <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
       <TableHeader id={id} className="case-headings">
-        <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Case Number (Division)
-        </TableHeaderData>
-        <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Case Title (Debtor)
-        </TableHeaderData>
-        <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Chapter
-        </TableHeaderData>
-        <TableHeaderData sortable={true} sort-direction={'ascending'}>
-          Case Filed
-        </TableHeaderData>
+        <TableHeaderData>Case Number (Division)</TableHeaderData>
+        <TableHeaderData>Case Title (Debtor)</TableHeaderData>
+        <TableHeaderData>Chapter</TableHeaderData>
+        <TableHeaderData>Case Filed</TableHeaderData>
       </TableHeader>
       <TableBody id={id}>
         {cases.map((bCase, idx) => {
           return (
             <TableRow key={idx}>
-              <TableRowData>
+              <TableRowData dataSortValue={bCase.caseId}>
                 <span className="no-wrap">
                   <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
                 </span>
