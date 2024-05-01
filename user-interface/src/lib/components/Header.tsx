@@ -1,13 +1,17 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import './Header.scss';
-import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from '../../hooks/UseFeatureFlags';
-import { Banner } from './Banner';
+import useFeatureFlags, {
+  CASE_SEARCH_ENABLED,
+  TRANSFER_ORDERS_ENABLED,
+} from '../hooks/UseFeatureFlags';
+import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
 
 export enum NavState {
   DEFAULT,
   CASES,
   DATA_VERIFICATION,
+  SEARCH,
 }
 
 function mapNavState(path: string) {
@@ -19,6 +23,8 @@ function mapNavState(path: string) {
       return NavState.CASES;
     case 'data-verification':
       return NavState.DATA_VERIFICATION;
+    case 'search':
+      return NavState.SEARCH;
     default:
       return NavState.DEFAULT;
   }
@@ -31,9 +37,10 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 export interface HeaderProps {}
 
 export const Header = () => {
+  const location = useLocation();
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
-  const location = useLocation();
+  const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
@@ -93,6 +100,20 @@ export const Header = () => {
                     }}
                   >
                     Data Verification
+                  </NavLink>
+                </li>
+              )}
+              {caseSearchFlag && (
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/search"
+                    data-testid="header-search-link"
+                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                    onClick={() => {
+                      return setActiveNav(NavState.SEARCH);
+                    }}
+                  >
+                    Case Search
                   </NavLink>
                 </li>
               )}

@@ -31,6 +31,33 @@
         }
       }
     }
+    .cams-nav-bar {
+      a {
+        vertical-align: middle;
+        color: white;
+        font-weight: bold;
+        text-decoration: none;
+        padding-right: 15px;
+      }
+      a:hover {
+        color: colors.$gold;
+        text-decoration: underline;
+      }
+      .usa-current::after {
+        background-color: colors.$gold;
+      }
+
+      .usa-search {
+        .usa-form-group {
+          margin-top: 0;
+
+          .usa-input-group {
+            margin-top: 0;
+            height: 2rem;
+          }
+        }
+      }
+    }
   }
 
   .site-title {
@@ -50,21 +77,5 @@
     }
   }
 
-  .usa-nav.cams-nav-bar {
-    a {
-      vertical-align: middle;
-      color: white;
-      font-weight: bold;
-      text-decoration: none;
-      padding-right: 15px;
-    }
-    a:hover {
-      color: colors.$gold;
-      text-decoration: underline;
-    }
-    .usa-current::after {
-      background-color: colors.$gold;
-    }
-  }
 
 }

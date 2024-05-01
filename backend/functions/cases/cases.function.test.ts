@@ -6,7 +6,7 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import clearAllMocks = jest.clearAllMocks;
 const context = require('azure-function-context-mock');
 
-jest.mock('../lib/adapters/controllers/cases.controller', () => {
+jest.mock('../lib/controllers/cases/cases.controller', () => {
   return {
     CasesController: jest.fn().mockImplementation(() => {
       return {
@@ -29,6 +29,7 @@ describe('Mocking CasesController to get error handling', () => {
   test('error should be properly handled if casesController.getCases() throws an error', async () => {
     const request = {
       query: {},
+      method: 'GET',
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
@@ -43,6 +44,7 @@ describe('Mocking CasesController to get error handling', () => {
   test('should call httpError if a CamsError is caught getting a case', async () => {
     const request = {
       params: { caseId: '00000' },
+      method: 'GET',
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
@@ -57,6 +59,7 @@ describe('Mocking CasesController to get error handling', () => {
   test('should call httpError if a CamsError is caught getting all cases', async () => {
     const request = {
       params: {},
+      method: 'GET',
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');

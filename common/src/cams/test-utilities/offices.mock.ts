@@ -256,7 +256,7 @@ export const OFFICES: OfficeDetails[] = [
     officeCode: '1',
     state: 'DC',
     courtName: 'District of Columbia',
-    courtDivisionName: 'Washington, D.C."',
+    courtDivisionName: 'Washington, D.C.',
     regionId: '04',
     regionName: 'COLUMBIA',
   },

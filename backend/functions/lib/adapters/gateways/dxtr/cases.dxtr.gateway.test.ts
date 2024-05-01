@@ -17,6 +17,7 @@ const dxtrDatabaseName = 'some-database-name';
 
 describe('Test DXTR Gateway', () => {
   let applicationContext;
+  let testCasesDxtrGateway;
   const querySpy = jest.spyOn(database, 'executeQuery');
 
   beforeEach(async () => {
@@ -26,6 +27,8 @@ describe('Test DXTR Gateway', () => {
     });
     applicationContext = await applicationContextCreator(context);
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
+    testCasesDxtrGateway = new CasesDxtrGateway();
+
     querySpy.mockImplementation(jest.fn());
   });
 
@@ -44,7 +47,6 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockImplementation(async () => {
       return Promise.resolve(mockResults);
     });
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     await testCasesDxtrGateway.getCases(applicationContext, {});
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
@@ -80,7 +82,6 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockImplementation(async () => {
       return Promise.resolve(mockResults);
     });
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const startingMonth = -12;
     await testCasesDxtrGateway.getCases(applicationContext, {
       startingMonth,
@@ -113,7 +114,6 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockImplementation(async () => {
       return Promise.resolve(mockResults);
     });
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
     try {
       await testCasesDxtrGateway.getCases(applicationContext, {});
@@ -231,7 +231,6 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockQueryDebtorAttorney);
     });
 
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const actualResult = await testCasesDxtrGateway.getCaseDetail(
       applicationContext,
       testCase.caseId,
@@ -318,7 +317,6 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockDebtorTypeTransactionResults);
     });
 
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
       applicationContext,
       testCase.caseId,
@@ -345,10 +343,9 @@ describe('Test DXTR Gateway', () => {
       message: '',
       success: true,
     });
-    const gateway: CasesDxtrGateway = new CasesDxtrGateway();
-    await expect(gateway.getCaseSummary(applicationContext, '000-00-00000')).rejects.toThrow(
-      expectedError,
-    );
+    await expect(
+      testCasesDxtrGateway.getCaseSummary(applicationContext, '000-00-00000'),
+    ).rejects.toThrow(expectedError);
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {
@@ -425,7 +422,6 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockQueryDebtorAttorney);
     });
 
-    const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
     await testCasesDxtrGateway.getCaseDetail(applicationContext, '081-23-12345');
     // getCase
     expect(querySpy.mock.calls[0][3]).toEqual(
@@ -488,7 +484,6 @@ describe('Test DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
       await testCasesDxtrGateway.getCases(applicationContext, {});
       expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).toContain(`CS_CHAPTER = '${chapterNumber}'`);
@@ -518,7 +513,6 @@ describe('Test DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
       await testCasesDxtrGateway.getCases(applicationContext, {});
       expect(querySpy.mock.calls[0][2]).not.toContain('UNION ALL');
       expect(querySpy.mock.calls[0][2]).not.toContain("CS_CHAPTER = '12'");
@@ -534,8 +528,6 @@ describe('Test DXTR Gateway', () => {
         },
         message: '',
       };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
 
@@ -554,8 +546,6 @@ describe('Test DXTR Gateway', () => {
         },
         message: '',
       };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       expect(party).toEqual({
@@ -580,8 +570,6 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       expect(party).toEqual({
         name: 'John Q. Smith',
@@ -603,8 +591,6 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
       const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
         applicationContext,
         queryResult,
@@ -625,8 +611,6 @@ describe('Test DXTR Gateway', () => {
         },
         message: '',
       };
-
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
 
       const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
         applicationContext,
@@ -657,7 +641,6 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
       const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
         applicationContext,
         queryResult,
@@ -725,7 +708,6 @@ describe('Test DXTR Gateway', () => {
       querySpy.mockResolvedValueOnce(mockParties);
       querySpy.mockResolvedValueOnce(mockParties);
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
       const actual = await testCasesDxtrGateway.getSuggestedCases(
         applicationContext,
         testCase.caseId,
@@ -769,11 +751,75 @@ describe('Test DXTR Gateway', () => {
       querySpy.mockResolvedValueOnce(mockParties);
       querySpy.mockResolvedValueOnce(mockParties);
 
-      const testCasesDxtrGateway: CasesDxtrGateway = new CasesDxtrGateway();
-
       await expect(
         testCasesDxtrGateway.getSuggestedCases(applicationContext, testCase.caseId),
       ).rejects.toThrow(CamsError);
+    });
+  });
+
+  describe('getCasesByCaseNumber tests', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+    });
+
+    test('should return empty array', async () => {
+      const mockTestCaseSummaryResponse = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+      querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
+
+      const actual = await testCasesDxtrGateway.getCasesByCaseNumber(
+        applicationContext,
+        '00-00000',
+      );
+      expect(actual).toEqual([]);
+    });
+
+    test('should return array of cases', async () => {
+      const testCase = MockData.getCaseSummary();
+      const testParty = MockData.getParty();
+      const caseSummaryQueryResult = {
+        success: true,
+        results: {
+          recordset: [testCase],
+        },
+        message: '',
+      };
+      const partyQueryResult = {
+        success: true,
+        results: {
+          recordset: [testParty],
+        },
+        message: '',
+      };
+      querySpy
+        .mockResolvedValueOnce(caseSummaryQueryResult)
+        .mockResolvedValueOnce(partyQueryResult);
+
+      const actual = await testCasesDxtrGateway.getCasesByCaseNumber(
+        applicationContext,
+        '00-00000',
+      );
+
+      expect(actual).toEqual([testCase]);
+    });
+
+    test('should return an error', async () => {
+      const errorMessage = 'query failed';
+      const mockTestCaseSummaryResponse = {
+        success: false,
+        results: {},
+        message: errorMessage,
+      };
+      querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
+
+      await expect(
+        testCasesDxtrGateway.getCasesByCaseNumber(applicationContext, '00-00000'),
+      ).rejects.toThrow(errorMessage);
     });
   });
 });

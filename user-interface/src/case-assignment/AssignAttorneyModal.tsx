@@ -17,7 +17,7 @@ export interface ModalOpenProps {
   bCase: Chapter15Type | undefined;
 }
 
-export interface AssignAttorneyModalRefType {
+export interface AssignAttorneyModalRef {
   show: (showProps: ModalOpenProps | undefined) => void;
   hide: () => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
@@ -44,7 +44,7 @@ export interface CallBackProps {
 
 function AssignAttorneyModalComponent(
   props: AssignAttorneyModalProps,
-  ref: React.Ref<AssignAttorneyModalRefType>,
+  ref: React.Ref<AssignAttorneyModalRef>,
 ) {
   const [bCase, setBCase] = useState<Chapter15Type>({
     caseId: '',

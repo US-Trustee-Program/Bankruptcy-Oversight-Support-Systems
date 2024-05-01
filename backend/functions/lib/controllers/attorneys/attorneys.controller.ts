@@ -1,6 +1,6 @@
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../adapters/types/basic';
 import AttorneysList from '../../use-cases/attorneys';
-import { AttorneyListDbResult } from '../types/attorneys';
+import { AttorneyListDbResult } from '../../adapters/types/attorneys';
 
 const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
 
