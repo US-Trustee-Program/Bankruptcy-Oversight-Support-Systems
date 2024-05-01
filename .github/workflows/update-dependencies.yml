@@ -34,7 +34,7 @@ jobs:
           GIT_AUTHOR_EMAIL: ${{ steps.import-gpg.outputs.email }}
         run: |
           ./ops/scripts/utility/update-dependencies.sh -c
-          git push -u origin dependency-updates
+          git push -u origin dependency-updates-auto
 
       - name: Create PR
         env:
