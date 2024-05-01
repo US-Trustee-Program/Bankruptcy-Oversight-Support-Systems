@@ -2,25 +2,49 @@ import React, { forwardRef, PropsWithChildren } from 'react';
 
 type TableHeaderDataProps = PropsWithChildren &
   JSX.IntrinsicElements['th'] & {
+    title?: string;
     scope?: string;
     sortable?: boolean;
+    sortDirection?: TableSortDirection;
   };
 
 export function TableHeaderData(props: TableHeaderDataProps) {
-  const { children, scope, sortable, ...otherProperties } = props;
+  const { children, title, scope, sortable, sortDirection, ...otherProperties } = props;
   const role = scope && scope !== 'col' ? 'row' : 'columnheader';
+  const ariaSort = sortDirection == 'unsorted' ? undefined : sortDirection;
+
   return (
-    <th data-sortable={sortable} scope={scope} role={role} {...otherProperties}>
+    <th
+      data-sortable={sortable}
+      scope={scope}
+      role={role}
+      {...otherProperties}
+      aria-sort={ariaSort}
+    >
       {children}
+      {sortable && (
+        <TableRowSortButton
+          title={`Click to sort by ${title} in ${sortDirection} order.`}
+          direction={sortDirection}
+        />
+      )}
     </th>
   );
 }
 
-type TableRowDataProps = PropsWithChildren & JSX.IntrinsicElements['td'];
+type TableRowDataProps = PropsWithChildren &
+  JSX.IntrinsicElements['td'] & {
+    dataSortValue?: string;
+  };
 
+// TODO: if this is sorted we need to add data-sort-active="true"
 export function TableRowData(props: TableRowDataProps) {
-  const { children, ...otherProperties } = props;
-  return <td {...otherProperties}>{children}</td>;
+  const { children, dataSortValue, ...otherProperties } = props;
+  return (
+    <td data-sort-value={dataSortValue} {...otherProperties}>
+      {children}
+    </td>
+  );
 }
 
 type TableRowProps = PropsWithChildren & JSX.IntrinsicElements['tr'];

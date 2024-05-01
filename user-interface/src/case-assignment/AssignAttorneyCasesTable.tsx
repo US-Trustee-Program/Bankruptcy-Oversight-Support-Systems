@@ -153,14 +153,10 @@ export function AssignAttorneyCasesTable(props: AssignedCasesTableProps) {
         <TableHeaderData
           scope="col"
           sortable={true}
-          sort-direction={'descending'}
+          sortDirection={'descending'}
           aria-label="Filing Date, sortable column, currently sorted descending"
         >
           Filing Date
-          <TableRowSortButton
-            title="Click to sort by Filing Date in ascending order."
-            direction="descending"
-          />
         </TableHeaderData>
         <TableHeaderData scope="col">Assign Attorney</TableHeaderData>
       </TableHeader>
