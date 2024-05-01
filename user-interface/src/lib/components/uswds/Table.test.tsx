@@ -73,6 +73,55 @@ describe('TableHeaderData component', () => {
     const element = screen.getByTestId('test-element');
     expect(element).toHaveTextContent(expectedText);
   });
+
+  test('should have an aria-sort attribute of ascending if sorted ascending', () => {
+    render(
+      <TableHeaderData
+        data-testid="test-element"
+        sortable={true}
+        sortDirection="ascending"
+      ></TableHeaderData>,
+    );
+    const element = screen.getByTestId('test-element');
+    expect(element).toHaveAttribute('aria-sort', 'ascending');
+  });
+
+  test('should have an aria-sort attribute of descending if sorted descending', () => {
+    render(
+      <TableHeaderData
+        data-testid="test-element"
+        sortable={true}
+        sortDirection="descending"
+      ></TableHeaderData>,
+    );
+    const element = screen.getByTestId('test-element');
+    expect(element).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  test('should not have an aria-sort attribute if unsorted', () => {
+    render(
+      <TableHeaderData
+        data-testid="test-element"
+        sortable={true}
+        sortDirection="unsorted"
+      ></TableHeaderData>,
+    );
+    const element = screen.queryByTestId('test-element');
+    expect(element).not.toHaveAttribute('aria-sort');
+  });
+
+  test('should render with role attribute value "columnheader" by default', () => {
+    render(<TableHeaderData data-testid="test-element" />);
+    const element = screen.getByTestId('test-element');
+    expect(element).toHaveAttribute('role', 'columnheader');
+  });
+
+  test('should render with role attribute value "row" if scope = "row"', () => {
+    render(<TableHeaderData data-testid="test-element" scope="row" />);
+    const element = screen.getByTestId('test-element');
+    screen.debug(element);
+    expect(element).toHaveAttribute('role', 'row');
+  });
 });
 
 describe('TableHeader component', () => {
@@ -173,16 +222,49 @@ describe('Table component', () => {
     });
   });
 
+  test('should render the caption if title is passed to table', () => {
+    render(<Table data-testid="test-table" title="test caption"></Table>);
+
+    const table = screen.queryByTestId('test-table');
+    expect(table).toBeInTheDocument();
+    const caption = document.querySelector('caption');
+    expect(table).toContainElement(caption);
+    expect(caption).toHaveTextContent('test caption');
+  });
+
   describe('TableRowSortButton component', () => {
     // TODO: Implement expect statements in these tests.
     test('should render unsorted', () => {
       render(<TableRowSortButton direction="unsorted"></TableRowSortButton>);
+      const svg = document.querySelector('.usa-table__header__button > svg');
+      expect(svg).toBeInTheDocument();
+      expect(svg?.hasChildNodes).toBeTruthy();
+      expect(svg?.childNodes[0]).toHaveClass('unsorted');
     });
+
     test('should render ascending', () => {
       render(<TableRowSortButton direction="ascending"></TableRowSortButton>);
+      const svg = document.querySelector('.usa-table__header__button > svg');
+      expect(svg).toBeInTheDocument();
+      expect(svg).toHaveClass('usa-icon');
+      expect(svg?.hasChildNodes).toBeTruthy();
+      expect(svg?.childNodes[0]).toHaveClass('ascending');
     });
+
     test('should render descending', () => {
       render(<TableRowSortButton direction="descending"></TableRowSortButton>);
+      const svg = document.querySelector('.usa-table__header__button > svg');
+      expect(svg).toBeInTheDocument();
+      expect(svg).toHaveClass('usa-icon');
+      expect(svg?.hasChildNodes).toBeTruthy();
+      expect(svg?.childNodes[0]).toHaveClass('descending');
+    });
+
+    test('should render ascending if no direction is provided', () => {
+      render(<TableRowSortButton></TableRowSortButton>);
+      const svg = document.querySelector('.usa-table__header__button > svg');
+      expect(svg).toBeInTheDocument();
+      expect(svg?.childNodes[0]).toHaveClass('ascending');
     });
   });
 });
