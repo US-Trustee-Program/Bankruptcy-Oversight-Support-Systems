@@ -48,7 +48,7 @@ while getopts ":chru" option; do
       ;;
   esac
 done
-
+git config --list
 BRANCH_NAME="dependency-updates"
 
 if [[ -n "${CICD}" ]]; then
