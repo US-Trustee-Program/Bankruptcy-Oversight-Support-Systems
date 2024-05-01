@@ -35,7 +35,7 @@ jobs:
         run: |
           ./ops/scripts/utility/update-dependencies.sh -c
           git config --list
-          git push -u origin dependency-updates-auto
+          git push -u origin HEAD
 
       - name: Create PR
         env:
