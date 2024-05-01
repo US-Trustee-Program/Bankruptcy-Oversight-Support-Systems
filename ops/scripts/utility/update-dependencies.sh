@@ -48,7 +48,7 @@ while getopts ":chru" option; do
       ;;
   esac
 done
-git config --list
+
 BRANCH_NAME="dependency-updates"
 
 if [[ -n "${CICD}" ]]; then
@@ -72,8 +72,7 @@ else
 fi
 
 
-#PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
-PROJECTS=("common")
+PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
@@ -85,8 +84,6 @@ done
 
 git add .
 git commit -m "Update all npm projects"
-echo $?
-echo "Commit complete?"
 git push -u origin "${BRANCH_NAME}"
 
 if [[ -c "${CICD}" ]]; then
