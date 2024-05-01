@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import Input from '@/lib/components/uswds/Input';
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { OfficeDetails } from '@common/cams/courts';
 import {
   Chapter15CaseSummaryResponseData,
@@ -23,7 +23,7 @@ import ButtonGroup from '@/lib/components/uswds/ButtonGroup';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { TransferOrderAction } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
-import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
+import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { useApi } from '@/lib/hooks/UseApi';
 import CamsSelect, {
   CamsSelectOptionList,
@@ -193,10 +193,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     }
   }
 
-  function handleCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
-    caseNumberRef.current?.setValue(joinedInput);
-
+  function handleCaseInputChange(caseNumber?: string) {
     if (caseNumber) {
       setNewCaseNumber(caseNumber);
     } else {
@@ -582,7 +579,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
                       <div className="grid-col-1"></div>
                       <div className="grid-col-4">
                         <div>
-                          <Input
+                          <CaseNumberInput
                             id={`new-case-input-${order.id}`}
                             data-testid={`new-case-input-${order.id}`}
                             className="usa-input"

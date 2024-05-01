@@ -464,7 +464,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                             name="basic-search"
                             label="Find in Docket"
                             icon="search"
-                            autocomplete="off"
+                            autoComplete="off"
                             onChange={searchDocketText}
                             ref={findInDocketRef}
                           />
@@ -503,7 +503,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         <div className="usa-search usa-search--small">
                           <Input
                             pattern="^[0-9]*$"
-                            inputmode="numeric"
+                            inputMode="numeric"
                             title="Enter numbers only"
                             className="search-icon"
                             id="document-number-search-field"
@@ -511,7 +511,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                             name="search-by-document-number"
                             label="Go to Document Number"
                             icon="search"
-                            autocomplete="off"
+                            autoComplete="off"
                             onChange={searchDocumentNumber}
                             min={documentRange.first}
                             max={documentRange.last}

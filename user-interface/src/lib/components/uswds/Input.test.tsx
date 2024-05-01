@@ -10,7 +10,7 @@ describe('Tests for USWDS Input component.', () => {
   beforeEach(() => {
     render(
       <div>
-        <Input ref={ref} id="input-1" inputmode="numeric" value="1" onChange={youChangedMe}></Input>
+        <Input ref={ref} id="input-1" inputMode="numeric" value="1" onChange={youChangedMe}></Input>
       </div>,
     );
   });

@@ -1,11 +1,15 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import { CasesController } from '../lib/adapters/controllers/cases.controller';
+import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import { CaseDetailsDbResult, CaseListDbResult } from '../lib/adapters/types/cases';
+import {
+  CaseDetailsDbResult,
+  CaseListDbResult,
+  CaseSummaryListDbResult,
+} from '../lib/adapters/types/cases';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
 dotenv.config();
@@ -24,13 +28,16 @@ const httpTrigger: AzureFunction = async function (
 
   // Process request message
   try {
-    let responseBody: CaseDetailsDbResult | CaseListDbResult;
+    let responseBody: CaseDetailsDbResult | CaseListDbResult | CaseSummaryListDbResult;
 
-    if (casesRequest.params.caseId && casesRequest.params.caseId) {
+    if (casesRequest.method === 'GET' && casesRequest.params.caseId && casesRequest.params.caseId) {
       // return case details
       responseBody = await casesController.getCaseDetails({
         caseId: casesRequest.params.caseId,
       });
+    } else if (casesRequest.method === 'POST' && casesRequest.body) {
+      // return search results
+      responseBody = await casesController.searchCases(casesRequest.body);
     } else {
       // return list of all chapter cases
       responseBody = await casesController.getCases();

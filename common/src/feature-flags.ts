@@ -12,4 +12,5 @@ export const defaultFeatureFlags: FeatureFlagSet = {
   'chapter-eleven-enabled': true,
   'transfer-orders-enabled': true,
   'consolidations-enabled': true,
+  'case-search-enabled': true,
 };

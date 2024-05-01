@@ -4,6 +4,7 @@ import React from 'react';
 
 export interface AlertDetails {
   message: string;
+  title?: string;
   type: UswdsAlertStyle;
   timeOut: number;
 }

@@ -1,5 +1,9 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseDetailsDbResult, CaseListDbResult } from '../adapters/types/cases';
+import {
+  CaseDetailsDbResult,
+  CaseListDbResult,
+  CaseSummaryListDbResult,
+} from '../adapters/types/cases';
 import { CaseDetail } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
@@ -47,10 +51,37 @@ export class CaseManagement {
       return {
         success: true,
         message: '',
-        count: cases?.length,
+        count: cases.length,
         body: {
           caseList: cases as CaseDetail[],
         },
+      };
+    } catch (originalError) {
+      if (!(originalError instanceof CamsError)) {
+        throw new UnknownError(MODULE_NAME, {
+          message:
+            'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+          originalError,
+          status: 500,
+        });
+      } else {
+        throw originalError;
+      }
+    }
+  }
+
+  public async getCasesByCaseNumber(
+    applicationContext: ApplicationContext,
+    caseNumber: string,
+  ): Promise<CaseSummaryListDbResult> {
+    try {
+      const cases = await this.casesGateway.getCasesByCaseNumber(applicationContext, caseNumber);
+
+      return {
+        success: true,
+        message: '',
+        count: cases.length,
+        body: cases,
       };
     } catch (originalError) {
       if (!(originalError instanceof CamsError)) {

@@ -61,7 +61,7 @@ export interface Chapter15CaseDocketResponseData extends ResponseData {
 
 export interface Chapter15CaseListResponseData extends ResponseData {
   body: {
-    caseList: Array<object>;
+    caseList: Array<Chapter15Type>;
   };
 }
 
