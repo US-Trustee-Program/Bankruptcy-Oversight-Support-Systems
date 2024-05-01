@@ -39,10 +39,8 @@ export default function SearchScreen(_props: SearchScreenProps) {
 
   function handleCaseNumberFilterUpdate(caseNumber?: string): void {
     if (caseNumber) {
-      trackSearchEvent({
-        caseNumber,
-      });
-
+      trackSearchEvent({ caseNumber });
+      setLoading(true);
       api
         .post<CaseSummary[]>(`/cases`, { caseNumber })
         .then((response) => {
