@@ -1,8 +1,8 @@
 import './App.scss';
 import { Routes, Route } from 'react-router-dom';
-import { Header } from './lib/components/uswds/Header';
+import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
-import { reactPlugin } from './ApplicationInsightsService';
+import { useAppInsights } from './lib/hooks/UseApplicationInsights';
 import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
@@ -13,11 +13,13 @@ import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
+import SearchScreen from './search/SearchScreen';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
+  const { reactPlugin } = useAppInsights();
   const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();
@@ -49,6 +51,8 @@ function App() {
         <div className="body">
           <Routes>
             <Route path="/" element={<Home />}></Route>
+            <Route path="/search" element={<SearchScreen />}></Route>
+            <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (

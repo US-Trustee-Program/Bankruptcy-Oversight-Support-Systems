@@ -1,4 +1,4 @@
-import { CaseDetail } from '../../../../../common/src/cams/cases';
+import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
 
 export interface CaseListRecordSet {
   caseList: CaseDetail[];
@@ -10,6 +10,13 @@ export interface CaseListDbResult {
   message: string;
   count: number;
   body: CaseListRecordSet;
+}
+
+export interface CaseSummaryListDbResult {
+  success: boolean;
+  message: string;
+  count: number;
+  body: CaseSummary[];
 }
 
 export interface CaseDetailsDbResult {
