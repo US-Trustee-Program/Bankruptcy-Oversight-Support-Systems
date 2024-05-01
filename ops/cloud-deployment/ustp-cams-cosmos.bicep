@@ -92,7 +92,7 @@ module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
   params: {
     accountName: accountName
     principalId: cosmosDbUserManagedIdentity.outputs.principalId
-    roleDefinitionId: '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/bankruptcy-oversight-support-systems/providers/Microsoft.DocumentDB/databaseAccounts/cosmos-ustp-cams/sqlRoleDefinitions/00000000-0000-0000-0000-00000000000'
+    roleDefinitionId: '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/bankruptcy-oversight-support-systems/providers/Microsoft.DocumentDB/databaseAccounts/cosmos-ustp-cams/sqlRoleDefinitions/00000000-0000-0000-0000-00000000002'
   }
   dependsOn: [
     account
