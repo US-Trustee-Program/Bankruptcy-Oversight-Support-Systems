@@ -49,11 +49,11 @@ while getopts ":chru" option; do
   esac
 done
 
-BRANCH_NAME="dependency-updates-test"
+BRANCH_NAME="dependency-updates"
 
 if [[ -n "${CICD}" ]]; then
   BRANCH_NAME="dependency-updates-auto"
-  git checkout -b "${BRANCH_NAME}"
+  git switch -c "${BRANCH_NAME}"
 else
   CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
   if [[ -n $(git status -s) ]]; then
@@ -61,10 +61,10 @@ else
     git stash
   fi
   if [[ -z "${UPDATE}" ]]; then
-    git checkout main
+    git switch main
     git pull --rebase
     git branch -D "${BRANCH_NAME}"
-    git checkout -b "${BRANCH_NAME}"
+    git switch -c "${BRANCH_NAME}"
   else
     git checkout "${BRANCH_NAME}"
     git pull --rebase
@@ -91,7 +91,7 @@ if [[ -c "${CICD}" ]]; then
 fi
 
 if [[ -z "${REMAIN}" ]]; then
-  git checkout "$CURRENT_BRANCH"
+  git switch "$CURRENT_BRANCH"
   if [[ -n "${STASHED_CHANGE}" ]]; then
     git stash pop
   fi
