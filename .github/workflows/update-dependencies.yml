@@ -17,6 +17,7 @@ jobs:
           persist-credentials: false
 
       - name: Import GPG
+        id: import-gpg
         uses: crazy-max/ghaction-import-gpg@v6.1.0
         with:
           gpg_private_key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -31,6 +32,8 @@ jobs:
       - name: Create PR
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GIT_AUTHOR_NAME: ${{ secrets.BOT_USER_NAME }}
-          GIT_AUTHOR_EMAIL: ${{ secrets.BOT_EMAIL_ADDRESS }}
+          GIT_AUTHOR_NAME: ${{ steps.import-gpg.outputs.name }}
+          GIT_AUTHOR_EMAIL: ${{ steps.import-gpg.outputs.email }}
+          GIT_COMMITTER_NAME: ${{ steps.import-gpg.outputs.name }}
+          GIT_COMMITTER_EMAIL: ${{ steps.import-gpg.outputs.email }}
         run: gh pr create --title "Update NPM packages" --body-file .github/PULL_REQUEST_TEMPLATE/dependencies.md
