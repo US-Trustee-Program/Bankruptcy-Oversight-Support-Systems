@@ -1,5 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
+import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';

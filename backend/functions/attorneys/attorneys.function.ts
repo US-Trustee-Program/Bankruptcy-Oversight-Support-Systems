@@ -1,6 +1,6 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { AttorneysController } from '../lib/adapters/controllers/attorneys.controller';
+import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';

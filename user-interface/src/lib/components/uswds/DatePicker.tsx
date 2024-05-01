@@ -37,6 +37,10 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
     setDateValue(value);
   }
 
+  function getValue(): string {
+    throw new Error('Not implemented');
+  }
+
   function disable(value: boolean) {
     setIsDisabled(value);
   }
@@ -45,6 +49,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
     return {
       clearValue,
       resetValue,
+      getValue,
       setValue,
       disable,
     };

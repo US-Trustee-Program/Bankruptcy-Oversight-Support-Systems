@@ -1,6 +1,5 @@
-import { getOfficeList, validateCaseNumberInput } from '@/data-verification/dataVerificationHelper';
+import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
@@ -25,6 +24,7 @@ import CamsSelect, {
 } from '@/lib/components/CamsSelect';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { Consolidation } from '@common/cams/events';
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -235,9 +235,7 @@ function ConsolidationOrderModalComponent(
     setConsolidationType(ev.target.value as ConsolidationType);
   }
 
-  async function handleLeadCaseInputChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
-    leadCaseNumberRef.current?.setValue(joinedInput);
+  async function handleLeadCaseInputChange(caseNumber?: string) {
     if (caseNumber) {
       setLeadCaseNumber(caseNumber);
     } else {
@@ -437,7 +435,7 @@ function ConsolidationOrderModalComponent(
           />
         </div>
         <div className="lead-case-number-container">
-          <Input
+          <CaseNumberInput
             id={`lead-case-input-${props.id}`}
             data-testid={`lead-case-input-${props.id}`}
             className="usa-input"

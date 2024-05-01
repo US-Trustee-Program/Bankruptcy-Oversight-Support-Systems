@@ -1,5 +1,5 @@
 import { CaseAssignmentController } from './case.assignment.controller';
-import { applicationContextCreator } from '../utils/application-context-creator';
+import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';

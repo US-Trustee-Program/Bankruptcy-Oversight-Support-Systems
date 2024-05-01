@@ -58,6 +58,10 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
     endDateRef.current?.setValue(options.end ?? '');
   }
 
+  function getValue(): string {
+    throw new Error('Not implemented');
+  }
+
   function disable(value: boolean) {
     startDateRef.current?.disable(value);
     endDateRef.current?.disable(value);
@@ -69,6 +73,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
       resetValue,
       setValue,
       disable,
+      getValue,
     };
   });
 

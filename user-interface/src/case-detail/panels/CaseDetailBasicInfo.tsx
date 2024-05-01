@@ -7,7 +7,7 @@ import { CaseDetail } from '@common/cams/cases';
 import { consolidationType } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal, {
-  AssignAttorneyModalRefType,
+  AssignAttorneyModalRef,
   CallBackProps,
 } from '@/case-assignment/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
@@ -28,7 +28,7 @@ export interface CaseDetailBasicInfoProps {
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
   const { caseDetail, showReopenDate, attorneyList, onCaseAssignment } = props;
 
-  const assignmentModalRef = useRef<AssignAttorneyModalRefType>(null);
+  const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
 
   function sortTransfers(a: Transfer, b: Transfer) {
     return sortDatesReverse(a.orderDate, b.orderDate);
