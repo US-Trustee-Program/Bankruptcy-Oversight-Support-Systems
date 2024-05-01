@@ -15,7 +15,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BOT_PAT }}
+          username: ${{ secrets.BOT_GIT_USERNAME }}
 
       - name: Import GPG
         id: import-gpg
@@ -29,15 +30,12 @@ jobs:
 
       - name: Update
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
           GIT_AUTHOR_NAME: ${{ steps.import-gpg.outputs.name }}
           GIT_AUTHOR_EMAIL: ${{ steps.import-gpg.outputs.email }}
-        run: |
-          ./ops/scripts/utility/update-dependencies.sh -c
-          git config --list
-          git push -u origin HEAD
+        run: ./ops/scripts/utility/update-dependencies.sh -c
 
       - name: Create PR
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
         run: gh pr create --title "Update NPM packages" --body-file .github/PULL_REQUEST_TEMPLATE/dependencies.md

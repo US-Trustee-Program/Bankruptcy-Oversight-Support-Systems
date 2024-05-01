@@ -87,9 +87,7 @@ git add .
 git commit -m "Update all npm projects"
 echo $?
 echo "Commit complete?"
-if [[ -z "${CICD}" ]]; then
-  git push -u origin "${BRANCH_NAME}"
-fi
+git push -u origin "${BRANCH_NAME}"
 
 if [[ -c "${CICD}" ]]; then
   exit 0
