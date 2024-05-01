@@ -250,11 +250,8 @@ export default class Chapter15MockApi extends Api {
 
   // TODO: add handling of other uses of POST (e.g. case assignment creation)
   public static async post(path: string, data: object, _options?: ObjectKeyVal) {
-    console.log(path);
-    console.log(data);
     let response: ResponseData;
     if (path.match(/\/cases/)) {
-      console.log('world');
       const searchRequest = data as { caseNumber: string };
       const caseNumber = searchRequest.caseNumber;
       if (caseNumber === '99-99999') {
