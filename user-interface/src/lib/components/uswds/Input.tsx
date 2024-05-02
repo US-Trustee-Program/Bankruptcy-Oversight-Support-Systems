@@ -2,6 +2,7 @@ import './forms.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
+import Button, { UswdsButtonStyle } from './Button';
 
 // Alias for readability.
 //const debounce = setTimeout;
@@ -12,6 +13,7 @@ export type InputProps = JSX.IntrinsicElements['input'] & {
   position?: 'left' | 'right';
   value?: string;
   icon?: string;
+  includeClearButton?: boolean;
 };
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
@@ -58,7 +60,14 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
         {props.label}
       </label>
       <div className="usa-input-group">
-        {props.icon && (
+        {props.includeClearButton && (
+          <div className="usa-input-suffix" aria-hidden="true">
+            <Button uswdsStyle={UswdsButtonStyle.Unstyled} onClick={clearValue}>
+              <Icon name="close"></Icon>
+            </Button>
+          </div>
+        )}
+        {!props.includeClearButton && props.icon && (
           <div className="usa-input-prefix" aria-hidden="true">
             <Icon focusable={false} name={props.icon}></Icon>
           </div>
