@@ -38,6 +38,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
   const caseNumberInputRef = useRef<InputRef>(null);
 
   function handleCaseNumberFilterUpdate(caseNumber?: string): void {
+    setAlertInfo({ show: false, title: '', message: '' });
     if (caseNumber) {
       trackSearchEvent({ caseNumber });
       setLoading(true);
@@ -64,6 +65,9 @@ export default function SearchScreen(_props: SearchScreenProps) {
         .finally(() => {
           setLoading(false);
         });
+    } else {
+      setEmptyResponse(false);
+      setCases([]);
     }
   }
 
@@ -79,7 +83,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-2">
-          <h4>Search Filters</h4>
+          <h2>Filters</h2>
           <div className={`filter-and-search`} data-testid="filter-and-search-panel">
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
@@ -97,49 +101,54 @@ export default function SearchScreen(_props: SearchScreenProps) {
           </div>
         </div>
         <div className="grid-col-8">
-          <h3>Search Results</h3>
-          {loading && <LoadingSpinner caption="Searching..." />}
-          {!loading && !caseNumberInputRef.current?.getValue() && (
-            <div className="search-alert">
-              <Alert
-                id="default-state-alert"
-                message="Use the Search Filters to find cases."
-                title="Enter search terms"
-                type={UswdsAlertStyle.Info}
-                show={true}
-                slim={true}
-                inline={true}
-              ></Alert>
-            </div>
-          )}
-          {!loading && alertInfo.show && (
-            <div className="search-alert">
-              <Alert
-                id="search-error-alert"
-                message={alertInfo.message}
-                title={alertInfo.title}
-                type={UswdsAlertStyle.Error}
-                show={true}
-                slim={true}
-                inline={true}
-              ></Alert>
-            </div>
-          )}
-          {emptyResponse && (
-            <div className="search-alert">
-              <Alert
-                id="no-results-alert"
-                message="Modify your search criteria to include more cases."
-                title="No cases found"
-                type={UswdsAlertStyle.Info}
-                show={true}
-                slim={true}
-                inline={true}
-              ></Alert>
-            </div>
-          )}
-          {!loading && cases.length > 0 && (
-            <SearchCaseTable id="search-results" cases={cases}></SearchCaseTable>
+          <h2>Results</h2>
+          {loading ? (
+            <LoadingSpinner caption="Searching..." />
+          ) : (
+            <>
+              {!caseNumberInputRef.current?.getValue() && (
+                <div className="search-alert">
+                  <Alert
+                    id="default-state-alert"
+                    message="Use the Search Filters to find cases."
+                    title="Enter search terms"
+                    type={UswdsAlertStyle.Info}
+                    show={true}
+                    slim={true}
+                    inline={true}
+                  ></Alert>
+                </div>
+              )}
+              {alertInfo.show && (
+                <div className="search-alert">
+                  <Alert
+                    id="search-error-alert"
+                    message={alertInfo.message}
+                    title={alertInfo.title}
+                    type={UswdsAlertStyle.Error}
+                    show={true}
+                    slim={true}
+                    inline={true}
+                  ></Alert>
+                </div>
+              )}
+              {emptyResponse && (
+                <div className="search-alert">
+                  <Alert
+                    id="no-results-alert"
+                    message="Modify your search criteria to include more cases."
+                    title="No cases found"
+                    type={UswdsAlertStyle.Info}
+                    show={true}
+                    slim={true}
+                    inline={true}
+                  ></Alert>
+                </div>
+              )}
+              {cases.length > 0 && (
+                <SearchCaseTable id="search-results" cases={cases}></SearchCaseTable>
+              )}
+            </>
           )}
         </div>
         <div className="grid-col-1"></div>
@@ -159,10 +168,10 @@ export function SearchCaseTable(props: SearchCaseTableProps) {
   return (
     <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
       <TableHeader id={id} className="case-headings">
-        <TableHeaderData>Case Number (Division)</TableHeaderData>
-        <TableHeaderData>Case Title (Debtor)</TableHeaderData>
-        <TableHeaderData>Chapter</TableHeaderData>
-        <TableHeaderData>Case Filed</TableHeaderData>
+        <TableHeaderData className="grid-col-3">Case Number (Division)</TableHeaderData>
+        <TableHeaderData className="grid-col-6">Case Title</TableHeaderData>
+        <TableHeaderData className="grid-col-1">Chapter</TableHeaderData>
+        <TableHeaderData className="grid-col-2">Case Filed</TableHeaderData>
       </TableHeader>
       <TableBody id={id}>
         {cases.map((bCase, idx) => {
@@ -173,7 +182,7 @@ export function SearchCaseTable(props: SearchCaseTableProps) {
                   <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
                 </span>
               </TableRowData>
-              <TableRowData>{bCase.debtor.name}</TableRowData>
+              <TableRowData>{bCase.caseTitle}</TableRowData>
               <TableRowData>{bCase.chapter}</TableRowData>
               <TableRowData>{bCase.dateFiled}</TableRowData>
             </TableRow>
