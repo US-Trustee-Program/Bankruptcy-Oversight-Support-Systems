@@ -21,6 +21,15 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
+  const { includeClearButton, ...otherProps } = props;
+
+  function emitChange(value: string) {
+    if (props.onChange) {
+      const ev = { target: { value } } as React.ChangeEvent<HTMLInputElement>;
+      props.onChange(ev);
+    }
+  }
+
   function getValue() {
     return inputValue;
   }
@@ -31,6 +40,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
 
   function clearValue() {
     setInputValue('');
+    emitChange('');
   }
 
   function setValue(value: string) {
@@ -60,20 +70,20 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
         {props.label}
       </label>
       <div className="usa-input-group">
-        {props.includeClearButton && (
+        {includeClearButton && (
           <div className="usa-input-suffix" aria-hidden="true">
             <Button uswdsStyle={UswdsButtonStyle.Unstyled} onClick={clearValue}>
               <Icon name="close"></Icon>
             </Button>
           </div>
         )}
-        {!props.includeClearButton && props.icon && (
+        {!includeClearButton && props.icon && (
           <div className="usa-input-prefix" aria-hidden="true">
             <Icon focusable={false} name={props.icon}></Icon>
           </div>
         )}
         <input
-          {...props}
+          {...otherProps}
           className={`usa-input usa-tooltip ${props.className ?? ''}`}
           data-position={props.position ?? 'right'}
           onChange={handleOnChange}

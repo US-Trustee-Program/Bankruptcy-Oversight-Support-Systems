@@ -44,14 +44,14 @@ describe('Tests for USWDS Input component.', () => {
     });
   });
 
-  test('Should call props.onChange when a change is made to input by keypress, but not by ref.', async () => {
+  test('Should call props.onChange when a change is made to input by keypress or by ref.', async () => {
     const inputEl = screen.getByTestId('input-1');
 
     ref.current?.setValue('2');
     await waitFor(() => {
       expect(inputEl).toHaveValue('2');
     });
-    expect(youChangedMe).not.toHaveBeenCalled();
+    expect(youChangedMe).toHaveBeenCalled();
 
     fireEvent.change(inputEl, { target: { value: '5' } });
     await waitFor(() => {
