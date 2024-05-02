@@ -9,7 +9,7 @@ param databaseName string
 param databaseContainers array = [] // See parameters.json file
 
 @description('Allowed subnet resource id')
-param allowedSubnet array = []
+param allowedSubnet string = ''
 
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string = ''
@@ -33,7 +33,7 @@ module account './lib/cosmos/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
-    allowedSubnets: allowedSubnet
+    allowedSubnets: [allowedSubnet]
     allowAllNetworks: allowAllNetworks
   }
 }
