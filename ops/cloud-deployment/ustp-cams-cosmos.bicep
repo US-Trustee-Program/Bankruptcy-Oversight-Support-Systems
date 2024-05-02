@@ -18,10 +18,10 @@ param analyticsWorkspaceId string = ''
 param allowAllNetworks bool = false
 
 @description('Action Group Name for alerts')
-param actionGroupName string = ''
+param actionGroupName string
 
 @description('Action Group Resource Group Name for alerts')
-param actionGroupResourceGroupName string = ''
+param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
@@ -64,15 +64,15 @@ module containers './lib/cosmos/cosmos-containers.bicep' = {
 }
 
 // Role definition for read and write access
-// module customReadWriteRole './lib/cosmos/cosmos-custom-role.bicep' = {
-//   name: '${accountName}-cosmos-roles-module'
-//   params: {
-//     accountName: accountName
-//   }
-//   dependsOn: [
-//     account
-//   ]
-// }
+module customReadWriteRole './lib/cosmos/cosmos-custom-role.bicep' = {
+  name: '${accountName}-cosmos-roles-module'
+  params: {
+    accountName: accountName
+  }
+  dependsOn: [
+    account
+  ]
+}
 
 // Identity to access CosmosDb
 module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
@@ -92,11 +92,11 @@ module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
   params: {
     accountName: accountName
     principalId: cosmosDbUserManagedIdentity.outputs.principalId
-    roleDefinitionId: '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/bankruptcy-oversight-support-systems/providers/Microsoft.DocumentDB/databaseAccounts/cosmos-ustp-cams/sqlRoleDefinitions/00000000-0000-0000-0000-00000000002'
+    roleDefinitionId: customReadWriteRole.outputs.roleDefinitionId
   }
   dependsOn: [
     account
-    // customReadWriteRole
+    customReadWriteRole
     cosmosDbUserManagedIdentity
   ]
 }
