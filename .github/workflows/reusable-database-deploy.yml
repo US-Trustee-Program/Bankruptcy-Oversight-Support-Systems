@@ -57,7 +57,7 @@ jobs:
             --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
             --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --environmentName ${{ inputs.ghaEnvironment }} \
-            --allowedSubnet "${allowedSubnet}" \
+            --allowedSubnet "[${allowedSubnet}]" \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
