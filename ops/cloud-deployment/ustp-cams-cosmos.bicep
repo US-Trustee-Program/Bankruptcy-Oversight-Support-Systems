@@ -18,10 +18,10 @@ param analyticsWorkspaceId string = ''
 param allowAllNetworks bool = false
 
 @description('Action Group Name for alerts')
-param actionGroupName string
+param actionGroupName string = ''
 
 @description('Action Group Resource Group Name for alerts')
-param actionGroupResourceGroupName string
+param actionGroupResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
