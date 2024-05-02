@@ -51,7 +51,7 @@ jobs:
         id: azure-db-deploy
         run: |
           allowedSubnet=$(az network vnet subnet show -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} -n snet-${{ inputs.apiName }} --query id -o tsv)
-
+          allowedSubnet="[${allowedSubnet}]"
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \
             --accountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
