@@ -168,10 +168,10 @@ export function SearchCaseTable(props: SearchCaseTableProps) {
   return (
     <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
       <TableHeader id={id} className="case-headings">
-        <TableHeaderData>Case Number (Division)</TableHeaderData>
-        <TableHeaderData>Case Title</TableHeaderData>
-        <TableHeaderData>Chapter</TableHeaderData>
-        <TableHeaderData>Case Filed</TableHeaderData>
+        <TableHeaderData className="grid-col-3">Case Number (Division)</TableHeaderData>
+        <TableHeaderData className="grid-col-6">Case Title</TableHeaderData>
+        <TableHeaderData className="grid-col-1">Chapter</TableHeaderData>
+        <TableHeaderData className="grid-col-2">Case Filed</TableHeaderData>
       </TableHeader>
       <TableBody id={id}>
         {cases.map((bCase, idx) => {
