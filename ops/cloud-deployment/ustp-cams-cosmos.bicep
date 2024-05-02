@@ -29,7 +29,7 @@ param actionGroupResourceGroupName string = ''
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
 
-var allowSubnets = !empty(allowedSubnetUstp) ? concat(array(allowedSubnet), array(allowedSubnetUstp)) : array(allowedSubnet)
+
 // CosmosDb
 module account './lib/cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -37,7 +37,7 @@ module account './lib/cosmos/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
-    allowedSubnets: allowSubnets
+    allowedSubnets: [allowedSubnet, allowedSubnetUstp]
     allowAllNetworks: allowAllNetworks
   }
 }
