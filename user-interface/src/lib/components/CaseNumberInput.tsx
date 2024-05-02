@@ -71,6 +71,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
       ref={forwardedRef}
       onChange={handleOnChange}
       onKeyDown={handleKeyDown}
+      includeClearButton={true}
     ></Input>
   );
 }
