@@ -5,6 +5,8 @@
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System - Graphical Frontend User Interface",
   "dependencies": {
+    "@azure/msal-browser": "^3.13.0",
+    "@azure/msal-react": "^2.0.15",
     "@cams/common": "file:../common/dist",
     "@microsoft/applicationinsights-react-js": "^17.2.0",
     "@microsoft/applicationinsights-web": "^3.2.1",
@@ -74,7 +76,7 @@
     "start:pa11y": "export CAMS_PA11Y=true && tsc -b && vite build && vite preview --port 3000",
     "build": "tsc -b && vite build",
     "build-common": "pushd ../common && npm ci && npm run build && popd",
-    "serve": "vite preview",
+    "serve": "vite preview --port 3000",
     "test": "export CAMS_PA11Y=true && vitest run",
     "test:watch": "export CAMS_PA11Y=true && vitest watch",
     "coverage": "export CAMS_PA11Y=true && vitest run --coverage",
