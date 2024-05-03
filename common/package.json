@@ -20,8 +20,8 @@
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.12.7",
-    "@typescript-eslint/eslint-plugin": "^7.7.1",
+    "@types/node": "^20.12.8",
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
     "dependency-cruiser": "^16.3.1",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",

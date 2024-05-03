@@ -178,7 +178,6 @@ describe('Case detail basic information panel', () => {
         },
       });
       const administrativeHeader = document.querySelector('.consolidation > h4');
-      screen.debug(administrativeHeader!);
       expect(administrativeHeader).toBeInTheDocument();
       expect(administrativeHeader).toHaveTextContent('Joint Administration');
     });
@@ -191,7 +190,6 @@ describe('Case detail basic information panel', () => {
         },
       });
       const substantiveHeader = document.querySelector('.consolidation > h4');
-      screen.debug(substantiveHeader!);
       expect(substantiveHeader).toBeInTheDocument();
       expect(substantiveHeader).toHaveTextContent('Substantive Consolidation');
     });

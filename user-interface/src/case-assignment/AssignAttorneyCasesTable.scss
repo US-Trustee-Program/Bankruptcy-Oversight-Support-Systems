@@ -1,0 +1,97 @@
+@use '../styles/abstracts/colors';
+@use '../styles/abstracts/tables';
+
+table.case-list {
+  .attorney-list {
+    .table-flex-container {
+      display: flex;
+      position: relative;
+      align-content: center;
+
+      .attorney-list-container {
+        flex: 1;
+        padding-right: 20px;
+        border-right: 1px solid #dddddd;
+      }
+      .table-column-toolbar {
+        padding-left: 20px;
+        align-self: center;
+        text-align: right;
+
+        button {
+          padding: 0.75rem 1rem;
+        }
+      }
+    }
+  }
+  td.case-number {
+    min-width: 115px;
+  }
+  td.filing-date {
+    min-width: 130px;
+  }
+  td.case-title-column {
+    white-space: normal;
+  }
+
+  .case-assignment-modal-toggle {
+    width: 6rem;
+  }
+
+  tr.in-table-transfer-mode {
+    animation-name: moveHighlightBorder;
+    animation-duration: 5s;
+    animation-timing-function: 0;
+    animation-iteration-count: 1;
+    animation-direction: normal;
+
+    td {
+      animation-name: moveHighlightBackground;
+      animation-duration: 5s;
+      animation-timing-function: 0;
+      animation-iteration-count: 1;
+      animation-direction: normal;
+    }
+  }
+
+  @keyframes moveHighlightBorder {
+    from {
+      outline-width: 5px;
+      outline-color: yellow;
+      outline-style: solid;
+      outline-offset: -5px;
+    }
+    to {
+      outline-width: 0;
+      outline-color: transparent;
+      outline-style: none;
+    }
+  }
+
+  @keyframes moveHighlightBackground {
+    from {
+      background-color: lightyellow;
+    }
+    to {
+      background-color: white;
+    }
+  }
+
+}
+
+@media screen and (width < 1000px) {
+  table.case-list {
+    margin: 0;
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 800px) {
+  .usa-table-container--scrollable .usa-table.case-list {
+    width: 100%;
+    padding: 50px 0;
+    td.attorney-list {
+      white-space: wrap;
+    }
+  }
+}

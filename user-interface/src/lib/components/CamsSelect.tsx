@@ -134,6 +134,10 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
     }
   }
 
+  function getValue(): string {
+    throw new Error('Not implemented');
+  }
+
   function disable(value: boolean) {
     setIsDisabled(value);
   }
@@ -142,6 +146,7 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
     return {
       clearValue,
       resetValue,
+      getValue,
       setValue,
       disable,
     };

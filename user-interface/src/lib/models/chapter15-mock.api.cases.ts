@@ -247,4 +247,43 @@ export default class Chapter15MockApi extends Api {
     };
     return Promise.resolve(response);
   }
+
+  // TODO: add handling of other uses of POST (e.g. case assignment creation)
+  public static async post(path: string, data: object, _options?: ObjectKeyVal) {
+    let response: ResponseData;
+    if (path.match(/\/cases/)) {
+      const searchRequest = data as { caseNumber: string };
+      const caseNumber = searchRequest.caseNumber;
+      if (caseNumber === '99-99999') {
+        return Promise.reject(new Error('api error'));
+      } else if (caseNumber === '00-00000') {
+        response = {
+          message: '',
+          count: 1,
+          body: [MockData.getCaseSummary()],
+        };
+      } else if (caseNumber === '11-00000') {
+        response = {
+          message: '',
+          count: 0,
+          body: [],
+        };
+      } else {
+        response = {
+          message: '',
+          count: 0,
+          body: [
+            MockData.getCaseSummary({ override: { caseId: `011-${caseNumber}` } }),
+            MockData.getCaseSummary({ override: { caseId: `070-${caseNumber}` } }),
+            MockData.getCaseSummary({ override: { caseId: `132-${caseNumber}` } }),
+            MockData.getCaseSummary({ override: { caseId: `3E1-${caseNumber}` } }),
+            MockData.getCaseSummary({ override: { caseId: `256-${caseNumber}` } }),
+          ],
+        };
+      }
+    } else {
+      return Promise.reject(new Error());
+    }
+    return Promise.resolve(response);
+  }
 }

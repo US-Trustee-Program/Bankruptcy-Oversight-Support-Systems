@@ -31,11 +31,6 @@ body {
     table {
       td {
         vertical-align: top;
-      }
-    }
-
-    table.case-list {
-      td {
         .mobile-title {
           visibility: hidden;
           display: inherit;
@@ -86,7 +81,7 @@ body {
     .body {
       padding: 50px 0;
 
-      table.case-list {
+      table {
         display: block;
 
         thead, tbody, th, td,
