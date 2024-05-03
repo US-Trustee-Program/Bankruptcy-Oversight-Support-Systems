@@ -1,5 +1,5 @@
 import httpTrigger from './case.assignment.function';
-import { CaseAssignmentController } from '../lib/adapters/controllers/case.assignment.controller';
+import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
