@@ -1,13 +1,13 @@
-- @US-Trustee-Program/ustp-team @US-Trustee-Program/flexion
+* @US-Trustee-Program/ustp-team @US-Trustee-Program/flexion
 
 CODEOWNERS @US-Trustee-Program/ustp-team
 LICENSE.md @US-Trustee-Program/ustp-team
 
-ops/cloud-deployment/lib/network/*.bicep @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/sql/*.bicep @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/keyvault/*.bicep @US-Trustee-Program/enterprise-architecture
+ops/cloud-deployment/lib/network @US-Trustee-Program/enterprise-architecture
+ops/cloud-deployment/lib/sql @US-Trustee-Program/enterprise-architecture
+ops/cloud-deployment/lib/keyvault @US-Trustee-Program/enterprise-architecture
 ops/cloud-deployment/lib/cosmos/cosmos-account.bicep @US-Trustee-Program/enterprise-architecture
 ops/cloud-deployment/lib/cosmos/cosmos-role-assignment.bicep @US-Trustee-Program/enterprise-architecture
 ops/cloud-deployment/lib/cosmos/cosmos-custom-role.bicep @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/identity/*.bicep @US-Trustee-Program/enterprise-architecture
+ops/cloud-deployment/lib/identity @US-Trustee-Program/enterprise-architecture
 ops/scripts/pipeline @US-Trustee-Program/enterprise-architecture
