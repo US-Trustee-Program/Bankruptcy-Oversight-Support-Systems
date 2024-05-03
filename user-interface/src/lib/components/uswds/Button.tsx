@@ -24,24 +24,14 @@ export interface ButtonRef {
   disableButton: (state: boolean) => void;
 }
 
-export interface ButtonProps {
-  children: React.ReactNode;
+export type ButtonProps = JSX.IntrinsicElements['button'] & {
   uswdsStyle?: UswdsButtonStyle;
   buttonState?: UswdsButtonState;
   disabled?: boolean;
-}
+};
 
 const ButtonComponent = (
-  {
-    id,
-    uswdsStyle,
-    buttonState,
-    className,
-    disabled,
-    onClick,
-    title,
-    children,
-  }: ButtonProps & JSX.IntrinsicElements['button'],
+  { id, uswdsStyle, buttonState, className, disabled, onClick, title, children }: ButtonProps,
   ref: React.Ref<ButtonRef>,
 ) => {
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);

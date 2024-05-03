@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from './lib/hooks/UseApplicationInsights';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import Home from './home/Home';
@@ -14,6 +14,8 @@ import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
+import { Logout } from './login/Logout';
+import { SessionContext } from './login/Session';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -23,6 +25,8 @@ function App() {
   const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();
+
+  const session = useContext(SessionContext);
 
   function documentScroll(ev: React.UIEvent<HTMLElement>) {
     if ((ev.currentTarget as Element).scrollTop > 100) {
@@ -47,10 +51,12 @@ function App() {
         onScroll={documentScroll}
         data-testid="app-component-test-id"
       >
+        <div>You are logged in as {session.user?.name ?? '<NOBODY>'}</div>
         <Header />
         <div className="body">
           <Routes>
             <Route path="/" element={<Home />}></Route>
+            <Route path="/logout" element={<Logout />}></Route>
             <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
@@ -87,4 +93,5 @@ if (featureFlagConfig.useExternalProvider) {
 } else {
   AppToExport = App;
 }
+
 export default AppToExport;
