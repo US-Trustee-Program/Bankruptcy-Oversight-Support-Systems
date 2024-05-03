@@ -37,7 +37,7 @@ module account './lib/cosmos/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
-    allowedSubnets: [allowedSubnet, allowedSubnetUstp]
+    allowedSubnets: empty(allowedSubnetUstp) ? [allowedSubnet] :  [allowedSubnet, allowedSubnetUstp]
     allowAllNetworks: allowAllNetworks
   }
 }
