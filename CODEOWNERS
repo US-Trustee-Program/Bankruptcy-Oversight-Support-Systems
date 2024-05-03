@@ -4,7 +4,7 @@ CODEOWNERS @US-Trustee-Program/ustp-team
 LICENSE.md @US-Trustee-Program/ustp-team
 
 ops/cloud-deployment/lib/network @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/sql @US-Trustee-Program/enterprise-architecture
+ops/cloud-deployment/lib/sql/sql-vnet-rule.bicep @US-Trustee-Program/enterprise-architecture
 ops/cloud-deployment/lib/keyvault @US-Trustee-Program/enterprise-architecture
 ops/cloud-deployment/lib/cosmos/cosmos-account.bicep @US-Trustee-Program/enterprise-architecture
 ops/cloud-deployment/lib/cosmos/cosmos-role-assignment.bicep @US-Trustee-Program/enterprise-architecture
