@@ -11,6 +11,9 @@ param databaseContainers array = [] // See parameters.json file
 @description('Allowed subnet resource id')
 param allowedSubnet string = ''
 
+@description('Allowed subnet resource id')
+param allowedSubnetUstp string = ''
+
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string = ''
 
@@ -26,6 +29,7 @@ param actionGroupResourceGroupName string = ''
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool
 
+
 // CosmosDb
 module account './lib/cosmos/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -33,7 +37,7 @@ module account './lib/cosmos/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
-    allowedSubnets: [ allowedSubnet ]
+    allowedSubnets: [allowedSubnet, allowedSubnetUstp]
     allowAllNetworks: allowAllNetworks
   }
 }
