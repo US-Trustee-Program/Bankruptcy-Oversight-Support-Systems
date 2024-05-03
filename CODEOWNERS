@@ -16,4 +16,4 @@ ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh @US-Trustee-Program/en
 ops/scripts/pipeline/az-add-allowed-ip.sh @US-Trustee-Program/enterprise-architecture
 ops/scripts/pipeline/az-rm-allowed-ip.sh @US-Trustee-Program/enterprise-architecture
 ops/scripts/pipeline/azure-deploy.sh @US-Trustee-Program/enterprise-architecture
-ops/scripts/pipeline/az=cosmos-deploy.sh @US-Trustee-Program/enterprise-architecture
+ops/scripts/pipeline/az-cosmos-deploy.sh @US-Trustee-Program/enterprise-architecture
