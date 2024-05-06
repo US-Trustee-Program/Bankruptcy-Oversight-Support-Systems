@@ -2,20 +2,23 @@
   .usa-banner__inner {
     max-width: none;
   }
+
   .development {
     background-color: #419ce1;
     color: white;
   }
 
-  .staging {
+  .test {
     background-color: #ffd700;
     color: black;
   }
+
   .environment-text {
     font-weight: bold;
     text-transform: uppercase;
     float: inline-end;
   }
+
   .header-flag-container {
     width: fit-content;
     display: inline-block;

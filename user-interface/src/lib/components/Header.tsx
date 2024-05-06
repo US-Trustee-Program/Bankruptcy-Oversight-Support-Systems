@@ -41,7 +41,9 @@ export const Header = () => {
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
   const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
+
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
+
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
   }, [location]);
