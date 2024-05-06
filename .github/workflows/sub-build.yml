@@ -27,6 +27,9 @@ on:
       environment:
         required: true
         type: string
+      launchDarklyEnvironment:
+        required: true
+        type: string
 
 jobs:
   frontend:
@@ -57,7 +60,7 @@ jobs:
           export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
-          export CAMS_LAUNCH_DARKLY_ENV="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
+          export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
       - name: Package
