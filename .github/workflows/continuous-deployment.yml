@@ -129,6 +129,7 @@ jobs:
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ needs.setup.outputs.webappName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
 
   deploy:
     name: Cloud Resource Deployment
