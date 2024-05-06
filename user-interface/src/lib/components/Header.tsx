@@ -41,9 +41,8 @@ export const Header = () => {
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
   const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
-
+  const launchDarklyEnvironment = import.meta.env['CAMS_LAUNCH_DARKLY_ENV'];
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
-
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
   }, [location]);
@@ -68,7 +67,12 @@ export const Header = () => {
           </div>
           <div className="site-title">
             <span className="text-no-wrap">U.S. Trustee Program</span>
-            <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
+            <span className="sub-title text-no-wrap">
+              <p className="app-name">CAse Management System (CAMS)</p>
+              {launchDarklyEnvironment != 'production' && (
+                <p className="app-name app-environment">: {launchDarklyEnvironment} environment</p>
+              )}
+            </span>
           </div>
           <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
             <button type="button" className="usa-nav__close">
