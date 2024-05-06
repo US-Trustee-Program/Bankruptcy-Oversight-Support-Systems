@@ -13,8 +13,8 @@ export const Banner = () => {
     >
       <div className="usa-accordion">
         <header className={envHeaderClassName} data-testid="banner-header">
-          <div className="usa-banner__inner">
-            <div className="grid-col-auto">
+          <div className="usa-banner__inner grid-row grid-gap-sm">
+            <div className="grid-col-1 header-flag-container">
               <img
                 aria-hidden="true"
                 className="usa-banner__header-flag"
@@ -22,11 +22,16 @@ export const Banner = () => {
                 alt=""
               />
             </div>
-            <div className="grid-col-fill tablet:grid-col-auto" aria-hidden="true">
-              <p className="usa-banner__header-text">
+            <div className="grid-col-auto tablet:grid-col-auto" aria-hidden="true">
+              <span className="usa-banner__header-text">
                 An official website of the United States government
-              </p>
+              </span>
             </div>
+            {launchDarklyEnvironment != 'production' && (
+              <div className="grid-col-5 usa-banner__header-text">
+                <span className="environment-text">{launchDarklyEnvironment} ENVIRONMENT</span>
+              </div>
+            )}
           </div>
         </header>
       </div>
