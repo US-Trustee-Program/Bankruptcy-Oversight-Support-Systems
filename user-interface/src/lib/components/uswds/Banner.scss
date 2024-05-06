@@ -2,4 +2,18 @@
   .usa-banner__inner {
     max-width: none;
   }
+  .development {
+    background-color: #4169e1;
+    color: white;
+  }
+
+  .staging {
+    background-color: #ffd700;
+    color: black;
+  }
+
+  .production {
+    background-color: #008000;
+    color: white;
+  }
 }
