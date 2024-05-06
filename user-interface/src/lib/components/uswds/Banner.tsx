@@ -5,7 +5,6 @@ export const Banner = () => {
   const envHeaderClassName =
     'usa-banner__header ' +
     (launchDarklyEnvironment === 'production' ? '' : `${launchDarklyEnvironment}`);
-  console.log(envHeaderClassName);
 
   return (
     <section
