@@ -1,21 +1,32 @@
 import { render, screen } from '@testing-library/react';
 import { Banner } from './Banner';
 import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('Test Banner Environment', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
-  test('Should have proper class based on launchDarklyEnvironment', () => {
-    //const expectedEnv = 'staging';
+  test('Should not have a css class based on launchDarklyEnvironment env var', () => {
+    const expectedEnv = 'production';
     vi.stubEnv('CAMS_LAUNCH_DARKLY_ENV', 'production');
     render(
-      <React.StrictMode>
-        <Banner></Banner>
-      </React.StrictMode>,
+      <BrowserRouter>
+        <Banner />
+      </BrowserRouter>,
     );
+    const header = screen.getByTestId('banner-header');
+    expect(header).not.toHaveClass(expectedEnv);
   });
-  const header = document.querySelector('.usa-banner__header');
-  screen.debug;
-  expect(header).toHaveClass('staging');
+  test('Should have a css class based on launchDarklyEnvironment env var', () => {
+    const expectedEnv = 'staging';
+    vi.stubEnv('CAMS_LAUNCH_DARKLY_ENV', 'staging');
+    render(
+      <BrowserRouter>
+        <Banner />
+      </BrowserRouter>,
+    );
+    const header = screen.getByTestId('banner-header');
+    expect(header).toHaveClass(expectedEnv);
+  });
 });

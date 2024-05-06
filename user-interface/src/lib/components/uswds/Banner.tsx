@@ -12,7 +12,7 @@ export const Banner = () => {
       aria-label="Official website of the United States government"
     >
       <div className="usa-accordion">
-        <header className={envHeaderClassName}>
+        <header className={envHeaderClassName} data-testid="banner-header">
           <div className="usa-banner__inner">
             <div className="grid-col-auto">
               <img
