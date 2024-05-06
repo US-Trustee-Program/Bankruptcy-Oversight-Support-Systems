@@ -11,4 +11,13 @@
     background-color: #ffd700;
     color: black;
   }
+  .environment-text {
+    font-weight: bold;
+    text-transform: uppercase;
+    float: inline-end;
+  }
+  .header-flag-container {
+    width: fit-content;
+    display: inline-block;
+  }
 }
