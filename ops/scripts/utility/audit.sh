@@ -4,7 +4,7 @@
 
 # Usage
 #   From the root directory, run the following command:
-#     ./ops/scripts/utility/check-outdated.sh [-c|h]
+#     ./ops/scripts/utility/audit.sh [-c|h]
 
 ############################################################
 # Help                                                     #
@@ -12,10 +12,10 @@
 Help()
 {
    # Display Help
-   echo "This script runs 'npm outdated' for all Node projects in the repository and"
+   echo "This script runs 'npm audit' for all Node projects in the repository and"
    echo "creates a comment on an open PR."
    echo
-   echo "Syntax: ./ops/scripts/utility/check-outdated.sh [-c|h]"
+   echo "Syntax: ./ops/scripts/utility/audit.sh [-c|h]"
    echo "options:"
    echo "c     Run this script from a CI/CD workflow."
    echo "h     Print this Help and exit."
@@ -56,28 +56,25 @@ TEMP_FILE=$(mktemp)
 # Ensure cleanup of the temp file on exit
 trap 'rm -f "$TEMP_FILE"' EXIT
 
-cat ./ops/scripts/utility/outdated-comment.md >> "$TEMP_FILE"
-OUTDATED=false
+cat ./ops/scripts/utility/audit-comment.md >> "$TEMP_FILE"
+RESULTS=0
 
 PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
 for dir in "${PROJECTS[@]}"; do
   pushd "${dir}" || exit
   npm ci
-  npm outdated | sed -e '1d' \
-                      -e 's/  */ | /g' \
-                      -e 's/^/| /' \
-                      -e 's/ $/ |/' >> "$TEMP_FILE"
-  # Check the exit status of npm outdated
-  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    OUTDATED=true
+  if ! npm audit
+  then
+    RESULTS=1
+    echo "${dir} has \`npm audit\` findings." >> "$TEMP_FILE"
   fi
   popd || exit
 done
 
-if [[ "${OUTDATED}" = true ]]; then
-  gh pr comment "${BRANCH_NAME}" --body-file "$TEMP_FILE"
-else
-  gh pr comment "${BRANCH_NAME}" --body-file ./ops/scripts/utility/no-outdated-comment.md
+if [[ "${RESULTS}" -eq 0 ]]; then
+  echo "Found 0 vulnerabilities across all NPM projects." >> "$TEMP_FILE"
 fi
+
+gh pr comment "${BRANCH_NAME}" --body-file "$TEMP_FILE"
 
 exit 0
