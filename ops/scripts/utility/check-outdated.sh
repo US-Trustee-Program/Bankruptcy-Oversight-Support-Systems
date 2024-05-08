@@ -57,6 +57,7 @@ TEMP_FILE=$(mktemp)
 trap 'rm -f "$TEMP_FILE"' EXIT
 
 cat ./ops/scripts/utility/outdated-comment.md >> "$TEMP_FILE"
+OUTDATED=false
 
 PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
 for dir in "${PROJECTS[@]}"; do
@@ -66,9 +67,17 @@ for dir in "${PROJECTS[@]}"; do
                       -e 's/  */ | /g' \
                       -e 's/^/| /' \
                       -e 's/ $/ |/' >> "$TEMP_FILE"
+  # Check the exit status of npm outdated
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    OUTDATED=true
+  fi
   popd || exit
 done
 
-gh pr comment "${BRANCH_NAME}" --body-file "$TEMP_FILE"
+if [[ "${OUTDATED}" = true ]]; then
+  gh pr comment "${BRANCH_NAME}" --body-file "$TEMP_FILE"
+else
+  gh pr comment "${BRANCH_NAME}" --body-file ./ops/scripts/utility/no-outdated-comment.md
+fi
 
 exit 0
