@@ -12,20 +12,7 @@ param privateLinkServiceId string
 param privateLinkGroup string
 param privateEndpointSubnetId string
 
-// param virtualNetworkName string
-// param privateEndpointSubnetAddressPrefix string
-// param privateDnsZoneName string
-// param privateDnsZoneResourceGroup string = resourceGroup().name
-// param privateDnsZoneSubscriptionId string = subscription().subscriptionId
-// param privatDnsZoneId string = ''
 
-/*
-  Create subnet for private endpoint
-*/
-
-/*
-  Create private endpoint ****need to move this elsewhere
-// */
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
   name: 'pep-${stackName}'
   location: location
@@ -53,22 +40,3 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
     customDnsConfigs: []
   }
 }
-
-// var dnsZoneId = empty(privateDnsZone.id) ? privateDnsZone.id : privatDnsZoneId
-// resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
-//   parent: privateEndpoint
-//   name: 'default'
-//   properties: {
-//     privateDnsZoneConfigs: [
-//       {
-//         name: 'privatelink_azurewebsites_${stackName}'
-//         properties: {
-//           privateDnsZoneId: dnsZoneId
-//         }
-//       }
-//     ]
-//   }
-// }
-/*
-  Add private dns zone group to private endpoint
-*/
