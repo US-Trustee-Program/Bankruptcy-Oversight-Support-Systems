@@ -40,3 +40,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./ops/scripts/utility/check-outdated.sh -c
+
+      - name: Audit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./ops/scripts/utility/audit.sh -c
