@@ -87,6 +87,7 @@ module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
     stackName: kvName
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: keyvaultPrivateDnsZoneName
+    deployNetwork: false
   }
 }
 
@@ -95,7 +96,7 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
   scope: resourceGroup(networkResourceGroup)
   params: {
     location: location
-    privateDnsZoneName: ustpPrivateDnsZone.outputs.privateDnsZoneName
+    privateDnsZoneName: keyvaultPrivateDnsZoneName
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetPrefix
     privateEndpointSubnetName: privateEndpointSubnetName
     privateLinkServiceId: appConfigKeyvault.outputs.vaultId
