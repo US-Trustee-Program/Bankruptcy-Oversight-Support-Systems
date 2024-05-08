@@ -1,10 +1,8 @@
 param appName string
 param location string = resourceGroup().location
-
+param appResourceGroup string
 @description('Disable creating Azure virtual network by default.')
 param deployVnet bool = false
-@description('Create Azure virtual network. Set flag to false when vnet already exists.')
-param createVnet bool = false
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
 @description('Setup Azure resources for Private DNS Zone. Link virtual networks to zone.')
@@ -16,12 +14,12 @@ param linkVnetIds array = []
 @description('Set to true to deploy web module resources. This should be set to false for Azure slot deployments.')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
-param webappResourceGroupName string
+param webappPrivateEndpointSubnetName string = 'snet-${appName}-pep'
 param webappSubnetName string = 'snet-${webappName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
-param webappPrivateEndpointSubnetName string = 'snet-${appName}-pep'
-param webappPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
-param webappPlanName string = 'plan-${webappName}'
+
+param privateEndpointSubnetName string = 'subnet-privte-endpoints'
+param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 @description('Plan type to determine webapp service plan Sku')
 @allowed([
   'P1v2'
@@ -32,13 +30,10 @@ param webappPlanType string
 
 @description('Set to true to deploy api module resources. This should be set to false for Azure slot deployments.')
 param deployFunctions bool = true
-param apiName string = '${appName}-node-api'
-param apiFunctionsResourceGroupName string
-param apiFunctionsSubnetName string = 'snet-${apiName}'
-param apiFunctionsSubnetAddressPrefix string = '10.10.12.0/28'
-param apiPrivateEndpointSubnetName string = 'snet-${appName}-pep'
-param apiPrivateEndpointSubnetAddressPrefix string = '10.10.11.0/28'
-param apiPlanName string = 'plan-${apiName}'
+param functionName string = '${appName}-node-api'
+param functionSubnetName string = 'snet-${functionName}'
+param functionSubnetAddressPrefix string = '10.10.12.0/28'
+param functionPrivateEndpointSubnetName string = 'snet-${appName}-pep'
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
@@ -69,12 +64,8 @@ param allowVeracodeScan bool = false
 
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
-
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
-
-@description('boolean to determine creation of Action Groups')
-param createActionGroup bool = false
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
@@ -104,94 +95,79 @@ param idKeyvaultAppConfiguration string
 @secure()
 param cosmosIdentityName string
 
-//TODO: break out ActionGroup and Alerts into their own bicep
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
-  if (createActionGroup) {
+  if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
       actionGroupName: actionGroupName
     }
   }
-module targetVnet './lib/network/vnet.bicep' =
-  if (deployVnet && createVnet) {
-    name: '${appName}-vnet-module'
-    scope: resourceGroup(networkResourceGroupName)
-    params: {
-      vnetName: virtualNetworkName
-      vnetAddressPrefix: vnetAddressPrefix
-      location: location
-    }
-  }
-
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
-  name: virtualNetworkName
+module network './ustp-cams-network.bicep' = {
+  name: '${appName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
-}
-
-module ustpNetwork './lib/network/private-dns-zones.bicep' ={
-    name: '${appName}-network-module'
-    scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
-    params: {
-      stackName: appName
-      virtualNetworkId: ustpVirtualNetwork.id
-      linkVnetIds: linkVnetIds
-      privateDnsZoneName: privateDnsZoneName
-      deployNetwork: deployNetwork
-      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+  params: {
+    appName: appName
+    networkResourceGroupName: networkResourceGroupName
+    deployVnet: deployVnet
+    location: location
+    functionName: functionName
+    functionSubnetName: functionSubnetName
+    functionsSubnetAddressPrefix: functionSubnetAddressPrefix
+    webappName: webappName
+    webappSubnetAddressPrefix: webappSubnetAddressPrefix
+    webappSubnetName: webappSubnetName
+    deployNetwork: deployNetwork
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
+    privateEndpointSubnetName: privateEndpointSubnetName
+    linkVnetIds: linkVnetIds
+    vnetAddressPrefix: vnetAddressPrefix
   }
 }
-
-
 module ustpWebapp 'frontend-webapp-deploy.bicep' =
   if (deployWebapp) {
     name: '${appName}-webapp-module'
-    scope: resourceGroup(webappResourceGroupName)
+    scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
-      planName: webappPlanName
+      planName: 'plan-${webappName}'
       planType: webappPlanType
       webappName: webappName
       location: location
-      privateDnsZoneName: privateDnsZoneName
-      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      privateDnsZoneId: ustpNetwork.outputs.privateDnsZoneId
-      virtualNetworkName: virtualNetworkName
       virtualNetworkResourceGroupName: networkResourceGroupName
-      webappSubnetName: webappSubnetName
-      webappSubnetAddressPrefix: webappSubnetAddressPrefix
-      webappPrivateEndpointSubnetName: webappPrivateEndpointSubnetName
-      webappPrivateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
       allowVeracodeScan: allowVeracodeScan
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
-      targetApiServerHost: '${apiName}.azurewebsites${azHostSuffix} ${apiName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
+      targetApiServerHost: '${functionName}.azurewebsites${azHostSuffix} ${functionName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
       camsReactSelectHash: camsReactSelectHash
+      webappSubnetId: network.outputs.webappSubnetId
+      privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     }
   }
 
 var funcParams = [
   {
     // Define api node function resources
-    planName: apiPlanName
+    planName: '${functionName}-plan'
     planType: apiPlanType
-    functionName: apiName
+    functionName: functionName
     functionsRuntime: 'node'
-    functionSubnetName: apiFunctionsSubnetName
-    functionsSubnetAddressPrefix: apiFunctionsSubnetAddressPrefix
-    privateEndpointSubnetName: apiPrivateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: apiPrivateEndpointSubnetAddressPrefix
+    functionSubnetName: 'snet-${functionName}'
+    functionsSubnetAddressPrefix: functionSubnetAddressPrefix
+    privateEndpointSubnetName: functionPrivateEndpointSubnetName
+    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
   }
 ]
 module ustpFunctions 'backend-api-deploy.bicep' = [
   for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
     name: '${appName}-function-module-${i}'
-    scope: resourceGroup(apiFunctionsResourceGroupName)
+    scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
@@ -199,16 +175,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
       planName: funcParams[i].planName
       functionName: funcParams[i].functionName
       functionsRuntime: funcParams[i].functionsRuntime
-      virtualNetworkName: virtualNetworkName
-      virtualNetworkResourceGroupName: networkResourceGroupName
-      functionSubnetName: funcParams[i].functionSubnetName
-      functionsSubnetAddressPrefix: funcParams[i].functionsSubnetAddressPrefix
-      privateEndpointSubnetName: funcParams[i].privateEndpointSubnetName
-      privateEndpointSubnetAddressPrefix: funcParams[i].privateEndpointSubnetAddressPrefix
-      privateDnsZoneName: privateDnsZoneName
-      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      privateDnsZoneId: ustpNetwork.outputs.privateDnsZoneId
+      functionSubnetId: funcParams[i].functionSubnetName
       databaseConnectionString: databaseConnectionString
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
@@ -216,12 +183,14 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
       corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
       allowVeracodeScan: allowVeracodeScan
-      createAlerts: createAlerts
-      actionGroupName: actionGroupName
-      actionGroupResourceGroupName: analyticsResourceGroupName
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       cosmosIdentityName: cosmosIdentityName
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+      virtualNetworkResourceGroupName: networkResourceGroupName
+      privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: analyticsResourceGroupName
+      createAlerts: createAlerts
     }
   }
 ]
@@ -229,13 +198,11 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
 // main.bicep outputs
 
 output vnetName string = virtualNetworkName
-output webappSubnetName string = webappSubnetName
 output webappPrivateEndpointSubnetName string = webappPrivateEndpointSubnetName
-output apiPrivateEndpointSubnetName string = apiPrivateEndpointSubnetName
+output apiPrivateEndpointSubnetName string = functionPrivateEndpointSubnetName
 
 // Allowed subnet name that should have access to CosmosDb
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
-output cosmosDbAllowedSubnet string = apiFunctionsSubnetName
 
 resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
