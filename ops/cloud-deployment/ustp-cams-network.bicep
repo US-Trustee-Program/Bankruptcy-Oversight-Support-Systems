@@ -12,7 +12,7 @@ param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
 param functionName string = '${appName}-node-api'
 param functionSubnetName string = 'snet-${webappName}'
-param functionsSubnetAddressPrefix string = '10.10.12.0/28'
+param functionsSubnetAddressPrefix string = '10.10.11.0/28'
 
 param webappName string = '${appName}-node-api'
 param webappSubnetName string = 'snet-${functionName}'
