@@ -110,13 +110,16 @@ param deployAppInsights bool = false
 param analyticsWorkspaceId string = ''
 
 @description('Action Group Name for alerts')
-param actionGroupName string
+param actionGroupName string = ''
 
 @description('Action Group Resource Group Name for alerts')
-param actionGroupResourceGroupName string
+param actionGroupResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool
+param createAlerts bool = false
+
+@description('Flag to determine the deployment of the private endpoint')
+param deployNetwork bool = true
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
@@ -129,15 +132,6 @@ resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
   name: cosmosIdentityName
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
-
-module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
-  if (createAlerts) {
-    name: '${actionGroupName}-action-group-module'
-    scope: resourceGroup(actionGroupResourceGroupName)
-    params: {
-      actionGroupName: actionGroupName
-    }
-  }
 
 /*
   App service plan (hosting plan) for Azure functions instances
@@ -345,7 +339,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deployNetwork){
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {

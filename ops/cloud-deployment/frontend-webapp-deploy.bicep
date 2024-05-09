@@ -40,6 +40,9 @@ var planTypeToSkuMap = {
 @description('Webapp application name')
 param webappName string
 
+@description('Flag to determine the deployment of the private endpoint')
+param deployNetwork bool = true
+
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
 
@@ -99,7 +102,7 @@ param actionGroupName string = ''
 param actionGroupResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool
+param createAlerts bool = false
 
 @description('Resource group name of target virtual network')
 param virtualNetworkResourceGroupName string
@@ -121,8 +124,9 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
+var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 module appInsights './lib/app-insights/app-insights.bicep' =
-  if (deployAppInsights) {
+  if (createApplicationInsights) {
     name: '${webappName}-application-insights-module'
     params: {
       location: location
@@ -209,7 +213,7 @@ var applicationSettings = concat(
       value: '$uri'
     }
   ],
-  deployAppInsights
+  createApplicationInsights
     ? [
         {
           name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
@@ -289,7 +293,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
   )
 }
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deployNetwork) {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {

@@ -32,10 +32,8 @@ param kvName string = 'kv-${stackName}'
 param networkResourceGroup string
 @description('Virtual network to create subnet for private endpoint resource')
 param virtualNetworkName string
-@description('Subnet name the private endpoint should exist within')
-param privateEndpointSubnetName string
-@description('Subnet prefix for private endpoint')
-param privateEndpointSubnetPrefix string
+@description('Subnet ID of the private endpoint should exist within')
+param privateEndpointSubnetId string
 
 @description('Resource group of target Private DNS Zone')
 param privateDnsZoneResourceGroup string = resourceGroup().name
@@ -96,12 +94,9 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
   scope: resourceGroup(networkResourceGroup)
   params: {
     location: location
-    privateDnsZoneName: keyvaultPrivateDnsZoneName
-    privateEndpointSubnetAddressPrefix: privateEndpointSubnetPrefix
-    privateEndpointSubnetName: privateEndpointSubnetName
     privateLinkServiceId: appConfigKeyvault.outputs.vaultId
     stackName: kvName
-    virtualNetworkName: ustpVirtualNetwork.name
+    privateEndpointSubnetId: privateEndpointSubnetId
     privateLinkGroup: 'vault'
   }
 }
