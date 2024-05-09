@@ -18,7 +18,7 @@ param webappPrivateEndpointSubnetName string = 'snet-${appName}-pep'
 param webappSubnetName string = 'snet-${webappName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
-param privateEndpointSubnetName string = 'subnet-privte-endpoints'
+param privateEndpointSubnetName string = 'subnet-private-endpoints'
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 @description('Plan type to determine webapp service plan Sku')
 @allowed([
