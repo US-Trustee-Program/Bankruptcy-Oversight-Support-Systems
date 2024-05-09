@@ -35,3 +35,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr create --title "Update NPM packages" --body-file .github/PULL_REQUEST_TEMPLATE/dependencies.md
+
+      - name: Check Outdated
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./ops/scripts/utility/check-outdated.sh -c
+
+      - name: Audit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./ops/scripts/utility/audit.sh -c
