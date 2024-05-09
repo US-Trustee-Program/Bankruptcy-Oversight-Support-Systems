@@ -3,7 +3,7 @@ param location string = resourceGroup().location
 @description('Disable creating Azure virtual network by default.')
 param deployVnet bool = false
 
-@description('Setup Azure resources for Private DNS Zone. Link virtual networks to zone.')
+@description('Deploy Azure Network resources: Private DNS Zone, and DNS Zone Vnet links')
 param deployNetwork bool = true
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${appName}'
@@ -65,6 +65,7 @@ module ustpDnsZones './lib/network/private-dns-zones.bicep' ={
 */
 module privateEndpointSubnet './lib/network/subnet.bicep' = {
   name: '${privateEndpointSubnetName}-module'
+  scope: resourceGroup(networkResourceGroupName)
   params: {
     subnetAddressPrefix: privateEndpointSubnetAddressPrefix
     subnetName: privateEndpointSubnetName

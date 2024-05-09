@@ -1,6 +1,6 @@
 param appName string
 param location string = resourceGroup().location
-param appResourceGroup string
+param appResourceGroup string = resourceGroup().name
 @description('Disable creating Azure virtual network by default.')
 param deployVnet bool = false
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
@@ -32,7 +32,7 @@ param webappPlanType string
 param deployFunctions bool = true
 param functionName string = '${appName}-node-api'
 param functionSubnetName string = 'snet-${functionName}'
-param functionSubnetAddressPrefix string = '10.10.12.0/28'
+param functionSubnetAddressPrefix string = '10.10.11.0/28'
 param functionPrivateEndpointSubnetName string = 'snet-${appName}-pep'
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
@@ -48,7 +48,7 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
-param azHostSuffix string = '.net'
+param azHostSuffix string = '.us'
 
 @secure()
 param databaseConnectionString string = ''
@@ -77,7 +77,7 @@ param analyticsResourceGroupName string
 param kvAppConfigResourceGroupName string
 
 @description('Action Group Name for alerts')
-param actionGroupName string
+param actionGroupName string =''
 
 @description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy')
 @secure()
@@ -125,6 +125,7 @@ module network './ustp-cams-network.bicep' = {
     privateEndpointSubnetName: privateEndpointSubnetName
     linkVnetIds: linkVnetIds
     vnetAddressPrefix: vnetAddressPrefix
+    virtualNetworkName: virtualNetworkName
   }
 }
 module ustpWebapp 'frontend-webapp-deploy.bicep' =
@@ -148,34 +149,66 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       camsReactSelectHash: camsReactSelectHash
       webappSubnetId: network.outputs.webappSubnetId
       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+      appServiceRuntime: 'php'
+      deployNetwork: deployNetwork
     }
   }
 
-var funcParams = [
-  {
-    // Define api node function resources
-    planName: '${functionName}-plan'
-    planType: apiPlanType
-    functionName: functionName
-    functionsRuntime: 'node'
-    functionSubnetName: 'snet-${functionName}'
-    functionsSubnetAddressPrefix: functionSubnetAddressPrefix
-    privateEndpointSubnetName: functionPrivateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
-  }
-]
-module ustpFunctions 'backend-api-deploy.bicep' = [
-  for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
-    name: '${appName}-function-module-${i}'
+// var funcParams = [
+//   {
+//     // Define api node function resources
+//     planName: '${functionName}-plan'
+//     planType: apiPlanType
+//     functionName: functionName
+//     functionsRuntime: 'node'
+//     functionSubnetName: functionSubnetName
+//     functionsSubnetAddressPrefix: functionSubnetAddressPrefix
+//     privateEndpointSubnetName:
+//     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
+//   }
+// ]
+// module ustpFunctions 'backend-api-deploy.bicep' = [
+//   for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
+//     name: '${appName}-function-module-${i}'
+//     scope: resourceGroup(appResourceGroup)
+//     params: {
+//       deployAppInsights: deployAppInsights
+//       analyticsWorkspaceId: analyticsWorkspaceId
+//       location: location
+//       planName: funcParams[i].planName
+//       functionName: funcParams[i].functionName
+//       functionsRuntime: funcParams[i].functionsRuntime
+//       functionSubnetId: funcParams[i].functionSubnetName
+//       databaseConnectionString: databaseConnectionString
+//       sqlServerName: sqlServerName
+//       sqlServerResourceGroupName: sqlServerResourceGroupName
+//       sqlServerIdentityName: sqlServerIdentityName
+//       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+//       corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
+//       allowVeracodeScan: allowVeracodeScan
+//       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+//       cosmosIdentityName: cosmosIdentityName
+//       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+//       virtualNetworkResourceGroupName: networkResourceGroupName
+//       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+//       actionGroupName: actionGroupName
+//       actionGroupResourceGroupName: analyticsResourceGroupName
+//       createAlerts: createAlerts
+//     }
+//   }
+// ]
+module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
+    name: '${appName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
-      planName: funcParams[i].planName
-      functionName: funcParams[i].functionName
-      functionsRuntime: funcParams[i].functionsRuntime
-      functionSubnetId: funcParams[i].functionSubnetName
+      planType: apiPlanType
+      planName: '${functionName}-plan'
+      functionName: functionName
+      functionsRuntime: 'node'
+      functionSubnetId: network.outputs.functionSubnetId
       databaseConnectionString: databaseConnectionString
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
@@ -191,9 +224,9 @@ module ustpFunctions 'backend-api-deploy.bicep' = [
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
       createAlerts: createAlerts
+      deployNetwork: deployNetwork
     }
   }
-]
 
 // main.bicep outputs
 
