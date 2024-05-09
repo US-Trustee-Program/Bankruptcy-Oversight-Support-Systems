@@ -70,15 +70,15 @@ module containers './lib/cosmos/cosmos-containers.bicep' = {
 }
 
 // Role definition for read and write access
-// module customReadWriteRole './lib/cosmos/cosmos-custom-role.bicep' = {
-//   name: '${accountName}-cosmos-roles-module'
-//   params: {
-//     accountName: accountName
-//   }
-//   dependsOn: [
-//     account
-//   ]
-// }
+module customReadWriteRole './lib/cosmos/cosmos-custom-role.bicep' = {
+  name: '${accountName}-cosmos-roles-module'
+  params: {
+    accountName: accountName
+  }
+  dependsOn: [
+    account
+  ]
+}
 
 // Identity to access CosmosDb
 module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
@@ -91,21 +91,22 @@ module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
     account
   ]
 }
-resource cosmosSqlRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' existing = {
-  name: cosmosSqlRoleAssignmentName
-  scope: resourceGroup(resourceGroupName)
-}
+//BuiltInRole to use in the future as opposed to custom
+// resource cosmosSqlRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' existing = {
+//   name: cosmosSqlRoleAssignmentName
+//   scope: resourceGroup(resourceGroupName)
+// }
 // Assign permissions (role) to Identity
 module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
   name: '${accountName}-cosmos-role-assignment-module'
   params: {
     accountName: accountName
     principalId: cosmosDbUserManagedIdentity.outputs.principalId
-    roleDefinitionId: cosmosSqlRole.id
+    roleDefinitionId: customReadWriteRole.outputs.roleDefinitionId
   }
   dependsOn: [
     account
-    cosmosSqlRole
+    customReadWriteRole
     cosmosDbUserManagedIdentity
   ]
 }
