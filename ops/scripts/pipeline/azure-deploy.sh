@@ -130,7 +130,7 @@ validation_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
 
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [ "$(az_vnet_exists_func "${networkResourceGroupName}" "${virtualNetworkName}")" != true ]; then
-    deployment_parameters="${deployment_parameters} createVnet=true"
+    deployment_parameters="${deployment_parameters} deployVnet=true"
 fi
 
 az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
