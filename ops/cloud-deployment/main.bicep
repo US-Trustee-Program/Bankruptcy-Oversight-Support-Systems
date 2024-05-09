@@ -152,6 +152,9 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       appServiceRuntime: 'php'
       deployNetwork: deployNetwork
     }
+    dependsOn: [
+      network
+    ]
   }
 
 // var funcParams = [
@@ -226,6 +229,9 @@ module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
       createAlerts: createAlerts
       deployNetwork: deployNetwork
     }
+    dependsOn: [
+      network
+    ]
   }
 
 // main.bicep outputs
