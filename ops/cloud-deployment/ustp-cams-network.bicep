@@ -124,6 +124,7 @@ module functionSubnet './lib/network/subnet.bicep' = {
   dependsOn: [
     ustpVirtualNetwork
     ustpDnsZones
+    privateEndpointSubnet
   ]
 }
 
@@ -147,6 +148,7 @@ module webappSubnet './lib/network/subnet.bicep' = {
   dependsOn: [
     ustpVirtualNetwork
     ustpDnsZones
+    privateEndpointSubnet
   ]
 }
 
