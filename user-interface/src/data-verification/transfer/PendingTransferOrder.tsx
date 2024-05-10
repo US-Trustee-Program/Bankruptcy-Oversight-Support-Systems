@@ -1,3 +1,4 @@
+import './PendingTransferOrder.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CaseTable, CaseTableImperative } from './CaseTable';
@@ -254,11 +255,10 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       updated.newCase = bCase;
       setEnableCaseEntry(false);
       setOrderTransfer(updated);
-      // approveButtonRef.current?.disableButton(false);
+      approveButtonRef.current?.disableButton(false);
     } else {
-      // TODO: Handle the new case entry selection....
       setEnableCaseEntry(true);
-      console.log('We need to add the case...');
+      approveButtonRef.current?.disableButton(true);
     }
   }
 
@@ -320,14 +320,14 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         </div>
         <div className="grid-col-1"></div>
       </div>
-      <div className="grid-row grid-gap-lg">
+      <div className="grid-row grid-gap-lg dockets-label">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">Docket entry of the order:</div>
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">
+        <div className="grid-col-2"></div>
+        <div className="grid-col-9">
           {order.docketEntries.map((docketEntry, idx) => {
             return (
               <div key={idx}>
@@ -355,91 +355,74 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        <div className="grid-col-10">Select case to transfer to:</div>
+        <div className="grid-col-10 select-destination-case--label">
+          Select case to transfer to:
+        </div>
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        <div className="grid-col-10">
-          Select the new case from the list. If the case is not listed, select the new court
+        <div className="grid-col-10 select-destination-case--description">
+          Select the new case from the list below. If the case is not listed, select the new court
           division and enter the new case number.
         </div>
         <div className="grid-col-1"></div>
       </div>
       <section className="order-form" data-testid={`order-form-${order.id}`}>
-        <div className="grid-row grid-gap-lg">
-          <div className="suggestions-form">
-            {loadingSuggestions && (
-              <div className="grid-row grid-gap-lg">
-                <div className="grid-col-1"></div>
-                <div className="grid-col-10">
-                  <LoadingSpinner
-                    id={`loading-spinner-${order.id}-suggestions`}
-                    caption="Loading suggestions..."
-                  ></LoadingSpinner>
-                </div>
+        <div className="grid-row grid-gap-lg suggestions-form">
+          {loadingSuggestions && (
+            <>
+              <div className="grid-col-1"></div>
+              <div className="grid-col-11">
+                <LoadingSpinner
+                  id={`loading-spinner-${order.id}-suggestions`}
+                  caption="Loading suggestions..."
+                ></LoadingSpinner>
               </div>
-            )}
-            {!loadingSuggestions && (
-              <>
-                <div className="grid-row grid-gap-lg transfer-instructions">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    These cases have similar information to the case being transferred. Select one
-                    of the cases below to set up the transfer. If the correct case {"isn't "}
-                    listed, please enter the Case Number on the Enter Case tab instead.
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-                <div className="grid-row grid-gap-lg transfer-description">
-                  <div className="grid-col-1"></div>
-                  <div className="transfer-from-to__div grid-col-10">
-                    <div className="transfer-text" tabIndex={0}>
-                      Transfer{' '}
-                      <CaseNumber
-                        caseId={order.caseId}
-                        data-testid={`pending-transfer-original-case-link-${order.caseId}`}
-                      ></CaseNumber>{' '}
-                      from
-                      <span className="transfer-highlight__span">
-                        {order.courtName} ({order.courtDivisionName})
-                      </span>
-                      to
+            </>
+          )}
+          {!loadingSuggestions && (
+            <>
+              <div className="grid-col-1"></div>
+              <div className="transfer-from-to__div transfer-description grid-col-10">
+                <div className="transfer-text" tabIndex={0}>
+                  Transfer{' '}
+                  <CaseNumber
+                    caseId={order.caseId}
+                    data-testid={`pending-transfer-original-case-link-${order.caseId}`}
+                  ></CaseNumber>{' '}
+                  from
+                  <span className="transfer-highlight__span">
+                    {order.courtName} ({order.courtDivisionName})
+                  </span>
+                  to
+                  {suggestedCases && suggestedCases?.length > 0 && (
+                    <CaseTable
+                      id="suggested-cases"
+                      cases={[...suggestedCases, null]}
+                      onSelect={handleSuggestedCaseSelection}
+                      ref={suggestedCasesRef}
+                    ></CaseTable>
+                  )}
+                  {suggestedCases && suggestedCases.length < 1 && (
+                    <div className="alert-container">
+                      <Alert
+                        inline={true}
+                        show={true}
+                        title="No Matching Cases"
+                        message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
+                        type={UswdsAlertStyle.Warning}
+                        role="status"
+                        className="suggested-cases-alert"
+                        id="suggested-cases-not-found"
+                      />
                     </div>
-                  </div>
-                  <div className="grid-col-1"></div>
+                  )}
                 </div>
-                <div className="grid-row grid-gap-lg suggestion-list">
-                  <div className="grid-col-1"></div>
-                  <div className="grid-col-10">
-                    {suggestedCases && suggestedCases?.length > 0 && (
-                      <CaseTable
-                        id="suggested-cases"
-                        cases={[...suggestedCases, null]}
-                        onSelect={handleSuggestedCaseSelection}
-                        ref={suggestedCasesRef}
-                      ></CaseTable>
-                    )}
-                    {suggestedCases && suggestedCases.length < 1 && (
-                      <div className="alert-container">
-                        <Alert
-                          inline={true}
-                          show={true}
-                          title="No Matching Cases"
-                          message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
-                          type={UswdsAlertStyle.Warning}
-                          role="status"
-                          className="suggested-cases-alert"
-                          id="suggested-cases-not-found"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid-col-1"></div>
-                </div>
-              </>
-            )}
-          </div>
+                <div className="grid-col-1"></div>
+              </div>
+            </>
+          )}
         </div>
         {enableCaseEntry && (
           <div className="case-entry-form">
