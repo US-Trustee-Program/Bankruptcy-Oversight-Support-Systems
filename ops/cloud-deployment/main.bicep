@@ -21,7 +21,7 @@ param privateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
 @description('Private Endpoint Subnet address prefix. USTP Required')
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
-@description('Flag: Deploy Bicep for webapp. False on slot deployments . Flexion and USTP Required')
+@description('Flag: Deploy Bicep config for webapp. False on slot deployments . Flexion and USTP Required')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
 @description('Webapp PE Subnet Name. Exists in PE Subnet')
@@ -30,8 +30,6 @@ param webappPrivateEndpointSubnetName string = privateEndpointSubnetName
 param webappSubnetName string = 'snet-${webappName}'
 @description('Webapp Subnet address prefix. USTP Required')
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
-
-
 @description('Plan type to determine webapp service plan Sku. Flexion and USTP Required')
 @allowed([
   'P1v2'
@@ -40,7 +38,7 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
 ])
 param webappPlanType string
 
-@description('Flag: Deploy Bicep for Azure function. False on slot deployments . Flexion and USTP Required')
+@description('Flag: Deploy Bicep config for Azure function. False on slot deployments . Flexion and USTP Required')
 param deployFunctions bool = true
 param functionName string = '${appName}-node-api'
 @description('Function Subet Name. USTP Required')
