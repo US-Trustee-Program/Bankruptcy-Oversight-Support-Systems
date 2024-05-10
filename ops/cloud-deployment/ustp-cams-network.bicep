@@ -47,7 +47,7 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
 }
 
 module ustpDnsZones './lib/network/private-dns-zones.bicep' ={
-    name: '${appName}-network-module'
+    name: '${appName}-network-dns-module'
     scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
     params: {
       stackName: appName
