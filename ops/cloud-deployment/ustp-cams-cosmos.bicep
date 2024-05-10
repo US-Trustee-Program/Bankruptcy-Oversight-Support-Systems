@@ -8,8 +8,6 @@ param databaseName string
 @description('List of container name and keys')
 param databaseContainers array = [] // See parameters.json file
 
-@description('Built In Cosmos SQL role assignment name')
-param cosmosSqlRoleAssignmentName string = 'Cosmos DB Built-in Data Contributor'
 @description('Allowed subnet resource id')
 param allowedSubnet string = ''
 
@@ -91,7 +89,7 @@ module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
     account
   ]
 }
-//BuiltInRole to use in the future as opposed to custom
+//TODO: Use this BuiltInRole as oppposed to custom
 // resource cosmosSqlRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' existing = {
 //   name: cosmosSqlRoleAssignmentName
 //   scope: resourceGroup(resourceGroupName)

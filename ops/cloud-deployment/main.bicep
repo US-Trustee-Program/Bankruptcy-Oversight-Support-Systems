@@ -71,10 +71,10 @@ param deployAppInsights bool = false
 param createAlerts bool = false
 
 @description('Resource Group name for analytics and monitoring')
-param analyticsResourceGroupName string
+param analyticsResourceGroupName string = 'rg-analytics'
 
 @description('Resource group name of the app config KeyVault')
-param kvAppConfigResourceGroupName string
+param kvAppConfigResourceGroupName string = sqlServerResourceGroupName
 
 @description('Action Group Name for alerts')
 param actionGroupName string =''
@@ -95,6 +95,7 @@ param idKeyvaultAppConfiguration string
 @secure()
 param cosmosIdentityName string
 
+//TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -157,49 +158,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
     ]
   }
 
-// var funcParams = [
-//   {
-//     // Define api node function resources
-//     planName: '${functionName}-plan'
-//     planType: apiPlanType
-//     functionName: functionName
-//     functionsRuntime: 'node'
-//     functionSubnetName: functionSubnetName
-//     functionsSubnetAddressPrefix: functionSubnetAddressPrefix
-//     privateEndpointSubnetName:
-//     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
-//   }
-// ]
-// module ustpFunctions 'backend-api-deploy.bicep' = [
-//   for (config, i) in funcParams: if (deployFunctions && deployWebapp) {
-//     name: '${appName}-function-module-${i}'
-//     scope: resourceGroup(appResourceGroup)
-//     params: {
-//       deployAppInsights: deployAppInsights
-//       analyticsWorkspaceId: analyticsWorkspaceId
-//       location: location
-//       planName: funcParams[i].planName
-//       functionName: funcParams[i].functionName
-//       functionsRuntime: funcParams[i].functionsRuntime
-//       functionSubnetId: funcParams[i].functionSubnetName
-//       databaseConnectionString: databaseConnectionString
-//       sqlServerName: sqlServerName
-//       sqlServerResourceGroupName: sqlServerResourceGroupName
-//       sqlServerIdentityName: sqlServerIdentityName
-//       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-//       corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
-//       allowVeracodeScan: allowVeracodeScan
-//       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
-//       cosmosIdentityName: cosmosIdentityName
-//       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
-//       virtualNetworkResourceGroupName: networkResourceGroupName
-//       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
-//       actionGroupName: actionGroupName
-//       actionGroupResourceGroupName: analyticsResourceGroupName
-//       createAlerts: createAlerts
-//     }
-//   }
-// ]
 module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
     name: '${appName}-function-module'
     scope: resourceGroup(appResourceGroup)
