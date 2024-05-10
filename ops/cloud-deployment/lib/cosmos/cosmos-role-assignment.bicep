@@ -14,7 +14,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
 var sqlRoleAssignmentName = 'RoleAssignment${accountName}${principalId}'
 resource sqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = {
   parent: account
-  name: sqlRoleAssignmentName
+  name: guid(sqlRoleAssignmentName)
   properties: {
     roleDefinitionId: roleDefinitionId
     principalId: principalId
