@@ -1,26 +1,38 @@
+@description('Stack Name that helps give many resources unique names. Flexion and USTP Required')
 param appName string
 param location string = resourceGroup().location
 param appResourceGroup string = resourceGroup().name
-@description('Disable creating Azure virtual network by default.')
+@description('Boolean to deploy vnet. Determined at workflow runtime. Flexion and USTP required on initial deployment')
 param deployVnet bool = false
+@description('Prefic to Vnet address. USTP Required')
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
-@description('Setup Azure resources for Private DNS Zone. Link virtual networks to zone.')
+@description('Setup Network Resources: DNS Zone, Subnets, Link virtual networks to zone. Flexion and USTP required')
 param deployNetwork bool = true
+@description('Network RG Name. Flexion and USTP Required')
 param networkResourceGroupName string
+@description(' Vnet Name. USTP Required')
 param virtualNetworkName string = 'vnet-${appName}'
+@description('Array of Vnets to link to DNS Zone. USTP Required')
 param linkVnetIds array = []
 
-@description('Set to true to deploy web module resources. This should be set to false for Azure slot deployments.')
+@description('Private Endpoint Subnet Name. USTP Required')
+param privateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
+@description('Private Endpoint Subnet address prefix. USTP Required')
+param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
+
+@description('Flag: Deploy Bicep for webapp. False on slot deployments . Flexion and USTP Required')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
-param webappPrivateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
+@description('Webapp PE Subnet Name. Exists in PE Subnet')
+param webappPrivateEndpointSubnetName string = privateEndpointSubnetName
+@description('Webapp Subnet Name. USTP Required')
 param webappSubnetName string = 'snet-${webappName}'
+@description('Webapp Subnet address prefix. USTP Required')
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
-param privateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
-param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
-@description('Plan type to determine webapp service plan Sku')
+
+@description('Plan type to determine webapp service plan Sku. Flexion and USTP Required')
 @allowed([
   'P1v2'
   'B2'
@@ -28,12 +40,15 @@ param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 ])
 param webappPlanType string
 
-@description('Set to true to deploy api module resources. This should be set to false for Azure slot deployments.')
+@description('Flag: Deploy Bicep for Azure function. False on slot deployments . Flexion and USTP Required')
 param deployFunctions bool = true
 param functionName string = '${appName}-node-api'
+@description('Function Subet Name. USTP Required')
 param functionSubnetName string = 'snet-${functionName}'
+@description('Function Subnet Address Prefix. USTP Required')
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
-param functionPrivateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
+@description('Webapp PE Subnet Name. Exists in PE Subnet')
+param functionPrivateEndpointSubnetName string = privateEndpointSubnetName
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
@@ -42,56 +57,61 @@ param functionPrivateEndpointSubnetName string = 'snet-${appName}-private-endpoi
 ])
 param apiPlanType string
 
+
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 param privateDnsZoneResourceGroup string = networkResourceGroupName
+@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment. USTP Required')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
 param azHostSuffix string = '.us'
 
+@description('SQL Connection for USTP Environment. Flexion uses Managed ID. USTP Required')
 @secure()
 param databaseConnectionString string = ''
+@description('SQL Server Name. Flexion and USTP Required')
 param sqlServerName string = ''
+@description('SQL RG Name. Flexion and USTP Required')
 param sqlServerResourceGroupName string = ''
-@description('Name for managed identity of database server')
+@description('Name for managed identity of database server. Flexion Required')
 param sqlServerIdentityName string = ''
-@description('Resource group name for managed identity of database server')
+@description('Resource group name for managed identity of database server. Flexion Required')
 param sqlServerIdentityResourceGroupName string = ''
 
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
 
-@description('Log Analytics Workspace ID associated with Application Insights')
+@description('Log Analytics Workspace ID associated with Application Insights. Flexion and USTP Required')
 param analyticsWorkspaceId string = ''
-@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function. USTP Required')
 param deployAppInsights bool = false
 
-@description('boolean to determine creation and configuration of Alerts')
+@description('boolean to determine creation and configuration of Alerts. Flexion Required')
 param createAlerts bool = false
 
-@description('Resource Group name for analytics and monitoring')
+@description('Resource Group name for analytics and monitoring. USTP Required')
 param analyticsResourceGroupName string = 'rg-analytics'
 
-@description('Resource group name of the app config KeyVault')
+@description('Resource group name of the app config KeyVault. USTP Required')
 param kvAppConfigResourceGroupName string = sqlServerResourceGroupName
 
-@description('Action Group Name for alerts')
+@description('Action Group Name for alerts. Flexion Required')
 param actionGroupName string =''
 
-@description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy')
+@description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy. USTP Required')
 @secure()
 param ustpIssueCollectorHash string = ''
 
-@description('React-Select hash. Used to set Content-Security-Policy')
+@description('React-Select hash. Used to set Content-Security-Policy. Flexion and USTP Required')
 @secure()
 param camsReactSelectHash string
 
-@description('Name of the managed identity with read access to the keyvault storing application configurations.')
+@description('Name of the managed identity with read access to the keyvault storing application configurations. Flexion and USTP Required')
 @secure()
 param idKeyvaultAppConfiguration string
 
-@description('Name of the managed identity with read/write access to CosmosDB')
+@description('Name of the managed identity with read/write access to CosmosDB. Flexion and USTP Required')
 @secure()
 param cosmosIdentityName string
 
