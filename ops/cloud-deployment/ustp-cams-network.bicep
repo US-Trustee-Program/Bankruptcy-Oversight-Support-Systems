@@ -18,7 +18,7 @@ param webappName string = '${appName}-node-api'
 param webappSubnetName string = 'snet-${functionName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
-param privateEndpointSubnetName string = 'subnet-privte-endpoints'
+param privateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 @description('Private DNS Zone Name')
