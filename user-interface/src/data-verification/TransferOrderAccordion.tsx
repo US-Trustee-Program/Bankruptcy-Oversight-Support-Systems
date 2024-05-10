@@ -380,27 +380,18 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
-              <span className="text-bold padding-right-1">
-                Case Number:{' '}
-                <CaseNumber
-                  caseId={order.caseId}
-                  data-testid={`approved-transfer-original-case-link-${order.caseId}`}
-                ></CaseNumber>
-              </span>
-              <span className="text-bold">Case Title: </span>
-              <span className="padding-right-1">{order.caseTitle}</span>
-              <span className="text-bold">Chapter: </span>
-              <span className="padding-right-1">{order.chapter}</span>
-              <span className="text-bold">Case Filed: </span>
-              <span className="padding-right-1">
-                {originalCaseSummary && formatDate(originalCaseSummary.dateFiled)}
-              </span>
-              <span className="text-bold">SSN/EIN: </span>
-              <span className="padding-right-1">
-                {originalCaseSummary?.debtor?.taxId
-                  ? originalCaseSummary?.debtor.taxId
-                  : originalCaseSummary?.debtor?.ssn}
-              </span>
+              {!originalCaseSummary && (
+                <LoadingSpinner
+                  id={`${order.id}-transfer-from-case-loading`}
+                  caption="Loading case..."
+                ></LoadingSpinner>
+              )}
+              {originalCaseSummary && (
+                <CaseTable
+                  id={`${order.id}-transfer-from-case`}
+                  cases={[originalCaseSummary]}
+                ></CaseTable>
+              )}
             </div>
             <div className="grid-col-1"></div>
           </div>
