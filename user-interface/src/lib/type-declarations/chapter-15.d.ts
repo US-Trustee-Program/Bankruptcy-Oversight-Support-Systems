@@ -1,5 +1,5 @@
 import { SimpleResponseData, ResponseData } from './api';
-import * as CommonOrders from '@common/cams/orders';
+// import * as CommonOrders from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import { EventCaseReference } from '@common/cams/events';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -83,17 +83,17 @@ export interface CaseAssociatedCasesResponseData extends ResponseData {
   body: EventCaseReference[];
 }
 
-export type TransferOrder = CommonOrders.TransferOrder & {
-  id: string;
-};
+// export type TransferOrder = CommonOrders.TransferOrder & {
+//   id: string;
+// };
 
-export type ConsolidationOrder = CommonOrders.ConsolidationOrder & {
-  id: string;
-};
+// export type ConsolidationOrder = CommonOrders.ConsolidationOrder & {
+//   id: string;
+// };
 
-export type Order = CommonOrders.Order & {
-  id: string;
-};
+// export type Order = CommonOrders.Order & {
+//   id: string;
+// };
 
 export interface OrderResponseData extends ResponseData {
   body: Array<Order>;

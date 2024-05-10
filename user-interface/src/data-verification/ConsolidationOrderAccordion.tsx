@@ -1,6 +1,6 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseTable } from './CaseTable';
+import { CaseTable } from './transfer/CaseTable';
 import { useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
