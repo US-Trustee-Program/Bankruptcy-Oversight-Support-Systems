@@ -14,11 +14,11 @@ param linkVnetIds array = []
 @description('Set to true to deploy web module resources. This should be set to false for Azure slot deployments.')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
-param webappPrivateEndpointSubnetName string = 'snet-${appName}-pep'
+param webappPrivateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
 param webappSubnetName string = 'snet-${webappName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
-param privateEndpointSubnetName string = 'subnet-private-endpoints'
+param privateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 @description('Plan type to determine webapp service plan Sku')
 @allowed([
@@ -33,7 +33,7 @@ param deployFunctions bool = true
 param functionName string = '${appName}-node-api'
 param functionSubnetName string = 'snet-${functionName}'
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
-param functionPrivateEndpointSubnetName string = 'snet-${appName}-pep'
+param functionPrivateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
@@ -43,7 +43,7 @@ param functionPrivateEndpointSubnetName string = 'snet-${appName}-pep'
 param apiPlanType string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
-param privateDnsZoneResourceGroup string = resourceGroup().name
+param privateDnsZoneResourceGroup string = networkResourceGroupName
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Name of deployment slot for frontend and backend')

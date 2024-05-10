@@ -24,7 +24,7 @@ param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 @description('Private DNS Zone Name')
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 @description('Private DNS Zone Resource Group')
-param privateDnsZoneResourceGroup string = resourceGroup().name
+param privateDnsZoneResourceGroup string = networkResourceGroupName
 @description('Private DNS Zone subscription, all 3 params here are set because the Prod environment uses a different subscription and RG for these')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
