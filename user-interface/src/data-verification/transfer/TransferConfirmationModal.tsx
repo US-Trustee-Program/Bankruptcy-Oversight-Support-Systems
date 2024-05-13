@@ -4,7 +4,7 @@ import { OrderStatus } from '@common/cams/orders';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
-interface ConfirmationModalProps {
+export interface TransferConfirmationModalProps {
   id: string;
   fromCaseId: string;
   toCaseId?: string;
@@ -25,13 +25,13 @@ type ShowOptions = {
   title: string;
 };
 
-type ConfirmationModalImperative = ModalRefType & {
+export type TransferConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
-function ConfirmationModalComponent(
-  props: ConfirmationModalProps,
-  ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
+function TransferConfirmationModalComponent(
+  props: TransferConfirmationModalProps,
+  ConfirmationModalRef: React.Ref<TransferConfirmationModalImperative>,
 ) {
   const {
     id,
@@ -42,7 +42,7 @@ function ConfirmationModalComponent(
     fromCourtName,
     toCourtName,
     onConfirm,
-  }: ConfirmationModalProps = props;
+  }: TransferConfirmationModalProps = props;
 
   const modalRef = useRef<ModalRefType>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
@@ -153,4 +153,4 @@ function ConfirmationModalComponent(
   );
 }
 
-export const ConfirmationModal = forwardRef(ConfirmationModalComponent);
+export const TransferConfirmationModal = forwardRef(TransferConfirmationModalComponent);
