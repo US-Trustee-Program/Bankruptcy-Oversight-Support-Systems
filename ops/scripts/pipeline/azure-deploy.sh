@@ -24,6 +24,10 @@ function validation_func() {
         exit 10
     fi
 
+    if [[ -z "${app_name}" ]]; then
+        echo "Error: Missing default resource group"
+        exit 10
+    fi
     if [[ -z "${deployment_file}" ]]; then
         echo "Error: Missing deployment file"
         exit 11
@@ -113,7 +117,11 @@ while [[ $# -gt 0 ]]; do
         deployment_file="${2}"
         shift 2
         ;;
-
+    #Core app name -- stack name
+    --appName)
+        app_name="${2}"
+        shift 2
+        ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --parameters)
         deployment_parameters="${2}"
@@ -132,5 +140,6 @@ validation_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
 if [ "$(az_vnet_exists_func "${networkResourceGroupName}" "${virtualNetworkName}")" != true ]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"
 fi
+deployment_parameters="${deployment_parameters} appName=${app_name}"
 
 az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
