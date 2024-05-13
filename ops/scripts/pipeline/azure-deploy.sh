@@ -12,60 +12,6 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("appName" "networkResourceGroupName" "virtualNetworkName")
-
-function validation_func() {
-    local app_rg=$1
-    local deployment_file=$2
-    local deployment_parameters=$3
-
-    if [[ -z "${app_rg}" ]]; then
-        echo "Error: Missing default resource group"
-        exit 10
-    fi
-
-    if [[ -z "${app_name}" ]]; then
-        echo "Error: Missing default resource group"
-        exit 10
-    fi
-    if [[ -z "${deployment_file}" ]]; then
-        echo "Error: Missing deployment file"
-        exit 11
-    fi
-
-    if [ ! -f "${deployment_file}" ]; then
-        echo "Error: File (${deployment_file}) does not exist."
-        exit 12
-    fi
-
-    if [[ -z "${deployment_parameters}" ]]; then
-        echo "Error: Missing deployment parameters"
-        exit 13
-    fi
-
-    # Parse deployment_parameters and set required params as variables
-    for p in $deployment_parameters; do
-        case "$p" in
-        appName=*) appName=${p/*=/} ;;
-        networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
-        virtualNetworkName=*) virtualNetworkName=${p/*=/} ;;
-        *)
-            # skipped unmatched keys
-            ;;
-        esac
-    done
-    echo "Required parameters: ${appName} ${networkResourceGroupName} ${virtualNetworkName}"
-
-    # Check that required params has been set
-    for r in "${requiredParams[@]}"; do
-        varOfVar=$r
-        if [[ -z ${!varOfVar} ]]; then
-            echo "Error: Missing parameter ($r)"
-            exit 14
-        fi
-    done
-}
-
 function az_vnet_exists_func() {
     local rg=$1
     local vnetName=$2
@@ -109,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     # default resource group name
     -g | --resource-group)
         app_rg="${2}"
+        app_rg_param="appResourceGroup=${2}"
         shift 2
         ;;
 
@@ -120,6 +67,46 @@ while [[ $# -gt 0 ]]; do
     #Core app name -- stack name
     --appName)
         app_name="${2}"
+        app_name_param="appName=${2}"
+        shift 2
+        ;;
+    --networkResourceGroup)
+        network_resource_group="${2}"
+        network_resource_group_param="networkResourceGroupName=${2}"
+        shift 2
+        ;;
+    --vnetName)
+        vnet_name="${2}"
+        vnet_name_param="virtualNetworkName=${2}"
+        shift 2
+        ;;
+    --analyticsWorkspaceId)
+        analytics_workspace_id="${2}"
+        analytics_workspace_id_param="analyticsWorkspaceId=${2}"
+        shift 2
+        ;;
+    --idKeyvaultAppConfiguration)
+        keyvault_app_config_id="${2}"
+        keyvault_app_config_id_param="idKeyvaultAppConfiguration=${2}"
+        shift 2
+        ;;
+    --cosmosIdentityName)
+        cosmos_id_name="${2}"
+        cosmos_id_name_param="cosmosIdentityName=${2}"
+        shift 2
+        ;;
+    --deployVnet)
+        deploy_vnet="${2}"
+        shift 2
+        ;;
+    --camsReactSelectHash)
+        cams_react_select_hash="${2}"
+        cams_react_select_hash_param="camsReactSelectHash=${2}"
+        shift 2
+        ;;
+    --ustpIssueCollectorHash)
+        ustp_issue_collector_hash="${2}"
+        ustp_issue_collector_hash_param="ustpIssueCollectorHash=${2}"
         shift 2
         ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
@@ -133,13 +120,65 @@ while [[ $# -gt 0 ]]; do
         ;;
     esac
 done
+if [[ -z "${deployment_file}" ]]; then
+    echo "Error: Missing deployment file"
+    exit 11
+fi
 
-validation_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
+if [ ! -f "${deployment_file}" ]; then
+    echo "Error: File (${deployment_file}) does not exist."
+    exit 12
+fi
 
+if [[ -z "${deployment_parameters}" ]]; then
+    echo "Error: Missing deployment parameters"
+    exit 13
+fi
+if [[ -z "${app_rg}" ]]; then
+    echo "Error: Missing default resource group"
+    exit 10
+fi
+if [[ -z "${app_name}" ]]; then
+    echo "Error: Missing appName"
+    exit 10
+fi
+if [[ -z "${network_resource_group}" ]]; then
+    echo "Error: Missing Network resource group"
+    exit 10
+fi
+if [[ -z "${vnet_name}" ]]; then
+    echo "Error: Missing Vnet Name"
+    exit 10
+fi
+if [[ -z "${analytics_workspace_id}" ]]; then
+    echo "Error: Missing analytics workspace id"
+    exit 10
+fi
+if [[ -z "${keyvault_app_config_id}" ]]; then
+    echo "Error: Missing KV App config ID Name"
+    exit 10
+fi
+if [[ -z "${cosmos_id_name}" ]]; then
+    echo "Error: Missing Cosmos Managed id name"
+    exit 10
+fi
+if [[ -z "${cams_react_select_hash}" ]]; then
+    echo "Error: Missing camsReactSelectHash"
+    exit 10
+fi
+if [[ -z "${ustp_issue_collector_hash}" ]]; then
+    echo "Error: Missing ustpIssueCollectorHash"
+    exit 10
+fi
+if [[ -z "${deploy_vnet}" ]]; then
+    echo "Error: Missing deployVnet"
+    exit 10
+fi
+
+deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param}"
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
-if [ "$(az_vnet_exists_func "${networkResourceGroupName}" "${virtualNetworkName}")" != true ]; then
+if [[ "$(az_vnet_exists_func "${network_resource_group}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"
 fi
-deployment_parameters="${deployment_parameters} appName=${app_name}"
 
 az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"

@@ -24,8 +24,6 @@ param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 @description('Flag: Deploy Bicep config for webapp. False on slot deployments . Flexion and USTP Required')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
-// @description('Webapp PE Subnet Name. Exists in PE Subnet')
-// param webappPrivateEndpointSubnetName string = privateEndpointSubnetName
 @description('Webapp Subnet Name. USTP Required')
 param webappSubnetName string = 'snet-${webappName}'
 @description('Webapp Subnet address prefix. USTP Required')
@@ -45,8 +43,6 @@ param functionName string = '${appName}-node-api'
 param functionSubnetName string = 'snet-${functionName}'
 @description('Function Subnet Address Prefix. USTP Required')
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
-// @description('Webapp PE Subnet Name. Exists in PE Subnet')
-// param functionPrivateEndpointSubnetName string = privateEndpointSubnetName
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
@@ -65,9 +61,6 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 param slotName string = 'staging'
 param azHostSuffix string = '.us'
 
-@description('SQL Connection for USTP Environment. Flexion uses Managed ID. USTP Required')
-@secure()
-param databaseConnectionString string = ''
 @description('SQL Server Name. Flexion and USTP Required')
 param sqlServerName string = ''
 @description('SQL RG Name. Flexion and USTP Required')
@@ -187,7 +180,6 @@ module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
       functionName: functionName
       functionsRuntime: 'node'
       functionSubnetId: network.outputs.functionSubnetId
-      databaseConnectionString: databaseConnectionString
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName

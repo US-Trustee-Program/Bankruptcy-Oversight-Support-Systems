@@ -73,10 +73,6 @@ param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, 
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
 
-@description('Database connection string')
-@secure()
-param databaseConnectionString string = ''
-
 @description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
@@ -279,7 +275,6 @@ var applicationSettings = concat(
       value: functionsRuntime
     }
   ],
-  !empty(databaseConnectionString) ? [{ name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString }] : [],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
     : []
