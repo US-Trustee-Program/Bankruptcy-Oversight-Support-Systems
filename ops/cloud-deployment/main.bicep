@@ -80,22 +80,25 @@ param sqlServerIdentityResourceGroupName string = ''
 @description('Flag to enable Vercode access to execute DAST scanning')
 param allowVeracodeScan bool = false
 
-@description('Log Analytics Workspace ID associated with Application Insights. Flexion and USTP Required')
-param analyticsWorkspaceId string = ''
-@description('boolean to determine creation and configuration of Application Insights for the Azure Function. USTP Required')
-param deployAppInsights bool = false
 
-@description('boolean to determine creation and configuration of Alerts. Flexion Required')
-param createAlerts bool = false
 
-@description('Resource Group name for analytics and monitoring. USTP Required')
-param analyticsResourceGroupName string = 'rg-analytics'
-
+@description('Name of the managed identity with read access to the keyvault storing application configurations. Flexion and USTP Required')
+@secure()
+param idKeyvaultAppConfiguration string
 @description('Resource group name of the app config KeyVault. USTP Required')
 param kvAppConfigResourceGroupName string = sqlServerResourceGroupName
 
+@description('boolean to determine creation and configuration of Alerts. Flexion Required')
+param createAlerts bool = false
 @description('Action Group Name for alerts. Flexion Required')
 param actionGroupName string =''
+
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function. USTP Required')
+param deployAppInsights bool = false
+@description('Log Analytics Workspace ID associated with Application Insights. Flexion and USTP Required')
+param analyticsWorkspaceId string = ''
+@description('Resource Group name for analytics and monitoring. USTP Required')
+param analyticsResourceGroupName string = 'rg-analytics'
 
 @description('Optional. USTP Issue Collector hash. Used to set Content-Security-Policy. USTP Required')
 @secure()
@@ -104,10 +107,6 @@ param ustpIssueCollectorHash string = ''
 @description('React-Select hash. Used to set Content-Security-Policy. Flexion and USTP Required')
 @secure()
 param camsReactSelectHash string
-
-@description('Name of the managed identity with read access to the keyvault storing application configurations. Flexion and USTP Required')
-@secure()
-param idKeyvaultAppConfiguration string
 
 @description('Name of the managed identity with read/write access to CosmosDB. Flexion and USTP Required')
 @secure()
