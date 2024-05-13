@@ -24,6 +24,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import { CaseSelection } from './CaseSelection';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -63,7 +64,7 @@ export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransfe
   };
 }
 
-type PendingTransferOrderProps = {
+export type PendingTransferOrderProps = {
   order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   // TODO: This is a lot of prop drilling. Maybe add a custom hook???
@@ -569,44 +570,6 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
           onConfirm={confirmAction}
         ></TransferConfirmationModal>
       </section>
-    </>
-  );
-}
-
-function safeToInt(s: string) {
-  const intVal = parseInt(s);
-  if (isNaN(intVal)) return s;
-
-  return intVal.toString();
-}
-
-interface CaseSelectionAttributes {
-  courtDivisionName: string;
-  region: string;
-}
-
-interface CaseSelectionProps {
-  fromCourt: CaseSelectionAttributes;
-  toCourt: Partial<CaseSelectionAttributes>;
-}
-
-export function CaseSelection(props: CaseSelectionProps) {
-  const { fromCourt, toCourt } = props;
-
-  return (
-    <>
-      USTP Office: transfer from
-      <span className="from-location transfer-highlight__span">
-        Region {safeToInt(fromCourt.region)} - {fromCourt.courtDivisionName}
-      </span>
-      {toCourt.region && toCourt.courtDivisionName && (
-        <>
-          to
-          <span className="to-location transfer-highlight__span">
-            Region {safeToInt(toCourt.region)} - {toCourt.courtDivisionName}
-          </span>
-        </>
-      )}
     </>
   );
 }

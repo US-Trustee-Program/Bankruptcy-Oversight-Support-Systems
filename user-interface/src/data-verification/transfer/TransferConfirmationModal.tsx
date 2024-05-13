@@ -42,6 +42,7 @@ function TransferConfirmationModalComponent(
     fromCourtName,
     toCourtName,
     onConfirm,
+    onCancel,
   }: TransferConfirmationModalProps = props;
 
   const modalRef = useRef<ModalRefType>(null);
@@ -69,6 +70,7 @@ function TransferConfirmationModalComponent(
     cancelButton: {
       label: 'Go back',
       onClick: () => {
+        onCancel();
         clearReason();
         hide();
       },
