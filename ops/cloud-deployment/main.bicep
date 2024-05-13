@@ -122,7 +122,7 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
       actionGroupName: actionGroupName
     }
   }
-module network './ustp-cams-network.bicep' = {
+module network './lib//network/ustp-cams-network.bicep' = {
   name: '${appName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {

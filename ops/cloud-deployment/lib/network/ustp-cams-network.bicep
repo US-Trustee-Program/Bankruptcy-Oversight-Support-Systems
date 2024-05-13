@@ -30,7 +30,7 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 
 
-module targetVnet './lib/network/vnet.bicep' =
+module targetVnet './vnet.bicep' =
   if (deployVnet) {
     name: '${appName}-vnet-module'
     scope: resourceGroup(networkResourceGroupName)
@@ -46,7 +46,7 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' exist
   scope: resourceGroup(networkResourceGroupName)
 }
 
-module ustpDnsZones './lib/network/private-dns-zones.bicep' ={
+module ustpDnsZones './private-dns-zones.bicep' ={
     name: '${appName}-network-dns-module'
     scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
     params: {
@@ -63,7 +63,7 @@ module ustpDnsZones './lib/network/private-dns-zones.bicep' ={
 /*
   Create subnet for private endpoint
 */
-module privateEndpointSubnet './lib/network/subnet.bicep' = {
+module privateEndpointSubnet './subnet.bicep' = {
   name: '${privateEndpointSubnetName}-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -91,7 +91,7 @@ module privateEndpointSubnet './lib/network/subnet.bicep' = {
   ]
 }
 
-module functionSubnet './lib/network/subnet.bicep' = {
+module functionSubnet './subnet.bicep' = {
   name: '${functionName}-subnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
@@ -128,7 +128,7 @@ module functionSubnet './lib/network/subnet.bicep' = {
   ]
 }
 
-module webappSubnet './lib/network/subnet.bicep' = {
+module webappSubnet './subnet.bicep' = {
   name: '${webappName}-subnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
