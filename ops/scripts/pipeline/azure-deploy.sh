@@ -70,7 +70,7 @@ while [[ $# -gt 0 ]]; do
         app_name_param="appName=${2}"
         shift 2
         ;;
-    --networkResourceGroup)
+    --networkResourceGroupName)
         network_resource_group="${2}"
         network_resource_group_param="networkResourceGroupName=${2}"
         shift 2
