@@ -39,9 +39,24 @@ describe('TransferConfirmationModal component', () => {
     };
   }
 
-  test.skip('should call onCancel callback when cancelled', () => {
-    const { onCancel } = renderWithProps();
-    expect(onCancel).toHaveBeenCalled();
+  test('should call onCancel callback when cancelled', async () => {
+    const { onCancel, modalRef } = renderWithProps();
+
+    modalRef.current?.show({
+      status: 'approved',
+    });
+
+    const cancelButton = screen.getByTestId(`button-confirm-modal-${modalId}-cancel-button`);
+
+    await waitFor(() => {
+      expect(cancelButton).toBeVisible();
+      expect(cancelButton).toBeEnabled();
+    });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(onCancel).toHaveBeenCalled();
+    });
   });
 
   test('should call onConfirm callback when approved', async () => {
@@ -52,10 +67,15 @@ describe('TransferConfirmationModal component', () => {
     });
 
     const confirmButton = screen.getByTestId(`button-confirm-modal-${modalId}-submit-button`);
+
+    await waitFor(() => {
+      expect(confirmButton).toBeVisible();
+      expect(confirmButton).toBeEnabled();
+    });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith('approved');
+      expect(onConfirm).toHaveBeenCalledWith('approved', undefined);
     });
   });
 
