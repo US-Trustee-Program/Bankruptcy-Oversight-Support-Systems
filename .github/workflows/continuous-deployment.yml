@@ -134,14 +134,15 @@ jobs:
   deploy:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
-    needs: [
+    needs:
+      [
         setup,
         build,
-        # accessibility-test,
-        # security-scan,
-        # unit-test-frontend,
-        # unit-test-backend,
-        # unit-test-common,
+        accessibility-test,
+        security-scan,
+        unit-test-frontend,
+        unit-test-backend,
+        unit-test-common,
       ]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
