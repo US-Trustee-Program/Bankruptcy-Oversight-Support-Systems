@@ -11,7 +11,7 @@ import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Ale
 import { useEffect, useRef, useState } from 'react';
 import { useApi } from '@/lib/hooks/UseApi';
 import { Chapter15CaseSummaryResponseData } from '@/lib/type-declarations/chapter-15';
-import { ConfirmationModal } from './TransferConfirmationModal';
+import { TransferConfirmationModal } from './TransferConfirmationModal';
 import { ConfirmationModalImperative } from '../ConsolidationOrderModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -556,7 +556,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
           </div>
           <div className="grid-col-1"></div>
         </div>
-        <ConfirmationModal
+        <TransferConfirmationModal
           ref={confirmationModalRef}
           id={`confirmation-modal-${order.id}`}
           fromCaseId={order.caseId}
@@ -567,7 +567,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
           toCourtName={orderTransfer.newCase?.courtName}
           onCancel={cancelUpdate}
           onConfirm={confirmAction}
-        ></ConfirmationModal>
+        ></TransferConfirmationModal>
       </section>
     </>
   );
