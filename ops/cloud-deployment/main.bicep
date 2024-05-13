@@ -24,8 +24,8 @@ param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 @description('Flag: Deploy Bicep config for webapp. False on slot deployments . Flexion and USTP Required')
 param deployWebapp bool = true
 param webappName string = '${appName}-webapp'
-@description('Webapp PE Subnet Name. Exists in PE Subnet')
-param webappPrivateEndpointSubnetName string = privateEndpointSubnetName
+// @description('Webapp PE Subnet Name. Exists in PE Subnet')
+// param webappPrivateEndpointSubnetName string = privateEndpointSubnetName
 @description('Webapp Subnet Name. USTP Required')
 param webappSubnetName string = 'snet-${webappName}'
 @description('Webapp Subnet address prefix. USTP Required')
@@ -45,8 +45,8 @@ param functionName string = '${appName}-node-api'
 param functionSubnetName string = 'snet-${functionName}'
 @description('Function Subnet Address Prefix. USTP Required')
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
-@description('Webapp PE Subnet Name. Exists in PE Subnet')
-param functionPrivateEndpointSubnetName string = privateEndpointSubnetName
+// @description('Webapp PE Subnet Name. Exists in PE Subnet')
+// param functionPrivateEndpointSubnetName string = privateEndpointSubnetName
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
@@ -213,8 +213,8 @@ module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
 // main.bicep outputs
 
 output vnetName string = virtualNetworkName
-output webappPrivateEndpointSubnetName string = webappPrivateEndpointSubnetName
-output apiPrivateEndpointSubnetName string = functionPrivateEndpointSubnetName
+// output webappPrivateEndpointSubnetName string = webappPrivateEndpointSubnetName
+// output apiPrivateEndpointSubnetName string = functionPrivateEndpointSubnetName
 
 // Allowed subnet name that should have access to CosmosDb
 // Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
