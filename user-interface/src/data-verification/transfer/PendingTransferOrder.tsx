@@ -537,22 +537,22 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         )}
         <div className="button-bar grid-row grid-gap-lg">
           <div className="grid-col-1"></div>
-          <div className="grid-col-5">
-            <Button
-              id={`accordion-reject-button-${order.id}`}
-              onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
-              uswdsStyle={UswdsButtonStyle.Secondary}
-            >
-              Reject
-            </Button>
-          </div>
-          <div className="grid-col-5 text-no-wrap float-right">
+          <div className="grid-col-10 text-no-wrap float-right">
             <Button
               id={`accordion-cancel-button-${order.id}`}
               onClick={cancelUpdate}
-              uswdsStyle={UswdsButtonStyle.Outline}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              className="padding-right-2"
             >
-              Cancel
+              Clear
+            </Button>
+            <Button
+              id={`accordion-reject-button-${order.id}`}
+              onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
+              uswdsStyle={UswdsButtonStyle.Outline}
+              className="margin-right-2"
+            >
+              Reject
             </Button>
             <Button
               id={`accordion-approve-button-${order.id}`}
