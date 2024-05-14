@@ -34,7 +34,7 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
   'B2'
   'S1'
 ])
-param webappPlanType string
+param webappPlanType string = 'P1v2'
 
 @description('Flag: Deploy Bicep config for Azure function. False on slot deployments . Flexion and USTP Required')
 param deployFunctions bool = true
@@ -49,7 +49,7 @@ param functionSubnetAddressPrefix string = '10.10.11.0/28'
   'B2'
   'S1'
 ])
-param apiPlanType string
+param functionPlanType string = 'P1v2'
 
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
@@ -175,7 +175,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
-      planType: apiPlanType
+      planType: functionPlanType
       planName: '${functionName}-plan'
       functionName: functionName
       functionsRuntime: 'node'
