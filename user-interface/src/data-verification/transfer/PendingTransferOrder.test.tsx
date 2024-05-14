@@ -222,9 +222,12 @@ describe('PendingTransferOrder component', () => {
     }
 
     async function clickNoListedCaseRadioButton() {
-      const caseNotListedRadio = await screen.findByTestId('suggested-cases-radio-empty');
-      expect(caseNotListedRadio).toBeInTheDocument();
-      fireEvent.click(caseNotListedRadio);
+      let caseNotListedRadio: HTMLElement;
+      await waitFor(async () => {
+        caseNotListedRadio = await screen.findByTestId('suggested-cases-radio-empty');
+        expect(caseNotListedRadio).toBeInTheDocument();
+      });
+      fireEvent.click(caseNotListedRadio!);
       await waitFor(() => {
         expect(caseNotListedRadio).toBeChecked();
       });
@@ -491,7 +494,11 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
 
       const { onOrderUpdate } = renderWithProps();
-      await clickNoListedCaseRadioButton();
+
+      await waitFor(() => {
+        const alert = document.querySelector('#suggested-cases-not-found');
+        expect(alert).toBeInTheDocument();
+      });
 
       selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
@@ -524,12 +531,16 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
-    test.only('should throw error during Rejection when API returns an error', async () => {
+    test('should throw error during Rejection when API returns an error', async () => {
       const errorMessage = 'Some random error';
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
 
       const { onOrderUpdate } = renderWithProps();
-      await clickNoListedCaseRadioButton();
+
+      await waitFor(() => {
+        const alert = document.querySelector('#suggested-cases-not-found');
+        expect(alert).toBeInTheDocument();
+      });
 
       selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
@@ -553,6 +564,7 @@ describe('PendingTransferOrder component', () => {
       fireEvent.click(confirmModal!);
 
       await waitFor(async () => {
+        console.log(onOrderUpdate.mock.calls);
         expect(onOrderUpdate).toHaveBeenCalled();
         expect(onOrderUpdate).toHaveBeenCalledWith({
           message: errorMessage,

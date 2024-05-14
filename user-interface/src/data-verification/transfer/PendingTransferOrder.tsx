@@ -270,10 +270,20 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       .then((response) => {
         setLoadingSuggestions(false);
         setSuggestedCases(response.body as CaseSummary[]);
+        if ((response.body as CaseSummary[]).length === 0) {
+          setEnableCaseEntry(true);
+        }
       })
       .catch((reason: Error) => {
         setLoadingSuggestions(false);
         props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        /*
+      })
+      // this was for testing only
+      .finally(() => {
+        setSuggestedCases([]);
+        setEnableCaseEntry(true);
+      */
       });
   }
 
@@ -309,14 +319,15 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           {!originalCaseSummary && (
+            // NOTE!: Do not start an id attribute value with a GUID.  Id's can not start with a number.
             <LoadingSpinner
-              id={`${order.id}-transfer-from-case-loading`}
+              id={`transfer-from-case-loading-${order.id}`}
               caption="Loading case..."
             ></LoadingSpinner>
           )}
           {originalCaseSummary && (
             <CaseTable
-              id={`${order.id}-transfer-from-case`}
+              id={`transfer-from-case-${order.id}`}
               cases={[originalCaseSummary]}
             ></CaseTable>
           )}
@@ -367,9 +378,13 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        <div className="grid-col-10 select-destination-case--description">
-          Select the new case from the list below. If the case is not listed, select the new court
-          division and enter the new case number.
+        <div className="grid-col-10">
+          {(loadingSuggestions || (suggestedCases && suggestedCases?.length > 0)) && (
+            <div className="select-destination-case--description">
+              Select the new case from the list below. If the case is not listed, select the new
+              court division and enter the new case number.
+            </div>
+          )}
         </div>
         <div className="grid-col-1"></div>
       </div>
@@ -405,7 +420,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
                         inline={true}
                         show={true}
                         title="No Matching Cases"
-                        message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Case Number on the Enter Case tab."
+                        message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Court and Case Number below."
                         type={UswdsAlertStyle.Warning}
                         role="status"
                         className="suggested-cases-alert"

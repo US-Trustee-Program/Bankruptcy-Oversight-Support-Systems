@@ -6,4 +6,16 @@
   .form-requirements-notice {
     margin-bottom: 0rem;
   }
+
+  .alert-container {
+    margin: 1rem 0;
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+
+    #suggested-cases-not-found {
+      display: inline-block;
+      max-width: 620px;
+    }
+  }
 }
