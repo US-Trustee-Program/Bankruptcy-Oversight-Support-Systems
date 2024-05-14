@@ -156,3 +156,27 @@ function TransferConfirmationModalComponent(
 }
 
 export const TransferConfirmationModal = forwardRef(TransferConfirmationModalComponent);
+
+// TODO: This needs to be integrated into the modal approval text.
+
+// {/*TODO: find a way to remove `!` from below order properties */}
+// {/*{newCaseDivision && (*/}
+// {/*  <div className="preview-results grid-row grid-gap-lg">*/}
+// {/*    <div className="grid-col-1"></div>*/}
+// {/*    <div className="grid-col-10">*/}
+// {/*      <span data-testid={`preview-description-${order.id}`}>*/}
+// {/*        <CaseSelection*/}
+// {/*          fromCourt={{*/}
+// {/*            region: order.regionId!,*/}
+// {/*            courtDivisionName: order.courtDivisionName!,*/}
+// {/*          }}*/}
+// {/*          toCourt={{*/}
+// {/*            region: orderTransfer.newCase?.regionId,*/}
+// {/*            courtDivisionName: orderTransfer.newCase?.courtDivisionName,*/}
+// {/*          }}*/}
+// {/*        ></CaseSelection>*/}
+// {/*      </span>*/}
+// {/*    </div>*/}
+// {/*    <div className="grid-col-1"></div>*/}
+// {/*  </div>*/}
+// {/*)}*/}
