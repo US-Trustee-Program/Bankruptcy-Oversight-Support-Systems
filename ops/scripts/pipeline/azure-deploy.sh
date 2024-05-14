@@ -69,9 +69,9 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
     #Core app name -- stack name
-    --appName)
-        app_name="${2}"
-        app_name_param="appName=${2}"
+    --stackName)
+        stack_name="${2}"
+        stack_name_param="stackName=${2}"
         shift 2
         ;;
     --networkResourceGroupName)
@@ -177,8 +177,8 @@ if [[ -z "${app_rg}" ]]; then
     echo "Error: Missing default resource group"
     exit 10
 fi
-if [[ -z "${app_name}" ]]; then
-    echo "Error: Missing appName"
+if [[ -z "${stack_name}" ]]; then
+    echo "Error: Missing stackName"
     exit 10
 fi
 if [[ -z "${network_resource_group}" ]]; then
@@ -235,7 +235,7 @@ if [[ -z "${action_group_name}" && "${create_alerts}" == true ]]; then
 fi
 
 
-deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param}"
+deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param}"
 # Check and add conditional parameters
 if [[ "${create_alerts}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${create_alerts_param}"

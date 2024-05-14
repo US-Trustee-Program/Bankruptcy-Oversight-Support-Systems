@@ -75,7 +75,7 @@ jobs:
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/main.bicep \
-            --appName ${{ inputs.stackName }} \
+            --stackName ${{ inputs.stackName }} \
             --networkResourceGroupName ${{ steps.rgNetwork.outputs.out }} \
             --vnetName ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}  \
