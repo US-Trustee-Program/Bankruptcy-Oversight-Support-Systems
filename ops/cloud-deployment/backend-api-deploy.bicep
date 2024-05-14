@@ -334,7 +334,8 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deployNetwork){
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' =
+if (deployNetwork) {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {

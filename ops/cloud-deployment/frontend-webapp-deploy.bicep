@@ -293,7 +293,8 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
   )
 }
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = if(deployNetwork) {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' =
+if (deployNetwork) {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {

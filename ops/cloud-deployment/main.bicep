@@ -168,7 +168,8 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
     ]
   }
 
-module ustpFunctions 'backend-api-deploy.bicep' = if (deployFunctions) {
+module ustpFunctions 'backend-api-deploy.bicep' =
+if (deployFunctions) {
     name: '${appName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
