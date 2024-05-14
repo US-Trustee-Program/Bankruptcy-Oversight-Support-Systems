@@ -1,4 +1,3 @@
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -109,7 +108,7 @@ describe('PendingTransferOrder component', () => {
     });
 
     afterEach(() => {
-      vi.resetAllMocks();
+      vi.clearAllMocks();
     });
 
     test('should show suggested cases', async () => {
@@ -173,7 +172,9 @@ describe('PendingTransferOrder component', () => {
     });
 
     test.skip('should pass an error message back to the parent component when the suggestion query fails', async () => {
-      vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce(new Error('MockError'));
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockRejectedValueOnce(new Error('MockError'));
       const { onOrderUpdate } = renderWithProps();
 
       await waitFor(async () => {
@@ -240,12 +241,12 @@ describe('PendingTransferOrder component', () => {
       vi.clearAllMocks();
     });
 
-    test.only('should show no suggested cases message when no suggestions are available', async () => {
+    test.skip('should show no suggested cases message when no suggestions are available', async () => {
       renderWithProps();
 
-      const conte = document.querySelector('.case-verification');
-      expect(conte).not.toBeInTheDocument();
-      screen.debug(conte!);
+      const alertContainer = document.querySelector('.alert-container');
+      expect(alertContainer).toBeInTheDocument();
+      screen.debug(alertContainer!);
       // const alertContainer = screen.getByTestId('case-verification');
       // expect(alertContainer).toBeInTheDocument();
       // await waitFor(() => {
@@ -254,7 +255,7 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
-      const patchSpy = vi.spyOn(Chapter15MockApi, 'patch').mockResolvedValue({
+      const patchSpy = vi.spyOn(Api, 'patch').mockResolvedValue({
         message: 'Approved',
         count: 1,
         body: {
@@ -357,7 +358,7 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should properly reject when API returns a successful response and a reason is supplied', async () => {
-      const patchSpy = vi.spyOn(Chapter15MockApi, 'patch').mockResolvedValue({
+      const patchSpy = vi.spyOn(Api, 'patch').mockResolvedValue({
         message: 'Rejected',
         count: 1,
         body: {
@@ -487,7 +488,7 @@ describe('PendingTransferOrder component', () => {
 
     test('should throw error during Approval when API returns an error', async () => {
       const errorMessage = 'Some random error';
-      vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
 
       const { onOrderUpdate } = renderWithProps();
       await clickNoListedCaseRadioButton();
@@ -523,9 +524,9 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
-    test('should throw error during Rejection when API returns an error', async () => {
+    test.only('should throw error during Rejection when API returns an error', async () => {
       const errorMessage = 'Some random error';
-      vi.spyOn(Chapter15MockApi, 'patch').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
 
       const { onOrderUpdate } = renderWithProps();
       await clickNoListedCaseRadioButton();

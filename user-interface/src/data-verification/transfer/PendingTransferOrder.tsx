@@ -203,7 +203,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
 
     api
       .patch(`/orders/${order.id}`, rejection)
-      .then(() => {
+      .then((_foo) => {
         props.onOrderUpdate(
           {
             message: `Transfer of case ${getCaseNumber(order.caseId)} was rejected.`,
@@ -272,9 +272,9 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         setLoadingSuggestions(false);
         setSuggestedCases(response.body as CaseSummary[]);
       })
-      .catch((_reason: Error) => {
+      .catch((reason: Error) => {
         setLoadingSuggestions(false);
-        // props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
       });
   }
 
@@ -286,7 +286,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         setOriginalCaseSummary(typedResponse.body);
       })
       .catch((_reason) => {
-        //
+        // TODO
       });
   }
 
@@ -405,7 +405,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
                       ref={suggestedCasesRef}
                     ></CaseTable>
                   )}
-                  {suggestedCases && suggestedCases.length < 1 && (
+                  {suggestedCases && suggestedCases.length === 0 && (
                     <div className="alert-container">
                       <Alert
                         inline={true}
