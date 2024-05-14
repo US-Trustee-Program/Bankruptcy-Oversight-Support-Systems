@@ -12,10 +12,28 @@ import CamsSelect, {
 } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { updateOrderTransfer } from './PendingTransferOrder';
 import { TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { Chapter15CaseSummaryResponseData } from '@/lib/type-declarations/chapter-15';
+
+export function updateOrderTransfer(
+  orderTransfer: FlexibleTransferOrderAction,
+  office: OfficeDetails | null,
+  caseNumber: string | null,
+) {
+  const updated: FlexibleTransferOrderAction = { ...orderTransfer };
+  updated.newCase = {
+    ...updated.newCase,
+    regionId: office?.regionId,
+    regionName: office?.regionName,
+    courtName: office?.courtName,
+    courtDivisionName: office?.courtDivisionName,
+    courtDivisionCode: office?.courtDivisionCode,
+    caseId: `${office?.courtDivisionCode}-${caseNumber}`,
+  };
+
+  return updated;
+}
 
 // TODO: Maybe define this type somewhere where we will not cause a dependency violation or circular dependency.
 export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
