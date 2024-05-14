@@ -38,6 +38,10 @@ function az_deploy_func() {
 }
 
 show_what_if=false
+create_alerts=false
+action_group_name=''
+deploy_app_insights=false
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
@@ -109,6 +113,31 @@ while [[ $# -gt 0 ]]; do
         ustp_issue_collector_hash_param="ustpIssueCollectorHash=${2}"
         shift 2
         ;;
+    --createAlerts)
+        create_alerts="${2}"
+        create_alerts_param="createAlerts=${2}"
+        shift 2
+        ;;
+    --actionGroupName)
+        action_group_name="${2}"
+        action_group_name_param="actionGroupName=${2}"
+        shift 2
+        ;;
+    --deployAppInsights)
+        deploy_app_insights="${2}"
+        deploy_app_insights_param="deployAppInsights=${2}"
+        shift 2
+        ;;
+    --webappPlanType)
+        webapp_plan_type="${2}"
+        webapp_plan_type_param="webappPlanType=${2}"
+        shift 2
+        ;;
+    --functionPlanType)
+        function_plan_type="${2}"
+        function_plan_type_param="functionPlanType=${2}"
+        shift 2
+        ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --parameters)
         deployment_parameters="${2}"
@@ -174,8 +203,27 @@ if [[ -z "${deploy_vnet}" ]]; then
     echo "Error: Missing deployVnet"
     exit 10
 fi
+if [[ -z "${webapp_plan_type}" ]]; then
+    echo "Error: Missing webappPlanType"
+    exit 10
+fi
+if [[ -z "${function_plan_type}" ]]; then
+    echo "Error: Missing functionPlanType"
+    exit 10
+fi
+if [[ -z "${action_group_name}" && "${create_alerts}" == true ]]; then
+    echo "Create Alerts: ${create_alerts} but no actionGroupName supplied"
+    exit 10
+fi
 
-deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param}"
+deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param}"
+if [[ "${create_alerts}" == true && "${action_group_name}" != '' ]]; then
+  deployment_parameters="${deployment_parameters} ${create_alerts_param} ${action_group_name_param}"
+fi
+if [[ "${deploy_app_insights}" == true ]]; then
+  deployment_parameters="${deployment_parameters} ${deploy_app_insights_param}"
+fi
+
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [[ "$(az_vnet_exists_func "${network_resource_group}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"

@@ -84,4 +84,9 @@ jobs:
             --deployVnet ${{ inputs.execVnetDeploy }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
-            --parameters 'deployWebapp=${{ inputs.slotDeploymentEnabled == 'false' }} deployFunctions=${{ inputs.slotDeploymentEnabled == 'false' }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} webappPlanType=${{ vars.AZ_PLAN_TYPE }} apiPlanType=${{ vars.AZ_PLAN_TYPE }} deployAppInsights=true actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} createAlerts=${{ inputs.ghaEnvironment != 'Main-Gov' }}'
+            --createAlerts ${{ inputs.ghaEnvironment != 'Main-Gov' }} \
+            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+            --deployAppInsights true \
+            --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
+            --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
+            --parameters 'deployWebapp=${{ inputs.slotDeploymentEnabled == 'false' }} deployFunctions=${{ inputs.slotDeploymentEnabled == 'false' }} sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }}'
