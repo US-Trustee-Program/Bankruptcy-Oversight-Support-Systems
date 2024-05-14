@@ -41,7 +41,7 @@ show_what_if=false
 create_alerts=false
 action_group_name=''
 deploy_app_insights=false
-
+deployment_parameters=''
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)

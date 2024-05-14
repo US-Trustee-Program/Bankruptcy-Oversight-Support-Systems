@@ -90,5 +90,5 @@ jobs:
             --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --deployFunctions ${{ inputs.slotDeploymentEnabled == 'false' }} \
-            --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }}
+            --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }} \
             --parameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }}'
