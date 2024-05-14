@@ -216,9 +216,14 @@ if [[ -z "${action_group_name}" && "${create_alerts}" == true ]]; then
     exit 10
 fi
 
+
 deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param}"
-if [[ "${create_alerts}" == true && "${action_group_name}" != '' ]]; then
-  deployment_parameters="${deployment_parameters} ${create_alerts_param} ${action_group_name_param}"
+# Check and add conditional parameters
+if [[ "${create_alerts}" == true ]]; then
+  deployment_parameters="${deployment_parameters} ${create_alerts_param}"
+fi
+if [[ "${action_group_name}" != '' ]]; then
+  deployment_parameters="${deployment_parameters} ${action_group_name_param}"
 fi
 if [[ "${deploy_app_insights}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${deploy_app_insights_param}"
