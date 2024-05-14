@@ -22,25 +22,6 @@ import {
   SuggestedTransferCasesImperative,
 } from './SuggestedTransferCases';
 
-export function updateOrderTransfer(
-  orderTransfer: FlexibleTransferOrderAction,
-  office: OfficeDetails | null,
-  caseNumber: string | null,
-) {
-  const updated: FlexibleTransferOrderAction = { ...orderTransfer };
-  updated.newCase = {
-    ...updated.newCase,
-    regionId: office?.regionId,
-    regionName: office?.regionName,
-    courtName: office?.courtName,
-    courtDivisionName: office?.courtDivisionName,
-    courtDivisionCode: office?.courtDivisionCode,
-    caseId: `${office?.courtDivisionCode}-${caseNumber}`,
-  };
-
-  return updated;
-}
-
 export type PendingTransferOrderProps = {
   order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
