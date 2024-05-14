@@ -1,5 +1,4 @@
-@description('Stack Name that helps give many resources unique names.')
-param appName string
+param stackName string
 param location string = resourceGroup().location
 param appResourceGroup string = resourceGroup().name
 @description('Flag: determines deployment of vnet. Determined at workflow runtime. True on initial deployment outside of USTP.')
@@ -9,16 +8,16 @@ param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 @description('Flag: determines the setup of  Network Resources: DNS Zone, Subnets, Link virtual networks to zone.')
 param deployNetwork bool = true
 param networkResourceGroupName string
-param virtualNetworkName string = 'vnet-${appName}'
+param virtualNetworkName string = 'vnet-${stackName}'
 @description('Array of Vnets to link to DNS Zone.')
 param linkVnetIds array = []
 
-param privateEndpointSubnetName string = 'snet-${appName}-private-endpoints'
+param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 @description('Flag: Deploy Bicep config for webapp. False on slot deployments.')
 param deployWebapp bool = true
-param webappName string = '${appName}-webapp'
+param webappName string = '${stackName}-webapp'
 param webappSubnetName string = 'snet-${webappName}'
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 @description('Plan type to determine webapp service plan Sku.')
@@ -31,7 +30,7 @@ param webappPlanType string = 'P1v2'
 
 @description('Flag: Deploy Bicep config for Azure function. False on slot deployments.')
 param deployFunctions bool = true
-param functionName string = '${appName}-node-api'
+param functionName string = '${stackName}-node-api'
 param functionSubnetName string = 'snet-${functionName}'
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
 @description('Plan type to determine functionapp service plan Sku')
@@ -98,10 +97,10 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
     }
   }
 module network './lib//network/ustp-cams-network.bicep' = {
-  name: '${appName}-network-module'
+  name: '${stackName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
-    appName: appName
+    stackName: stackName
     networkResourceGroupName: networkResourceGroupName
     deployVnet: deployVnet
     location: location
@@ -124,7 +123,7 @@ module network './lib//network/ustp-cams-network.bicep' = {
 }
 module ustpWebapp 'frontend-webapp-deploy.bicep' =
   if (deployWebapp) {
-    name: '${appName}-webapp-module'
+    name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
@@ -153,7 +152,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
 
 module ustpFunctions 'backend-api-deploy.bicep' =
 if (deployFunctions) {
-    name: '${appName}-function-module'
+    name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
@@ -188,11 +187,6 @@ if (deployFunctions) {
 // main.bicep outputs
 
 output vnetName string = virtualNetworkName
-// output webappPrivateEndpointSubnetName string = webappPrivateEndpointSubnetName
-// output apiPrivateEndpointSubnetName string = functionPrivateEndpointSubnetName
-
-// Allowed subnet name that should have access to CosmosDb
-// Leverage az-cosmos-add-vnet-rule.sh to add vnet rule
 
 resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
