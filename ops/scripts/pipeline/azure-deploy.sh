@@ -138,6 +138,16 @@ while [[ $# -gt 0 ]]; do
         function_plan_type_param="functionPlanType=${2}"
         shift 2
         ;;
+    --deployFunctions)
+        deploy_functions="${2}"
+        deploy_functions_param="deployFunctions=${2}"
+        shift 2
+        ;;
+    --deployWebapp)
+        deploy_webapp="${2}"
+        deploy_webapp_param="deployWebapp=${2}"
+        shift 2
+        ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --parameters)
         deployment_parameters="${2}"
@@ -211,13 +221,21 @@ if [[ -z "${function_plan_type}" ]]; then
     echo "Error: Missing functionPlanType"
     exit 10
 fi
+if [[ -z "${deploy_functions}" ]]; then
+    echo "Error: Missing deployFunctions"
+    exit 10
+fi
+if [[ -z "${deploy_webapp}" ]]; then
+    echo "Error: Missing deployWebapp"
+    exit 10
+fi
 if [[ -z "${action_group_name}" && "${create_alerts}" == true ]]; then
     echo "Create Alerts: ${create_alerts} but no actionGroupName supplied"
     exit 10
 fi
 
 
-deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param}"
+deployment_parameters="${deployment_parameters} ${app_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param}"
 # Check and add conditional parameters
 if [[ "${create_alerts}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${create_alerts_param}"
