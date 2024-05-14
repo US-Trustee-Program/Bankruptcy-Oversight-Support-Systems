@@ -1,7 +1,9 @@
-.dockets-label {
-  padding-bottom: 1rem;
-}
+.pending-transfer-accordion-content {
+  .select-destination-case--label {
+    font-weight: bold;
+  }
 
-.select-destination-case--label {
-  font-weight: bold;
+  .form-requirements-notice {
+    margin-bottom: 0rem;
+  }
 }

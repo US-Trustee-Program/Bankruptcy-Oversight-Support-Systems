@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { OrderStatus, TransferOrder, TransferOrderAction } from '@common/cams/orders';
-import { CaseNumber } from '@/lib/components/CaseNumber';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useRef, useState } from 'react';
 import { useApi } from '@/lib/hooks/UseApi';
@@ -24,7 +23,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { CaseSelection } from './CaseSelection';
+// import { CaseSelection } from './CaseSelection';
 
 type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
@@ -296,11 +295,14 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
   }, []);
 
   return (
-    <>
+    <div className="pending-transfer-accordion-content">
       {' '}
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        <div className="grid-col-10">The system has identified a case transfer order for case:</div>
+        {/*<div className="grid-col-10">The system has identified a case transfer order for case:</div>*/}
+        <div className="grid-col-10">
+          <h3>Case with Transfer Order</h3>
+        </div>
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg">
@@ -322,8 +324,10 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg dockets-label">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">Docket entry of the order:</div>
+        <div className="grid-col-2"></div>
+        <div className="grid-col-9">
+          <h4>Docket Entry</h4>
+        </div>
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg">
@@ -357,7 +361,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10 select-destination-case--label">
-          Select case to transfer to:
+          <h3>Select New Case</h3>
         </div>
         <div className="grid-col-1"></div>
       </div>
@@ -387,16 +391,6 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
               <div className="grid-col-1"></div>
               <div className="transfer-from-to__div transfer-description grid-col-10">
                 <div className="transfer-text" tabIndex={0}>
-                  Transfer{' '}
-                  <CaseNumber
-                    caseId={order.caseId}
-                    data-testid={`pending-transfer-original-case-link-${order.caseId}`}
-                  ></CaseNumber>{' '}
-                  from
-                  <span className="transfer-highlight__span">
-                    {order.courtName} ({order.courtDivisionName})
-                  </span>
-                  to
                   {suggestedCases && suggestedCases?.length > 0 && (
                     <CaseTable
                       id="suggested-cases"
@@ -435,7 +429,6 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
                 </div>
                 <div className="form-row">
                   <div className="select-container court-select-container">
-                    <label htmlFor={`court-selection-${order.id}`}>New Court</label>
                     <div
                       className="usa-combo-box"
                       data-testid={`court-selection-usa-combo-box-${order.id}`}
@@ -444,7 +437,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
                         id={`court-selection-${order.id}`}
                         className="new-court__select"
                         closeMenuOnSelect={true}
-                        label="Select new court"
+                        label="New Court"
                         ref={courtSelectionRef}
                         onChange={handleCourtSelection}
                         options={getOfficeList(officesList)}
@@ -458,26 +451,26 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
               <div className="grid-col-1"></div>
             </div>
             {/*TODO: find a way to remove `!` from below order properties */}
-            {newCaseDivision && (
-              <div className="preview-results grid-row grid-gap-lg">
-                <div className="grid-col-1"></div>
-                <div className="grid-col-10">
-                  <span data-testid={`preview-description-${order.id}`}>
-                    <CaseSelection
-                      fromCourt={{
-                        region: order.regionId!,
-                        courtDivisionName: order.courtDivisionName!,
-                      }}
-                      toCourt={{
-                        region: orderTransfer.newCase?.regionId,
-                        courtDivisionName: orderTransfer.newCase?.courtDivisionName,
-                      }}
-                    ></CaseSelection>
-                  </span>
-                </div>
-                <div className="grid-col-1"></div>
-              </div>
-            )}
+            {/*{newCaseDivision && (*/}
+            {/*  <div className="preview-results grid-row grid-gap-lg">*/}
+            {/*    <div className="grid-col-1"></div>*/}
+            {/*    <div className="grid-col-10">*/}
+            {/*      <span data-testid={`preview-description-${order.id}`}>*/}
+            {/*        <CaseSelection*/}
+            {/*          fromCourt={{*/}
+            {/*            region: order.regionId!,*/}
+            {/*            courtDivisionName: order.courtDivisionName!,*/}
+            {/*          }}*/}
+            {/*          toCourt={{*/}
+            {/*            region: orderTransfer.newCase?.regionId,*/}
+            {/*            courtDivisionName: orderTransfer.newCase?.courtDivisionName,*/}
+            {/*          }}*/}
+            {/*        ></CaseSelection>*/}
+            {/*      </span>*/}
+            {/*    </div>*/}
+            {/*    <div className="grid-col-1"></div>*/}
+            {/*  </div>*/}
+            {/*)}*/}
             <div className="case-selection grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-4">
@@ -488,11 +481,11 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
                     className="usa-input"
                     value={order.docketSuggestedCaseNumber}
                     onChange={handleCaseInputChange}
-                    aria-label="New case ID"
+                    aria-label="New case number"
                     ref={caseNumberRef}
                     disabled={true}
                     required={true}
-                    label="New Case"
+                    label="New Case Number"
                   />
                 </div>
               </div>
@@ -570,6 +563,6 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
           onConfirm={confirmAction}
         ></TransferConfirmationModal>
       </section>
-    </>
+    </div>
   );
 }
