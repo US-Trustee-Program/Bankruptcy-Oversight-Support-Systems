@@ -140,6 +140,10 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
 
   function disable(value: boolean) {
     setIsDisabled(value);
+    const inputEl = document.querySelector(`#${props.id} input`);
+    if (inputEl) {
+      inputEl.setAttribute('disabled', value ? 'true' : 'false');
+    }
   }
 
   useImperativeHandle(ref, () => {
