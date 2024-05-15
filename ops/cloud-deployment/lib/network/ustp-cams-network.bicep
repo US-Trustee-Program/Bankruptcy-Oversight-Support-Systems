@@ -12,7 +12,7 @@ param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
 param functionName string = '${stackName}-node-api'
 param functionSubnetName string = 'snet-${functionName}'
-param functionsSubnetAddressPrefix string = '10.10.11.0/28'
+param functionSubnetAddressPrefix string = '10.10.11.0/28'
 
 param webappName string = '${stackName}-node-api'
 param webappSubnetName string = 'snet-${functionName}'
@@ -97,7 +97,7 @@ module functionSubnet './subnet.bicep' = {
   params: {
     virtualNetworkName: virtualNetworkName
     subnetName: functionSubnetName
-    subnetAddressPrefix: functionsSubnetAddressPrefix
+    subnetAddressPrefix: functionSubnetAddressPrefix
     subnetServiceEndpoints: [
       {
         service: 'Microsoft.Sql'

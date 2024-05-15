@@ -106,7 +106,7 @@ module network './lib//network/ustp-cams-network.bicep' = {
     location: location
     functionName: functionName
     functionSubnetName: functionSubnetName
-    functionsSubnetAddressPrefix: functionSubnetAddressPrefix
+    functionSubnetAddressPrefix: functionSubnetAddressPrefix
     webappName: webappName
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappSubnetName: webappSubnetName
