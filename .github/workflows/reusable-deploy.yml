@@ -85,7 +85,6 @@ jobs:
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
             --createAlerts ${{ inputs.ghaEnvironment != 'Main-Gov' }} \
-            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --deployAppInsights true \
             --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
