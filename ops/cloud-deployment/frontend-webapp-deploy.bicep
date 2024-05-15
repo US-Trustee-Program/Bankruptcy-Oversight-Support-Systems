@@ -123,6 +123,10 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
+param privateDnsZoneResourceGroup string = resourceGroup().name
+@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 module appInsights './lib/app-insights/app-insights.bicep' =
   if (createApplicationInsights) {
@@ -302,6 +306,8 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateLinkServiceId: webapp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
   }
 }
 output webappName string = webapp.name
