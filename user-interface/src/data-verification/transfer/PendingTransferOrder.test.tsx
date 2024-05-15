@@ -2,7 +2,6 @@ import { OfficeDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe } from 'vitest';
-import Api from '@/lib/models/api';
 import {
   PendingTransferOrder,
   PendingTransferOrderProps,
@@ -14,6 +13,10 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
+
+// This is a problem because tests are run with CAMSPA11Y=true which causes the app to use the mock API.
+import Api from '@/lib/models/api';
+// import Api from '@/lib/models/chapter15-mock.api.cases';
 
 vi.mock('../../lib/components/CamsSelect', () => import('../../lib/components/CamsSelect.mock'));
 
