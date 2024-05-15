@@ -54,7 +54,6 @@ param privateEndpointSubnetId string
 ])
 param functionsRuntime string
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
@@ -344,7 +343,6 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     location: location
     privateLinkServiceId: functionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
-    privateDnsZoneName: privateDnsZoneName
   }
 }
 
