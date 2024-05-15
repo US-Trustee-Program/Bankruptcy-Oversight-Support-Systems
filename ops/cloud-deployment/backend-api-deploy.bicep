@@ -114,8 +114,8 @@ param actionGroupResourceGroupName string = ''
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
-@description('Flag to determine the deployment of the private endpoint')
-param deployNetwork bool = true
+// @description('Flag to determine the deployment of the private endpoint')
+// param deployNetwork bool = true
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
@@ -334,8 +334,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' =
-if (deployNetwork) {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${functionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {

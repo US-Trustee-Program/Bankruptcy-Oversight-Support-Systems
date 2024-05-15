@@ -40,8 +40,8 @@ var planTypeToSkuMap = {
 @description('Webapp application name')
 param webappName string
 
-@description('Flag to determine the deployment of the private endpoint')
-param deployNetwork bool = true
+// @description('Flag to determine the deployment of the private endpoint')
+// param deployNetwork bool = true
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
@@ -293,8 +293,7 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
   )
 }
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' =
-if (deployNetwork) {
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {

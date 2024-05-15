@@ -4,7 +4,7 @@ param location string = resourceGroup().location
 param deployVnet bool = false
 
 @description('Deploy Azure Network resources: Private DNS Zone, and DNS Zone Vnet links')
-param deployNetwork bool = true
+param deployDns bool = true
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${stackName}'
 param linkVnetIds array = []
@@ -54,7 +54,7 @@ module ustpDnsZones './private-dns-zones.bicep' ={
       virtualNetworkId: ustpVirtualNetwork.id
       linkVnetIds: linkVnetIds
       privateDnsZoneName: privateDnsZoneName
-      deployNetwork: deployNetwork
+      deployDns: deployDns
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
   }

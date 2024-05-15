@@ -5,8 +5,9 @@ param appResourceGroup string = resourceGroup().name
 param deployVnet bool = false
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
-@description('Flag: determines the setup of  Network Resources: DNS Zone, Subnets, Link virtual networks to zone.')
-param deployNetwork bool = true
+@description('Flag: determines the setup of DNS Zone, Subnets, Link virtual networks to zone.')
+param deployDns bool = true
+
 param networkResourceGroupName string
 param virtualNetworkName string = 'vnet-${stackName}'
 @description('Array of Vnets to link to DNS Zone.')
@@ -110,7 +111,7 @@ module network './lib//network/ustp-cams-network.bicep' = {
     webappName: webappName
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappSubnetName: webappSubnetName
-    deployNetwork: deployNetwork
+    deployDns: deployDns
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
@@ -143,7 +144,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       webappSubnetId: network.outputs.webappSubnetId
       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
       appServiceRuntime: 'php'
-      deployNetwork: deployNetwork
     }
     dependsOn: [
       network
@@ -177,7 +177,6 @@ if (deployFunctions) {
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
       createAlerts: createAlerts
-      deployNetwork: deployNetwork
     }
     dependsOn: [
       network
