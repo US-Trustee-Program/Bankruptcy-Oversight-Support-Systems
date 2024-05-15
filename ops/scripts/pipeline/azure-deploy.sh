@@ -39,7 +39,6 @@ function az_deploy_func() {
 
 show_what_if=false
 create_alerts=false
-action_group_name=''
 deploy_app_insights=false
 deployment_parameters=''
 while [[ $# -gt 0 ]]; do
@@ -116,11 +115,6 @@ while [[ $# -gt 0 ]]; do
     --createAlerts)
         create_alerts="${2}"
         create_alerts_param="createAlerts=${2}"
-        shift 2
-        ;;
-    --actionGroupName)
-        action_group_name="${2}"
-        action_group_name_param="actionGroupName=${2}"
         shift 2
         ;;
     --deployAppInsights)
@@ -229,8 +223,8 @@ if [[ -z "${deploy_webapp}" ]]; then
     echo "Error: Missing deployWebapp"
     exit 10
 fi
-if [[ -z "${action_group_name}" && "${create_alerts}" == true ]]; then
-    echo "Create Alerts: ${create_alerts} but no actionGroupName supplied"
+if [[ -z "${create_alerts}" ]]; then
+    echo "Error: Missing createAlerts "
     exit 10
 fi
 
@@ -239,9 +233,6 @@ deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_par
 # Check and add conditional parameters
 if [[ "${create_alerts}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${create_alerts_param}"
-fi
-if [[ "${action_group_name}" != '' ]]; then
-  deployment_parameters="${deployment_parameters} ${action_group_name_param}"
 fi
 if [[ "${deploy_app_insights}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${deploy_app_insights_param}"
