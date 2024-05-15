@@ -11,8 +11,8 @@ import React from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Api from '@/lib/models/api';
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
-//import { ResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
+import { BrowserRouter } from 'react-router-dom';
 
 const testOffices: OfficeDetails[] = [
   {
@@ -102,7 +102,11 @@ describe('SuggestedTransferCases component', () => {
     };
 
     const renderProps = { ...defaultProps, ...props };
-    render(<SuggestedTransferCases {...renderProps} ref={ref} />);
+    render(
+      <BrowserRouter>
+        <SuggestedTransferCases {...renderProps} ref={ref} />
+      </BrowserRouter>,
+    );
 
     return {
       ref,
