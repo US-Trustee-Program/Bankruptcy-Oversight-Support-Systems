@@ -6,9 +6,9 @@ import {
   SuggestedTransferCasesImperative,
   SuggestedTransferCasesProps,
 } from './SuggestedTransferCases';
-import { TransferOrder } from '@common/cams/orders';
+import { OrderStatus, TransferOrder } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 
 // Because tests set CAMS_PA11Y = true
@@ -16,6 +16,12 @@ import Api from '@/lib/models/chapter15-mock.api.cases';
 
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
+
+vi.mock('../../lib/components/CamsSelect', () => import('../../lib/components/CamsSelect.mock'));
 
 const testOffices: OfficeDetails[] = [
   {
@@ -66,16 +72,13 @@ const fromCaseSummary = MockData.getCaseSummary();
 const suggestedCases = MockData.buildArray(MockData.getCaseSummary, 2);
 
 async function mockGetCaseSummary(): Promise<SimpleResponseData<CaseSummary>> {
-  console.log('MOCKING getCaseSummary');
   return Promise.resolve({ success: true, body: fromCaseSummary });
 }
 
-async function mockGetTransferredCaseSuggestionsFullWithDelay(): Promise<
-  ResponseData<CaseSummary[]>
+async function mockGetCaseSummaryNotFound(): Promise<
+  ResponseData | SimpleResponseData<CaseSummary>
 > {
-  await sleep(200);
-  console.log('MOCKING getTransferredCaseSuggestions');
-  return mockGetTransferredCaseSuggestionsFull();
+  throw new Error('Case summary not found for case ID.');
 }
 
 async function mockGetTransferredCaseSuggestionsFull(): Promise<ResponseData<CaseSummary[]>> {
@@ -90,8 +93,12 @@ async function mockGetTransferredCaseSuggestionsEmptyWithDelay(): Promise<
 }
 
 async function mockGetTransferredCaseSuggestionsEmpty(): Promise<ResponseData<CaseSummary[]>> {
-  console.log('MOCKING getTransferredCaseSuggestions-Empty', 0);
   return Promise.resolve({ message: 'ok', count: 0, body: [] });
+}
+
+const mockErrorMessage = 'Some mock error';
+async function mockGetTransferredCaseSuggestionsError(): Promise<ResponseData<CaseSummary[]>> {
+  throw new Error(mockErrorMessage);
 }
 
 async function waitForLoadToComplete(orderId: string) {
@@ -100,9 +107,55 @@ async function waitForLoadToComplete(orderId: string) {
   expect(spinner).toBeInTheDocument();
 
   await waitFor(() => {
-    const spinner = document.querySelector(testId);
     expect(spinner).not.toBeInTheDocument();
   });
+}
+
+function findCaseNumberInput(id: string) {
+  const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
+  expect(caseIdInput).toBeInTheDocument();
+  return caseIdInput;
+}
+
+function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
+  if (!caseIdInput) throw Error();
+
+  fireEvent.change(caseIdInput!, { target: { value } });
+  expect(caseIdInput).toHaveValue(value);
+
+  return caseIdInput;
+}
+
+async function fillCaseNotListedForm(
+  order: CaseSummary & {
+    id: string;
+    orderType: 'transfer';
+    orderDate: string;
+    status: OrderStatus;
+    docketEntries: CaseDocketEntry[];
+    docketSuggestedCaseNumber?: string;
+    newCase?: CaseSummary;
+    reason?: string;
+  },
+) {
+  await waitFor(() => {
+    const caseTable = document.querySelector('#suggested-cases');
+    expect(caseTable).toBeInTheDocument();
+  });
+
+  const radio = screen.getByTestId('suggested-cases-radio-empty');
+  fireEvent.click(radio);
+
+  const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
+  expect(newCaseCourtSelect).toBeVisible();
+
+  const selectButtonQuery = `court-selection-${order.id}`;
+  selectItemInMockSelect(selectButtonQuery, 1);
+
+  const caseNumber = getCaseNumber(suggestedCases[0].caseId);
+  const input = findCaseNumberInput(order.id);
+  const updated = enterCaseNumber(input, caseNumber);
+  expect(updated).toHaveValue(caseNumber);
 }
 
 describe('SuggestedTransferCases component', () => {
@@ -134,6 +187,7 @@ describe('SuggestedTransferCases component', () => {
   }
 
   beforeEach(async () => {
+    vi.stubEnv('CAMS_PA11Y', 'true');
     order = MockData.getTransferOrder();
   });
 
@@ -160,25 +214,6 @@ describe('SuggestedTransferCases component', () => {
     });
   });
 
-  test('should display loading spinner while loading suggestions and hide it when suggestions are retrieved', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFullWithDelay)
-      .mockImplementationOnce(mockGetCaseSummary);
-
-    renderWithProps();
-
-    await waitForLoadToComplete(order.id);
-
-    // const testId = `loading-spinner-${order.id}-suggestions`;
-    // const spinner = screen.getByTestId(testId);
-    // expect(spinner).toBeInTheDocument();
-
-    // await waitFor(() => {
-    //   const spinner = document.querySelector(testId);
-    //   expect(spinner).not.toBeInTheDocument();
-    // });
-  });
-
   test('should display case table if we get more than 0 suggested cases', async () => {
     vi.spyOn(Api, 'get')
       .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
@@ -192,41 +227,177 @@ describe('SuggestedTransferCases component', () => {
     });
   });
 
-  test.only('should display alert and case entry form if no suggested cases are found', async () => {
+  test('should display alert and case entry form if no suggested cases are found', async () => {
     vi.spyOn(Api, 'get').mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty);
     renderWithProps();
     await waitForLoadToComplete(order.id);
 
-    const alert = screen.getByTestId('alert-suggested-cases-not-found');
-    expect(alert).toBeInTheDocument();
+    let alert;
+    await waitFor(() => {
+      alert = screen.getByTestId('alert-suggested-cases-not-found');
+      expect(alert).toBeInTheDocument();
+    });
 
-    expect(alert.querySelector('.usa-alert__heading')).toHaveTextContent('No Matching Cases');
-    expect(alert.querySelector('.usa-alert__text')).toHaveTextContent(
+    expect(alert!.querySelector('.usa-alert__heading')).toHaveTextContent('No Matching Cases');
+    expect(alert!.querySelector('.usa-alert__text')).toHaveTextContent(
       "We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Court and Case Number below.",
     );
   });
 
-  test('should call onAlert if an error results from fetching case suggestions', () => {});
+  test('should call onAlert if an error results from fetching case suggestions', async () => {
+    vi.spyOn(Api, 'get').mockImplementationOnce(mockGetTransferredCaseSuggestionsError);
+    const { onAlert } = renderWithProps();
 
-  test('should call onCaseSelection if a selection is made', () => {});
+    await waitForLoadToComplete(order.id);
 
-  test('should display form if no-case-suggestion radio button is selected', () => {});
-
-  test('should display validation alert if an invalid case number is entered in the form', () => {});
-
-  test('should display table result if a valid case number has been entered into the form', () => {});
-
-  test('ref.reset should reset all form fields, validation states, case summary and order transfer details', () => {
-    const { ref } = renderWithProps();
-    ref.current?.reset();
-    // TODO:
+    expect(onAlert).toHaveBeenCalled();
+    expect(onAlert).toHaveBeenCalledWith({
+      message: mockErrorMessage,
+      type: UswdsAlertStyle.Error,
+      timeOut: 8,
+    });
   });
 
-  test('ref.cancel should reset and hide all form entry fields', () => {
+  test('should call onCaseSelection if a selection is made', async () => {
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummary);
+
+    const { onCaseSelection } = renderWithProps();
+
+    await waitFor(() => {
+      const caseTable = document.querySelector('#suggested-cases');
+      expect(caseTable).toBeInTheDocument();
+    });
+
+    const radio = screen.getByTestId('suggested-cases-radio-0');
+    fireEvent.click(radio);
+
+    expect(onCaseSelection).toHaveBeenCalledWith(expect.objectContaining({ ...suggestedCases[0] }));
+  });
+
+  test('should display validation error alert if an invalid case number is entered into input', async () => {
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+
+    renderWithProps();
+
+    await fillCaseNotListedForm(order);
+
+    await waitFor(() => {
+      const alert = screen.getByTestId('alert-container-validation-not-found');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveClass('visible');
+    });
+  });
+
+  test('should display table result if a valid case number has been entered into the form', async () => {
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummary);
+
+    renderWithProps();
+
+    await fillCaseNotListedForm(order);
+
+    await waitFor(async () => {
+      const validCasesTable = await screen.findByTestId('validated-cases');
+      expect(validCasesTable).toBeVisible();
+    });
+  });
+
+  test('ref.cancel should reset all form fields, validation states, case summary and order transfer details', async () => {
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummary);
+
     const { ref } = renderWithProps();
+
+    await fillCaseNotListedForm(order);
+
     ref.current?.cancel();
-    // TODO:
+
+    suggestedCases.forEach((_, idx) => {
+      const radioBtn = screen.getByTestId(`suggested-cases-radio-${idx}`);
+      expect(radioBtn).not.toBeChecked();
+    });
+
+    await waitFor(() => {
+      const radioBtn = screen.getByTestId('suggested-cases-radio-empty');
+      expect(radioBtn).not.toBeChecked();
+    });
+
+    const caseEntryForm = document.querySelector('case-entry-form');
+    expect(caseEntryForm).not.toBeInTheDocument();
   });
 
-  test('updateOrderTransfer should return an updated order when supplied an existing order and a caseNumber', () => {});
+  test('should properly handle deselecting court', async () => {
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+
+    renderWithProps();
+
+    await fillCaseNotListedForm(order);
+
+    await waitFor(() => {
+      const alert = screen.getByTestId('alert-container-validation-not-found');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveClass('visible');
+    });
+
+    const selectButtonQuery = `court-selection-${order.id}`;
+    selectItemInMockSelect(selectButtonQuery, 0);
+
+    await waitFor(() => {
+      const alert = screen.queryByTestId('alert-container-validation-not-found');
+      expect(alert).not.toBeInTheDocument();
+    });
+  });
+
+  test('should properly handle removing case number', async () => {
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+
+    renderWithProps();
+
+    await fillCaseNotListedForm(order);
+
+    await waitFor(() => {
+      const alert = screen.getByTestId('alert-container-validation-not-found');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveClass('visible');
+    });
+
+    const caseNumberWithTooFewCharacters = '24-2314';
+    const input = findCaseNumberInput(order.id);
+    enterCaseNumber(input, caseNumberWithTooFewCharacters);
+
+    await waitFor(() => {
+      const alert = screen.queryByTestId('alert-container-validation-not-found');
+      expect(alert).not.toBeInTheDocument();
+    });
+  });
+
+  test('should handle no suggested case number in docket text', async () => {
+    order = MockData.getTransferOrder({ override: { docketSuggestedCaseNumber: undefined } });
+    vi.spyOn(Api, 'get')
+      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
+      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+
+    renderWithProps({ order });
+
+    await waitFor(() => {
+      const caseTable = document.querySelector('#suggested-cases');
+      expect(caseTable).toBeInTheDocument();
+    });
+
+    const radio = screen.getByTestId('suggested-cases-radio-empty');
+    fireEvent.click(radio);
+
+    const input = findCaseNumberInput(order.id);
+    expect(input).toHaveValue('');
+  });
 });

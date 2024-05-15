@@ -15,17 +15,22 @@ import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
 
 // This is a problem because tests are run with CAMSPA11Y=true which causes the app to use the mock API.
-import Api from '@/lib/models/api';
-// import Api from '@/lib/models/chapter15-mock.api.cases';
+// import Api from '@/lib/models/api';
+import Api from '@/lib/models/chapter15-mock.api.cases';
 
 vi.mock('../../lib/components/CamsSelect', () => import('../../lib/components/CamsSelect.mock'));
 
 const fromCaseSummary = MockData.getCaseSummary();
-const suggestedCases = MockData.buildArray(MockData.getCaseSummary, 2);
+const toCaseSummary = MockData.getCaseSummary();
+const suggestedCases = [toCaseSummary, MockData.getCaseSummary()];
 
 async function mockGetCaseSummary(): Promise<SimpleResponseData<CaseSummary>> {
   console.log('MOCKING getCaseSummary', fromCaseSummary);
   return Promise.resolve({ success: true, body: fromCaseSummary });
+}
+
+async function mockGetCaseSummaryForToCase(): Promise<SimpleResponseData<CaseSummary>> {
+  return Promise.resolve({ success: true, body: toCaseSummary });
 }
 
 async function mockGetTransferredCaseSuggestions(): Promise<ResponseData<CaseSummary[]>> {
@@ -104,10 +109,11 @@ describe('PendingTransferOrder component', () => {
     }
 
     beforeEach(async () => {
+      vi.stubEnv('CAMS_PA11Y', 'true');
       order = MockData.getTransferOrder();
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestions);
+        .mockImplementationOnce(mockGetTransferredCaseSuggestions)
+        .mockImplementationOnce(mockGetCaseSummary);
     });
 
     afterEach(() => {
@@ -173,17 +179,6 @@ describe('PendingTransferOrder component', () => {
       approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
       expect(approveButton).toBeDisabled();
     });
-
-    test.skip('should pass an error message back to the parent component when the suggestion query fails', async () => {
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockRejectedValueOnce(new Error('MockError'));
-      const { onOrderUpdate } = renderWithProps();
-
-      await waitFor(async () => {
-        expect(onOrderUpdate).toHaveBeenCalled();
-      });
-    });
   });
 
   describe('for manually entered court and case number', () => {
@@ -224,15 +219,9 @@ describe('PendingTransferOrder component', () => {
       return caseIdInput;
     }
 
-    async function clickNoListedCaseRadioButton() {
-      let caseNotListedRadio: HTMLElement;
-      await waitFor(async () => {
-        caseNotListedRadio = await screen.findByTestId('suggested-cases-radio-empty');
-        expect(caseNotListedRadio).toBeInTheDocument();
-      });
-      fireEvent.click(caseNotListedRadio!);
+    async function waitForCaseEntryForm() {
       await waitFor(() => {
-        expect(caseNotListedRadio).toBeChecked();
+        expect(document.querySelector('.case-entry-form')).toBeInTheDocument();
       });
     }
 
@@ -246,25 +235,12 @@ describe('PendingTransferOrder component', () => {
     beforeEach(async () => {
       order = MockData.getTransferOrder();
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty);
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary);
     });
 
     afterEach(() => {
-      vi.clearAllMocks();
-    });
-
-    test.skip('should show no suggested cases message when no suggestions are available', async () => {
-      renderWithProps();
-
-      const alertContainer = document.querySelector('.alert-container');
-      expect(alertContainer).toBeInTheDocument();
-      screen.debug(alertContainer!);
-      // const alertContainer = screen.getByTestId('case-verification');
-      // expect(alertContainer).toBeInTheDocument();
-      // await waitFor(() => {
-      //   expect(alertContainer).toHaveClass('visible');
-      // });
+      vi.resetAllMocks();
     });
 
     test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
@@ -276,12 +252,16 @@ describe('PendingTransferOrder component', () => {
           debtor: order.debtor,
         },
       });
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
+
       await waitForAlert();
 
       const selectButtonQuery = `court-selection-${order.id}`;
-      screen.debug();
       selectItemInMockSelect(selectButtonQuery, 1);
 
       const caseNumber = '24-12345';
@@ -312,43 +292,12 @@ describe('PendingTransferOrder component', () => {
       const expectedInput = {
         caseId: order.caseId,
         id: order.id,
-        newCase: {
-          caseId: `${testOffices[0].courtDivisionCode}-${caseNumber}`,
-          courtDivisionCode: testOffices[0].courtDivisionCode,
-          courtDivisionName: testOffices[0].courtDivisionName,
-          courtName: testOffices[0].courtName,
-          regionId: testOffices[0].regionId,
-          regionName: testOffices[0].regionName,
-        },
+        newCase: toCaseSummary,
         orderType: 'transfer',
         status: 'approved',
       };
 
       expect(patchSpy).toHaveBeenCalledWith(`/orders/${order.id}`, expectedInput);
-    });
-
-    test('should show not found message when a case is not found', async () => {
-      renderWithProps();
-      await clickNoListedCaseRadioButton();
-
-      let newCaseNumberText;
-      await waitFor(async () => {
-        newCaseNumberText = findCaseNumberInput(order.id);
-        expect(newCaseNumberText).toHaveValue(order.docketSuggestedCaseNumber);
-      });
-
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
-
-      const newValue = '77-77777';
-      enterCaseNumber(newCaseNumberText, newValue);
-
-      await waitFor(async () => {
-        const validatedCases = screen.queryByTestId(`validated-cases`);
-        expect(validatedCases).not.toBeInTheDocument();
-
-        const alert = screen.queryByTestId(`alert-container-validation-not-found`);
-        expect(alert).toBeInTheDocument();
-      });
     });
 
     test('should properly reject when API returns a successful response and a reason is supplied', async () => {
@@ -362,7 +311,7 @@ describe('PendingTransferOrder component', () => {
       });
 
       const { onOrderUpdate } = renderWithProps();
-      await clickNoListedCaseRadioButton();
+      await waitForCaseEntryForm();
 
       selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
@@ -424,7 +373,7 @@ describe('PendingTransferOrder component', () => {
 
     test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
       renderWithProps();
-      await clickNoListedCaseRadioButton();
+      await waitForCaseEntryForm();
 
       selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
@@ -480,9 +429,13 @@ describe('PendingTransferOrder component', () => {
       expect(rejectionReasonInput!).toHaveValue('');
     });
 
-    test.skip('should throw error during Approval when API returns an error', async () => {
+    test('should throw error during Approval when API returns an error', async () => {
       const errorMessage = 'Some random error';
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
 
@@ -519,7 +472,7 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
-    test.skip('should throw error during Rejection when API returns an error', async () => {
+    test('should throw error during Rejection when API returns an error', async () => {
       const errorMessage = 'Some random error';
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
 
@@ -560,8 +513,13 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should leave input fields and data in place when closing the modal without approving', async () => {
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+
       renderWithProps();
-      await clickNoListedCaseRadioButton();
+      await waitForCaseEntryForm();
 
       selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
@@ -609,7 +567,7 @@ describe('PendingTransferOrder component', () => {
 
     test('should clear input values and disable submission button when the Cancel button is clicked', async () => {
       renderWithProps();
-      await clickNoListedCaseRadioButton();
+      await waitForCaseEntryForm();
 
       selectItemInMockSelect(`court-selection-${order.id}`, 1);
 
@@ -669,48 +627,5 @@ describe('PendingTransferOrder component', () => {
       });
     });
     */
-
-    test('should allow the new case ID to be entered', async () => {
-      renderWithProps();
-      await clickNoListedCaseRadioButton();
-
-      let newCaseNumberText;
-      await waitFor(async () => {
-        newCaseNumberText = findCaseNumberInput(order.id);
-        expect(newCaseNumberText).toHaveValue(order.docketSuggestedCaseNumber);
-      });
-
-      const newValue = '22-33333';
-      enterCaseNumber(newCaseNumberText, newValue);
-
-      await waitFor(async () => {
-        const newCaseNumberText = screen.getByTestId(`new-case-input-${order.id}`);
-        expect(newCaseNumberText).toHaveValue(newValue);
-      });
-    });
-
-    test('should show a case summary when a case is found', async () => {
-      renderWithProps();
-      await clickNoListedCaseRadioButton();
-
-      let newCaseNumberText;
-      await waitFor(async () => {
-        newCaseNumberText = findCaseNumberInput(order.id);
-        expect(newCaseNumberText).toHaveValue(order.docketSuggestedCaseNumber);
-      });
-
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
-
-      const newValue = '22-33333';
-      enterCaseNumber(newCaseNumberText, newValue);
-
-      await waitFor(async () => {
-        const validatedCases = screen.getByTestId(`validated-cases`);
-        expect(validatedCases).toBeInTheDocument();
-
-        const alert = screen.queryByTestId(`alert-container-validation-not-found`);
-        expect(alert).not.toBeInTheDocument();
-      });
-    });
   });
 });

@@ -274,7 +274,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   id={`accordion-cancel-button-${order.id}`}
                   onClick={clearInputs}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
-                  className="padding-right-2"
+                  className="unstyled-button"
                 >
                   Clear
                 </Button>
