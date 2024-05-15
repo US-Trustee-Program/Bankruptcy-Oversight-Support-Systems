@@ -269,7 +269,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-5">
+              <div className="grid-col-10 text-no-wrap float-right">
+                <Button
+                  id={`accordion-cancel-button-${order.id}`}
+                  onClick={clearInputs}
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  className="padding-right-2"
+                >
+                  Clear
+                </Button>
                 <Button
                   id={`accordion-reject-button-${order.id}`}
                   onClick={() =>
@@ -278,19 +286,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                       cases: selectedCases,
                     })
                   }
-                  uswdsStyle={UswdsButtonStyle.Secondary}
+                  uswdsStyle={UswdsButtonStyle.Outline}
+                  className="margin-right-2"
                   ref={rejectButtonRef}
                 >
                   Reject
-                </Button>
-              </div>
-              <div className="grid-col-5 text-no-wrap float-right">
-                <Button
-                  id={`accordion-cancel-button-${order.id}`}
-                  onClick={clearInputs}
-                  uswdsStyle={UswdsButtonStyle.Outline}
-                >
-                  Cancel
                 </Button>
                 <Button
                   id={`accordion-approve-button-${order.id}`}
