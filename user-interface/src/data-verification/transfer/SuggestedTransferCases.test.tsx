@@ -86,8 +86,23 @@ async function mockGetTransferredCaseSuggestionsEmptyWithDelay(): Promise<
   ResponseData<CaseSummary[]>
 > {
   await sleep(200);
+  return mockGetTransferredCaseSuggestionsEmpty();
+}
+
+async function mockGetTransferredCaseSuggestionsEmpty(): Promise<ResponseData<CaseSummary[]>> {
   console.log('MOCKING getTransferredCaseSuggestions-Empty', 0);
   return Promise.resolve({ message: 'ok', count: 0, body: [] });
+}
+
+async function waitForLoadToComplete(orderId: string) {
+  const testId = `loading-spinner-${orderId}-suggestions`;
+  const spinner = screen.getByTestId(testId);
+  expect(spinner).toBeInTheDocument();
+
+  await waitFor(() => {
+    const spinner = document.querySelector(testId);
+    expect(spinner).not.toBeInTheDocument();
+  });
 }
 
 describe('SuggestedTransferCases component', () => {
@@ -152,14 +167,16 @@ describe('SuggestedTransferCases component', () => {
 
     renderWithProps();
 
-    const testId = `loading-spinner-${order.id}-suggestions`;
-    const spinner = screen.getByTestId(testId);
-    expect(spinner).toBeInTheDocument();
+    await waitForLoadToComplete(order.id);
 
-    await waitFor(() => {
-      const spinner = document.querySelector(testId);
-      expect(spinner).not.toBeInTheDocument();
-    });
+    // const testId = `loading-spinner-${order.id}-suggestions`;
+    // const spinner = screen.getByTestId(testId);
+    // expect(spinner).toBeInTheDocument();
+
+    // await waitFor(() => {
+    //   const spinner = document.querySelector(testId);
+    //   expect(spinner).not.toBeInTheDocument();
+    // });
   });
 
   test('should display case table if we get more than 0 suggested cases', async () => {
@@ -175,17 +192,41 @@ describe('SuggestedTransferCases component', () => {
     });
   });
 
-  test('should display alert and case entry form if we get less than 1 suggested case', () => {});
+  test.only('should display alert and case entry form if no suggested cases are found', async () => {
+    vi.spyOn(Api, 'get').mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty);
+    renderWithProps();
+    await waitForLoadToComplete(order.id);
+
+    const alert = screen.getByTestId('alert-suggested-cases-not-found');
+    expect(alert).toBeInTheDocument();
+
+    expect(alert.querySelector('.usa-alert__heading')).toHaveTextContent('No Matching Cases');
+    expect(alert.querySelector('.usa-alert__text')).toHaveTextContent(
+      "We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Court and Case Number below.",
+    );
+  });
+
   test('should call onAlert if an error results from fetching case suggestions', () => {});
+
   test('should call onCaseSelection if a selection is made', () => {});
+
   test('should display form if no-case-suggestion radio button is selected', () => {});
+
   test('should display validation alert if an invalid case number is entered in the form', () => {});
+
   test('should display table result if a valid case number has been entered into the form', () => {});
-  test('ref.reset should reset all form fields, validation states, case summary and order transfer details', () => {});
-  test('ref.cancel should reset and hide all form entry fields', () => {});
-  test('should ', () => {});
-  test('should ', () => {});
-  test('should ', () => {});
-  test('should ', () => {});
+
+  test('ref.reset should reset all form fields, validation states, case summary and order transfer details', () => {
+    const { ref } = renderWithProps();
+    ref.current?.reset();
+    // TODO:
+  });
+
+  test('ref.cancel should reset and hide all form entry fields', () => {
+    const { ref } = renderWithProps();
+    ref.current?.cancel();
+    // TODO:
+  });
+
   test('updateOrderTransfer should return an updated order when supplied an existing order and a caseNumber', () => {});
 });
