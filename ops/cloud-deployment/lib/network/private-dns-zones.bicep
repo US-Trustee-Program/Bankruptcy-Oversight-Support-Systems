@@ -24,6 +24,7 @@ resource ustpPrivateDnsZoneNew 'Microsoft.Network/privateDnsZones@2020-06-01' = 
   location: 'global'
 }
 resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (!deployDns) {
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   name: privateDnsZoneName
 }
 
