@@ -5,7 +5,7 @@ param appResourceGroup string = resourceGroup().name
 param deployVnet bool = false
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
-@description('Flag: determines the setup of DNS Zone, Subnets, Link virtual networks to zone.')
+@description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
 param networkResourceGroupName string
@@ -159,7 +159,7 @@ if (deployFunctions) {
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
       planType: functionPlanType
-      planName: '${functionName}-plan'
+      planName: 'plan-${functionName}'
       functionName: functionName
       functionsRuntime: 'node'
       functionSubnetId: network.outputs.functionSubnetId
