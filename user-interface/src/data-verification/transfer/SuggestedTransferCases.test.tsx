@@ -1,3 +1,5 @@
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import {
   SuggestedTransferCases,
@@ -7,12 +9,13 @@ import {
 import { TransferOrder } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import { render, waitFor, screen } from '@testing-library/react';
-import React from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import Api from '@/lib/models/api';
+
+// Because tests set CAMS_PA11Y = true
+import Api from '@/lib/models/chapter15-mock.api.cases';
+
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
-import { BrowserRouter } from 'react-router-dom';
 
 const testOffices: OfficeDetails[] = [
   {
