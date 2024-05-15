@@ -12,46 +12,11 @@ import CamsSelect, {
 } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { TransferOrder, TransferOrderAction } from '@common/cams/orders';
+import { TransferOrder } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { Chapter15CaseSummaryResponseData } from '@/lib/type-declarations/chapter-15';
 
-export function updateOrderTransfer(
-  orderTransfer: FlexibleTransferOrderAction,
-  office: OfficeDetails | null,
-  caseNumber: string | null,
-) {
-  const updated: FlexibleTransferOrderAction = { ...orderTransfer };
-  updated.newCase = {
-    ...updated.newCase,
-    regionId: office?.regionId,
-    regionName: office?.regionName,
-    courtName: office?.courtName,
-    courtDivisionName: office?.courtDivisionName,
-    courtDivisionCode: office?.courtDivisionCode,
-    caseId: `${office?.courtDivisionCode}-${caseNumber}`,
-  };
-
-  return updated;
-}
-
-// TODO: Maybe define this type somewhere where we will not cause a dependency violation or circular dependency.
-export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: Partial<CaseSummary>;
-};
-
-// TODO: Maybe define this type somewhere where we will not cause a dependency violation or circular dependency.
-export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
-  const { id, caseId } = order;
-  return {
-    id,
-    caseId,
-    orderType: order.orderType,
-  };
-}
-
 export type SuggestedTransferCasesImperative = {
-  reset: () => void;
   cancel: () => void;
 };
 
@@ -86,9 +51,6 @@ function _SuggestedTransferCases(
   const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
   const [suggestedCases, setSuggestedCases] = useState<CaseSummary[] | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
-  const [orderTransfer, setOrderTransfer] = useState<FlexibleTransferOrderAction>(
-    getOrderTransferFromOrder(order),
-  );
 
   const suggestedCasesRef = useRef<CaseTableImperative>(null);
   const caseNumberRef = useRef<InputRef>(null);
@@ -96,26 +58,22 @@ function _SuggestedTransferCases(
 
   const api = useApi();
 
-  async function isValidOrderTransfer(transfer: FlexibleTransferOrderAction) {
-    if (!transfer.newCase?.caseId) return false;
+  async function validateCaseNumber(caseId: string) {
+    if (loadingCaseSummary) return false;
     setLoadingCaseSummary(true);
-    let result = false;
     await api
-      .get(`/cases/${transfer.newCase.caseId}/summary`)
+      .get(`/cases/${caseId}/summary`)
       .then((response) => {
         const typedResponse = response as Chapter15CaseSummaryResponseData;
         props.onCaseSelection(typedResponse.body);
         setNewCaseSummary(typedResponse.body);
         setValidationState(ValidationStates.found);
-        result = true;
       })
       .catch((_reason) => {
         setValidationState(ValidationStates.notFound);
-        result = false;
       });
 
     setLoadingCaseSummary(false);
-    return result;
   }
 
   // TODO: fmadden 03/11/24 - When a court selection is made, getCaseSummary() seems to be getting called and
@@ -134,10 +92,8 @@ function _SuggestedTransferCases(
     }
     caseNumberRef.current?.disable(!office);
 
-    const updatedOrderTransfer = updateOrderTransfer(orderTransfer, office, newCaseNumber);
-    setOrderTransfer(updatedOrderTransfer);
     if (office && newCaseNumber) {
-      isValidOrderTransfer(updatedOrderTransfer);
+      validateCaseNumber(`${office.courtDivisionCode}-${newCaseNumber}`);
     }
   }
 
@@ -152,10 +108,8 @@ function _SuggestedTransferCases(
       return;
     }
 
-    const updatedOrderTransfer = updateOrderTransfer(orderTransfer, newCaseDivision, caseNumber);
-    setOrderTransfer(updatedOrderTransfer);
     if (caseNumber && newCaseDivision) {
-      isValidOrderTransfer(updatedOrderTransfer);
+      validateCaseNumber(`${newCaseDivision.courtDivisionCode}-${caseNumber}`);
     }
   }
 
@@ -183,22 +137,15 @@ function _SuggestedTransferCases(
     props.onCaseSelection(bCase);
   }
 
-  function reset() {
-    setOrderTransfer(getOrderTransferFromOrder(order));
+  function cancel() {
     setNewCaseSummary(null);
     setValidationState(ValidationStates.notValidated);
     if (suggestedCasesRef.current) suggestedCasesRef.current.clearAllCheckboxes();
+    setEnableCaseEntry(false);
     setLoadingCaseSummary(false);
   }
 
-  function cancel(): void {
-    courtSelectionRef.current?.clearValue();
-    caseNumberRef.current?.resetValue();
-    setEnableCaseEntry(false);
-    reset();
-  }
   useImperativeHandle(SuggestedTransferCasesRef, () => ({
-    reset,
     cancel,
   }));
 

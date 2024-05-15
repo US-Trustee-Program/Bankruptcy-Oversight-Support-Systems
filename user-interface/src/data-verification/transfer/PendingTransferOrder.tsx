@@ -15,12 +15,7 @@ import { ConfirmationModalImperative } from '../ConsolidationOrderModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { OfficeDetails } from '@common/cams/courts';
-import {
-  FlexibleTransferOrderAction,
-  getOrderTransferFromOrder,
-  SuggestedTransferCases,
-  SuggestedTransferCasesImperative,
-} from './SuggestedTransferCases';
+import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 
 export type PendingTransferOrderProps = {
   order: TransferOrder;
@@ -28,6 +23,19 @@ export type PendingTransferOrderProps = {
   // TODO: This is a lot of prop drilling. Maybe add a custom hook???
   officesList: Array<OfficeDetails>;
 };
+
+export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
+  newCase?: Partial<CaseSummary>;
+};
+
+export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
+  const { id, caseId } = order;
+  return {
+    id,
+    caseId,
+    orderType: order.orderType,
+  };
+}
 
 export function PendingTransferOrder(props: PendingTransferOrderProps) {
   const { order, officesList } = props;
@@ -104,15 +112,10 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       });
   }
 
-  function resetState() {
-    suggestedCasesRef.current?.reset();
-    setOrderTransfer(getOrderTransferFromOrder(order));
-    approveButtonRef.current?.disableButton(true);
-  }
-
   function cancelUpdate(): void {
     suggestedCasesRef.current?.cancel();
-    resetState();
+    setOrderTransfer(getOrderTransferFromOrder(order));
+    approveButtonRef.current?.disableButton(true);
   }
 
   function confirmAction(status: OrderStatus, reason?: string): void {
@@ -233,7 +236,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
             id={`accordion-cancel-button-${order.id}`}
             onClick={cancelUpdate}
             uswdsStyle={UswdsButtonStyle.Unstyled}
-            className="padding-right-2"
+            className="unstyled-button"
           >
             Clear
           </Button>

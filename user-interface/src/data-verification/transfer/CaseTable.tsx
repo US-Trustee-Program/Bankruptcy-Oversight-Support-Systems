@@ -1,19 +1,13 @@
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseSummary } from '@common/cams/cases';
-import {
-  PropsWithChildren,
-  SyntheticEvent,
-  forwardRef,
-  useImperativeHandle,
-  useState,
-} from 'react';
+import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CaseTableImperative = {
   clearAllCheckboxes: () => void;
 };
 
-type CaseTableProps = PropsWithChildren & {
+type CaseTableProps = {
   id: string;
   cases: Array<CaseSummary | null>;
   onSelect?: (bCase: CaseSummary | null) => void;
@@ -21,7 +15,7 @@ type CaseTableProps = PropsWithChildren & {
 };
 
 function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
-  const { id, cases, onSelect, children } = props;
+  const { id, cases, onSelect } = props;
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -56,6 +50,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
       <tbody>
         {cases?.map((bCase, idx) => {
           if (!bCase) {
+            if (!onSelect) return <></>;
             return (
               <tr key={'empty'} data-testid={'empty-row'}>
                 <th scope="col">
@@ -107,7 +102,6 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
             </tr>
           );
         })}
-        {children}
       </tbody>
     </table>
   );

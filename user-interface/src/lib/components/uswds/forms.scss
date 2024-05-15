@@ -1,5 +1,11 @@
 $secondary-dark: #B50909;
 
+button.unstyled-button {
+  margin-left: 1rem;
+  margin-right: 1rem;
+  border-radius: 0.25rem;
+}
+
 .usa-form-group {
   label:has(+ .usa-input-group input[required])::after {
     content: ' *';
