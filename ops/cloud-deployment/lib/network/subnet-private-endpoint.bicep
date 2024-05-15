@@ -12,8 +12,6 @@ param privateLinkServiceId string
 param privateLinkGroup string
 param privateEndpointSubnetId string
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
-param privateDnsZoneResourceGroup string = resourceGroup().name
-param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
   name: 'pep-${stackName}'
@@ -43,7 +41,6 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
   }
 }
 resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   name: privateDnsZoneName
 }
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {

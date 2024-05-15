@@ -137,8 +137,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       allowVeracodeScan: allowVeracodeScan
       createAlerts: createAlerts
       actionGroupName: actionGroupName
-      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       actionGroupResourceGroupName: analyticsResourceGroupName
       targetApiServerHost: '${functionName}.azurewebsites${azHostSuffix} ${functionName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
@@ -169,8 +167,6 @@ if (deployFunctions) {
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
