@@ -164,9 +164,10 @@ function _SuggestedTransferCases(
     api
       .get(`/orders-suggestions/${caseId}/`)
       .then((response) => {
+        const newSuggestedCases = response.body as CaseSummary[];
         setLoadingSuggestions(false);
-        setSuggestedCases(response.body as CaseSummary[]);
-        if ((response.body as CaseSummary[]).length === 0) {
+        setSuggestedCases(newSuggestedCases);
+        if (newSuggestedCases.length === 0) {
           setEnableCaseEntry(true);
         }
       })
