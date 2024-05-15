@@ -40,8 +40,7 @@ var planTypeToSkuMap = {
 @description('Webapp application name')
 param webappName string
 
-// @description('Flag to determine the deployment of the private endpoint')
-// param deployNetwork bool = true
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
@@ -302,6 +301,7 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     location: location
     privateLinkServiceId: webapp.id
     privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
   }
 }
 output webappName string = webapp.name
