@@ -144,6 +144,9 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       webappSubnetId: network.outputs.webappSubnetId
       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
       appServiceRuntime: 'php'
+      privateDnsZoneName: privateDnsZoneName
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     }
     dependsOn: [
       network
@@ -177,6 +180,9 @@ if (deployFunctions) {
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
       createAlerts: createAlerts
+      privateDnsZoneName: privateDnsZoneName
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     }
     dependsOn: [
       network
