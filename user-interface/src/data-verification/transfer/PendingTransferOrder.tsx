@@ -3,8 +3,10 @@ import { CaseSummary } from '@common/cams/cases';
 import { OrderStatus, TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useApi } from '@/lib/hooks/UseApi';
-import { TransferConfirmationModal } from './TransferConfirmationModal';
-import { ConfirmationModalImperative } from '../ConsolidationOrderModal';
+import {
+  TransferConfirmationModal,
+  TransferConfirmationModalImperative,
+} from './TransferConfirmationModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { OfficeDetails } from '@common/cams/courts';
@@ -45,7 +47,7 @@ function _PendingTransferOrder(
     getOrderTransferFromOrder(order),
   );
 
-  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
+  const modalRef = useRef<TransferConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const suggestedCasesRef = useRef<SuggestedTransferCasesImperative>(null);
 
@@ -177,7 +179,7 @@ function _PendingTransferOrder(
           </Button>
           <Button
             id={`accordion-reject-button-${order.id}`}
-            onClick={() => confirmationModalRef.current?.show({ status: 'rejected' })}
+            onClick={() => modalRef.current?.show({ status: 'rejected' })}
             uswdsStyle={UswdsButtonStyle.Outline}
             className="margin-right-2"
           >
@@ -185,7 +187,7 @@ function _PendingTransferOrder(
           </Button>
           <Button
             id={`accordion-approve-button-${order.id}`}
-            onClick={() => confirmationModalRef.current?.show({ status: 'approved' })}
+            onClick={() => modalRef.current?.show({ status: 'approved' })}
             disabled={true}
             ref={approveButtonRef}
           >
@@ -195,7 +197,7 @@ function _PendingTransferOrder(
         <div className="grid-col-1"></div>
       </div>
       <TransferConfirmationModal
-        ref={confirmationModalRef}
+        ref={modalRef}
         id={`confirmation-modal-${order.id}`}
         fromCaseId={order.caseId}
         toCaseId={orderTransfer.newCase?.caseId}
