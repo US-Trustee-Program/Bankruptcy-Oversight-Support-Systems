@@ -94,7 +94,7 @@ test('test pending transfer order form', async ({ page }) => {
   expect(pendingTransferOrder).not.toBeFalsy();
   const orderId = pendingTransferOrder.id;
 
-  // open accordian by order id
+  // open accordion by order id
   await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
 
   // Wait on the offices to come back from API
