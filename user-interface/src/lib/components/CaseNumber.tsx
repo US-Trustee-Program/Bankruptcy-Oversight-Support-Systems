@@ -1,29 +1,24 @@
 import { Link } from 'react-router-dom';
 import { getCaseNumber } from '../utils/formatCaseNumber';
 
-export interface CaseNumberProps {
+export type CaseNumberProps = JSX.IntrinsicElements['span'] & {
   caseId: string;
   renderAs?: 'link' | 'span';
   openLinkIn?: 'same-window' | 'new-window';
-  className?: string;
   'data-testid'?: string;
-}
+};
 
 export function CaseNumber(props: CaseNumberProps) {
-  const { className, caseId, renderAs = 'link', openLinkIn = 'new-window' } = props;
-  const dataTestId = props['data-testid'];
-  const span = (
-    <span className={className ?? ''} data-testid={dataTestId}>
-      {getCaseNumber(caseId)}
-    </span>
-  );
+  const { caseId, renderAs = 'link', openLinkIn = 'new-window', ...otherProps } = props;
+  const span = <span {...otherProps}>{getCaseNumber(caseId)}</span>;
   if (renderAs === 'link') {
     const target = openLinkIn === 'new-window' ? `CAMS-case-detail-${caseId}` : '_self';
+    const dataTestId = props['data-testid'] ? `${props['data-testid']}-link` : undefined;
     return (
       <Link
+        data-testid={dataTestId}
         to={`/case-detail/${caseId}/`}
         className={`usa-link`}
-        data-testid={`${dataTestId}-link`}
         title={`Open case ${caseId}`}
         target={target}
         reloadDocument={true}

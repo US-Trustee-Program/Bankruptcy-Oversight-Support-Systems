@@ -7,12 +7,12 @@ export type CaseTableImperative = {
   clearAllCheckboxes: () => void;
 };
 
-interface CaseTableProps {
+type CaseTableProps = {
   id: string;
-  cases: Array<CaseSummary>;
-  onSelect?: (bCase: CaseSummary) => void;
+  cases: Array<CaseSummary | null>;
+  onSelect?: (bCase: CaseSummary | null) => void;
   displayDocket?: boolean;
-}
+};
 
 function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
   const { id, cases, onSelect } = props;
@@ -40,21 +40,40 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
         <tr>
           {onSelect && <th scope="col">Select</th>}
           <th scope="col">Case Number</th>
+          <th scope="col">Court (Division)</th>
           <th scope="col">Case Title</th>
-          <th scope="col">SSN/EIN</th>
-          <th scope="col">Court</th>
-          <th scope="col">Case Filed</th>
           <th scope="col">Chapter</th>
+          <th scope="col">Filed Date</th>
+          <th scope="col">Tax ID</th>
         </tr>
       </thead>
       <tbody>
         {cases?.map((bCase, idx) => {
+          if (!bCase) {
+            if (!onSelect) return <></>;
+            return (
+              <tr key={'empty'} data-testid={'empty-row'}>
+                <td scope="col">
+                  <input
+                    type="radio"
+                    onChange={handleCaseSelection}
+                    value={idx}
+                    name="case-selection"
+                    data-testid={`suggested-cases-radio-empty`}
+                    checked={idx === selectedIdx}
+                    title={`case not listed`}
+                  ></input>
+                </td>
+                <td colSpan={6}>Case not listed.</td>
+              </tr>
+            );
+          }
           const taxId = bCase.debtor?.ssn || bCase.debtor?.taxId || '';
           const key = `${id}-row-${idx}`;
           return (
             <tr key={key} data-testid={key}>
               {onSelect && (
-                <th scope="col">
+                <td scope="col">
                   <input
                     type="radio"
                     onChange={handleCaseSelection}
@@ -64,22 +83,25 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     checked={idx === selectedIdx}
                     title={`select ${bCase.caseTitle}`}
                   ></input>
-                </th>
+                </td>
               )}
               <td scope="row">
-                <CaseNumber caseId={bCase.caseId} />
-              </td>
-              <td scope="row">{bCase.caseTitle}</td>
-              <td scope="row" className="text-no-wrap">
-                {taxId}
+                <CaseNumber
+                  caseId={bCase.caseId}
+                  data-testid={`case-detail-${bCase.caseId}-${id}`}
+                />
               </td>
               <td scope="row">
                 {bCase.courtName} ({bCase.courtDivisionName})
               </td>
+              <td scope="row">{bCase.caseTitle}</td>
+              <td scope="row">{bCase.chapter}</td>
               <td scope="row" className="text-no-wrap">
                 {formatDate(bCase.dateFiled)}
               </td>
-              <td scope="row">{bCase.chapter}</td>
+              <td scope="row" className="text-no-wrap">
+                {taxId}
+              </td>
             </tr>
           );
         })}
