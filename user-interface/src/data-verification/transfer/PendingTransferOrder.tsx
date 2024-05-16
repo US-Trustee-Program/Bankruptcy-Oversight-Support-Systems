@@ -148,8 +148,12 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         const typedResponse = response as Chapter15CaseSummaryResponseData;
         setOriginalCaseSummary(typedResponse.body);
       })
-      .catch((_reason) => {
-        // TODO
+      .catch((reason) => {
+        props.onOrderUpdate({
+          message: reason.message,
+          type: UswdsAlertStyle.Error,
+          timeOut: 8,
+        });
       });
   }
 
@@ -162,7 +166,6 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       {' '}
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        {/*<div className="grid-col-10">The system has identified a case transfer order for case:</div>*/}
         <div className="grid-col-10">
           <h3>Case with Transfer Order</h3>
         </div>
