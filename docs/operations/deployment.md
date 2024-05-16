@@ -26,7 +26,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING | Secret                 | ---              | Optional for log ingestion to Azure Log Analytics.                                                          |
 | CAMS_FEATURE_FLAG_CLIENT_ID                | Secret                 | ---              | Optional client id to enable LaunchDarkly                                                                   |
 | CAMS_INFO_SHA                              | Secret                 | ---              | Required for frontend build step. Current commit sha of source                                              |
-| ---                                        | ---                    | ---              | Used within endpoint-test.sh to verify proper endpoint resolution                                           |
+| ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure**                                  |                        |                  |                                                                                                             |
 | AZURE_SUBSCRIPTION                         | Secret                 | ---              | Azure Subscription ID                                                                                       |
 | AZURE_CREDENTIALS                          | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                     |
