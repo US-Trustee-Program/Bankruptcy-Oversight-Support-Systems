@@ -53,7 +53,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
             if (!onSelect) return <></>;
             return (
               <tr key={'empty'} data-testid={'empty-row'}>
-                <th scope="col">
+                <td scope="col">
                   <input
                     type="radio"
                     onChange={handleCaseSelection}
@@ -63,7 +63,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     checked={idx === selectedIdx}
                     title={`case not listed`}
                   ></input>
-                </th>
+                </td>
                 <td colSpan={6}>Case not listed.</td>
               </tr>
             );
@@ -73,7 +73,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
           return (
             <tr key={key} data-testid={key}>
               {onSelect && (
-                <th scope="col">
+                <td scope="col">
                   <input
                     type="radio"
                     onChange={handleCaseSelection}
@@ -83,7 +83,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     checked={idx === selectedIdx}
                     title={`select ${bCase.caseTitle}`}
                   ></input>
-                </th>
+                </td>
               )}
               <td scope="row">
                 <CaseNumber

@@ -26,12 +26,12 @@ describe('tests for USWDS button group', () => {
   test('should contain supplied class name and id, and render without children if no children are passed', () => {
     renderWithProps();
 
-    const ul = screen.getByTestId(`button-group-${buttonGroupId}`);
-    expect(ul).toBeInTheDocument();
-    expect(ul).toHaveAttribute('id', buttonGroupId);
-    expect(ul).toHaveClass(buttonGroupCSSClass);
+    const buttonGroup = screen.getByTestId(`button-group-${buttonGroupId}`);
+    expect(buttonGroup).toBeInTheDocument();
+    expect(buttonGroup).toHaveAttribute('id', buttonGroupId);
+    expect(buttonGroup).toHaveClass(buttonGroupCSSClass);
 
-    expect(ul.children.length).toBe(0);
+    expect(buttonGroup.children.length).toBe(0);
   });
 
   test('should not contain class name or id if none are supplied in props', () => {
@@ -47,7 +47,7 @@ describe('tests for USWDS button group', () => {
     expect(ul[0].classList.length).toBe(2);
   });
 
-  test('should contain given children and ids set approprietly, and active button has proper class name', () => {
+  test('should contain given children and ids set appropriately, and active button has proper class name', () => {
     renderWithProps({
       children: [
         <Button id="button-1" key="button-key-1">
@@ -73,15 +73,15 @@ describe('tests for USWDS button group', () => {
 
   test('should call individual buttons onClick handlers and onButtonClick of button group if buttons are clicked', () => {
     const buttonGroupOnClick = vi.fn();
-    const button1OnClick = vi.fn();
-    const button2OnClick = vi.fn();
+    const buttonOneOnClick = vi.fn();
+    const buttonTwoOnClick = vi.fn();
     renderWithProps({
       onButtonClick: buttonGroupOnClick,
       children: [
-        <Button id="button-1" key="button-key-1" onClick={button1OnClick}>
+        <Button id="button-1" key="button-key-1" onClick={buttonOneOnClick}>
           Button 1
         </Button>,
-        <Button id="button-2" key="button-key-2" onClick={button2OnClick}>
+        <Button id="button-2" key="button-key-2" onClick={buttonTwoOnClick}>
           Button 2
         </Button>,
       ],
@@ -93,8 +93,8 @@ describe('tests for USWDS button group', () => {
     fireEvent.click(button1);
     fireEvent.click(button2);
 
-    expect(button1OnClick).toHaveBeenCalled();
-    expect(button2OnClick).toHaveBeenCalled();
+    expect(buttonOneOnClick).toHaveBeenCalled();
+    expect(buttonTwoOnClick).toHaveBeenCalled();
     expect(buttonGroupOnClick).toHaveBeenCalledWith('button-1');
     expect(buttonGroupOnClick).toHaveBeenCalledWith('button-2');
   });

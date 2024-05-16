@@ -76,9 +76,6 @@ function _SuggestedTransferCases(
     setLoadingCaseSummary(false);
   }
 
-  // TODO: fmadden 03/11/24 - When a court selection is made, getCaseSummary() seems to be getting called and
-  // uses the previously set case number, rather than the value in the New Case input field.
-  // as a result, you get the wrong case summary listed.
   function handleCourtSelection(selection: CamsSelectOptionList) {
     setValidationState(ValidationStates.notValidated);
     const office =
@@ -165,10 +162,15 @@ function _SuggestedTransferCases(
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
-          {(loadingSuggestions || (suggestedCases && suggestedCases?.length > 0)) && (
+          {suggestedCases && suggestedCases?.length > 0 && (
             <div className="select-destination-case--description">
-              Select the new case from the list below. If the case is not listed, select the new
-              court division and enter the new case number.
+              Select the new case from the list below. If the case is not listed, select &quot;case
+              not listed&quot; and enter the new court division and enter the new case number.
+            </div>
+          )}
+          {suggestedCases && suggestedCases?.length === 0 && (
+            <div className="select-destination-case--description">
+              Select the new court division and enter the new case number.
             </div>
           )}
         </div>
@@ -200,7 +202,7 @@ function _SuggestedTransferCases(
                       ref={suggestedCasesRef}
                     ></CaseTable>
                   )}
-                  {suggestedCases && suggestedCases.length === 0 && (
+                  {/* {suggestedCases && suggestedCases.length === 0 && (
                     <div className="alert-container">
                       <Alert
                         inline={true}
@@ -213,7 +215,7 @@ function _SuggestedTransferCases(
                         id="suggested-cases-not-found"
                       />
                     </div>
-                  )}
+                  )} */}
                 </div>
                 <div className="grid-col-1"></div>
               </div>
