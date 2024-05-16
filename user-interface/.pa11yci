@@ -64,7 +64,6 @@
         "click element div.filter.rejected",
         "click element div.filter.consolidation",
         "click element [data-testid='accordion-button-order-list-guid-0']",
-        "click element #suggested-cases-guid-0",
         "wait for element [data-testid='suggested-cases-radio-0'] to be visible",
         "click element [data-testid='suggested-cases-radio-0']",
         "click element #accordion-approve-button-guid-0",
