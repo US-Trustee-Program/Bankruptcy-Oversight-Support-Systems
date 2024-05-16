@@ -17,16 +17,56 @@ function getNumberOfColumns(table: HTMLElement) {
 }
 
 describe('CaseTable component', () => {
+  describe('in common', () => {
+    test('should render a missing ssn / tax ID as an empty string', () => {
+      const debtor = MockData.getParty({ override: { ssn: undefined, taxId: undefined } });
+      const bCase = MockData.getCaseSummary({ override: { debtor } });
+      render(
+        <BrowserRouter>
+          <CaseTable id="test-case-table" cases={[bCase]}></CaseTable>
+        </BrowserRouter>,
+      );
+
+      const row = screen.getByTestId('test-case-table-row-0');
+      const taxIdColumn = row.children[5];
+      expect(taxIdColumn).toBeInTheDocument();
+      expect(taxIdColumn).toHaveTextContent('');
+    });
+  });
+
+  describe('for empty row', () => {
+    test('should not render an empty row if onSelect is not provided', () => {
+      const onSelect = vi.fn();
+      render(
+        <BrowserRouter>
+          <CaseTable id="test-case-table" cases={[...cases, null]} onSelect={onSelect}></CaseTable>
+        </BrowserRouter>,
+      );
+
+      const emptyRow = screen.queryByTestId('empty-row');
+      expect(emptyRow).toBeInTheDocument();
+    });
+
+    test('should render an empty row if onSelect is provided', () => {
+      render(
+        <BrowserRouter>
+          <CaseTable id="test-case-table" cases={[...cases, null]}></CaseTable>
+        </BrowserRouter>,
+      );
+
+      const emptyRow = screen.queryByTestId('empty-row');
+      expect(emptyRow).not.toBeInTheDocument();
+    });
+  });
+
   describe('without onSelect', () => {
-    beforeEach(() => {
+    test('should render a table of cases', () => {
       render(
         <BrowserRouter>
           <CaseTable id="test-case-table" cases={cases}></CaseTable>
         </BrowserRouter>,
       );
-    });
 
-    test('should render a table of cases', () => {
       const table = screen.getByTestId('test-case-table');
       expect(table).toBeInTheDocument();
 
