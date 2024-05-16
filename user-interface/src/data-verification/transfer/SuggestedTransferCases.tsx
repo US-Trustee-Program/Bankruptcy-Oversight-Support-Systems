@@ -208,20 +208,6 @@ function _SuggestedTransferCases(
                       ref={suggestedCasesRef}
                     ></CaseTable>
                   )}
-                  {/* {suggestedCases && suggestedCases.length === 0 && (
-                    <div className="alert-container">
-                      <Alert
-                        inline={true}
-                        show={true}
-                        title="No Matching Cases"
-                        message="We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Court and Case Number below."
-                        type={UswdsAlertStyle.Warning}
-                        role="status"
-                        className="suggested-cases-alert"
-                        id="suggested-cases-not-found"
-                      />
-                    </div>
-                  )} */}
                 </div>
                 <div className="grid-col-1"></div>
               </div>
