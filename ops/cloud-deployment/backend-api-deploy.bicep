@@ -115,7 +115,9 @@ param actionGroupResourceGroupName string = ''
 param createAlerts bool = false
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
+
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 

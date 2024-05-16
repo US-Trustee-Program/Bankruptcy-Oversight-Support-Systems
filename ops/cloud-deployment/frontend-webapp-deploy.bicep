@@ -37,11 +37,7 @@ var planTypeToSkuMap = {
   }
 }
 
-@description('Webapp application name')
 param webappName string
-
-// @description('Flag to determine the deployment of the private endpoint')
-// param deployNetwork bool = true
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
@@ -98,13 +94,11 @@ param analyticsWorkspaceId string = ''
 @description('Action Group Name for alerts')
 param actionGroupName string = ''
 
-@description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
-@description('Resource group name of target virtual network')
 param virtualNetworkResourceGroupName string
 
 @description('Webapp subnet resource ID')
@@ -125,7 +119,9 @@ param ustpIssueCollectorHash string = ''
 param camsReactSelectHash string
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
+
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 

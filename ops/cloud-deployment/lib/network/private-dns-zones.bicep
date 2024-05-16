@@ -2,7 +2,9 @@
   Description: Create Private Dns Zone associated to target vnet. Set linkVnetIds to include additional vnet links to dns.
 */
 param privateDnsZoneResourceGroup string = resourceGroup().name
+
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
 param deployDns bool
 @description('Provide a name used for labeling related resources')
 param stackName string
