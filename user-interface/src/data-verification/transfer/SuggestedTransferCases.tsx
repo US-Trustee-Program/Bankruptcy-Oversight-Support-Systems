@@ -163,13 +163,19 @@ function _SuggestedTransferCases(
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           {suggestedCases && suggestedCases?.length > 0 && (
-            <div className="select-destination-case--description">
+            <div
+              className="select-destination-case--description"
+              data-testid={'suggested-cases-found'}
+            >
               Select the new case from the list below. If the case is not listed, select &quot;case
               not listed&quot; and enter the new court division and enter the new case number.
             </div>
           )}
           {suggestedCases && suggestedCases?.length === 0 && (
-            <div className="select-destination-case--description">
+            <div
+              className="select-destination-case--description"
+              data-testid={'suggested-cases-not-found'}
+            >
               Select the new court division and enter the new case number.
             </div>
           )}

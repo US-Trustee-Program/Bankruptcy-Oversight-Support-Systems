@@ -202,15 +202,12 @@ describe('SuggestedTransferCases component', () => {
 
     renderWithProps();
 
-    const description = document.querySelector('.select-destination-case--description');
-    expect(description).toBeInTheDocument();
-    expect(description).toHaveTextContent(
-      'Select the new case from the list below. If the case is not listed, select the new court division and enter the new case number.',
-    );
-
     await waitFor(() => {
-      const description = document.querySelector('.select-destination-case--description');
-      expect(description).not.toBeInTheDocument();
+      const description = screen.getByTestId('suggested-cases-not-found');
+      expect(description).toBeInTheDocument();
+      expect(description).toHaveTextContent(
+        'Select the new court division and enter the new case number.',
+      );
     });
   });
 
@@ -224,24 +221,13 @@ describe('SuggestedTransferCases component', () => {
     await waitFor(() => {
       const caseTable = document.querySelector('#suggested-cases');
       expect(caseTable).toBeInTheDocument();
+
+      const description = screen.getByTestId('suggested-cases-found');
+      expect(description).toBeInTheDocument();
+      expect(description).toHaveTextContent(
+        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and enter the new case number.',
+      );
     });
-  });
-
-  test('should display alert and case entry form if no suggested cases are found', async () => {
-    vi.spyOn(Api, 'get').mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty);
-    renderWithProps();
-    await waitForLoadToComplete(order.id);
-
-    let alert;
-    await waitFor(() => {
-      alert = screen.getByTestId('alert-suggested-cases-not-found');
-      expect(alert).toBeInTheDocument();
-    });
-
-    expect(alert!.querySelector('.usa-alert__heading')).toHaveTextContent('No Matching Cases');
-    expect(alert!.querySelector('.usa-alert__text')).toHaveTextContent(
-      "We couldn't find any cases with similar information to the case being transferred. Please try again later. Otherwise, enter the Court and Case Number below.",
-    );
   });
 
   test('should call onAlert if an error results from fetching case suggestions', async () => {

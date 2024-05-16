@@ -225,8 +225,8 @@ describe('PendingTransferOrder component', () => {
 
     async function waitForAlert() {
       await waitFor(() => {
-        const alert = document.querySelector('#suggested-cases-not-found');
-        expect(alert).toBeInTheDocument();
+        const instructions = screen.queryByTestId('suggested-cases-not-found');
+        expect(instructions).toBeInTheDocument();
       });
     }
 
