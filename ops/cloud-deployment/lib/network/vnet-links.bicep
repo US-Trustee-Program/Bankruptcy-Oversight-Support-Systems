@@ -1,7 +1,9 @@
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
+
 @description('Provide a name used for labeling related resources')
 param stackName string
+
 @description('Application\'s target virtual network resource id')
 param virtualNetworkId string
 

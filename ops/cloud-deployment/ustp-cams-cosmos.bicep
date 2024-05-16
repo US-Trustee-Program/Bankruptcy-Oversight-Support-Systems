@@ -89,7 +89,11 @@ module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
     account
   ]
 }
-
+//TODO: Use this BuiltInRole as oppposed to custom
+// resource cosmosSqlRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' existing = {
+//   name: cosmosSqlRoleAssignmentName
+//   scope: resourceGroup(resourceGroupName)
+// }
 // Assign permissions (role) to Identity
 module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
   name: '${accountName}-cosmos-role-assignment-module'

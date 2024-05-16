@@ -3,15 +3,9 @@ param stackName string
 
 param location string = resourceGroup().location
 
-param virtualNetworkName string
-param privateEndpointSubnetName string
-param privateEndpointSubnetAddressPrefix string
-param privateDnsZoneName string
-param privateDnsZoneResourceGroup string = resourceGroup().name
-param privateDnsZoneSubscriptionId string = subscription().subscriptionId
-param privatDnsZoneId string = ''
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
+
 @description('Group for private link service')
 @allowed([
   'sites'
@@ -19,35 +13,16 @@ param privateLinkServiceId string
 ])
 param privateLinkGroup string
 
-/*
-  Create subnet for private endpoint
-*/
-module privateEndpointSubnet 'subnet.bicep' = {
-  name: '${privateEndpointSubnetName}-module'
-  params: {
-    subnetAddressPrefix: privateEndpointSubnetAddressPrefix
-    subnetName: privateEndpointSubnetName
-    virtualNetworkName: virtualNetworkName
-    subnetServiceEndpoints: [
-      {
-        service: 'Microsoft.Sql'
-        locations: [
-          location
-        ]
-      }
-      {
-        service: 'Microsoft.AzureCosmosDB'
-        locations: [
-          location
-        ]
-      }
-    ]
-  }
-}
+param privateEndpointSubnetId string
 
-/*
-  Create private endpoint
-*/
+param privateDnsZoneName string
+
+param privateDnsZoneSubscriptionId string
+
+param privateDnsZoneResourceGroup string
+
+param privateDnsZoneId string = ''
+
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
   name: 'pep-${stackName}'
   location: location
@@ -69,22 +44,18 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
     ]
     manualPrivateLinkServiceConnections: []
     subnet: {
-      id: privateEndpointSubnet.outputs.subnetId
+      id: privateEndpointSubnetId
     }
     ipConfigurations: []
     customDnsConfigs: []
   }
 }
-
-/*
-  Add private dns zone group to private endpoint
-*/
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (empty(privatDnsZoneId)) {
+resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (empty(privateDnsZoneId)) {
   name: privateDnsZoneName
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
 }
 
-var dnsZoneId = empty(privateDnsZone.id) ? privateDnsZone.id : privatDnsZoneId
+var dnsZoneId = empty(privateDnsZoneId) ? privateDnsZone.id : privateDnsZoneId
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
   parent: privateEndpoint
   name: 'default'
@@ -99,6 +70,3 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
     ]
   }
 }
-
-output privateEndpointSubnetName string = privateEndpointSubnet.outputs.subnetName
-output privateEndpointSubnetId string = privateEndpointSubnet.outputs.subnetId

@@ -35,9 +35,6 @@
     "deployVnet": {
       "value": false
     },
-    "createVnet": {
-      "value": false
-    },
     "vnetAddressPrefix": {
       "value": []
     },

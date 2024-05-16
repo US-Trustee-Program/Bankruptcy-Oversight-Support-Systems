@@ -37,37 +37,7 @@ var planTypeToSkuMap = {
   }
 }
 
-@description('Webapp application name')
 param webappName string
-
-@description('Private DNS Zone used for application')
-param privateDnsZoneName string
-
-@description('Resource group of target Private DNS Zone')
-param privateDnsZoneResourceGroup string = resourceGroup().name
-
-@description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
-param privateDnsZoneSubscriptionId string = subscription().subscriptionId
-
-param privateDnsZoneId string = ''
-
-@description('Existing virtual network name')
-param virtualNetworkName string
-
-@description('Resource group name of target virtual network')
-param virtualNetworkResourceGroupName string
-
-@description('Webapp subnet name')
-param webappSubnetName string
-
-@description('Webapp subnet ip ranges')
-param webappSubnetAddressPrefix string
-
-@description('Webapp private endpoint subnet name')
-param webappPrivateEndpointSubnetName string
-
-@description('Webapp private endpoint subnet ip ranges')
-param webappPrivateEndpointSubnetAddressPrefix string
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
@@ -122,16 +92,20 @@ param deployAppInsights bool = false
 param analyticsWorkspaceId string = ''
 
 @description('Action Group Name for alerts')
-param actionGroupName string
+param actionGroupName string = ''
 
-@description('Action Group Resource Group Name for alerts')
-param actionGroupResourceGroupName string
+param actionGroupResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool
-/*
-  Subnet creation in target virtual network
-*/
+param createAlerts bool = false
+
+param virtualNetworkResourceGroupName string
+
+@description('Webapp subnet resource ID')
+param webappSubnetId string
+
+@description('Private Endpoint Subnet resource ID')
+param privateEndpointSubnetId string
 
 @description('Target backend API server host. Used to set Content-Security-Policy')
 param targetApiServerHost string
@@ -144,48 +118,16 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
-module webappSubnet './lib/network/subnet.bicep' = {
-  name: '${webappName}-subnet-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    virtualNetworkName: virtualNetworkName
-    subnetName: webappSubnetName
-    subnetAddressPrefix: webappSubnetAddressPrefix
-    subnetServiceEndpoints: []
-    subnetDelegations: [
-      {
-        name: 'Microsoft.Web/serverfarms'
-        properties: {
-          serviceName: 'Microsoft.Web/serverfarms'
-        }
-      }
-    ]
-  }
-}
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
-/*
-  Private endpoint creation in target virtual network.
-*/
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${webappName}-pep-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    privateLinkGroup: 'sites'
-    stackName: webappName
-    location: location
-    virtualNetworkName: virtualNetworkName
-    privateDnsZoneName: privateDnsZoneName
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    privatDnsZoneId: privateDnsZoneId
-    privateEndpointSubnetName: webappPrivateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: webappPrivateEndpointSubnetAddressPrefix
-    privateLinkServiceId: webapp.id
-  }
-}
+param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 
+@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
+var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 module appInsights './lib/app-insights/app-insights.bicep' =
-  if (deployAppInsights) {
+  if (createApplicationInsights) {
     name: '${webappName}-application-insights-module'
     params: {
       location: location
@@ -250,7 +192,7 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: serverFarm.id
     enabled: true
     httpsOnly: true
-    virtualNetworkSubnetId: webappSubnet.outputs.subnetId
+    virtualNetworkSubnetId: webappSubnetId
   }
 }
 var applicationSettings = concat(
@@ -272,7 +214,7 @@ var applicationSettings = concat(
       value: '$uri'
     }
   ],
-  deployAppInsights
+  createApplicationInsights
     ? [
         {
           name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
@@ -352,7 +294,20 @@ resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
   )
 }
-
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${webappName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites'
+    stackName: webappName
+    location: location
+    privateLinkServiceId: webapp.id
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+  }
+}
 output webappName string = webapp.name
 output webappId string = webapp.id
 output webappUrl string = webapp.properties.hostNameSslStates[0].name
