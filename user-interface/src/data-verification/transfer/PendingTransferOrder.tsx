@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { CaseSummary } from '@common/cams/cases';
 import { OrderStatus, TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -11,6 +11,10 @@ import { OfficeDetails } from '@common/cams/courts';
 import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';
 import './PendingTransferOrder.scss';
+
+export type PendingTransferOrderImperative = {
+  cancel: () => void;
+};
 
 export type PendingTransferOrderProps = {
   order: TransferOrder;
@@ -32,7 +36,10 @@ export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransfe
   };
 }
 
-export function PendingTransferOrder(props: PendingTransferOrderProps) {
+function _PendingTransferOrder(
+  props: PendingTransferOrderProps,
+  PendingTransferOrderRef: React.Ref<PendingTransferOrderImperative>,
+) {
   const { order, officesList } = props;
   const [orderTransfer, setOrderTransfer] = useState<FlexibleTransferOrderAction>(
     getOrderTransferFromOrder(order),
@@ -106,11 +113,15 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
       });
   }
 
-  function cancelUpdate(): void {
+  function cancel(): void {
     suggestedCasesRef.current?.cancel();
     setOrderTransfer(getOrderTransferFromOrder(order));
     approveButtonRef.current?.disableButton(true);
   }
+
+  useImperativeHandle(PendingTransferOrderRef, () => ({
+    cancel,
+  }));
 
   function confirmAction(status: OrderStatus, reason?: string): void {
     if (status === 'rejected') {
@@ -158,7 +169,7 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         <div className="grid-col-10 text-no-wrap float-right">
           <Button
             id={`accordion-cancel-button-${order.id}`}
-            onClick={cancelUpdate}
+            onClick={cancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}
             className="unstyled-button"
           >
@@ -192,9 +203,11 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
         toDivisionName={orderTransfer.newCase?.courtDivisionName}
         fromCourtName={order.courtName!}
         toCourtName={orderTransfer.newCase?.courtName}
-        onCancel={cancelUpdate}
+        onCancel={cancel}
         onConfirm={confirmAction}
       ></TransferConfirmationModal>
     </div>
   );
 }
+
+export const PendingTransferOrder = forwardRef(_PendingTransferOrder);
