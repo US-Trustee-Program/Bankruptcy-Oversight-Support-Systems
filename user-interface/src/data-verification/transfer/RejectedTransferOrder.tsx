@@ -12,7 +12,13 @@ export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
   const { order } = props;
   return (
     <>
-      <FromCaseSummary order={order} onOrderUpdate={props.onOrderUpdate} />
+      <div className="grid-row grid-gap-lg">
+        <div className="grid-col-1"></div>
+        <div className="grid-col-10">
+          <h3>Rejected Transfer</h3>
+        </div>
+        <div className="grid-col-1"></div>
+      </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div
@@ -36,6 +42,14 @@ export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
         </div>
         <div className="grid-col-1"></div>
       </div>
+      <div className="grid-row grid-gap-lg">
+        <div className="grid-col-1"></div>
+        <div className="grid-col-10">
+          <h3>Order that was Rejected</h3>
+        </div>
+        <div className="grid-col-1"></div>
+      </div>
+      <FromCaseSummary order={order} onOrderUpdate={props.onOrderUpdate} />
     </>
   );
 }

@@ -46,13 +46,6 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
-          <h3>Case with Transfer Order</h3>
-        </div>
-        <div className="grid-col-1"></div>
-      </div>
-      <div className="grid-row grid-gap-lg">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">
           {!originalCaseSummary && (
             // NOTE!: Do not start an id attribute value with a GUID.  Id's can not start with a number.
             <LoadingSpinner

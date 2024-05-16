@@ -138,6 +138,13 @@ export function PendingTransferOrder(props: PendingTransferOrderProps) {
   return (
     <div className="pending-transfer-accordion-content">
       {' '}
+      <div className="grid-row grid-gap-lg">
+        <div className="grid-col-1"></div>
+        <div className="grid-col-10">
+          <h3>Case with Transfer Order</h3>
+        </div>
+        <div className="grid-col-1"></div>
+      </div>
       <FromCaseSummary order={order} onOrderUpdate={handleAlert} />
       <SuggestedTransferCases
         order={order}
