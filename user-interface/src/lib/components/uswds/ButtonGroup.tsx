@@ -1,13 +1,13 @@
 import { Children, createElement, isValidElement, ReactElement } from 'react';
 import { UswdsButtonStyle } from './Button';
 
-export interface ButtonProps {
+export type ButtonGroupProps = {
   id: string;
   children: ReactElement | Array<ReactElement>;
   activeButtonId: string;
   onButtonClick: (id: string) => void;
   className?: string;
-}
+};
 
 export default function ButtonGroup({
   id,
@@ -15,7 +15,7 @@ export default function ButtonGroup({
   children,
   activeButtonId,
   onButtonClick,
-}: ButtonProps) {
+}: ButtonGroupProps) {
   const buttonClick = (
     ev: React.MouseEvent<HTMLButtonElement>,
     onClick?: ((ev: React.MouseEvent<HTMLButtonElement>) => void) | undefined,
@@ -30,13 +30,13 @@ export default function ButtonGroup({
   };
 
   const renderChildren = () => {
-    if (!children) return;
+    if (!children || (children as Array<ReactElement>).length == 0) return;
 
     return Children.map(children, (child, idx) => {
       if (isValidElement(child)) {
         const typedChild = child as React.ReactElement;
 
-        const childId = `${typedChild.props.id ?? idx}`;
+        const childId = `${typedChild.props.id ?? `${id}-child-${idx}`}`;
 
         let childClassName: string =
           activeButtonId === childId ? UswdsButtonStyle.Default : UswdsButtonStyle.Outline;

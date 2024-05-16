@@ -1,6 +1,6 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseTable } from './CaseTable';
+import { CaseTable } from './transfer/CaseTable';
 import { useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
@@ -269,7 +269,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-5">
+              <div className="grid-col-10 text-no-wrap float-right">
+                <Button
+                  id={`accordion-cancel-button-${order.id}`}
+                  onClick={clearInputs}
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  className="unstyled-button"
+                >
+                  Clear
+                </Button>
                 <Button
                   id={`accordion-reject-button-${order.id}`}
                   onClick={() =>
@@ -278,19 +286,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                       cases: selectedCases,
                     })
                   }
-                  uswdsStyle={UswdsButtonStyle.Secondary}
+                  uswdsStyle={UswdsButtonStyle.Outline}
+                  className="margin-right-2"
                   ref={rejectButtonRef}
                 >
                   Reject
-                </Button>
-              </div>
-              <div className="grid-col-5 text-no-wrap float-right">
-                <Button
-                  id={`accordion-cancel-button-${order.id}`}
-                  onClick={clearInputs}
-                  uswdsStyle={UswdsButtonStyle.Outline}
-                >
-                  Cancel
                 </Button>
                 <Button
                   id={`accordion-approve-button-${order.id}`}
