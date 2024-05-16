@@ -86,7 +86,10 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                 </th>
               )}
               <td scope="row">
-                <CaseNumber caseId={bCase.caseId} />
+                <CaseNumber
+                  caseId={bCase.caseId}
+                  data-testid={`case-detail-${bCase.caseId}-${id}`}
+                />
               </td>
               <td scope="row">
                 {bCase.courtName} ({bCase.courtDivisionName})
