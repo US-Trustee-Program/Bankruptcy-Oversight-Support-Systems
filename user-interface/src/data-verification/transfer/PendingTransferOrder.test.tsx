@@ -112,8 +112,8 @@ describe('PendingTransferOrder component', () => {
       vi.stubEnv('CAMS_PA11Y', 'true');
       order = MockData.getTransferOrder();
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestions)
-        .mockImplementationOnce(mockGetCaseSummary);
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestions);
     });
 
     afterEach(() => {
@@ -235,8 +235,8 @@ describe('PendingTransferOrder component', () => {
     beforeEach(async () => {
       order = MockData.getTransferOrder();
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummary);
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty);
     });
 
     afterEach(() => {
@@ -253,8 +253,8 @@ describe('PendingTransferOrder component', () => {
         },
       });
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
@@ -310,8 +310,8 @@ describe('PendingTransferOrder component', () => {
         },
       });
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
@@ -377,8 +377,8 @@ describe('PendingTransferOrder component', () => {
 
     test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       renderWithProps();
@@ -442,8 +442,8 @@ describe('PendingTransferOrder component', () => {
       const errorMessage = 'Some random error';
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
@@ -485,8 +485,8 @@ describe('PendingTransferOrder component', () => {
       const errorMessage = 'Some random error';
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
@@ -527,8 +527,8 @@ describe('PendingTransferOrder component', () => {
 
     test('should leave input fields and data in place when closing the modal without approving', async () => {
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       renderWithProps();
@@ -580,8 +580,8 @@ describe('PendingTransferOrder component', () => {
 
     test('should clear input values and disable submission button when the Cancel button is clicked', async () => {
       vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
         .mockImplementationOnce(mockGetCaseSummaryForToCase)
         .mockImplementationOnce(mockGetCaseSummaryForToCase);
 

@@ -81,8 +81,12 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               officesList={officesList}
             />
           )}
-          {order.status === 'approved' && <ApprovedTransferOrder order={order} />}
-          {order.status === 'rejected' && <RejectedTransferOrder order={order} />}
+          {order.status === 'approved' && (
+            <ApprovedTransferOrder order={order} onOrderUpdate={props.onOrderUpdate} />
+          )}
+          {order.status === 'rejected' && (
+            <RejectedTransferOrder order={order} onOrderUpdate={props.onOrderUpdate} />
+          )}
         </section>
       </Accordion>
     </>
