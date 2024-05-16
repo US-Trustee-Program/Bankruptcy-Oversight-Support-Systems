@@ -309,6 +309,10 @@ describe('PendingTransferOrder component', () => {
           debtor: order.debtor,
         },
       });
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
       await waitForCaseEntryForm();
@@ -372,6 +376,11 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+
       renderWithProps();
       await waitForCaseEntryForm();
 
@@ -475,6 +484,10 @@ describe('PendingTransferOrder component', () => {
     test('should throw error during Rejection when API returns an error', async () => {
       const errorMessage = 'Some random error';
       vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
 
       const { onOrderUpdate } = renderWithProps();
 
@@ -566,6 +579,12 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should clear input values and disable submission button when the Cancel button is clicked', async () => {
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+
       renderWithProps();
       await waitForCaseEntryForm();
 
