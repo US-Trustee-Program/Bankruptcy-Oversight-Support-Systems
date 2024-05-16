@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import './DataVerificationScreen.scss';
-import { OfficesResponseData, OrderResponseData, Order } from '@/lib/type-declarations/chapter-15';
+import { OfficesResponseData, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -10,6 +10,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
 import {
   ConsolidationOrder,
+  Order,
   OrderStatus,
   OrderType,
   TransferOrder,
