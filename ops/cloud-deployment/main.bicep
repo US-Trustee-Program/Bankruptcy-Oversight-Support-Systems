@@ -1,26 +1,37 @@
 param stackName string
+
 param location string = resourceGroup().location
+
 param appResourceGroup string = resourceGroup().name
+
 @description('Flag: determines deployment of vnet. Determined at workflow runtime. True on initial deployment outside of USTP.')
 param deployVnet bool = false
+
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
 param networkResourceGroupName string
+
 param virtualNetworkName string = 'vnet-${stackName}'
+
 @description('Array of Vnets to link to DNS Zone.')
 param linkVnetIds array = []
 
 param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
+
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 @description('Flag: Deploy Bicep config for webapp. False on slot deployments.')
 param deployWebapp bool = true
+
 param webappName string = '${stackName}-webapp'
+
 param webappSubnetName string = 'snet-${webappName}'
+
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
+
 @description('Plan type to determine webapp service plan Sku.')
 @allowed([
   'P1v2'
@@ -31,9 +42,13 @@ param webappPlanType string = 'P1v2'
 
 @description('Flag: Deploy Bicep config for Azure function. False on slot deployments.')
 param deployFunctions bool = true
+
 param functionName string = '${stackName}-node-api'
+
 param functionSubnetName string = 'snet-${functionName}'
+
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
+
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
   'P1v2'
@@ -44,18 +59,24 @@ param functionPlanType string = 'P1v2'
 
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+
 param privateDnsZoneResourceGroup string = networkResourceGroupName
+
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
+
 param azHostSuffix string = '.us'
 
 param sqlServerName string = ''
+
 param sqlServerResourceGroupName string = ''
+
 @description('Name for managed identity of database server.')
 param sqlServerIdentityName string = ''
+
 param sqlServerIdentityResourceGroupName string = ''
 
 @description('Flag: Enable Vercode access to execute DAST scanning')
@@ -64,16 +85,20 @@ param allowVeracodeScan bool = false
 @description('Name of the managed identity with read access to the keyvault storing application configurations. ')
 @secure()
 param idKeyvaultAppConfiguration string
+
 param kvAppConfigResourceGroupName string = sqlServerResourceGroupName
 
 @description('Flag: Determines creation and configuration of Alerts.')
 param createAlerts bool = false
+
 param actionGroupName string =''
 
 @description('Flag: determines creation and configuration of Application Insights for the Azure Function.')
 param deployAppInsights bool = false
+
 @description('Log Analytics Workspace ID associated with Application Insights.')
 param analyticsWorkspaceId string = ''
+
 param analyticsResourceGroupName string = 'rg-analytics'
 
 @description('Used to set Content-Security-Policy for USTP.')
@@ -97,6 +122,7 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
       actionGroupName: actionGroupName
     }
   }
+
 module network './lib//network/ustp-cams-network.bicep' = {
   name: '${stackName}-network-module'
   scope: resourceGroup(networkResourceGroupName)

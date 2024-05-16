@@ -35,16 +35,12 @@ var planTypeToSkuMap = {
   }
 }
 
-@description('Azure functions app name')
 param functionName string
 
-@description('Resource group name of target virtual network')
 param virtualNetworkResourceGroupName string
 
-@description('Backend Azure Functions subnet ID')
 param functionSubnetId string
 
-@description('Private Endpoint subnet ID')
 param privateEndpointSubnetId string
 
 @description('Azure functions runtime environment')
@@ -73,19 +69,15 @@ param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, 
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
 
-@description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
-@description('Name for managed identity of database server')
 param sqlServerIdentityName string = ''
 
-@description('Resource group name for managed identity of database server')
 param sqlServerIdentityResourceGroupName string = ''
 
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
-@description('Database server name')
 param sqlServerName string = ''
 
 @description('Flag to enable Vercode access')
@@ -105,10 +97,8 @@ param deployAppInsights bool = false
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
-@description('Action Group Name for alerts')
 param actionGroupName string = ''
 
-@description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')

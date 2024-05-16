@@ -2,18 +2,25 @@
 param stackName string
 
 param location string = resourceGroup().location
+
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
+
 @description('Group for private link service')
 @allowed([
   'sites'
   'vault'
 ])
 param privateLinkGroup string
+
 param privateEndpointSubnetId string
+
 param privateDnsZoneName string
+
 param privateDnsZoneSubscriptionId string
+
 param privateDnsZoneResourceGroup string
+
 param privateDnsZoneId string = ''
 
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
