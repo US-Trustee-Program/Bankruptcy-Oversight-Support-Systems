@@ -48,7 +48,7 @@ resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing 
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
 }
 
-var dnsZoneId = empty(privateDnsZone.id) ? privateDnsZone.id : privateDnsZoneId
+var dnsZoneId = empty(privateDnsZoneId) ? privateDnsZone.id : privateDnsZoneId
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
   parent: privateEndpoint
   name: 'default'
