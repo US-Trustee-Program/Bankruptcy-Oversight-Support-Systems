@@ -114,8 +114,10 @@ param actionGroupResourceGroupName string = ''
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
-// @description('Flag to determine the deployment of the private endpoint')
-// param deployNetwork bool = true
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
+@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
@@ -343,6 +345,9 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     location: location
     privateLinkServiceId: functionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
   }
 }
 
