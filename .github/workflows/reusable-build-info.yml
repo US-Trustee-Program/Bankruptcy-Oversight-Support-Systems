@@ -38,8 +38,8 @@ on:
         description: ""
         value: ${{ jobs.build-info.outputs.slotName }}
       slotDeploymentEnabled:
-          description: ""
-          value: ${{ jobs.build-info.outputs.slotDeploymentEnabled }}
+        description: ""
+        value: ${{ jobs.build-info.outputs.slotDeploymentEnabled }}
       execVnetDeploy:
         description: ""
         value: ${{ jobs.build-info.outputs.execVnetDeploy }}
@@ -121,7 +121,7 @@ jobs:
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-          echo "slotDeploymentEnabled=${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
+          echo "slotDeploymentEnabled=${{ inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
