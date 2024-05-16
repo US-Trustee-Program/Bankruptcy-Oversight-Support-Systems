@@ -1,7 +1,11 @@
 param virtualNetworkName string
+
 param subnetName string
+
 param subnetAddressPrefix string
+
 param subnetServiceEndpoints array = []
+
 param subnetDelegations array = []
 
 resource subnet 'Microsoft.Network/virtualNetworks/subnets@2023-02-01' = {

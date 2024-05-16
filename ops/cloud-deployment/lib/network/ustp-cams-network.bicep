@@ -1,30 +1,43 @@
 param stackName string
+
 param location string = resourceGroup().location
+
 @description('Disable creating Azure virtual network by default.')
 param deployVnet bool = false
 
 @description('Deploy Azure Network resources: Private DNS Zone, and DNS Zone Vnet links')
 param deployDns bool = true
+
 param networkResourceGroupName string
+
 param virtualNetworkName string = 'vnet-${stackName}'
+
 param linkVnetIds array = []
+
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
 param functionName string = '${stackName}-node-api'
+
 param functionSubnetName string = 'snet-${functionName}'
+
 param functionSubnetAddressPrefix string = '10.10.11.0/28'
 
 param webappName string = '${stackName}-node-api'
+
 param webappSubnetName string = 'snet-${functionName}'
+
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
 param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
+
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 @description('Private DNS Zone Name')
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+
 @description('Private DNS Zone Resource Group')
 param privateDnsZoneResourceGroup string = networkResourceGroupName
+
 @description('Private DNS Zone subscription, all 3 params here are set because the Prod environment uses a different subscription and RG for these')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
