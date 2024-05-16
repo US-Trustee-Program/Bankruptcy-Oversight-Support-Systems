@@ -31,23 +31,25 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZURE_SUBSCRIPTION                         | Secret                 | ---              | Azure Subscription ID                                                                                       |
 | AZURE_CREDENTIALS                          | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                     |
 | AZURE_ENVIRONMENT                          | Variable               | Yes              | Specify target Azure cloud environment.                                                                     |
-| AZ_HOSTNAME_SUFFIX                         | Variable               | ---              | e.g. (.us, .com, .net)                                                                                      |
+| AZ_HOSTNAME_SUFFIX                         | Variable               | ---              | e.g. (.us, .com, .net) -- soon to be removed                                                                |
 | AZ_APP_RG                                  | Secret                 | ---              | Resource group name for all application related infrastructure.                                             |
-| AZ_NETWORK_RG                              | Secret                 | ---              | Resource group name for all network related infrastructure.                                                 |
-| AZ_DATA_SOURCE_RG                          | Secret                 | ---              | Resource group name for all data storage related infrastructure.                                            |
 | AZURE_RG                                   | Secret                 | ---              | Resource group for miscellanous Azure resources                                                             |
 | AZ_PLAN_TYPE                               | Variable               | ---              | Determine plan type for Azure App Service plans.                                                            |
+| AZ_ACTION_GROUP_NAME                       | Secret                 | ---              | Action Group Name for Azure Alerts                                                                          |
+| ~~~AZ_DATA_SOURCE_RG~~~                    | ~~~Secret~~~           | ---              | ~~~Resource group name for all data storage related infrastructure.~~~                                      |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure Network**                          | ---                    | ---              | ---                                                                                                         |
 | AZ_PRIVATE_DNS_ZONE                        | Variable               | ---              | Private DNS Zone name                                                                                       |
-| AZ_PRIVATE_DNS_ZONE_RG                     | Variable               | ---              | Private DNS Zone Azure resource group name                                                                  |
-| AZ_DNS_ZONE_ID                             | Variable               | ---              | Private DNS Zone Azure Fully qualified ID (USTP)                                                            |
+| AZ_PRIVATE_DNS_ZONE_RG                     | Secrets                | ---              | Private DNS Zone Azure resource group name                                                                  |
+| AZ_PRIVATE_DNS_ZONE_ID                     | Secrets                | ---              | Private DNS Zone Azure Fully qualified ID                                                                   |
+| AZ_NETWORK_RG                              | Secrets                | ---              | Resource Group for networking components                                                                    |
+| AZ_NETWORK_VNET_NAME                       | Variables              | ---              | Virtual Network Name                                                                                        |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure SQL Server**                       | ---                    | ---              | ---                                                                                                         |
-| AZ_SQL_CONN_STR                            | Secret                 | ---              | ---                                                                                                         |
 | AZ_SQL_SERVER_NAME                         | Secret                 | ---              | ---                                                                                                         |
 | AZ_SQL_IDENTITY_NAME                       | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth           |
-| AZ_SQL_IDENTITY_RG_NAME                    | Secret                 | ---              | Azure resource group name that managed identity belong to. Required if not using SQL Auth                   |
+| ~~~AZ_SQL_CONN_STR~~~                      | ~~~Secret~~~           | ---              | ---                                                                                                         |
+| ~~~AZ_SQL_IDENTITY_RG_NAME~~~              | ~~~Secret~~~           | ---              | ~~~Azure resource group name that managed identity belong to. Required if not using SQL Auth~~~             |
 | ~~~AZ_MSSQL_HOST~~~                        | ~~~Secret~~~           | ---              | ---                                                                                                         |
 | ~~AZ_MSSQL_DATABASE~~                      | ~~Secret~~             | ---              | ~~ACMS database name~~ No longer needed                                                                     |
 | ~~AZ_MSSQL_DATABASE_DXTR~~                 | ~~Secret~~             | ---              | ~~DXTR database name~~ Moved to KeyVault                                                                    |
@@ -59,6 +61,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | **Azure CosmosDb**                         | ---                    | ---              | ---                                                                                                         |
 | AZ_COSMOS_DATABASE_NAME                    | Secret                 | ---              | ---                                                                                                         |
 | AZ_COSMOS_ACCOUNT_NAME                     | Secret                 | ---              | ---                                                                                                         |
+| AZ_COSMOS_ID_NAME                          | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                                   |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Veracode**                               |                        |                  |                                                                                                             |
 | VERACODE_APP_ID                            | Secrets                | Yes              | Reference application identifier for scan results.                                                          |
@@ -68,8 +71,11 @@ Note required environment variables and secrets defined in build tool for pipeli
 | SRCCLR_REGION                              | Secrets                | Yes              | Region for Statis Code analysis                                                                             |
 | AZ_STOR_VERACODE_NAME                      | Secrets                | Yes              | Azure Storage account name for veracode scans                                                               |
 | AZ_STOR_VERACODE_KEY                       | Secrets                | Yes              | Access key for Azure Storage account                                                                        |
+| VERACDE_SAST_POLICY                        | Secrets                | ---              | Policy name used for veracode scans                                                                         |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **LaunchDarkly**                           |                        |                  |                                                                                                             |
+| CAMS_LAUNCH_DARKLY_ENVIRONMENT             | Variable               | ---              | Launch Darkly Environment                                                                                   |
+| LD_DEVELOPMENT_CLIENT_ID                   | Secrets                | ---              | Client ID for LaunchDarkly Environment                                                                      |
 | ~~FEATURE_FLAG_SDK_KEY~~                   | ~~Secrets~~            | ---              | ~~Optional SDK key to enable LaunchDarkly~~ Moved to KeyVault                                               |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **Azure Log Anlaytics**                    |                        |                  |                                                                                                             |
@@ -82,6 +88,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | STARTING_MONTH                             | Variable               | ---              | Used by application for filtering cases by date range.                                                      |
 | USTP_ISSUE_COLLECTOR_HASH                  | Secrets                | ---              | USTP Only parameter used for CSP policy.                                                                    |
 | CSP_CAMS_REACT_SELECT_HASH                 | Secrets                | ---              | Allow react-select to pass CSP policy.                                                                      |
+| SLOT_NAME                                  | Variable               | ---              | Deployment slot name for slot deployments                                                                   |
 | ---                                        | ---                    | ---              | ---                                                                                                         |
 | **KeyVault**                               | ---                    | ---              | ---                                                                                                         |
 | AZ_KV_APP_CONFIG_NAME                      | Secrets                | ---              | Specifies existing Application Configuration KeyVault                                                       |

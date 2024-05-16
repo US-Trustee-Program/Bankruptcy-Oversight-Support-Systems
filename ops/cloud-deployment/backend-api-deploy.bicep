@@ -35,37 +35,13 @@ var planTypeToSkuMap = {
   }
 }
 
-@description('Azure functions app name')
 param functionName string
 
-@description('Existing Private DNS Zone used for application')
-param privateDnsZoneName string
-
-@description('Resource group of target Private DNS Zone')
-param privateDnsZoneResourceGroup string = resourceGroup().name
-
-@description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
-param privateDnsZoneSubscriptionId string = subscription().subscriptionId
-
-param privateDnsZoneId string = ''
-
-@description('Existing virtual network name')
-param virtualNetworkName string
-
-@description('Resource group name of target virtual network')
 param virtualNetworkResourceGroupName string
 
-@description('Backend Azure Functions subnet name')
-param functionSubnetName string
+param functionSubnetId string
 
-@description('Backend Azure Functions subnet ip ranges')
-param functionsSubnetAddressPrefix string
-
-@description('Backend private endpoint subnet name')
-param privateEndpointSubnetName string
-
-@description('Backend private endpoint subnet ip ranges')
-param privateEndpointSubnetAddressPrefix string
+param privateEndpointSubnetId string
 
 @description('Azure functions runtime environment')
 @allowed([
@@ -93,42 +69,19 @@ param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, 
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
 
-@description('Database connection string')
-@secure()
-param databaseConnectionString string = ''
-
-@description('Resource group name of database server')
 param sqlServerResourceGroupName string = ''
 
-@description('Name for managed identity of database server')
 param sqlServerIdentityName string = ''
 
-@description('Resource group name for managed identity of database server')
 param sqlServerIdentityResourceGroupName string = ''
 
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
-@description('Database server name')
 param sqlServerName string = ''
 
 @description('Flag to enable Vercode access')
 param allowVeracodeScan bool = false
-
-@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
-param deployAppInsights bool = false
-
-@description('Log Analytics Workspace ID associated with Application Insights')
-param analyticsWorkspaceId string = ''
-
-@description('Action Group Name for alerts')
-param actionGroupName string
-
-@description('Action Group Resource Group Name for alerts')
-param actionGroupResourceGroupName string
-
-@description('boolean to determine creation and configuration of Alerts')
-param createAlerts bool
 
 @description('Name of the managed identity with read access to the keyvault storing application configurations.')
 @secure()
@@ -138,10 +91,33 @@ param idKeyvaultAppConfiguration string
 @secure()
 param cosmosIdentityName string
 
+@description('boolean to determine creation and configuration of Application Insights for the Azure Function')
+param deployAppInsights bool = false
+
+@description('Log Analytics Workspace ID associated with Application Insights')
+param analyticsWorkspaceId string = ''
+
+param actionGroupName string = ''
+
+param actionGroupResourceGroupName string = ''
+
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = false
+
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+
+param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
+
+@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
+var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
+
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
+
 resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: cosmosIdentityName
   scope: resourceGroup(kvAppConfigResourceGroupName)
@@ -170,61 +146,6 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 }
 
 /*
-  Subnet creation in target virtual network
-*/
-module subnet './lib/network/subnet.bicep' = {
-  name: '${functionName}-subnet-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    virtualNetworkName: virtualNetworkName
-    subnetName: functionSubnetName
-    subnetAddressPrefix: functionsSubnetAddressPrefix
-    subnetServiceEndpoints: [
-      {
-        service: 'Microsoft.Sql'
-        locations: [
-          location
-        ]
-      }
-      {
-        service: 'Microsoft.AzureCosmosDB'
-        locations: [
-          location
-        ]
-      }
-    ]
-    subnetDelegations: [
-      {
-        name: 'Microsoft.Web/serverfarms'
-        properties: {
-          serviceName: 'Microsoft.Web/serverfarms'
-        }
-      }
-    ]
-  }
-}
-
-/*
-  Private endpoint creation in target virtual network.
-*/
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${functionName}-pep-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    privateLinkGroup: 'sites'
-    stackName: functionName
-    location: location
-    virtualNetworkName: virtualNetworkName
-    privateDnsZoneName: privateDnsZoneName
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    privatDnsZoneId: privateDnsZoneId
-    privateEndpointSubnetName: privateEndpointSubnetName
-    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
-    privateLinkServiceId: functionApp.id
-  }
-}
-/*
   Storage resource for Azure functions
 */
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
@@ -243,7 +164,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
-var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 module appInsights './lib/app-insights/app-insights.bicep' =
   if (createApplicationInsights) {
     name: '${functionName}-application-insights-module'
@@ -284,6 +204,7 @@ module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
       actionGroupResourceGroupName: actionGroupResourceGroupName
     }
   }
+
 module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
   if (createAlerts) {
     name: '${functionName}-http-error-alert-rule-module'
@@ -324,7 +245,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     serverFarmId: servicePlan.id
     enabled: true
     httpsOnly: true
-    virtualNetworkSubnetId: subnet.outputs.subnetId
+    virtualNetworkSubnetId: functionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
   dependsOn: [
@@ -348,7 +269,6 @@ var applicationSettings = concat(
       value: functionsRuntime
     }
   ],
-  !empty(databaseConnectionString) ? [{ name: 'SQL_SERVER_CONN_STRING', value: databaseConnectionString }] : [],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
     : []
@@ -408,15 +328,31 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 
+module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${functionName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites'
+    stackName: functionName
+    location: location
+    privateLinkServiceId: functionApp.id
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+  }
+}
+
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
-module setSqlServerVnetRule './lib/sql/sql-vnet-rule.bicep' =
+
+module setSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' =
   if (createSqlServerVnetRule) {
     scope: resourceGroup(sqlServerResourceGroupName)
     name: '${functionName}-sql-vnet-rule-module'
     params: {
       stackName: functionName
       sqlServerName: sqlServerName
-      subnetId: subnet.outputs.subnetId
+      subnetId: functionSubnetId
     }
   }
 
