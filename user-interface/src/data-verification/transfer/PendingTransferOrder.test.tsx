@@ -14,8 +14,6 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
 
-// This is a problem because tests are run with CAMSPA11Y=true which causes the app to use the mock API.
-// import Api from '@/lib/models/api';
 import Api from '@/lib/models/chapter15-mock.api.cases';
 
 vi.mock('../../lib/components/CamsSelect', () => import('../../lib/components/CamsSelect.mock'));
@@ -618,33 +616,5 @@ describe('PendingTransferOrder component', () => {
         expect(caseIdInput).not.toBeInTheDocument();
       });
     });
-
-    /*
-      TODO: Since we are no longer displaying a preview-description, we will need to either rework this
-      or if it's not valid, remove the test entirely.
-    test('should allow a court to be deselected', async () => {
-      renderWithProps();
-      await clickNoListedCaseRadioButton();
-
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
-
-      let preview: HTMLElement;
-      await waitFor(async () => {
-        preview = screen.getByTestId(`preview-description-${order.id}`);
-        expect(preview).toBeInTheDocument();
-        expect(preview).toBeVisible();
-        expect(preview?.textContent).toEqual(
-          `USTP Office: transfer fromRegion ${parseInt(order.regionId)} - ${order.courtDivisionName}toRegion ${parseInt(testOffices[0].regionId)} - ${testOffices[0].courtDivisionName}`,
-        );
-      });
-
-      selectItemInMockSelect(`court-selection-${order.id}`, 0);
-
-      await waitFor(async () => {
-        const preview = screen.queryByTestId(`preview-description-${order.id}`);
-        expect(preview).not.toBeInTheDocument();
-      });
-    });
-    */
   });
 });

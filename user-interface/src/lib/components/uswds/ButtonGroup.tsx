@@ -1,13 +1,13 @@
 import { Children, createElement, isValidElement, ReactElement } from 'react';
 import { UswdsButtonStyle } from './Button';
 
-export interface ButtonGroupProps {
+export type ButtonGroupProps = {
   id: string;
   children: ReactElement | Array<ReactElement>;
   activeButtonId: string;
   onButtonClick: (id: string) => void;
   className?: string;
-}
+};
 
 export default function ButtonGroup({
   id,

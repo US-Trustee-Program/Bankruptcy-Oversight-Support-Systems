@@ -24,11 +24,11 @@ export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
 };
 
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
-  const { id, caseId } = order;
+  const { id, caseId, orderType } = order;
   return {
     id,
     caseId,
-    orderType: order.orderType,
+    orderType,
   };
 }
 
