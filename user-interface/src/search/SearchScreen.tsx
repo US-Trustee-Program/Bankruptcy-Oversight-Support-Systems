@@ -11,12 +11,17 @@ import {
 } from '@/lib/components/uswds/Table';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import CamsSelect, { CamsSelectOptionList } from '@/lib/components/CamsSelect';
+import { getOfficeList } from '@/data-verification/dataVerificationHelper';
+import { OfficesResponseData } from '@/lib/type-declarations/chapter-15';
+import { officeSorter } from '@/data-verification/DataVerificationScreen';
+import { OfficeDetails } from '@common/cams/courts';
 
 type AlertProps = {
   show: boolean;
@@ -35,7 +40,29 @@ export default function SearchScreen(_props: SearchScreenProps) {
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
 
+  const [_regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
+  const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
+
   const caseNumberInputRef = useRef<InputRef>(null);
+  const courtSelectionRef = useRef<InputRef>(null);
+
+  async function getOffices() {
+    api
+      .get(`/offices`, {})
+      .then((data) => {
+        const response = data as OfficesResponseData;
+        setOfficesList(response.body.sort(officeSorter));
+        setRegionsMap(
+          response.body.reduce((regionsMap, office) => {
+            if (!regionsMap.has(office.regionId)) {
+              regionsMap.set(office.regionId, office.regionName);
+            }
+            return regionsMap;
+          }, new Map()),
+        );
+      })
+      .catch(() => {});
+  }
 
   function handleCaseNumberFilterUpdate(caseNumber?: string): void {
     setAlertInfo({ show: false, title: '', message: '' });
@@ -71,6 +98,14 @@ export default function SearchScreen(_props: SearchScreenProps) {
     }
   }
 
+  function handleCourtSelection(_selection: CamsSelectOptionList) {
+    throw new Error('not implemented');
+  }
+
+  useEffect(() => {
+    getOffices();
+  }, []);
+
   return (
     <div className="search-screen" data-testid="search">
       <div className="grid-row grid-gap-lg">
@@ -95,6 +130,22 @@ export default function SearchScreen(_props: SearchScreenProps) {
                   autoComplete="off"
                   onChange={handleCaseNumberFilterUpdate}
                   ref={caseNumberInputRef}
+                />
+              </div>
+            </div>
+            <div className="case-number-search form-field" data-testid="case-number-search">
+              <div className="usa-search usa-search--small">
+                <CamsSelect
+                  id={'court-selections-search'}
+                  className="new-court__select"
+                  closeMenuOnSelect={true}
+                  label="District (Division)"
+                  ref={courtSelectionRef}
+                  onChange={handleCourtSelection}
+                  options={getOfficeList(officesList)}
+                  isSearchable={true}
+                  required={false}
+                  isMulti={true}
                 />
               </div>
             </div>

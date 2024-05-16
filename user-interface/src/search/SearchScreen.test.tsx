@@ -4,6 +4,9 @@ import { CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
+import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+
+vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
 describe('search screen', () => {
   let caseList: CaseSummary[];
@@ -25,7 +28,7 @@ describe('search screen', () => {
     );
   }
 
-  test('should render a list of cases', async () => {
+  test('should render a list of cases by case number', async () => {
     renderWithoutProps();
 
     let defaultStateAlert = document.querySelector('#default-state-alert');
@@ -54,6 +57,46 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
 
     fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).not.toBeInTheDocument();
+    });
+  });
+
+  test('should render a list of cases by court division', async () => {
+    renderWithoutProps();
+
+    let defaultStateAlert = document.querySelector('#default-state-alert');
+    expect(defaultStateAlert).toBeInTheDocument();
+    expect(defaultStateAlert).toBeVisible();
+
+    const courtDivisionsSelect = document.querySelector('#court-selections-search-0');
+    expect(courtDivisionsSelect).toBeInTheDocument();
+    expect(courtDivisionsSelect).toBeEnabled();
+
+    let table = document.querySelector('#search-results > table');
+    expect(table).not.toBeInTheDocument();
+
+    selectItemInMockSelect('court-selections-search', 1);
+
+    await waitFor(() => {
+      // wait for loading to appear and default state alert to be removed
+      defaultStateAlert = document.querySelector('#default-state-alert');
+      expect(defaultStateAlert).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    // TODO: This is a multi select so we need to test it.
+    selectItemInMockSelect('court-divisions-select', 2);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('#search-results > table');
