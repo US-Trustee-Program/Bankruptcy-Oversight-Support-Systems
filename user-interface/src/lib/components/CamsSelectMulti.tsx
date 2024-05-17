@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // refactor - let's find a way to avoid using any
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import ReactSelect, { SingleValue } from 'react-select';
-import { InputRef } from '../type-declarations/input-fields';
+import ReactSelect, { MultiValue } from 'react-select';
+import { InputRef, SelectMultiRef } from '../type-declarations/input-fields';
 import './CamsSelect.scss';
 
-export type SingleSelectOption = SingleValue<Record<string, string>>;
-export interface CamsSelectProps {
+export type MultiSelectOptionList = MultiValue<Record<string, string>>;
+
+export interface CamsSelectMultiProps {
   id: string;
   className?: string;
   closeMenuOnSelect?: boolean;
@@ -15,12 +16,16 @@ export interface CamsSelectProps {
   value?: string;
   required?: boolean;
   isSearchable?: boolean;
-  onChange?: (newValue: SingleSelectOption) => void;
+  onChange?: (newValue: MultiSelectOptionList) => void;
 }
 
-function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<InputRef>) {
+function _CamsSelectMulti(
+  props: CamsSelectMultiProps,
+  CamsSelectMultiRef: React.Ref<SelectMultiRef>,
+) {
   const camsSelectRef = React.useRef(null);
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
+  const [internalValue, setInternalValue] = useState<MultiSelectOptionList>([]);
 
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
@@ -90,6 +95,11 @@ function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<I
       ...provided,
       color: '#1b1b1b',
     }),
+
+    multiValueLabel: (provided: any) => ({
+      ...provided,
+      color: '#1b1b1b',
+    }),
   };
 
   function clearValue() {
@@ -124,8 +134,13 @@ function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<I
     }
   }
 
-  function getValue(): string {
-    throw new Error('not implemented');
+  function getValue(): MultiSelectOptionList {
+    return internalValue;
+  }
+
+  function handleOnChange(ev: MultiSelectOptionList) {
+    setInternalValue(ev);
+    if (props.onChange) props.onChange(ev);
   }
 
   function disable(value: boolean) {
@@ -136,7 +151,7 @@ function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<I
     }
   }
 
-  useImperativeHandle(CamsSelectComponentRef, () => {
+  useImperativeHandle(CamsSelectMultiRef, () => {
     return {
       setValue,
       disable,
@@ -164,14 +179,14 @@ function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<I
         aria-label={props.label}
         options={props.options}
         closeMenuOnSelect={props.closeMenuOnSelect}
-        onChange={props.onChange}
+        onChange={handleOnChange}
         className={classes}
         styles={customStyles}
         id={props.id}
         data-testid={props.id}
         ref={camsSelectRef}
         isSearchable={props.isSearchable}
-        isMulti={false}
+        isMulti={true}
         isDisabled={isDisabled}
         required={props.required}
       ></ReactSelect>
@@ -179,5 +194,5 @@ function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<I
   );
 }
 
-const CamsSelect = forwardRef(_CamsSelect);
-export default CamsSelect;
+const CamsSelectMulti = forwardRef(_CamsSelectMulti);
+export default CamsSelectMulti;
