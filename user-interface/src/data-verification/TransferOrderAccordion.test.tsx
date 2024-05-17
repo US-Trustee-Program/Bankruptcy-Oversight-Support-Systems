@@ -126,6 +126,7 @@ describe('TransferOrderAccordion', () => {
     expect(heading?.textContent).toContain(formatDate(order.orderDate));
 
     const content = findAccordionContent(order.id, false);
+    if (heading) fireEvent.click(heading);
 
     expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
     expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
