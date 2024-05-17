@@ -35,7 +35,7 @@ type SearchScreenProps = object;
 
 type SearchPredicate = {
   caseNumber?: string;
-  districtIds?: string[];
+  divisionCodes?: string[];
 };
 
 export default function SearchScreen(_props: SearchScreenProps) {
@@ -121,7 +121,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
     const castSelection = selection as MultiSelectOptionList;
     setSearchPredicate({
       ...searchPredicate,
-      districtIds: castSelection.length
+      divisionCodes: castSelection.length
         ? castSelection.map((kv: Record<string, string>) => kv.value)
         : undefined,
     });
