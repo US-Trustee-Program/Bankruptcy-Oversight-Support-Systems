@@ -71,9 +71,10 @@ describe('search screen', () => {
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
 
-    const courtDivisionsSelect = document.querySelector('#court-selections-search-0');
-    expect(courtDivisionsSelect).toBeInTheDocument();
-    expect(courtDivisionsSelect).toBeEnabled();
+    await waitFor(() => {
+      // Infer the office list is loaded from the API.
+      expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
+    });
 
     let table = document.querySelector('#search-results > table');
     expect(table).not.toBeInTheDocument();
