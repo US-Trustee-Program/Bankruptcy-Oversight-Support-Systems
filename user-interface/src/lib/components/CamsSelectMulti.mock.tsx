@@ -1,13 +1,13 @@
-import './CamsSelect.scss';
+import './CamsSelectMulti.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
 import { SelectRef } from '../type-declarations/input-fields';
 import { fireEvent } from '@testing-library/react';
-import { SingleSelectOption } from './CamsSelect';
+import { MultiSelectOptionList } from './CamsSelectMulti';
 
-export interface CamsSelectProps {
+export interface CamsSelectMultiProps {
   id: string;
-  onChange?: (newValue: SingleSelectOption) => void;
+  onChange?: (newValue: MultiSelectOptionList) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
   options: Record<string, string>[];
@@ -15,39 +15,50 @@ export interface CamsSelectProps {
   value?: string;
 }
 
-export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<SelectRef>) {
-  const [internalValue, setInternalValue] = React.useState<SingleSelectOption>(null);
+export function MockCamsSelectMultiComponent(
+  props: CamsSelectMultiProps,
+  ref: React.Ref<SelectRef>,
+) {
+  const [internalValue, setInternalValue] = React.useState<MultiSelectOptionList>([]);
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
+
+  function uniqueSet(baseArray: MultiSelectOptionList) {
+    return [...new Set(baseArray)];
+  }
+
+  function appendInternalValue(valueRec: Record<string, string>) {
+    setInternalValue(uniqueSet([...internalValue, valueRec]));
+  }
 
   useEffect(() => {
     if (props.value !== undefined) {
       const valueRec = props.options.find((rec) => rec.value === props.value);
       if (valueRec) {
-        setInternalValue(valueRec);
+        appendInternalValue(valueRec);
       }
     }
   }, [props.value]);
 
-  function handleOnClick(option: SingleSelectOption) {
-    setInternalValue(option);
-    if (props.onChange) props.onChange && props.onChange(option);
+  function handleOnClick(option: Record<string, string>) {
+    appendInternalValue(option);
+    if (props.onChange) props.onChange && props.onChange(uniqueSet([...internalValue, option]));
   }
 
   function clearValue() {
-    setInternalValue(null);
+    setInternalValue([]);
   }
 
   function resetValue() {
     if (props.value) setValue(props.value);
-    else setInternalValue(null);
+    else setInternalValue([]);
   }
 
   function setValue(value: string) {
     const valueRec = props.options.find((rec) => rec.value === value);
-    if (valueRec) setInternalValue(valueRec);
+    if (valueRec) appendInternalValue(valueRec);
   }
 
-  function getValue(): SingleSelectOption {
+  function getValue(): MultiSelectOptionList {
     return internalValue;
   }
 
@@ -67,7 +78,7 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
 
   return (
     <>
-      {props.options.map((option: SingleSelectOption, idx: number) => {
+      {props.options.map((option: Record<string, string>, idx: number) => {
         return (
           <button
             id={`${props.id}-${idx}`}
@@ -82,8 +93,8 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
   );
 }
 
-const CamsSelect = forwardRef(MockCamsSelectComponent);
-export default CamsSelect;
+const CamsSelectMulti = forwardRef(MockCamsSelectMultiComponent);
+export default CamsSelectMulti;
 
 export function selectItemInMockSelect(id: string, index: number) {
   const selectButton = document.querySelector(`#${id}-${index}`);

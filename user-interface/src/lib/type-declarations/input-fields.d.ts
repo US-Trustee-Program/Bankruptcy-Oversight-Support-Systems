@@ -20,3 +20,11 @@ export interface DateRange {
 export interface DateRangePickerRef extends Omit<InputRef, 'setValue'> {
   setValue: (options: DateRange) => void;
 }
+
+export interface SelectRef extends Omit<InputRef, 'getValue'> {
+  getValue: () => SingleSelectOptionList;
+}
+
+export interface SelectMultiRef extends Omit<InputRef, 'getValue'> {
+  getValue: () => MultiSelectOptionList;
+}

@@ -13,17 +13,14 @@ import {
   TableRowData,
 } from '@/lib/components/uswds/Table';
 import { useGenericApi } from '@/lib/hooks/UseApi';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import CamsSelect, {
-  CamsSelectOptionList,
-  MultiSelectOptionList,
-} from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import './SearchScreen.scss';
+import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 
 type AlertProps = {
   show: boolean;
@@ -52,7 +49,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
 
   const caseNumberInputRef = useRef<InputRef>(null);
-  const courtSelectionRef = useRef<InputRef>(null);
+  const courtSelectionRef = useRef<SelectMultiRef>(null);
 
   const api = useGenericApi();
 
@@ -117,12 +114,11 @@ export default function SearchScreen(_props: SearchScreenProps) {
     setSearchPredicate({ ...searchPredicate, caseNumber });
   }
 
-  function handleCourtSelection(selection: CamsSelectOptionList) {
-    const castSelection = selection as MultiSelectOptionList;
+  function handleCourtSelection(selection: MultiSelectOptionList) {
     setSearchPredicate({
       ...searchPredicate,
-      divisionCodes: castSelection.length
-        ? castSelection.map((kv: Record<string, string>) => kv.value)
+      divisionCodes: selection.length
+        ? selection.map((kv: Record<string, string>) => kv.value)
         : undefined,
     });
   }
@@ -164,17 +160,16 @@ export default function SearchScreen(_props: SearchScreenProps) {
             </div>
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
-                <CamsSelect
+                <CamsSelectMulti
                   id={'court-selections-search'}
                   className="new-court__select"
                   closeMenuOnSelect={true}
                   label="District (Division)"
-                  ref={courtSelectionRef}
                   onChange={handleCourtSelection}
                   options={getOfficeList(officesList)}
                   isSearchable={true}
                   required={false}
-                  isMulti={true}
+                  ref={courtSelectionRef}
                 />
               </div>
             </div>
@@ -186,7 +181,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
             <LoadingSpinner caption="Searching..." />
           ) : (
             <>
-              {!caseNumberInputRef.current?.getValue() && (
+              {!isValidSearchPredicate(searchPredicate) && (
                 <div className="search-alert">
                   <Alert
                     id="default-state-alert"
@@ -212,7 +207,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
                   ></Alert>
                 </div>
               )}
-              {emptyResponse && (
+              {emptyResponse && isValidSearchPredicate(searchPredicate) && (
                 <div className="search-alert">
                   <Alert
                     id="no-results-alert"

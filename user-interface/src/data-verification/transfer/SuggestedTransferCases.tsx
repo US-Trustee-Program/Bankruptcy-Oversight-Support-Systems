@@ -6,10 +6,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
-import CamsSelect, {
-  CamsSelectOptionList,
-  SearchableSelectOption,
-} from '@/lib/components/CamsSelect';
+import CamsSelect, { SingleSelectOption } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
@@ -83,12 +80,11 @@ function _SuggestedTransferCases(
     courtSelectionRef.current?.disable(value);
   }
 
-  function handleCourtSelection(selection: CamsSelectOptionList) {
+  function handleCourtSelection(selection: SingleSelectOption) {
     setValidationState(ValidationStates.notValidated);
     const office =
-      officesList.find(
-        (o) => o.courtDivisionCode === (selection as SearchableSelectOption)?.value,
-      ) || null;
+      officesList.find((o) => o.courtDivisionCode === (selection as SingleSelectOption)?.value) ||
+      null;
     setNewCaseDivision(office);
     if (!office) {
       setValidationState(ValidationStates.notValidated);
