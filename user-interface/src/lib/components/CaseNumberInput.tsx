@@ -54,7 +54,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
     } else {
       setEnteredCaseNumber(joinedInput);
     }
-    props.onChange(caseNumber);
+    if (caseNumber !== enteredCaseNumber) props.onChange(caseNumber);
   }
 
   function handleKeyDown(ev: React.KeyboardEvent) {
