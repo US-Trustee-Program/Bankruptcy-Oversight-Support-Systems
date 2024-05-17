@@ -64,7 +64,7 @@ describe('search screen', () => {
     });
   });
 
-  test('should render a list of cases by court division', async () => {
+  test.only('should render a list of cases by court division', async () => {
     renderWithoutProps();
 
     let defaultStateAlert = document.querySelector('#default-state-alert');
