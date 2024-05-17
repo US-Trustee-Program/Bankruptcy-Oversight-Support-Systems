@@ -17,7 +17,10 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import CamsSelect, { CamsSelectOptionList } from '@/lib/components/CamsSelect';
+import CamsSelect, {
+  CamsSelectOptionList,
+  MultiSelectOptionList,
+} from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import './SearchScreen.scss';
@@ -30,11 +33,18 @@ type AlertProps = {
 
 type SearchScreenProps = object;
 
+type SearchPredicate = {
+  caseNumber?: string;
+  districtIds?: string[];
+};
+
 export default function SearchScreen(_props: SearchScreenProps) {
   const [cases, setCases] = useState<CaseSummary[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(false);
   const [alertInfo, setAlertInfo] = useState<AlertProps>({ show: false, title: '', message: '' });
+  const [searchPredicate, setSearchPredicate] = useState<SearchPredicate>({});
+
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
 
@@ -65,47 +75,65 @@ export default function SearchScreen(_props: SearchScreenProps) {
       });
   }
 
-  function handleCaseNumberFilterUpdate(caseNumber?: string): void {
-    setAlertInfo({ show: false, title: '', message: '' });
-    if (caseNumber) {
-      trackSearchEvent({ caseNumber });
-      setLoading(true);
-      api
-        .post<CaseSummary[]>(`/cases`, { caseNumber })
-        .then((response) => {
-          if (response.length) {
-            setCases(response);
-            setEmptyResponse(false);
-          } else {
-            setCases([]);
-            setEmptyResponse(true);
-          }
-        })
-        .catch((_reason) => {
-          setCases([]);
-          setAlertInfo({
-            show: true,
-            title: 'Search Results Not Available',
-            message:
-              'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
-          });
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setEmptyResponse(false);
-      setCases([]);
-    }
+  function isValidSearchPredicate(searchPredicate: SearchPredicate): boolean {
+    return Object.keys(searchPredicate).reduce((isIt, key) => {
+      return isIt || !!searchPredicate[key as keyof SearchPredicate];
+    }, false);
   }
 
-  function handleCourtSelection(_selection: CamsSelectOptionList) {
-    throw new Error('not implemented');
+  async function search() {
+    if (!isValidSearchPredicate(searchPredicate)) return;
+
+    console.log('searching...', searchPredicate);
+    trackSearchEvent(searchPredicate);
+    setIsSearching(true);
+    api
+      .post<CaseSummary[]>(`/cases`, searchPredicate)
+      .then((response) => {
+        if (response.length) {
+          setCases(response);
+          setEmptyResponse(false);
+        } else {
+          setCases([]);
+          setEmptyResponse(true);
+        }
+      })
+      .catch((_reason) => {
+        setCases([]);
+        setAlertInfo({
+          show: true,
+          title: 'Search Results Not Available',
+          message:
+            'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
+        });
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
+  }
+
+  function handleCaseNumberChange(caseNumber?: string): void {
+    setAlertInfo({ show: false, title: '', message: '' });
+    setSearchPredicate({ ...searchPredicate, caseNumber });
+  }
+
+  function handleCourtSelection(selection: CamsSelectOptionList) {
+    const castSelection = selection as MultiSelectOptionList;
+    setSearchPredicate({
+      ...searchPredicate,
+      districtIds: castSelection.length
+        ? castSelection.map((kv: Record<string, string>) => kv.value)
+        : undefined,
+    });
   }
 
   useEffect(() => {
     getOffices();
   }, []);
+
+  useEffect(() => {
+    search();
+  }, [searchPredicate]);
 
   return (
     <div className="search-screen" data-testid="search">
@@ -129,7 +157,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
                   name="basic-search"
                   label="Case Number"
                   autoComplete="off"
-                  onChange={handleCaseNumberFilterUpdate}
+                  onChange={handleCaseNumberChange}
                   ref={caseNumberInputRef}
                 />
               </div>
@@ -154,7 +182,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
         </div>
         <div className="grid-col-8">
           <h2>Results</h2>
-          {loading ? (
+          {isSearching ? (
             <LoadingSpinner caption="Searching..." />
           ) : (
             <>
