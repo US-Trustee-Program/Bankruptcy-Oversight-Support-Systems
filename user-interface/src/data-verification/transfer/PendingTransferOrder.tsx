@@ -205,7 +205,6 @@ function _PendingTransferOrder(
         toDivisionName={orderTransfer.newCase?.courtDivisionName}
         fromCourtName={order.courtName!}
         toCourtName={orderTransfer.newCase?.courtName}
-        onCancel={cancel}
         onConfirm={confirmAction}
       ></TransferConfirmationModal>
     </div>
