@@ -12,7 +12,7 @@ export interface TransferConfirmationModalProps {
   toDivisionName?: string;
   fromCourtName: string;
   toCourtName?: string;
-  onCancel: () => void;
+  onCancel?: () => void;
   onConfirm: (status: OrderStatus, reason?: string) => void;
 }
 
@@ -70,7 +70,7 @@ function TransferConfirmationModalComponent(
     cancelButton: {
       label: 'Go back',
       onClick: () => {
-        onCancel();
+        if (onCancel) onCancel();
         clearReason();
         hide();
       },

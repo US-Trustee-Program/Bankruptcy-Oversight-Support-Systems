@@ -70,7 +70,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
         {props.label}
       </label>
       <div className="usa-input-group">
-        {includeClearButton && (
+        {includeClearButton && !inputDisabled && (
           <div className="usa-input-suffix" aria-hidden="true">
             <Button uswdsStyle={UswdsButtonStyle.Unstyled} onClick={clearValue}>
               <Icon name="close"></Icon>
