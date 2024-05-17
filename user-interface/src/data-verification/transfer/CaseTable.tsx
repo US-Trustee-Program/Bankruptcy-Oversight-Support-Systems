@@ -59,7 +59,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     onChange={handleCaseSelection}
                     value={idx}
                     name="case-selection"
-                    data-testid={`suggested-cases-radio-empty`}
+                    data-testid={'suggested-cases-radio-empty'}
                     checked={idx === selectedIdx}
                     title={`case not listed`}
                   ></input>

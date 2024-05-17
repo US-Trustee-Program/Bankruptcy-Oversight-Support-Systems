@@ -61,6 +61,7 @@ function _SuggestedTransferCases(
   async function validateCaseNumber(caseId: string) {
     if (loadingCaseSummary) return false;
     setLoadingCaseSummary(true);
+    disableEntryForm(true);
     await api
       .get(`/cases/${caseId}/summary`)
       .then((response) => {
@@ -74,6 +75,12 @@ function _SuggestedTransferCases(
       });
 
     setLoadingCaseSummary(false);
+    disableEntryForm(false);
+  }
+
+  function disableEntryForm(value: boolean) {
+    caseNumberRef.current?.disable(value);
+    courtSelectionRef.current?.disable(value);
   }
 
   function handleCourtSelection(selection: CamsSelectOptionList) {
@@ -118,9 +125,6 @@ function _SuggestedTransferCases(
         const newSuggestedCases = response.body as CaseSummary[];
         setLoadingSuggestions(false);
         setSuggestedCases(newSuggestedCases);
-        if (newSuggestedCases.length === 0) {
-          setEnableCaseEntry(true);
-        }
       })
       .catch((reason: Error) => {
         setLoadingSuggestions(false);
@@ -140,6 +144,11 @@ function _SuggestedTransferCases(
     if (suggestedCasesRef.current) suggestedCasesRef.current.clearAllCheckboxes();
     setEnableCaseEntry(false);
     setLoadingCaseSummary(false);
+    // TODO: Make sure the following only happens when we click the 'Clear' button, not the 'go back' button on the modal
+    setNewCaseNumber(order.docketSuggestedCaseNumber || null);
+    setNewCaseDivision(null);
+    courtSelectionRef.current?.clearValue();
+    caseNumberRef.current?.resetValue();
   }
 
   useImperativeHandle(SuggestedTransferCasesRef, () => ({
@@ -214,7 +223,7 @@ function _SuggestedTransferCases(
             </>
           )}
         </div>
-        {enableCaseEntry && (
+        {(enableCaseEntry || suggestedCases?.length === 0) && (
           <div className="case-entry-form">
             <div className="court-selection grid-row grid-gap-lg">
               <div className="grid-col-1"></div>

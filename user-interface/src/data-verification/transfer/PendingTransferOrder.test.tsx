@@ -23,7 +23,6 @@ const toCaseSummary = MockData.getCaseSummary();
 const suggestedCases = [toCaseSummary, MockData.getCaseSummary()];
 
 async function mockGetCaseSummary(): Promise<SimpleResponseData<CaseSummary>> {
-  console.log('MOCKING getCaseSummary', fromCaseSummary);
   return Promise.resolve({ success: true, body: fromCaseSummary });
 }
 
@@ -32,12 +31,10 @@ async function mockGetCaseSummaryForToCase(): Promise<SimpleResponseData<CaseSum
 }
 
 async function mockGetTransferredCaseSuggestions(): Promise<ResponseData<CaseSummary[]>> {
-  console.log('MOCKING getTransferredCaseSuggestions', suggestedCases.length);
   return Promise.resolve({ message: 'ok', count: suggestedCases.length, body: suggestedCases });
 }
 
 async function mockGetTransferredCaseSuggestionsEmpty(): Promise<ResponseData<CaseSummary[]>> {
-  console.log('MOCKING getTransferredCaseSuggestions-Empty', 0);
   return Promise.resolve({ message: 'ok', count: 0, body: [] });
 }
 
@@ -231,6 +228,7 @@ describe('PendingTransferOrder component', () => {
     }
 
     beforeEach(async () => {
+      vi.stubEnv('CAMS_PA11Y', 'true');
       order = MockData.getTransferOrder();
       vi.spyOn(Api, 'get')
         .mockImplementationOnce(mockGetCaseSummary)
@@ -576,6 +574,54 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
+    test('should clear radio, remove form, and disable submission button when the Cancel button is clicked', async () => {
+      vi.spyOn(Api, 'get')
+        .mockImplementationOnce(mockGetCaseSummary)
+        .mockImplementationOnce(mockGetTransferredCaseSuggestions)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase)
+        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+
+      renderWithProps();
+      await waitFor(() => {
+        const caseTable = document.querySelector('#suggested-cases');
+        expect(caseTable).toBeInTheDocument();
+      });
+
+      const radio = screen.getByTestId('suggested-cases-radio-empty');
+      fireEvent.click(radio);
+      await waitForCaseEntryForm();
+
+      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+
+      let caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
+      expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
+
+      enterCaseNumber(caseIdInput, '00-00000');
+      enterCaseNumber(caseIdInput, '');
+      const approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+      await waitFor(async () => {
+        expect(approveButton).toBeInTheDocument();
+        expect(approveButton).toBeVisible();
+        expect(approveButton).toBeDisabled();
+      });
+
+      enterCaseNumber(caseIdInput, '23-12345');
+
+      let cancelButton: HTMLElement;
+      await waitFor(async () => {
+        cancelButton = screen.getByTestId(`button-accordion-cancel-button-${order.id}`);
+        expect(cancelButton).toBeInTheDocument();
+        expect(cancelButton).toBeVisible();
+      });
+
+      fireEvent.click(cancelButton!);
+
+      await waitFor(() => {
+        caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
+        expect(caseIdInput).not.toBeInTheDocument();
+      });
+    });
+
     test('should clear input values and disable submission button when the Cancel button is clicked', async () => {
       vi.spyOn(Api, 'get')
         .mockImplementationOnce(mockGetCaseSummary)
@@ -613,7 +659,8 @@ describe('PendingTransferOrder component', () => {
 
       await waitFor(() => {
         caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-        expect(caseIdInput).not.toBeInTheDocument();
+        expect(caseIdInput).toBeInTheDocument();
+        expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
       });
     });
   });
