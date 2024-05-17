@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { OfficeDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
@@ -27,6 +27,7 @@ export interface TransferOrderAccordionProps {
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
   const { order, hidden, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   const pendingTransferOrderRef = useRef<PendingTransferOrderImperative>(null);
 
@@ -34,12 +35,17 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
     pendingTransferOrderRef?.current?.cancel();
   }
 
+  function handleOnExpand(expandedId: string) {
+    if (onExpand) onExpand(expandedId);
+    setExpanded(true);
+  }
+
   return (
     <Accordion
       key={order.id}
       id={`order-list-${order.id}`}
       expandedId={expandedId}
-      onExpand={onExpand}
+      onExpand={handleOnExpand}
       onCollapse={onCollapse}
       hidden={hidden}
     >
@@ -75,21 +81,26 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         </div>
       </section>
       <section className="accordion-content" data-testid={`accordion-content-${order.id}`}>
-        {order.status === 'pending' && (
-          <PendingTransferOrder
-            order={order}
-            onOrderUpdate={props.onOrderUpdate}
-            officesList={officesList}
-            ref={pendingTransferOrderRef}
-          />
-        )}
-        {order.status === 'approved' && (
-          <ApprovedTransferOrder order={order} onOrderUpdate={props.onOrderUpdate} />
-        )}
-        {order.status === 'rejected' && (
-          <RejectedTransferOrder order={order} onOrderUpdate={props.onOrderUpdate} />
+        {expanded && (
+          <>
+            {order.status === 'pending' && (
+              <PendingTransferOrder
+                order={order}
+                onOrderUpdate={props.onOrderUpdate}
+                officesList={officesList}
+                ref={pendingTransferOrderRef}
+              />
+            )}
+            {order.status === 'approved' && (
+              <ApprovedTransferOrder order={order} onOrderUpdate={props.onOrderUpdate} />
+            )}
+            {order.status === 'rejected' && (
+              <RejectedTransferOrder order={order} onOrderUpdate={props.onOrderUpdate} />
+            )}
+          </>
         )}
       </section>
+      )
     </Accordion>
   );
 }
