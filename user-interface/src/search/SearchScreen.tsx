@@ -1,5 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
+import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
+import { CaseSummary } from '@common/cams/cases';
+import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import './SearchScreen.scss';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import {
   Table,
@@ -10,18 +13,14 @@ import {
   TableRowData,
 } from '@/lib/components/uswds/Table';
 import { useGenericApi } from '@/lib/hooks/UseApi';
-import { CaseSummary } from '@common/cams/cases';
-import { useEffect, useRef, useState } from 'react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import CamsSelect, { CamsSelectOptionList } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
-import { OfficesResponseData } from '@/lib/type-declarations/chapter-15';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
-import { OfficeDetails } from '@common/cams/courts';
+import './SearchScreen.scss';
 
 type AlertProps = {
   show: boolean;
@@ -32,7 +31,6 @@ type AlertProps = {
 type SearchScreenProps = object;
 
 export default function SearchScreen(_props: SearchScreenProps) {
-  const api = useGenericApi();
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(false);
@@ -46,14 +44,15 @@ export default function SearchScreen(_props: SearchScreenProps) {
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<InputRef>(null);
 
+  const api = useGenericApi();
+
   async function getOffices() {
     api
-      .get(`/offices`, {})
+      .get<OfficeDetails[]>(`/offices`, {})
       .then((data) => {
-        const response = data as OfficesResponseData;
-        setOfficesList(response.body.sort(officeSorter));
+        setOfficesList(data.sort(officeSorter));
         setRegionsMap(
-          response.body.reduce((regionsMap, office) => {
+          data.reduce((regionsMap, office) => {
             if (!regionsMap.has(office.regionId)) {
               regionsMap.set(office.regionId, office.regionName);
             }
@@ -61,7 +60,9 @@ export default function SearchScreen(_props: SearchScreenProps) {
           }, new Map()),
         );
       })
-      .catch(() => {});
+      .catch((e) => {
+        console.error(e);
+      });
   }
 
   function handleCaseNumberFilterUpdate(caseNumber?: string): void {
