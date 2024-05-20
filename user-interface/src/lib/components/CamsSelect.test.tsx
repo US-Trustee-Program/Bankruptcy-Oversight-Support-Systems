@@ -32,7 +32,6 @@ describe('Tests for humble CamsSelect component', () => {
       ],
       required: false,
       isSearchable: true,
-      isMulti: false,
       closeMenuOnSelect: false,
     };
 

@@ -10,10 +10,7 @@ import {
   CaseAssociatedCasesResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
-import CamsSelect, {
-  CamsSelectOptionList,
-  MultiSelectOptionList,
-} from '@/lib/components/CamsSelect';
+import { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
@@ -30,6 +27,7 @@ import { CaseHistory } from '@common/cams/history';
 import AttorneysApi from '@/lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
+import CamsSelectMulti from '@/lib/components/CamsSelectMulti';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -310,7 +308,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     return;
   }
 
-  function handleSelectedFacet(newValue: CamsSelectOptionList) {
+  function handleSelectedFacet(newValue: MultiSelectOptionList) {
     const selected = (newValue as MultiSelectOptionList).map((value: Record<string, string>) => {
       const { value: selection } = value;
       return selection;
@@ -474,15 +472,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         className="docket-summary-facets form-field"
                         data-testid="facet-multi-select-container-test-id"
                       >
-                        <CamsSelect
+                        <CamsSelectMulti
                           id="facet-multi-select"
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
                           closeMenuOnSelect={false}
                           onChange={handleSelectedFacet}
                           label="Filter by Summary"
                           ref={facetPickerRef}
-                          isMulti={true}
-                        ></CamsSelect>
+                        ></CamsSelectMulti>
                       </div>
                       <div className="in-docket-search form-field" data-testid="docket-date-range">
                         <DateRangePicker

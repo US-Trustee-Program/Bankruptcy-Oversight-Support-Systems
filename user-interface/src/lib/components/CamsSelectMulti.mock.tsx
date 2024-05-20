@@ -1,8 +1,7 @@
-import './CamsSelectMulti.scss';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
-import { SelectRef } from '../type-declarations/input-fields';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { fireEvent } from '@testing-library/react';
+import { SelectMultiRef } from '../type-declarations/input-fields';
 import { MultiSelectOptionList } from './CamsSelectMulti';
 
 export interface CamsSelectMultiProps {
@@ -17,7 +16,7 @@ export interface CamsSelectMultiProps {
 
 export function MockCamsSelectMultiComponent(
   props: CamsSelectMultiProps,
-  ref: React.Ref<SelectRef>,
+  ref: React.Ref<SelectMultiRef>,
 ) {
   const [internalValue, setInternalValue] = React.useState<MultiSelectOptionList>([]);
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
