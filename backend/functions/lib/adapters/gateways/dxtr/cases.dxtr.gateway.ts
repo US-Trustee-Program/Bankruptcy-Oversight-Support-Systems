@@ -286,6 +286,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   ): Promise<CaseSummary[]> {
     const CASE_SEARCH_SELECT = `
       SELECT
+      TOP 25 -- TODO: Need to remove this when paging is implemented.
       cs.CS_DIV as courtDivisionCode,
       cs.CS_DIV+'-'+cs.CASE_ID as caseId,
       cs.CS_SHORT_TITLE as caseTitle,
