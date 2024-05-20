@@ -125,7 +125,7 @@ function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<I
   }
 
   function getValue(): string {
-    throw new Error('not implemented');
+    throw new Error('Not implemented');
   }
 
   function disable(value: boolean) {

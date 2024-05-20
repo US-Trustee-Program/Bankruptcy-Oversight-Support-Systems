@@ -6,7 +6,10 @@ import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
 
-vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
+vi.mock(
+  '../lib/components/CamsSelectMulti',
+  () => import('../lib/components/CamsSelectMulti.mock'),
+);
 
 describe('search screen', () => {
   let caseList: CaseSummary[];
@@ -71,6 +74,7 @@ describe('search screen', () => {
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
 
+    screen.debug();
     await waitFor(() => {
       // Infer the office list is loaded from the API.
       expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
