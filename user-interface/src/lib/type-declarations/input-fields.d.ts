@@ -1,3 +1,4 @@
+import { MultiSelectOptionList } from '../components/CamsSelectMulti';
 export interface InputRef {
   setValue: (value: string) => void;
   disable: (value: boolean) => void;
@@ -25,6 +26,7 @@ export interface SelectRef extends Omit<InputRef, 'getValue'> {
   getValue: () => SingleSelectOptionList;
 }
 
-export interface SelectMultiRef extends Omit<InputRef, 'getValue'> {
+export interface SelectMultiRef extends Omit<InputRef, 'getValue' | 'setValue'> {
   getValue: () => MultiSelectOptionList;
+  setValue: (records) => void;
 }

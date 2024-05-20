@@ -1,5 +1,5 @@
 import React from 'react';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { fireEvent } from '@testing-library/react';
 import { SelectMultiRef } from '../type-declarations/input-fields';
 import { MultiSelectOptionList } from './CamsSelectMulti';
@@ -9,38 +9,41 @@ export interface CamsSelectMultiProps {
   onChange?: (newValue: MultiSelectOptionList) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
-  options: Record<string, string>[];
+  options: MultiSelectOptionList;
   label?: string;
-  value?: string;
+  value?: MultiSelectOptionList;
 }
 
 export function MockCamsSelectMultiComponent(
   props: CamsSelectMultiProps,
   ref: React.Ref<SelectMultiRef>,
 ) {
-  const [internalValue, setInternalValue] = React.useState<MultiSelectOptionList>([]);
+  const [internalValue, setInternalValue] = React.useState<MultiSelectOptionList>(
+    props.value ?? [],
+  );
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
   function uniqueSet(baseArray: MultiSelectOptionList) {
     return [...new Set(baseArray)];
   }
-
+  function removeInternalValue(valueRec: Record<string, string>) {
+    const newInternalValue = internalValue.filter((element) => {
+      element !== valueRec;
+    });
+    setInternalValue(newInternalValue);
+    return newInternalValue;
+  }
   function appendInternalValue(valueRec: Record<string, string>) {
-    setInternalValue(uniqueSet([...internalValue, valueRec]));
+    const newInternalValue = uniqueSet([...internalValue, valueRec]);
+    setInternalValue(newInternalValue);
+    return newInternalValue;
   }
 
-  useEffect(() => {
-    if (props.value !== undefined) {
-      const valueRec = props.options.find((rec) => rec.value === props.value);
-      if (valueRec) {
-        appendInternalValue(valueRec);
-      }
-    }
-  }, [props.value]);
-
   function handleOnClick(option: Record<string, string>) {
-    appendInternalValue(option);
-    if (props.onChange) props.onChange && props.onChange(uniqueSet([...internalValue, option]));
+    const newValue = internalValue.includes(option)
+      ? removeInternalValue(option)
+      : appendInternalValue(option);
+    if (props.onChange) props.onChange(newValue);
   }
 
   function clearValue() {
@@ -48,13 +51,11 @@ export function MockCamsSelectMultiComponent(
   }
 
   function resetValue() {
-    if (props.value) setValue(props.value);
-    else setInternalValue([]);
+    setValue(props.value ?? []);
   }
 
-  function setValue(value: string) {
-    const valueRec = props.options.find((rec) => rec.value === value);
-    if (valueRec) appendInternalValue(valueRec);
+  function setValue(value: MultiSelectOptionList) {
+    setInternalValue(value);
   }
 
   function getValue(): MultiSelectOptionList {
@@ -79,13 +80,17 @@ export function MockCamsSelectMultiComponent(
     <>
       {props.options.map((option: Record<string, string>, idx: number) => {
         return (
-          <button
-            id={`${props.id}-${idx}`}
-            key={idx}
-            onClick={() => handleOnClick(option)}
-            data-value={option}
-            disabled={isDisabled}
-          ></button>
+          <>
+            <button
+              id={`${props.id}-${idx}`}
+              key={idx}
+              onClick={() => handleOnClick(option)}
+              data-value={option}
+              disabled={isDisabled}
+            >
+              {internalValue.includes(option) && option.label}
+            </button>
+          </>
         );
       })}
     </>

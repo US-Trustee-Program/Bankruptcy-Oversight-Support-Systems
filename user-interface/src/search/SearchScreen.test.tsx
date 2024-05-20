@@ -67,7 +67,7 @@ describe('search screen', () => {
     });
   });
 
-  test.only('should render a list of cases by court division', async () => {
+  test('should render a list of cases by court division', async () => {
     renderWithoutProps();
 
     let defaultStateAlert = document.querySelector('#default-state-alert');
@@ -101,7 +101,7 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
 
     // TODO: This is a multi select so we need to test it.
-    selectItemInMockSelect('court-divisions-select', 2);
+    selectItemInMockSelect('court-selections-search', 2);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('#search-results > table');
