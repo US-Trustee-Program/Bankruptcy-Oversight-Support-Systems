@@ -79,6 +79,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
     console.log('searching...', searchPredicate);
     trackSearchEvent(searchPredicate);
     setIsSearching(true);
+    disableSearchItems(true);
     api
       .post<CaseSummary[]>(`/cases`, searchPredicate)
       .then((response) => {
@@ -101,15 +102,24 @@ export default function SearchScreen(_props: SearchScreenProps) {
       })
       .finally(() => {
         setIsSearching(false);
+        disableSearchItems(false);
       });
   }
-
-  function handleCaseNumberChange(caseNumber?: string): void {
+  function disableSearchItems(value: boolean) {
+    caseNumberInputRef.current?.disable(value);
+    courtSelectionRef.current?.disable(value);
+  }
+  function resetSearch() {
     setAlertInfo({ show: false, title: '', message: '' });
+    setCases([]);
+  }
+  function handleCaseNumberChange(caseNumber?: string): void {
+    resetSearch();
     setSearchPredicate({ ...searchPredicate, caseNumber });
   }
 
   function handleCourtSelection(selection: MultiSelectOptionList) {
+    resetSearch();
     setSearchPredicate({
       ...searchPredicate,
       divisionCodes: selection.length

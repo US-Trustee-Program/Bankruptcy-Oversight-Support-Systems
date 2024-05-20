@@ -21,6 +21,7 @@ export interface CamsSelectMultiProps {
   value?: MultiSelectOptionList;
   required?: boolean;
   isSearchable?: boolean;
+  disabled?: boolean;
   onChange?: (newValue: MultiSelectOptionList) => void;
 }
 
@@ -31,7 +32,7 @@ function _CamsSelectMulti(
   const camsSelectRef = React.useRef<ReactSelectRef>(null);
   const [internalValue, setInternalValue] = useState<MultiSelectOptionList>(props.value ?? []);
 
-  const [isDisabled, setIsDisabled] = useState<boolean>(false);
+  const [isDisabled, setIsDisabled] = useState<boolean>(!!props.disabled);
 
   let classes = 'cams-select';
   if (props.className) classes += ` ${props.className}`;
