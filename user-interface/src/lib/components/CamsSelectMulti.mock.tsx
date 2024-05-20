@@ -88,7 +88,7 @@ export function MockCamsSelectMultiComponent(
               data-value={option}
               disabled={isDisabled}
             >
-              {internalValue.includes(option) && option.label}
+              {internalValue.includes(option) ? `Remove ${option.label}` : option.label}
             </button>
           </>
         );
