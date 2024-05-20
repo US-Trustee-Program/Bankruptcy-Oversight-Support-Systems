@@ -40,6 +40,7 @@ function sqlSelectList(top: string, chapter: string) {
     AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)
   `;
 }
+
 function sqlUnion(queries: string[]) {
   return queries.join(' UNION ALL ');
 }
@@ -283,14 +284,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     searchPredicate: SearchPredicate,
   ): Promise<CaseSummary[]> {
-    const input: DbTableFieldSpec[] = [];
-    input.push({
-      name: 'caseNumber',
-      type: mssql.VarChar,
-      value: searchPredicate.caseNumber,
-    });
-
-    const CASE_SEARCH_QUERY = `
+    const CASE_SEARCH_SELECT = `
       SELECT
       cs.CS_DIV as courtDivisionCode,
       cs.CS_DIV+'-'+cs.CASE_ID as caseId,
@@ -328,9 +322,44 @@ export default class CasesDxtrGateway implements CasesInterface {
       JOIN [dbo].[AO_PY] AS party
         ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
       JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
-      JOIN [dbo].[AO_TX] AS tx ON tx.CS_CASEID=cs.CS_CASEID AND tx.COURT_ID=cs.COURT_ID AND tx.TX_TYPE='1' AND tx.TX_CODE='1'
-      WHERE cs.CASE_ID = @caseNumber
-      ORDER BY cs.CS_DATE_FILED DESC`;
+      JOIN [dbo].[AO_TX] AS tx ON tx.CS_CASEID=cs.CS_CASEID AND tx.COURT_ID=cs.COURT_ID AND tx.TX_TYPE='1' AND tx.TX_CODE='1'`;
+
+    const CASE_SEARCH_QUERY_ORDER = 'ORDER BY cs.CS_DATE_FILED DESC';
+
+    const predicateList: string[] = [];
+    const input: DbTableFieldSpec[] = [];
+    if (searchPredicate.caseNumber) {
+      input.push({
+        name: 'caseNumber',
+        type: mssql.VarChar,
+        value: searchPredicate.caseNumber,
+      });
+      predicateList.push('cs.CASE_ID = @caseNumber');
+    }
+    if (searchPredicate.divisionCodes) {
+      searchPredicate.divisionCodes.forEach((divisionCode, idx) => {
+        input.push({
+          name: `divisionCode${idx}`,
+          type: mssql.VarChar,
+          value: divisionCode,
+        });
+      });
+      const divisionCodeVars = searchPredicate.divisionCodes
+        .map((_, idx) => `@divisionCode${idx}`)
+        .join(', ');
+      predicateList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
+    }
+
+    const CASE_SEARCH_QUERY_PREDICATE = 'WHERE ' + predicateList.join(' AND ');
+
+    const CASE_SEARCH_QUERY = [
+      CASE_SEARCH_SELECT,
+      CASE_SEARCH_QUERY_PREDICATE,
+      CASE_SEARCH_QUERY_ORDER,
+    ].join(' ');
+
+    // TODO: Delete me.
+    console.log('query', CASE_SEARCH_QUERY, input);
 
     const queryResult: QueryResults = await executeQuery(
       applicationContext,

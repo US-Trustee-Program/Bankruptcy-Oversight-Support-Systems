@@ -778,8 +778,35 @@ describe('Test DXTR Gateway', () => {
       expect(actual).toEqual([]);
     });
 
-    test('should return array of cases', async () => {
-      const testCase = MockData.getCaseSummary();
+    test('should return array of cases for a given court division', async () => {
+      const testCase = MockData.getCaseSummary({ override: { caseId: '999-99-00000' } });
+      const testParty = MockData.getParty();
+      const caseSummaryQueryResult = {
+        success: true,
+        results: {
+          recordset: [testCase],
+        },
+        message: '',
+      };
+      const partyQueryResult = {
+        success: true,
+        results: {
+          recordset: [testParty],
+        },
+        message: '',
+      };
+      querySpy
+        .mockResolvedValueOnce(caseSummaryQueryResult)
+        .mockResolvedValueOnce(partyQueryResult);
+
+      const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
+        divisionCodes: ['999'],
+      });
+      expect(actual).toEqual([testCase]);
+    });
+
+    test('should return array of cases for a given case number', async () => {
+      const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
       const testParty = MockData.getParty();
       const caseSummaryQueryResult = {
         success: true,
