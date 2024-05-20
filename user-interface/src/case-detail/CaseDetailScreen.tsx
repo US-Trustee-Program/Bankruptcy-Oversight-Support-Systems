@@ -16,7 +16,12 @@ import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
-import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations/input-fields';
+import {
+  DateRange,
+  DateRangePickerRef,
+  InputRef,
+  SelectMultiRef,
+} from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 import { CaseDetail } from '@common/cams/cases';
 import { useApi } from '@/lib/hooks/UseApi';
@@ -202,7 +207,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
-  const facetPickerRef = useRef<InputRef>(null);
+  const facetPickerRef = useRef<SelectMultiRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
   async function fetchCaseBasicInfo() {
