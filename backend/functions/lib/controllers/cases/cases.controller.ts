@@ -1,6 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseManagement } from '../../use-cases/case-management';
 import { CaseSummaryListDbResult } from '../../adapters/types/cases';
+import { SearchPredicate } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
@@ -22,12 +23,7 @@ export class CasesController {
     return await this.caseManagement.getCases(this.applicationContext);
   }
 
-  public async searchCases(requestQueryFilters: {
-    caseNumber: string;
-  }): Promise<CaseSummaryListDbResult> {
-    return this.caseManagement.getCasesByCaseNumber(
-      this.applicationContext,
-      requestQueryFilters.caseNumber,
-    );
+  public async searchCases(searchPredicate: SearchPredicate): Promise<CaseSummaryListDbResult> {
+    return this.caseManagement.searchCases(this.applicationContext, searchPredicate);
   }
 }

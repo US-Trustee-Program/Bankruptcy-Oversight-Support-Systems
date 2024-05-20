@@ -353,7 +353,7 @@ describe('Case management tests', () => {
     });
   });
 
-  describe('getCasesByCaseNumber tests', () => {
+  describe('searchCases tests', () => {
     const caseNumber = '00-00000';
 
     test('should return an empty array for no matches', async () => {
@@ -363,8 +363,8 @@ describe('Case management tests', () => {
         count: 0,
         body: [],
       };
-      jest.spyOn(useCase.casesGateway, 'getCasesByCaseNumber').mockResolvedValue([]);
-      const actual = await useCase.getCasesByCaseNumber(caseNumber);
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
+      const actual = await useCase.searchCases({ caseNumber });
       expect(actual).toEqual(expected);
     });
 
@@ -376,8 +376,8 @@ describe('Case management tests', () => {
         count: caseList.length,
         body: caseList,
       };
-      jest.spyOn(useCase.casesGateway, 'getCasesByCaseNumber').mockResolvedValue(caseList);
-      const actual = await useCase.getCasesByCaseNumber(caseNumber);
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(caseList);
+      const actual = await useCase.searchCases({ caseNumber });
       expect(actual).toEqual(expected);
     });
 
@@ -388,14 +388,14 @@ describe('Case management tests', () => {
           'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
         originalError: error,
       });
-      jest.spyOn(useCase.casesGateway, 'getCasesByCaseNumber').mockRejectedValue(error);
-      await expect(useCase.getCasesByCaseNumber(caseNumber)).rejects.toThrow(expectedError);
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
+      await expect(useCase.searchCases({ caseNumber })).rejects.toThrow(expectedError);
     });
 
     test('should throw CamsError', async () => {
       const error = new CamsError('TEST', { message: 'test error' });
-      jest.spyOn(useCase.casesGateway, 'getCasesByCaseNumber').mockRejectedValue(error);
-      await expect(useCase.getCasesByCaseNumber(caseNumber)).rejects.toThrow(error);
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
+      await expect(useCase.searchCases({ caseNumber })).rejects.toThrow(error);
     });
   });
 });

@@ -4,7 +4,7 @@ import {
   CaseListDbResult,
   CaseSummaryListDbResult,
 } from '../adapters/types/cases';
-import { CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseDetail, SearchPredicate } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
@@ -70,12 +70,12 @@ export class CaseManagement {
     }
   }
 
-  public async getCasesByCaseNumber(
+  public async searchCases(
     applicationContext: ApplicationContext,
-    caseNumber: string,
+    searchPredicate: SearchPredicate,
   ): Promise<CaseSummaryListDbResult> {
     try {
-      const cases = await this.casesGateway.getCasesByCaseNumber(applicationContext, caseNumber);
+      const cases = await this.casesGateway.searchCases(applicationContext, searchPredicate);
 
       return {
         success: true,

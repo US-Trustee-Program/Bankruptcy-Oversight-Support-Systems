@@ -757,7 +757,7 @@ describe('Test DXTR Gateway', () => {
     });
   });
 
-  describe('getCasesByCaseNumber tests', () => {
+  describe('searchCases tests', () => {
     beforeEach(() => {
       jest.resetAllMocks();
     });
@@ -772,10 +772,9 @@ describe('Test DXTR Gateway', () => {
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
-      const actual = await testCasesDxtrGateway.getCasesByCaseNumber(
-        applicationContext,
-        '00-00000',
-      );
+      const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
+        caseNumber: '00-00000',
+      });
       expect(actual).toEqual([]);
     });
 
@@ -800,10 +799,9 @@ describe('Test DXTR Gateway', () => {
         .mockResolvedValueOnce(caseSummaryQueryResult)
         .mockResolvedValueOnce(partyQueryResult);
 
-      const actual = await testCasesDxtrGateway.getCasesByCaseNumber(
-        applicationContext,
-        '00-00000',
-      );
+      const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
+        caseNumber: '00-00000',
+      });
 
       expect(actual).toEqual([testCase]);
     });
@@ -818,7 +816,9 @@ describe('Test DXTR Gateway', () => {
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
       await expect(
-        testCasesDxtrGateway.getCasesByCaseNumber(applicationContext, '00-00000'),
+        testCasesDxtrGateway.searchCases(applicationContext, {
+          caseNumber: '00-00000',
+        }),
       ).rejects.toThrow(errorMessage);
     });
   });

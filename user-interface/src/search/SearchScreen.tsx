@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseSummary, SearchPredicate } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -29,11 +29,6 @@ type AlertProps = {
 };
 
 type SearchScreenProps = object;
-
-type SearchPredicate = {
-  caseNumber?: string;
-  divisionCodes?: string[];
-};
 
 export default function SearchScreen(_props: SearchScreenProps) {
   const [cases, setCases] = useState<CaseSummary[]>([]);
