@@ -1,5 +1,5 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
+import { CaseDetail, CaseSummary, SearchPredicate } from '../../../../../common/src/cams/cases';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
 
@@ -28,11 +28,13 @@ export class MockCasesGateway implements CasesInterface {
     return Promise.resolve(filteredCases);
   }
 
-  async getCasesByCaseNumber(
+  async searchCases(
     _applicationContext: ApplicationContext,
-    caseNumber: string,
+    searchPredicate: SearchPredicate,
   ): Promise<CaseSummary[]> {
-    const filteredCases = this.caseList.filter((bCase) => bCase.caseId.match(caseNumber));
+    const filteredCases = this.caseList.filter((bCase) =>
+      bCase.caseId.match(searchPredicate.caseNumber),
+    );
 
     return Promise.resolve(filteredCases);
   }

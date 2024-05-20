@@ -43,4 +43,8 @@ export type CaseDocketEntry = {
   documents?: CaseDocketEntryDocument[];
 };
 
+export type SearchPredicate = {
+  caseNumber?: string;
+  divisionCodes?: string[];
+};
 export type CaseDocket = Array<CaseDocketEntry>;

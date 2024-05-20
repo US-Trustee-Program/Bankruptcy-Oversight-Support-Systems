@@ -63,7 +63,7 @@ describe('cases controller test', () => {
         count: 0,
         body: [],
       };
-      jest.spyOn(CaseManagement.prototype, 'getCasesByCaseNumber').mockResolvedValue(expected);
+      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(expected);
 
       const actual = await controller.searchCases({ caseNumber: '00-00000' });
       expect(actual).toEqual(expected);
@@ -78,7 +78,7 @@ describe('cases controller test', () => {
         body: [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })],
       };
 
-      jest.spyOn(CaseManagement.prototype, 'getCasesByCaseNumber').mockResolvedValue(expected);
+      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(expected);
 
       const actual = await controller.searchCases({ caseNumber });
       expect(actual).toEqual(expected);
@@ -87,7 +87,7 @@ describe('cases controller test', () => {
     test('should return an error if an error is encountered', async () => {
       const caseNumber = '00-00000';
       jest
-        .spyOn(CaseManagement.prototype, 'getCasesByCaseNumber')
+        .spyOn(CaseManagement.prototype, 'searchCases')
         .mockRejectedValue(new Error('some error'));
 
       await expect(controller.searchCases({ caseNumber })).rejects.toThrow('some error');

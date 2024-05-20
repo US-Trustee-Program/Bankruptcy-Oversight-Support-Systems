@@ -16,7 +16,7 @@ import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
-import { CaseDetail, CaseSummary } from '../../../../../../common/src/cams/cases';
+import { CaseDetail, CaseSummary, SearchPredicate } from '../../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../../common/src/cams/parties';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
@@ -279,15 +279,15 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
-  public async getCasesByCaseNumber(
+  public async searchCases(
     applicationContext: ApplicationContext,
-    caseNumber: string,
+    searchPredicate: SearchPredicate,
   ): Promise<CaseSummary[]> {
     const input: DbTableFieldSpec[] = [];
     input.push({
       name: 'caseNumber',
       type: mssql.VarChar,
-      value: caseNumber,
+      value: searchPredicate.caseNumber,
     });
 
     const CASE_SEARCH_QUERY = `
