@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// refactor - let's find a way to avoid using any
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import ReactSelect, { MultiValue } from 'react-select';
-import { InputRef, SelectMultiRef } from '../type-declarations/input-fields';
+import ReactSelect, { GroupBase, MultiValue, SelectInstance } from 'react-select';
+import { SelectMultiRef } from '../type-declarations/input-fields';
 import './CamsSelect.scss';
+
+type ReactSelectRef = SelectInstance<
+  Record<string, string>,
+  true,
+  GroupBase<Record<string, string>>
+>;
 
 export type MultiSelectOptionList = MultiValue<Record<string, string>>;
 
@@ -11,9 +16,9 @@ export interface CamsSelectMultiProps {
   id: string;
   className?: string;
   closeMenuOnSelect?: boolean;
-  options: Record<string, string>[];
+  options: MultiSelectOptionList;
   label?: string;
-  value?: string;
+  value?: MultiSelectOptionList;
   required?: boolean;
   isSearchable?: boolean;
   onChange?: (newValue: MultiSelectOptionList) => void;
@@ -23,9 +28,8 @@ function _CamsSelectMulti(
   props: CamsSelectMultiProps,
   CamsSelectMultiRef: React.Ref<SelectMultiRef>,
 ) {
-  const camsSelectRef = React.useRef(null);
-  const [initialValue, setInitialValue] = React.useState<string | null>(null);
-  const [internalValue, setInternalValue] = useState<MultiSelectOptionList>([]);
+  const camsSelectRef = React.useRef<ReactSelectRef>(null);
+  const [internalValue, setInternalValue] = useState<MultiSelectOptionList>(props.value ?? []);
 
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
@@ -40,13 +44,6 @@ function _CamsSelectMulti(
       }
     }
   }, []);
-
-  useEffect(() => {
-    if (props.value !== undefined) {
-      setValue(props.value);
-    }
-    setInitialValue(props.value == undefined ? null : props.value);
-  }, [props.value]);
 
   const customStyles = {
     control: (provided: any, state: { isFocused: any }) => ({
@@ -103,35 +100,15 @@ function _CamsSelectMulti(
   };
 
   function clearValue() {
-    if (camsSelectRef.current && Object.hasOwn(camsSelectRef.current, 'clearValue')) {
-      (camsSelectRef.current as InputRef).clearValue();
-    }
+    if (camsSelectRef.current) camsSelectRef.current.clearValue();
   }
 
   function resetValue() {
-    type SelectRef = {
-      setValue: (option: Record<string, string>, foo: string) => void;
-    };
-
-    if (camsSelectRef.current && Object.hasOwn(camsSelectRef.current, 'setValue')) {
-      const option = props.options.find((option) => option.value == initialValue);
-      if (option) {
-        (camsSelectRef.current as SelectRef).setValue(option, 'select-option');
-      }
-    }
+    setValue(props.value ?? []);
   }
 
-  function setValue(value: string) {
-    type SelectRef = {
-      setValue: (option: Record<string, string>, foo: string) => void;
-    };
-
-    if (camsSelectRef.current && Object.hasOwn(camsSelectRef.current, 'setValue')) {
-      const option = props.options.find((option) => option.value == value);
-      if (option) {
-        (camsSelectRef.current as SelectRef).setValue(option, 'select-option');
-      }
-    }
+  function setValue(value: MultiSelectOptionList) {
+    if (camsSelectRef.current) camsSelectRef.current.setValue(value, 'select-option');
   }
 
   function getValue(): MultiSelectOptionList {
@@ -161,10 +138,6 @@ function _CamsSelectMulti(
     };
   });
 
-  useEffect(() => {
-    if (initialValue) setValue(initialValue);
-  }, []);
-
   return (
     <div className="usa-form-group">
       <label
@@ -189,6 +162,7 @@ function _CamsSelectMulti(
         isMulti={true}
         isDisabled={isDisabled}
         required={props.required}
+        value={internalValue}
       ></ReactSelect>
     </div>
   );
