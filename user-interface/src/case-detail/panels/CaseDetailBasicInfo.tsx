@@ -4,7 +4,7 @@ import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
-import { consolidationType } from '@/lib/utils/labels';
+import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal, {
   AssignAttorneyModalRef,
@@ -286,7 +286,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
               </div>
               <ul className="usa-list usa-list--unstyled">
                 <div className="consolidation case-card">
-                  <h4>{consolidationType.get(caseDetail.consolidation[0].consolidationType)}</h4>
+                  <h4>{consolidationTypeMap.get(caseDetail.consolidation[0].consolidationType)}</h4>
                   <div>
                     {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
                       <span className="case-detail-item-name">Lead Case: (this case)</span>

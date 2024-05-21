@@ -8,6 +8,7 @@ import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import React from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { ConsolidationOrderCase } from '@common/cams/orders';
 
 describe('test ConsolidationCasesTable component', () => {
   function renderWithProps(
@@ -21,7 +22,7 @@ describe('test ConsolidationCasesTable component', () => {
       updateAllSelections: props?.updateAllSelections ?? vi.fn(),
       isDataEnhanced: props?.isDataEnhanced ?? true,
       displayDocket: props?.displayDocket ?? false,
-      onMarkLead: (_caseId: string) => {},
+      onMarkLead: (_bCase: ConsolidationOrderCase) => {},
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -195,7 +196,7 @@ describe('test ConsolidationCasesTable component', () => {
     let selectedLeadCaseIndex = 0;
     leadCaseButton = screen.getByTestId(`button-assign-lead-${selectedLeadCaseIndex}`);
     fireEvent.click(leadCaseButton);
-    expect(onMarkLead.mock.calls[0][0]).toEqual(props.cases[selectedLeadCaseIndex].caseId);
+    expect(onMarkLead.mock.calls[0][0]).toEqual(props.cases[selectedLeadCaseIndex]);
 
     leadCaseButtons.forEach((button) => {
       if (leadCaseButton.id === button.id) {
@@ -212,7 +213,7 @@ describe('test ConsolidationCasesTable component', () => {
     selectedLeadCaseIndex = 1;
     leadCaseButton = screen.getByTestId(`button-assign-lead-${selectedLeadCaseIndex}`);
     fireEvent.click(leadCaseButton);
-    expect(onMarkLead.mock.calls[1][0]).toEqual(props.cases[selectedLeadCaseIndex].caseId);
+    expect(onMarkLead.mock.calls[1][0]).toEqual(props.cases[selectedLeadCaseIndex]);
 
     leadCaseButtons.forEach((button) => {
       if (leadCaseButton.id === button.id) {
@@ -225,7 +226,7 @@ describe('test ConsolidationCasesTable component', () => {
     });
 
     fireEvent.click(leadCaseButton);
-    expect(onMarkLead.mock.calls[2][0]).toEqual(props.cases[selectedLeadCaseIndex].caseId);
+    expect(onMarkLead.mock.calls[2][0]).toEqual(props.cases[selectedLeadCaseIndex]);
     leadCaseButtons.forEach((button) => {
       expect(button).toHaveClass(UswdsButtonStyle.Outline);
       expect(button).toHaveTextContent('Mark as Lead');
