@@ -2,7 +2,7 @@ import { Consolidation, EventCaseReference } from '@common/cams/events';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
-import { consolidationType } from '@/lib/utils/labels';
+import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
@@ -23,7 +23,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
       {!isAssociatedCasesLoading && (
         <>
           <h3>Consolidated cases ({consolidation.length})</h3>
-          <h4>{consolidationType.get(consolidation[0].consolidationType)}</h4>
+          <h4>{consolidationTypeMap.get(consolidation[0].consolidationType)}</h4>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-12">
               <table

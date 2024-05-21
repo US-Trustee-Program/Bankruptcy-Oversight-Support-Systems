@@ -9,6 +9,7 @@ import {
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
   ConsolidationOrderCase,
+  ConsolidationType,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
@@ -24,6 +25,12 @@ import './ConsolidationOrderAccordion.scss';
 import { useApi } from '@/lib/hooks/UseApi';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 import { Consolidation } from '@common/cams/events';
+import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
+import Radio from '@/lib/components/uswds/Radio';
+import Checkbox from '@/lib/components/uswds/Checkbox';
+import CamsSelect from '@/lib/components/CamsSelect';
+import { getOfficeList } from '@/data-verification/dataVerificationHelper';
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -55,6 +62,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
+  const [leadCaseId, setLeadCaseId] = useState<string>('');
+  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
 
   const api = useApi();
 
@@ -200,13 +209,25 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     );
   }
 
+  function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
+    if (leadCaseId === bCase.caseId) {
+      setLeadCaseId('');
+    } else {
+      setLeadCaseId(bCase.caseId);
+    }
+  }
+
+  function handleSelectConsolidationType(event: React.ChangeEvent<HTMLInputElement>): void {
+    setConsolidationType(event.target.value as ConsolidationType);
+  }
+
   useEffect(() => {
-    if (selectedCases.length) {
+    if (selectedCases.length && leadCaseId !== '' && consolidationType !== null) {
       enableButtons();
     } else {
       disableButtons();
     }
-  }, [selectedCases, isDataEnhanced]);
+  }, [selectedCases, leadCaseId, isDataEnhanced, consolidationType]);
 
   return (
     <Accordion
@@ -253,6 +274,34 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           >
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
+              <div className="grid-col-2">
+                <h3>Type</h3>
+                <RadioGroup
+                  className="consolidation-type-container"
+                  label="Consolidation Type"
+                  required={true}
+                >
+                  <Radio
+                    id={`joint-admin-${order.id}`}
+                    name="consolidation-type"
+                    label="Joint Administration"
+                    value="administrative"
+                    onChange={handleSelectConsolidationType}
+                  />
+                  <Radio
+                    id={`substantive-${order.id}`}
+                    name="consolidation-type"
+                    label="Substantive"
+                    value="substantive"
+                    onChange={handleSelectConsolidationType}
+                  />
+                </RadioGroup>
+              </div>
+              <div className="grid-col-8"></div>
+              <div className="grid-col-1"></div>
+            </div>
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <ConsolidationCaseTable
                   id={`${order.id}-case-list`}
@@ -262,11 +311,67 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   updateAllSelections={updateAllSelections}
                   isDataEnhanced={isDataEnhanced}
                   ref={caseTable}
+                  onMarkLead={handleMarkLeadCase}
                 ></ConsolidationCaseTable>
               </div>
               <div className="grid-col-1"></div>
             </div>
-
+            <div className="button-bar grid-row grid-gap-lg">
+              <div className="grid-col-1"></div>
+              <div className="grid-col-3">
+                <h3>Lead Case Not Listed</h3>
+                <Checkbox
+                  id={`lead-case-form-checkbox-toggle-${order.id}`}
+                  className="checkbox-toggle"
+                  // onChange={toggleAllCheckBoxes}
+                  value="hello"
+                  // ref={toggleCheckboxRef}
+                  label="Select to enable lead case form."
+                ></Checkbox>
+                <div className="lead-case-court-container">
+                  <CamsSelect
+                    id={'lead-case-court'}
+                    required={true}
+                    options={getOfficeList(filteredOfficesList ?? props.officesList)}
+                    // onChange={handleSelectLeadCaseCourt}
+                    // ref={leadCaseDivisionRef}
+                    label="Lead Case Court"
+                    // value={getUniqueDivisionCodeOrUndefined()}
+                    isSearchable={true}
+                  />
+                </div>
+                <div className="lead-case-number-container">
+                  <CaseNumberInput
+                    id={`lead-case-input-${order.id}`}
+                    data-testid={`lead-case-input-${order.id}`}
+                    className="usa-input"
+                    onChange={() => {}}
+                    aria-label="Lead case number"
+                    required={true}
+                    label="Lead Case Number"
+                    // ref={leadCaseNumberRef}
+                  />
+                  {/*{leadCaseNumberError ? (*/}
+                  {/*  <Alert*/}
+                  {/*    message={leadCaseNumberError}*/}
+                  {/*    type={UswdsAlertStyle.Error}*/}
+                  {/*    show={true}*/}
+                  {/*    noIcon={true}*/}
+                  {/*    slim={true}*/}
+                  {/*    inline={true}*/}
+                  {/*  ></Alert>*/}
+                  {/*) : (*/}
+                  {/*  <LoadingSpinner*/}
+                  {/*    caption="Verifying lead case number..."*/}
+                  {/*    height="40px"*/}
+                  {/*    hidden={!isLoading}*/}
+                  {/*  />*/}
+                  {/*)}*/}
+                </div>
+              </div>
+              <div className="grid-col-7"></div>
+              <div className="grid-col-1"></div>
+            </div>
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10 text-no-wrap float-right">
@@ -298,6 +403,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     confirmationModalRef.current?.show({
                       status: 'approved',
                       cases: selectedCases,
+                      leadCaseId: leadCaseId,
+                      consolidationType: consolidationType,
                     })
                   }
                   disabled={true}
@@ -311,7 +418,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <ConsolidationOrderModal
               ref={confirmationModalRef}
               id={`confirmation-modal-${order.id}`}
-              courts={filteredOfficesList ?? props.officesList}
               onCancel={clearInputs}
               onConfirm={confirmAction}
             ></ConsolidationOrderModal>

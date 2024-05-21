@@ -87,6 +87,7 @@ function getConsolidatedOrderCase(
     ...getCaseSummary({ entityType: entityType }),
     orderDate: docketEntries[0].dateFiled,
     docketEntries,
+    attorneyAssignments: override.attorneyAssignments ?? [getAttorneyAssignment()],
   };
 
   return { ...consolidatedCaseSummary, ...override };
