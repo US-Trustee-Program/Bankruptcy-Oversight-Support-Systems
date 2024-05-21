@@ -224,8 +224,17 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function handleSelectConsolidationType(event: React.ChangeEvent<HTMLInputElement>): void {
-    setConsolidationType(event.target.value as ConsolidationType);
+  function handleSelectConsolidationType(value: string): void {
+    setConsolidationType(value as ConsolidationType);
+  }
+
+  function handleApproveButtonClick() {
+    confirmationModalRef.current?.show({
+      status: 'approved',
+      cases: selectedCases,
+      leadCase: leadCase,
+      consolidationType: consolidationType,
+    });
   }
 
   useEffect(() => {
@@ -293,6 +302,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     name="consolidation-type"
                     label="Joint Administration"
                     value="administrative"
+                    className="text-no-wrap"
                     onChange={handleSelectConsolidationType}
                   />
                   <Radio
@@ -407,14 +417,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 </Button>
                 <Button
                   id={`accordion-approve-button-${order.id}`}
-                  onClick={() =>
-                    confirmationModalRef.current?.show({
-                      status: 'approved',
-                      cases: selectedCases,
-                      leadCase: leadCase,
-                      consolidationType: consolidationType,
-                    })
-                  }
+                  onClick={handleApproveButtonClick}
                   disabled={true}
                   ref={approveButtonRef}
                 >
