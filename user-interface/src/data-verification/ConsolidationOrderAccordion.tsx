@@ -63,6 +63,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
   const [leadCaseId, setLeadCaseId] = useState<string>('');
+  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
 
   const api = useApi();
@@ -111,6 +112,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     caseTable.current?.clearAllCheckboxes();
     disableButtons();
     setSelectedCases([]);
+    setLeadCase(null);
+    // TODO
+    // clear type radio input
+    // clear mark lead case button styling
   }
 
   function confirmAction(action: ConfirmActionResults): void {
@@ -125,14 +130,14 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function approveConsolidation(action: ConfirmActionResults) {
-    if (action.status === 'approved') {
+    if (action.status === 'approved' && leadCase && consolidationType) {
       const data: ConsolidationOrderActionApproval = {
         ...order,
-        consolidationType: action.consolidationType,
+        consolidationType,
         approvedCases: selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== action.leadCaseSummary.caseId),
-        leadCase: action.leadCaseSummary,
+          .filter((caseId) => caseId !== leadCase.caseId),
+        leadCase,
       };
 
       api
@@ -212,8 +217,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
     if (leadCaseId === bCase.caseId) {
       setLeadCaseId('');
+      setLeadCase(null);
     } else {
       setLeadCaseId(bCase.caseId);
+      setLeadCase(bCase);
     }
   }
 
@@ -389,6 +396,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     confirmationModalRef.current?.show({
                       status: 'rejected',
                       cases: selectedCases,
+                      leadCase: leadCase,
                     })
                   }
                   uswdsStyle={UswdsButtonStyle.Outline}
@@ -403,7 +411,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     confirmationModalRef.current?.show({
                       status: 'approved',
                       cases: selectedCases,
-                      leadCaseId: leadCaseId,
+                      leadCase: leadCase,
                       consolidationType: consolidationType,
                     })
                   }
