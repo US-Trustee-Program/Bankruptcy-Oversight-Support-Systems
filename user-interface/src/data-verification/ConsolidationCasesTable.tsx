@@ -3,18 +3,19 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { ConsolidationOrderCase } from '@common/cams/orders';
 import {
-  SyntheticEvent,
   forwardRef,
-  useImperativeHandle,
-  useState,
   ReactNode,
+  SyntheticEvent,
+  useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
@@ -28,19 +29,22 @@ export interface ConsolidationCaseTableProps {
   updateAllSelections?: (caseList: ConsolidationOrderCase[]) => void;
   isDataEnhanced: boolean;
   displayDocket?: boolean;
+  onMarkLead?: (bCase: ConsolidationOrderCase) => void;
 }
 
 function _ConsolidationCaseTable(
   props: ConsolidationCaseTableProps,
   OrderTableRef: React.Ref<OrderTableImperative>,
 ) {
-  const { id, cases, onSelect, updateAllSelections } = props;
+  const { id, cases, onSelect, updateAllSelections, onMarkLead } = props;
 
   const toggleCheckboxRef = useRef<CheckboxRef>(null);
   const [included, setIncluded] = useState<Array<number>>([]);
   const [checkboxGroupState, _setCheckboxGroupState] = useState<CheckboxState>(
     CheckboxState.UNCHECKED,
   );
+  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
+
   const setCheckboxGroupState = (groupState: CheckboxState) => {
     toggleCheckboxRef.current?.setChecked(groupState);
     _setCheckboxGroupState(groupState);
@@ -66,6 +70,8 @@ function _ConsolidationCaseTable(
       setCheckboxGroupState(CheckboxState.CHECKED);
     }
 
+    // TODO: see if removing the assignment here breaks things
+    // if (onSelect) onSelect(cases[idx]);
     const _case = cases[idx];
     if (onSelect) onSelect(_case);
   }
@@ -101,6 +107,25 @@ function _ConsolidationCaseTable(
     } else {
       selectAllCheckboxes();
     }
+  }
+
+  function handleLeadCaseButton(bCase: ConsolidationOrderCase) {
+    if (leadCase && leadCase.caseId === bCase.caseId) {
+      setLeadCase(null);
+    } else {
+      setLeadCase(bCase);
+    }
+    if (onMarkLead) onMarkLead(bCase);
+  }
+
+  function setLeadCaseStyle(caseId: string) {
+    return leadCase && leadCase.caseId === caseId
+      ? UswdsButtonStyle.Default
+      : UswdsButtonStyle.Outline;
+  }
+
+  function setLeadCaseButtonLabels(caseId: string): ReactNode {
+    return leadCase && leadCase.caseId === caseId ? 'Lead Case' : 'Mark as Lead';
   }
 
   useImperativeHandle(OrderTableRef, () => ({
@@ -155,7 +180,11 @@ function _ConsolidationCaseTable(
                     </td>
                   )}
                   <td scope="row">
-                    <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+                    <div className="my-stuff">
+                      <div>
+                        <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+                      </div>
+                    </div>
                   </td>
                   <td scope="row">{bCase.caseTitle}</td>
                   <td scope="row" className="text-no-wrap">
@@ -194,6 +223,16 @@ function _ConsolidationCaseTable(
                 >
                   {onSelect && <td></td>}
                   <td colSpan={5} className="measure-6">
+                    <div>
+                      <Button
+                        id={`assign-lead-${idx}`}
+                        uswdsStyle={setLeadCaseStyle(bCase.caseId)}
+                        className="mark-as-lead-button"
+                        onClick={() => handleLeadCaseButton(bCase)}
+                      >
+                        {setLeadCaseButtonLabels(bCase.caseId)}
+                      </Button>
+                    </div>
                     {!bCase.docketEntries && <>No docket entries</>}
                     {bCase.docketEntries &&
                       bCase.docketEntries.map((docketEntry, idx) => {

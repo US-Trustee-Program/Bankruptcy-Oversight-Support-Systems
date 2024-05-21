@@ -110,6 +110,19 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
   }
 
+  function selectTypeAndLead() {
+    const approveButton = document.querySelector(
+      `#accordion-approve-button-${order.id}`,
+    ) as HTMLButtonElement;
+    const markAsLeadButton = screen.getByTestId('button-assign-lead-0');
+    fireEvent.click(markAsLeadButton);
+
+    expect(approveButton).not.toBeEnabled();
+
+    const consolidationTypeRadios = document.querySelectorAll('input[name="consolidation-type"]');
+    fireEvent.click(consolidationTypeRadios[0]);
+  }
+
   test('should render an order heading', async () => {
     renderWithProps();
     const heading = findAccordionHeading(order.id!);
@@ -178,6 +191,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const includeAllButton = document.querySelector(`.checkbox-toggle label`);
 
+    selectTypeAndLead();
+
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
@@ -230,6 +245,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     const checkbox: HTMLInputElement = screen.getByTestId(
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
+
+    selectTypeAndLead();
+
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
@@ -255,6 +273,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     const checkbox: HTMLInputElement = screen.getByTestId(
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
+
+    selectTypeAndLead();
+
     fireEvent.click(checkbox);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -294,6 +315,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
     fireEvent.click(checkbox);
+
+    selectTypeAndLead();
+
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
@@ -346,6 +370,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
     fireEvent.click(checkbox);
+
+    selectTypeAndLead();
+
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
@@ -405,6 +432,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
     fireEvent.click(checkbox);
+
+    selectTypeAndLead();
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
@@ -475,6 +505,14 @@ describe('ConsolidationOrderAccordion tests', () => {
       `checkbox-case-selection-${order.id}-case-list-0`,
     );
     fireEvent.click(checkbox);
+
+    selectTypeAndLead();
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    fireEvent.click(approveButton as HTMLButtonElement);
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
@@ -542,6 +580,14 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     fireEvent.click(checkbox1);
     fireEvent.click(checkbox2);
+    expect(approveButton).not.toBeEnabled();
+
+    selectTypeAndLead();
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    fireEvent.click(approveButton as HTMLButtonElement);
 
     await waitFor(() => {
       expect(checkbox1.checked).toBeTruthy();
@@ -576,6 +622,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(checkbox1);
     fireEvent.click(checkbox2);
 
+    selectTypeAndLead();
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    fireEvent.click(approveButton as HTMLButtonElement);
+
     await waitFor(() => {
       expect(checkbox1.checked).toBeTruthy();
       expect(checkbox2.checked).toBeTruthy();
@@ -608,6 +661,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
 
     fireEvent.click(includeAllButton!);
+
+    selectTypeAndLead();
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    fireEvent.click(approveButton as HTMLButtonElement);
 
     await waitFor(() => {
       for (const checkbox of checkboxList) {

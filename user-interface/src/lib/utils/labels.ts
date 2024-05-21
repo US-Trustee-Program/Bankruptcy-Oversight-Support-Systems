@@ -11,7 +11,7 @@ export const orderType = new Map<OrderType, string>([
   ['consolidation', 'Consolidation'],
 ]);
 
-export const consolidationType = new Map<ConsolidationType, string>([
+export const consolidationTypeMap = new Map<ConsolidationType, string>([
   ['administrative', 'Joint Administration'],
   ['substantive', 'Substantive Consolidation'],
 ]);
