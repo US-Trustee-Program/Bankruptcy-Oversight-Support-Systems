@@ -1,4 +1,4 @@
-import { ChangeEventHandler, forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { RadioRef } from '../../type-declarations/input-fields';
 
 export interface RadioProps {
@@ -6,7 +6,7 @@ export interface RadioProps {
   className?: string;
   name: string;
   label: string;
-  onChange?: ChangeEventHandler<HTMLInputElement>;
+  onChange?: (value: string) => void;
   disabled?: boolean;
   value: string;
   checked?: boolean;
@@ -15,20 +15,26 @@ export interface RadioProps {
 
 function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   const [isDisabled, setIsDisabled] = useState<boolean>(props.disabled ?? false);
-  const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function isChecked() {
+    return inputRef.current?.checked;
+  }
 
   function disable(value: boolean) {
     setIsDisabled(value);
   }
 
   function checked(value: boolean) {
-    setIsChecked(value);
+    return inputRef.current?.checked === value;
   }
 
-  function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setIsChecked(ev.target.checked);
-    if (props.onChange) {
-      props.onChange(ev);
+  function handleOnChange(_ev: React.MouseEvent<HTMLLabelElement>) {
+    if (inputRef.current?.checked !== undefined)
+      inputRef.current.checked = !inputRef.current.checked;
+
+    if (props.onChange && inputRef.current?.value) {
+      props.onChange(inputRef.current?.value);
     }
   }
 
@@ -41,16 +47,17 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         id={props.id}
         type="radio"
         name={props.name}
-        onChange={handleOnChange}
         data-testid={props.id}
         disabled={isDisabled}
         value={props.value}
-        checked={isChecked}
+        checked={isChecked()}
         required={props.required}
+        ref={inputRef}
       />
       <label
         className="usa-radio__label"
         htmlFor={props.id}
+        onClick={handleOnChange}
         data-testid={`${props.id}-click-target`}
       >
         {props.label}
