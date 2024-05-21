@@ -8,7 +8,8 @@ export interface InputRef {
 
 export interface RadioRef {
   disable: (value: boolean) => void;
-  checked: (value: boolean) => void;
+  check: (value: boolean) => void;
+  isChecked: () => boolean;
 }
 
 export interface DateRange {

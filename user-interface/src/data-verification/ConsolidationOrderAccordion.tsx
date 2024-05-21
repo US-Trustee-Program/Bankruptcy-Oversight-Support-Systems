@@ -31,6 +31,7 @@ import Checkbox from '@/lib/components/uswds/Checkbox';
 import CamsSelect from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import { RadioRef } from '@/lib/type-declarations/input-fields';
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -55,6 +56,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const rejectButtonRef = useRef<ButtonRef>(null);
+  const jointAdministrationRef = useRef<RadioRef>(null);
+  const substantiveRef = useRef<RadioRef>(null);
 
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
@@ -115,6 +118,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setLeadCase(null);
     // TODO
     // clear type radio input
+    jointAdministrationRef.current?.check(false);
+    substantiveRef.current?.check(false);
     // clear mark lead case button styling
   }
 
@@ -304,6 +309,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     value="administrative"
                     className="text-no-wrap"
                     onChange={handleSelectConsolidationType}
+                    ref={jointAdministrationRef}
                   />
                   <Radio
                     id={`substantive-${order.id}`}
@@ -311,6 +317,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     label="Substantive"
                     value="substantive"
                     onChange={handleSelectConsolidationType}
+                    ref={substantiveRef}
                   />
                 </RadioGroup>
               </div>

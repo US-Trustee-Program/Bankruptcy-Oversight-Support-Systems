@@ -18,15 +18,15 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function isChecked() {
-    return inputRef.current?.checked;
+    return inputRef.current?.checked ?? false;
   }
 
   function disable(value: boolean) {
     setIsDisabled(value);
   }
 
-  function checked(value: boolean) {
-    return inputRef.current?.checked === value;
+  function check(value: boolean) {
+    if (inputRef.current) inputRef.current.checked = value;
   }
 
   function handleOnChange(_ev: React.MouseEvent<HTMLLabelElement>) {
@@ -38,7 +38,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
     }
   }
 
-  useImperativeHandle(ref, () => ({ checked, disable }));
+  useImperativeHandle(ref, () => ({ check, disable, isChecked }));
 
   return (
     <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
