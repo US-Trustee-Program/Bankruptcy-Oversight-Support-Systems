@@ -10,7 +10,6 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -449,18 +448,14 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modal).toHaveStyle({ display: 'block' });
     });
 
-    // select the lead case in the modal and click the submit button.
-    selectItemInMockSelect('lead-case-court', 1);
-    const modalCaseNumberInput = screen.getByTestId(
-      `lead-case-input-confirmation-modal-${order.id}`,
-    );
-    fireEvent.change(modalCaseNumberInput!, {
-      target: { value: getCaseNumber(leadCase.caseId) },
-    });
-    const adminRadioButton = screen.getByTestId(
-      `radio-administrative-confirmation-modal-${order.id}`,
-    );
-    fireEvent.click(adminRadioButton);
+    //// select the lead case in the modal and click the submit button.
+    //selectItemInMockSelect('lead-case-court', 1);
+    //const modalCaseNumberInput = screen.getByTestId(
+    //  `lead-case-input-confirmation-modal-${order.id}`,
+    //);
+    //fireEvent.change(modalCaseNumberInput!, {
+    //  target: { value: getCaseNumber(leadCase.caseId) },
+    //});
 
     const modalApproveButton = screen.getByTestId(
       `button-confirmation-modal-${order.id}-submit-button`,
@@ -470,9 +465,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalApproveButton).toBeEnabled();
     });
 
-    // click "continue" button on first screen of the modal.
-    fireEvent.click(modalApproveButton);
-    // click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {
@@ -493,7 +485,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
     openAccordion(order.id!);
 
-    const leadCase = order.childCases[0];
     setupApiGetMock();
 
     const errorMessage = 'Some random error';
@@ -527,19 +518,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modal).toHaveStyle({ display: 'block' });
     });
 
-    // select the lead case in the modal and click the submit button.
-    selectItemInMockSelect('lead-case-court', 1);
-    const modalCaseNumberInput = screen.getByTestId(
-      `lead-case-input-confirmation-modal-${order.id}`,
-    );
-    fireEvent.change(modalCaseNumberInput!, {
-      target: { value: getCaseNumber(leadCase.caseId) },
-    });
-    const adminRadioButton = screen.getByTestId(
-      `radio-administrative-confirmation-modal-${order.id}`,
-    );
-    fireEvent.click(adminRadioButton);
-
     const modalApproveButton = screen.getByTestId(
       `button-confirmation-modal-${order.id}-submit-button`,
     );
@@ -548,9 +526,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalApproveButton).toBeEnabled();
     });
 
-    //click "continue" button on first screen of the modal.
-    fireEvent.click(modalApproveButton);
-    //click "verify" button on second screen of the modal.
     fireEvent.click(modalApproveButton);
 
     await waitFor(() => {

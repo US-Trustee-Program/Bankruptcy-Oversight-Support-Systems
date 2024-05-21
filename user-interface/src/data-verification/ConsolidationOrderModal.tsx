@@ -1,16 +1,14 @@
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { useGenericApi } from '@/lib/hooks/UseApi';
 import useWindowSize from '@/lib/hooks/UseWindowSize';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { CaseAssignment } from '@common/cams/assignments';
-import { CaseSummary } from '@common/cams/cases';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './ConsolidationOrderModal.scss';
-import { Consolidation } from '@common/cams/events';
+import { OfficeDetails } from '@common/cams/courts';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -23,8 +21,6 @@ export type ConfirmActionRejectionResults = {
 
 export type ConfirmActionApprovalResults = {
   status: 'approved';
-  leadCaseSummary: CaseSummary;
-  consolidationType: ConsolidationType;
 };
 
 export type ConfirmActionResults =
@@ -36,12 +32,13 @@ export interface ConsolidationOrderModalProps {
   id: string;
   onCancel: () => void;
   onConfirm: (results: ConfirmActionResults) => void;
+  courts?: OfficeDetails[];
 }
 
 type ShowOptionParams = {
   status: OrderStatus;
   cases: ConsolidationOrderCase[];
-  leadCaseId?: string;
+  leadCase: ConsolidationOrderCase;
   consolidationType?: ConsolidationType;
 };
 
@@ -54,26 +51,21 @@ export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
-export async function getCaseAssignments(caseId: string) {
-  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
-}
-
-export async function getCaseAssociations(caseId: string) {
-  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
-}
-
-export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = await getCaseAssignments(leadCaseId);
-  return caseAssignments.map((assignment) => assignment.name);
-}
-
-export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
-  const divisionCodeSet = cases.reduce((set, bCase) => {
-    set.add(bCase.courtDivisionCode);
-    return set;
-  }, new Set<string>());
-  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
-}
+//export async function getCaseAssignments(caseId: string) {
+//  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
+//}
+//
+//export async function getCaseAssociations(caseId: string) {
+//  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
+//}
+//
+//export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
+//  const divisionCodeSet = cases.reduce((set, bCase) => {
+//    set.add(bCase.courtDivisionCode);
+//    return set;
+//  }, new Set<string>());
+//  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
+//}
 
 export function formatListForDisplay(attorneys: string[]) {
   if (attorneys.length === 0) {
@@ -93,9 +85,7 @@ function ConsolidationOrderModalComponent(
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
   const [childCasesDivHeight, setChildCasesDivHeight] = useState<string>('');
   const [consolidationType, setConsolidationType] = useState<ConsolidationType>();
-  const [leadCaseId, setLeadCaseId] = useState<string>('');
-  const [leadCaseAttorneys, setLeadCaseAttorneys] = useState<string[]>([]);
-  const [leadCaseSummary, _setLeadCaseSummary] = useState<CaseSummary | null>(null);
+  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
     heading: '',
@@ -117,8 +107,6 @@ function ConsolidationOrderModalComponent(
   async function confirm() {
     onConfirm({
       status: 'approved',
-      leadCaseSummary: leadCaseSummary!,
-      consolidationType: consolidationType!,
     });
   }
 
@@ -159,17 +147,14 @@ function ConsolidationOrderModalComponent(
 
   function show(options: ShowOptionParams) {
     setCases(options.cases);
-    if (options.status === 'approved' && options.leadCaseId && options.consolidationType) {
-      modalRef.current?.buttons?.current?.disableSubmitButton(true);
+    if (options.status === 'approved' && options.leadCase && options.consolidationType) {
+      // modalRef.current?.buttons?.current?.disableSubmitButton(false);
       setConsolidationType(options.consolidationType);
-      setLeadCaseId(options.leadCaseId);
+      setLeadCase(options.leadCase);
       setOptions({
         status: options.status,
         heading: 'Approve Case Consolidation',
       });
-      fetchLeadCaseAttorneys(options.leadCaseId).then((caseAttorneys) =>
-        setLeadCaseAttorneys(caseAttorneys),
-      );
     } else if (options.status === 'rejected') {
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
       setOptions({
@@ -191,7 +176,6 @@ function ConsolidationOrderModalComponent(
     //   leadCaseDivisionRef.current?.clearValue();
     //   setLeadCaseNumber('');
     //   leadCaseNumberRef.current?.clearValue();
-    //   setLeadCaseSummary(null);
   }
 
   function resizeModal() {
@@ -218,6 +202,11 @@ function ConsolidationOrderModalComponent(
         setChildCasesDivHeight(`${finalSize}px`);
       }
     }
+  }
+
+  function getAssigneeNames(assignees: CaseAssignment[]) {
+    if (assignees?.length) return assignees.map((assignee) => assignee.name);
+    else return [];
   }
 
   useEffect(() => {
@@ -283,9 +272,12 @@ function ConsolidationOrderModalComponent(
           </ul>
         </div>
         <div className="modal-assignments-list">
-          with <span className="text-bold">{getCaseNumber(leadCaseId)}</span> as the Lead Case. All
-          cases will be assigned to{' '}
-          <span className="text-bold">{formatListForDisplay(leadCaseAttorneys)}</span>.
+          with <span className="text-bold">{getCaseNumber(leadCase?.caseId)}</span> as the Lead
+          Case. All cases will be assigned to{' '}
+          <span className="text-bold">
+            {formatListForDisplay(getAssigneeNames(leadCase?.attorneyAssignments ?? []))}
+          </span>
+          .
         </div>
       </div>
     );
