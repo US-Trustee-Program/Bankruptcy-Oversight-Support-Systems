@@ -53,7 +53,6 @@ export default defineConfig({
       reporter: ['text', 'html'],
       exclude: [
         '**/index.tsx',
-        '**/reportWebVitals.ts',
         '**/.dependency-cruiser.js',
         'src/configuration/apiConfiguration.ts',
         'node_modules/',
