@@ -661,7 +661,7 @@ describe('Test DXTR Gateway', () => {
   describe('getSuggestedCases tests', () => {
     test('should return decorated transferred cases', async () => {
       // Test case summary
-      const testCase = MockData.getCaseDetail();
+      const testCase = MockData.getCaseSummary();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: {

@@ -357,28 +357,16 @@ describe('Case management tests', () => {
     const caseNumber = '00-00000';
 
     test('should return an empty array for no matches', async () => {
-      const expected = {
-        success: true,
-        message: '',
-        count: 0,
-        body: [],
-      };
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
       const actual = await useCase.searchCases({ caseNumber });
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual([]);
     });
 
     test('should return a match', async () => {
       const caseList = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
-      const expected = {
-        success: true,
-        message: '',
-        count: caseList.length,
-        body: caseList,
-      };
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(caseList);
       const actual = await useCase.searchCases({ caseNumber });
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual(caseList);
     });
 
     test('should throw UnknownError', async () => {

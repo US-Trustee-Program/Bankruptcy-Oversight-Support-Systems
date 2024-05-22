@@ -1,10 +1,19 @@
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
 import { CaseManagement } from '../../use-cases/case-management';
 import { CasesController } from './cases.controller';
+import { ResponseBodySuccess } from '../../../../../common/src/api/response';
+import { CaseBasics } from '../../../../../common/src/cams/cases';
+import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
+import {
+  mockCamsHttpRequest,
+  mockRequestUrl,
+} from '../../testing/mock-data/cams-http-request-helper';
 
 const context = require('azure-function-context-mock');
+
+const limit = '25';
+const offset = '25';
 
 const caseId1 = '081-11-06541';
 const caseId2 = '081-14-03544';
@@ -57,30 +66,65 @@ describe('cases controller test', () => {
 
   describe('searchCases', () => {
     test('should return an empty array for no matches', async () => {
-      const expected = {
-        success: true,
-        message: '',
-        count: 0,
-        body: [],
+      const expected: ResponseBodySuccess<CaseBasics[]> = {
+        meta: {
+          isPaginated: true,
+          count: 0,
+          self: mockRequestUrl,
+          next: `${mockRequestUrl}?limit=${limit}&offset=${offset}`,
+        },
+        isSuccess: true,
+        data: [],
       };
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(expected);
+      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
 
-      const actual = await controller.searchCases({ caseNumber: '00-00000' });
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
     test('should return search results for a caseNumber', async () => {
       const caseNumber = '00-00000';
-      const expected = {
-        success: true,
-        message: '',
-        count: 0,
-        body: [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })],
+      const data = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
+      const expected: ResponseBodySuccess<CaseBasics[]> = {
+        meta: {
+          isPaginated: true,
+          count: data.length,
+          self: mockRequestUrl,
+          next: `${mockRequestUrl}?limit=${limit}&offset=${offset}`,
+        },
+        isSuccess: true,
+        data,
       };
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(expected);
+      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const actual = await controller.searchCases({ caseNumber });
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
+      const actual = await controller.searchCases(camsHttpRequest);
+      expect(actual).toEqual(expected);
+    });
+
+    test('should handle non-default predicate values', async () => {
+      const caseNumber = '00-00000';
+      const limit = '50';
+      const offset = '50';
+      const nextOffset = '100';
+      const data = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
+      const expected: ResponseBodySuccess<CaseBasics[]> = {
+        meta: {
+          isPaginated: true,
+          count: data.length,
+          self: mockRequestUrl,
+          next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
+        },
+        isSuccess: true,
+        data,
+      };
+
+      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber, limit, offset } });
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -90,7 +134,8 @@ describe('cases controller test', () => {
         .spyOn(CaseManagement.prototype, 'searchCases')
         .mockRejectedValue(new Error('some error'));
 
-      await expect(controller.searchCases({ caseNumber })).rejects.toThrow('some error');
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
+      await expect(controller.searchCases(camsHttpRequest)).rejects.toThrow('some error');
     });
   });
 });

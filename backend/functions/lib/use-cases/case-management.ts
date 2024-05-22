@@ -1,10 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import {
-  CaseDetailsDbResult,
-  CaseListDbResult,
-  CaseSummaryListDbResult,
-} from '../adapters/types/cases';
-import { CaseDetail, SearchPredicate } from '../../../../common/src/cams/cases';
+import { CaseDetailsDbResult, CaseListDbResult } from '../adapters/types/cases';
+import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
@@ -14,6 +10,7 @@ import { AssignmentError } from './assignment.exception';
 import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 import { CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -71,18 +68,12 @@ export class CaseManagement {
   }
 
   public async searchCases(
-    applicationContext: ApplicationContext,
-    searchPredicate: SearchPredicate,
-  ): Promise<CaseSummaryListDbResult> {
+    context: ApplicationContext,
+    predicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]> {
     try {
-      const cases = await this.casesGateway.searchCases(applicationContext, searchPredicate);
-
-      return {
-        success: true,
-        message: '',
-        count: cases.length,
-        body: cases,
-      };
+      const cases = await this.casesGateway.searchCases(context, predicate);
+      return cases;
     } catch (originalError) {
       if (!(originalError instanceof CamsError)) {
         throw new UnknownError(MODULE_NAME, {

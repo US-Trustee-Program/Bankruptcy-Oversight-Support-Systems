@@ -2,7 +2,7 @@ import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { OfficeDetails } from './courts';
 
-export interface CaseSummary extends OfficeDetails {
+export interface CaseBasics extends OfficeDetails {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
   caseId: string;
   chapter: string;
@@ -12,6 +12,9 @@ export interface CaseSummary extends OfficeDetails {
   petitionLabel?: string;
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
+}
+
+export interface CaseSummary extends CaseBasics {
   debtor: Party;
 }
 
@@ -43,8 +46,4 @@ export type CaseDocketEntry = {
   documents?: CaseDocketEntryDocument[];
 };
 
-export type SearchPredicate = {
-  caseNumber?: string;
-  divisionCodes?: string[];
-};
 export type CaseDocket = Array<CaseDocketEntry>;

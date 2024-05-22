@@ -1,6 +1,11 @@
+import { ResponseBodySuccess } from '../../../common/src/api/response';
+import { CaseBasics } from '../../../common/src/cams/cases';
+import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import httpTrigger from './cases.function';
 
 const context = require('azure-function-context-mock');
+
+const searchCasesResults = [MockData.getCaseBasics(), MockData.getCaseBasics()];
 
 jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
   return {
@@ -53,25 +58,16 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
             return result;
           }
         },
-        searchCases: (_params: { caseNumber: string }) => {
+        searchCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
           return {
-            success: true,
-            message: '',
-            count: 2,
-            body: {
-              caseList: [
-                {
-                  caseId: '081-11-06541',
-                  caseTitle: 'Crawford, Turner and Garrett',
-                  dateFiled: '2011-05-20',
-                },
-                {
-                  caseId: '081-14-03544',
-                  caseTitle: 'Ali-Cruz',
-                  dateFiled: '2014-04-23',
-                },
-              ],
+            meta: {
+              isPaginated: true,
+              count: searchCasesResults.length,
+              self: '',
+              next: '',
             },
+            isSuccess: true,
+            data: searchCasesResults,
           };
         },
       };
@@ -116,34 +112,26 @@ describe('Standard case list tests without class mocks', () => {
   test('should perform search', async () => {
     const caseNumber = '00-12345';
     const request = {
-      body: {
+      params: {},
+      query: {
         caseNumber,
       },
-      method: 'POST',
+      method: 'GET',
     };
 
-    const expectedResponseBody = {
-      success: true,
-      message: '',
-      body: {
-        caseList: [
-          {
-            caseId: '081-11-06541',
-            caseTitle: 'Crawford, Turner and Garrett',
-            dateFiled: '2011-05-20',
-          },
-          {
-            caseId: '081-14-03544',
-            caseTitle: 'Ali-Cruz',
-            dateFiled: '2014-04-23',
-          },
-        ],
+    const expectedResponseBody: ResponseBodySuccess<CaseBasics[]> = {
+      meta: {
+        isPaginated: true,
+        count: searchCasesResults.length,
+        self: '',
+        next: '',
       },
-      count: 2,
+      isSuccess: true,
+      data: searchCasesResults,
     };
 
     await httpTrigger(context, request);
 
-    expect(expectedResponseBody).toEqual(context.res.body);
+    expect(context.res.body).toEqual(expectedResponseBody);
   });
 });

@@ -16,7 +16,8 @@ import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
-import { CaseDetail, CaseSummary, SearchPredicate } from '../../../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '../../../../../../common/src/api/search';
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../../common/src/cams/parties';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
@@ -281,12 +282,11 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   public async searchCases(
-    applicationContext: ApplicationContext,
-    searchPredicate: SearchPredicate,
-  ): Promise<CaseSummary[]> {
+    context: ApplicationContext,
+    predicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]> {
     const CASE_SEARCH_SELECT = `
       SELECT
-      TOP 25 -- TODO: Need to remove this when paging is implemented.
       cs.CS_DIV as courtDivisionCode,
       cs.CS_DIV+'-'+cs.CASE_ID as caseId,
       cs.CS_SHORT_TITLE as caseTitle,
@@ -325,33 +325,46 @@ export default class CasesDxtrGateway implements CasesInterface {
       JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
       JOIN [dbo].[AO_TX] AS tx ON tx.CS_CASEID=cs.CS_CASEID AND tx.COURT_ID=cs.COURT_ID AND tx.TX_TYPE='1' AND tx.TX_CODE='1'`;
 
-    const CASE_SEARCH_QUERY_ORDER = 'ORDER BY cs.CS_DATE_FILED DESC';
+    const CASE_SEARCH_QUERY_ORDER =
+      'ORDER BY cs.CS_DATE_FILED DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY';
 
-    const predicateList: string[] = [];
-    const input: DbTableFieldSpec[] = [];
-    if (searchPredicate.caseNumber) {
-      input.push({
+    const parametersList: string[] = [];
+    const replacementVariables: DbTableFieldSpec[] = [];
+
+    replacementVariables.push({
+      name: `limit`,
+      type: mssql.Int, // TODO: How big (range) does this int need to be??
+      value: predicate.limit ?? 25,
+    });
+    replacementVariables.push({
+      name: `offset`,
+      type: mssql.Int, // TODO: How big (range) does this int need to be??
+      value: predicate.offset ?? 0,
+    });
+
+    if (predicate.caseNumber) {
+      replacementVariables.push({
         name: 'caseNumber',
         type: mssql.VarChar,
-        value: searchPredicate.caseNumber,
+        value: predicate.caseNumber,
       });
-      predicateList.push('cs.CASE_ID = @caseNumber');
+      parametersList.push('cs.CASE_ID = @caseNumber');
     }
-    if (searchPredicate.divisionCodes) {
-      searchPredicate.divisionCodes.forEach((divisionCode, idx) => {
-        input.push({
+    if (predicate.divisionCodes) {
+      predicate.divisionCodes.forEach((divisionCode, idx) => {
+        replacementVariables.push({
           name: `divisionCode${idx}`,
           type: mssql.VarChar,
           value: divisionCode,
         });
       });
-      const divisionCodeVars = searchPredicate.divisionCodes
+      const divisionCodeVars = predicate.divisionCodes
         .map((_, idx) => `@divisionCode${idx}`)
         .join(', ');
-      predicateList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
+      parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
     }
 
-    const CASE_SEARCH_QUERY_PREDICATE = 'WHERE ' + predicateList.join(' AND ');
+    const CASE_SEARCH_QUERY_PREDICATE = 'WHERE ' + parametersList.join(' AND ');
 
     const CASE_SEARCH_QUERY = [
       CASE_SEARCH_SELECT,
@@ -359,22 +372,18 @@ export default class CasesDxtrGateway implements CasesInterface {
       CASE_SEARCH_QUERY_ORDER,
     ].join(' ');
 
-    // TODO: Delete me.
-    console.log('query', CASE_SEARCH_QUERY, input);
-
     const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
+      context,
+      context.config.dxtrDbConfig,
       CASE_SEARCH_QUERY,
-      input,
+      replacementVariables,
     );
 
     if (queryResult.success) {
-      const foundCases = this.casesQueryCallback(applicationContext, queryResult);
+      const foundCases = this.casesBasicQueryCallback(context, queryResult);
       for (const sCase of foundCases) {
         sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
         sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
-        sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
       }
       return foundCases;
     } else {
@@ -750,5 +759,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseSummary[]>).recordset;
+  }
+
+  casesBasicQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
+
+    return (queryResult.results as mssql.IResult<CaseBasics[]>).recordset;
   }
 }

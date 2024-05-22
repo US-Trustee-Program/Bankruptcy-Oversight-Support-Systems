@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseSummary, SearchPredicate } from '@common/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
+import { CaseBasics } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -19,8 +20,8 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
-import './SearchScreen.scss';
 import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
+import './SearchScreen.scss';
 
 type AlertProps = {
   show: boolean;
@@ -31,11 +32,14 @@ type AlertProps = {
 type SearchScreenProps = object;
 
 export default function SearchScreen(_props: SearchScreenProps) {
-  const [cases, setCases] = useState<CaseSummary[]>([]);
+  const [cases, setCases] = useState<CaseBasics[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(false);
   const [alertInfo, setAlertInfo] = useState<AlertProps>({ show: false, title: '', message: '' });
-  const [searchPredicate, setSearchPredicate] = useState<SearchPredicate>({});
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
+    limit: 25,
+    offset: 0,
+  });
 
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
@@ -51,10 +55,10 @@ export default function SearchScreen(_props: SearchScreenProps) {
   async function getOffices() {
     api
       .get<OfficeDetails[]>(`/offices`, {})
-      .then((data) => {
-        setOfficesList(data.sort(officeSorter));
+      .then((response) => {
+        setOfficesList(response.data.sort(officeSorter));
         setRegionsMap(
-          data.reduce((regionsMap, office) => {
+          response.data.reduce((regionsMap, office) => {
             if (!regionsMap.has(office.regionId)) {
               regionsMap.set(office.regionId, office.regionName);
             }
@@ -67,9 +71,10 @@ export default function SearchScreen(_props: SearchScreenProps) {
       });
   }
 
-  function isValidSearchPredicate(searchPredicate: SearchPredicate): boolean {
+  function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
     return Object.keys(searchPredicate).reduce((isIt, key) => {
-      return isIt || !!searchPredicate[key as keyof SearchPredicate];
+      if (['limit', 'offset'].includes(key)) return isIt;
+      return isIt || !!searchPredicate[key as keyof CasesSearchPredicate];
     }, false);
   }
 
@@ -81,10 +86,10 @@ export default function SearchScreen(_props: SearchScreenProps) {
     setIsSearching(true);
     disableSearchItems(true);
     api
-      .post<CaseSummary[]>(`/cases`, searchPredicate)
+      .get<CaseBasics[]>(`/cases`, searchPredicate)
       .then((response) => {
-        if (response.length) {
-          setCases(response);
+        if (response.data.length) {
+          setCases(response.data);
           setEmptyResponse(false);
         } else {
           setCases([]);
@@ -239,7 +244,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
 
 type SearchCaseTableProps = {
   id: string;
-  cases: CaseSummary[];
+  cases: CaseBasics[];
 };
 
 export function SearchCaseTable(props: SearchCaseTableProps) {
