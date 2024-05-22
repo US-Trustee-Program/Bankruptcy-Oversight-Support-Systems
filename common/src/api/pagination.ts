@@ -23,6 +23,6 @@ export type WithPagination = {
 
 export type Pagination = WithPagination | NoPagination;
 
-export function isPaginated(response: unknown): response is WithPagination {
-  return typeof response === 'object' && 'isPaginated' in response && response.isPaginated === true;
+export function isPaginated(meta: unknown): meta is WithPagination {
+  return typeof meta === 'object' && 'isPaginated' in meta && meta.isPaginated === true;
 }

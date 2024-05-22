@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseManagement } from '../../use-cases/case-management';
-import { ResponseBody } from '../../../../../common/src/api/response';
+import { ResponseBody, ResponseMetaData } from '../../../../../common/src/api/response';
 import { CaseBasics } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate, setPaginationDefaults } from '../../../../../common/src/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
@@ -38,16 +38,26 @@ export class CasesController {
     });
 
     const cases = await this.caseManagement.searchCases(this.applicationContext, predicate);
-    const next = new URL(request.url);
-    next.searchParams.set('limit', predicate.limit.toString());
-    next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
+
+    const meta: ResponseMetaData = {
+      isPaginated: true,
+      count: cases.length,
+      self: request.url,
+    };
+    if (cases.length === predicate.limit) {
+      const next = new URL(request.url);
+      next.searchParams.set('limit', predicate.limit.toString());
+      next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
+      meta.next = next.href;
+    }
+    if (predicate.offset > 0) {
+      const previous = new URL(request.url);
+      previous.searchParams.set('limit', predicate.limit.toString());
+      previous.searchParams.set('offset', (predicate.offset - predicate.limit).toString());
+      meta.previous = previous.href;
+    }
     return {
-      meta: {
-        isPaginated: true,
-        count: cases.length,
-        self: request.url,
-        next: next.href,
-      },
+      meta,
       isSuccess: true,
       data: cases,
     };
