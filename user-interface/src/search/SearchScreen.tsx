@@ -21,7 +21,10 @@ import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
+import Button from '@/lib/components/uswds/Button';
 import './SearchScreen.scss';
+import { isResponseBodySuccess } from '@common/api/response';
+import { isPaginated } from '@common/api/pagination';
 
 type AlertProps = {
   show: boolean;
@@ -34,6 +37,8 @@ type SearchScreenProps = object;
 export default function SearchScreen(_props: SearchScreenProps) {
   const [cases, setCases] = useState<CaseBasics[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [previousPage, setPreviousPage] = useState<string | null>(null);
+  const [nextPage, setNextPage] = useState<string | null>(null);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(false);
   const [alertInfo, setAlertInfo] = useState<AlertProps>({ show: false, title: '', message: '' });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
@@ -88,12 +93,18 @@ export default function SearchScreen(_props: SearchScreenProps) {
     api
       .get<CaseBasics[]>(`/cases`, searchPredicate)
       .then((response) => {
-        if (response.data.length) {
-          setCases(response.data);
-          setEmptyResponse(false);
-        } else {
-          setCases([]);
-          setEmptyResponse(true);
+        if (isResponseBodySuccess(response)) {
+          if (response.data.length) {
+            setCases(response.data);
+            setEmptyResponse(false);
+          } else {
+            setCases([]);
+            setEmptyResponse(true);
+          }
+          if (isPaginated(response.meta)) {
+            setPreviousPage(response.meta.previous ?? null);
+            setNextPage(response.meta.next ?? null);
+          }
         }
       })
       .catch((_reason) => {
@@ -110,14 +121,54 @@ export default function SearchScreen(_props: SearchScreenProps) {
         disableSearchItems(false);
       });
   }
+
+  function loadPage(uri: string) {
+    console.log('loading page...', uri);
+    trackSearchEvent(searchPredicate);
+    setIsSearching(true);
+    disableSearchItems(true);
+    api
+      .get<CaseBasics[]>(uri)
+      .then((response) => {
+        if (isResponseBodySuccess(response)) {
+          if (response.data.length) {
+            setCases(response.data);
+            setEmptyResponse(false);
+          } else {
+            setCases([]);
+            setEmptyResponse(true);
+          }
+          if (isPaginated(response.meta)) {
+            setPreviousPage(response.meta.previous ?? null);
+            setNextPage(response.meta.next ?? null);
+          }
+        }
+      })
+      .catch((_reason) => {
+        setCases([]);
+        setAlertInfo({
+          show: true,
+          title: 'Search Results Not Available',
+          message:
+            'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
+        });
+      })
+      .finally(() => {
+        setIsSearching(false);
+        disableSearchItems(false);
+      });
+  }
+
   function disableSearchItems(value: boolean) {
     caseNumberInputRef.current?.disable(value);
     courtSelectionRef.current?.disable(value);
   }
+
   function resetSearch() {
     setAlertInfo({ show: false, title: '', message: '' });
     setCases([]);
   }
+
   function handleCaseNumberChange(caseNumber?: string): void {
     resetSearch();
     setSearchPredicate({ ...searchPredicate, caseNumber });
@@ -232,6 +283,24 @@ export default function SearchScreen(_props: SearchScreenProps) {
               )}
               {cases.length > 0 && (
                 <SearchCaseTable id="search-results" cases={cases}></SearchCaseTable>
+              )}
+              {previousPage && (
+                <Button
+                  onClick={() => {
+                    loadPage(previousPage);
+                  }}
+                >
+                  Previous
+                </Button>
+              )}
+              {nextPage && (
+                <Button
+                  onClick={() => {
+                    loadPage(nextPage);
+                  }}
+                >
+                  Next
+                </Button>
               )}
             </>
           )}
