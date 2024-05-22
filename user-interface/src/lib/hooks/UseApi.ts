@@ -39,6 +39,7 @@ export function useApi(): ApiClient {
 }
 
 export interface ApiClient {
+  host: string;
   createPath(path: string, params: ObjectKeyVal): string;
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
   list(path: string, options?: ObjectKeyVal): Promise<ResponseData>;
@@ -85,9 +86,18 @@ function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<
 }
 
 export function useGenericApi(): GenericApiClient {
+  const api = useApi();
+
+  function justThePath(uriOrPath: string): string {
+    if (uriOrPath.startsWith(api.host)) {
+      return uriOrPath.replace(api.host, '');
+    }
+    return uriOrPath;
+  }
+
   return {
     async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBodySuccess<T>> {
-      const body = await useApi().get(path, options);
+      const body = await api.get(justThePath(path), options);
       return mapFromLegacyToResponseBody(body);
     },
     async post<T = object>(
@@ -95,7 +105,7 @@ export function useGenericApi(): GenericApiClient {
       body: object,
       options?: ObjectKeyVal,
     ): Promise<ResponseBodySuccess<T>> {
-      const responseBody = await useApi().post(path, body, options);
+      const responseBody = await api.post(justThePath(path), body, options);
       return mapFromLegacyToResponseBody(responseBody);
     },
   };
