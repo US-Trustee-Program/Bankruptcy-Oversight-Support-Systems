@@ -83,6 +83,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     options: { startingMonth?: number },
   ): Promise<CaseSummary[]> {
+    // TODO: We should migrate the feature flags to search. A getCases call is just a search with no parameters. The rows to return are not part of the search predicate.
     const doChapter12Enable = applicationContext.featureFlags['chapter-twelve-enabled'];
     const doChapter11Enable = applicationContext.featureFlags['chapter-eleven-enabled'];
     const rowsToReturn = doChapter12Enable || doChapter11Enable ? '10' : '20';
