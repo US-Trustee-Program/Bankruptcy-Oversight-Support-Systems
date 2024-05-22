@@ -28,6 +28,7 @@ describe('Mocking CasesController to get error handling', () => {
 
   test('error should be properly handled if casesController.getCases() throws an error', async () => {
     const request = {
+      params: {},
       query: {},
       method: 'GET',
     };

@@ -3,6 +3,12 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsError } from '../../common-errors/cams-error';
+import { ResponseBodySuccess } from '../../../../../common/src/api/response';
+import { OfficeDetails } from '../../../../../common/src/cams/courts';
+import {
+  mockCamsHttpRequest,
+  mockRequestUrl,
+} from '../../testing/mock-data/cams-http-request-helper';
 
 let getOffices;
 
@@ -28,14 +34,19 @@ describe('offices controller tests', () => {
       return Promise.resolve(OFFICES);
     });
 
-    const expectedResponse = {
-      success: true,
-      body: OFFICES,
+    const expected: ResponseBodySuccess<OfficeDetails[]> = {
+      meta: {
+        isPaginated: false,
+        self: mockRequestUrl,
+      },
+      isSuccess: true,
+      data: OFFICES,
     };
 
-    const controller = new OfficesController();
-    const offices = await controller.getOffices(applicationContext);
-    expect(offices).toEqual(expectedResponse);
+    const controller = new OfficesController(applicationContext);
+    const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
+    const offices = await controller.getOffices(camsHttpRequest);
+    expect(offices).toEqual(expected);
   });
 
   test('should throw CamsError when one is caught', async () => {
@@ -43,9 +54,11 @@ describe('offices controller tests', () => {
       throw new CamsError('MOCK_OFFICES_CONTROLLER', { message: 'Some expected CAMS error.' });
     });
 
-    const controller = new OfficesController();
+    const controller = new OfficesController(applicationContext);
     await expect(async () => {
-      await controller.getOffices(applicationContext);
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
+
+      await controller.getOffices(camsHttpRequest);
     }).rejects.toThrow('Some expected CAMS error.');
   });
 
@@ -54,9 +67,11 @@ describe('offices controller tests', () => {
       throw new Error('Some unknown error.');
     });
 
-    const controller = new OfficesController();
+    const controller = new OfficesController(applicationContext);
     await expect(async () => {
-      await controller.getOffices(applicationContext);
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
+
+      await controller.getOffices(camsHttpRequest);
     }).rejects.toThrow('Unknown error');
   });
 });

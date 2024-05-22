@@ -1,16 +1,15 @@
+import * as dotenv from 'dotenv';
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
-import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import {
-  CaseDetailsDbResult,
-  CaseListDbResult,
-  CaseSummaryListDbResult,
-} from '../lib/adapters/types/cases';
+import { CaseDetailsDbResult } from '../lib/adapters/types/cases';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { CaseBasics } from '../../../common/src/cams/cases';
+import { ResponseBody } from '../../../common/src/api/response';
+import { httpRequestToCamsHttpRequest } from '../azure/functions';
 
 dotenv.config();
 
@@ -20,27 +19,23 @@ const MODULE_NAME = 'CASES-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  casesRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  // Setup dependencies
   const applicationContext = await applicationContextCreator(functionContext);
   const casesController = new CasesController(applicationContext);
 
-  // Process request message
-  try {
-    let responseBody: CaseDetailsDbResult | CaseListDbResult | CaseSummaryListDbResult;
+  type SearchResults = ResponseBody<CaseBasics[]>;
 
-    if (casesRequest.method === 'GET' && casesRequest.params.caseId && casesRequest.params.caseId) {
-      // return case details
+  try {
+    let responseBody: CaseDetailsDbResult | SearchResults;
+
+    if (request.method === 'GET' && request.params.caseId) {
       responseBody = await casesController.getCaseDetails({
-        caseId: casesRequest.params.caseId,
+        caseId: request.params.caseId,
       });
-    } else if (casesRequest.method === 'POST' && casesRequest.body) {
-      // return search results
-      responseBody = await casesController.searchCases(casesRequest.body);
     } else {
-      // return list of all chapter cases
-      responseBody = await casesController.getCases();
+      const camsRequest = httpRequestToCamsHttpRequest(request);
+      responseBody = await casesController.searchCases(camsRequest);
     }
 
     functionContext.res = httpSuccess(responseBody);

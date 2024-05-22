@@ -1,5 +1,6 @@
 import httpTrigger from '../offices/offices.function';
 import { CamsError } from '../lib/common-errors/cams-error';
+import { mockCamsHttpRequest } from '../lib/testing/mock-data/cams-http-request-helper';
 
 const context = require('azure-function-context-mock');
 
@@ -21,9 +22,7 @@ describe('offices Function tests', () => {
       return Promise.resolve({ success: true, body: [] });
     });
 
-    const request = {
-      params: {},
-    };
+    const request = mockCamsHttpRequest();
 
     const expectedResponseBody = {
       success: true,

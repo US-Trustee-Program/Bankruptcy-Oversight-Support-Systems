@@ -1,7 +1,8 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { CaseDetail, CaseSummary, SearchPredicate } from '../../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail } from '../../../../../common/src/cams/cases';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
@@ -30,8 +31,8 @@ export class MockCasesGateway implements CasesInterface {
 
   async searchCases(
     _applicationContext: ApplicationContext,
-    searchPredicate: SearchPredicate,
-  ): Promise<CaseSummary[]> {
+    searchPredicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]> {
     const filteredCases = this.caseList.filter((bCase) =>
       bCase.caseId.match(searchPredicate.caseNumber),
     );

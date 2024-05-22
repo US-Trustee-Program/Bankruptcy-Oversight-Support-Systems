@@ -2,6 +2,11 @@ import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
+import {
+  isResponseBodyError,
+  isResponseBodySuccess,
+  ResponseBodySuccess,
+} from '@common/api/response';
 
 // TODO: Possibly use the React Context API to scope the API context to the DOM rather than the module. Add a provider component to configure the API context.
 let context: ApiClient;
@@ -44,25 +49,54 @@ export interface ApiClient {
 }
 
 export interface GenericApiClient {
-  get<T = object>(path: string, options?: ObjectKeyVal): Promise<T>;
-  post<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<T>;
+  get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBodySuccess<T>>;
+  post<T = object>(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBodySuccess<T>>;
 }
 
 //This allows us to use generics and avoid typing using the "as" keyword to specify return types throughout the rest of the application
 // TODO: Need to better handle non-200 responses.
 // e.g. a 202 or 204 would result in an error.
 // We are also swallowing any meaningful error responses.
+
+function isLegacyResponseData(response: unknown): response is { body: unknown } {
+  return !!response && typeof response === 'object' && 'body' in response;
+}
+
+function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<T> {
+  if (isResponseBodySuccess<T>(response)) return response;
+  if (isResponseBodyError(response)) {
+    throw new Error('TBD Need to map the error from the response body');
+  }
+  if (isLegacyResponseData(response)) {
+    return {
+      meta: {
+        isPaginated: false,
+        self: '',
+      },
+      isSuccess: true,
+      data: response.body as T,
+    };
+  }
+  throw new Error('Cannot map legacy response from API to new response model.');
+}
+
 export function useGenericApi(): GenericApiClient {
   return {
-    async get<T>(path: string, options?: ObjectKeyVal): Promise<T> {
-      const response = await useApi().get(path, options);
-      if (response.body) return response.body as T;
-      throw new Error(`Data not returned from GET '${path}'.`);
+    async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBodySuccess<T>> {
+      const body = await useApi().get(path, options);
+      return mapFromLegacyToResponseBody(body);
     },
-    async post<T>(path: string, body: object, options?: ObjectKeyVal): Promise<T> {
-      const response = await useApi().post(path, body, options);
-      if (response.body) return response.body as T;
-      throw new Error(`Data not returned from POST '${path}'.`);
+    async post<T = object>(
+      path: string,
+      body: object,
+      options?: ObjectKeyVal,
+    ): Promise<ResponseBodySuccess<T>> {
+      const responseBody = await useApi().post(path, body, options);
+      return mapFromLegacyToResponseBody(responseBody);
     },
   };
 }
