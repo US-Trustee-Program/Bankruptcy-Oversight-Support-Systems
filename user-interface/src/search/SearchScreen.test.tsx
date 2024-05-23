@@ -16,7 +16,7 @@ describe('search screen', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    vi.spyOn(Chapter15MockApi, 'post').mockResolvedValueOnce({
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
       message: '',
       count: caseList.length,
       body: caseList,
@@ -112,7 +112,7 @@ describe('search screen', () => {
   test('should show the no results alert when no results are available', async () => {
     renderWithoutProps();
 
-    vi.spyOn(Chapter15MockApi, 'post').mockResolvedValueOnce({
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
       message: '',
       count: 0,
       body: [],
@@ -145,7 +145,7 @@ describe('search screen', () => {
   test('should show the error alert when an error is encountered', async () => {
     renderWithoutProps();
 
-    vi.spyOn(Chapter15MockApi, 'post').mockRejectedValueOnce({
+    vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce({
       message: 'some error',
     });
 
