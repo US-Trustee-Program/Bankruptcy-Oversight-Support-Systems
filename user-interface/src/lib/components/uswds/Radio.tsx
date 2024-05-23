@@ -29,9 +29,9 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
     if (inputRef.current) inputRef.current.checked = value;
   }
 
-  function handleOnChange(_ev: React.MouseEvent<HTMLLabelElement>) {
-    if (inputRef.current?.checked !== undefined)
-      inputRef.current.checked = !inputRef.current.checked;
+  function handleOnClick(_ev: React.MouseEvent<HTMLLabelElement>) {
+    // clicking a radio button should always select it.  You should not be able to unselect by clicking a selected radio.
+    if (inputRef.current?.checked !== undefined) inputRef.current.checked = true;
 
     if (props.onChange && inputRef.current?.value) {
       props.onChange(inputRef.current?.value);
@@ -52,12 +52,13 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         value={props.value}
         checked={isChecked()}
         required={props.required}
+        onChange={() => {}}
         ref={inputRef}
       />
       <label
         className="usa-radio__label"
         htmlFor={props.id}
-        onClick={handleOnChange}
+        onClick={handleOnClick}
         data-testid={`${props.id}-click-target`}
       >
         {props.label}

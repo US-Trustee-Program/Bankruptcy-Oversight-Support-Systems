@@ -1,7 +1,7 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
-import { useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import './TransferOrderAccordion.scss';
 import {
@@ -18,20 +18,55 @@ import {
   ConfirmationModalImperative,
   ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
-import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useApi, useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 import { Consolidation } from '@common/cams/events';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
-import Checkbox from '@/lib/components/uswds/Checkbox';
-import CamsSelect from '@/lib/components/CamsSelect';
+import Checkbox, { CheckboxRef } from '@/lib/components/uswds/Checkbox';
+import CamsSelect, {
+  CamsSelectOptionList,
+  SearchableSelectOption,
+} from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { RadioRef } from '@/lib/type-declarations/input-fields';
+import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { CaseSummary } from '@common/cams/cases';
+import { CaseAssignment } from '@common/cams/assignments';
+
+export async function getCaseSummary(caseId: string) {
+  return useGenericApi().get<CaseSummary>(`/cases/${caseId}/summary`);
+}
+
+export async function getCaseAssignments(caseId: string) {
+  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
+}
+
+export async function getCaseAssociations(caseId: string) {
+  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
+}
+
+export async function fetchLeadCaseAttorneys(leadCaseId: string) {
+  const caseAssignments: CaseAssignment[] = await getCaseAssignments(leadCaseId);
+  if (caseAssignments[0].name) {
+    return caseAssignments.map((assignment) => assignment.name);
+  } else {
+    return [];
+  }
+}
+
+export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
+  const divisionCodeSet = cases.reduce((set, bCase) => {
+    set.add(bCase.courtDivisionCode);
+    return set;
+  }, new Set<string>());
+  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
+}
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -51,13 +86,16 @@ export interface ConsolidationOrderAccordionProps {
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   const { hidden, statusType, orderType, officesList, expandedId } = props;
-  const caseTable = useRef<OrderTableImperative>(null);
+  const caseTableRef = useRef<OrderTableImperative>(null);
 
   const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
   const rejectButtonRef = useRef<ButtonRef>(null);
   const jointAdministrationRef = useRef<RadioRef>(null);
   const substantiveRef = useRef<RadioRef>(null);
+  const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
+  const leadCaseDivisionRef = useRef<InputRef>(null);
+  const leadCaseNumberRef = useRef<InputRef>(null);
 
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
@@ -66,20 +104,16 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
   const [leadCaseId, setLeadCaseId] = useState<string>('');
+  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
+  const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
+  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
+  const [leadCaseCourt, setLeadCaseCourt] = useState<string>('');
+  const [isValidatingLeadCaseNumber, setIsValidatingLeadCaseNumber] = useState<boolean>(false);
+  const [foundValidCaseNumber, setFoundValidCaseNumber] = useState<boolean>(false);
 
   const api = useApi();
-
-  function handleIncludeCase(bCase: ConsolidationOrderCase) {
-    let tempSelectedCases: ConsolidationOrderCase[];
-    if (selectedCases.includes(bCase)) {
-      tempSelectedCases = selectedCases.filter((aCase) => bCase !== aCase);
-    } else {
-      tempSelectedCases = [...selectedCases, bCase];
-    }
-    setSelectedCases(tempSelectedCases);
-  }
 
   function updateAllSelections(caseList: ConsolidationOrderCase[]) {
     setSelectedCases(caseList);
@@ -89,38 +123,24 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setOrder({ ...order });
   }
 
-  async function handleOnExpand() {
-    if (props.onExpand) {
-      props.onExpand(`order-list-${order.id}`);
-    }
-    if (!isDataEnhanced) {
-      for (const bCase of order.childCases) {
-        try {
-          const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
-          bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
-
-          const associatedResponse = await api.get(`/cases/${bCase.caseId}/associated`);
-          bCase.associations = associatedResponse.body as Consolidation[];
-        } catch {
-          // The child case assignments are not critical to perform the consolidation. Catch any error
-          // and don't set the attorney assignment for this specific case.
-        }
-      }
-      setOrderWithDataEnhancement(order);
-      setIsDataEnhanced(true);
-    }
-  }
-
   function clearInputs(): void {
-    caseTable.current?.clearAllCheckboxes();
     disableButtons();
-    setSelectedCases([]);
-    setLeadCase(null);
-    // TODO
-    // clear type radio input
+    clearLeadCase();
+    clearSelectedCases();
     jointAdministrationRef.current?.check(false);
     substantiveRef.current?.check(false);
-    // clear mark lead case button styling
+  }
+
+  function clearLeadCase(): void {
+    setLeadCase(null);
+    setLeadCaseId('');
+    caseTableRef.current?.clearLeadCase();
+    leadCaseNumberRef.current?.clearValue();
+  }
+
+  function clearSelectedCases(): void {
+    setSelectedCases([]);
+    caseTableRef.current?.clearAllCheckboxes();
   }
 
   function confirmAction(action: ConfirmActionResults): void {
@@ -219,13 +239,48 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     );
   }
 
-  function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
-    if (leadCaseId === bCase.caseId) {
-      setLeadCaseId('');
-      setLeadCase(null);
+  function getCurrentLeadCaseId(leadCaseNumber: string) {
+    if (leadCaseCourt && leadCaseNumber) {
+      return `${leadCaseCourt}-${leadCaseNumber}`;
     } else {
-      setLeadCaseId(bCase.caseId);
-      setLeadCase(bCase);
+      return '';
+    }
+  }
+
+  function disableLeadCaseForm(disabled: boolean) {
+    leadCaseDivisionRef.current?.disable(disabled);
+    leadCaseNumberRef.current?.disable(disabled);
+  }
+
+  function handleIncludeCase(bCase: ConsolidationOrderCase) {
+    let tempSelectedCases: ConsolidationOrderCase[];
+    if (selectedCases.includes(bCase)) {
+      tempSelectedCases = selectedCases.filter((aCase) => bCase !== aCase);
+    } else {
+      tempSelectedCases = [...selectedCases, bCase];
+    }
+    setSelectedCases(tempSelectedCases);
+  }
+
+  async function handleOnExpand() {
+    if (props.onExpand) {
+      props.onExpand(`order-list-${order.id}`);
+    }
+    if (!isDataEnhanced) {
+      for (const bCase of order.childCases) {
+        try {
+          const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
+          bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
+
+          const associatedResponse = await api.get(`/cases/${bCase.caseId}/associated`);
+          bCase.associations = associatedResponse.body as Consolidation[];
+        } catch {
+          // The child case assignments are not critical to perform the consolidation. Catch any error
+          // and don't set the attorney assignment for this specific case.
+        }
+      }
+      setOrderWithDataEnhancement(order);
+      setIsDataEnhanced(true);
     }
   }
 
@@ -242,6 +297,38 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     });
   }
 
+  function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
+    toggleLeadCaseFormRef.current?.setChecked(false);
+    leadCaseNumberRef.current?.clearValue();
+    setShowLeadCaseForm(false);
+    setFoundValidCaseNumber(false);
+
+    if (leadCaseId === bCase.caseId) {
+      setLeadCaseId('');
+      setLeadCase(null);
+    } else {
+      setLeadCaseId(bCase.caseId);
+      setLeadCase(bCase);
+    }
+  }
+
+  function handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void {
+    clearLeadCase();
+    setShowLeadCaseForm(ev.target.checked);
+  }
+
+  function handleSelectLeadCaseCourt(option: CamsSelectOptionList): void {
+    setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
+  }
+
+  async function handleLeadCaseInputChange(caseNumber?: string) {
+    if (caseNumber) {
+      setLeadCaseNumber(caseNumber);
+    } else {
+      setLeadCaseNumber('');
+    }
+  }
+
   useEffect(() => {
     if (selectedCases.length && leadCaseId !== '' && consolidationType !== null) {
       enableButtons();
@@ -249,6 +336,99 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       disableButtons();
     }
   }, [selectedCases, leadCaseId, isDataEnhanced, consolidationType]);
+
+  useEffect(() => {
+    const currentLeadCaseId = getCurrentLeadCaseId(leadCaseNumber);
+    if (currentLeadCaseId && currentLeadCaseId.length === 12) {
+      disableLeadCaseForm(true);
+      setIsValidatingLeadCaseNumber(true);
+      setLeadCaseNumberError('');
+      setLeadCaseId('');
+      getCaseSummary(currentLeadCaseId)
+        .then((caseSummary) => {
+          getCaseAssociations(caseSummary.caseId)
+            .then((associations) => {
+              type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
+              const childCaseFacts = associations
+                .filter((reference) => reference.caseId === caseSummary.caseId)
+                .reduce(
+                  (acc: ChildCaseFacts, reference) => {
+                    if (reference.documentType === 'CONSOLIDATION_TO') {
+                      acc.isConsolidationChildCase = true;
+                      acc.leadCase = reference.otherCase;
+                    }
+                    return acc || reference.documentType === 'CONSOLIDATION_TO';
+                  },
+                  { isConsolidationChildCase: false },
+                );
+
+              type PreviousConsolidationFacts = {
+                isAlreadyConsolidated: boolean;
+                leadCase?: CaseSummary;
+              };
+              const previousConsolidationFacts = associations
+                .filter((reference) => reference.caseId === caseSummary.caseId)
+                .reduce(
+                  (acc: PreviousConsolidationFacts, reference) => {
+                    if (reference.documentType === 'CONSOLIDATION_FROM') {
+                      acc.isAlreadyConsolidated = true;
+                      acc.leadCase = reference.otherCase;
+                    }
+                    return acc || reference.documentType === 'CONSOLIDATION_FROM';
+                  },
+                  { isAlreadyConsolidated: false },
+                );
+
+              if (childCaseFacts.isConsolidationChildCase) {
+                const message =
+                  `Case ${getCaseNumber(caseSummary.caseId)} is a consolidated ` +
+                  `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
+                setLeadCaseNumberError(message);
+                setIsValidatingLeadCaseNumber(false);
+                disableLeadCaseForm(false);
+                setFoundValidCaseNumber(false);
+              } else if (previousConsolidationFacts.isAlreadyConsolidated) {
+                const message = `This case is already part of a consolidation.`;
+                setLeadCaseNumberError(message);
+                setIsValidatingLeadCaseNumber(false);
+                disableLeadCaseForm(false);
+                setFoundValidCaseNumber(false);
+              } else {
+                getCaseAssignments(currentLeadCaseId).then((attorneys) => {
+                  setLeadCase({
+                    ...caseSummary,
+                    docketEntries: [],
+                    orderDate: order.orderDate,
+                    attorneyAssignments: attorneys,
+                    associations,
+                  });
+                  setLeadCaseId(currentLeadCaseId);
+                  setIsValidatingLeadCaseNumber(false);
+                  setFoundValidCaseNumber(true);
+                  disableLeadCaseForm(false);
+                });
+              }
+            })
+            .catch((error) => {
+              const message =
+                'Cannot verify lead case is not part of another consolidation. ' + error.message;
+              setLeadCaseNumberError(message);
+              setIsValidatingLeadCaseNumber(false);
+              disableLeadCaseForm(false);
+              setFoundValidCaseNumber(false);
+            });
+        })
+        .catch((error) => {
+          // Brittle way to determine if we have encountred a 404...
+          const isNotFound = (error.message as string).startsWith('404');
+          const message = isNotFound ? 'Lead case not found.' : 'Cannot verify lead case number.';
+          setLeadCaseNumberError(message);
+          setIsValidatingLeadCaseNumber(false);
+          disableLeadCaseForm(false);
+          setFoundValidCaseNumber(false);
+        });
+    }
+  }, [leadCaseNumber, leadCaseCourt]);
 
   return (
     <Accordion
@@ -334,7 +514,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   onSelect={handleIncludeCase}
                   updateAllSelections={updateAllSelections}
                   isDataEnhanced={isDataEnhanced}
-                  ref={caseTable}
+                  ref={caseTableRef}
                   onMarkLead={handleMarkLeadCase}
                 ></ConsolidationCaseTable>
               </div>
@@ -346,52 +526,67 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 <h3>Lead Case Not Listed</h3>
                 <Checkbox
                   id={`lead-case-form-checkbox-toggle-${order.id}`}
-                  className="checkbox-toggle"
-                  // onChange={toggleAllCheckBoxes}
-                  value="hello"
-                  // ref={toggleCheckboxRef}
+                  className="lead-case-form-toggle"
+                  onChange={handleToggleLeadCaseForm}
+                  value=""
+                  ref={toggleLeadCaseFormRef}
                   label="Select to enable lead case form."
                 ></Checkbox>
-                <div className="lead-case-court-container">
-                  <CamsSelect
-                    id={'lead-case-court'}
-                    required={true}
-                    options={getOfficeList(filteredOfficesList ?? props.officesList)}
-                    // onChange={handleSelectLeadCaseCourt}
-                    // ref={leadCaseDivisionRef}
-                    label="Lead Case Court"
-                    // value={getUniqueDivisionCodeOrUndefined()}
-                    isSearchable={true}
-                  />
-                </div>
-                <div className="lead-case-number-container">
-                  <CaseNumberInput
-                    id={`lead-case-input-${order.id}`}
-                    data-testid={`lead-case-input-${order.id}`}
-                    className="usa-input"
-                    onChange={() => {}}
-                    aria-label="Lead case number"
-                    required={true}
-                    label="Lead Case Number"
-                    // ref={leadCaseNumberRef}
-                  />
-                  {/*{leadCaseNumberError ? (*/}
-                  {/*  <Alert*/}
-                  {/*    message={leadCaseNumberError}*/}
-                  {/*    type={UswdsAlertStyle.Error}*/}
-                  {/*    show={true}*/}
-                  {/*    noIcon={true}*/}
-                  {/*    slim={true}*/}
-                  {/*    inline={true}*/}
-                  {/*  ></Alert>*/}
-                  {/*) : (*/}
-                  {/*  <LoadingSpinner*/}
-                  {/*    caption="Verifying lead case number..."*/}
-                  {/*    height="40px"*/}
-                  {/*    hidden={!isLoading}*/}
-                  {/*  />*/}
-                  {/*)}*/}
-                </div>
+                {showLeadCaseForm && (
+                  <section className={`lead-case-form-container-${order.id}`}>
+                    <div className="lead-case-court-container">
+                      <CamsSelect
+                        id={'lead-case-court'}
+                        required={true}
+                        options={getOfficeList(filteredOfficesList ?? props.officesList)}
+                        onChange={handleSelectLeadCaseCourt}
+                        ref={leadCaseDivisionRef}
+                        label="Lead Case Court"
+                        value={getUniqueDivisionCodeOrUndefined(order.childCases)}
+                        isSearchable={true}
+                      />
+                    </div>
+                    <div className="lead-case-number-container">
+                      <CaseNumberInput
+                        id={`lead-case-input-${order.id}`}
+                        data-testid={`lead-case-input-${order.id}`}
+                        className="usa-input"
+                        onChange={handleLeadCaseInputChange}
+                        aria-label="Lead case number"
+                        required={true}
+                        label="Lead Case Number"
+                        ref={leadCaseNumberRef}
+                      />
+                      {leadCaseNumberError ? (
+                        <Alert
+                          id={`lead-case-number-alert-${order.id}`}
+                          message={leadCaseNumberError}
+                          type={UswdsAlertStyle.Error}
+                          show={true}
+                          noIcon={true}
+                          slim={true}
+                          inline={true}
+                        ></Alert>
+                      ) : (
+                        <LoadingSpinner
+                          id={`lead-case-number-loading-spinner-${order.id}`}
+                          caption="Verifying lead case number..."
+                          height="40px"
+                          hidden={!isValidatingLeadCaseNumber}
+                        />
+                      )}
+                      {foundValidCaseNumber && leadCase && (
+                        <>
+                          <h4>Selected Lead Case</h4>
+                          <CaseTable
+                            id={`valid-case-number-found-${order.id}`}
+                            cases={[leadCase]}
+                          ></CaseTable>
+                        </>
+                      )}
+                    </div>
+                  </section>
+                )}
               </div>
               <div className="grid-col-7"></div>
               <div className="grid-col-1"></div>
@@ -436,7 +631,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <ConsolidationOrderModal
               ref={confirmationModalRef}
               id={`confirmation-modal-${order.id}`}
-              onCancel={clearInputs}
+              onCancel={() => {}}
               onConfirm={confirmAction}
             ></ConsolidationOrderModal>
           </section>

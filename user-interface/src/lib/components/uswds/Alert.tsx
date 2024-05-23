@@ -95,7 +95,10 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
       >
         <div className="usa-alert__body">
           {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}
-          <p className="usa-alert__text" data-testid="alert-message">
+          <p
+            className="usa-alert__text"
+            data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
+          >
             {props.message}
           </p>
         </div>

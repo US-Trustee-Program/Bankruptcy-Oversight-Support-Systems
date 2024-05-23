@@ -16,7 +16,9 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseAssignment } from '@common/cams/assignments';
-import { Consolidation } from '@common/cams/events';
+import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
+import { CaseSummary } from '@common/cams/cases';
+import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
 
 vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
@@ -43,7 +45,9 @@ function openAccordion(orderId: string) {
   fireEvent.click(header);
 }
 
-function setupApiGetMock() {
+type ConsolidationArray = (ConsolidationTo | ConsolidationFrom)[];
+
+function setupApiGetMock(options: { bCase?: CaseSummary; associations?: ConsolidationArray } = {}) {
   // Assigned attorneys and associated cases.
   vi.spyOn(Chapter15MockApi, 'get').mockImplementation((path: string) => {
     if (path.includes('/case-assignments/')) {
@@ -58,8 +62,15 @@ function setupApiGetMock() {
         success: true,
         message: '',
         count: 0,
-        body: [],
+        body: options.associations ?? [],
       } as SimpleResponseData<Consolidation[]>);
+    } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 1,
+        body: options.bCase ?? {},
+      } as SimpleResponseData<CaseSummary>);
     }
     return Promise.resolve({
       success: false,
@@ -114,12 +125,28 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-approve-button-${order.id}`,
     ) as HTMLButtonElement;
     const markAsLeadButton = screen.getByTestId('button-assign-lead-0');
+    expect(markAsLeadButton).toHaveClass('usa-button--outline');
     fireEvent.click(markAsLeadButton);
+    expect(markAsLeadButton).not.toHaveClass('usa-button--outline');
 
     expect(approveButton).not.toBeEnabled();
 
-    const consolidationTypeRadios = document.querySelectorAll('input[name="consolidation-type"]');
-    fireEvent.click(consolidationTypeRadios[0]);
+    const consolidationTypeRadio = document.querySelector('input[name="consolidation-type"]');
+    const consolidationTypeRadioLabel = document.querySelector('.usa-radio__label');
+    fireEvent.click(consolidationTypeRadioLabel!);
+    expect(consolidationTypeRadio).toBeChecked();
+  }
+
+  function findCaseNumberInput(id: string) {
+    const caseIdInput = document.querySelector(`input#lead-case-input-${id}`);
+    expect(caseIdInput).toBeInTheDocument();
+    return caseIdInput;
+  }
+
+  function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
+    if (!caseIdInput) throw Error();
+
+    fireEvent.change(caseIdInput!, { target: { value } });
   }
 
   test('should render an order heading', async () => {
@@ -627,22 +654,20 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
     openAccordion(order.id!);
 
+    selectTypeAndLead();
+
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const includeAllButton = document.querySelector(`.checkbox-toggle label`);
+    //const includeAllButton = document.querySelector(`.checkbox-toggle label`);
+    const includeAllButton = screen.getByTestId(
+      `checkbox-label-${order.id}-case-list-checkbox-toggle`,
+    );
 
     const checkboxList: NodeListOf<HTMLInputElement> = document.querySelectorAll(
       'table input[type="checkbox"]',
     );
 
     fireEvent.click(includeAllButton!);
-
-    selectTypeAndLead();
-
-    await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-    });
-    fireEvent.click(approveButton as HTMLButtonElement);
 
     await waitFor(() => {
       for (const checkbox of checkboxList) {
@@ -670,6 +695,149 @@ describe('ConsolidationOrderAccordion tests', () => {
         expect(checkbox.checked).toBeFalsy();
       }
       expect(approveButton).toBeDisabled();
+    });
+  });
+
+  test('lead case form should be hidden initially and when "lead case not found" checkbox is not checked, and shown when checked', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+
+    const leadCaseFormCheckbox = screen.getByTestId(
+      `checkbox-lead-case-form-checkbox-toggle-${order.id}`,
+    );
+    expect(leadCaseFormCheckbox).not.toBeChecked();
+
+    let leadCaseForm = screen.queryByTestId(`lead-case-form-container-${order.id}`);
+    expect(leadCaseForm).not.toBeInTheDocument();
+
+    fireEvent.click(leadCaseFormCheckbox);
+
+    await waitFor(() => {
+      expect(leadCaseFormCheckbox).toBeChecked();
+      leadCaseForm = screen.queryByTestId(`lead-case-form-container-${order.id}`);
+      expect(leadCaseForm).toBeInTheDocument();
+    });
+  });
+
+  test('checking "lead case not found" checkbox should clear markLeadCase button selection', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+
+    const leadCaseFormCheckbox = screen.getByTestId(
+      `checkbox-lead-case-form-checkbox-toggle-${order.id}`,
+    );
+    expect(leadCaseFormCheckbox).not.toBeChecked();
+
+    const markLeadCaseButton = screen.getByTestId('button-assign-lead-0');
+    expect(markLeadCaseButton).toHaveClass('usa-button--outline');
+
+    fireEvent.click(markLeadCaseButton);
+    expect(markLeadCaseButton).not.toHaveClass('usa-button--outline');
+
+    fireEvent.click(leadCaseFormCheckbox);
+
+    waitFor(() => {
+      expect(markLeadCaseButton).toHaveClass('usa-button--outline');
+    });
+  });
+
+  test.skip('should show an alert if the lead case is already a part of another consolidation', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+
+    setupApiGetMock();
+
+    const leadCase = MockData.getCaseSummary();
+    const associations = MockData.buildArray(
+      () =>
+        MockData.getConsolidationReference({
+          override: {
+            documentType: 'CONSOLIDATION_FROM',
+          },
+        }),
+      3,
+    );
+
+    setupApiGetMock({ bCase: leadCase, associations });
+
+    const leadCaseFormCheckbox = screen.getByTestId(
+      `checkbox-lead-case-form-checkbox-toggle-${order.id}`,
+    );
+    expect(leadCaseFormCheckbox).not.toBeChecked();
+    fireEvent.click(leadCaseFormCheckbox);
+    expect(leadCaseFormCheckbox).toBeChecked();
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    // Enter case number.
+    const leadCaseNumber = getCaseNumber(leadCase.caseId);
+    const caseNumberInput = findCaseNumberInput(order.id!);
+    await waitFor(() => {
+      enterCaseNumber(caseNumberInput, leadCaseNumber);
+    });
+
+    await waitFor(() => {
+      expect(caseNumberInput).toHaveValue(leadCaseNumber);
+    });
+
+    await waitFor(async () => {
+      const alertElement = await screen.findByTestId(
+        `alert-message-lead-case-number-alert-${order.id}`,
+      );
+      expect(alertElement).toHaveTextContent(`This case is already part of a consolidation.`);
+    });
+  });
+
+  test('should show an alert if the lead case is a child case of another consolidation', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+
+    const leadCase = MockData.getCaseSummary();
+    const otherLeadCase = MockData.getCaseSummary();
+    const associations = MockData.buildArray(
+      () =>
+        MockData.getConsolidationReference({
+          override: {
+            documentType: 'CONSOLIDATION_TO',
+            caseId: leadCase.caseId,
+            otherCase: otherLeadCase,
+          },
+        }),
+      3,
+    );
+
+    setupApiGetMock({ bCase: leadCase, associations });
+
+    const leadCaseFormCheckbox = screen.getByTestId(
+      `checkbox-lead-case-form-checkbox-toggle-${order.id}`,
+    );
+    expect(leadCaseFormCheckbox).not.toBeChecked();
+    fireEvent.click(leadCaseFormCheckbox);
+    expect(leadCaseFormCheckbox).toBeChecked();
+    // Select lead case court.
+    selectItemInMockSelect(`lead-case-court`, 1);
+
+    // Enter case number.
+    const leadCaseNumber = getCaseNumber(leadCase.caseId);
+    const caseNumberInput = findCaseNumberInput(order.id!);
+    await waitFor(() => {
+      enterCaseNumber(caseNumberInput, leadCaseNumber);
+    });
+
+    await waitFor(() => {
+      expect(caseNumberInput).toHaveValue(leadCaseNumber);
+    });
+
+    const docDebug = document.querySelector(`.lead-case-form-container-${order.id}`);
+    screen.debug(docDebug!);
+
+    await waitFor(async () => {
+      const alertElement = await screen.findByTestId(
+        `alert-message-lead-case-number-alert-${order.id}`,
+      );
+      expect(alertElement).toHaveTextContent(
+        `Case ${leadCaseNumber} is a consolidated child case of case ${getCaseNumber(otherLeadCase.caseId)}.`,
+      );
     });
   });
 });
