@@ -9,6 +9,7 @@ import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButt
 import Api from '@/lib/models/api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getFullName } from '@common/name-helper';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 const susan = new Attorney('Susan', 'Arbeit', 'Manhattan');
 const mark = new Attorney('Mark', 'Bruh', 'Manhattan');
@@ -116,11 +117,13 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
-      bCase: {
-        caseId: '123',
-        caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
-      },
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '01/01/2024',
+        },
+      }),
     });
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -162,11 +165,13 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
-      bCase: {
-        caseId: '123',
-        caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
-      },
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '01/01/2024',
+        },
+      }),
     });
 
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -189,11 +194,13 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef, { callBack });
 
     modalRef.current?.show({
-      bCase: {
-        caseId: '123',
-        caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
-      },
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '01/01/2024',
+        },
+      }),
     });
     const modal = screen.getByTestId(`modal-${modalId}`);
 
