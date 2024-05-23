@@ -365,7 +365,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
     }
 
-    const CASE_SEARCH_QUERY_PREDICATE = 'WHERE ' + parametersList.join(' AND ');
+    const CASE_SEARCH_QUERY_PREDICATE =
+      parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
 
     const CASE_SEARCH_QUERY = [
       CASE_SEARCH_SELECT,

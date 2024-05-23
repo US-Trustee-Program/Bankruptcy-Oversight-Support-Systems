@@ -1,5 +1,5 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -11,7 +11,6 @@ import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { Chapter15CaseSummaryResponseData } from '@/lib/type-declarations/chapter-15';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;
@@ -53,18 +52,18 @@ function _SuggestedTransferCases(
   const caseNumberRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<InputRef>(null);
 
-  const api = useApi();
+  const api = useGenericApi();
 
   async function validateCaseNumber(caseId: string) {
     if (loadingCaseSummary) return false;
     setLoadingCaseSummary(true);
     disableEntryForm(true);
     await api
-      .get(`/cases/${caseId}/summary`)
+      .get<CaseSummary>(`/cases/${caseId}/summary`)
       .then((response) => {
-        const typedResponse = response as Chapter15CaseSummaryResponseData;
-        props.onCaseSelection(typedResponse.body);
-        setNewCaseSummary(typedResponse.body);
+        const caseSummary = response.data;
+        props.onCaseSelection(caseSummary);
+        setNewCaseSummary(caseSummary);
         setValidationState(ValidationStates.found);
       })
       .catch((_reason) => {
@@ -116,9 +115,9 @@ function _SuggestedTransferCases(
   function getTransferredCaseSuggestions(caseId: string) {
     setLoadingSuggestions(true);
     api
-      .get(`/orders-suggestions/${caseId}/`)
+      .get<CaseSummary[]>(`/orders-suggestions/${caseId}/`)
       .then((response) => {
-        const newSuggestedCases = response.body as CaseSummary[];
+        const newSuggestedCases = response.data;
         setLoadingSuggestions(false);
         setSuggestedCases(newSuggestedCases);
       })

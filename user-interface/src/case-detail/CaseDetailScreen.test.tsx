@@ -3,9 +3,10 @@ import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import CaseDetailScreen, { docketSorterClosure } from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDocketEntry, Debtor, DebtorAttorney } from '@/lib/type-declarations/chapter-15';
+import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
+import { Debtor, DebtorAttorney } from '@common/cams/parties';
 
 const caseId = '101-23-12345';
 const brianWilsonName = 'Brian Wilson';

@@ -3,7 +3,6 @@ import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
-import './TransferOrderAccordion.scss';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -23,7 +22,6 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useApi, useGenericApi } from '@/lib/hooks/UseApi';
-import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
 import { Consolidation } from '@common/cams/events';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
@@ -56,7 +54,7 @@ export async function getCaseSummary(caseId: string) {
 }
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = await getCaseAssignments(leadCaseId);
+  const caseAssignments: CaseAssignment[] = (await getCaseAssignments(leadCaseId)).data;
   if (caseAssignments.length && caseAssignments[0].name) {
     return caseAssignments.map((assignment) => assignment.name);
   } else {
@@ -123,6 +121,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
+  const genericApi = useGenericApi();
   const api = useApi();
 
   //========== MISC FUNCTIONS ==========
@@ -260,11 +259,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     if (!isDataEnhanced) {
       for (const bCase of order.childCases) {
         try {
-          const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
-          bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
+          const assignmentsResponse = await genericApi.get<CaseAssignment[]>(
+            `/case-assignments/${bCase.caseId}`,
+          );
+          bCase.attorneyAssignments = assignmentsResponse.data;
 
-          const associatedResponse = await api.get(`/cases/${bCase.caseId}/associated`);
-          bCase.associations = associatedResponse.body as Consolidation[];
+          const associatedResponse = await genericApi.get<Consolidation[]>(
+            `/cases/${bCase.caseId}/associated`,
+          );
+          bCase.associations = associatedResponse.data;
         } catch {
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
@@ -316,9 +319,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       setLeadCaseNumberError('');
       setLeadCaseId('');
       getCaseSummary(currentLeadCaseId)
-        .then((caseSummary) => {
+        .then((response) => {
+          const caseSummary = response.data;
           getCaseAssociations(caseSummary.caseId)
-            .then((associations) => {
+            .then((response) => {
+              const associations = response.data;
               type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
               const childCaseFacts = associations
                 .filter((reference) => reference.caseId === caseSummary.caseId)
@@ -365,7 +370,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 disableLeadCaseForm(false);
                 setFoundValidCaseNumber(false);
               } else {
-                getCaseAssignments(currentLeadCaseId).then((attorneys) => {
+                getCaseAssignments(currentLeadCaseId).then((response) => {
+                  const attorneys = response.data;
                   setLeadCase({
                     ...caseSummary,
                     docketEntries: [],

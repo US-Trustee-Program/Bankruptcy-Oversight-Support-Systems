@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // refactor - let's find a way to avoid using any
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import ReactSelect, { SingleValue } from 'react-select';
+import ReactSelect, { MultiValue, SingleValue } from 'react-select';
 import { InputRef } from '../type-declarations/input-fields';
 import './CamsSelect.scss';
+
+export type SearchableSelectOption = SingleValue<Record<string, string>>;
+export type MultiSelectOptionList = MultiValue<Record<string, string>>;
+export type CamsSelectOptionList = SearchableSelectOption | MultiSelectOptionList;
 
 export type SingleSelectOption = SingleValue<Record<string, string>>;
 export interface CamsSelectProps {
