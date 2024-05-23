@@ -39,16 +39,16 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CaseAssignment } from '@common/cams/assignments';
 
-export async function getCaseSummary(caseId: string) {
-  return useGenericApi().get<CaseSummary>(`/cases/${caseId}/summary`);
-}
-
 export async function getCaseAssignments(caseId: string) {
   return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
 }
 
 export async function getCaseAssociations(caseId: string) {
   return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
+}
+
+export async function getCaseSummary(caseId: string) {
+  return useGenericApi().get<CaseSummary>(`/cases/${caseId}/summary`);
 }
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
@@ -86,50 +86,42 @@ export interface ConsolidationOrderAccordionProps {
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   const { hidden, statusType, orderType, officesList, expandedId } = props;
-  const caseTableRef = useRef<OrderTableImperative>(null);
 
-  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
+  //////////////////// REFS ///////////////////
+
+  const caseTableRef = useRef<OrderTableImperative>(null);
+  const clearButtonRef = useRef<ButtonRef>(null);
   const approveButtonRef = useRef<ButtonRef>(null);
-  const rejectButtonRef = useRef<ButtonRef>(null);
+  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
   const jointAdministrationRef = useRef<RadioRef>(null);
-  const substantiveRef = useRef<RadioRef>(null);
-  const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
   const leadCaseDivisionRef = useRef<InputRef>(null);
   const leadCaseNumberRef = useRef<InputRef>(null);
+  const rejectButtonRef = useRef<ButtonRef>(null);
+  const substantiveRef = useRef<RadioRef>(null);
+  const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
 
-  const [order, setOrder] = useState<ConsolidationOrder>(props.order);
-  const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
-  const [isDataEnhanced, setIsDataEnhanced] = useState<boolean>(false);
+  ////////////////////////// STATE ///////////////////////
+
+  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
-  const [leadCaseId, setLeadCaseId] = useState<string>('');
-  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
-  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
-  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
-  const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
-  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
-  const [leadCaseCourt, setLeadCaseCourt] = useState<string>('');
-  const [isValidatingLeadCaseNumber, setIsValidatingLeadCaseNumber] = useState<boolean>(false);
   const [foundValidCaseNumber, setFoundValidCaseNumber] = useState<boolean>(false);
+  const [isConsolidationProcessing, setIsConsolidationProcessing] = useState<boolean>(false);
+  const [isDataEnhanced, setIsDataEnhanced] = useState<boolean>(false);
+  const [isValidatingLeadCaseNumber, setIsValidatingLeadCaseNumber] = useState<boolean>(false);
+  const [leadCaseId, setLeadCaseId] = useState<string>('');
+  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
+  const [leadCaseCourt, setLeadCaseCourt] = useState<string>('');
+  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
+  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
+  const [order, setOrder] = useState<ConsolidationOrder>(props.order);
+  const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
+  const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
   const api = useApi();
 
-  function updateAllSelections(caseList: ConsolidationOrderCase[]) {
-    setSelectedCases(caseList);
-  }
-
-  function setOrderWithDataEnhancement(order: ConsolidationOrder) {
-    setOrder({ ...order });
-  }
-
-  function clearInputs(): void {
-    disableButtons();
-    clearLeadCase();
-    clearSelectedCases();
-    jointAdministrationRef.current?.check(false);
-    substantiveRef.current?.check(false);
-  }
+  ///////////////////// MISC FUNCTIONS /////////////////////////
 
   function clearLeadCase(): void {
     setLeadCase(null);
@@ -143,96 +135,17 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     caseTableRef.current?.clearAllCheckboxes();
   }
 
-  function confirmAction(action: ConfirmActionResults): void {
-    switch (action.status) {
-      case 'approved':
-        approveConsolidation(action);
-        break;
-      case 'rejected':
-        rejectConsolidation(action);
-        break;
-    }
+  function disableLeadCaseForm(disabled: boolean) {
+    leadCaseDivisionRef.current?.disable(disabled);
+    leadCaseNumberRef.current?.disable(disabled);
   }
 
-  function approveConsolidation(action: ConfirmActionResults) {
-    if (action.status === 'approved' && leadCase && consolidationType) {
-      const data: ConsolidationOrderActionApproval = {
-        ...order,
-        consolidationType,
-        approvedCases: selectedCases
-          .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCase.caseId),
-        leadCase,
-      };
-
-      api
-        .put('/consolidations/approve', data)
-        .then((response) => {
-          const newOrders = response.body as ConsolidationOrder[];
-          const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
-          props.onOrderUpdate(
-            {
-              message: `Consolidation to lead case ${getCaseNumber(approvedOrder.leadCase?.caseId)} in ${
-                approvedOrder.leadCase?.courtName
-              } (${approvedOrder.leadCase?.courtDivisionName}) was successful.`,
-              type: UswdsAlertStyle.Success,
-              timeOut: 8,
-            },
-            newOrders,
-            order,
-          );
-        })
-        .catch((reason) => {
-          // TODO: make the error message more meaningful
-          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
-        });
-    }
-  }
-
-  function rejectConsolidation(action: ConfirmActionResults) {
-    if (action.status === 'rejected') {
-      const data: ConsolidationOrderActionRejection = {
-        ...order,
-        rejectedCases: selectedCases.map((bCase) => bCase.caseId),
-        reason: action.rejectionReason,
-      };
-
-      api
-        .put('/consolidations/reject', data)
-        .then((response) => {
-          const newOrders = response.body as ConsolidationOrder[];
-          props.onOrderUpdate(
-            {
-              message: `Rejection of consolidation order was successful.`,
-              type: UswdsAlertStyle.Success,
-              timeOut: 8,
-            },
-            newOrders,
-            order,
-          );
-        })
-        .catch((reason) => {
-          // TODO: make the error message more meaningful
-          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
-        });
-    }
-  }
-
-  function selectedCasesAreConsolidationCases() {
-    return order.childCases.reduce((itDoes, bCase) => {
-      if (!selectedCases.includes(bCase)) {
-        return itDoes;
-      }
-      return itDoes || !!bCase.associations?.length;
-    }, false);
-  }
-
-  function disableButtons() {
+  function disableSubmitButtons() {
     rejectButtonRef.current?.disableButton(true);
     approveButtonRef.current?.disableButton(true);
   }
 
-  function enableButtons() {
+  function enableSubmitButtons() {
     rejectButtonRef.current?.disableButton(false);
     approveButtonRef.current?.disableButton(
       !isDataEnhanced || selectedCasesAreConsolidationCases(),
@@ -247,9 +160,55 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function disableLeadCaseForm(disabled: boolean) {
-    leadCaseDivisionRef.current?.disable(disabled);
-    leadCaseNumberRef.current?.disable(disabled);
+  function selectedCasesAreConsolidationCases() {
+    return order.childCases.reduce((itDoes, bCase) => {
+      if (!selectedCases.includes(bCase)) {
+        return itDoes;
+      }
+      return itDoes || !!bCase.associations?.length;
+    }, false);
+  }
+
+  function setOrderWithDataEnhancement(order: ConsolidationOrder) {
+    setOrder({ ...order });
+  }
+
+  function updateAllSelections(caseList: ConsolidationOrderCase[]) {
+    setSelectedCases(caseList);
+  }
+
+  ///////////////////// HANDLERS /////////////////////////
+
+  function handleApproveButtonClick() {
+    confirmationModalRef.current?.show({
+      status: 'approved',
+      cases: selectedCases,
+      leadCase: leadCase,
+      consolidationType: consolidationType,
+    });
+  }
+
+  function handleClearInputs(): void {
+    disableSubmitButtons();
+    clearLeadCase();
+    clearSelectedCases();
+    setLeadCaseNumber('');
+    setFoundValidCaseNumber(false);
+    setShowLeadCaseForm(false);
+    jointAdministrationRef.current?.check(false);
+    substantiveRef.current?.check(false);
+    toggleLeadCaseFormRef.current?.setChecked(false);
+  }
+
+  function handleConfirmAction(action: ConfirmActionResults): void {
+    switch (action.status) {
+      case 'approved':
+        approveConsolidation(action);
+        break;
+      case 'rejected':
+        rejectConsolidation(action);
+        break;
+    }
   }
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
@@ -262,12 +221,39 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases(tempSelectedCases);
   }
 
+  async function handleLeadCaseInputChange(caseNumber?: string) {
+    if (caseNumber) {
+      setLeadCaseNumber(caseNumber);
+    } else {
+      setLeadCaseNumber('');
+      setFoundValidCaseNumber(false);
+      setLeadCase(null);
+      disableSubmitButtons();
+    }
+  }
+
+  function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
+    toggleLeadCaseFormRef.current?.setChecked(false);
+    leadCaseNumberRef.current?.clearValue();
+    setShowLeadCaseForm(false);
+    setFoundValidCaseNumber(false);
+
+    if (leadCaseId === bCase.caseId) {
+      setLeadCaseId('');
+      setLeadCase(null);
+    } else {
+      setLeadCaseId(bCase.caseId);
+      setLeadCase(bCase);
+    }
+  }
+
   async function handleOnExpand() {
     if (props.onExpand) {
       props.onExpand(`order-list-${order.id}`);
     }
     if (!isDataEnhanced) {
       for (const bCase of order.childCases) {
+        handleClearInputs();
         try {
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
@@ -288,28 +274,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setConsolidationType(value as ConsolidationType);
   }
 
-  function handleApproveButtonClick() {
-    confirmationModalRef.current?.show({
-      status: 'approved',
-      cases: selectedCases,
-      leadCase: leadCase,
-      consolidationType: consolidationType,
-    });
-  }
-
-  function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
-    toggleLeadCaseFormRef.current?.setChecked(false);
-    leadCaseNumberRef.current?.clearValue();
-    setShowLeadCaseForm(false);
-    setFoundValidCaseNumber(false);
-
-    if (leadCaseId === bCase.caseId) {
-      setLeadCaseId('');
-      setLeadCase(null);
-    } else {
-      setLeadCaseId(bCase.caseId);
-      setLeadCase(bCase);
-    }
+  function handleSelectLeadCaseCourt(option: CamsSelectOptionList): void {
+    setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
   }
 
   function handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void {
@@ -317,23 +283,23 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setShowLeadCaseForm(ev.target.checked);
   }
 
-  function handleSelectLeadCaseCourt(option: CamsSelectOptionList): void {
-    setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
-  }
+  ///////////////////// USE EFFECTS /////////////////////////
 
-  async function handleLeadCaseInputChange(caseNumber?: string) {
-    if (caseNumber) {
-      setLeadCaseNumber(caseNumber);
+  useEffect(() => {
+    if (isConsolidationProcessing) {
+      disableSubmitButtons();
+      clearButtonRef.current?.disableButton(true);
     } else {
-      setLeadCaseNumber('');
+      enableSubmitButtons();
+      clearButtonRef.current?.disableButton(false);
     }
-  }
+  }, [isConsolidationProcessing]);
 
   useEffect(() => {
     if (selectedCases.length && leadCaseId !== '' && consolidationType !== null) {
-      enableButtons();
+      enableSubmitButtons();
     } else {
-      disableButtons();
+      disableSubmitButtons();
     }
   }, [selectedCases, leadCaseId, isDataEnhanced, consolidationType]);
 
@@ -430,13 +396,89 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }, [leadCaseNumber, leadCaseCourt]);
 
+  /////////////////////////////// FORM SUBMISION //////////////////////////////////
+
+  function approveConsolidation(action: ConfirmActionResults) {
+    if (action.status === 'approved' && leadCase && consolidationType) {
+      const data: ConsolidationOrderActionApproval = {
+        ...order,
+        consolidationType,
+        approvedCases: selectedCases
+          .map((bCase) => bCase.caseId)
+          .filter((caseId) => caseId !== leadCase.caseId),
+        leadCase,
+      };
+
+      setIsConsolidationProcessing(true);
+      api
+        .put('/consolidations/approve', data)
+        .then((response) => {
+          const newOrders = response.body as ConsolidationOrder[];
+          const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
+          setIsConsolidationProcessing(false);
+          props.onOrderUpdate(
+            {
+              message: `Consolidation to lead case ${getCaseNumber(approvedOrder.leadCase?.caseId)} in ${
+                approvedOrder.leadCase?.courtName
+              } (${approvedOrder.leadCase?.courtDivisionName}) was successful.`,
+              type: UswdsAlertStyle.Success,
+              timeOut: 8,
+            },
+            newOrders,
+            order,
+          );
+        })
+        .catch((reason) => {
+          setIsConsolidationProcessing(false);
+
+          // TODO: make the error message more meaningful
+          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        });
+    }
+  }
+
+  function rejectConsolidation(action: ConfirmActionResults) {
+    if (action.status === 'rejected') {
+      const data: ConsolidationOrderActionRejection = {
+        ...order,
+        rejectedCases: selectedCases.map((bCase) => bCase.caseId),
+        reason: action.rejectionReason,
+      };
+
+      setIsConsolidationProcessing(true);
+      api
+        .put('/consolidations/reject', data)
+        .then((response) => {
+          const newOrders = response.body as ConsolidationOrder[];
+          setIsConsolidationProcessing(false);
+          props.onOrderUpdate(
+            {
+              message: `Rejection of consolidation order was successful.`,
+              type: UswdsAlertStyle.Success,
+              timeOut: 8,
+            },
+            newOrders,
+            order,
+          );
+        })
+        .catch((reason) => {
+          setIsConsolidationProcessing(false);
+
+          // TODO: make the error message more meaningful
+          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        });
+    }
+  }
+
+  //////////////////// JSX ///////////////////////
+
   return (
     <Accordion
       key={order.id}
       id={`order-list-${order.id}`}
       expandedId={expandedId}
       onExpand={handleOnExpand}
-      onCollapse={clearInputs}
+      onCollapse={handleClearInputs}
       hidden={hidden}
     >
       <section
@@ -594,11 +636,18 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10 text-no-wrap float-right">
+                <LoadingSpinner
+                  id={`processing-consolidation-loading-spinner-${order.id}`}
+                  caption="Updating..."
+                  height="40px"
+                  hidden={!isConsolidationProcessing}
+                />
                 <Button
                   id={`accordion-cancel-button-${order.id}`}
-                  onClick={clearInputs}
+                  onClick={handleClearInputs}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
                   className="unstyled-button"
+                  ref={clearButtonRef}
                 >
                   Clear
                 </Button>
@@ -632,7 +681,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               ref={confirmationModalRef}
               id={`confirmation-modal-${order.id}`}
               onCancel={() => {}}
-              onConfirm={confirmAction}
+              onConfirm={handleConfirmAction}
             ></ConsolidationOrderModal>
           </section>
         )}
