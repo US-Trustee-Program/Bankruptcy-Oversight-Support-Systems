@@ -7,6 +7,7 @@ import {
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { ResponseBody } from '@common/api/response';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -143,7 +144,10 @@ export default class Chapter15MockApi extends Api {
   public static async get(
     path: string,
   ): Promise<
-    Chapter15CaseSummaryResponseData | Chapter15CaseDetailsResponseData | SimpleResponseData
+    | Chapter15CaseSummaryResponseData
+    | Chapter15CaseDetailsResponseData
+    | SimpleResponseData
+    | ResponseBody
   > {
     let response: ResponseData | SimpleResponseData;
     if (path.match(/\/cases\/123-12-12345\/docket/)) {
