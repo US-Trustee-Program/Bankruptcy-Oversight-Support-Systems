@@ -118,10 +118,10 @@ function AssignAttorneyModalComponent(
     }
     const isTheSame =
       localCheckListValues &&
-      bCase.assignments &&
+      !!bCase.assignments &&
       areArraysSame(localCheckListValues, bCase.assignments);
 
-    modalRef.current?.buttons?.current?.disableSubmitButton(!!isTheSame);
+    modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 
     setCheckListValues(localCheckListValues);
   }
