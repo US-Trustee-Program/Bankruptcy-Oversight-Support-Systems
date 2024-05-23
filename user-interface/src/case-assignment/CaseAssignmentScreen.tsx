@@ -58,9 +58,9 @@ export const CaseAssignment = () => {
     await api
       .get<CaseWithAssignments[]>('/cases', { divisionCodes: ['081'] })
       .then((res) => {
-        const assignmentList = res.data;
-        assignmentList.sort(sortByDate).sort(sortByCaseId);
-        setCaseList(assignmentList);
+        const caseList = res.data;
+        caseList.sort(sortByDate).sort(sortByCaseId);
+        setCaseList(caseList);
 
         isFetching = false;
         setIsLoading(false);
