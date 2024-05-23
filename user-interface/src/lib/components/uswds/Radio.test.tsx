@@ -20,17 +20,14 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('should call onChange callback when checked or unchecked', async () => {
+    const radioButtonLabel = screen.getByTestId(`${defaultProps.id}-click-target`);
     const radioButton = screen.getByTestId(defaultProps.id);
-    fireEvent.click(radioButton);
+    fireEvent.click(radioButtonLabel);
     await waitFor(() => {
-      expect(radioButton).toBeChecked();
+      expect(onChangeHandlerSpy).toHaveBeenCalled();
     });
-    expect(onChangeHandlerSpy).toHaveBeenCalled();
-    expect(onChangeHandlerSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        target: radioButton,
-      }),
-    );
+    expect(onChangeHandlerSpy).toHaveBeenCalledWith('1');
+    expect(radioButton).toBeChecked();
   });
 
   test('should render the radio button label', () => {
@@ -42,15 +39,18 @@ describe('Tests for USWDS Input component.', () => {
     const radioButton = screen.getByTestId(defaultProps.id);
     expect(radioButton).not.toBeChecked();
 
-    ref.current?.checked(true);
+    expect(ref.current?.isChecked()).toBeFalsy();
+    ref.current?.check(true);
     await waitFor(() => {
       expect(radioButton).toBeChecked();
     });
+    expect(ref.current?.isChecked()).toBeTruthy();
 
-    ref.current?.checked(false);
+    ref.current?.check(false);
     await waitFor(() => {
       expect(radioButton).not.toBeChecked();
     });
+    expect(ref.current?.isChecked()).toBeFalsy();
   });
 
   test('should be able to disable/enable programmatically', async () => {
