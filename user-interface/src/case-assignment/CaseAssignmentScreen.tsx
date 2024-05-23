@@ -59,6 +59,9 @@ export const CaseAssignment = () => {
       .get<CaseWithAssignments[]>('/cases', { divisionCodes: ['081'] })
       .then((res) => {
         const caseList = res.data;
+        caseList.forEach((bCase) => {
+          bCase.assignments = bCase.assignments ?? [];
+        });
         caseList.sort(sortByDate).sort(sortByCaseId);
         setCaseList(caseList);
 

@@ -10,6 +10,7 @@ import Api from '@/lib/models/api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getFullName } from '@common/name-helper';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { CaseWithAssignments } from '@/case-assignment/CaseAssignmentScreen.types';
 
 const susan = new Attorney('Susan', 'Arbeit', 'Manhattan');
 const mark = new Attorney('Mark', 'Bruh', 'Manhattan');
@@ -60,8 +61,21 @@ describe('Test Assign Attorney Modal Component', () => {
   }
 
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
-    renderWithProps(React.createRef<AssignAttorneyModalRef>());
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
 
+    const bCase: CaseWithAssignments = MockData.getCaseBasics({
+      override: {
+        caseId: '123',
+        caseTitle: 'Test Case',
+        dateFiled: '01/01/2024',
+      },
+    });
+    bCase.assignments = [];
+
+    modalRef.current?.show({
+      bCase,
+    });
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
