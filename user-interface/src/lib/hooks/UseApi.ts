@@ -5,6 +5,7 @@ import { ObjectKeyVal } from '../type-declarations/basic';
 import {
   isResponseBodyError,
   isResponseBodySuccess,
+  ResponseBody,
   ResponseBodySuccess,
 } from '@common/api/response';
 
@@ -43,7 +44,10 @@ export interface ApiClient {
   createPath(path: string, params: ObjectKeyVal): string;
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
   list(path: string, options?: ObjectKeyVal): Promise<ResponseData>;
-  get(path: string, options?: ObjectKeyVal): Promise<ResponseData | SimpleResponseData>;
+  get(
+    path: string,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseData | SimpleResponseData | ResponseBody>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
   getQueryStringsToPassthrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
