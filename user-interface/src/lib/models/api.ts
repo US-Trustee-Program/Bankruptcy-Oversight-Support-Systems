@@ -2,6 +2,11 @@ import { httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import config from '../../configuration/apiConfiguration';
+import {
+  Chapter15CaseDetailsResponseData,
+  Chapter15CaseSummaryResponseData,
+} from '@/lib/type-declarations/chapter-15';
+import { ResponseBody } from '@common/api/response';
 
 export default class Api {
   public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
@@ -64,7 +69,12 @@ export default class Api {
   public static async get(
     path: string,
     options?: ObjectKeyVal,
-  ): Promise<ResponseData | SimpleResponseData> {
+  ): Promise<
+    | Chapter15CaseSummaryResponseData
+    | Chapter15CaseDetailsResponseData
+    | SimpleResponseData
+    | ResponseBody
+  > {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
