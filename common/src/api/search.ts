@@ -2,6 +2,7 @@ import { PaginationParameters } from './pagination';
 
 export type SearchPredicate = PaginationParameters;
 
+// TODO: Evaluate the parameters here. P is a superset of PaginationParameters and options is a subset.
 export function setPaginationDefaults<P extends SearchPredicate = SearchPredicate>(
   predicate: P,
   options: Partial<PaginationParameters> = {},
