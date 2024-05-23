@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { CaseAssignment } from './CaseAssignmentScreen';
 import Chapter15MockApi from '../lib/models/chapter15-mock.api.cases';
-import { ResponseData } from '../lib/type-declarations/api';
+import { ResponseData } from '@/lib/type-declarations/api';
 import { vi } from 'vitest';
 import * as FeatureFlags from '../lib/hooks/UseFeatureFlags';
 import AttorneysMockApi from '@/lib/models/attorneys-mock.api.cases';
@@ -81,11 +81,9 @@ describe('CaseAssignment Component Tests', () => {
   test('/cases should trigger alert when error status is received from Cases api', async () => {
     const expectAlertMessage = 'Mocked error cases request';
 
-    vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
-      (_path: string): Promise<ResponseData> => {
-        return Promise.reject(new Error(expectAlertMessage));
-      },
-    );
+    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string): Promise<ResponseData> => {
+      return Promise.reject(new Error(expectAlertMessage));
+    });
 
     render(
       <BrowserRouter>
@@ -164,36 +162,32 @@ describe('CaseAssignment Component Tests', () => {
   });
 
   test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
-    vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
-      (_path: string): Promise<ResponseData> => {
-        return Promise.resolve({
-          message: 'not found',
-          count: 0,
-          body: {
-            caseList: [
-              {
-                caseId: '081-23-44463',
-                caseTitle: 'Flo Esterly and Neas Van Sampson',
-                dateFiled: '2023-05-04',
-                assignments: ['Sara', 'Bob'],
-              },
-              {
-                caseId: '081-23-44462',
-                caseTitle: 'Bridget Maldonado',
-                dateFiled: '2023-04-14',
-                assignments: ['Frank', 'Sue'],
-              },
-              {
-                caseId: '081-23-44461',
-                caseTitle: 'Talia Torres and Tylor Stevenson',
-                dateFiled: '2023-04-04',
-                assignments: ['Joe', 'Sam'],
-              },
-            ],
+    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string): Promise<ResponseData> => {
+      return Promise.resolve({
+        message: 'not found',
+        count: 0,
+        body: [
+          {
+            caseId: '081-23-44463',
+            caseTitle: 'Flo Esterly and Neas Van Sampson',
+            dateFiled: '2023-05-04',
+            assignments: ['Sara', 'Bob'],
           },
-        });
-      },
-    );
+          {
+            caseId: '081-23-44462',
+            caseTitle: 'Bridget Maldonado',
+            dateFiled: '2023-04-14',
+            assignments: ['Frank', 'Sue'],
+          },
+          {
+            caseId: '081-23-44461',
+            caseTitle: 'Talia Torres and Tylor Stevenson',
+            dateFiled: '2023-04-04',
+            assignments: ['Joe', 'Sam'],
+          },
+        ],
+      });
+    });
 
     render(
       <BrowserRouter>
@@ -265,14 +259,12 @@ describe('CaseAssignment Component Tests', () => {
           assignments: ['Joe', 'Sam'],
         },
       ];
-      vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
+      vi.spyOn(Chapter15MockApi, 'get').mockImplementation(
         (_path: string): Promise<ResponseData> => {
           return Promise.resolve({
             message: '',
             count: 3,
-            body: {
-              caseList,
-            },
+            body: caseList,
           });
         },
       );
