@@ -59,13 +59,6 @@ export type ConfirmationModalImperative = ModalRefType & {
 //  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
 //}
 //
-//export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
-//  const divisionCodeSet = cases.reduce((set, bCase) => {
-//    set.add(bCase.courtDivisionCode);
-//    return set;
-//  }, new Set<string>());
-//  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
-//}
 
 export function formatListForDisplay(attorneys: string[]) {
   if (attorneys.length === 0) {
@@ -170,12 +163,6 @@ function ConsolidationOrderModalComponent(
 
   function reset() {
     if (reasonRef.current) reasonRef.current.value = '';
-    //   setConsolidationType(null);
-    //=   administrativeConsolidationRef.current?.checked(false);
-    //=   substantiveConsolidationRef.current?.checked(false);
-    //   leadCaseDivisionRef.current?.clearValue();
-    //   setLeadCaseNumber('');
-    //   leadCaseNumberRef.current?.clearValue();
   }
 
   function resizeModal() {

@@ -20,6 +20,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
   selectAllCheckboxes: () => void;
+  clearLeadCase: () => void;
 };
 
 export interface ConsolidationCaseTableProps {
@@ -131,6 +132,9 @@ function _ConsolidationCaseTable(
   useImperativeHandle(OrderTableRef, () => ({
     clearAllCheckboxes,
     selectAllCheckboxes,
+    clearLeadCase: () => {
+      setLeadCase(null);
+    },
   }));
 
   return (
