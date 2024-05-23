@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+import { CasesSearchPredicate } from '@common/api/search';
 
 vi.mock(
   '../lib/components/CamsSelectMulti',
@@ -13,10 +14,12 @@ vi.mock(
 
 describe('search screen', () => {
   let caseList: CaseSummary[];
+  const getCaseSummarySpy = vi.spyOn(Chapter15MockApi, 'get');
+
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+    getCaseSummarySpy.mockResolvedValue({
       message: '',
       count: caseList.length,
       body: caseList,
@@ -59,22 +62,29 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
+    const caseNumber = '00-11111';
+    fireEvent.change(caseNumberInput, { target: { value: caseNumber } });
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('#search-results > table');
       expect(table).not.toBeInTheDocument();
     });
+
+    const casesSearchPredicate: CasesSearchPredicate = {
+      caseNumber,
+      limit: 25,
+      offset: 0,
+    };
+    expect(getCaseSummarySpy).toHaveBeenCalledWith('/cases', casesSearchPredicate);
   });
 
-  test('should render a list of cases by court division', async () => {
+  test.only('should render a list of cases by court division', async () => {
     renderWithoutProps();
 
     let defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
 
-    screen.debug();
     await waitFor(() => {
       // Infer the office list is loaded from the API.
       expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
@@ -107,6 +117,11 @@ describe('search screen', () => {
       table = document.querySelector('#search-results > table');
       expect(table).not.toBeInTheDocument();
     });
+
+    expect(getCaseSummarySpy).toHaveBeenCalledWith(
+      '/cases',
+      expect.objectContaining({ limit: 25, offset: 0, divisionCodes: expect.any(Array<string>) }),
+    );
   });
 
   test('should show the no results alert when no results are available', async () => {

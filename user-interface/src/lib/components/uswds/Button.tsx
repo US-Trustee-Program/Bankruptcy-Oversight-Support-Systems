@@ -47,6 +47,8 @@ const ButtonComponent = (
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
   const classes = [BUTTON_BASE_CLASS];
 
+  console.log(id);
+
   if (uswdsStyle) classes.push(uswdsStyle);
   if (buttonState) classes.push(buttonState);
   if (className) classes.push(className);
