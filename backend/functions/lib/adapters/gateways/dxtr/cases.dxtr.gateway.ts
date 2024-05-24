@@ -17,7 +17,12 @@ import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 import { CasesSearchPredicate } from '../../../../../../common/src/api/search';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../../../../common/src/cams/cases';
+import {
+  CaseBasics,
+  CaseDetail,
+  CaseSummary,
+  DEFAULT_SEARCH_LIMIT,
+} from '../../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../../common/src/cams/parties';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
@@ -332,10 +337,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     const parametersList: string[] = [];
     const replacementVariables: DbTableFieldSpec[] = [];
 
+    const recordCount = predicate.limit ? predicate.limit + 1 : DEFAULT_SEARCH_LIMIT + 1;
     replacementVariables.push({
       name: `limit`,
       type: mssql.Int, // TODO: How big (range) does this int need to be??
-      value: predicate.limit ?? 25,
+      value: recordCount,
     });
     replacementVariables.push({
       name: `offset`,

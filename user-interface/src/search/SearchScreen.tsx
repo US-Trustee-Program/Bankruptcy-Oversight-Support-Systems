@@ -10,9 +10,9 @@ import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSel
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
+import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
 
 type SearchScreenProps = object;
-export const DEFAULT_SEARCH_LIMIT = 25;
 
 export default function SearchScreen(_props: SearchScreenProps) {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({

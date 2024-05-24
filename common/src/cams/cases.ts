@@ -2,6 +2,8 @@ import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { OfficeDetails } from './courts';
 
+export const DEFAULT_SEARCH_LIMIT = 25;
+
 export interface CaseBasics extends OfficeDetails {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
   caseId: string;
