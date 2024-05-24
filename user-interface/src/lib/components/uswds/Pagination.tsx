@@ -1,7 +1,7 @@
 import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { WithPagination } from '@common/api/pagination';
 import { CasesSearchPredicate } from '@common/api/search';
-import { DEFAULT_SEARCH_LIMIT } from '@/search/SearchScreen';
+import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
 
 export type PaginationProps = {
   paginationMeta: WithPagination;

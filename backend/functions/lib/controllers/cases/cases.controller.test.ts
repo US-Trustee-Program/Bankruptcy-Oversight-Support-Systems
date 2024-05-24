@@ -2,7 +2,7 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseManagement } from '../../use-cases/case-management';
 import { CasesController } from './cases.controller';
-import { ResponseBodySuccess } from '../../../../../common/src/api/response';
+import { isResponseBodySuccess, ResponseBodySuccess } from '../../../../../common/src/api/response';
 import { CaseBasics } from '../../../../../common/src/cams/cases';
 import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
 import {
@@ -84,9 +84,9 @@ describe('cases controller test', () => {
       expect(actual).toEqual(expected);
     });
 
-    test('should return a next link when result set matches limit', async () => {
+    test('should return a next link when result set is larger than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit));
+      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit) + 1);
       const expected: ResponseBodySuccess<CaseBasics[]> = {
         meta: {
           isPaginated: true,
@@ -105,6 +105,38 @@ describe('cases controller test', () => {
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
+      expect(isResponseBodySuccess(actual)).toBeTruthy();
+      if (isResponseBodySuccess(actual)) {
+        expect(actual.data).toHaveLength(parseInt(limit));
+        expect(actual.data).toEqual(data.slice(0, parseInt(limit)));
+      }
+    });
+
+    test('should not return a next link when result set matches limit', async () => {
+      const caseNumber = '00-00000';
+      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit));
+      const expected: ResponseBodySuccess<CaseBasics[]> = {
+        meta: {
+          isPaginated: true,
+          count: data.length,
+          self: mockRequestUrl,
+          limit: 25,
+          currentPage: 1,
+        },
+        isSuccess: true,
+        data,
+      };
+
+      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+
+      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
+      const actual = await controller.searchCases(camsHttpRequest);
+      expect(actual).toEqual(expected);
+      expect(isResponseBodySuccess(actual)).toBeTruthy();
+      if (isResponseBodySuccess(actual)) {
+        expect(actual.data).toHaveLength(parseInt(limit));
+        expect(actual.data).toEqual(data.slice(0, parseInt(limit)));
+      }
     });
 
     test('should not return a next link when result set is smaller than limit', async () => {
@@ -127,6 +159,11 @@ describe('cases controller test', () => {
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
+      expect(isResponseBodySuccess(actual)).toBeTruthy();
+      if (isResponseBodySuccess(actual)) {
+        expect(actual.data).toHaveLength(parseInt(limit) - 1);
+        expect(actual.data).toEqual(data);
+      }
     });
 
     test('should return previous link but no next link when on the last set', async () => {
@@ -161,26 +198,27 @@ describe('cases controller test', () => {
       const offset = '50';
       const nextOffset = '100';
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit));
-      const expected: ResponseBodySuccess<CaseBasics[]> = {
-        meta: {
-          isPaginated: true,
-          count: data.length,
-          self: mockRequestUrl,
-          next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
-          previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
-          limit: parseInt(limit),
-          currentPage: 2,
-        },
-        isSuccess: true,
-        data,
+      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit) + 1);
+      const expectedMeta = {
+        isPaginated: true,
+        count: data.length,
+        self: mockRequestUrl,
+        next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
+        previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
+        limit: parseInt(limit),
+        currentPage: 2,
       };
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber, limit, offset } });
       const actual = await controller.searchCases(camsHttpRequest);
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual(expect.objectContaining({ meta: expectedMeta, isSuccess: true }));
+      expect(isResponseBodySuccess(actual)).toBeTruthy();
+      if (isResponseBodySuccess(actual)) {
+        expect(actual.data).toHaveLength(parseInt(limit));
+        expect(actual.data).toEqual(data.slice(0, parseInt(limit)));
+      }
     });
 
     test('should return search results for a caseNumber', async () => {

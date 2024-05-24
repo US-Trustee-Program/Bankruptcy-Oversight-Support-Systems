@@ -50,11 +50,12 @@ export class CasesController {
       limit: predicate.limit,
       currentPage: getCurrentPage(cases.length, predicate),
     };
-    if (cases.length === predicate.limit) {
+    if (cases.length > predicate.limit) {
       const next = new URL(request.url);
       next.searchParams.set('limit', predicate.limit.toString());
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
       meta.next = next.href;
+      cases.pop();
     }
     if (predicate.offset > 0) {
       const previous = new URL(request.url);
