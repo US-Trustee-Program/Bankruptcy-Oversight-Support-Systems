@@ -51,15 +51,6 @@ export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
-//export async function getCaseAssignments(caseId: string) {
-//  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
-//}
-//
-//export async function getCaseAssociations(caseId: string) {
-//  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
-//}
-//
-
 export function formatListForDisplay(attorneys: string[]) {
   if (attorneys.length === 0) {
     return '(unassigned)';
@@ -141,7 +132,6 @@ function ConsolidationOrderModalComponent(
   function show(options: ShowOptionParams) {
     setCases(options.cases);
     if (options.status === 'approved' && options.leadCase && options.consolidationType) {
-      // modalRef.current?.buttons?.current?.disableSubmitButton(false);
       setConsolidationType(options.consolidationType);
       setLeadCase(options.leadCase);
       setOptions({

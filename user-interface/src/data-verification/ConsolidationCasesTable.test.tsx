@@ -173,10 +173,6 @@ describe('test ConsolidationCasesTable component', () => {
     expect(alert).not.toBeInTheDocument();
   });
 
-  // test selecting different "lead case" buttons and make sure
-  // - Button style and label is updated properly when different buttons are selected or clicked on and off
-  // - Button properly fires on click event from parent
-
   test('should change lead case button styles and labels and call onMarkLead', () => {
     const tableRef = React.createRef<OrderTableImperative>();
     let leadCaseButton: HTMLButtonElement;
@@ -202,11 +198,9 @@ describe('test ConsolidationCasesTable component', () => {
 
     leadCaseButtons.forEach((button) => {
       if (leadCaseButton.id === button.id) {
-        console.log(button.className);
         expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
         expect(button).toHaveTextContent('Lead Case');
       } else {
-        console.log(button.className);
         expect(button).toHaveClass(UswdsButtonStyle.Outline);
         expect(button).toHaveTextContent('Mark as Lead');
       }
