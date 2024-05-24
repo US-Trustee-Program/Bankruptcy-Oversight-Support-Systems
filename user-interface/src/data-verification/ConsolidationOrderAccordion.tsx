@@ -193,6 +193,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     clearLeadCase();
     clearSelectedCases();
     setLeadCaseNumber('');
+    setLeadCaseNumberError('');
     setFoundValidCaseNumber(false);
     setShowLeadCaseForm(false);
     jointAdministrationRef.current?.check(false);
@@ -228,6 +229,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       setLeadCaseNumber('');
       setFoundValidCaseNumber(false);
       setLeadCase(null);
+      setLeadCaseNumberError('');
       disableSubmitButtons();
     }
   }
@@ -253,7 +255,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
     if (!isDataEnhanced) {
       for (const bCase of order.childCases) {
-        handleClearInputs();
         try {
           const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
           bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
@@ -562,7 +563,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               </div>
               <div className="grid-col-1"></div>
             </div>
-            <div className="button-bar grid-row grid-gap-lg">
+            <div
+              className="lead-case-form grid-row grid-gap-lg"
+              data-testid={`lead-case-form-${order.id}`}
+            >
               <div className="grid-col-1"></div>
               <div className="grid-col-3">
                 <h3>Lead Case Not Listed</h3>
