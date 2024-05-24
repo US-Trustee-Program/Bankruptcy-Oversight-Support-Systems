@@ -9,7 +9,6 @@ import {
   TableRowData,
 } from '@/lib/components/uswds/Table';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import Button from '@/lib/components/uswds/Button';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
@@ -18,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { Pagination } from '@/lib/components/uswds/Pagination';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -35,6 +35,7 @@ type AlertProps = {
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
+  updateSearchPredicate: (searchPredicate: CasesSearchPredicate) => void;
 };
 
 export function SearchResults(props: SearchResultsProps) {
@@ -48,14 +49,7 @@ export function SearchResults(props: SearchResultsProps) {
   const [searchResults, setSearchResults] = useState<ResponseBodySuccess<CaseBasics[]> | null>(
     null,
   );
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>(
-    props.searchPredicate,
-  );
-  const currentPage =
-    !!searchPredicate.offset && !!searchPredicate.limit
-      ? searchPredicate.offset / searchPredicate.limit + 1
-      : 1;
-  const meta: WithPagination | undefined = isPaginated(searchResults?.meta)
+  const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
     ? searchResults?.meta
     : undefined;
 
@@ -80,15 +74,15 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   async function search(uri?: string) {
-    if (!isValidSearchPredicate(searchPredicate)) return;
+    if (!isValidSearchPredicate(props.searchPredicate)) return;
 
     // Don't hurt me for the l337 code...
     const getArgs: [string, CasesSearchPredicate | undefined] = uri
       ? [uri, undefined]
-      : ['/cases', searchPredicate];
+      : ['/cases', props.searchPredicate];
 
-    console.log('searching...', searchPredicate);
-    trackSearchEvent(searchPredicate);
+    console.log('searching...', props.searchPredicate);
+    trackSearchEvent(props.searchPredicate);
     setIsSearching(true);
     // TODO: make these a callback? or move them back?
     // disableSearchItems(true);
@@ -105,7 +99,7 @@ export function SearchResults(props: SearchResultsProps) {
 
   useEffect(() => {
     search();
-  }, [searchPredicate]);
+  }, [props.searchPredicate]);
 
   return (
     <div>
@@ -162,53 +156,12 @@ export function SearchResults(props: SearchResultsProps) {
               })}
             </TableBody>
           </Table>
-          {meta && meta.previous && (
-            <Button
-              id={'previous-results'}
-              onClick={() => {
-                setSearchPredicate({
-                  ...searchPredicate,
-                  offset: (searchPredicate.offset ?? 0) - (searchPredicate.limit ?? 25),
-                });
-                search(meta.previous!);
-              }}
-            >
-              Previous
-            </Button>
-          )}
-          {currentPage > 1 && (
-            <Button
-              id={`page-1-results`}
-              onClick={() => {
-                setSearchPredicate({ ...searchPredicate });
-              }}
-            >
-              1
-            </Button>
-          )}
-          <Button
-            id={`page-${currentPage}-results`}
-            onClick={() => {
-              setSearchPredicate({ ...searchPredicate });
-            }}
-          >
-            {!!searchPredicate.offset && !!searchPredicate.limit
-              ? searchPredicate.offset / searchPredicate.limit + 1
-              : 1}
-          </Button>
-          {meta && meta.next && (
-            <Button
-              id={'next-results'}
-              onClick={() => {
-                setSearchPredicate({
-                  ...searchPredicate,
-                  offset: (searchPredicate.offset ?? 0) + (searchPredicate.limit ?? 25),
-                });
-                search(meta.next!);
-              }}
-            >
-              Next
-            </Button>
+          {pagination && (
+            <Pagination
+              paginationMeta={pagination}
+              searchPredicate={props.searchPredicate}
+              retrievePage={props.updateSearchPredicate}
+            />
           )}
         </div>
       )}

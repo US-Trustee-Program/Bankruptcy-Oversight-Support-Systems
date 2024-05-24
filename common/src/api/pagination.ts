@@ -17,8 +17,8 @@ export type WithPagination = {
   previous?: UriString;
   next?: UriString;
   // total?: number; // need to query for a total. Yuck?
-  limit?: number;
-  offset?: number;
+  limit: number;
+  currentPage: number;
   // key: Key;
 };
 

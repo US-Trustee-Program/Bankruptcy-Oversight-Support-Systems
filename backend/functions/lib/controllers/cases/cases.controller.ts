@@ -7,6 +7,10 @@ import { CamsHttpRequest } from '../../adapters/types/http';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
+function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
+  return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
+}
+
 export class CasesController {
   private readonly applicationContext: ApplicationContext;
   private readonly caseManagement: CaseManagement;
@@ -43,6 +47,8 @@ export class CasesController {
       isPaginated: true,
       count: cases.length,
       self: request.url,
+      limit: predicate.limit,
+      currentPage: getCurrentPage(cases.length, predicate),
     };
     if (cases.length === predicate.limit) {
       const next = new URL(request.url);

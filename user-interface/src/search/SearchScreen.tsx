@@ -12,10 +12,11 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 
 type SearchScreenProps = object;
+export const DEFAULT_SEARCH_LIMIT = 25;
 
 export default function SearchScreen(_props: SearchScreenProps) {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
-    limit: 25,
+    limit: DEFAULT_SEARCH_LIMIT,
     offset: 0,
   });
 
@@ -77,10 +78,6 @@ export default function SearchScreen(_props: SearchScreenProps) {
     getOffices();
   }, []);
 
-  // useEffect(() => {
-  //   search();
-  // }, [searchPredicate]);
-
   return (
     <div className="search-screen" data-testid="search">
       <div className="grid-row grid-gap-lg">
@@ -141,7 +138,11 @@ export default function SearchScreen(_props: SearchScreenProps) {
             </div>
           )}
           {isValidSearchPredicate(searchPredicate) && (
-            <SearchResults id="search-results" searchPredicate={searchPredicate}></SearchResults>
+            <SearchResults
+              id="search-results"
+              searchPredicate={searchPredicate}
+              updateSearchPredicate={setSearchPredicate}
+            />
           )}
         </div>
         <div className="grid-col-1"></div>

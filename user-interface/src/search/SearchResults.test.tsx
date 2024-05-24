@@ -1,13 +1,14 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { CaseSummary } from '@common/cams/cases';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
+  const updatePredicateSpy = vi.fn();
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
@@ -19,6 +20,8 @@ describe('SearchResults component tests', () => {
         count: caseList.length,
         next: 'next-link',
         self: 'self-link',
+        limit: 25,
+        currentPage: 1,
       },
       data: caseList,
     });
@@ -32,6 +35,7 @@ describe('SearchResults component tests', () => {
         limit: 25,
         offset: 0,
       },
+      updateSearchPredicate: updatePredicateSpy,
     };
     render(
       <BrowserRouter>
@@ -114,128 +118,29 @@ describe('SearchResults component tests', () => {
     });
   });
 
-  test('should have no previous button', async () => {
+  test('should render pagination', async () => {
     vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
       isSuccess: true,
       meta: {
         isPaginated: true,
         count: caseList.length,
         next: 'next-link',
-        self: 'self-link',
-      },
-      data: caseList,
-    });
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-    });
-
-    const nextButton = screen.queryByTestId('button-next-results');
-    const previousButton = screen.queryByTestId('button-previous-results');
-
-    expect(nextButton).toBeInTheDocument();
-    expect(nextButton).toBeEnabled();
-    expect(previousButton).not.toBeInTheDocument();
-  });
-
-  test('should have previous button', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      isSuccess: true,
-      meta: {
-        isPaginated: true,
-        count: caseList.length,
-        next: 'next-link',
-        previous: 'previous-link',
-        self: 'self-link',
-      },
-      data: caseList,
-    });
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-    });
-
-    const nextButton = screen.queryByTestId('button-next-results');
-    const previousButton = screen.queryByTestId('button-previous-results');
-
-    expect(nextButton).toBeInTheDocument();
-    expect(nextButton).toBeEnabled();
-    expect(previousButton).toBeInTheDocument();
-    expect(previousButton).toBeEnabled();
-  });
-
-  test('should have previous button and no next button', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      isSuccess: true,
-      meta: {
-        isPaginated: true,
-        count: caseList.length,
-        previous: 'previous-link',
-        self: 'self-link',
-      },
-      data: caseList,
-    });
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-    });
-
-    const nextButton = screen.queryByTestId('button-next-results');
-    const previousButton = screen.queryByTestId('button-previous-results');
-
-    expect(nextButton).not.toBeInTheDocument();
-    expect(previousButton).toBeInTheDocument();
-    expect(previousButton).toBeEnabled();
-  });
-
-  test('should have page buttons numbered one and two', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      isSuccess: true,
-      meta: {
-        isPaginated: true,
-        count: caseList.length,
-        next: 'next-link',
-        previous: 'previous-link',
         self: 'self-link',
         limit: 25,
-        offset: 0,
+        currentPage: 1,
       },
       data: caseList,
     });
 
-    const caseNumber = '00-11111';
-    const searchPredicate: CasesSearchPredicate = {
-      caseNumber,
-      limit: 25,
-      offset: 25,
-    };
-
-    renderWithProps({ searchPredicate });
+    renderWithProps();
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
     });
 
-    const nextButton = screen.queryByTestId('button-next-results');
-    const previousButton = screen.queryByTestId('button-previous-results');
-    const pageOneButton = screen.queryByTestId('button-page-1-results');
-    const pageTwoButton = screen.queryByTestId('button-page-2-results');
-    // const overflow = screen.queryByTestId('overflow-indicator-two');
+    const pagination = document.querySelector('.usa-pagination');
 
-    expect(nextButton).toBeInTheDocument();
-    expect(nextButton).toBeEnabled();
-    expect(previousButton).toBeInTheDocument();
-    expect(previousButton).toBeEnabled();
-    expect(pageOneButton).toBeInTheDocument();
-    expect(pageOneButton).toBeEnabled();
-    expect(pageTwoButton).toBeInTheDocument();
-    expect(pageTwoButton).toBeEnabled();
-    // expect(overflow).toBeInTheDocument();
+    expect(pagination).toBeInTheDocument();
+    expect(pagination).toBeVisible();
   });
 });
