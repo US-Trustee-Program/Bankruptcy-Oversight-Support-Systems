@@ -226,7 +226,7 @@ function _ConsolidationCaseTable(
                   <td colSpan={5} className="measure-6">
                     <div>
                       <Button
-                        id={`assign-lead-${idx}`}
+                        id={`assign-lead-${id}-${idx}`}
                         uswdsStyle={setLeadCaseStyle(bCase.caseId)}
                         className="mark-as-lead-button"
                         onClick={() => handleLeadCaseButton(bCase)}
