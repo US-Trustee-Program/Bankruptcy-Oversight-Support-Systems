@@ -9,6 +9,8 @@ import { BrowserRouter } from 'react-router-dom';
 describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
   const updatePredicateSpy = vi.fn();
+  const onStartSearchingSpy = vi.fn();
+  const onEndSearchingSpy = vi.fn();
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
@@ -36,6 +38,8 @@ describe('SearchResults component tests', () => {
         offset: 0,
       },
       updateSearchPredicate: updatePredicateSpy,
+      onStartSearching: onStartSearchingSpy,
+      onEndSearching: onEndSearchingSpy,
     };
     render(
       <BrowserRouter>
@@ -138,9 +142,11 @@ describe('SearchResults component tests', () => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
     });
 
-    const pagination = document.querySelector('.usa-pagination');
+    await waitFor(() => {
+      const pagination = document.querySelector('.usa-pagination');
 
-    expect(pagination).toBeInTheDocument();
-    expect(pagination).toBeVisible();
+      expect(pagination).toBeInTheDocument();
+      expect(pagination).toBeVisible();
+    });
   });
 });

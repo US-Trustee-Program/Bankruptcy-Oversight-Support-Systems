@@ -36,10 +36,12 @@ export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
   updateSearchPredicate: (searchPredicate: CasesSearchPredicate) => void;
+  onStartSearching: () => void;
+  onEndSearching: () => void;
 };
 
 export function SearchResults(props: SearchResultsProps) {
-  const { id } = props;
+  const { id, onStartSearching, onEndSearching } = props;
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
 
@@ -81,19 +83,18 @@ export function SearchResults(props: SearchResultsProps) {
       ? [uri, undefined]
       : ['/cases', props.searchPredicate];
 
+    // TODO: Delete me.
     console.log('searching...', props.searchPredicate);
     trackSearchEvent(props.searchPredicate);
     setIsSearching(true);
-    // TODO: make these a callback? or move them back?
-    // disableSearchItems(true);
+    onStartSearching();
     api
       .get<CaseBasics[]>(...getArgs)
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
         setIsSearching(false);
-        // TODO: see above todo
-        // disableSearchItems(false);
+        onEndSearching();
       });
   }
 

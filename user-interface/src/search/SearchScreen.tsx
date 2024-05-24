@@ -47,7 +47,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
       });
   }
 
-  function _disableSearchItems(value: boolean) {
+  function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
     courtSelectionRef.current?.disable(value);
   }
@@ -142,6 +142,12 @@ export default function SearchScreen(_props: SearchScreenProps) {
               id="search-results"
               searchPredicate={searchPredicate}
               updateSearchPredicate={setSearchPredicate}
+              onStartSearching={() => {
+                disableSearchForm(true);
+              }}
+              onEndSearching={() => {
+                disableSearchForm(false);
+              }}
             />
           )}
         </div>
