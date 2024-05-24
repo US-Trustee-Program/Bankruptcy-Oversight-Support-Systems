@@ -266,7 +266,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should correctly enable/disable buttons', async () => {
+  test('should correctly enable/disable buttons when selecting consolidated cases and lead case from order case list table', async () => {
     renderWithProps();
     openAccordion(order.id!);
     setupApiGetMock({ bCase: order.childCases[0] });
@@ -321,13 +321,27 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
+  });
 
-    ///////////// Now testing "case not listed" ///////////////
+  test('should correctly enable/disable buttons based on selections in "case not listed" form', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+    setupApiGetMock({ bCase: order.childCases[0] });
+
+    const includeAllCheckbox = document.querySelector(`.checkbox-toggle label`);
+    const approveButton = findApproveButton(order.id!);
+    const rejectButton = findRejectButton(order.id!);
+
+    selectTypeAndMarkLead();
+    fireEvent.click(includeAllCheckbox!);
+
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+      expect(rejectButton).toBeEnabled();
+    });
 
     const markAsLeadButton = screen.getByTestId(`button-assign-lead-case-list-${order.id}-0`);
     expect(markAsLeadButton).not.toHaveClass('usa-button--outline');
-
-    // selecting "Lead Case Not Listed" should unselect the "MarkAsLead" button
 
     await toggleEnableCaseListForm(order.id!);
 
@@ -370,7 +384,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(rejectButton).toBeEnabled();
     });
 
-    // unchecking case not listed checkbox should disable buttons
     const leadCaseForm = document.querySelector(`.lead-case-form-container-${order.id}`);
     expect(leadCaseForm).toBeInTheDocument();
 

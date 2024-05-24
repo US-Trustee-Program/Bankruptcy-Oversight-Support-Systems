@@ -91,7 +91,7 @@ export interface ConsolidationOrderAccordionProps {
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   const { hidden, statusType, orderType, officesList, expandedId } = props;
 
-  //////////////////// REFS ///////////////////
+  //========== REFS ==========
 
   const caseTableRef = useRef<OrderTableImperative>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
@@ -104,7 +104,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const substantiveRef = useRef<RadioRef>(null);
   const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
 
-  ////////////////////////// STATE ///////////////////////
+  //========== STATE ==========
 
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
   const [filteredOfficesList] = useState<OfficeDetails[] | null>(
@@ -125,7 +125,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   const api = useApi();
 
-  ///////////////////// MISC FUNCTIONS /////////////////////////
+  //========== MISC FUNCTIONS ==========
 
   function clearLeadCase(): void {
     setLeadCase(null);
@@ -181,7 +181,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setSelectedCases(caseList);
   }
 
-  ///////////////////// HANDLERS /////////////////////////
+  //========== HANDLERS ==========
 
   function handleApproveButtonClick() {
     confirmationModalRef.current?.show({
@@ -288,7 +288,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     setShowLeadCaseForm(ev.target.checked);
   }
 
-  ///////////////////// USE EFFECTS /////////////////////////
+  //========== USE EFFECTS ==========
 
   useEffect(() => {
     if (isConsolidationProcessing) {
@@ -403,7 +403,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }, [leadCaseNumber, leadCaseCourt]);
 
-  /////////////////////////////// FORM SUBMISION //////////////////////////////////
+  //========== FORM SUBMISION ==========
 
   function approveConsolidation(action: ConfirmActionResults) {
     if (action.status === 'approved' && leadCase && consolidationType) {
@@ -481,7 +481,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  //////////////////// JSX ///////////////////////
+  //========== JSX ==========
 
   return (
     <Accordion
