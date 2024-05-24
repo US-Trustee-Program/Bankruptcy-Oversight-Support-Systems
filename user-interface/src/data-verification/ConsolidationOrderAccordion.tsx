@@ -560,7 +560,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <ConsolidationCaseTable
-                  id={`${order.id}-case-list`}
+                  id={`case-list-${order.id}`}
                   data-testid={`${order.id}-case-list`}
                   cases={order.childCases}
                   onSelect={handleIncludeCase}

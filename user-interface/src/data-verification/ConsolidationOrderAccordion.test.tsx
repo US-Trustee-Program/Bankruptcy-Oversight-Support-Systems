@@ -128,7 +128,9 @@ describe('ConsolidationOrderAccordion tests', () => {
   }
 
   function clickMarkLeadButton(index: number) {
-    const markAsLeadButton = screen.getByTestId(`button-assign-lead-${index}`);
+    const markAsLeadButton = screen.getByTestId(
+      `button-assign-lead-case-list-${order.id}-${index}`,
+    );
     if (markAsLeadButton.classList.contains('usa-button--outline')) {
       fireEvent.click(markAsLeadButton);
       expect(markAsLeadButton).not.toHaveClass('usa-button--outline');
@@ -145,6 +147,14 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(consolidationTypeRadio).toBeChecked();
 
     clickMarkLeadButton(0);
+  }
+
+  function clickCaseCheckbox(oid: string, idx: number) {
+    const checkbox: HTMLInputElement = screen.getByTestId(
+      `checkbox-case-selection-case-list-${oid}-${idx}`,
+    );
+    fireEvent.click(checkbox);
+    return checkbox;
   }
 
   function findCaseNumberInput(id: string) {
@@ -210,7 +220,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps({ order: pendingOrder });
     const content = findAccordionContent(pendingOrder.id!, false);
 
-    const childCaseTable = screen.getByTestId(`${pendingOrder.id}-case-list`);
+    const childCaseTable = screen.getByTestId(`case-list-${pendingOrder.id}`);
     expect(childCaseTable).toBeInTheDocument();
 
     pendingOrder.childCases.forEach((childCase) => {
@@ -261,10 +271,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     openAccordion(order.id!);
     setupApiGetMock({ bCase: order.childCases[0] });
 
-    const firstCheckbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-
     const includeAllCheckbox = document.querySelector(`.checkbox-toggle label`);
     const approveButton = findApproveButton(order.id!);
     const rejectButton = findRejectButton(order.id!);
@@ -274,7 +280,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
-    fireEvent.click(firstCheckbox);
+    const firstCheckbox = clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
@@ -318,7 +324,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     ///////////// Now testing "case not listed" ///////////////
 
-    const markAsLeadButton = screen.getByTestId('button-assign-lead-0');
+    const markAsLeadButton = screen.getByTestId(`button-assign-lead-case-list-${order.id}-0`);
     expect(markAsLeadButton).not.toHaveClass('usa-button--outline');
 
     // selecting "Lead Case Not Listed" should unselect the "MarkAsLead" button
@@ -470,13 +476,10 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-approve-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(approveButton).not.toBeEnabled();
-    const checkbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
 
     selectTypeAndMarkLead();
 
-    fireEvent.click(checkbox);
+    clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
@@ -498,13 +501,10 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
 
     selectTypeAndMarkLead();
 
-    fireEvent.click(checkbox);
+    clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
@@ -539,10 +539,8 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-    fireEvent.click(checkbox);
+
+    clickCaseCheckbox(order.id!, 0);
 
     selectTypeAndMarkLead();
 
@@ -596,10 +594,8 @@ describe('ConsolidationOrderAccordion tests', () => {
       `#accordion-reject-button-${order.id}`,
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
-    const checkbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-    fireEvent.click(checkbox);
+
+    clickCaseCheckbox(order.id!, 0);
 
     selectTypeAndMarkLead();
 
@@ -658,10 +654,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-    fireEvent.click(checkbox);
+
+    clickCaseCheckbox(order.id!, 0);
 
     selectTypeAndMarkLead();
 
@@ -716,10 +710,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
-    const checkbox: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-    fireEvent.click(checkbox);
+
+    clickCaseCheckbox(order.id!, 0);
 
     selectTypeAndMarkLead();
 
@@ -770,15 +762,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    const checkbox1: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-    const checkbox2: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-1`,
-    );
+    const checkbox1 = clickCaseCheckbox(order.id!, 0);
+    const checkbox2 = clickCaseCheckbox(order.id!, 1);
 
-    fireEvent.click(checkbox1);
-    fireEvent.click(checkbox2);
     expect(approveButton).not.toBeEnabled();
 
     selectTypeAndMarkLead();
@@ -811,15 +797,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    let checkbox1: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-0`,
-    );
-    let checkbox2: HTMLInputElement = screen.getByTestId(
-      `checkbox-case-selection-${order.id}-case-list-1`,
-    );
-
-    fireEvent.click(checkbox1);
-    fireEvent.click(checkbox2);
+    let checkbox1 = clickCaseCheckbox(order.id!, 0);
+    let checkbox2 = clickCaseCheckbox(order.id!, 1);
 
     selectTypeAndMarkLead();
 
@@ -837,8 +816,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(collapseButton as HTMLButtonElement); // collapse accordion
 
     fireEvent.click(collapseButton as HTMLButtonElement);
-    checkbox1 = screen.getByTestId(`checkbox-case-selection-${order.id}-case-list-0`);
-    checkbox2 = screen.getByTestId(`checkbox-case-selection-${order.id}-case-list-1`);
+    checkbox1 = screen.getByTestId(`checkbox-case-selection-case-list-${order.id}-0`);
+    checkbox2 = screen.getByTestId(`checkbox-case-selection-case-list-${order.id}-1`);
 
     await waitFor(() => {
       expect(checkbox1.checked).toBeFalsy();
@@ -856,7 +835,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
     const includeAllButton = screen.getByTestId(
-      `checkbox-label-${order.id}-case-list-checkbox-toggle`,
+      `checkbox-label-case-list-${order.id}-checkbox-toggle`,
     );
 
     const checkboxList: NodeListOf<HTMLInputElement> = document.querySelectorAll(
@@ -903,7 +882,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     expect(leadCaseFormCheckbox).not.toBeChecked();
 
-    const markLeadCaseButton = screen.getByTestId('button-assign-lead-0');
+    const markLeadCaseButton = screen.getByTestId(`button-assign-lead-case-list-${order.id}-0`);
     expect(markLeadCaseButton).toHaveClass('usa-button--outline');
 
     fireEvent.click(markLeadCaseButton);
