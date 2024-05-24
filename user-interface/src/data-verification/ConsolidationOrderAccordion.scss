@@ -1,8 +1,15 @@
 .accordion-content {
-  .consolidation-text {
-    padding: 1rem 0;
-    font-size: 1.25rem;
+  fieldset.consolidation-type-container {
+    max-width: 250px;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+
+    .consolidation-text {
+      padding: 1rem 0;
+      font-size: 1.25rem;
+    }
   }
+
   .instructional-text {
     padding-bottom: 1rem;
   }
@@ -14,5 +21,9 @@
   }
   tr.docket-entry td {
     border-top: 0 solid;
+  }
+
+  .lead-case-form-container {
+    max-width: 425px;
   }
 }
