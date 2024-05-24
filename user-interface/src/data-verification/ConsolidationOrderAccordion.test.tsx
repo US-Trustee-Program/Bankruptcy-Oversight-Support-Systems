@@ -67,6 +67,8 @@ function setupApiGetMock(options: { bCase?: CaseSummary; associations?: Consolid
         count: 0,
         body: options.associations ?? [],
       } as SimpleResponseData<Consolidation[]>);
+    } else if (path.match(/\/cases\/\d\d\d-00-00000\/summary/i)) {
+      return Promise.reject({ message: 'Some strange error were not expecting' });
     } else if (path.match(/\/cases\/\d\d\d-11-11111\/summary/i)) {
       return Promise.reject({ message: '404 Case summary not found for the case ID.' });
     } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
@@ -412,6 +414,26 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+      expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
+    });
+  });
+
+  test('should show alert when no lead case can be found in search field, and error returned was not a 404', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+    setupApiGetMock({ bCase: order.childCases[0] });
+
+    await toggleEnableCaseListForm(order.id!);
+
+    selectItemInMockSelect(`lead-case-court`, 1);
+    const caseNumberInput = findCaseNumberInput(order.id!);
+
+    enterCaseNumber(caseNumberInput, '00000000');
+
+    await waitFor(() => {
+      const alert = findValidCaseNumberAlert(order.id!);
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('Cannot verify lead case number.');
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
   });
@@ -894,7 +916,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should show an alert if the lead case is already a part of another consolidation', async () => {
+  test('should show an alert if the lead case is already a part of another consolidation', async () => {
     renderWithProps();
     openAccordion(order.id!);
 
@@ -904,9 +926,10 @@ describe('ConsolidationOrderAccordion tests', () => {
         MockData.getConsolidationReference({
           override: {
             documentType: 'CONSOLIDATION_FROM',
+            caseId: leadCase.caseId,
           },
         }),
-      3,
+      1,
     );
 
     setupApiGetMock({ bCase: leadCase, associations });
