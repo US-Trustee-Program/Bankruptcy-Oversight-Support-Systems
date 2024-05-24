@@ -85,6 +85,7 @@ export function getCaseSummaryFromConsolidationOrderCase(
   delete temp.orderDate;
   delete temp.leadCaseIdHint;
   delete temp.jobId;
+  delete temp.attorneyAssignments;
 
   return temp;
 }
