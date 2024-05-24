@@ -71,10 +71,7 @@ function _ConsolidationCaseTable(
       setCheckboxGroupState(CheckboxState.CHECKED);
     }
 
-    // TODO: see if removing the assignment here breaks things
-    // if (onSelect) onSelect(cases[idx]);
-    const _case = cases[idx];
-    if (onSelect) onSelect(_case);
+    if (onSelect) onSelect(cases[idx]);
   }
 
   function clearAllCheckboxes() {
@@ -139,7 +136,7 @@ function _ConsolidationCaseTable(
 
   return (
     <>
-      <h3>Cases</h3>
+      <h3>Cases to Consolidate</h3>
       <table
         className="usa-table usa-table--borderless consolidation-cases-table"
         id={`id-${id}`}

@@ -38,6 +38,10 @@ import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CaseAssignment } from '@common/cams/assignments';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
+
+const genericErrorMessage =
+  'An unknown error has occurred and has been logged.  Please try again later.';
 
 export async function getCaseAssignments(caseId: string) {
   return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
@@ -53,7 +57,7 @@ export async function getCaseSummary(caseId: string) {
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
   const caseAssignments: CaseAssignment[] = await getCaseAssignments(leadCaseId);
-  if (caseAssignments[0].name) {
+  if (caseAssignments.length && caseAssignments[0].name) {
     return caseAssignments.map((assignment) => assignment.name);
   } else {
     return [];
@@ -388,7 +392,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
         .catch((error) => {
           // Brittle way to determine if we have encountred a 404...
           const isNotFound = (error.message as string).startsWith('404');
-          const message = isNotFound ? 'Lead case not found.' : 'Cannot verify lead case number.';
+          const message = isNotFound
+            ? "We couldn't find a case with that number."
+            : 'Cannot verify lead case number.';
           setLeadCaseNumberError(message);
           setIsValidatingLeadCaseNumber(false);
           disableLeadCaseForm(false);
@@ -429,11 +435,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             order,
           );
         })
-        .catch((reason) => {
+        .catch((_reason) => {
           setIsConsolidationProcessing(false);
-
-          // TODO: make the error message more meaningful
-          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+          props.onOrderUpdate({
+            message: genericErrorMessage,
+            type: UswdsAlertStyle.Error,
+            timeOut: 8,
+          });
         });
     }
   }
@@ -462,11 +470,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             order,
           );
         })
-        .catch((reason) => {
+        .catch((_reason) => {
           setIsConsolidationProcessing(false);
-
-          // TODO: make the error message more meaningful
-          props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+          props.onOrderUpdate({
+            message: genericErrorMessage,
+            type: UswdsAlertStyle.Error,
+            timeOut: 8,
+          });
         });
     }
   }
@@ -518,8 +528,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           >
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
-              <div className="grid-col-2">
-                <h3>Type</h3>
+              <div className="grid-col-10">
+                <FormRequirementsNotice />
                 <RadioGroup
                   className="consolidation-type-container"
                   label="Consolidation Type"
@@ -537,14 +547,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   <Radio
                     id={`substantive-${order.id}`}
                     name="consolidation-type"
-                    label="Substantive"
+                    label="Substantive Consolidation"
                     value="substantive"
                     onChange={handleSelectConsolidationType}
                     ref={substantiveRef}
                   />
                 </RadioGroup>
               </div>
-              <div className="grid-col-8"></div>
               <div className="grid-col-1"></div>
             </div>
             <div className="grid-row grid-gap-lg">
@@ -568,18 +577,20 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               data-testid={`lead-case-form-${order.id}`}
             >
               <div className="grid-col-1"></div>
-              <div className="grid-col-3">
-                <h3>Lead Case Not Listed</h3>
+              <div className="grid-col-10">
                 <Checkbox
                   id={`lead-case-form-checkbox-toggle-${order.id}`}
                   className="lead-case-form-toggle"
                   onChange={handleToggleLeadCaseForm}
                   value=""
                   ref={toggleLeadCaseFormRef}
-                  label="Select to enable lead case form."
+                  label="Lead Case Not Listed"
                 ></Checkbox>
                 {showLeadCaseForm && (
-                  <section className={`lead-case-form-container-${order.id}`}>
+                  <section
+                    className={`lead-case-form-container lead-case-form-container-${order.id}`}
+                  >
+                    <h3>Enter lead case details:</h3>
                     <div className="lead-case-court-container">
                       <CamsSelect
                         id={'lead-case-court'}
@@ -587,7 +598,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         options={getOfficeList(filteredOfficesList ?? props.officesList)}
                         onChange={handleSelectLeadCaseCourt}
                         ref={leadCaseDivisionRef}
-                        label="Lead Case Court"
+                        label="Select a court"
                         value={getUniqueDivisionCodeOrUndefined(order.childCases)}
                         isSearchable={true}
                       />
@@ -598,9 +609,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         data-testid={`lead-case-input-${order.id}`}
                         className="usa-input"
                         onChange={handleLeadCaseInputChange}
-                        aria-label="Lead case number"
                         required={true}
-                        label="Lead Case Number"
+                        label="Enter a case number"
                         ref={leadCaseNumberRef}
                       />
                       {leadCaseNumberError ? (
@@ -609,7 +619,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                           message={leadCaseNumberError}
                           type={UswdsAlertStyle.Error}
                           show={true}
-                          noIcon={true}
                           slim={true}
                           inline={true}
                         ></Alert>
@@ -634,7 +643,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   </section>
                 )}
               </div>
-              <div className="grid-col-7"></div>
               <div className="grid-col-1"></div>
             </div>
             <div className="button-bar grid-row grid-gap-lg">
@@ -676,7 +684,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   disabled={true}
                   ref={approveButtonRef}
                 >
-                  Approve
+                  Verify
                 </Button>
               </div>
               <div className="grid-col-1"></div>
