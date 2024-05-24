@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import React, { JSX, forwardRef, useImperativeHandle, useState } from 'react';
 
 export const BUTTON_BASE_CLASS = 'usa-button';
 
@@ -46,8 +46,6 @@ const ButtonComponent = (
 ) => {
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
   const classes = [BUTTON_BASE_CLASS];
-
-  console.log(id);
 
   if (uswdsStyle) classes.push(uswdsStyle);
   if (buttonState) classes.push(buttonState);

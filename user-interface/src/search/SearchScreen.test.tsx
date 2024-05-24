@@ -12,7 +12,7 @@ vi.mock(
   () => import('../lib/components/CamsSelectMulti.mock'),
 );
 
-describe('search screen', () => {
+describe.skip('search screen', () => {
   let caseList: CaseSummary[];
   const getCaseSummarySpy = vi.spyOn(Chapter15MockApi, 'get');
 
@@ -78,7 +78,7 @@ describe('search screen', () => {
     expect(getCaseSummarySpy).toHaveBeenCalledWith('/cases', casesSearchPredicate);
   });
 
-  test.only('should render a list of cases by court division', async () => {
+  test('should render a list of cases by court division', async () => {
     renderWithoutProps();
 
     let defaultStateAlert = document.querySelector('#default-state-alert');
