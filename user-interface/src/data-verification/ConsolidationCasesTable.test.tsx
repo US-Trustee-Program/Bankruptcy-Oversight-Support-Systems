@@ -10,13 +10,15 @@ import React from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderCase } from '@common/cams/orders';
 
+const tableId = 'test-consolidation-cases-table';
+
 describe('test ConsolidationCasesTable component', () => {
   function renderWithProps(
     props?: Partial<ConsolidationCaseTableProps>,
     tableRef?: React.Ref<OrderTableImperative>,
   ) {
     const defaultProps: ConsolidationCaseTableProps = {
-      id: 'test-consolidation-cases-table',
+      id: tableId,
       cases: props?.cases ?? [],
       onSelect: props?.onSelect ?? vi.fn(),
       updateAllSelections: props?.updateAllSelections ?? vi.fn(),
@@ -194,7 +196,7 @@ describe('test ConsolidationCasesTable component', () => {
     });
 
     let selectedLeadCaseIndex = 0;
-    leadCaseButton = screen.getByTestId(`button-assign-lead-${selectedLeadCaseIndex}`);
+    leadCaseButton = screen.getByTestId(`button-assign-lead-${tableId}-${selectedLeadCaseIndex}`);
     fireEvent.click(leadCaseButton);
     expect(onMarkLead.mock.calls[0][0]).toEqual(props.cases[selectedLeadCaseIndex]);
 
@@ -211,7 +213,7 @@ describe('test ConsolidationCasesTable component', () => {
     });
 
     selectedLeadCaseIndex = 1;
-    leadCaseButton = screen.getByTestId(`button-assign-lead-${selectedLeadCaseIndex}`);
+    leadCaseButton = screen.getByTestId(`button-assign-lead-${tableId}-${selectedLeadCaseIndex}`);
     fireEvent.click(leadCaseButton);
     expect(onMarkLead.mock.calls[1][0]).toEqual(props.cases[selectedLeadCaseIndex]);
 
