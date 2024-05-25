@@ -3,8 +3,6 @@ import { UriString } from './common';
 export type PaginationParameters = {
   limit?: number;
   offset?: number;
-  // key?: Key; // TODO: See if we can come up with a universal pointer scheme.
-  // direction?: 'previous' | 'next'; // Support forward and back rather than just forward only
 };
 
 export type NoPagination = {

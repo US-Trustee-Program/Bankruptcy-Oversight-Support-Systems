@@ -2,6 +2,7 @@ import { Pagination, PaginationProps } from '@/lib/components/uswds/Pagination';
 import { BrowserRouter } from 'react-router-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WithPagination } from '@common/api/pagination';
+import { SearchPredicate } from '@common/api/search';
 
 describe('Pagination tests', () => {
   const retrievePageSpy = vi.fn();
@@ -20,8 +21,8 @@ describe('Pagination tests', () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
   });
 
-  function renderWithProps(props: Partial<PaginationProps> = {}) {
-    const defaultProps: PaginationProps = {
+  function renderWithProps(props: Partial<PaginationProps<SearchPredicate>> = {}) {
+    const defaultProps: PaginationProps<SearchPredicate> = {
       paginationMeta: defaultPaginationMeta,
       searchPredicate: defaultSearchPredicate,
       retrievePage: retrievePageSpy,
