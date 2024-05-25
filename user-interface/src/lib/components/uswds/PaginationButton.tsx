@@ -1,25 +1,25 @@
 import React, { JSX } from 'react';
-import './PaginationButton.scss';
 import Icon from '@/lib/components/uswds/Icon';
+import './PaginationButton.scss';
 
 export const BUTTON_BASE_CLASS = 'usa-pagination__button';
 
-export interface PaginationButtonProps {
+export type PaginationButtonProps = JSX.IntrinsicElements['a'] & {
   id: string;
   children?: React.ReactNode;
   isCurrent?: boolean;
   isPrevious?: boolean;
   isNext?: boolean;
-}
+};
 
-export const PaginationButton = ({
+export function PaginationButton({
   id,
   onClick,
   children,
   isCurrent,
   isPrevious,
   isNext,
-}: PaginationButtonProps & JSX.IntrinsicElements['a']) => {
+}: PaginationButtonProps) {
   const classes: string[] = [];
   let ariaLabel = '';
   if (isPrevious) {
@@ -60,4 +60,4 @@ export const PaginationButton = ({
       )}
     </a>
   );
-};
+}

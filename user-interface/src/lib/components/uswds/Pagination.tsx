@@ -1,15 +1,19 @@
-import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { WithPagination } from '@common/api/pagination';
-import { CasesSearchPredicate } from '@common/api/search';
+import { SearchPredicate } from '@common/api/search';
 import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
+import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 
-export type PaginationProps = {
+export type PaginationProps<P extends SearchPredicate> = {
   paginationMeta: WithPagination;
-  searchPredicate: CasesSearchPredicate;
-  retrievePage: (searchPredicate: CasesSearchPredicate) => void;
+  searchPredicate: P;
+  retrievePage: (searchPredicate: P) => void;
 };
 
-export const Pagination = ({ paginationMeta, searchPredicate, retrievePage }: PaginationProps) => {
+export function Pagination<P extends SearchPredicate>({
+  paginationMeta,
+  searchPredicate,
+  retrievePage,
+}: PaginationProps<P>) {
   const { previous, next, currentPage } = paginationMeta;
 
   return (
@@ -25,7 +29,6 @@ export const Pagination = ({ paginationMeta, searchPredicate, retrievePage }: Pa
                   offset:
                     (searchPredicate.offset ?? 0) - (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
                 });
-                // search(previous);
               }}
               isPrevious={true}
             />
@@ -125,7 +128,6 @@ export const Pagination = ({ paginationMeta, searchPredicate, retrievePage }: Pa
                   offset:
                     (searchPredicate.offset ?? 0) + (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
                 });
-                // search(next);
               }}
               isNext={true}
             />
@@ -134,4 +136,4 @@ export const Pagination = ({ paginationMeta, searchPredicate, retrievePage }: Pa
       </ul>
     </nav>
   );
-};
+}
