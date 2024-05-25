@@ -29,7 +29,6 @@ export const CaseAssignment = () => {
     timeOut: number;
   }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
-  const [inTableTransferMode, setInTableTransferMode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
@@ -132,7 +131,7 @@ export const CaseAssignment = () => {
       }
 
       bCase.assignments = selectedAttorneyList;
-      setInTableTransferMode(bCase.caseId);
+      // setInTableTransferMode(bCase.caseId);
 
       const updatedCaseList = caseList.filter((aCase) => {
         return aCase.caseId !== bCase.caseId;
@@ -148,7 +147,7 @@ export const CaseAssignment = () => {
       alertRef.current?.show();
 
       setTimeout(() => {
-        setInTableTransferMode('');
+        // setInTableTransferMode('');
       }, TABLE_TRANSFER_TIMEOUT * 1000);
 
       modalRef.current?.hide();
@@ -185,12 +184,7 @@ export const CaseAssignment = () => {
               </div>
             )}
             {!isLoading && (
-              <AssignAttorneyCasesTable
-                caseList={caseList}
-                modalId={modalId}
-                modalRef={modalRef}
-                inTableTransferMode={inTableTransferMode}
-              />
+              <AssignAttorneyCasesTable caseList={caseList} modalId={modalId} modalRef={modalRef} />
             )}
           </div>
           <div className="grid-col-1"></div>
