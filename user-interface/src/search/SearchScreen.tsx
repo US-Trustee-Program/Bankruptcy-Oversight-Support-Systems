@@ -52,20 +52,13 @@ export default function SearchScreen(_props: SearchScreenProps) {
     courtSelectionRef.current?.disable(value);
   }
 
-  function resetSearch() {
-    // setAlertInfo({ show: false, title: '', message: '' });
-    // clear search form
-  }
-
   function handleCaseNumberChange(caseNumber?: string): void {
-    resetSearch();
     const newPredicate = { ...searchPredicate, caseNumber };
     if (!caseNumber) delete newPredicate.caseNumber;
     setSearchPredicate(newPredicate);
   }
 
   function handleCourtSelection(selection: MultiSelectOptionList) {
-    resetSearch();
     setSearchPredicate({
       ...searchPredicate,
       divisionCodes: selection.length
