@@ -17,9 +17,9 @@ export type AssignAttorneyCasesRowProps = TableRowProps & {
 };
 
 export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
-  const { idx, modalId, modalRef, ...otherProps } = props;
+  const { bCase, idx, modalId, modalRef, ...otherProps } = props;
 
-  const [bCase, setBCase] = useState<CaseWithAssignments>(props.bCase);
+  const [internalCase, setBCase] = useState<CaseWithAssignments>(bCase);
   const [inTableTransferMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -27,9 +27,12 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
 
   useEffect(() => {
     api
-      .getCaseAssignments(bCase.caseId)
+      .getCaseAssignments(internalCase.caseId)
       .then((response) =>
-        setBCase({ ...bCase, assignments: response.data.map((assignment) => assignment.name) }),
+        setBCase({
+          ...internalCase,
+          assignments: response.data.map((assignment) => assignment.name),
+        }),
       )
       .catch((_reason) => {})
       .finally(() => {
@@ -41,23 +44,23 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
     <TableRow className={inTableTransferMode ? 'in-table-transfer-mode' : ''} {...otherProps}>
       <TableRowData className="case-number">
         <span className="mobile-title">Case Number:</span>
-        <CaseNumber caseId={bCase.caseId} openLinkIn="same-window" />
+        <CaseNumber caseId={internalCase.caseId} openLinkIn="same-window" />
       </TableRowData>
-      <TableRowData className="chapter" data-testid={`${bCase.caseId}-chapter`}>
+      <TableRowData className="chapter" data-testid={`${internalCase.caseId}-chapter`}>
         <span className="mobile-title">Chapter:</span>
-        {bCase.chapter}
+        {internalCase.chapter}
       </TableRowData>
       <TableRowData className="case-title-column">
         <span className="mobile-title">Case Title (Debtor):</span>
-        {bCase.caseTitle}
+        {internalCase.caseTitle}
       </TableRowData>
       <TableRowData
         className="filing-date"
-        data-sort-value={bCase.dateFiled}
+        data-sort-value={internalCase.dateFiled}
         data-sort-active={true}
       >
         <span className="mobile-title">Filing Date:</span>
-        {formatDate(bCase.dateFiled)}
+        {formatDate(internalCase.dateFiled)}
       </TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
@@ -78,10 +81,10 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
             </div>
           </div>
         )}
-        {!isLoading && bCase.assignments && bCase.assignments.length > 0 && (
+        {!isLoading && internalCase.assignments && internalCase.assignments.length > 0 && (
           <div className="table-flex-container">
             <div className="attorney-list-container">
-              {bCase.assignments?.map((attorney, key: number) => (
+              {internalCase.assignments?.map((attorney, key: number) => (
                 <div key={key}>
                   {attorney}
                   <br />
@@ -95,7 +98,7 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
                 buttonIndex={`${idx}`}
                 toggleAction="open"
                 toggleProps={{
-                  bCase: bCase,
+                  bCase: internalCase,
                 }}
                 modalId={`${modalId}`}
                 modalRef={modalRef}
@@ -106,7 +109,7 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
             </div>
           </div>
         )}
-        {!isLoading && (!bCase.assignments || !bCase.assignments.length) && (
+        {!isLoading && (!internalCase.assignments || !internalCase.assignments.length) && (
           <div className="table-flex-container">
             <div className="attorney-list-container">(unassigned)</div>
             <div className="table-column-toolbar">
@@ -115,7 +118,7 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
                 buttonIndex={`${idx}`}
                 toggleAction="open"
                 toggleProps={{
-                  bCase: bCase,
+                  bCase: internalCase,
                 }}
                 modalId={`${modalId}`}
                 modalRef={modalRef}
