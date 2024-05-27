@@ -5,10 +5,9 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseSummary } from '@common/cams/cases';
 import { CaseTable } from './CaseTable';
-import { useApi } from '@/lib/hooks/UseApi';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
-import { Chapter15CaseSummaryResponseData } from '@/lib/type-declarations/chapter-15';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 export type FromCaseSummaryProps = {
   order: TransferOrder;
@@ -19,14 +18,13 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
   const { order } = props;
   const [originalCaseSummary, setOriginalCaseSummary] = useState<CaseSummary | null>(null);
 
-  const api = useApi();
+  const api = useApi2();
 
   async function getCaseSummary(caseId: string) {
     await api
-      .get(`/cases/${caseId}/summary`)
+      .getCaseSummary(caseId)
       .then((response) => {
-        const typedResponse = response as Chapter15CaseSummaryResponseData;
-        setOriginalCaseSummary(typedResponse.body);
+        setOriginalCaseSummary(response.data);
       })
       .catch((reason) => {
         props.onOrderUpdate({

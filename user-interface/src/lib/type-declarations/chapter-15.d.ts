@@ -1,7 +1,5 @@
-import { SimpleResponseData, ResponseData } from './api';
-import { OfficeDetails } from '@common/cams/courts';
+import { ResponseData } from './api';
 import { EventCaseReference } from '@common/cams/events';
-import { CaseAssignment } from '@common/cams/assignments';
 
 export interface CaseDocketSummaryFacet {
   text: string;
@@ -45,19 +43,4 @@ export interface CaseAssignmentHistoryResponseData extends ResponseData {
 
 export interface CaseAssociatedCasesResponseData extends ResponseData {
   body: EventCaseReference[];
-}
-
-export interface OrderResponseData extends ResponseData {
-  body: Array<Order>;
-}
-
-export interface OfficesResponseData extends ResponseData {
-  body: OfficeDetails[];
-}
-
-export type CaseAssignmentResponseData = SimpleResponseData<Array<CaseAssignment>>;
-
-export interface RegionDetails {
-  regionId: string;
-  regionName: string;
 }

@@ -32,6 +32,8 @@ type AlertProps = {
   message: string;
 };
 
+const DEFAULT_ALERT = { show: false, title: '', message: '' };
+
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
@@ -47,7 +49,7 @@ export function SearchResults(props: SearchResultsProps) {
 
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
-  const [alertInfo, setAlertInfo] = useState<AlertProps>({ show: false, title: '', message: '' });
+  const [alertInfo, setAlertInfo] = useState<AlertProps>(DEFAULT_ALERT);
   const [searchResults, setSearchResults] = useState<ResponseBodySuccess<CaseBasics[]> | null>(
     null,
   );
@@ -75,16 +77,19 @@ export function SearchResults(props: SearchResultsProps) {
     });
   }
 
+  function resetAlert() {
+    setAlertInfo(DEFAULT_ALERT);
+  }
+
   async function search(uri?: string) {
     if (!isValidSearchPredicate(props.searchPredicate)) return;
+    resetAlert();
 
     // Don't hurt me for the l337 code...
     const getArgs: [string, CasesSearchPredicate | undefined] = uri
       ? [uri, undefined]
       : ['/cases', props.searchPredicate];
 
-    // TODO: Delete me.
-    console.log('searching...', props.searchPredicate);
     trackSearchEvent(props.searchPredicate);
     setIsSearching(true);
     onStartSearching();
@@ -117,7 +122,7 @@ export function SearchResults(props: SearchResultsProps) {
           ></Alert>
         </div>
       )}
-      {!isSearching && emptyResponse && (
+      {!isSearching && emptyResponse && !alertInfo.show && (
         <div className="search-alert">
           <Alert
             id="no-results-alert"

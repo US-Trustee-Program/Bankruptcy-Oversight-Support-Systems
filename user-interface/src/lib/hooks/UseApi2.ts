@@ -3,6 +3,7 @@ import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { Consolidation } from '@common/cams/events';
 import { useGenericApi } from './UseApi';
+import { Order } from '@common/cams/orders';
 
 export function useApi2() {
   const api = useGenericApi();
@@ -21,6 +22,10 @@ export function useApi2() {
 
     async getOffices() {
       return api.get<OfficeDetails[]>(`/offices`);
+    },
+
+    async getOrders() {
+      return api.get<Order[]>(`/orders`, {});
     },
   };
 }

@@ -12,7 +12,7 @@ vi.mock(
   () => import('../lib/components/CamsSelectMulti.mock'),
 );
 
-describe.skip('search screen', () => {
+describe('search screen', () => {
   let caseList: CaseSummary[];
   const getCaseSummarySpy = vi.spyOn(Chapter15MockApi, 'get');
 
@@ -160,30 +160,35 @@ describe.skip('search screen', () => {
   test('should show the error alert when an error is encountered', async () => {
     renderWithoutProps();
 
-    vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce({
-      message: 'some error',
-    });
+    vi.spyOn(Chapter15MockApi, 'get')
+      .mockRejectedValueOnce({
+        message: 'some error',
+      })
+      .mockResolvedValue({
+        message: '',
+        count: caseList.length,
+        body: caseList,
+      });
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 
-    let table = document.querySelector('#search-results > table');
-    expect(table).not.toBeInTheDocument();
-    let searchErrorAlert = document.querySelector('#search-error-alert');
-    expect(searchErrorAlert).not.toBeInTheDocument();
+    expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
+
     fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).not.toBeInTheDocument();
-      searchErrorAlert = document.querySelector('#search-error-alert');
+      expect(document.querySelector('#search-results > table')).not.toBeInTheDocument();
+
+      const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
       expect(searchErrorAlert).toBeVisible();
     });
 
     fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-      searchErrorAlert = document.querySelector('#search-error-alert');
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      expect(document.querySelector('#search-results > table')).toBeInTheDocument();
+      const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).not.toBeInTheDocument();
     });
   });
