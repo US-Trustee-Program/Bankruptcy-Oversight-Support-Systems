@@ -280,8 +280,15 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
+    // at least 2 cases must be checked before verify button is enabled.
     const firstCheckbox = clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
+    });
+
+    const secondCheckbox = clickCaseCheckbox(order.id!, 1);
+    await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
@@ -301,6 +308,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(firstCheckbox);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
+    });
+
+    fireEvent.click(secondCheckbox);
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
       expect(rejectButton).not.toBeEnabled();
     });
 
@@ -317,6 +330,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
 
     fireEvent.click(firstCheckbox);
+    fireEvent.click(secondCheckbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
@@ -493,6 +507,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     selectTypeAndMarkLead();
 
     clickCaseCheckbox(order.id!, 0);
+    clickCaseCheckbox(order.id!, 1);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
@@ -669,6 +684,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
 
     clickCaseCheckbox(order.id!, 0);
+    clickCaseCheckbox(order.id!, 1);
 
     selectTypeAndMarkLead();
 
@@ -725,6 +741,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
 
     clickCaseCheckbox(order.id!, 0);
+    clickCaseCheckbox(order.id!, 1);
 
     selectTypeAndMarkLead();
 
