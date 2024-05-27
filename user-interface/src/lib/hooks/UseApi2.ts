@@ -18,8 +18,9 @@ export function useApi2() {
     async getCaseAssociations(caseId: string) {
       return api.get<Array<Consolidation>>(`/cases/${caseId}/associated`);
     },
+
     async getOffices() {
-      return api.get<OfficeDetails[]>(`/offices`, {});
+      return api.get<OfficeDetails[]>(`/offices`);
     },
   };
 }
