@@ -1,12 +1,11 @@
+import './DataVerificationScreen.scss';
+import Icon from '@/lib/components/uswds/Icon';
 import { useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
-import './DataVerificationScreen.scss';
-import { OfficesResponseData, OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
-import Icon from '@/lib/components/uswds/Icon';
 import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
 import {
   ConsolidationOrder,
@@ -20,7 +19,7 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { sortDates } from '@/lib/utils/datetime';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -44,16 +43,15 @@ export default function DataVerificationScreen() {
     timeOut: 8,
   });
 
-  const api = useApi();
   const regionNumber = '02';
+  const api = useApi2();
 
   async function getOrders() {
     setIsOrderListLoading(true);
     api
-      .get(`/orders`, {})
-      .then((data) => {
-        const response = data as OrderResponseData;
-        setOrderList(response.body);
+      .getOrders()
+      .then((response) => {
+        setOrderList(response.data);
         setIsOrderListLoading(false);
       })
       .catch(() => {
@@ -64,12 +62,11 @@ export default function DataVerificationScreen() {
 
   async function getOffices() {
     api
-      .get(`/offices`, {})
-      .then((data) => {
-        const response = data as OfficesResponseData;
-        setOfficesList(response.body.sort(officeSorter));
+      .getOffices()
+      .then((response) => {
+        setOfficesList(response.data.sort(officeSorter));
         setRegionsMap(
-          response.body.reduce((regionsMap, office) => {
+          response.data.reduce((regionsMap, office) => {
             if (!regionsMap.has(office.regionId)) {
               regionsMap.set(office.regionId, office.regionName);
             }

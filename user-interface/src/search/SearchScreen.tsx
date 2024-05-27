@@ -20,7 +20,6 @@ export default function SearchScreen(_props: SearchScreenProps) {
     offset: 0,
   });
 
-  const [_regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
 
   const caseNumberInputRef = useRef<InputRef>(null);
@@ -33,14 +32,6 @@ export default function SearchScreen(_props: SearchScreenProps) {
       .getOffices()
       .then((response) => {
         setOfficesList(response.data.sort(officeSorter));
-        setRegionsMap(
-          response.data.reduce((regionsMap, office) => {
-            if (!regionsMap.has(office.regionId)) {
-              regionsMap.set(office.regionId, office.regionName);
-            }
-            return regionsMap;
-          }, new Map()),
-        );
       })
       .catch((e) => {
         console.error(e);

@@ -85,13 +85,7 @@ export function Pagination<P extends SearchPredicate>({
           </li>
         )}
         <li className="usa-pagination__item usa-pagination__page-no">
-          <PaginationButton
-            id={`page-${currentPage}-results`}
-            onClick={() => {
-              retrievePage({ ...searchPredicate });
-            }}
-            isCurrent={true}
-          >
+          <PaginationButton id={`page-${currentPage}-results`} isCurrent={true}>
             {currentPage}
           </PaginationButton>
         </li>
