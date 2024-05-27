@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { CasesSearchPredicate } from '@common/api/search';
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { useGenericApi } from '@/lib/hooks/UseApi';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 import { InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import './SearchScreen.scss';
 import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
+import './SearchScreen.scss';
 
 type SearchScreenProps = object;
 
@@ -26,11 +26,11 @@ export default function SearchScreen(_props: SearchScreenProps) {
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<SelectMultiRef>(null);
 
-  const api = useGenericApi();
+  const api = useApi2();
 
   async function getOffices() {
     api
-      .get<OfficeDetails[]>(`/offices`, {})
+      .getOffices()
       .then((response) => {
         setOfficesList(response.data.sort(officeSorter));
         setRegionsMap(
