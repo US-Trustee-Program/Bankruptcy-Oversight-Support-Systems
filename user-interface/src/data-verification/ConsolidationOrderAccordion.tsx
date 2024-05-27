@@ -22,7 +22,6 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useGenericApi } from '@/lib/hooks/UseApi';
-import { Consolidation } from '@common/cams/events';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
 import Checkbox, { CheckboxRef } from '@/lib/components/uswds/Checkbox';
@@ -37,24 +36,13 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CaseAssignment } from '@common/cams/assignments';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
 
-export async function getCaseAssignments(caseId: string) {
-  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
-}
-
-export async function getCaseAssociations(caseId: string) {
-  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
-}
-
-export async function getCaseSummary(caseId: string) {
-  return useGenericApi().get<CaseSummary>(`/cases/${caseId}/summary`);
-}
-
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = (await getCaseAssignments(leadCaseId)).data;
+  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
   if (caseAssignments.length && caseAssignments[0].name) {
     return caseAssignments.map((assignment) => assignment.name);
   } else {
@@ -122,6 +110,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
   const genericApi = useGenericApi();
+  const api2 = useApi2();
 
   //========== MISC FUNCTIONS ==========
 
@@ -258,14 +247,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     if (!isDataEnhanced) {
       for (const bCase of order.childCases) {
         try {
-          const assignmentsResponse = await genericApi.get<CaseAssignment[]>(
-            `/case-assignments/${bCase.caseId}`,
-          );
+          const assignmentsResponse = await api2.getCaseAssignments(bCase.caseId);
           bCase.attorneyAssignments = assignmentsResponse.data;
 
-          const associatedResponse = await genericApi.get<Consolidation[]>(
-            `/cases/${bCase.caseId}/associated`,
-          );
+          const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
           bCase.associations = associatedResponse.data;
         } catch {
           // The child case assignments are not critical to perform the consolidation. Catch any error
@@ -317,10 +302,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       setIsValidatingLeadCaseNumber(true);
       setLeadCaseNumberError('');
       setLeadCaseId('');
-      getCaseSummary(currentLeadCaseId)
+      api2
+        .getCaseSummary(currentLeadCaseId)
         .then((response) => {
           const caseSummary = response.data;
-          getCaseAssociations(caseSummary.caseId)
+          api2
+            .getCaseAssociations(caseSummary.caseId)
             .then((response) => {
               const associations = response.data;
               type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
@@ -369,7 +356,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 disableLeadCaseForm(false);
                 setFoundValidCaseNumber(false);
               } else {
-                getCaseAssignments(currentLeadCaseId).then((response) => {
+                api2.getCaseAssignments(currentLeadCaseId).then((response) => {
                   const attorneys = response.data;
                   setLeadCase({
                     ...caseSummary,
