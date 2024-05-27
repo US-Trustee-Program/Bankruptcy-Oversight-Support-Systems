@@ -21,7 +21,7 @@ import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Ale
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
-import { useApi, useGenericApi } from '@/lib/hooks/UseApi';
+import { useGenericApi } from '@/lib/hooks/UseApi';
 import { Consolidation } from '@common/cams/events';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
@@ -122,7 +122,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
   const genericApi = useGenericApi();
-  const api = useApi();
 
   //========== MISC FUNCTIONS ==========
 
@@ -423,10 +422,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       };
 
       setIsConsolidationProcessing(true);
-      api
-        .put('/consolidations/approve', data)
+      genericApi
+        .put<ConsolidationOrder[]>('/consolidations/approve', data)
         .then((response) => {
-          const newOrders = response.body as ConsolidationOrder[];
+          const newOrders = response.data;
           const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
           setIsConsolidationProcessing(false);
           props.onOrderUpdate(
@@ -461,10 +460,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       };
 
       setIsConsolidationProcessing(true);
-      api
-        .put('/consolidations/reject', data)
+      genericApi
+        .put<ConsolidationOrder[]>('/consolidations/reject', data)
         .then((response) => {
-          const newOrders = response.body as ConsolidationOrder[];
+          const newOrders = response.data;
           setIsConsolidationProcessing(false);
           props.onOrderUpdate(
             {

@@ -60,6 +60,11 @@ export interface GenericApiClient {
     body: object,
     options?: ObjectKeyVal,
   ): Promise<ResponseBodySuccess<T>>;
+  put<T = object>(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBodySuccess<T>>;
 }
 
 //This allows us to use generics and avoid typing using the "as" keyword to specify return types throughout the rest of the application
@@ -110,6 +115,14 @@ export function useGenericApi(): GenericApiClient {
       options?: ObjectKeyVal,
     ): Promise<ResponseBodySuccess<T>> {
       const responseBody = await api.post(justThePath(path), body, options);
+      return mapFromLegacyToResponseBody(responseBody);
+    },
+    async put<T = object>(
+      path: string,
+      body: object,
+      options?: ObjectKeyVal,
+    ): Promise<ResponseBodySuccess<T>> {
+      const responseBody = await api.put(justThePath(path), body, options);
       return mapFromLegacyToResponseBody(responseBody);
     },
   };
