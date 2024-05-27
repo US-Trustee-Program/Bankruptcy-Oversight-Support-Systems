@@ -152,7 +152,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function enableSubmitButtons() {
     rejectButtonRef.current?.disableButton(false);
     approveButtonRef.current?.disableButton(
-      !isDataEnhanced || selectedCasesAreConsolidationCases(),
+      !isDataEnhanced || selectedCasesAreConsolidationCases() || selectedCases.length < 2,
     );
   }
 
@@ -529,6 +529,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
+                <p aria-details="" className="form-instructions measure-6">
+                  Choose a consolidation type. Use the checkboxes to include cases in the
+                  consolidation (at least two cases), and then mark a lead case. If the lead case is
+                  not listed, enter it at the bottom. When finished, click Verify to review your
+                  changes before approving them.
+                </p>
                 <FormRequirementsNotice />
                 <RadioGroup
                   className="consolidation-type-container"
