@@ -151,7 +151,7 @@ describe('Pagination tests', () => {
     expect(retrievePageSpy).toHaveBeenCalledWith(expectedArgument);
   });
 
-  test('should call retrievePage correctly for current page number button', () => {
+  test('should not call retrievePage correctly for current page number button', () => {
     const currentPage = 6;
     const searchPredicate = {
       ...defaultSearchPredicate,
@@ -167,10 +167,10 @@ describe('Pagination tests', () => {
       ...searchPredicate,
     };
 
-    const pageOneButton = screen.getByTestId(`pagination-button-page-${currentPage}-results`);
-    expect(pageOneButton).toBeInTheDocument();
-    fireEvent.click(pageOneButton);
-    expect(retrievePageSpy).toHaveBeenCalledWith(expectedArgument);
+    const currentPageButton = screen.getByTestId(`pagination-button-page-${currentPage}-results`);
+    expect(currentPageButton).toBeInTheDocument();
+    fireEvent.click(currentPageButton);
+    expect(retrievePageSpy).not.toHaveBeenCalledWith(expectedArgument);
   });
 
   test('should render page 1, page 2, ellipses, and next', () => {
