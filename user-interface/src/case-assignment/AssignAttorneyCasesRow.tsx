@@ -1,4 +1,4 @@
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { TableRow, TableRowData, TableRowProps } from '@/lib/components/uswds/Table';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -22,24 +22,19 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
   const [bCase, setBCase] = useState<CaseWithAssignments>(props.bCase);
   const [inTableTransferMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [_, startTransition] = useTransition();
 
   const api = useApi2();
 
   useEffect(() => {
-    startTransition(() => {
-      Promise.all([
-        api
-          .getCaseAssignments(bCase.caseId)
-          .then((response) =>
-            setBCase({ ...bCase, assignments: response.data.map((assignment) => assignment.name) }),
-          )
-          .catch((_reason) => {})
-          .finally(() => {
-            setIsLoading(false);
-          }),
-      ]);
-    });
+    api
+      .getCaseAssignments(bCase.caseId)
+      .then((response) =>
+        setBCase({ ...bCase, assignments: response.data.map((assignment) => assignment.name) }),
+      )
+      .catch((_reason) => {})
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   return (
