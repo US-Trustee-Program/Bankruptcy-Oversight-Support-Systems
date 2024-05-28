@@ -203,7 +203,7 @@ function _ConsolidationCaseTable(
                     {props.isDataEnhanced &&
                       bCase.attorneyAssignments &&
                       bCase.attorneyAssignments.length > 0 && (
-                        <ul className="usa-list--unstyled">
+                        <ul className="usa-list--unstyled" id={`case-assignment-${bCase.caseId}`}>
                           {bCase.attorneyAssignments.map((att, idx) => (
                             <li key={`${bCase.caseId}-${idx}`}>{att.name}</li>
                           ))}
