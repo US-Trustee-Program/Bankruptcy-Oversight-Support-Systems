@@ -36,6 +36,13 @@ test.describe('Consolidation Orders', () => {
     await page.getByTestId('order-status-filter-transfer').click();
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
 
+    // select substantive consolidation type
+    const consolidationTypeSubstantive = page.getByTestId(
+      `substantive-${pendingConsolidationOrder.id}-click-target`,
+    );
+
+    await consolidationTypeSubstantive.click();
+
     let childCaseCount = 0;
     if (isConsolidationOrder(pendingConsolidationOrder)) {
       childCaseCount = pendingConsolidationOrder.childCases.length;
@@ -50,24 +57,31 @@ test.describe('Consolidation Orders', () => {
       // Clicking the label did not seem to fire the click event on the checkbox input.
       await page
         .locator(
-          `input[data-testid="checkbox-case-selection-${pendingConsolidationOrder.id}-case-list-${i}"]`,
+          `input[data-testid="checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}"]`,
         )
         .dispatchEvent('click');
     }
+
+    // mark first child case as lead case
+    const markAsLeadButton1 = page.getByTestId(
+      `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
+    );
+
+    await markAsLeadButton1.click();
+
+    // wait for loading assigned attorneys to complete
+    await expect(page.locator(`.loading-spinner`)).toHaveCount(0, { timeout: 60000 });
 
     const approveButton = page.getByTestId(
       `button-accordion-approve-button-${pendingConsolidationOrder.id}`,
     );
     await approveButton.click();
 
-    const jointAdminType = page.getByTestId(
-      `radio-administrative-confirmation-modal-${pendingConsolidationOrder.id}-click-target`,
-    );
-
-    expect(jointAdminType).toBeVisible();
+    const modalConsolidationText = document.querySelector('.modal-consolidation-type');
+    expect(modalConsolidationText).toContain('This will confirm the Substantive Consolidation of');
   });
 
-  test('should open consolidation modal, fill form and close modal by clicking cancel', async ({
+  test('should open case-not-listed form, fill form and click validate button', async ({
     page,
   }) => {
     // get pending consolidation order id
@@ -89,12 +103,30 @@ test.describe('Consolidation Orders', () => {
     // Action open accordian
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
 
+    // select substantive consolidation type
+    const consolidationTypeSubstantive = page.getByTestId(
+      `substantive-${pendingConsolidationOrder.id}-click-target`,
+    );
+
+    await consolidationTypeSubstantive.click();
+
     await page
       .locator(
-        `input[data-testid="checkbox-case-selection-${pendingConsolidationOrder.id}-case-list-0"]`,
+        `input[data-testid="checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0"]`,
       )
       .dispatchEvent('click');
 
+    await page
+      .locator(`lead-case-form-checkbox-toggle-${pendingConsolidationOrder.id}`)
+      .dispatchEvent('click');
+
+    // Action fill form for selecting a lead case not listed in child cases
+    await page.locator('#lead-case-court div').first().click();
+    await page.getByRole('option', { name: /Manhattan/ }).click();
+
+    await page.getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`).fill('11-11111');
+
+    // Action click cancel
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
       .click();
@@ -105,33 +137,6 @@ test.describe('Consolidation Orders', () => {
     ).toBeVisible();
     expect(
       page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
-    ).toBeDisabled();
-
-    // Action fill modal dialog form
-    await page
-      .getByTestId(
-        `radio-administrative-confirmation-modal-${pendingConsolidationOrder.id}-click-target`,
-      )
-      .check();
-
-    await page.locator('#lead-case-court div').first().click();
-    await page.getByRole('option', { name: /Manhattan/ }).click();
-
-    await page
-      .getByTestId(`lead-case-input-confirmation-modal-${pendingConsolidationOrder.id}`)
-      .fill('11-11111');
-
-    // Action click cancel
-    await page
-      .getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-cancel-button`)
-      .click();
-
-    // Assert modal closed and approve button is disabled
-    expect(
-      page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
-    ).not.toBeVisible();
-    expect(
-      page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
     ).toBeDisabled();
   });
 });
