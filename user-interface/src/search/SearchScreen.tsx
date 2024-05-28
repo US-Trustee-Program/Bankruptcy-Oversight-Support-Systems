@@ -60,7 +60,7 @@ export default function SearchScreen(_props: SearchScreenProps) {
 
   useEffect(() => {
     getOffices();
-  }, []);
+  }, [searchPredicate]);
 
   return (
     <div className="search-screen" data-testid="search">
