@@ -70,8 +70,12 @@ test.describe('Consolidation Orders', () => {
     );
 
     // wait for loading assigned attorneys to complete
-    await page.waitForSelector(`#loading-spinner-case-assignment-${firstChildCaseId}`);
-    await page.waitForSelector(`#case-assignment-${firstChildCaseId}`);
+    await page.waitForSelector(`#loading-spinner-case-assignment-${firstChildCaseId}`, {
+      timeout: 5000,
+    });
+    await page.waitForSelector(`#case-assignment-${firstChildCaseId}`, {
+      timeout: 5000,
+    });
 
     await markAsLeadButton1.click();
 
@@ -147,7 +151,6 @@ test.describe('Consolidation Orders', () => {
       .fill(firstChildCaseId);
 
     // wait for loading assigned attorneys to complete
-    //await expect(page.locator(`.loading-spinner`)).toHaveCount(0, { timeout: 60000 });
     await page.waitForSelector(
       `#lead-case-number-loading-spinner-${pendingConsolidationOrder.id}`,
       {
