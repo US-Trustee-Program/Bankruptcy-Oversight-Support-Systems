@@ -56,7 +56,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
-      enableSlotDeployment: ${{ inputs.enableSlotDeployment }}
+      enableSlotDeployment: ${{ inputs.enableSlotDeployment == 'true' }}
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
       deployVnet: ${{ inputs.deployVnet }}
 
