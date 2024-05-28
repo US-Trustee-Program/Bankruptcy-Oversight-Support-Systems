@@ -252,7 +252,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
           const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
           bCase.associations = associatedResponse.data;
-        } catch {
+        } catch (reason) {
+          console.error('enhancing data error', reason);
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }

@@ -44,8 +44,10 @@ test.describe('Consolidation Orders', () => {
     await consolidationTypeSubstantive.click();
 
     let childCaseCount = 0;
+    let firstChildCaseId;
     if (isConsolidationOrder(pendingConsolidationOrder)) {
       childCaseCount = pendingConsolidationOrder.childCases.length;
+      firstChildCaseId = pendingConsolidationOrder.childCases[0].caseId;
     }
 
     for (let i = 0; i < childCaseCount; ++i) {
@@ -67,18 +69,23 @@ test.describe('Consolidation Orders', () => {
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );
 
-    await markAsLeadButton1.click();
-
     // wait for loading assigned attorneys to complete
-    await expect(page.locator(`.loading-spinner`)).toHaveCount(0, { timeout: 60000 });
+    page.waitForSelector(`#loading-spinner-case-assignment-${firstChildCaseId}`);
+    page.waitForSelector(`#case-assignment-${firstChildCaseId}`);
+
+    await markAsLeadButton1.click();
 
     const approveButton = page.getByTestId(
       `button-accordion-approve-button-${pendingConsolidationOrder.id}`,
     );
+
+    await approveButton.isEnabled({ timeout: 5000 });
     await approveButton.click();
 
-    const modalConsolidationText = document.querySelector('.modal-consolidation-type');
-    expect(modalConsolidationText).toContain('This will confirm the Substantive Consolidation of');
+    const modalConsolidationText = await page.waitForSelector('.modal-consolidation-type');
+    expect(await modalConsolidationText.textContent()).toEqual(
+      'This will confirm the Substantive Consolidation of',
+    );
   });
 
   test('should open case-not-listed form, fill form and click validate button', async ({
