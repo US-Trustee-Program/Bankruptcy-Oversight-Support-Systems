@@ -109,7 +109,7 @@ jobs:
 
           # Deployment flags
           echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
-          echo "Slot deployment is enabled: ${{ github.ref == 'refs/heads/main' || inputs.enableSlotDeployment == 'true' }}"
+          echo "Slot deployment is enabled: ${{ inputs.enableSlotDeployment != 'false' }}"
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
           execVnetDeploy=${{ inputs.deployVnet || 'true' }} # Set to true to attempt to create a new virtual network
           echo "Execute virtual network deployment: ${execVnetDeploy}"
@@ -121,7 +121,7 @@ jobs:
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-          echo "slotDeploymentEnabled=${{ inputs.enableSlotDeployment == 'true' }}" >> $GITHUB_OUTPUT
+          echo "slotDeploymentEnabled=${{ inputs.enableSlotDeployment != 'false' }}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
