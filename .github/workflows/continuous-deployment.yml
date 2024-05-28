@@ -174,7 +174,7 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
-    secrets: inherit # pragma: allowlist secret this is a test
+    secrets: inherit # pragma: allowlist secret
 
   deploy-code-slot:
     name: Slot Code Deployment
