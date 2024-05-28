@@ -27,6 +27,7 @@ export type SuggestedTransferCasesProps = {
   officesList: OfficeDetails[];
   onCaseSelection: (bCase: CaseSummary | null) => void;
   onAlert: (alertDetails: AlertDetails) => void;
+  onInvalidCaseNumber: () => void;
 };
 
 function _SuggestedTransferCases(
@@ -104,6 +105,7 @@ function _SuggestedTransferCases(
       setNewCaseNumber(null);
       setValidationState(ValidationStates.notValidated);
       setNewCaseSummary(null);
+      props.onInvalidCaseNumber();
       return;
     }
 
@@ -260,6 +262,7 @@ function _SuggestedTransferCases(
                     className="usa-input"
                     value={order.docketSuggestedCaseNumber}
                     onChange={handleCaseInputChange}
+                    callOnChangeOnInvalidNumber={true}
                     aria-label="New case number"
                     ref={caseNumberRef}
                     disabled={true}

@@ -20,6 +20,7 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
 type CaseNumberInputProps = Omit<InputProps, 'onChange'> & {
   onChange: (caseNumber?: string) => void;
   allowEnterKey?: boolean;
+  callOnChangeOnInvalidNumber?: boolean;
 };
 
 function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
@@ -48,7 +49,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
     forwardedRef?.current?.setValue(joinedInput);
-    props.onChange(caseNumber);
+    if (caseNumber || props.callOnChangeOnInvalidNumber === true) props.onChange(caseNumber);
   }
 
   function handleKeyDown(ev: React.KeyboardEvent) {
