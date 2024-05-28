@@ -110,7 +110,6 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    // TODO: This is a multi select so we need to test it.
     selectItemInMockSelect('court-selections-search', 1);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
