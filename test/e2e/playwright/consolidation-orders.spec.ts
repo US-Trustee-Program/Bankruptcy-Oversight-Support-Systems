@@ -126,7 +126,10 @@ test.describe('Consolidation Orders', () => {
 
     await page.getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`).fill('11-11111');
 
-    // Action click cancel
+    // wait for loading assigned attorneys to complete
+    await expect(page.locator(`.loading-spinner`)).toHaveCount(0, { timeout: 60000 });
+
+    // Action click validate (approve button)
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
       .click();

@@ -93,7 +93,7 @@ describe('search screen', () => {
     let table = document.querySelector('#search-results > table');
     expect(table).not.toBeInTheDocument();
 
-    selectItemInMockSelect('court-selections-search', 1);
+    selectItemInMockSelect('court-selections-search', 0);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -111,7 +111,7 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
 
     // TODO: This is a multi select so we need to test it.
-    selectItemInMockSelect('court-selections-search', 2);
+    selectItemInMockSelect('court-selections-search', 1);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('#search-results > table');
