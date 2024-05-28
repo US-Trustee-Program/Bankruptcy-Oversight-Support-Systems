@@ -125,7 +125,9 @@ function _CamsSelectMulti(
     setIsDisabled(value);
     const inputEl = document.querySelector(`#${props.id} input`);
     if (inputEl) {
-      inputEl.setAttribute('disabled', value.toString());
+      value === true
+        ? inputEl.setAttribute('disabled', 'true')
+        : inputEl.removeAttribute('disabled');
     }
   }
 

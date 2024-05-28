@@ -7,6 +7,5 @@ export function getOfficeList(officesList: OfficeDetails[]) {
       label: `${court.courtName} (${court.courtDivisionName})`,
     };
   });
-  mapOutput.splice(0, 0, { value: '', label: ' ' });
   return mapOutput;
 }
