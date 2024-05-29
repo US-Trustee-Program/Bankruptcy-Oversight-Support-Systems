@@ -49,7 +49,11 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
     forwardedRef?.current?.setValue(joinedInput);
-    if (caseNumber || props.callOnChangeOnInvalidNumber === true) props.onChange(caseNumber);
+    if (!caseNumber && joinedInput && props.callOnChangeOnInvalidNumber) {
+      props.onChange(joinedInput);
+    } else if (caseNumber || (!caseNumber && !joinedInput)) {
+      props.onChange(caseNumber);
+    }
   }
 
   function handleKeyDown(ev: React.KeyboardEvent) {
