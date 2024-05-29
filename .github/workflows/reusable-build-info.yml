@@ -111,7 +111,7 @@ jobs:
           echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
           echo "Slot deployment is enabled: ${{ inputs.enableSlotDeployment != 'false' }}"
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
-          execVnetDeploy=${{ inputs.deployVnet || 'true' }} # Set to true to attempt to create a new virtual network
+          execVnetDeploy=${{ inputs.deployVnet=='true' || 'false' }} # Set to true to attempt to create a new virtual network
           echo "Execute virtual network deployment: ${execVnetDeploy}"
 
           # Expected job output values
