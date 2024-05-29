@@ -608,7 +608,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         data-testid={`lead-case-input-${order.id}`}
                         className="usa-input"
                         onChange={handleLeadCaseInputChange}
-                        callOnChangeOnInvalidNumber={true}
+                        allowPartialCaseNumber={false}
                         required={true}
                         label="Enter a case number"
                         ref={leadCaseNumberRef}

@@ -20,10 +20,11 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
 type CaseNumberInputProps = Omit<InputProps, 'onChange'> & {
   onChange: (caseNumber?: string) => void;
   allowEnterKey?: boolean;
-  callOnChangeOnInvalidNumber?: boolean;
+  allowPartialCaseNumber?: boolean;
 };
 
 function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
+  const { onChange, allowEnterKey, allowPartialCaseNumber } = props;
   const forwardedRef = useRef<InputRef>(null);
 
   function getValue() {
@@ -31,7 +32,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   }
 
   function resetValue() {
-    return forwardedRef.current?.setValue(props.value || '');
+    return forwardedRef.current?.setValue(props.value ?? '');
   }
 
   function clearValue() {
@@ -49,21 +50,21 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
     forwardedRef?.current?.setValue(joinedInput);
-    if (!caseNumber && joinedInput && props.callOnChangeOnInvalidNumber) {
-      props.onChange(joinedInput);
-    } else if (caseNumber || (!caseNumber && !joinedInput)) {
-      props.onChange(caseNumber);
+    if (allowPartialCaseNumber) {
+      onChange(joinedInput);
+    } else {
+      onChange(caseNumber);
     }
   }
 
-  function handleKeyDown(ev: React.KeyboardEvent) {
+  function handleEnter(ev: React.KeyboardEvent) {
     if (
-      props.allowEnterKey === true &&
+      allowEnterKey &&
       ev.key === 'Enter' &&
       forwardedRef.current &&
       forwardedRef.current?.getValue().length > 0
     ) {
-      props.onChange(forwardedRef.current?.getValue());
+      onChange(forwardedRef.current?.getValue());
     }
   }
 
@@ -74,7 +75,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
       {...props}
       ref={forwardedRef}
       onChange={handleOnChange}
-      onKeyDown={handleKeyDown}
+      onKeyDown={handleEnter}
       includeClearButton={true}
     ></Input>
   );

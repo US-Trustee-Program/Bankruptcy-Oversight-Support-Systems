@@ -262,7 +262,7 @@ function _SuggestedTransferCases(
                     className="usa-input"
                     value={order.docketSuggestedCaseNumber}
                     onChange={handleCaseInputChange}
-                    callOnChangeOnInvalidNumber={true}
+                    allowPartialCaseNumber={true}
                     aria-label="New case number"
                     ref={caseNumberRef}
                     disabled={true}
