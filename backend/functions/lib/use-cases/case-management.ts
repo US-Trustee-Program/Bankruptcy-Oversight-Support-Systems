@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseDetailsDbResult, CaseListDbResult } from '../adapters/types/cases';
+import { CaseDetailsDbResult } from '../adapters/types/cases';
 import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
 import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
 import { CasesInterface } from './cases.interface';
@@ -29,42 +29,6 @@ export class CaseManagement {
       this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
     }
     this.officesGateway = getOfficesGateway(applicationContext);
-  }
-
-  async getCases(applicationContext: ApplicationContext): Promise<CaseListDbResult> {
-    try {
-      let startingMonth = parseInt(process.env.STARTING_MONTH);
-      if (startingMonth > 0) {
-        startingMonth = 0 - startingMonth;
-      }
-      const cases = await this.casesGateway.getCases(applicationContext, {
-        startingMonth: startingMonth || undefined,
-      });
-
-      for (const bCase of cases) {
-        bCase.assignments = await this.getCaseAssigneeNames(applicationContext, bCase);
-      }
-
-      return {
-        success: true,
-        message: '',
-        count: cases.length,
-        body: {
-          caseList: cases as CaseDetail[],
-        },
-      };
-    } catch (originalError) {
-      if (!(originalError instanceof CamsError)) {
-        throw new UnknownError(MODULE_NAME, {
-          message:
-            'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
-          originalError,
-          status: 500,
-        });
-      } else {
-        throw originalError;
-      }
-    }
   }
 
   public async searchCases(

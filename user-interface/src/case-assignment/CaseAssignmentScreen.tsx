@@ -7,7 +7,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { AssignAttorneyCasesTable } from './AssignAttorneyCasesTable';
-import { CaseWithAssignments } from './CaseAssignmentScreen.types';
+import { CaseBasics } from '@common/cams/cases';
 
 const modalId = 'assign-attorney-modal';
 
@@ -21,7 +21,7 @@ export const CaseAssignment = () => {
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
-  const [caseList, setCaseList] = useState<CaseWithAssignments[]>([]);
+  const [caseList, setCaseList] = useState<CaseBasics[]>([]);
   const [caseListLoadError, setCaseListLoadError] = useState(false);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
@@ -32,7 +32,7 @@ export const CaseAssignment = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
-  function sortByDate(a: CaseWithAssignments, b: CaseWithAssignments): number {
+  function sortByDate(a: CaseBasics, b: CaseBasics): number {
     if (a.dateFiled < b.dateFiled) {
       return 1;
     } else if (a.dateFiled > b.dateFiled) {
@@ -42,7 +42,7 @@ export const CaseAssignment = () => {
     }
   }
 
-  function sortByCaseId(a: CaseWithAssignments, b: CaseWithAssignments): number {
+  function sortByCaseId(a: CaseBasics, b: CaseBasics): number {
     if (a.caseId < b.caseId) {
       return 1;
     } else if (a.caseId > b.caseId) {
@@ -55,7 +55,7 @@ export const CaseAssignment = () => {
   const fetchCases = async () => {
     isFetching = true;
     await api
-      .get<CaseWithAssignments[]>('/cases', { divisionCodes: ['081'] })
+      .get<CaseBasics[]>('/cases', { divisionCodes: ['081'] })
       .then((res) => {
         const caseList = res.data;
         caseList.forEach((bCase) => {
@@ -131,7 +131,6 @@ export const CaseAssignment = () => {
       }
 
       bCase.assignments = selectedAttorneyList;
-      // setInTableTransferMode(bCase.caseId);
 
       const updatedCaseList = caseList.filter((aCase) => {
         return aCase.caseId !== bCase.caseId;
@@ -146,9 +145,7 @@ export const CaseAssignment = () => {
       setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
       alertRef.current?.show();
 
-      setTimeout(() => {
-        // setInTableTransferMode('');
-      }, TABLE_TRANSFER_TIMEOUT * 1000);
+      setTimeout(() => {}, TABLE_TRANSFER_TIMEOUT * 1000);
 
       modalRef.current?.hide();
     }

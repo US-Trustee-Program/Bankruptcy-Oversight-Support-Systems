@@ -3,6 +3,7 @@ import MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import {
+  buildResponseBodySuccess,
   isResponseBodyError,
   isResponseBodySuccess,
   ResponseBody,
@@ -82,14 +83,10 @@ function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<
     throw new Error('TBD Need to map the error from the response body');
   }
   if (isLegacyResponseData(response)) {
-    return {
-      meta: {
-        isPaginated: false,
-        self: '',
-      },
-      isSuccess: true,
-      data: response.body as T,
-    };
+    return buildResponseBodySuccess<T>(response.body as T, {
+      isPaginated: false,
+      self: '',
+    });
   }
   throw new Error('Cannot map legacy response from API to new response model.');
 }

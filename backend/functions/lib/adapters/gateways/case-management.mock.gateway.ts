@@ -13,22 +13,6 @@ export class MockCasesGateway implements CasesInterface {
     this.startingMonth = -6;
   }
 
-  async getCases(
-    _applicationContext: ApplicationContext,
-    options: { startingMonth?: number },
-  ): Promise<CaseDetail[]> {
-    if (options.startingMonth != undefined) {
-      this.startingMonth = options.startingMonth;
-    }
-    const startDate = this.subtractMonths(new Date());
-
-    const filteredCases = this.caseList.filter(
-      (bCase) => bCase.dateFiled.toString() >= startDate.toISOString(),
-    );
-
-    return Promise.resolve(filteredCases);
-  }
-
   async searchCases(
     _applicationContext: ApplicationContext,
     searchPredicate: CasesSearchPredicate,

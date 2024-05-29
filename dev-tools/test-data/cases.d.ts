@@ -3,13 +3,6 @@ export interface CaseListRecordSet {
   initialized?: boolean;
 }
 
-export interface CaseListDbResult {
-  success: boolean;
-  message: string;
-  count: number;
-  body: CaseListRecordSet;
-}
-
 export interface CaseDetailsDbResult {
   success: boolean;
   message: string;

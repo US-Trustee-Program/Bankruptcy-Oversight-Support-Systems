@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { CasesSearchPredicate } from '@common/api/search';
+import {
+  CasesSearchPredicate,
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+} from '@common/api/search';
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
@@ -8,20 +12,29 @@ import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
+import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
+
+const DEFAULT_ALERT = {
+  show: false,
+  title: '',
+  message: '',
+  type: UswdsAlertStyle.Error,
+  timeout: 5,
+};
 
 export default function SearchScreen() {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
-    offset: 0,
+    offset: DEFAULT_SEARCH_OFFSET,
   });
 
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
+  const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<SelectMultiRef>(null);
+  const errorAlertRef = useRef<AlertRefType>(null);
 
   const api = useApi2();
 
@@ -31,8 +44,14 @@ export default function SearchScreen() {
       .then((response) => {
         setOfficesList(response.data.sort(officeSorter));
       })
-      .catch((e) => {
-        console.error(e);
+      .catch(() => {
+        setErrorAlert({
+          ...DEFAULT_ALERT,
+          title: 'Error',
+          message: 'Cannot load office list',
+          show: true,
+        });
+        errorAlertRef.current?.show(false);
       });
   }
 
@@ -64,6 +83,7 @@ export default function SearchScreen() {
 
   return (
     <div className="search-screen" data-testid="search">
+      <Alert ref={errorAlertRef} inline={false} {...errorAlert}></Alert>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">

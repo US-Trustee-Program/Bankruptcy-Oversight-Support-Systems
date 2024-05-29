@@ -10,7 +10,7 @@ import Api from '@/lib/models/api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getFullName } from '@common/name-helper';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseWithAssignments } from '@/case-assignment/CaseAssignmentScreen.types';
+import { CaseBasics } from '@common/cams/cases';
 
 const susan = new Attorney('Susan', 'Arbeit', 'Manhattan');
 const mark = new Attorney('Mark', 'Bruh', 'Manhattan');
@@ -64,11 +64,11 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
-    const bCase: CaseWithAssignments = MockData.getCaseBasics({
+    const bCase: CaseBasics = MockData.getCaseBasics({
       override: {
         caseId: '123',
         caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
+        dateFiled: '2024-01-01',
       },
     });
     bCase.assignments = [];
@@ -135,7 +135,7 @@ describe('Test Assign Attorney Modal Component', () => {
         override: {
           caseId: '123',
           caseTitle: 'Test Case',
-          dateFiled: '01/01/2024',
+          dateFiled: '2024-01-01',
         },
       }),
     });
@@ -183,7 +183,7 @@ describe('Test Assign Attorney Modal Component', () => {
         override: {
           caseId: '123',
           caseTitle: 'Test Case',
-          dateFiled: '01/01/2024',
+          dateFiled: '2024-01-01',
         },
       }),
     });
@@ -212,7 +212,7 @@ describe('Test Assign Attorney Modal Component', () => {
         override: {
           caseId: '123',
           caseTitle: 'Test Case',
-          dateFiled: '01/01/2024',
+          dateFiled: '2024-01-01',
         },
       }),
     });

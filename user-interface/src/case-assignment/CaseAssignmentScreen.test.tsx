@@ -6,6 +6,9 @@ import { ResponseData } from '@/lib/type-declarations/api';
 import { vi } from 'vitest';
 import * as FeatureFlags from '../lib/hooks/UseFeatureFlags';
 import AttorneysMockApi from '@/lib/models/attorneys-mock.api.cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { buildResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
+import { CaseBasics } from '@common/cams/cases';
 
 // for UX, it might be good to put a time limit on the api call to return results, and display an appropriate screen message to user.
 // for UX, do we want to limit number of results to display on screen (pagination discussion to table for now)
@@ -106,88 +109,18 @@ describe('CaseAssignment Component Tests', () => {
     });
   });
 
-  test('should trigger alert when error status is received from Attorneys api', async () => {
-    const expectAlertMessage = 'Mocked error cases request';
-
-    vi.spyOn(Chapter15MockApi, 'list').mockImplementation(
-      (_path: string): Promise<ResponseData> => {
-        return Promise.resolve({
-          message: 'not found',
-          count: 0,
-          body: {
-            caseList: [
-              {
-                caseId: '081-23-44463',
-                caseTitle: 'Flo Esterly and Neas Van Sampson',
-                dateFiled: '2023-05-04',
-                assignments: ['Sara', 'Bob'],
-              },
-              {
-                caseId: '081-23-44462',
-                caseTitle: 'Bridget Maldonado',
-                dateFiled: '2023-04-14',
-                assignments: ['Frank', 'Sue'],
-              },
-              {
-                caseId: '081-23-44461',
-                caseTitle: 'Talia Torres and Tylor Stevenson',
-                dateFiled: '2023-04-04',
-                assignments: ['Joe', 'Sam'],
-              },
-            ],
-          },
-        });
+  test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
+    const caseList = [
+      MockData.getCaseBasics({ override: { chapter: '9' } }),
+      MockData.getCaseBasics({ override: { chapter: '11' } }),
+      MockData.getCaseBasics({ override: { chapter: '12' } }),
+      MockData.getCaseBasics({ override: { chapter: '15' } }),
+    ];
+    vi.spyOn(Chapter15MockApi, 'get').mockImplementation(
+      (_path: string): Promise<ResponseBodySuccess<CaseBasics[]>> => {
+        return Promise.resolve(buildResponseBodySuccess<CaseBasics[]>(caseList));
       },
     );
-
-    vi.spyOn(AttorneysMockApi, 'list').mockRejectedValue(new Error(expectAlertMessage));
-
-    render(
-      <BrowserRouter>
-        <CaseAssignment />
-      </BrowserRouter>,
-    );
-
-    let alert: HTMLElement;
-    let alertMessage: HTMLElement;
-
-    await waitFor(() => {
-      alert = screen.getByTestId('alert');
-      alertMessage = screen.getByTestId('alert-message');
-      expect(alert).toHaveClass('usa-alert__visible');
-      expect(alert).toHaveAttribute('role', 'status');
-      expect(alert).toHaveClass('usa-alert--error ');
-      expect(alertMessage).toContainHTML(expectAlertMessage);
-    });
-  });
-
-  test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string): Promise<ResponseData> => {
-      return Promise.resolve({
-        message: 'not found',
-        count: 0,
-        body: [
-          {
-            caseId: '081-23-44463',
-            caseTitle: 'Flo Esterly and Neas Van Sampson',
-            dateFiled: '2023-05-04',
-            assignments: ['Sara', 'Bob'],
-          },
-          {
-            caseId: '081-23-44462',
-            caseTitle: 'Bridget Maldonado',
-            dateFiled: '2023-04-14',
-            assignments: ['Frank', 'Sue'],
-          },
-          {
-            caseId: '081-23-44461',
-            caseTitle: 'Talia Torres and Tylor Stevenson',
-            dateFiled: '2023-04-04',
-            assignments: ['Joe', 'Sam'],
-          },
-        ],
-      });
-    });
 
     render(
       <BrowserRouter>
@@ -198,7 +131,7 @@ describe('CaseAssignment Component Tests', () => {
     await waitFor(() => {
       const tableBody = screen.getAllByTestId('case-list-table-body');
       const data = tableBody[0].querySelectorAll('tr');
-      expect(data).toHaveLength(3);
+      expect(data).toHaveLength(caseList.length);
     });
   });
 
@@ -236,36 +169,10 @@ describe('CaseAssignment Component Tests', () => {
     });
 
     test('should display correct chapter number', async () => {
-      const caseList = [
-        {
-          caseId: '081-23-44463',
-          chapter: '9',
-          caseTitle: 'Flo Esterly and Neas Van Sampson',
-          dateFiled: '2023-05-04',
-          assignments: ['Sara', 'Bob'],
-        },
-        {
-          caseId: '081-23-44462',
-          chapter: '12',
-          caseTitle: 'Bridget Maldonado',
-          dateFiled: '2023-04-14',
-          assignments: ['Frank', 'Sue'],
-        },
-        {
-          caseId: '081-23-44461',
-          chapter: '15',
-          caseTitle: 'Talia Torres and Tylor Stevenson',
-          dateFiled: '2023-04-04',
-          assignments: ['Joe', 'Sam'],
-        },
-      ];
+      const caseList = MockData.buildArray(MockData.getCaseBasics, 5);
       vi.spyOn(Chapter15MockApi, 'get').mockImplementation(
-        (_path: string): Promise<ResponseData> => {
-          return Promise.resolve({
-            message: '',
-            count: 3,
-            body: caseList,
-          });
+        (_path: string): Promise<ResponseBodySuccess<CaseBasics[]>> => {
+          return Promise.resolve(buildResponseBodySuccess<CaseBasics[]>(caseList));
         },
       );
 

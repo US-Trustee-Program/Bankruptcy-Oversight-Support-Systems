@@ -1,11 +1,12 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
 import { CasesSearchPredicate } from '@common/api/search';
+import { buildResponseBodySuccess } from '@common/api/response';
 
 vi.mock(
   '../lib/components/CamsSelectMulti',
@@ -19,11 +20,7 @@ describe('search screen', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    getCaseSummarySpy.mockResolvedValue({
-      message: '',
-      count: caseList.length,
-      body: caseList,
-    });
+    getCaseSummarySpy.mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
   });
 
   function renderWithoutProps() {
@@ -126,11 +123,9 @@ describe('search screen', () => {
   test('should show the no results alert when no results are available', async () => {
     renderWithoutProps();
 
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
-      message: '',
-      count: 0,
-      body: [],
-    });
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce(
+      buildResponseBodySuccess<CaseBasics[]>([]),
+    );
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 
@@ -163,11 +158,7 @@ describe('search screen', () => {
       .mockRejectedValueOnce({
         message: 'some error',
       })
-      .mockResolvedValue({
-        message: '',
-        count: caseList.length,
-        body: caseList,
-      });
+      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 

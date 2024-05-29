@@ -1,6 +1,5 @@
 import { WithPagination } from '@common/api/pagination';
-import { SearchPredicate } from '@common/api/search';
-import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET, SearchPredicate } from '@common/api/search';
 import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 
 export type PaginationProps<P extends SearchPredicate> = {
@@ -27,7 +26,8 @@ export function Pagination<P extends SearchPredicate>({
                 retrievePage({
                   ...searchPredicate,
                   offset:
-                    (searchPredicate.offset ?? 0) - (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
+                    (searchPredicate.offset ?? DEFAULT_SEARCH_OFFSET) -
+                    (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
                 });
               }}
               isPrevious={true}
@@ -39,7 +39,7 @@ export function Pagination<P extends SearchPredicate>({
             <PaginationButton
               id={`page-1-results`}
               onClick={() => {
-                retrievePage({ ...searchPredicate, offset: 0 });
+                retrievePage({ ...searchPredicate, offset: DEFAULT_SEARCH_OFFSET });
               }}
             >
               1
@@ -120,7 +120,8 @@ export function Pagination<P extends SearchPredicate>({
                 retrievePage({
                   ...searchPredicate,
                   offset:
-                    (searchPredicate.offset ?? 0) + (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
+                    (searchPredicate.offset ?? DEFAULT_SEARCH_OFFSET) +
+                    (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
                 });
               }}
               isNext={true}

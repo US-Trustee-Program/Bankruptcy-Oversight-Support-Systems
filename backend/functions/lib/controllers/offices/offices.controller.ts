@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
-import { ResponseBody } from '../../../../../common/src/api/response';
+import { ResponseBody, buildResponseBodySuccess } from '../../../../../common/src/api/response';
 import { CamsHttpRequest } from '../../adapters/types/http';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
@@ -21,14 +21,10 @@ export class OfficesController {
   public async getOffices(request: CamsHttpRequest): Promise<GetOfficesResponse> {
     try {
       const offices = await this.useCase.getOffices(this.applicationContext);
-      return {
-        meta: {
-          isPaginated: false,
-          self: request.url,
-        },
-        isSuccess: true,
-        data: offices,
-      };
+      return buildResponseBodySuccess<OfficeDetails[]>(offices, {
+        isPaginated: false,
+        self: request.url,
+      });
     } catch (originalError) {
       throw originalError instanceof CamsError
         ? originalError

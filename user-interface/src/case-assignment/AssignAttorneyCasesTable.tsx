@@ -11,12 +11,12 @@ import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButt
 import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { GenericTable, GenericTableProps } from '@/lib/components/cams/GenericTable/GenericTable';
-import { CaseWithAssignments } from './CaseAssignmentScreen.types';
 import { AssignAttorneyCasesRow } from './AssignAttorneyCasesRow';
 import './AssignAttorneyCasesTable.scss';
+import { CaseBasics } from '@common/cams/cases';
 
 type AssignedCasesTableProps = {
-  caseList: CaseWithAssignments[];
+  caseList: CaseBasics[];
   modalId: string;
   modalRef: React.RefObject<AssignAttorneyModalRef>;
 };
@@ -24,7 +24,7 @@ type AssignedCasesTableProps = {
 export function AssignedCasesTableX(props: AssignedCasesTableProps) {
   const { caseList, modalId, modalRef } = props;
 
-  const assignedAttorneysTransformer = (theCase: CaseWithAssignments, idx?: number) => {
+  const assignedAttorneysTransformer = (theCase: CaseBasics, idx?: number) => {
     return (
       <>
         {theCase.assignments && theCase.assignments.length > 0 && (
@@ -81,7 +81,7 @@ export function AssignedCasesTableX(props: AssignedCasesTableProps) {
     );
   };
 
-  const tableProps: GenericTableProps<CaseWithAssignments> = {
+  const tableProps: GenericTableProps<CaseBasics> = {
     data: caseList,
     columns: [
       {
@@ -135,7 +135,7 @@ export function AssignedCasesTableX(props: AssignedCasesTableProps) {
       },
     ],
   };
-  return <GenericTable<CaseWithAssignments> {...tableProps} />;
+  return <GenericTable<CaseBasics> {...tableProps} />;
 }
 
 export function AssignAttorneyCasesTable(props: AssignedCasesTableProps) {
@@ -159,7 +159,7 @@ export function AssignAttorneyCasesTable(props: AssignedCasesTableProps) {
         <TableHeaderData scope="col">Assign Attorney</TableHeaderData>
       </TableHeader>
       <TableBody data-testid="case-list-table-body">
-        {(caseList as Array<CaseWithAssignments>).map((bCase: CaseWithAssignments, idx: number) => {
+        {(caseList as Array<CaseBasics>).map((bCase: CaseBasics, idx: number) => {
           return (
             <AssignAttorneyCasesRow
               bCase={bCase}

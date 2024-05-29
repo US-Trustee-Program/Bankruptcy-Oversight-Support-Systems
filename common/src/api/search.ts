@@ -1,22 +1,19 @@
 import { PaginationParameters } from './pagination';
 
+export const DEFAULT_SEARCH_LIMIT = 25;
+export const DEFAULT_SEARCH_OFFSET = 0;
+
 export type SearchPredicate = PaginationParameters;
 
-// TODO: Evaluate the parameters here. P is a superset of PaginationParameters and options is a subset.
-export function setPaginationDefaults<P extends SearchPredicate = SearchPredicate>(
-  predicate: P,
-  options: Partial<PaginationParameters> = {},
-) {
+export function setPaginationDefaults<P extends SearchPredicate = SearchPredicate>(predicate: P) {
   predicate.limit =
     typeof predicate.limit === 'string'
       ? parseInt(predicate.limit)
-      : predicate.limit ?? options.limit ?? 25;
-  // if (!predicate.limit) predicate.limit = options.limit ?? 25;
+      : predicate.limit ?? DEFAULT_SEARCH_LIMIT;
   predicate.offset =
     typeof predicate.offset === 'string'
       ? parseInt(predicate.offset)
-      : predicate.offset ?? options.offset ?? 0;
-  // if (!predicate.offset) predicate.offset = options.offset ?? 0;
+      : predicate.offset ?? DEFAULT_SEARCH_OFFSET;
   return predicate;
 }
 

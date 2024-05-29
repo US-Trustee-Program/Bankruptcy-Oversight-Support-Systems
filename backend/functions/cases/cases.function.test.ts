@@ -26,7 +26,7 @@ describe('Mocking CasesController to get error handling', () => {
     clearAllMocks();
   });
 
-  test('error should be properly handled if casesController.getCases() throws an error', async () => {
+  test('error should be properly handled if httpTrigger throws an error', async () => {
     const request = {
       params: {},
       query: {},

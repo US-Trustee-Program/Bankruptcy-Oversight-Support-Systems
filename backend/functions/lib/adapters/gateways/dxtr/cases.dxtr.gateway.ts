@@ -1,14 +1,10 @@
+import * as mssql from 'mssql';
 import { CasesInterface } from '../../../use-cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
-import {
-  getMonthDayYearStringFromDate,
-  getYearMonthDayStringFromDate,
-  sortDates,
-} from '../../utils/date-helper';
+import { getMonthDayYearStringFromDate, sortDates } from '../../utils/date-helper';
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import * as mssql from 'mssql';
 import { handleQueryResult } from '../gateway-helper';
 import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
 import { removeExtraSpaces } from '../../utils/string-helper';
@@ -16,40 +12,18 @@ import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
-import { CasesSearchPredicate } from '../../../../../../common/src/api/search';
 import {
-  CaseBasics,
-  CaseDetail,
-  CaseSummary,
+  CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
-} from '../../../../../../common/src/cams/cases';
+} from '../../../../../../common/src/api/search';
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../../common/src/cams/parties';
 
 const MODULENAME = 'CASES-DXTR-GATEWAY';
 
-const MANHATTAN_GROUP_DESIGNATOR = 'NY';
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
-
-function sqlSelectList(top: string, chapter: string) {
-  // THIS SETS US UP FOR SQL INJECTION IF WE EVER ACCEPT top OR chapter FROM USER INPUT.
-  return `
-    select TOP ${top}
-    CS_DIV+'-'+CASE_ID as caseId,
-    CS_SHORT_TITLE as caseTitle,
-    CS_CHAPTER as chapter,
-    FORMAT(CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled
-    FROM [dbo].[AO_CS]
-    WHERE CS_CHAPTER = '${chapter}'
-    AND GRP_DES = @groupDesignator
-    AND CS_DATE_FILED >= Convert(datetime, @dateFiledFrom)
-  `;
-}
-
-function sqlUnion(queries: string[]) {
-  return queries.join(' UNION ALL ');
-}
 
 export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
@@ -82,63 +56,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return bCase;
-  }
-
-  async getCases(
-    applicationContext: ApplicationContext,
-    options: { startingMonth?: number },
-  ): Promise<CaseSummary[]> {
-    // TODO: We should migrate the feature flags to search. A getCases call is just a search with no parameters. The rows to return are not part of the search predicate.
-    const doChapter12Enable = applicationContext.featureFlags['chapter-twelve-enabled'];
-    const doChapter11Enable = applicationContext.featureFlags['chapter-eleven-enabled'];
-    const rowsToReturn = doChapter12Enable || doChapter11Enable ? '10' : '20';
-
-    const input: DbTableFieldSpec[] = [];
-    const date = new Date();
-    date.setMonth(date.getMonth() + (options.startingMonth || -6));
-    const dateFiledFrom = getYearMonthDayStringFromDate(date);
-
-    input.push({
-      name: 'top',
-      type: mssql.Int,
-      value: rowsToReturn,
-    });
-
-    input.push({
-      name: 'dateFiledFrom',
-      type: mssql.Date,
-      value: dateFiledFrom,
-    });
-
-    input.push({
-      name: 'groupDesignator',
-      type: mssql.Char,
-      value: MANHATTAN_GROUP_DESIGNATOR,
-    });
-
-    const queries = [];
-    queries.push(sqlSelectList(rowsToReturn, '15'));
-
-    if (doChapter12Enable) queries.push(sqlSelectList(rowsToReturn, '12'));
-    if (doChapter11Enable) queries.push(sqlSelectList(rowsToReturn, '11'));
-
-    const query = sqlUnion(queries);
-
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
-
-    return Promise.resolve(
-      handleQueryResult<CaseSummary[]>(
-        applicationContext,
-        queryResult,
-        MODULENAME,
-        this.casesQueryCallback,
-      ),
-    );
   }
 
   public async getSuggestedCases(
@@ -291,6 +208,9 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
   ): Promise<CaseBasics[]> {
+    const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
+    const doChapter11Enable = context.featureFlags['chapter-eleven-enabled'];
+
     const CASE_SEARCH_SELECT = `
       SELECT
       cs.CS_DIV as courtDivisionCode,
@@ -340,12 +260,12 @@ export default class CasesDxtrGateway implements CasesInterface {
     const recordCount = predicate.limit ? predicate.limit + 1 : DEFAULT_SEARCH_LIMIT + 1;
     replacementVariables.push({
       name: `limit`,
-      type: mssql.Int, // TODO: How big (range) does this int need to be??
+      type: mssql.Int,
       value: recordCount,
     });
     replacementVariables.push({
       name: `offset`,
-      type: mssql.Int, // TODO: How big (range) does this int need to be??
+      type: mssql.Int,
       value: predicate.offset ?? 0,
     });
 
@@ -370,6 +290,11 @@ export default class CasesDxtrGateway implements CasesInterface {
         .join(', ');
       parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
     }
+
+    const chapters: string[] = ['15'];
+    if (doChapter12Enable) chapters.push('12');
+    if (doChapter11Enable) chapters.push('11');
+    parametersList.push(`cs.CS_CHAPTER IN (${chapters.join(', ')})`);
 
     const CASE_SEARCH_QUERY_PREDICATE =
       parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
@@ -772,6 +697,6 @@ export default class CasesDxtrGateway implements CasesInterface {
   casesBasicQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
 
-    return (queryResult.results as mssql.IResult<CaseBasics[]>).recordset;
+    return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
   }
 }
