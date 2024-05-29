@@ -155,90 +155,104 @@ export default function DataVerificationScreen() {
           <h2>Region {regionNumber}</h2>
           {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
           {!isOrderListLoading && (
-            <section className="order-list-container">
-              <div className="filters order-status">
-                <Filter<OrderStatus>
-                  label="Pending Review"
-                  filterType="pending"
-                  filters={statusFilter}
-                  callback={handleStatusFilter}
-                />
-                <Filter<OrderStatus>
-                  label="Approved"
-                  filterType="approved"
-                  filters={statusFilter}
-                  callback={handleStatusFilter}
-                />
-                <Filter<OrderStatus>
-                  label="Rejected"
-                  filterType="rejected"
-                  filters={statusFilter}
-                  callback={handleStatusFilter}
-                />
-                {featureFlags[CONSOLIDATIONS_ENABLED] && (
-                  <>
-                    <Filter<OrderType>
-                      label="Transfer"
-                      filterType="transfer"
-                      filters={typeFilter}
-                      callback={handleTypeFilter}
-                    />
-                    <Filter<OrderType>
-                      label="Consolidation"
-                      filterType="consolidation"
-                      filters={typeFilter}
-                      callback={handleTypeFilter}
-                    />
-                  </>
-                )}
-              </div>
-              <div className="data-verification-accordion-header">
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-6 text-no-wrap">Court District</div>
-                  <div className="grid-col-2 text-no-wrap">Order Filed</div>
-                  <div className="grid-col-2 text-no-wrap">Event Type</div>
-                  <div className="grid-col-2 text-no-wrap">Event Status</div>
+            <>
+              <h3>Filters</h3>
+              <section className="order-list-container">
+                <div className="filters order-status">
+                  {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                    <>
+                      <div className="event-type-container">
+                        <div className="event-header">Event Type</div>
+                        <div>
+                          <Filter<OrderType>
+                            label="Transfer"
+                            filterType="transfer"
+                            filters={typeFilter}
+                            callback={handleTypeFilter}
+                          />
+                          <Filter<OrderType>
+                            label="Consolidation"
+                            filterType="consolidation"
+                            filters={typeFilter}
+                            callback={handleTypeFilter}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  <div className="event-status-container">
+                    <div className="event-header">Event Status</div>
+                    <div>
+                      <Filter<OrderStatus>
+                        label="Pending Review"
+                        filterType="pending"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                      <Filter<OrderStatus>
+                        label="Approved"
+                        filterType="approved"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                      <Filter<OrderStatus>
+                        label="Rejected"
+                        filterType="rejected"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <AccordionGroup>
-                {orderList
-                  .filter((o) => {
-                    if (isConsolidationOrder(o)) {
-                      return featureFlags[CONSOLIDATIONS_ENABLED];
-                    } else {
-                      return true;
-                    }
-                  })
-                  .sort((a, b) => sortDates(a.orderDate, b.orderDate))
-                  .map((order) => {
-                    const isHidden =
-                      !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);
-                    return isTransferOrder(order) ? (
-                      <TransferOrderAccordion
-                        key={`accordion-${order.id}`}
-                        order={order}
-                        regionsMap={regionsMap}
-                        officesList={officesList}
-                        orderType={orderType}
-                        statusType={orderStatusType}
-                        onOrderUpdate={handleTransferOrderUpdate}
-                        hidden={isHidden}
-                      ></TransferOrderAccordion>
-                    ) : (
-                      <ConsolidationOrderAccordion
-                        key={`accordion-${order.id}`}
-                        order={order}
-                        regionsMap={regionsMap}
-                        officesList={officesList}
-                        orderType={orderType}
-                        statusType={orderStatusType}
-                        onOrderUpdate={handleConsolidationOrderUpdate}
-                        hidden={isHidden}
-                      ></ConsolidationOrderAccordion>
-                    );
-                  })}
-              </AccordionGroup>
-            </section>
+                <div className="data-verification-accordion-header">
+                  <div className="grid-row grid-gap-lg">
+                    <div className="grid-col-6 text-no-wrap">Court District</div>
+                    <div className="grid-col-2 text-no-wrap">Order Filed</div>
+                    <div className="grid-col-2 text-no-wrap">Event Type</div>
+                    <div className="grid-col-2 text-no-wrap">Event Status</div>
+                  </div>
+                </div>
+                <AccordionGroup>
+                  {orderList
+                    .filter((o) => {
+                      if (isConsolidationOrder(o)) {
+                        return featureFlags[CONSOLIDATIONS_ENABLED];
+                      } else {
+                        return true;
+                      }
+                    })
+                    .sort((a, b) => sortDates(a.orderDate, b.orderDate))
+                    .map((order) => {
+                      const isHidden =
+                        !typeFilter.includes(order.orderType) ||
+                        !statusFilter.includes(order.status);
+                      return isTransferOrder(order) ? (
+                        <TransferOrderAccordion
+                          key={`accordion-${order.id}`}
+                          order={order}
+                          regionsMap={regionsMap}
+                          officesList={officesList}
+                          orderType={orderType}
+                          statusType={orderStatusType}
+                          onOrderUpdate={handleTransferOrderUpdate}
+                          hidden={isHidden}
+                        ></TransferOrderAccordion>
+                      ) : (
+                        <ConsolidationOrderAccordion
+                          key={`accordion-${order.id}`}
+                          order={order}
+                          regionsMap={regionsMap}
+                          officesList={officesList}
+                          orderType={orderType}
+                          statusType={orderStatusType}
+                          onOrderUpdate={handleConsolidationOrderUpdate}
+                          hidden={isHidden}
+                        ></ConsolidationOrderAccordion>
+                      );
+                    })}
+                </AccordionGroup>
+              </section>
+            </>
           )}
         </div>
         <div className="grid-col-1"></div>
