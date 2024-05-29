@@ -10,13 +10,9 @@ describe('setPaginationDefaults tests', () => {
   });
 
   test('should handle options', () => {
-    const ridiculousNumber = 1000000;
     const input = { limit: 25, offset: 25 };
     const expected = { limit: 25, offset: 25 };
-    const actual = setPaginationDefaults(input, {
-      limit: ridiculousNumber,
-      offset: ridiculousNumber,
-    });
+    const actual = setPaginationDefaults(input);
     expect(actual).toEqual(expected);
   });
 
