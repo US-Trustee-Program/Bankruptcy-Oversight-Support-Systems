@@ -5,7 +5,7 @@ import { CaseBasics } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate, setPaginationDefaults } from '../../../../../common/src/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
 
-const MODULE_NAME = 'CASES-CONTROLLER';
+const _MODULE_NAME = 'CASES-CONTROLLER';
 
 function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
   return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
@@ -22,11 +22,6 @@ export class CasesController {
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
     return this.caseManagement.getCaseDetail(this.applicationContext, requestQueryFilters.caseId);
-  }
-
-  public async getCases() {
-    this.applicationContext.logger.info(MODULE_NAME, 'Getting all cases');
-    return await this.caseManagement.getCases(this.applicationContext);
   }
 
   public async searchCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {

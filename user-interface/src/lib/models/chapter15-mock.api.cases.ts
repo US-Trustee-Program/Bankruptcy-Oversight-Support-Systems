@@ -7,7 +7,8 @@ import {
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { ResponseBody } from '@common/api/response';
+import { ResponseBody, buildResponseBodySuccess } from '@common/api/response';
+import { CaseBasics } from '@common/cams/cases';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -210,47 +211,29 @@ export default class Chapter15MockApi extends Api {
       if (caseNumber === '99-99999') {
         return Promise.reject(new Error('api error'));
       } else if (caseNumber === '00-00000') {
-        response = {
-          meta: {
-            isPaginated: true,
-            count: 1,
-            currentPage: 1,
-            limit: 25,
+        response = buildResponseBodySuccess<CaseBasics[]>(
+          [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })],
+          {
             self: 'self-uri',
           },
-          isSuccess: true,
-          data: [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })],
-        };
+        );
       } else if (caseNumber === '11-00000') {
-        response = response = {
-          meta: {
-            isPaginated: true,
-            count: 0,
-            currentPage: 0,
-            limit: 25,
-            self: 'self-uri',
-          },
-          isSuccess: true,
-          data: [],
-        };
+        response = buildResponseBodySuccess<CaseBasics[]>([], {
+          self: 'self-uri',
+        });
       } else {
-        response = {
-          meta: {
-            isPaginated: true,
-            count: 5,
-            currentPage: 1,
-            limit: 25,
-            self: 'self-uri',
-          },
-          isSuccess: true,
-          data: [
+        response = buildResponseBodySuccess<CaseBasics[]>(
+          [
             MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } }),
             MockData.getCaseBasics({ override: { caseId: `070-${caseNumber}` } }),
             MockData.getCaseBasics({ override: { caseId: `132-${caseNumber}` } }),
             MockData.getCaseBasics({ override: { caseId: `3E1-${caseNumber}` } }),
             MockData.getCaseBasics({ override: { caseId: `256-${caseNumber}` } }),
           ],
-        };
+          {
+            self: 'self-uri',
+          },
+        );
       }
     } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
       response = {

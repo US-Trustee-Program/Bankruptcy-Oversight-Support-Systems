@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsError } from '../../common-errors/cams-error';
-import { ResponseBodySuccess } from '../../../../../common/src/api/response';
+import { buildResponseBodySuccess } from '../../../../../common/src/api/response';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import {
   mockCamsHttpRequest,
@@ -34,14 +34,10 @@ describe('offices controller tests', () => {
       return Promise.resolve(OFFICES);
     });
 
-    const expected: ResponseBodySuccess<OfficeDetails[]> = {
-      meta: {
-        isPaginated: false,
-        self: mockRequestUrl,
-      },
-      isSuccess: true,
-      data: OFFICES,
-    };
+    const expected = buildResponseBodySuccess<OfficeDetails[]>(OFFICES, {
+      isPaginated: false,
+      self: mockRequestUrl,
+    });
 
     const controller = new OfficesController(applicationContext);
     const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });

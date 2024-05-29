@@ -4,13 +4,13 @@ import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButto
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { CaseWithAssignments } from './CaseAssignmentScreen.types';
 import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { CaseBasics } from '@common/cams/cases';
 
 export type AssignAttorneyCasesRowProps = TableRowProps & {
-  bCase: CaseWithAssignments;
+  bCase: CaseBasics;
   idx: number;
   modalId: string;
   modalRef: React.RefObject<AssignAttorneyModalRef>;
@@ -19,8 +19,7 @@ export type AssignAttorneyCasesRowProps = TableRowProps & {
 export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
   const { bCase, idx, modalId, modalRef, ...otherProps } = props;
 
-  const [internalCase, setBCase] = useState<CaseWithAssignments>(bCase);
-  const [inTableTransferMode] = useState<boolean>(false);
+  const [internalCase, setBCase] = useState<CaseBasics>(bCase);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const api = useApi2();
@@ -41,7 +40,7 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
   }, []);
 
   return (
-    <TableRow className={inTableTransferMode ? 'in-table-transfer-mode' : ''} {...otherProps}>
+    <TableRow {...otherProps}>
       <TableRowData className="case-number">
         <span className="mobile-title">Case Number:</span>
         <CaseNumber caseId={internalCase.caseId} openLinkIn="same-window" />

@@ -1,4 +1,4 @@
-import { ResponseBodySuccess } from '../../../common/src/api/response';
+import { buildResponseBodySuccess, ResponseBodySuccess } from '../../../common/src/api/response';
 import { CaseBasics } from '../../../common/src/cams/cases';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import httpTrigger from './cases.function';
@@ -59,18 +59,7 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
           }
         },
         searchCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
-          return {
-            meta: {
-              isPaginated: true,
-              count: searchCasesResults.length,
-              self: 'self-link',
-              next: 'next-link',
-              limit: 25,
-              currentPage: 1,
-            },
-            isSuccess: true,
-            data: searchCasesResults,
-          };
+          return buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
         },
       };
     }),
@@ -121,18 +110,7 @@ describe('Standard case list tests without class mocks', () => {
       method: 'GET',
     };
 
-    const expectedResponseBody: ResponseBodySuccess<CaseBasics[]> = {
-      meta: {
-        isPaginated: true,
-        count: searchCasesResults.length,
-        self: 'self-link',
-        next: 'next-link',
-        limit: 25,
-        currentPage: 1,
-      },
-      isSuccess: true,
-      data: searchCasesResults,
-    };
+    const expectedResponseBody = buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
 
     await httpTrigger(context, request);
 

@@ -1,10 +1,11 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { render, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
+import { buildResponseBodySuccess } from '@common/api/response';
 
 describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
@@ -15,18 +16,12 @@ describe('SearchResults component tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      isSuccess: true,
-      meta: {
-        isPaginated: true,
-        count: caseList.length,
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue(
+      buildResponseBodySuccess<CaseBasics[]>(caseList, {
         next: 'next-link',
         self: 'self-link',
-        limit: 25,
-        currentPage: 1,
-      },
-      data: caseList,
-    });
+      }),
+    );
   });
 
   function renderWithProps(props: Partial<SearchResultsProps> = {}) {
@@ -123,19 +118,6 @@ describe('SearchResults component tests', () => {
   });
 
   test('should render pagination', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      isSuccess: true,
-      meta: {
-        isPaginated: true,
-        count: caseList.length,
-        next: 'next-link',
-        self: 'self-link',
-        limit: 25,
-        currentPage: 1,
-      },
-      data: caseList,
-    });
-
     renderWithProps();
 
     await waitFor(() => {

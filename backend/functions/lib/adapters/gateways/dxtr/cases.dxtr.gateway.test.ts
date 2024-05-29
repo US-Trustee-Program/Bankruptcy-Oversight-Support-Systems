@@ -2,8 +2,6 @@ import CasesDxtrGateway from './cases.dxtr.gateway';
 import { applicationContextCreator } from '../../utils/application-context-creator';
 import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
-import * as mssql from 'mssql';
-import { getYearMonthDayStringFromDate } from '../../utils/date-helper';
 import { CaseDetail } from '../../../../../../common/src/cams/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
@@ -36,73 +34,6 @@ describe('Test DXTR Gateway', () => {
     jest.resetAllMocks();
   });
 
-  test('should call executeQuery with the default starting month and return expected results', async () => {
-    const mockResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: [],
-      },
-      message: '',
-    };
-    querySpy.mockImplementation(async () => {
-      return Promise.resolve(mockResults);
-    });
-    await testCasesDxtrGateway.getCases(applicationContext, {});
-    const date = new Date();
-    date.setMonth(date.getMonth() - 6);
-    const dateFiledFrom = getYearMonthDayStringFromDate(date);
-    const expectedDateInput = {
-      name: 'dateFiledFrom',
-      type: mssql.Date,
-      value: dateFiledFrom,
-    };
-    expect(querySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      applicationContext.config.dxtrDbConfig,
-      expect.anything(),
-      expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
-    );
-  });
-
-  test('should call executeQuery with the right date when a startingMonth option is passed', async () => {
-    const cases = [
-      {
-        caseId: 'case-one',
-        caseTitle: 'Debtor One',
-        dateFiled: '2018-11-16T00:00:00.000Z',
-      },
-    ];
-    const mockResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: cases,
-      },
-      message: '',
-    };
-    querySpy.mockImplementation(async () => {
-      return Promise.resolve(mockResults);
-    });
-    const startingMonth = -12;
-    await testCasesDxtrGateway.getCases(applicationContext, {
-      startingMonth,
-    });
-    const date = new Date();
-    date.setMonth(date.getMonth() + startingMonth);
-    const dateFiledFrom = getYearMonthDayStringFromDate(date);
-    const expectedDateInput = {
-      name: 'dateFiledFrom',
-      type: mssql.Date,
-      value: dateFiledFrom,
-    };
-
-    expect(querySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      applicationContext.config.dxtrDbConfig,
-      expect.anything(),
-      expect.arrayContaining([expect.objectContaining(expectedDateInput)]),
-    );
-  });
-
   // TODO: Find a way to cover the different scenarios where executeQuery throws an error
   test('should throw error when executeQuery returns success=false', async () => {
     const errorMessage = 'There was some fake error.';
@@ -116,7 +47,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     try {
-      await testCasesDxtrGateway.getCases(applicationContext, {});
+      await testCasesDxtrGateway.searchCases(applicationContext, {});
       expect(true).toBeFalsy();
     } catch (e) {
       expect((e as CamsError).message).toEqual(errorMessage);
@@ -451,72 +382,6 @@ describe('Test DXTR Gateway', () => {
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
-  });
-
-  describe.each([
-    ['chapter-eleven-enabled', '11'],
-    ['chapter-twelve-enabled', '12'],
-  ])('Feature flag - chapter enabled', (featureFlagKey, chapterNumber) => {
-    test('should return a chapter column in the result set when true.', async () => {
-      const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
-      featureFlagSpy.mockImplementation(async () => {
-        const featureFlags = {};
-        featureFlags[featureFlagKey] = true;
-        return featureFlags;
-      });
-
-      applicationContext = await applicationContextCreator(context);
-
-      const cases = [
-        {
-          caseId: 'case-one',
-          chapter: '15',
-          caseTitle: 'Debtor One',
-          dateFiled: '2018-11-16T00:00:00.000Z',
-        },
-      ];
-      const mockResults: QueryResults = {
-        success: true,
-        results: cases,
-        message: '',
-      };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      await testCasesDxtrGateway.getCases(applicationContext, {});
-      expect(querySpy.mock.calls[0][2]).toContain('UNION ALL');
-      expect(querySpy.mock.calls[0][2]).toContain(`CS_CHAPTER = '${chapterNumber}'`);
-    });
-
-    test('should not return a chapter column in the result set when false.', async () => {
-      const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
-      featureFlagSpy.mockImplementation(async () => {
-        return { 'chapter-twelve-enabled': false };
-      });
-      applicationContext = await applicationContextCreator(context);
-
-      const cases = [
-        {
-          caseId: 'case-one',
-          chapter: '15',
-          caseTitle: 'Debtor One',
-          dateFiled: '2018-11-16T00:00:00.000Z',
-        },
-      ];
-      const mockResults: QueryResults = {
-        success: true,
-        results: cases,
-        message: '',
-      };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      await testCasesDxtrGateway.getCases(applicationContext, {});
-      expect(querySpy.mock.calls[0][2]).not.toContain('UNION ALL');
-      expect(querySpy.mock.calls[0][2]).not.toContain("CS_CHAPTER = '12'");
-    });
   });
 
   describe('partyQueryCallback', () => {

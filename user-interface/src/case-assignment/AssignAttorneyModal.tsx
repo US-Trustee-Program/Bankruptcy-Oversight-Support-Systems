@@ -11,10 +11,10 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { getFullName } from '@common/name-helper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
-import { CaseWithAssignments } from './CaseAssignmentScreen.types';
+import { CaseBasics } from '@common/cams/cases';
 
 export interface ModalOpenProps {
-  bCase: CaseWithAssignments;
+  bCase: CaseBasics;
 }
 
 export interface AssignAttorneyModalRef {
@@ -35,7 +35,7 @@ export interface AttorneyListResponseData extends ResponseData {
 }
 
 export interface CallBackProps {
-  bCase: CaseWithAssignments;
+  bCase: CaseBasics;
   selectedAttorneyList: string[];
   previouslySelectedList: string[];
   status: 'success' | 'error';
@@ -46,7 +46,7 @@ function AssignAttorneyModalComponent(
   props: AssignAttorneyModalProps,
   ref: React.Ref<AssignAttorneyModalRef>,
 ) {
-  const [bCase, setBCase] = useState<CaseWithAssignments | null>(null);
+  const [bCase, setBCase] = useState<CaseBasics | null>(null);
   const modalRef = useRef<ModalRefType>(null);
   const tableContainer = useRef<HTMLTableSectionElement | null>(null);
   const modalHeading = (

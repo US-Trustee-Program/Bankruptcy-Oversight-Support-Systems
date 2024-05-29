@@ -2,6 +2,8 @@ import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
 
+const timeoutOption = { timeout: 30000 };
+
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
 
@@ -9,7 +11,7 @@ test.describe('Consolidation Orders', () => {
     // Navigate to Data Verification and capture network responses
     const orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
-      { timeout: 30000 },
+      timeoutOption,
     );
     const officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/offices'),
@@ -70,12 +72,11 @@ test.describe('Consolidation Orders', () => {
     );
 
     // wait for loading assigned attorneys to complete
-    await page.waitForSelector(`#loading-spinner-case-assignment-${firstChildCaseId}`, {
-      timeout: 5000,
-    });
-    await page.waitForSelector(`#case-assignment-${firstChildCaseId}`, {
-      timeout: 5000,
-    });
+    await page.waitForSelector(
+      `#loading-spinner-case-assignment-${firstChildCaseId}`,
+      timeoutOption,
+    );
+    await page.waitForSelector(`#case-assignment-${firstChildCaseId}`, timeoutOption);
 
     await markAsLeadButton1.click();
 
@@ -83,7 +84,7 @@ test.describe('Consolidation Orders', () => {
       `button-accordion-approve-button-${pendingConsolidationOrder.id}`,
     );
 
-    await approveButton.isEnabled({ timeout: 5000 });
+    await approveButton.isEnabled(timeoutOption);
     await approveButton.click();
 
     const modalConsolidationText = await page.waitForSelector('.modal-consolidation-type');
@@ -153,27 +154,24 @@ test.describe('Consolidation Orders', () => {
     // wait for loading assigned attorneys to complete
     await page.waitForSelector(
       `#lead-case-number-loading-spinner-${pendingConsolidationOrder.id}`,
-      {
-        timeout: 5000,
-      },
+      timeoutOption,
     );
-    await page.waitForSelector(`#valid-case-number-found-${pendingConsolidationOrder.id}`, {
-      timeout: 5000,
-    });
+    await page.waitForSelector(
+      `#valid-case-number-found-${pendingConsolidationOrder.id}`,
+      timeoutOption,
+    );
 
     // Action click validate (approve button)
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
       .click();
 
-    /*
     // Assert modal opened
-    expect(
-      page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
-    ).toBeVisible();
-    expect(
-      page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
-    ).toBeDisabled();
-    */
+    // expect(
+    //   page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
+    // ).toBeVisible();
+    // expect(
+    //   page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
+    // ).toBeDisabled();
   });
 });

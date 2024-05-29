@@ -1,7 +1,6 @@
 import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
 import { ApplicationContext } from './basic';
-import { CaseListDbResult } from './cases';
 import { AttorneyListDbResult } from './attorneys';
 
 export interface PersistenceGateway {
@@ -27,10 +26,6 @@ export interface PersistenceGateway {
 
 export interface CasePersistenceGateway {
   createCase(applicationContext: ApplicationContext, fields: RecordObj[]): Promise<DbResult>;
-  getCaseList(
-    applicationContext: ApplicationContext,
-    fields: ObjectKeyVal,
-  ): Promise<CaseListDbResult>;
   getCase(applicationContext: ApplicationContext, id: number): Promise<DbResult>;
   updateCase(
     applicationContext: ApplicationContext,
