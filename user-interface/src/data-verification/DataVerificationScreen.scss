@@ -2,7 +2,7 @@
   .order-list-container {
     .order-type {
       span {
-        background-color: #2671e2;
+        background-color: #0050d8;
         color: white;
         padding: 2px 8px 2px 8px;
         border-radius: 2px;
@@ -50,6 +50,9 @@
         padding-left: 0.125rem;
       }
     }
+    .filter {
+      margin-bottom: 1.5rem;
+    }
     div.event-header {
       font-weight: bold;
       margin-bottom: 0.5rem;
@@ -64,10 +67,10 @@
       margin-left: 1rem;
     }
     .consolidation {
-      background: #2671e2;
+      background: #0050d8;
     }
     .transfer {
-      background: #2671e2;
+      background: #0050d8;
     }
     .consolidation .inactive {
       background: #5c5c5c;
