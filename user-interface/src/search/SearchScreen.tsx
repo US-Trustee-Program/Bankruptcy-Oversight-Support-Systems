@@ -12,9 +12,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { DEFAULT_SEARCH_LIMIT } from '@common/cams/cases';
 import './SearchScreen.scss';
 
-type SearchScreenProps = object;
-
-export default function SearchScreen(_props: SearchScreenProps) {
+export default function SearchScreen() {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: 0,
@@ -50,12 +48,14 @@ export default function SearchScreen(_props: SearchScreenProps) {
   }
 
   function handleCourtSelection(selection: MultiSelectOptionList) {
-    setSearchPredicate({
+    const newPredicate = {
       ...searchPredicate,
-      divisionCodes: selection.length
-        ? selection.map((kv: Record<string, string>) => kv.value)
-        : undefined,
-    });
+    };
+    delete newPredicate.divisionCodes;
+    if (selection.length) {
+      newPredicate.divisionCodes = selection.map((kv: Record<string, string>) => kv.value);
+    }
+    setSearchPredicate(newPredicate);
   }
 
   useEffect(() => {
