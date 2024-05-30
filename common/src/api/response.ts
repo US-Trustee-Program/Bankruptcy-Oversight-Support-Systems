@@ -40,12 +40,17 @@ export function buildResponseBodySuccess<T = unknown>(
   let noPagination: NoPagination = undefined;
 
   const { isPaginated: _, ...otherMeta } = meta;
+  const count = Array.isArray(data) ? data.length : 0;
+  const currentPage = Array.isArray(data) ? (data.length ? 1 : 0) : 0;
 
-  if (('isPaginated' in meta && meta.isPaginated) || Array.isArray(data)) {
+  if (
+    ('isPaginated' in meta && meta.isPaginated) ||
+    (Array.isArray(data) && meta.isPaginated === undefined)
+  ) {
     withPagination = {
       isPaginated: true,
-      count: Array.isArray(data) ? data.length : 0,
-      currentPage: Array.isArray(data) ? (data.length ? 1 : 0) : 0,
+      count,
+      currentPage,
       limit: DEFAULT_SEARCH_LIMIT,
       self: 'self-link',
       ...otherMeta,
