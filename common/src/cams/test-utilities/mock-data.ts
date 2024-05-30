@@ -1,5 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { CaseDetail, CaseDocketEntry, CaseDocketEntryDocument, CaseSummary } from '../cases';
+import {
+  CaseBasics,
+  CaseDetail,
+  CaseDocketEntry,
+  CaseDocketEntryDocument,
+  CaseSummary,
+} from '../cases';
 import {
   ConsolidationOrder,
   ConsolidationOrderCase,
@@ -93,26 +99,38 @@ function getConsolidatedOrderCase(
   return { ...consolidatedCaseSummary, ...override };
 }
 
-function getCaseSummary(
-  options: Options<CaseSummary> = { entityType: 'person', override: {} },
-): CaseSummary {
+function getCaseBasics(
+  options: Options<CaseBasics> = { entityType: 'person', override: {} },
+): CaseBasics {
   const { entityType, override } = options;
   const debtor = getParty({ entityType });
   const debtorTypeCode = entityType === 'person' ? 'IC' : 'CB';
   const debtorTypeLabel = debtorTypeLabelMap.get(debtorTypeCode);
   const office = randomOffice();
-  const caseSummary: CaseSummary = {
+  const caseSummary: CaseBasics = {
     ...office,
     dxtrId: '0', // NEED TO REFACTOR THIS OUT OF THE MODEL AND STOP LEAKING FROM THE API
     caseId: randomCaseId(office.courtDivisionCode),
     chapter: randomChapter(),
     caseTitle: debtor.name,
     dateFiled: randomDate(),
-    debtor,
     debtorTypeCode,
     debtorTypeLabel,
   };
   return { ...caseSummary, ...override };
+}
+
+function getCaseSummary(
+  options: Options<CaseSummary> = { entityType: 'person', override: {} },
+): CaseSummary {
+  const { entityType, override } = options;
+  const debtor = getParty({ entityType });
+  const caseBasics = getCaseBasics(options);
+  return {
+    debtor,
+    ...caseBasics,
+    ...override,
+  };
 }
 
 function getCaseDetail(
@@ -309,6 +327,7 @@ function getDateBeforeToday() {
 export const MockData = {
   randomCaseId,
   getAttorneyAssignment,
+  getCaseBasics,
   getCaseSummary,
   getCaseDetail,
   getOffices,

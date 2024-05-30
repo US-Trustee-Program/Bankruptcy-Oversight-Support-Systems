@@ -1,14 +1,14 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import './Alert.scss';
-import React from 'react';
 
-export interface AlertDetails {
+export type AlertDetails = {
   message: string;
   title?: string;
   type: UswdsAlertStyle;
   timeOut: number;
-}
-export interface AlertProps {
+};
+
+export type AlertProps = {
   id?: string;
   message: string;
   type: UswdsAlertStyle;
@@ -20,7 +20,7 @@ export interface AlertProps {
   inline?: boolean;
   show?: boolean;
   noIcon?: true;
-}
+};
 
 export enum UswdsAlertStyle {
   Info = 'usa-alert--info',

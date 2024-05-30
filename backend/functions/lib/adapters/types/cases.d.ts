@@ -1,17 +1,5 @@
 import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
 
-export interface CaseListRecordSet {
-  caseList: CaseDetail[];
-  initialized?: boolean;
-}
-
-export interface CaseListDbResult {
-  success: boolean;
-  message: string;
-  count: number;
-  body: CaseListRecordSet;
-}
-
 export interface CaseSummaryListDbResult {
   success: boolean;
   message: string;

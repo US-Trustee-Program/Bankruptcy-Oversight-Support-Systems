@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Chapter15Type, Chapter15CaseListResponseData } from '@/lib/type-declarations/chapter-15';
 import AssignAttorneyModal, { AssignAttorneyModalRef, CallBackProps } from './AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useGenericApi } from '@/lib/hooks/UseApi';
 import { AssignAttorneyCasesTable } from './AssignAttorneyCasesTable';
+import { CaseBasics } from '@common/cams/cases';
 
 const modalId = 'assign-attorney-modal';
 
@@ -16,12 +16,12 @@ const TABLE_TRANSFER_TIMEOUT = 10;
 export const CaseAssignment = () => {
   const modalRef = useRef<AssignAttorneyModalRef>(null);
   const alertRef = useRef<AlertRefType>(null);
-  const api = useApi();
+  const api = useGenericApi();
   const screenTitle = 'Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
   const subTitle = `Region ${regionId} (${officeName} Office)`;
-  const [caseList, setCaseList] = useState<Array<Chapter15Type>>([]);
+  const [caseList, setCaseList] = useState<CaseBasics[]>([]);
   const [caseListLoadError, setCaseListLoadError] = useState(false);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
@@ -29,11 +29,10 @@ export const CaseAssignment = () => {
     timeOut: number;
   }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
   const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
-  const [inTableTransferMode, setInTableTransferMode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
-  function sortByDate(a: Chapter15Type, b: Chapter15Type): number {
+  function sortByDate(a: CaseBasics, b: CaseBasics): number {
     if (a.dateFiled < b.dateFiled) {
       return 1;
     } else if (a.dateFiled > b.dateFiled) {
@@ -43,7 +42,7 @@ export const CaseAssignment = () => {
     }
   }
 
-  function sortByCaseId(a: Chapter15Type, b: Chapter15Type): number {
+  function sortByCaseId(a: CaseBasics, b: CaseBasics): number {
     if (a.caseId < b.caseId) {
       return 1;
     } else if (a.caseId > b.caseId) {
@@ -56,12 +55,14 @@ export const CaseAssignment = () => {
   const fetchCases = async () => {
     isFetching = true;
     await api
-      .list('/cases')
+      .get<CaseBasics[]>('/cases', { divisionCodes: ['081'] })
       .then((res) => {
-        const chapter15Response = res as Chapter15CaseListResponseData;
-        const assignmentList: Chapter15Type[] = chapter15Response?.body?.caseList ?? [];
-        assignmentList.sort(sortByDate).sort(sortByCaseId);
-        setCaseList(assignmentList);
+        const caseList = res.data;
+        caseList.forEach((bCase) => {
+          bCase.assignments = bCase.assignments ?? [];
+        });
+        caseList.sort(sortByDate).sort(sortByCaseId);
+        setCaseList(caseList);
 
         isFetching = false;
         setIsLoading(false);
@@ -130,7 +131,6 @@ export const CaseAssignment = () => {
       }
 
       bCase.assignments = selectedAttorneyList;
-      setInTableTransferMode(bCase.caseId);
 
       const updatedCaseList = caseList.filter((aCase) => {
         return aCase.caseId !== bCase.caseId;
@@ -145,9 +145,7 @@ export const CaseAssignment = () => {
       setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
       alertRef.current?.show();
 
-      setTimeout(() => {
-        setInTableTransferMode('');
-      }, TABLE_TRANSFER_TIMEOUT * 1000);
+      setTimeout(() => {}, TABLE_TRANSFER_TIMEOUT * 1000);
 
       modalRef.current?.hide();
     }
@@ -183,12 +181,7 @@ export const CaseAssignment = () => {
               </div>
             )}
             {!isLoading && (
-              <AssignAttorneyCasesTable
-                caseList={caseList}
-                modalId={modalId}
-                modalRef={modalRef}
-                inTableTransferMode={inTableTransferMode}
-              />
+              <AssignAttorneyCasesTable caseList={caseList} modalId={modalId} modalRef={modalRef} />
             )}
           </div>
           <div className="grid-col-1"></div>

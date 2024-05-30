@@ -47,7 +47,7 @@ export function TableRowData(props: TableRowDataProps) {
   );
 }
 
-type TableRowProps = PropsWithChildren & JSX.IntrinsicElements['tr'];
+export type TableRowProps = PropsWithChildren & JSX.IntrinsicElements['tr'];
 
 export function TableRow(props: TableRowProps) {
   const { children, ...otherProperties } = props;

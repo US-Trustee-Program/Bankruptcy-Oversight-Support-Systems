@@ -2,11 +2,14 @@ import { httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import config from '../../configuration/apiConfiguration';
+import {
+  Chapter15CaseDetailsResponseData,
+  Chapter15CaseSummaryResponseData,
+} from '@/lib/type-declarations/chapter-15';
+import { ResponseBody } from '@common/api/response';
 
 export default class Api {
-  private static _host = `${config.protocol || 'https'}://${config.server}:${config.port}${
-    config.basePath ?? ''
-  }`;
+  public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
 
   public static createPath(path: string, params: ObjectKeyVal) {
     if (params && Object.keys(params).length > 0) {
@@ -28,7 +31,7 @@ export default class Api {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
-      const response = await httpPost({ url: Api._host + pathStr, body });
+      const response = await httpPost({ url: Api.host + pathStr, body });
 
       const data = await response.json();
 
@@ -46,7 +49,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpGet({ url: Api._host + pathStr });
+      const response = await httpGet({ url: Api.host + pathStr });
 
       const data = await response.json();
 
@@ -66,11 +69,16 @@ export default class Api {
   public static async get(
     path: string,
     options?: ObjectKeyVal,
-  ): Promise<ResponseData | SimpleResponseData> {
+  ): Promise<
+    | Chapter15CaseSummaryResponseData
+    | Chapter15CaseDetailsResponseData
+    | SimpleResponseData
+    | ResponseBody
+  > {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpGet({ url: Api._host + pathStr });
+      const response = await httpGet({ url: Api.host + pathStr });
 
       const data = await response.json();
 
@@ -95,7 +103,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpPatch({ url: Api._host + pathStr, body });
+      const response = await httpPatch({ url: Api.host + pathStr, body });
 
       const data = await response.json();
 
@@ -117,7 +125,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpPut({ url: Api._host + pathStr, body });
+      const response = await httpPut({ url: Api.host + pathStr, body });
 
       const data = await response.json();
 

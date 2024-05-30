@@ -2,11 +2,22 @@ import { CasesInterface } from '../../use-cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
-import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail } from '../../../../../common/src/cams/cases';
+import { CamsError } from '../../common-errors/cams-error';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
+  searchCases(
+    _applicationContext: ApplicationContext,
+    searchPredicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]> {
+    throw new CamsError(MODULE_NAME, {
+      message: `Not implemented for searchCases: ${searchPredicate}`,
+    });
+  }
+
   getCases = async (
     applicationContext: ApplicationContext,
     _options: {
@@ -29,13 +40,6 @@ export class CasesLocalGateway implements CasesInterface {
 
     return cases;
   };
-
-  async getCasesByCaseNumber(
-    _applicationContext: ApplicationContext,
-    _caseNumber: string,
-  ): Promise<CaseSummary[]> {
-    throw new Error('not implemented');
-  }
 
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const gatewayHelper = new GatewayHelper();

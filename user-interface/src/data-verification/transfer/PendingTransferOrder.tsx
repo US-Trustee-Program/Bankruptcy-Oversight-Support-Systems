@@ -148,6 +148,10 @@ function _PendingTransferOrder(
     }
   }
 
+  function handleInvalidCaseNumber() {
+    approveButtonRef.current?.disableButton(true);
+  }
+
   return (
     <div className="pending-transfer-accordion-content">
       {' '}
@@ -163,6 +167,7 @@ function _PendingTransferOrder(
         order={order}
         officesList={officesList}
         onCaseSelection={handleSuggestedCaseSelection}
+        onInvalidCaseNumber={handleInvalidCaseNumber}
         onAlert={handleAlert}
         ref={suggestedCasesRef}
       ></SuggestedTransferCases>

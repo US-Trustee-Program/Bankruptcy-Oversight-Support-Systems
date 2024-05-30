@@ -9,6 +9,8 @@ import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButt
 import Api from '@/lib/models/api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getFullName } from '@common/name-helper';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { CaseBasics } from '@common/cams/cases';
 
 const susan = new Attorney('Susan', 'Arbeit', 'Manhattan');
 const mark = new Attorney('Mark', 'Bruh', 'Manhattan');
@@ -59,8 +61,21 @@ describe('Test Assign Attorney Modal Component', () => {
   }
 
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
-    renderWithProps(React.createRef<AssignAttorneyModalRef>());
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
 
+    const bCase: CaseBasics = MockData.getCaseBasics({
+      override: {
+        caseId: '123',
+        caseTitle: 'Test Case',
+        dateFiled: '2024-01-01',
+      },
+    });
+    bCase.assignments = [];
+
+    modalRef.current?.show({
+      bCase,
+    });
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
@@ -116,11 +131,13 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
-      bCase: {
-        caseId: '123',
-        caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
-      },
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '2024-01-01',
+        },
+      }),
     });
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -162,11 +179,13 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
-      bCase: {
-        caseId: '123',
-        caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
-      },
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '2024-01-01',
+        },
+      }),
     });
 
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -189,11 +208,13 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef, { callBack });
 
     modalRef.current?.show({
-      bCase: {
-        caseId: '123',
-        caseTitle: 'Test Case',
-        dateFiled: '01/01/2024',
-      },
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '2024-01-01',
+        },
+      }),
     });
     const modal = screen.getByTestId(`modal-${modalId}`);
 
