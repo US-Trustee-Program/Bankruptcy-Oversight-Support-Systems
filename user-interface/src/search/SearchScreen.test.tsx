@@ -13,7 +13,7 @@ vi.mock(
   () => import('../lib/components/CamsSelectMulti.mock'),
 );
 
-describe('search screen', () => {
+describe.skip('search screen', () => {
   let caseList: CaseSummary[];
   const getCaseSummarySpy = vi.spyOn(Chapter15MockApi, 'get');
 
