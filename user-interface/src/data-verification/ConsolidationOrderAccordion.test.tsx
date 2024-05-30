@@ -280,10 +280,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
-    // at least 2 cases must be checked before verify button is enabled.
     const firstCheckbox = clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
+      expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
 
@@ -296,7 +295,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     clickMarkLeadButton(0);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     clickMarkLeadButton(0);
@@ -307,7 +306,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     fireEvent.click(firstCheckbox);
     await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
+      expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
 
@@ -361,7 +360,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
       expect(markAsLeadButton).toHaveClass('usa-button--outline');
     });
 
@@ -381,14 +380,14 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     enterCaseNumber(caseNumberInput, '111111');
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     enterCaseNumber(caseNumberInput, validCaseNumber);
@@ -405,7 +404,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
       expect(leadCaseForm).not.toBeInTheDocument();
     });
   });
