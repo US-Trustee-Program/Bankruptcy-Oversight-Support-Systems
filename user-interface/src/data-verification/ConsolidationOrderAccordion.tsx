@@ -3,7 +3,6 @@ import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
-import './TransferOrderAccordion.scss';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -22,9 +21,7 @@ import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Ale
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
-import { useApi, useGenericApi } from '@/lib/hooks/UseApi';
-import { CaseAssignmentResponseData } from '@/lib/type-declarations/chapter-15';
-import { Consolidation } from '@common/cams/events';
+import { useGenericApi } from '@/lib/hooks/UseApi';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
 import Checkbox, { CheckboxRef } from '@/lib/components/uswds/Checkbox';
@@ -39,24 +36,13 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CaseAssignment } from '@common/cams/assignments';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
 
-export async function getCaseAssignments(caseId: string) {
-  return useGenericApi().get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
-}
-
-export async function getCaseAssociations(caseId: string) {
-  return useGenericApi().get<Array<Consolidation>>(`/cases/${caseId}/associated`);
-}
-
-export async function getCaseSummary(caseId: string) {
-  return useGenericApi().get<CaseSummary>(`/cases/${caseId}/summary`);
-}
-
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = await getCaseAssignments(leadCaseId);
+  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
   if (caseAssignments.length && caseAssignments[0].name) {
     return caseAssignments.map((assignment) => assignment.name);
   } else {
@@ -123,7 +109,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
-  const api = useApi();
+  const genericApi = useGenericApi();
+  const api2 = useApi2();
 
   //========== MISC FUNCTIONS ==========
 
@@ -260,12 +247,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     if (!isDataEnhanced) {
       for (const bCase of order.childCases) {
         try {
-          const assignmentsResponse = await api.get(`/case-assignments/${bCase.caseId}`);
-          bCase.attorneyAssignments = (assignmentsResponse as CaseAssignmentResponseData).body;
+          const assignmentsResponse = await api2.getCaseAssignments(bCase.caseId);
+          bCase.attorneyAssignments = assignmentsResponse.data;
 
-          const associatedResponse = await api.get(`/cases/${bCase.caseId}/associated`);
-          bCase.associations = associatedResponse.body as Consolidation[];
-        } catch {
+          const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
+          bCase.associations = associatedResponse.data;
+        } catch (reason) {
+          console.error('enhancing data error', reason);
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }
@@ -315,10 +303,14 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       setIsValidatingLeadCaseNumber(true);
       setLeadCaseNumberError('');
       setLeadCaseId('');
-      getCaseSummary(currentLeadCaseId)
-        .then((caseSummary) => {
-          getCaseAssociations(caseSummary.caseId)
-            .then((associations) => {
+      api2
+        .getCaseSummary(currentLeadCaseId)
+        .then((response) => {
+          const caseSummary = response.data;
+          api2
+            .getCaseAssociations(caseSummary.caseId)
+            .then((response) => {
+              const associations = response.data;
               type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
               const childCaseFacts = associations
                 .filter((reference) => reference.caseId === caseSummary.caseId)
@@ -365,7 +357,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 disableLeadCaseForm(false);
                 setFoundValidCaseNumber(false);
               } else {
-                getCaseAssignments(currentLeadCaseId).then((attorneys) => {
+                api2.getCaseAssignments(currentLeadCaseId).then((response) => {
+                  const attorneys = response.data;
                   setLeadCase({
                     ...caseSummary,
                     docketEntries: [],
@@ -417,10 +410,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       };
 
       setIsConsolidationProcessing(true);
-      api
-        .put('/consolidations/approve', data)
+      genericApi
+        .put<ConsolidationOrder[]>('/consolidations/approve', data)
         .then((response) => {
-          const newOrders = response.body as ConsolidationOrder[];
+          const newOrders = response.data;
           const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
           setIsConsolidationProcessing(false);
           props.onOrderUpdate(
@@ -455,10 +448,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       };
 
       setIsConsolidationProcessing(true);
-      api
-        .put('/consolidations/reject', data)
+      genericApi
+        .put<ConsolidationOrder[]>('/consolidations/reject', data)
         .then((response) => {
-          const newOrders = response.body as ConsolidationOrder[];
+          const newOrders = response.data;
           setIsConsolidationProcessing(false);
           props.onOrderUpdate(
             {
@@ -615,6 +608,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         data-testid={`lead-case-input-${order.id}`}
                         className="usa-input"
                         onChange={handleLeadCaseInputChange}
+                        allowPartialCaseNumber={false}
                         required={true}
                         label="Enter a case number"
                         ref={leadCaseNumberRef}

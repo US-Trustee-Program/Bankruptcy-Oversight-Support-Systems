@@ -7,6 +7,8 @@ import {
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { ResponseBody, buildResponseBodySuccess } from '@common/api/response';
+import { CaseBasics } from '@common/cams/cases';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -142,10 +144,14 @@ export default class Chapter15MockApi extends Api {
 
   public static async get(
     path: string,
+    options?: ObjectKeyVal,
   ): Promise<
-    Chapter15CaseSummaryResponseData | Chapter15CaseDetailsResponseData | SimpleResponseData
+    | Chapter15CaseSummaryResponseData
+    | Chapter15CaseDetailsResponseData
+    | SimpleResponseData
+    | ResponseBody
   > {
-    let response: ResponseData | SimpleResponseData;
+    let response: ResponseData | SimpleResponseData | ResponseBody;
     if (path.match(/\/cases\/123-12-12345\/docket/)) {
       return Promise.reject(new Error());
     } else if (path.match(/\/cases\/001-77-77777\/summary/)) {
@@ -199,6 +205,36 @@ export default class Chapter15MockApi extends Api {
           caseDetails: Chapter15MockApi.caseDetails,
         },
       };
+    } else if (path.match(/\/cases/)) {
+      const searchRequest = options as { caseNumber: string };
+      const caseNumber = searchRequest.caseNumber;
+      if (caseNumber === '99-99999') {
+        return Promise.reject(new Error('api error'));
+      } else if (caseNumber === '00-00000') {
+        response = buildResponseBodySuccess<CaseBasics[]>(
+          [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })],
+          {
+            self: 'self-uri',
+          },
+        );
+      } else if (caseNumber === '11-00000') {
+        response = buildResponseBodySuccess<CaseBasics[]>([], {
+          self: 'self-uri',
+        });
+      } else {
+        response = buildResponseBodySuccess<CaseBasics[]>(
+          [
+            MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } }),
+            MockData.getCaseBasics({ override: { caseId: `070-${caseNumber}` } }),
+            MockData.getCaseBasics({ override: { caseId: `132-${caseNumber}` } }),
+            MockData.getCaseBasics({ override: { caseId: `3E1-${caseNumber}` } }),
+            MockData.getCaseBasics({ override: { caseId: `256-${caseNumber}` } }),
+          ],
+          {
+            self: 'self-uri',
+          },
+        );
+      }
     } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
       response = {
         success: true,
@@ -249,41 +285,7 @@ export default class Chapter15MockApi extends Api {
   }
 
   // TODO: add handling of other uses of POST (e.g. case assignment creation)
-  public static async post(path: string, data: object, _options?: ObjectKeyVal) {
-    let response: ResponseData;
-    if (path.match(/\/cases/)) {
-      const searchRequest = data as { caseNumber: string };
-      const caseNumber = searchRequest.caseNumber;
-      if (caseNumber === '99-99999') {
-        return Promise.reject(new Error('api error'));
-      } else if (caseNumber === '00-00000') {
-        response = {
-          message: '',
-          count: 1,
-          body: [MockData.getCaseSummary()],
-        };
-      } else if (caseNumber === '11-00000') {
-        response = {
-          message: '',
-          count: 0,
-          body: [],
-        };
-      } else {
-        response = {
-          message: '',
-          count: 0,
-          body: [
-            MockData.getCaseSummary({ override: { caseId: `011-${caseNumber}` } }),
-            MockData.getCaseSummary({ override: { caseId: `070-${caseNumber}` } }),
-            MockData.getCaseSummary({ override: { caseId: `132-${caseNumber}` } }),
-            MockData.getCaseSummary({ override: { caseId: `3E1-${caseNumber}` } }),
-            MockData.getCaseSummary({ override: { caseId: `256-${caseNumber}` } }),
-          ],
-        };
-      }
-    } else {
-      return Promise.reject(new Error());
-    }
-    return Promise.resolve(response);
+  public static async post(_path: string, _data: object, _options?: ObjectKeyVal) {
+    return Promise.reject(new Error());
   }
 }

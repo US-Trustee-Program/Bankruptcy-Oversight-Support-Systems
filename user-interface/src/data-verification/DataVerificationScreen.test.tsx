@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { OrderResponseData } from '@/lib/type-declarations/chapter-15';
 import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -9,9 +8,15 @@ import {
   TransferOrder,
   ConsolidationOrder,
   isConsolidationOrder,
+  Order,
 } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { ResponseData } from '@/lib/type-declarations/api';
+
+interface OrderResponseData extends ResponseData<Order> {
+  body: Array<Order>;
+}
 
 describe('Review Orders screen', () => {
   beforeEach(async () => {

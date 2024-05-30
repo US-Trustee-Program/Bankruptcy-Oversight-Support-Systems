@@ -1,7 +1,8 @@
 import { CasesInterface } from '../../use-cases/cases.interface';
-import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail } from '../../../../../common/src/cams/cases';
 import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
@@ -12,27 +13,13 @@ export class MockCasesGateway implements CasesInterface {
     this.startingMonth = -6;
   }
 
-  async getCases(
+  async searchCases(
     _applicationContext: ApplicationContext,
-    options: { startingMonth?: number },
-  ): Promise<CaseDetail[]> {
-    if (options.startingMonth != undefined) {
-      this.startingMonth = options.startingMonth;
-    }
-    const startDate = this.subtractMonths(new Date());
-
-    const filteredCases = this.caseList.filter(
-      (bCase) => bCase.dateFiled.toString() >= startDate.toISOString(),
+    searchPredicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]> {
+    const filteredCases = this.caseList.filter((bCase) =>
+      bCase.caseId.match(searchPredicate.caseNumber),
     );
-
-    return Promise.resolve(filteredCases);
-  }
-
-  async getCasesByCaseNumber(
-    _applicationContext: ApplicationContext,
-    caseNumber: string,
-  ): Promise<CaseSummary[]> {
-    const filteredCases = this.caseList.filter((bCase) => bCase.caseId.match(caseNumber));
 
     return Promise.resolve(filteredCases);
   }

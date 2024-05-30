@@ -1,20 +1,16 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { useApi } from '@/lib/hooks/UseApi';
+import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
-import CamsSelect, {
-  CamsSelectOptionList,
-  SearchableSelectOption,
-} from '@/lib/components/CamsSelect';
+import CamsSelect, { SingleSelectOption } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { Chapter15CaseSummaryResponseData } from '@/lib/type-declarations/chapter-15';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;
@@ -31,6 +27,7 @@ export type SuggestedTransferCasesProps = {
   officesList: OfficeDetails[];
   onCaseSelection: (bCase: CaseSummary | null) => void;
   onAlert: (alertDetails: AlertDetails) => void;
+  onInvalidCaseNumber: () => void;
 };
 
 function _SuggestedTransferCases(
@@ -56,18 +53,18 @@ function _SuggestedTransferCases(
   const caseNumberRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<InputRef>(null);
 
-  const api = useApi();
+  const api = useGenericApi();
 
   async function validateCaseNumber(caseId: string) {
     if (loadingCaseSummary) return false;
     setLoadingCaseSummary(true);
     disableEntryForm(true);
     await api
-      .get(`/cases/${caseId}/summary`)
+      .get<CaseSummary>(`/cases/${caseId}/summary`)
       .then((response) => {
-        const typedResponse = response as Chapter15CaseSummaryResponseData;
-        props.onCaseSelection(typedResponse.body);
-        setNewCaseSummary(typedResponse.body);
+        const caseSummary = response.data;
+        props.onCaseSelection(caseSummary);
+        setNewCaseSummary(caseSummary);
         setValidationState(ValidationStates.found);
       })
       .catch((_reason) => {
@@ -83,12 +80,11 @@ function _SuggestedTransferCases(
     courtSelectionRef.current?.disable(value);
   }
 
-  function handleCourtSelection(selection: CamsSelectOptionList) {
+  function handleCourtSelection(selection: SingleSelectOption) {
     setValidationState(ValidationStates.notValidated);
     const office =
-      officesList.find(
-        (o) => o.courtDivisionCode === (selection as SearchableSelectOption)?.value,
-      ) || null;
+      officesList.find((o) => o.courtDivisionCode === (selection as SingleSelectOption)?.value) ||
+      null;
     setNewCaseDivision(office);
     if (!office) {
       setValidationState(ValidationStates.notValidated);
@@ -109,6 +105,7 @@ function _SuggestedTransferCases(
       setNewCaseNumber(null);
       setValidationState(ValidationStates.notValidated);
       setNewCaseSummary(null);
+      props.onInvalidCaseNumber();
       return;
     }
 
@@ -120,9 +117,9 @@ function _SuggestedTransferCases(
   function getTransferredCaseSuggestions(caseId: string) {
     setLoadingSuggestions(true);
     api
-      .get(`/orders-suggestions/${caseId}/`)
+      .get<CaseSummary[]>(`/orders-suggestions/${caseId}/`)
       .then((response) => {
-        const newSuggestedCases = response.body as CaseSummary[];
+        const newSuggestedCases = response.data;
         setLoadingSuggestions(false);
         setSuggestedCases(newSuggestedCases);
       })
@@ -265,6 +262,7 @@ function _SuggestedTransferCases(
                     className="usa-input"
                     value={order.docketSuggestedCaseNumber}
                     onChange={handleCaseInputChange}
+                    allowPartialCaseNumber={true}
                     aria-label="New case number"
                     ref={caseNumberRef}
                     disabled={true}

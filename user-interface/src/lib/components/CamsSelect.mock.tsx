@@ -1,15 +1,13 @@
 import './CamsSelect.scss';
-import { SingleValue } from 'react-select';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import React from 'react';
-import { InputRef } from '../type-declarations/input-fields';
+import { SelectRef } from '../type-declarations/input-fields';
 import { fireEvent } from '@testing-library/react';
-
-export type CamsSelectOption = SingleValue<Record<string, string>>;
+import { SingleSelectOption } from './CamsSelect';
 
 export interface CamsSelectProps {
   id: string;
-  onChange?: (newValue: CamsSelectOption) => void;
+  onChange?: (newValue: SingleSelectOption) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
   options: Record<string, string>[];
@@ -17,48 +15,40 @@ export interface CamsSelectProps {
   value?: string;
 }
 
-type SelectRef = InputRef & {
-  setValue: (option: Record<string, string>, foo: string) => void;
-};
-
-export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
-  const searchableSelectRef = React.useRef<SelectRef>(null);
-  const [initialValue, setInitialValue] = React.useState<string | null>(null);
+export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<SelectRef>) {
+  const [internalValue, setInternalValue] = React.useState<SingleSelectOption>(null);
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
   useEffect(() => {
     if (props.value !== undefined) {
-      setValue(props.value);
+      const valueRec = props.options.find((rec) => rec.value === props.value);
+      if (valueRec) {
+        setInternalValue(valueRec);
+      }
     }
-    setInitialValue(props.value == undefined ? null : props.value);
   }, [props.value]);
 
+  function handleOnClick(option: SingleSelectOption) {
+    setInternalValue(option);
+    if (props.onChange) props.onChange && props.onChange(option);
+  }
+
   function clearValue() {
-    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'clearValue')) {
-      searchableSelectRef.current.clearValue();
-    }
+    setInternalValue(null);
   }
 
   function resetValue() {
-    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
-      const option = props.options.find((option) => option.value == initialValue);
-      if (option) {
-        searchableSelectRef.current.setValue(option, 'select-option');
-      }
-    }
+    if (props.value) setValue(props.value);
+    else setInternalValue(null);
   }
 
   function setValue(value: string) {
-    if (searchableSelectRef.current && Object.hasOwn(searchableSelectRef.current, 'setValue')) {
-      const option = props.options.find((option) => option.value == value);
-      if (option) {
-        searchableSelectRef.current.setValue(option, 'select-option');
-      }
-    }
+    const valueRec = props.options.find((rec) => rec.value === value);
+    if (valueRec) setInternalValue(valueRec);
   }
 
-  function getValue(): string {
-    throw new Error('Not implemented');
+  function getValue(): SingleSelectOption {
+    return internalValue;
   }
 
   function disable(value: boolean) {
@@ -77,14 +67,12 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<I
 
   return (
     <>
-      {props.options.map((option: CamsSelectOption, idx: number) => {
+      {props.options.map((option: SingleSelectOption, idx: number) => {
         return (
           <button
             id={`${props.id}-${idx}`}
             key={idx}
-            onClick={() => {
-              props.onChange && props.onChange(option);
-            }}
+            onClick={() => handleOnClick(option)}
             data-value={option}
             disabled={isDisabled}
           ></button>

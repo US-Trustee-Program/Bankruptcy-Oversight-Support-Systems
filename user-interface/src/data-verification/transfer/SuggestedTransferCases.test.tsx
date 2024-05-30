@@ -163,12 +163,14 @@ describe('SuggestedTransferCases component', () => {
 
   function renderWithProps(props?: Partial<SuggestedTransferCasesProps>) {
     const onCaseSelection = vitest.fn();
+    const onInvalidCaseNumber = vitest.fn();
     const onAlert = vitest.fn();
     const ref = React.createRef<SuggestedTransferCasesImperative>();
     const defaultProps: SuggestedTransferCasesProps = {
       order,
       officesList: testOffices,
       onCaseSelection,
+      onInvalidCaseNumber,
       onAlert,
     };
 

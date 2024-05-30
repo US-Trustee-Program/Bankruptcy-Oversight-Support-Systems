@@ -1,19 +1,14 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
 
 export interface CasesInterface {
   getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail>;
 
-  // TODO: this should return something other than CaseDetail[], with even fewer props than CaseSummary
-  getCases(
+  searchCases(
     applicationContext: ApplicationContext,
-    options: { startingMonth?: number },
-  ): Promise<CaseDetail[]>;
-
-  getCasesByCaseNumber(
-    applicationContext: ApplicationContext,
-    caseNumber: string,
-  ): Promise<CaseSummary[]>;
+    searchPredicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]>;
 
   getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary>;
 

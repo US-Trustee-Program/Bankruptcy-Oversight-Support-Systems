@@ -1,18 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // refactor - let's find a way to avoid using any
-import './CamsSelect.scss';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import ReactSelect, { MultiValue, SingleValue } from 'react-select';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import React from 'react';
 import { InputRef } from '../type-declarations/input-fields';
+import './CamsSelect.scss';
 
 export type SearchableSelectOption = SingleValue<Record<string, string>>;
 export type MultiSelectOptionList = MultiValue<Record<string, string>>;
 export type CamsSelectOptionList = SearchableSelectOption | MultiSelectOptionList;
 
+export type SingleSelectOption = SingleValue<Record<string, string>>;
 export interface CamsSelectProps {
   id: string;
-  onChange?: (newValue: CamsSelectOptionList) => void;
   className?: string;
   closeMenuOnSelect?: boolean;
   options: Record<string, string>[];
@@ -20,10 +19,10 @@ export interface CamsSelectProps {
   value?: string;
   required?: boolean;
   isSearchable?: boolean;
-  isMulti?: boolean;
+  onChange?: (newValue: SingleSelectOption) => void;
 }
 
-function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
+function _CamsSelect(props: CamsSelectProps, CamsSelectComponentRef: React.Ref<InputRef>) {
   const camsSelectRef = React.useRef(null);
   const [initialValue, setInitialValue] = React.useState<string | null>(null);
 
@@ -95,11 +94,6 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
       ...provided,
       color: '#1b1b1b',
     }),
-
-    multiValueLabel: (provided: any) => ({
-      ...provided,
-      color: '#1b1b1b',
-    }),
   };
 
   function clearValue() {
@@ -146,13 +140,13 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
     }
   }
 
-  useImperativeHandle(ref, () => {
+  useImperativeHandle(CamsSelectComponentRef, () => {
     return {
+      setValue,
+      disable,
       clearValue,
       resetValue,
       getValue,
-      setValue,
-      disable,
     };
   });
 
@@ -181,7 +175,7 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
         data-testid={props.id}
         ref={camsSelectRef}
         isSearchable={props.isSearchable}
-        isMulti={props.isMulti}
+        isMulti={false}
         isDisabled={isDisabled}
         required={props.required}
       ></ReactSelect>
@@ -189,5 +183,5 @@ function CamsSelectComponent(props: CamsSelectProps, ref: React.Ref<InputRef>) {
   );
 }
 
-const CamsSelect = forwardRef(CamsSelectComponent);
+const CamsSelect = forwardRef(_CamsSelect);
 export default CamsSelect;

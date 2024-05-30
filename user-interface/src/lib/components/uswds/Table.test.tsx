@@ -119,7 +119,6 @@ describe('TableHeaderData component', () => {
   test('should render with role attribute value "row" if scope = "row"', () => {
     render(<TableHeaderData data-testid="test-element" scope="row" />);
     const element = screen.getByTestId('test-element');
-    screen.debug(element);
     expect(element).toHaveAttribute('role', 'row');
   });
 });

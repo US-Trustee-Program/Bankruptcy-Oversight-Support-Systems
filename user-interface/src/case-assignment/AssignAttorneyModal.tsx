@@ -1,7 +1,6 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, useRef, useImperativeHandle, useState, RefObject } from 'react';
 import Modal from '../lib/components/uswds/modal/Modal';
-import { Chapter15Type } from '@/lib/type-declarations/chapter-15';
 import React from 'react';
 import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
@@ -12,9 +11,10 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { getFullName } from '@common/name-helper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
+import { CaseBasics } from '@common/cams/cases';
 
 export interface ModalOpenProps {
-  bCase: Chapter15Type | undefined;
+  bCase: CaseBasics;
 }
 
 export interface AssignAttorneyModalRef {
@@ -35,7 +35,7 @@ export interface AttorneyListResponseData extends ResponseData {
 }
 
 export interface CallBackProps {
-  bCase: Chapter15Type | undefined;
+  bCase: CaseBasics;
   selectedAttorneyList: string[];
   previouslySelectedList: string[];
   status: 'success' | 'error';
@@ -46,13 +46,7 @@ function AssignAttorneyModalComponent(
   props: AssignAttorneyModalProps,
   ref: React.Ref<AssignAttorneyModalRef>,
 ) {
-  const [bCase, setBCase] = useState<Chapter15Type>({
-    caseId: '',
-    chapter: '',
-    caseTitle: '',
-    dateFiled: '',
-    assignments: [],
-  });
+  const [bCase, setBCase] = useState<CaseBasics | null>(null);
   const modalRef = useRef<ModalRefType>(null);
   const tableContainer = useRef<HTMLTableSectionElement | null>(null);
   const modalHeading = (
@@ -115,6 +109,7 @@ function AssignAttorneyModalComponent(
   }
 
   function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, name: string) {
+    if (!bCase) return;
     let localCheckListValues = [...checkListValues];
     if (ev.target.checked && !checkListValues.includes(name)) {
       localCheckListValues.push(name);
@@ -123,10 +118,10 @@ function AssignAttorneyModalComponent(
     }
     const isTheSame =
       localCheckListValues &&
-      bCase.assignments &&
+      !!bCase.assignments &&
       areArraysSame(localCheckListValues, bCase.assignments);
 
-    modalRef.current?.buttons?.current?.disableSubmitButton(!!isTheSame);
+    modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 
     setCheckListValues(localCheckListValues);
   }
@@ -137,6 +132,7 @@ function AssignAttorneyModalComponent(
   }
 
   async function submitValues() {
+    if (!bCase) return;
     let finalAttorneyList: string[] = [];
 
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
