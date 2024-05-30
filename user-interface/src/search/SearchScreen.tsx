@@ -64,7 +64,6 @@ export default function SearchScreen() {
     const newPredicate = { ...searchPredicate, caseNumber };
     if (!caseNumber) delete newPredicate.caseNumber;
     setSearchPredicate(newPredicate);
-    console.log('SearchScreen handleCaseNumberChange', caseNumber, newPredicate);
   }
 
   function handleCourtSelection(selection: MultiSelectOptionList) {
@@ -76,7 +75,6 @@ export default function SearchScreen() {
       newPredicate.divisionCodes = selection.map((kv: Record<string, string>) => kv.value);
     }
     setSearchPredicate(newPredicate);
-    console.log('SearchScreen handleCourtSelection', selection, newPredicate);
   }
 
   useEffect(() => {
