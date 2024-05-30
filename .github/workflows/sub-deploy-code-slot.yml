@@ -192,6 +192,7 @@ jobs:
     needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
+    if: ${{ always() && contains(needs.swap-nodeapi-deployment-slot.result, 'success') && contains(needs.swap-webapp-deployment-slot.result, 'success')}}
     env:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
