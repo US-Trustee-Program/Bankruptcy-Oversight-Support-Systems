@@ -131,16 +131,20 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     leadCaseNumberRef.current?.disable(disabled);
   }
 
-  function disableSubmitButtons() {
-    rejectButtonRef.current?.disableButton(true);
-    approveButtonRef.current?.disableButton(true);
-  }
+  function updateSubmitButtonsState() {
+    if (selectedCases.length) {
+      rejectButtonRef.current?.disableButton(false);
 
-  function enableSubmitButtons() {
-    rejectButtonRef.current?.disableButton(false);
-    approveButtonRef.current?.disableButton(
-      !isDataEnhanced || selectedCasesAreConsolidationCases() || selectedCases.length < 2,
-    );
+      approveButtonRef.current?.disableButton(
+        !isDataEnhanced ||
+          leadCaseId === '' ||
+          consolidationType === null ||
+          selectedCasesAreConsolidationCases(),
+      );
+    } else {
+      rejectButtonRef.current?.disableButton(true);
+      approveButtonRef.current?.disableButton(true);
+    }
   }
 
   function getCurrentLeadCaseId(leadCaseNumber: string) {
@@ -180,7 +184,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function handleClearInputs(): void {
-    disableSubmitButtons();
     clearLeadCase();
     clearSelectedCases();
     setLeadCaseNumber('');
@@ -190,6 +193,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     jointAdministrationRef.current?.check(false);
     substantiveRef.current?.check(false);
     toggleLeadCaseFormRef.current?.setChecked(false);
+    updateSubmitButtonsState();
   }
 
   function handleConfirmAction(action: ConfirmActionResults): void {
@@ -211,6 +215,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       tempSelectedCases = [...selectedCases, bCase];
     }
     setSelectedCases(tempSelectedCases);
+    updateSubmitButtonsState();
   }
 
   async function handleLeadCaseInputChange(caseNumber?: string) {
@@ -221,7 +226,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       setFoundValidCaseNumber(false);
       setLeadCase(null);
       setLeadCaseNumberError('');
-      disableSubmitButtons();
+      approveButtonRef.current?.disableButton(true);
     }
   }
 
@@ -279,21 +284,16 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   //========== USE EFFECTS ==========
 
   useEffect(() => {
+    updateSubmitButtonsState();
     if (isConsolidationProcessing) {
-      disableSubmitButtons();
       clearButtonRef.current?.disableButton(true);
     } else {
-      enableSubmitButtons();
       clearButtonRef.current?.disableButton(false);
     }
   }, [isConsolidationProcessing]);
 
   useEffect(() => {
-    if (selectedCases.length && leadCaseId !== '' && consolidationType !== null) {
-      enableSubmitButtons();
-    } else {
-      disableSubmitButtons();
-    }
+    updateSubmitButtonsState();
   }, [selectedCases, leadCaseId, isDataEnhanced, consolidationType]);
 
   useEffect(() => {
