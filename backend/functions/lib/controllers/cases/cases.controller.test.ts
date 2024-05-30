@@ -61,8 +61,10 @@ describe('cases controller test', () => {
 
     test('should return a next link when result set is larger than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit) + 1);
-      const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
+      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) + 1);
+      const dataMinusHint = [...data];
+      dataMinusHint.pop();
+      const expected = buildResponseBodySuccess<CaseBasics[]>(dataMinusHint, {
         self: mockRequestUrl,
         next: `${mockRequestUrl}?limit=${limit}&offset=${offset}`,
       });
@@ -81,7 +83,7 @@ describe('cases controller test', () => {
 
     test('should not return a next link when result set matches limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit));
+      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit));
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
       });
@@ -100,7 +102,7 @@ describe('cases controller test', () => {
 
     test('should not return a next link when result set is smaller than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit) - 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) - 1);
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
       });
@@ -122,7 +124,7 @@ describe('cases controller test', () => {
       const limit = '50';
       const offset = '50';
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit) - 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) - 1);
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         isPaginated: true,
         count: data.length,
@@ -145,10 +147,10 @@ describe('cases controller test', () => {
       const offset = '50';
       const nextOffset = '100';
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseSummary, parseInt(limit) + 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) + 1);
       const expectedMeta = {
         isPaginated: true,
-        count: data.length,
+        count: data.length - 1,
         self: mockRequestUrl,
         next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
         previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
@@ -170,7 +172,7 @@ describe('cases controller test', () => {
 
     test('should return search results for a caseNumber', async () => {
       const caseNumber = '00-00000';
-      const data = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
+      const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
       });
@@ -184,7 +186,7 @@ describe('cases controller test', () => {
 
     test('should return search results for a divisionCode', async () => {
       const caseNumber = '00-00000';
-      const data = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
+      const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
       });
@@ -197,7 +199,7 @@ describe('cases controller test', () => {
     });
 
     test('should properly search for a list of division codes', async () => {
-      const data = [MockData.getCaseSummary()];
+      const data = [MockData.getCaseBasics()];
 
       const divisionCodeOne = 'hello';
       const divisionCodeTwo = 'world';
