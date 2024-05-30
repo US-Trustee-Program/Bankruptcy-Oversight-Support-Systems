@@ -166,12 +166,12 @@ test.describe('Consolidation Orders', () => {
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
       .click();
 
-    // Assert modal opened
-    // expect(
-    //   page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
-    // ).toBeVisible();
-    // expect(
-    //   page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
-    // ).toBeDisabled();
+    // Assert modal opened and is actionable
+    expect(
+      page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
+    ).toBeVisible();
+    expect(
+      page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
+    ).toBeEnabled();
   });
 });
