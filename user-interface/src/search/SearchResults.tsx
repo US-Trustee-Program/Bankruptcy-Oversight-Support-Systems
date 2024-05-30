@@ -56,7 +56,6 @@ export function SearchResults(props: SearchResultsProps) {
 
   function handleSearchResults(response: ResponseBodySuccess<CaseBasics[]>) {
     if (isResponseBodySuccess(response)) {
-      console.log('SearchResults handleSearchResults', response);
       setSearchResults(response);
       setEmptyResponse(response.data.length === 0);
     }
@@ -79,7 +78,6 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   async function search(uri?: string) {
-    console.log('SearchResults search', searchPredicate);
     if (!isValidSearchPredicate(searchPredicate)) return;
     resetAlert();
 
@@ -102,17 +100,14 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   function handlePagination(predicate: CasesSearchPredicate) {
-    console.log('SearchResults handlePagination', predicate);
     setSearchPredicate(predicate);
   }
 
   useEffect(() => {
-    console.log('SearchResults useEffect 1', props.searchPredicate);
     setSearchPredicate(props.searchPredicate);
   }, [props.searchPredicate]);
 
   useEffect(() => {
-    console.log('SearchResults useEffect 2', searchPredicate);
     search();
   }, [searchPredicate]);
 
