@@ -10,7 +10,7 @@ import {
 } from '@/lib/components/uswds/Table';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { CasesSearchPredicate } from '@common/api/search';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { useEffect, useState } from 'react';
@@ -18,6 +18,7 @@ import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
+import { formatDate } from '@/lib/utils/datetime';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -26,18 +27,9 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
-type AlertProps = {
-  show: boolean;
-  title: string;
-  message: string;
-};
-
-const DEFAULT_ALERT = { show: false, title: '', message: '' };
-
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
-  updateSearchPredicate: (searchPredicate: CasesSearchPredicate) => void;
   onStartSearching: () => void;
   onEndSearching: () => void;
 };
@@ -47,9 +39,12 @@ export function SearchResults(props: SearchResultsProps) {
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
 
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>(
+    props.searchPredicate,
+  );
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
-  const [alertInfo, setAlertInfo] = useState<AlertProps>(DEFAULT_ALERT);
+  const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBodySuccess<CaseBasics[]> | null>(
     null,
   );
@@ -61,6 +56,7 @@ export function SearchResults(props: SearchResultsProps) {
 
   function handleSearchResults(response: ResponseBodySuccess<CaseBasics[]>) {
     if (isResponseBodySuccess(response)) {
+      console.log('SearchResults handleSearchResults', response);
       setSearchResults(response);
       setEmptyResponse(response.data.length === 0);
     }
@@ -70,27 +66,29 @@ export function SearchResults(props: SearchResultsProps) {
     setSearchResults(null);
     setEmptyResponse(true);
     setAlertInfo({
-      show: true,
+      type: UswdsAlertStyle.Error,
       title: 'Search Results Not Available',
       message:
         'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
+      timeOut: 30,
     });
   }
 
   function resetAlert() {
-    setAlertInfo(DEFAULT_ALERT);
+    setAlertInfo(null);
   }
 
   async function search(uri?: string) {
-    if (!isValidSearchPredicate(props.searchPredicate)) return;
+    console.log('SearchResults search', searchPredicate);
+    if (!isValidSearchPredicate(searchPredicate)) return;
     resetAlert();
 
     // Don't hurt me for the l337 code...
     const getArgs: [string, CasesSearchPredicate | undefined] = uri
       ? [uri, undefined]
-      : ['/cases', props.searchPredicate];
+      : ['/cases', searchPredicate];
 
-    trackSearchEvent(props.searchPredicate);
+    trackSearchEvent(searchPredicate);
     setIsSearching(true);
     onStartSearching();
     api
@@ -103,13 +101,25 @@ export function SearchResults(props: SearchResultsProps) {
       });
   }
 
-  useEffect(() => {
+  function handlePagination(predicate: CasesSearchPredicate) {
+    console.log('SearchResults handlePagination', predicate);
+    setSearchPredicate(predicate);
     search();
+  }
+
+  useEffect(() => {
+    console.log('SearchResults useEffect 1', props.searchPredicate);
+    setSearchPredicate(props.searchPredicate);
   }, [props.searchPredicate]);
+
+  useEffect(() => {
+    console.log('SearchResults useEffect 2', searchPredicate);
+    search();
+  }, [searchPredicate]);
 
   return (
     <div>
-      {alertInfo.show && (
+      {alertInfo && (
         <div className="search-alert">
           <Alert
             id="search-error-alert"
@@ -122,7 +132,7 @@ export function SearchResults(props: SearchResultsProps) {
           ></Alert>
         </div>
       )}
-      {!isSearching && emptyResponse && !alertInfo.show && (
+      {!isSearching && emptyResponse && !alertInfo && (
         <div className="search-alert">
           <Alert
             id="no-results-alert"
@@ -156,7 +166,7 @@ export function SearchResults(props: SearchResultsProps) {
                     </TableRowData>
                     <TableRowData>{bCase.caseTitle}</TableRowData>
                     <TableRowData>{bCase.chapter}</TableRowData>
-                    <TableRowData>{bCase.dateFiled}</TableRowData>
+                    <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
                   </TableRow>
                 );
               })}
@@ -165,8 +175,8 @@ export function SearchResults(props: SearchResultsProps) {
           {pagination && (
             <Pagination<CasesSearchPredicate>
               paginationMeta={pagination}
-              searchPredicate={props.searchPredicate}
-              retrievePage={props.updateSearchPredicate}
+              searchPredicate={searchPredicate}
+              retrievePage={handlePagination}
             />
           )}
         </div>
