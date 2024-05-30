@@ -51,6 +51,7 @@ export class CasesController {
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
       meta.next = next.href;
       cases.pop();
+      meta.count = cases.length;
     }
     if (predicate.offset > 0) {
       const previous = new URL(request.url);
