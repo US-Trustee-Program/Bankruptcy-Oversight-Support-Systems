@@ -138,6 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test-pre-swap]
     environment: ${{ inputs.ghaEnvironment }}
+    if: ${{ always() && contains(needs.execute-e2e-test-pre-swap.result, 'failure') || contains(needs.execute-e2e-test-pre-swap.result, 'success') }}
     env:
       webappName: ${{ inputs.webappName }}
       slotName: ${{ inputs.slotName }}
