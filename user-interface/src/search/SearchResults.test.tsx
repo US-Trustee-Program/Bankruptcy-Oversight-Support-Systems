@@ -7,9 +7,8 @@ import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
 import { buildResponseBodySuccess } from '@common/api/response';
 
-describe.skip('SearchResults component tests', () => {
+describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
-  const updatePredicateSpy = vi.fn();
   const onStartSearchingSpy = vi.fn();
   const onEndSearchingSpy = vi.fn();
 
@@ -32,7 +31,6 @@ describe.skip('SearchResults component tests', () => {
         limit: 25,
         offset: 0,
       },
-      updateSearchPredicate: updatePredicateSpy,
       onStartSearching: onStartSearchingSpy,
       onEndSearching: onEndSearchingSpy,
     };
