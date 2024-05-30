@@ -2,7 +2,7 @@
   .order-list-container {
     .order-type {
       span {
-        background-color: #5c5c5c;
+        background-color: #0050d8;
         color: white;
         padding: 2px 8px 2px 8px;
         border-radius: 2px;
@@ -50,10 +50,32 @@
         padding-left: 0.125rem;
       }
     }
+    .filter {
+      margin-bottom: 1.5rem;
+    }
+    div.event-header {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .event-type-container {
+      display: inline-block;
+      flex-flow: row;
+    }
+    .event-status-container {
+      display: inline-block;
+      flex-flow: row;
+      margin-left: 1rem;
+    }
     .consolidation {
-      background: #5c5c5c;
+      background: #0050d8;
     }
     .transfer {
+      background: #0050d8;
+    }
+    .consolidation .inactive {
+      background: #5c5c5c;
+    }
+    .transfer .inactive {
       background: #5c5c5c;
     }
     .pending {
@@ -69,7 +91,7 @@
       background: #d83933;
     }
     .filter {
-      margin: 0 0.5rem;
+      margin-right: 0.5rem;
     }
     .filter:hover {
       cursor: pointer;
