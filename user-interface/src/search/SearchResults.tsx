@@ -104,7 +104,6 @@ export function SearchResults(props: SearchResultsProps) {
   function handlePagination(predicate: CasesSearchPredicate) {
     console.log('SearchResults handlePagination', predicate);
     setSearchPredicate(predicate);
-    search();
   }
 
   useEffect(() => {
