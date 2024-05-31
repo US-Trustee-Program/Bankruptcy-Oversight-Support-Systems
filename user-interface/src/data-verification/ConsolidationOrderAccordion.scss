@@ -38,6 +38,16 @@
     li::before {
       display: inline-block;
       content: '';
+      height: 1.5rem;
+      width: 1.5rem;
+      margin-right: 10px;
+      top: 10px;
+      vertical-align: top;
+      background: transparent;
+    }
+    li.valid::before {
+      display: inline-block;
+      content: '';
       background: url(/assets/styles/img/usa-icons-bg/check--blue-60v.svg) no-repeat;
       background-repeat: no-repeat;
       height: 1.5rem;

@@ -37,6 +37,7 @@ import { CaseSummary } from '@common/cams/cases';
 import { CaseAssignment } from '@common/cams/assignments';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { Validation, ValidationStep } from '@/lib/components/uswds/Validation';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
@@ -57,6 +58,30 @@ export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
   }, new Set<string>());
   return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
 }
+
+const validationMap = new Map<string, ValidationStep>([
+  [
+    'valid-consolidation',
+    {
+      label: 'Select a Consolidation Type',
+      valid: false,
+    },
+  ],
+  [
+    'valid-count',
+    {
+      label: 'Include at least 2 cases',
+      valid: false,
+    },
+  ],
+  [
+    'valid-lead',
+    {
+      label: 'Mark a case as the lead',
+      valid: false,
+    },
+  ],
+]);
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -109,8 +134,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
+  const [stepsCompleted, setStepsCompleted] = useState<Map<string, ValidationStep>>(validationMap);
+
   const genericApi = useGenericApi();
   const api2 = useApi2();
+
+  let tempStepsCompleted: Map<string, ValidationStep> = validationMap;
 
   //========== MISC FUNCTIONS ==========
 
@@ -171,6 +200,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   function updateAllSelections(caseList: ConsolidationOrderCase[]) {
     setSelectedCases(caseList);
+  }
+
+  function updateValidationStep(key: string, value: boolean) {
+    tempStepsCompleted = stepsCompleted;
+    const lead = tempStepsCompleted.get(key);
+    if (lead) lead.valid = value;
+    setStepsCompleted(tempStepsCompleted);
   }
 
   //========== HANDLERS ==========
@@ -242,6 +278,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     } else {
       setLeadCaseId(bCase.caseId);
       setLeadCase(bCase);
+
+      updateValidationStep('valid-lead', true);
     }
   }
 
@@ -650,22 +688,25 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             <div className="button-bar grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10 text-no-wrap float-right">
-                <Alert
-                  id={`verification-info-${order.id}`}
+                <Validation
+                  id={`verfication-info-${order.id}`}
                   className="measure-3"
                   title="Verification requirements"
-                  message={
-                    <ul className="verification-info-list">
-                      <li>Select a Consolidation Type</li>
-                      <li>Include at least 2 cases</li>
-                      <li>Mark a case as the lead</li>
-                    </ul>
-                  }
-                  type={UswdsAlertStyle.Info}
-                  show={true}
-                  slim={true}
-                  inline={true}
-                ></Alert>
+                  steps={[
+                    {
+                      label: 'Select a Consolidation Type',
+                      valid: true,
+                    },
+                    {
+                      label: 'Include at least 2 cases',
+                      valid: true,
+                    },
+                    {
+                      label: 'Mark a case as the lead',
+                      valid: true,
+                    },
+                  ]}
+                ></Validation>
               </div>
               <div className="grid-col-1"></div>
             </div>
