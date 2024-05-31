@@ -56,11 +56,19 @@ export async function executeQuery(
       applicationContext.logger.error(MODULE_NAME, 'ConnectionError', { errorMessages });
     } else if (isMssqlError(error)) {
       applicationContext.logger.error(MODULE_NAME, 'MssqlError', {
-        name: error.name,
-        originalError: error.originalError,
+        error: {
+          name: error.name,
+          description: error.message,
+        },
+        originalError: {
+          name: error.originalError.name,
+          description: error.originalError.name,
+        },
+        query,
+        input,
       });
     } else {
-      applicationContext.logger.error(MODULE_NAME, error.message, error);
+      applicationContext.logger.error(MODULE_NAME, error.message, { error, query, input });
     }
 
     // TODO May want to refactor to throw CamsError and remove returning QueryResults
