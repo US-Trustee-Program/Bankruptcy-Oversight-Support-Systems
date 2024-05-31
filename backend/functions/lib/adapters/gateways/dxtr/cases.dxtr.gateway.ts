@@ -294,7 +294,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const chapters: string[] = ['15'];
     if (doChapter12Enable) chapters.push('12');
     if (doChapter11Enable) chapters.push('11');
-    parametersList.push(`cs.CS_CHAPTER IN (${chapters.join(', ')})`);
+    parametersList.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
     const CASE_SEARCH_QUERY_PREDICATE =
       parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
