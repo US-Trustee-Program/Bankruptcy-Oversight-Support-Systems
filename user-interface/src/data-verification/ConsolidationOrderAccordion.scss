@@ -1,4 +1,4 @@
-.accordion-content {
+.consolidation-accordion-content {
   fieldset.consolidation-type-container {
     max-width: 250px;
     margin-top: 1.5rem;
@@ -25,5 +25,26 @@
 
   .lead-case-form-container {
     max-width: 425px;
+  }
+
+  .verification-info-list {
+    padding-left: 0;
+    li {
+      list-style-type: none;
+      margin-left: 0;
+      padding-left: 0;
+      vertical-align: top;
+    }
+    li::before {
+      display: inline-block;
+      content: '';
+      background: url(/assets/styles/img/usa-icons-bg/check--blue-60v.svg) no-repeat;
+      background-repeat: no-repeat;
+      height: 1.5rem;
+      width: 1.5rem;
+      margin-right: 10px;
+      top: 10px;
+      vertical-align: top;
+    }
   }
 }

@@ -74,6 +74,17 @@ function _ConsolidationCaseTable(
     if (onSelect) onSelect(cases[idx]);
   }
 
+  function iterateCheckboxes(callback: (checkbox: HTMLInputElement) => void) {
+    const checkboxes: NodeListOf<HTMLInputElement> = document.querySelectorAll(
+      `#id-${id}.consolidation-cases-table input[name="case-selection"]`,
+    );
+    if (checkboxes) {
+      for (const checkbox of checkboxes) {
+        callback(checkbox);
+      }
+    }
+  }
+
   function clearAllCheckboxes() {
     setIncluded([]);
     setCheckboxGroupState(CheckboxState.UNCHECKED);
@@ -81,25 +92,21 @@ function _ConsolidationCaseTable(
   }
 
   function selectAllCheckboxes() {
-    const newIdList = [];
-    const newCaseList = [];
+    const newIdList: number[] = [];
+    const newCaseList: ConsolidationOrderCase[] = [];
     let bCase = 0;
-    const checkboxes = document.querySelectorAll(
-      `#id-${id}.consolidation-cases-table input[name="case-selection"]`,
-    );
-    if (checkboxes) {
-      for (const checkBox of checkboxes) {
-        bCase = parseInt((checkBox as HTMLInputElement).value);
-        newIdList.push(bCase);
-        newCaseList.push(cases[bCase]);
-      }
-    }
+    iterateCheckboxes((checkbox) => {
+      bCase = parseInt((checkbox as HTMLInputElement).value);
+      newIdList.push(bCase);
+      newCaseList.push(cases[bCase]);
+    });
+
     setIncluded(newIdList);
     setCheckboxGroupState(CheckboxState.CHECKED);
     if (updateAllSelections) updateAllSelections(newCaseList);
   }
 
-  function toggleAllCheckBoxes(ev: React.ChangeEvent<HTMLInputElement>) {
+  function toggleAllCheckboxes(ev: React.ChangeEvent<HTMLInputElement>) {
     if (!ev.target.checked && checkboxGroupState === CheckboxState.CHECKED) {
       clearAllCheckboxes();
     } else {
@@ -149,7 +156,7 @@ function _ConsolidationCaseTable(
                 <Checkbox
                   id={`${id}-checkbox-toggle`}
                   className="checkbox-toggle"
-                  onChange={toggleAllCheckBoxes}
+                  onChange={toggleAllCheckboxes}
                   value={checkboxGroupState}
                   ref={toggleCheckboxRef}
                 ></Checkbox>

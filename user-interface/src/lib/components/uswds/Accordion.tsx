@@ -81,7 +81,7 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
       </h4>
       <div
         id={`accordion-${props.id}`}
-        className="usa-accordion__content usa-prose no-overflow"
+        className="usa-accordion__content usa-prose no-overflow accordion-content"
         data-testid={`accordion-content-${props.id}`}
         hidden={!!hidden || !expanded}
       >

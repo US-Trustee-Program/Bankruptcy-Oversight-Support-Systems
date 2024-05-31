@@ -1,8 +1,8 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, ReactNode, useEffect, useImperativeHandle, useState } from 'react';
 import './Alert.scss';
 
 export type AlertDetails = {
-  message: string;
+  message: string | ReactNode;
   title?: string;
   type: UswdsAlertStyle;
   timeOut: number;
@@ -10,7 +10,7 @@ export type AlertDetails = {
 
 export type AlertProps = {
   id?: string;
-  message: string;
+  message: string | ReactNode;
   type: UswdsAlertStyle;
   role?: 'status' | 'alert';
   slim?: boolean;

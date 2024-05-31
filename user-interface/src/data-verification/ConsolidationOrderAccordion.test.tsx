@@ -409,6 +409,29 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
+  /*
+  test('should correctly disable buttons when there is only 1 child case is listed and the same case is marked as the lead in the table', async () => {
+    renderWithProps();
+    openAccordion(order.id!);
+    setupApiGetMock({ bCase: order.childCases[0] });
+
+    const includeAllCheckbox = document.querySelector(`.checkbox-toggle label`);
+    const approveButton = findApproveButton(order.id!);
+    const rejectButton = findRejectButton(order.id!);
+
+    selectTypeAndMarkLead();
+
+    expect(approveButton).not.toBeEnabled();
+    expect(rejectButton).not.toBeEnabled();
+
+    const firstCheckbox = clickCaseCheckbox(order.id!, 0);
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+      expect(rejectButton).toBeEnabled();
+    });
+  });
+  */
+
   test('should show alert when no lead case can be found in search field, and case table when search finds a matching value', async () => {
     renderWithProps();
     openAccordion(order.id!);
