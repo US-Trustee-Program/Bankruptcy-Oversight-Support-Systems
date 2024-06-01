@@ -60,13 +60,6 @@ function setupApiGetMock(options: { bCase?: CaseSummary; associations?: Consolid
       } as SimpleResponseData<CaseAssignment[]>);
     } else if (path.match(/\/cases\/\d\d\d-99-99999\/associated/)) {
       return Promise.reject({ message: '404 Case associations not found for the case ID.' });
-    } else if (path.includes('/associated')) {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 0,
-        body: options.associations ?? [],
-      } as SimpleResponseData<Consolidation[]>);
     } else if (path.match(/\/cases\/\d\d\d-00-00000\/summary/i)) {
       return Promise.reject({ message: 'Some strange error were not expecting' });
     } else if (path.match(/\/cases\/\d\d\d-11-11111\/summary/i)) {
@@ -78,6 +71,13 @@ function setupApiGetMock(options: { bCase?: CaseSummary; associations?: Consolid
         count: 1,
         body: options.bCase ?? {},
       } as SimpleResponseData<CaseSummary>);
+    } else if (path.includes('/associated')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 0,
+        body: options.associations ?? [],
+      } as SimpleResponseData<Consolidation[]>);
     }
     return Promise.resolve({
       success: false,
@@ -127,10 +127,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
   }
 
-  function clickMarkLeadButton(index: number) {
-    const markAsLeadButton = screen.getByTestId(
-      `button-assign-lead-case-list-${order.id}-${index}`,
-    );
+  function clickMarkLeadButton(index: number, orderId?: string) {
+    if (!orderId) orderId = order.id;
+    const markAsLeadButton = screen.getByTestId(`button-assign-lead-case-list-${orderId}-${index}`);
     if (markAsLeadButton.classList.contains('usa-button--outline')) {
       fireEvent.click(markAsLeadButton);
       expect(markAsLeadButton).not.toHaveClass('usa-button--outline');
@@ -140,13 +139,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     }
   }
 
-  function selectTypeAndMarkLead() {
+  function selectTypeAndMarkLead(orderId?: string) {
     const consolidationTypeRadio = document.querySelector('input[name="consolidation-type"]');
     const consolidationTypeRadioLabel = document.querySelector('.usa-radio__label');
     fireEvent.click(consolidationTypeRadioLabel!);
     expect(consolidationTypeRadio).toBeChecked();
 
-    clickMarkLeadButton(0);
+    clickMarkLeadButton(0, orderId);
   }
 
   function clickCaseCheckbox(oid: string, idx: number) {
@@ -282,7 +281,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const firstCheckbox = clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
-      expect(approveButton).toBeEnabled();
+      expect(approveButton).not.toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
 
@@ -409,28 +408,62 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  /*
-  test('should correctly disable buttons when there is only 1 child case is listed and the same case is marked as the lead in the table', async () => {
-    renderWithProps();
-    openAccordion(order.id!);
-    setupApiGetMock({ bCase: order.childCases[0] });
+  test.skip('should correctly disable buttons when there is only 1 child case listed and the same case is marked as the lead in the table', async () => {
+    const leadCase = MockData.getCaseSummary();
+    const order: ConsolidationOrder = MockData.getConsolidationOrder({
+      override: {
+        childCases: [MockData.getConsolidatedOrderCase()],
+      },
+    });
 
-    const includeAllCheckbox = document.querySelector(`.checkbox-toggle label`);
+    renderWithProps({ order });
+    openAccordion(order.id!);
+    setupApiGetMock({ bCase: leadCase });
+
     const approveButton = findApproveButton(order.id!);
     const rejectButton = findRejectButton(order.id!);
-
-    selectTypeAndMarkLead();
+    const invalidCaseNumber = getCaseNumber(order.childCases[0].caseId).replace('-', '');
 
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
-    const firstCheckbox = clickCaseCheckbox(order.id!, 0);
+    const table = screen.getByTestId(`case-list-${order.id}`);
+    screen.debug(table);
+
+    clickCaseCheckbox(order.id!, 0);
+    selectTypeAndMarkLead(order.id);
+
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
+    });
+
+    await toggleEnableCaseListForm(order.id!);
+    const leadCaseForm = document.querySelector(`.lead-case-form-container-${order.id}`);
+    expect(leadCaseForm).toBeInTheDocument();
+
+    const caseNumberInput = findCaseNumberInput(order.id!);
+    enterCaseNumber(caseNumberInput, invalidCaseNumber);
+
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
+    });
+
+    enterCaseNumber(caseNumberInput, leadCase.caseId);
+    console.log('=========== lead case id ' + leadCase.caseId);
+
+    screen.debug(leadCaseForm!);
+    await waitFor(() => {
+      expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+      expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
+    });
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
   });
-  */
 
   test('should show alert when no lead case can be found in search field, and case table when search finds a matching value', async () => {
     renderWithProps();

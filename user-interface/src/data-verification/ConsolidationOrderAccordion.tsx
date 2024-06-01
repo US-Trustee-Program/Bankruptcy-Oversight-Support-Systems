@@ -61,7 +61,7 @@ export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
 
 const validationMap = new Map<string, ValidationStep>([
   [
-    'valid-consolidation',
+    'valid-type',
     {
       label: 'Select a Consolidation Type',
       valid: false,
@@ -133,13 +133,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
-
   const [stepsCompleted, setStepsCompleted] = useState<Map<string, ValidationStep>>(validationMap);
+  const [updateValidation, setUpdateValidation] = useState<boolean>(false);
 
   const genericApi = useGenericApi();
   const api2 = useApi2();
-
-  let tempStepsCompleted: Map<string, ValidationStep> = validationMap;
 
   //========== MISC FUNCTIONS ==========
 
@@ -185,6 +183,14 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
+  function getStepsCompletedArray(steps: Map<string, ValidationStep>) {
+    const stepArray: ValidationStep[] = [];
+    for (const [_key, value] of steps.entries()) {
+      stepArray.push(value);
+    }
+    if (stepArray) return stepArray;
+  }
+
   function selectedCasesAreConsolidationCases() {
     return order.childCases.reduce((itDoes, bCase) => {
       if (!selectedCases.includes(bCase)) {
@@ -203,10 +209,28 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function updateValidationStep(key: string, value: boolean) {
-    tempStepsCompleted = stepsCompleted;
+    const tempStepsCompleted = stepsCompleted;
     const lead = tempStepsCompleted.get(key);
     if (lead) lead.valid = value;
     setStepsCompleted(tempStepsCompleted);
+  }
+
+  function updateValidationSteps() {
+    if (consolidationType !== null) updateValidationStep('valid-type', true);
+    else updateValidationStep('valid-type', false);
+
+    if (leadCaseId !== '') updateValidationStep('valid-lead', true);
+    else updateValidationStep('valid-lead', false);
+
+    if (
+      !selectedCasesAreConsolidationCases() &&
+      (selectedCases.length > 1 ||
+        (selectedCases.length === 1 && leadCaseId != '' && selectedCases[0].caseId !== leadCaseId))
+    ) {
+      updateValidationStep('valid-count', true);
+    } else {
+      updateValidationStep('valid-count', false);
+    }
   }
 
   //========== HANDLERS ==========
@@ -278,8 +302,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     } else {
       setLeadCaseId(bCase.caseId);
       setLeadCase(bCase);
-
-      updateValidationStep('valid-lead', true);
     }
   }
 
@@ -334,7 +356,15 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   useEffect(() => {
     updateSubmitButtonsState();
+    setUpdateValidation(true);
   }, [selectedCases, leadCaseId, areAttorneysFetched, consolidationType]);
+
+  useEffect(() => {
+    if (updateValidation) {
+      updateValidationSteps();
+      setUpdateValidation(false);
+    }
+  }, [updateValidation]);
 
   useEffect(() => {
     const currentLeadCaseId = getCurrentLeadCaseId(leadCaseNumber);
@@ -692,20 +722,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   id={`verfication-info-${order.id}`}
                   className="measure-3"
                   title="Verification requirements"
-                  steps={[
-                    {
-                      label: 'Select a Consolidation Type',
-                      valid: true,
-                    },
-                    {
-                      label: 'Include at least 2 cases',
-                      valid: true,
-                    },
-                    {
-                      label: 'Mark a case as the lead',
-                      valid: true,
-                    },
-                  ]}
+                  steps={getStepsCompletedArray(stepsCompleted)}
                 ></Validation>
               </div>
               <div className="grid-col-1"></div>
