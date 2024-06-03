@@ -1,5 +1,5 @@
-import { AccessDenied } from '@/login/AccessDenied';
+import { SessionEnd } from '@/login/SessionEnd';
 
 export function MockLogout() {
-  return <AccessDenied />;
+  return <SessionEnd />;
 }

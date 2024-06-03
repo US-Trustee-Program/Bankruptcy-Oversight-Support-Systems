@@ -1,7 +1,8 @@
-import { PropsWithChildren, useState } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
+import { LOGIN_LOCAL_STORAGE_ACK } from './login-helpers';
 
 export type AuthorizedUseOnlyProps = PropsWithChildren & {
   skip?: boolean;
@@ -9,13 +10,29 @@ export type AuthorizedUseOnlyProps = PropsWithChildren & {
 
 export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
   const [acknowledged, setAcknowledged] = useState<boolean>(!!props.skip);
+  const [isStoredInLocalStorage, setIsStoredInLocalStorage] = useState<boolean>(false);
 
   function onConfirm() {
-    // TODO: Need to integrate with local storage to make sure we only show this once per reload, new window or new tab.
     setAcknowledged(true);
   }
 
-  if (acknowledged) return props.children;
+  useEffect(() => {
+    if (window.localStorage && acknowledged) {
+      window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK, 'true');
+    }
+    setIsStoredInLocalStorage(true);
+  }, [acknowledged]);
+
+  useEffect(() => {
+    if (window.localStorage) {
+      const value = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK);
+      if (value === 'true') {
+        setAcknowledged(true);
+      }
+    }
+  }, []);
+
+  if (acknowledged && isStoredInLocalStorage) return props.children;
 
   return (
     <BlankPage>

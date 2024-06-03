@@ -1,19 +1,18 @@
-import { useEffect, useState } from 'react';
 import { AzureLogout } from './providers/azure/AzureLogout';
-import { AccessDenied } from './AccessDenied';
-import { getLoginProviderFromEnv } from './login-helpers';
+import {
+  getLoginProviderFromEnv,
+  LOGIN_LOCAL_STORAGE_ACK,
+  LOGIN_LOCAL_STORAGE_USER_KEY,
+} from './login-helpers';
 import { MockLogout } from './providers/mock/MockLogout';
+import { SessionEnd } from './SessionEnd';
 
 export function Logout() {
-  const [isCamsUserRemoved, setIsCamsUserRemoved] = useState<boolean>(false);
+  if (window.localStorage) {
+    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_USER_KEY);
+    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK);
+  }
   const provider = getLoginProviderFromEnv();
-
-  useEffect(() => {
-    // TODO: Remove the cams user from local storage.
-    setIsCamsUserRemoved(true);
-  }, []);
-  if (!isCamsUserRemoved) return <></>;
-
   let providerComponent;
   switch (provider) {
     case 'azure':
@@ -22,10 +21,8 @@ export function Logout() {
     case 'mock':
       providerComponent = <MockLogout />;
       break;
-    case 'none':
     default:
-      // TODO: Add a friendler "logged out" message component that all logout workflows terminate into.
-      providerComponent = <AccessDenied />;
+      providerComponent = <SessionEnd />;
   }
 
   return providerComponent;
