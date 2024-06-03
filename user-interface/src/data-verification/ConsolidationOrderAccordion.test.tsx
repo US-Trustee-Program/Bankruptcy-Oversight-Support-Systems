@@ -565,12 +565,15 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     enterCaseNumber(caseNumberInput, '00000000');
 
-    await waitFor(() => {
-      const alert = findValidCaseNumberAlert(order.id!);
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Cannot verify lead case number.');
-      expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        const alert = findValidCaseNumberAlert(order.id!);
+        expect(alert).toBeInTheDocument();
+        expect(alert).toHaveTextContent('Cannot verify lead case number.');
+        expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
   });
 
   test('should show alert when lookup of associated cases fails', async () => {
