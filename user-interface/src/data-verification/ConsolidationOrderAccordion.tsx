@@ -253,6 +253,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     clearSelectedCases();
     setLeadCaseNumber('');
     setLeadCaseNumberError('');
+    setConsolidationType(null);
     setFoundValidCaseNumber(false);
     setShowLeadCaseForm(false);
     jointAdministrationRef.current?.check(false);
