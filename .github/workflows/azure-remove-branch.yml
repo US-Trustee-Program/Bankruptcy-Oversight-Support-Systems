@@ -73,7 +73,6 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: actions/checkout@v3
       - name: Clean up e2e test database
-        if: ${{ always() && github.ref == 'refs/heads/main' }}
         run: |
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ env.environment }} != "Main-Gov" ]]; then
