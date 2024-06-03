@@ -14,7 +14,7 @@ jobs:
       enableSlotDeployment: "true"
       enableBicepDeployment: "true"
       deployVnet: "false"
-  set-cosmos-db:
+  set-cosmos-db-name:
     needs: [setup]
     runs-on: ubuntu-latest
     environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
@@ -25,6 +25,10 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Set E2e CosmosDB Name for Node API
         run: |
           databaseName="${{secrets.AZ_COSMOS_DATABASE_NAME}}-e2e"
@@ -36,8 +40,8 @@ jobs:
 
           az functionapp config appsettings set -g "${{ steps.rgApp.outputs.out }}" -n "${{ needs.setup.outputs.apiName}}" --slot "${{ needs.setup.outputs.slotName }}" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
 
-  execute-e2e-test-pre-swap:
-    needs: [setup]
+  execute-e2e-test:
+    needs: [setup, set-cosmos-db-name]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiName: ${{ needs.setup.outputs.apiName }}
