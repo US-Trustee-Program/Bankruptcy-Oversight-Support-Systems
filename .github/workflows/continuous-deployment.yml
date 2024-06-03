@@ -176,6 +176,22 @@ jobs:
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
     secrets: inherit # pragma: allowlist secret
 
+  initial-slot-resource-deployment: ##setup slot resources on initial deployment
+    name: Initial Deployment of Slot Resources
+    uses: ./.github/workflows/sub-deploy-slot-resources.yml
+    needs: [setup, deploy-code]
+    if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'false' && github.ref != 'refs/heads/main' }}
+    with:
+      webAppName: ${{ needs.setup.outputs.webappName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      slotDeploymentEnabled: true
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret
+
   deploy-code-slot:
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code-slot.yml
