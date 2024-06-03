@@ -13,7 +13,7 @@ import {
 } from '@azure/msal-react';
 import { AccessDenied } from '@/login/AccessDenied';
 import { getLoginRequest, getMsalConfig } from '@/login/providers/azure/authConfig';
-import { AzureSessionMap } from './AzureSessionMap';
+import { AzureSession } from './AzureSession';
 
 function getConfig() {
   // TODO: Maybe rename to non MSAL specific name, like "CAMS_LOGIN_PROVIDER_CONFIG"
@@ -42,22 +42,22 @@ const msalInstance = () => {
   return new PublicClientApplication(getMsalConfig(config.auth, config.cache));
 };
 
-export type AzureLoginProviderProps = PropsWithChildren;
+export type AzureLoginProps = PropsWithChildren;
 
-export default function AzureLoginProvider(props: AzureLoginProviderProps) {
+export default function AzureLogin(props: AzureLoginProps) {
   return (
     <MsalProvider instance={msalInstance()}>
       <UnauthenticatedTemplate>
-        <AzureLogin></AzureLogin>
+        <AzureUnauthenticated></AzureUnauthenticated>
       </UnauthenticatedTemplate>
       <AuthenticatedTemplate>
-        <AzureSessionMap>{props.children}</AzureSessionMap>
+        <AzureSession>{props.children}</AzureSession>
       </AuthenticatedTemplate>
     </MsalProvider>
   );
 }
 
-function AzureLogin() {
+function AzureUnauthenticated() {
   const config = getConfig();
   const loginRequest = getLoginRequest(config.scopes);
   const { instance, inProgress } = useMsal();

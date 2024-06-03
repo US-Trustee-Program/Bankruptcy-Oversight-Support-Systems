@@ -2,9 +2,9 @@ import { PropsWithChildren } from 'react';
 import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 import { Session } from '@/login/Session';
 import { AccessDenied } from '@/login/AccessDenied';
-import { CamsUser } from '@/login/LoginProvider';
+import { CamsUser } from '@/login/login-helpers';
 
-export function AzureSessionMap(props: PropsWithChildren) {
+export function AzureSession(props: PropsWithChildren) {
   const { accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 

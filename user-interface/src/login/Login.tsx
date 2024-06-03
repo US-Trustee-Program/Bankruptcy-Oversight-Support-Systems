@@ -1,30 +1,29 @@
 import React, { PropsWithChildren, useEffect, useState } from 'react';
-import AzureLoginProvider from './providers/azure/AzureLoginProvider';
+import AzureLogin from './providers/azure/AzureLogin';
 import { AccessDenied } from './AccessDenied';
-import MockAuthProvider from '@/login/providers/mock/MockAuthProvider';
 import { Session } from './Session';
 import { AuthorizedUseOnlyGate } from './AuthorizedUseOnlyGate';
-import OpenIdProvider from './providers/openId/OpenIdProvider';
 import {
   CamsUser,
-  environmentVariableName,
-  getLoginProviderTypeFromEnv,
-  LOCAL_STORAGE_USER_KEY,
-  LoginProviderType,
+  LOGIN_PROVIDER_ENV_VAR_NAME,
+  getLoginProviderFromEnv,
+  LOGIN_LOCAL_STORAGE_USER_KEY,
+  LoginProvider,
 } from './login-helpers';
+import MockLogin from './providers/mock/MockLogin';
 
-export type LoginProviderProps = PropsWithChildren & {
-  provider?: LoginProviderType;
+export type LoginProps = PropsWithChildren & {
+  provider?: LoginProvider;
 };
 
-export default function LoginProvider(props: LoginProviderProps): React.ReactNode {
+export default function Login(props: LoginProps): React.ReactNode {
   const [isLocalStorageRead, setIsLocalStorageRead] = useState<boolean>(false);
   const [acknowledged, setAcknowledged] = useState<boolean>(false);
   const [user, setUser] = useState<CamsUser | null>(null);
 
   useEffect(() => {
     if (window.localStorage) {
-      const userJson = window.localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+      const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_USER_KEY);
       if (userJson) {
         setUser(JSON.parse(userJson));
       }
@@ -38,18 +37,15 @@ export default function LoginProvider(props: LoginProviderProps): React.ReactNod
     return <AuthorizedUseOnlyGate onConfirm={() => setAcknowledged(true)} />;
   }
 
-  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderTypeFromEnv();
+  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
 
   let providerComponent;
   switch (provider) {
     case 'azure':
-      providerComponent = <AzureLoginProvider>{props.children}</AzureLoginProvider>;
-      break;
-    case 'openid':
-      providerComponent = <OpenIdProvider>{props.children}</OpenIdProvider>;
+      providerComponent = <AzureLogin>{props.children}</AzureLogin>;
       break;
     case 'mock':
-      providerComponent = <MockAuthProvider user={user}>{props.children}</MockAuthProvider>;
+      providerComponent = <MockLogin user={user}>{props.children}</MockLogin>;
       break;
     case 'none':
       providerComponent = <Session user={{ name: 'Super User' }}>{props.children}</Session>;
@@ -59,7 +55,7 @@ export default function LoginProvider(props: LoginProviderProps): React.ReactNod
       console.error(
         'Login provider not specified or not a valid option.',
         `Valid options are 'azure' | 'openid' | 'mock' | 'none'.`,
-        `Build variable name: '${environmentVariableName}'.`,
+        `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.`,
         `Build variable value: '${provider}'.`,
       );
       providerComponent = <AccessDenied />;

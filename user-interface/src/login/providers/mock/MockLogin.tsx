@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser } from '@/login/LoginProvider';
+import { CamsUser } from '@/login/login-helpers';
 
 type MockRole = {
   key: string;
@@ -19,11 +19,11 @@ const roles: MockRole[] = [
   { key: 'aust', label: 'Assistant US Trustee', user: { name: 'Charlie' } },
 ];
 
-export type MockAuthProviderProps = PropsWithChildren & {
+export type MockLoginProps = PropsWithChildren & {
   user: CamsUser | null;
 };
 
-export default function MockAuthProvider(props: MockAuthProviderProps): React.ReactNode {
+export default function MockLogin(props: MockLoginProps): React.ReactNode {
   const [user, setUser] = useState<CamsUser | null>(null);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
 
