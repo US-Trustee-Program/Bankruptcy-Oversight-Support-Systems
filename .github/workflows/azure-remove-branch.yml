@@ -2,12 +2,12 @@ name: Clean up Flexion Azure Resources
 
 on:
   pull_request:
-    types: [ closed ]
+    types: [closed]
   workflow_dispatch:
     inputs:
       hashId:
         description: "Hash id of target branch deployemnt"
-        default: ''
+        default: ""
         type: string
 
 jobs:
@@ -63,10 +63,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check]
     if: needs.check.outputs.executeCleanup == 'true'
+    env:
+      environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+
     steps:
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: actions/checkout@v3
+      - name: Clean up e2e test database
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
+        run: |
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          if [[ ${{ env.environment }} != "Main-Gov" ]]; then
+            echo "Adding suffix to database name"
+            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.hashId }}"
+          fi
+          az cosmosdb sql database delete \
+          --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+          --name "${e2eDatabaseName}" \
+          --resource-group  ${{ secrets.AZURE_RG }} \
+          --yes
       - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ needs.check.outputs.targetBranchHashId }} false
