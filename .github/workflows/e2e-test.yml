@@ -17,10 +17,11 @@ jobs:
   set-cosmos-db:
     needs: [setup]
     runs-on: ubuntu-latest
+    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
     steps:
       - name: Set CosmosDB Name for Node API
         run: |
-          databaseName="$databaseName-e2e"
+          databaseName="${{secrets.AZ_COSMOS_DATABASE_NAME}}-e2e"
           if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
               databaseName="$databaseName-${{ needs.setup.outputs.environmentHash }}"
           fi
