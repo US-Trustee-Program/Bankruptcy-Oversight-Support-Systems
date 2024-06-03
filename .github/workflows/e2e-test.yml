@@ -15,6 +15,20 @@ jobs:
       enableSlotDeployment: true
       enableBicepDeployment: true
       deployVnet: false
+  set-cosmos-db:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set CosmosDB Name for Node API
+        run: |
+          databaseName="$databaseName-e2e"
+          if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
+              databaseName="$databaseName-${{ needs.setup.outputs.environmentHash }}"
+          fi
+
+          echo "Database Name :${databaseName}"ß
+
+          az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
 
   execute-e2e-test-pre-swap:
     needs: [setup]
