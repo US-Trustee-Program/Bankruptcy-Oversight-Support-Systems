@@ -14,9 +14,24 @@ jobs:
       enableSlotDeployment: "true"
       enableBicepDeployment: "true"
       deployVnet: "false"
+  build:
+    name: Build
+    needs: [setup]
+    uses: ./.github/workflows/sub-build.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      camsServerHostname: ${{ needs.setup.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
   deploy-webapp-slot:
     runs-on: ubuntu-latest
-    needs: [setup]
+    needs: [setup, build]
     environment: ${{ needs.setup.outputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@main
@@ -60,7 +75,7 @@ jobs:
 
   deploy-service-slot:
     runs-on: ubuntu-latest
-    needs: [setup]
+    needs: [setup, build]
     environment: ${{ needs.setup.outputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@main
