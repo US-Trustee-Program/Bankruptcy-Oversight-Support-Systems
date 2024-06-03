@@ -16,6 +16,8 @@ import { Logout } from './Logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
+  user?: CamsUser;
+  skipAuthorizedUseOnly?: boolean;
 };
 
 export default function Login(props: LoginProps): React.ReactNode {
@@ -45,7 +47,9 @@ export default function Login(props: LoginProps): React.ReactNode {
       providerComponent = <MockLogin user={user}>{props.children}</MockLogin>;
       break;
     case 'none':
-      providerComponent = <Session user={{ name: 'Super User' }}>{props.children}</Session>;
+      providerComponent = (
+        <Session user={props.user ?? { name: 'Super User' }}>{props.children}</Session>
+      );
       break;
     default:
       // TODO: Log this to app insights.
@@ -64,7 +68,11 @@ export default function Login(props: LoginProps): React.ReactNode {
         <Route path="/logout" element={<Logout />}></Route>
         <Route
           path="*"
-          element={<AuthorizedUseOnlyGate>{providerComponent}</AuthorizedUseOnlyGate>}
+          element={
+            <AuthorizedUseOnlyGate skip={!!props.skipAuthorizedUseOnly}>
+              {providerComponent}
+            </AuthorizedUseOnlyGate>
+          }
         ></Route>
       </Routes>
     </>
