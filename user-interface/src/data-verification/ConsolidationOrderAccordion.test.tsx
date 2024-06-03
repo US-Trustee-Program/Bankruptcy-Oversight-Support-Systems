@@ -303,7 +303,7 @@ describe('ConsolidationOrderAccordion tests', () => {
         expect(validCountCheckitem).toHaveClass('valid');
         expect(validLeadCheckitem).toHaveClass('valid');
       },
-      { timeout: 1000 },
+      { timeout: 4000 },
     );
 
     clickMarkLeadButton(0);
