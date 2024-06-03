@@ -273,6 +273,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     const includeAllCheckbox = document.querySelector(`.checkbox-toggle label`);
     const approveButton = findApproveButton(order.id!);
     const rejectButton = findRejectButton(order.id!);
+    const validTypeCheckitem = document.querySelector('.verification-step.valid-type');
+    const validCountCheckitem = document.querySelector('.verification-step.valid-count');
+    const validLeadCheckitem = document.querySelector('.verification-step.valid-lead');
+
+    expect(validCountCheckitem).not.toHaveClass('valid');
+    expect(validLeadCheckitem).not.toHaveClass('valid');
+    expect(validTypeCheckitem).not.toHaveClass('valid');
 
     selectTypeAndMarkLead();
 
@@ -283,48 +290,65 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).not.toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
+      expect(validTypeCheckitem).toHaveClass('valid');
     });
 
     const secondCheckbox = clickCaseCheckbox(order.id!, 1);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     clickMarkLeadButton(0);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).not.toHaveClass('valid');
     });
 
     clickMarkLeadButton(0);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(firstCheckbox);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(secondCheckbox);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).not.toBeEnabled();
+      expect(validCountCheckitem).not.toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(includeAllCheckbox!);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(includeAllCheckbox!);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).not.toBeEnabled();
+      expect(validCountCheckitem).not.toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(firstCheckbox);
@@ -332,6 +356,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validCountCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
+      expect(validTypeCheckitem).toHaveClass('valid');
     });
   });
 
