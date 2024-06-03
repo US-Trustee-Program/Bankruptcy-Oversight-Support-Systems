@@ -19,16 +19,22 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
     steps:
-      - name: Set CosmosDB Name for Node API
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      - name: Set E2e CosmosDB Name for Node API
         run: |
           databaseName="${{secrets.AZ_COSMOS_DATABASE_NAME}}-e2e"
           if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
               databaseName="$databaseName-${{ needs.setup.outputs.environmentHash }}"
           fi
 
-          echo "Database Name :${databaseName}"ß
+          echo "Database Name :${databaseName}"
 
-          az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
+          az functionapp config appsettings set -g "${{ steps.rgApp.outputs.out }}" -n "${{ needs.setup.outputs.apiName}}" --slot "${{ needs.setup.outputs.slotName }}" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
 
   execute-e2e-test-pre-swap:
     needs: [setup]
