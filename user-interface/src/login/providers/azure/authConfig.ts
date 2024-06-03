@@ -1,6 +1,6 @@
 import { LogLevel } from '@azure/msal-browser';
 
-// TODO: Maybe just merge all this code into the AzureLoginProvider component...
+// TODO: Maybe just merge all this code into the azure-helpers.ts...
 export interface AuthConfig {
   clientId: string;
   authority: string;
@@ -13,7 +13,7 @@ export interface CacheConfig {
 }
 
 const partialMsalConfig = {
-  auth: { clientId: '', authority: '', redirectUri: 'http://localhost:3000/login' },
+  auth: { clientId: '', authority: '', redirectUri: '' },
   cache: { cacheLocation: '', storeAuthStateInCookie: false },
   system: {
     loggerOptions: {

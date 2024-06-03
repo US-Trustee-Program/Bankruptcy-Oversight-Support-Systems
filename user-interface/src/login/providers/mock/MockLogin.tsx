@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser } from '@/login/login-helpers';
+import { CamsUser, LOGIN_LOCAL_STORAGE_USER_KEY } from '@/login/login-helpers';
 
 type MockRole = {
   key: string;
@@ -23,8 +23,15 @@ export type MockLoginProps = PropsWithChildren & {
   user: CamsUser | null;
 };
 
-export default function MockLogin(props: MockLoginProps): React.ReactNode {
-  const [user, setUser] = useState<CamsUser | null>(null);
+export function MockLogin(props: MockLoginProps): React.ReactNode {
+  let storedUser: CamsUser | null = null;
+  if (window.localStorage) {
+    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_USER_KEY);
+    if (userJson) {
+      storedUser = JSON.parse(userJson);
+    }
+  }
+  const [user, setUser] = useState<CamsUser | null>(storedUser);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
 
   function handleRoleSelection(key: string) {
@@ -33,16 +40,22 @@ export default function MockLogin(props: MockLoginProps): React.ReactNode {
 
   function handleLogin() {
     if (selectedRole) setUser(selectedRole.user);
+    if (selectedRole) storedUser = selectedRole.user;
   }
 
   const modalRef = useRef<ModalRefType>(null);
   const modalId = 'login-modal';
 
   useEffect(() => {
-    modalRef.current?.show(true);
-  });
+    modalRef.current?.show(!!storedUser);
+  }, []);
 
-  if (user) return <Session user={user}>{props.children}</Session>;
+  if (user)
+    return (
+      <Session provider="mock" user={user}>
+        {props.children}
+      </Session>
+    );
 
   return (
     <BlankPage>

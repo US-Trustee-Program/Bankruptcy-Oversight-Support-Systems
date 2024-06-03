@@ -15,6 +15,7 @@ import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
 import { SessionContext } from './login/Session';
+import { LOGOUT_PATH } from './login/login-helpers';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -51,7 +52,7 @@ function App() {
         data-testid="app-component-test-id"
       >
         <div>
-          You are logged in as {session.user?.name ?? '<NOBODY>'} - <a href="/logout">logout</a>
+          You are logged in as {session.user?.name ?? '<NOBODY>'} - <a href={LOGOUT_PATH}>logout</a>
         </div>
         <Header />
         <div className="body">

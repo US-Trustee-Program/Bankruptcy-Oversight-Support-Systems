@@ -10,7 +10,11 @@ export function AzureSession(props: PropsWithChildren) {
 
   if (isAuthenticated) {
     const user: CamsUser = { name: accounts[0].name ?? accounts[0].username };
-    return <Session user={user}>{props.children}</Session>;
+    return (
+      <Session provider="azure" user={user}>
+        {props.children}
+      </Session>
+    );
   } else {
     return <AccessDenied />;
   }

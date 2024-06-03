@@ -1,9 +1,5 @@
 import { PropsWithChildren } from 'react';
-import {
-  InteractionRequiredAuthError,
-  InteractionStatus,
-  PublicClientApplication,
-} from '@azure/msal-browser';
+import { InteractionRequiredAuthError, InteractionStatus } from '@azure/msal-browser';
 import {
   AuthenticatedTemplate,
   MsalProvider,
@@ -12,13 +8,9 @@ import {
   useMsal,
 } from '@azure/msal-react';
 import { AccessDenied } from '@/login/AccessDenied';
-import { getLoginRequest, getMsalConfig } from '@/login/providers/azure/authConfig';
+import { getLoginRequest } from '@/login/providers/azure/authConfig';
 import { AzureSession } from './AzureSession';
-
-function getConfig() {
-  // TODO: Maybe rename to non MSAL specific name, like "CAMS_LOGIN_PROVIDER_CONFIG"
-  return JSON.parse(import.meta.env['CAMS_MSAL_CONFIG']);
-}
+import { getConfig, msalInstance } from './azure-helpers';
 
 export async function callMsGraph(accessToken: string) {
   const config = getConfig();
@@ -37,14 +29,9 @@ export async function callMsGraph(accessToken: string) {
     .catch((error) => console.log(error));
 }
 
-const msalInstance = () => {
-  const config = getConfig();
-  return new PublicClientApplication(getMsalConfig(config.auth, config.cache));
-};
-
 export type AzureLoginProps = PropsWithChildren;
 
-export default function AzureLogin(props: AzureLoginProps) {
+export function AzureLogin(props: AzureLoginProps) {
   return (
     <MsalProvider instance={msalInstance()}>
       <UnauthenticatedTemplate>

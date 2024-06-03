@@ -2,7 +2,7 @@ import { PropsWithChildren, useEffect, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
-import { LOGIN_LOCAL_STORAGE_ACK } from './login-helpers';
+import { LOGIN_LOCAL_STORAGE_ACK_KEY } from './login-helpers';
 
 export type AuthorizedUseOnlyProps = PropsWithChildren & {
   skip?: boolean;
@@ -18,14 +18,14 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
 
   useEffect(() => {
     if (window.localStorage && acknowledged) {
-      window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK, 'true');
+      window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK_KEY, 'true');
     }
     setIsStoredInLocalStorage(true);
   }, [acknowledged]);
 
   useEffect(() => {
     if (window.localStorage) {
-      const value = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK);
+      const value = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
       if (value === 'true') {
         setAcknowledged(true);
       }
