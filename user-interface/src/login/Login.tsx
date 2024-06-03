@@ -11,6 +11,8 @@ import {
   LoginProvider,
 } from './login-helpers';
 import MockLogin from './providers/mock/MockLogin';
+import { Route, Routes } from 'react-router-dom';
+import { Logout } from './Logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -18,7 +20,6 @@ export type LoginProps = PropsWithChildren & {
 
 export default function Login(props: LoginProps): React.ReactNode {
   const [isLocalStorageRead, setIsLocalStorageRead] = useState<boolean>(false);
-  const [acknowledged, setAcknowledged] = useState<boolean>(false);
   const [user, setUser] = useState<CamsUser | null>(null);
 
   useEffect(() => {
@@ -32,10 +33,6 @@ export default function Login(props: LoginProps): React.ReactNode {
   }, []);
 
   if (!isLocalStorageRead) return <></>;
-
-  if (!user && !acknowledged) {
-    return <AuthorizedUseOnlyGate onConfirm={() => setAcknowledged(true)} />;
-  }
 
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
 
@@ -61,5 +58,15 @@ export default function Login(props: LoginProps): React.ReactNode {
       providerComponent = <AccessDenied />;
   }
 
-  return providerComponent;
+  return (
+    <>
+      <Routes>
+        <Route path="/logout" element={<Logout />}></Route>
+        <Route
+          path="*"
+          element={<AuthorizedUseOnlyGate>{providerComponent}</AuthorizedUseOnlyGate>}
+        ></Route>
+      </Routes>
+    </>
+  );
 }

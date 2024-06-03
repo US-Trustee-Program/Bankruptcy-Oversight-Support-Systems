@@ -1,11 +1,20 @@
+import { PropsWithChildren, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
 
-export type AuthorizedUseOnlyGateProps = {
-  onConfirm: () => void;
-};
+export type AuthorizedUseOnlyGateProps = PropsWithChildren;
+
 export function AuthorizedUseOnlyGate(props: AuthorizedUseOnlyGateProps) {
+  const [acknowledged, setAcknowledged] = useState<boolean>(false);
+
+  function onConfirm() {
+    // TODO: Need to integrate with local storage to make sure we only show this once per reload, new window or new tab.
+    setAcknowledged(true);
+  }
+
+  if (acknowledged) return props.children;
+
   return (
     <BlankPage>
       <Alert show={true} inline={true} type={UswdsAlertStyle.Warning} title="WARNING">
@@ -40,7 +49,7 @@ export function AuthorizedUseOnlyGate(props: AuthorizedUseOnlyGateProps) {
         </p>
       </Alert>
       <div>
-        <Button onClick={props.onConfirm}>Confirm</Button>
+        <Button onClick={onConfirm}>Confirm</Button>
       </div>
     </BlankPage>
   );

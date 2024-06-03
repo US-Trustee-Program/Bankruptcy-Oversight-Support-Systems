@@ -24,6 +24,8 @@ export function Session(props: SessionProps) {
   //   // TODO
   // }
 
+  // TODO: We need to change the '/login' route to go to '/'.
+
   return (
     <SessionContext.Provider value={{ user: props.user }}>{props.children}</SessionContext.Provider>
   );
