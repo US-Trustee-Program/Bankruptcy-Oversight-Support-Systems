@@ -1,17 +1,15 @@
-export const environmentVariableName = 'CAMS_LOGIN_PROVIDER';
-
-export const LOCAL_STORAGE_USER_KEY = 'cams:user';
+export const LOGIN_PROVIDER_ENV_VAR_NAME = 'CAMS_LOGIN_PROVIDER';
+export const LOGIN_LOCAL_STORAGE_USER_KEY = 'cams:user';
 
 export type CamsUser = {
   name: string;
 };
 
-export type LoginProviderType = 'azure' | 'openid' | 'mock' | 'none';
+export type LoginProvider = 'azure' | 'mock' | 'none';
 
-export function isLoginProviderType(providerType: string): providerType is LoginProviderType {
-  switch (providerType) {
+export function isLoginProviderType(provider: string): provider is LoginProvider {
+  switch (provider) {
     case 'azure':
-    case 'openid':
     case 'mock':
     case 'none':
       return true;
@@ -20,6 +18,6 @@ export function isLoginProviderType(providerType: string): providerType is Login
   }
 }
 
-export function getLoginProviderTypeFromEnv(): string {
-  return import.meta.env[environmentVariableName].toLowerCase();
+export function getLoginProviderFromEnv(): string {
+  return import.meta.env[LOGIN_PROVIDER_ENV_VAR_NAME].toLowerCase();
 }
