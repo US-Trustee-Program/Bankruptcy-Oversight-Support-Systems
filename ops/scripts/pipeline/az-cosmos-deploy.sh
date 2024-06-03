@@ -17,7 +17,6 @@ analyticsWorkspaceId=
 actionGroupResourceGroup=
 actionGroupName=
 branchHashId=
-slotDeploymentEnabled='false'
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -66,10 +65,6 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --slotDeploymentEnabled)
-        slotDeploymentEnabled="${2}"
-        shift 2
-        ;;
 
     *)
         echo "$1"
@@ -97,16 +92,14 @@ az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-
 
 # Provision and configure e2e CosmosDB databases and containers only if slot deployments occur. Otherwise we do not need an e2e database.
 
-if [[ ${slotDeploymentEnabled} == 'true' ]]; then
-    echo "Deploying Cosmos Database for E2E testing"
-    e2eDatabaseName="${database}-e2e"
-    if [[ ${environment} != 'Main-Gov' ]]; then
-        e2eDatabaseName="${e2eDatabaseName}-${branchHashId}"
-    fi
-    az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-e2e.bicep \
-        -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
-        -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
-    az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-e2e.bicep \
-        -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
-        -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
+echo "Deploying Cosmos Database for E2E testing"
+e2eDatabaseName="${database}-e2e"
+if [[ ${environment} != 'Main-Gov' ]]; then
+    e2eDatabaseName="${e2eDatabaseName}-${branchHashId}"
 fi
+az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-e2e.bicep \
+    -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
+az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-e2e.bicep \
+    -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"

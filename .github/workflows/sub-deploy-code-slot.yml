@@ -131,7 +131,6 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       branchHashId: ${{ inputs.environmentHash }}
-      environmentHash: ${{ inputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
