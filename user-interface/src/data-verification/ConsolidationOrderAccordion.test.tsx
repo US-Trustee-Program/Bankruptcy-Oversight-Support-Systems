@@ -181,7 +181,7 @@ describe('ConsolidationOrderAccordion tests', () => {
   }
 
   function findValidCaseNumberAlert(id: string) {
-    return screen.queryByTestId(`alert-container-lead-case-number-alert-${id}`);
+    return screen.findByTestId(`alert-container-lead-case-number-alert-${id}`);
   }
 
   async function toggleEnableCaseListForm(id: string) {
@@ -393,6 +393,10 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(markAsLeadButton).toHaveClass('usa-button--outline');
     });
 
+    const leadCaseForm = document.querySelector(`.lead-case-form-container-${order.id}`);
+    expect(leadCaseForm).toBeInTheDocument();
+    screen.debug(leadCaseForm!);
+
     selectItemInMockSelect(`lead-case-court`, 1);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
@@ -425,9 +429,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
-
-    const leadCaseForm = document.querySelector(`.lead-case-form-container-${order.id}`);
-    expect(leadCaseForm).toBeInTheDocument();
 
     await toggleEnableCaseListForm(order.id!);
 
@@ -498,8 +499,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     enterCaseNumber(caseNumberInput, leadCase.caseId);
 
-    await waitFor(() => {
-      expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
       expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
     });
 
@@ -524,8 +525,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     enterCaseNumber(caseNumberInput, '11111111');
 
-    await waitFor(() => {
-      const alert = findValidCaseNumberAlert(order.id!);
+    await waitFor(async () => {
+      const alert = await findValidCaseNumberAlert(order.id!);
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent("We couldn't find a case with that number.");
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
@@ -533,22 +534,25 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     enterCaseNumber(caseNumberInput, '11111');
 
-    await waitFor(() => {
-      expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
 
     enterCaseNumber(caseNumberInput, getCaseNumber(order.childCases[0].caseId).replace('-', ''));
 
-    await waitFor(() => {
-      expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
-      expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
-    });
+    await waitFor(
+      async () => {
+        expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+        expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
 
     enterCaseNumber(caseNumberInput, '');
 
-    await waitFor(() => {
-      expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
   });
@@ -566,8 +570,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     enterCaseNumber(caseNumberInput, '00000000');
 
     await waitFor(
-      () => {
-        const alert = findValidCaseNumberAlert(order.id!);
+      async () => {
+        const alert = await findValidCaseNumberAlert(order.id!);
         expect(alert).toBeInTheDocument();
         expect(alert).toHaveTextContent('Cannot verify lead case number.');
         expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
@@ -590,8 +594,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     enterCaseNumber(caseNumberInput, '9999999');
 
-    await waitFor(() => {
-      const alert = findValidCaseNumberAlert(order.id!);
+    await waitFor(async () => {
+      const alert = await findValidCaseNumberAlert(order.id!);
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent(
         `Cannot verify lead case is not part of another consolidation. `,
