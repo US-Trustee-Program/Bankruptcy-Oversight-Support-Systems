@@ -2,7 +2,7 @@ import React, { PropsWithChildren, useEffect, useState } from 'react';
 import AzureLogin from './providers/azure/AzureLogin';
 import { AccessDenied } from './AccessDenied';
 import { Session } from './Session';
-import { AuthorizedUseOnlyGate } from './AuthorizedUseOnlyGate';
+import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import {
   CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
@@ -69,9 +69,9 @@ export default function Login(props: LoginProps): React.ReactNode {
         <Route
           path="*"
           element={
-            <AuthorizedUseOnlyGate skip={!!props.skipAuthorizedUseOnly}>
+            <AuthorizedUseOnly skip={!!props.skipAuthorizedUseOnly}>
               {providerComponent}
-            </AuthorizedUseOnlyGate>
+            </AuthorizedUseOnly>
           }
         ></Route>
       </Routes>
