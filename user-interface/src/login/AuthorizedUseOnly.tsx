@@ -3,11 +3,11 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
 
-export type AuthorizedUseOnlyGateProps = PropsWithChildren & {
+export type AuthorizedUseOnlyProps = PropsWithChildren & {
   skip?: boolean;
 };
 
-export function AuthorizedUseOnlyGate(props: AuthorizedUseOnlyGateProps) {
+export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
   const [acknowledged, setAcknowledged] = useState<boolean>(!!props.skip);
 
   function onConfirm() {
