@@ -3,10 +3,12 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
 
-export type AuthorizedUseOnlyGateProps = PropsWithChildren;
+export type AuthorizedUseOnlyGateProps = PropsWithChildren & {
+  skip?: boolean;
+};
 
 export function AuthorizedUseOnlyGate(props: AuthorizedUseOnlyGateProps) {
-  const [acknowledged, setAcknowledged] = useState<boolean>(false);
+  const [acknowledged, setAcknowledged] = useState<boolean>(!!props.skip);
 
   function onConfirm() {
     // TODO: Need to integrate with local storage to make sure we only show this once per reload, new window or new tab.
