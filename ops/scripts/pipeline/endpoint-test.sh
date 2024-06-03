@@ -55,6 +55,7 @@ webStatusCode=""
 apiStatusCode=""
 targetApiURL="https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
 targetWebAppURL="https://${webapp_name}.azurewebsites${host_suffix}"
+
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
 webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetWebAppURL}"
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
@@ -62,12 +63,16 @@ apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 
 
 if [[ -z ${slot_name} ]]; then
   echo "No Slot Provided"
+  echo "Checking Webapp endpoint..."
   webStatusCode=$($webCmd)
+  echo "Checking API endpoint..."
   apiStatusCode=$($apiCmd)
 else
   webCmd="${webCmd}?x-ms-routing-name=${slot_name}"
   apiCmd="${apiCmd}?x-ms-routing-name=${slot_name}"
+  echo "Checking Webapp endpoint..."
   webStatusCode=$($webCmd)
+  echo "Checking API endpoint..."
   apiStatusCode=$($apiCmd)
   targetApiURL+="?x-ms-routing-name=${slot_name}"
 
