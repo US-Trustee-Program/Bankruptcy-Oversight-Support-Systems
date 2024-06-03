@@ -1,0 +1,43 @@
+name: Stand Alone E2E Test Runs
+
+concurrency: ${{ github.ref }}-${{ github.workflow }}
+
+on: workflow_dispatch
+
+jobs:
+  setup:
+    name: Setup
+    uses: ./.github/workflows/reusable-build-info.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+      enableSlotDeployment: "true"
+      enableBicepDeployment: "true"
+      deployVnet: "false"
+  set-cosmos-db:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set CosmosDB Name for Node API
+        run: |
+          databaseName="$databaseName-e2e"
+          if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
+              databaseName="$databaseName-${{ needs.setup.outputs.environmentHash }}"
+          fi
+
+          echo "Database Name :${databaseName}"ß
+
+          az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
+
+  execute-e2e-test-pre-swap:
+    needs: [setup]
+    uses: ./.github/workflows/reusable-e2e.yml
+    with:
+      apiName: ${{ needs.setup.outputs.apiName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      branchHashId: ${{ needs.setup.outputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret
