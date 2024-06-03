@@ -1,14 +1,34 @@
-import { useMsal } from '@azure/msal-react';
+import {
+  AuthenticatedTemplate,
+  MsalProvider,
+  UnauthenticatedTemplate,
+  useMsal,
+} from '@azure/msal-react';
+import { msalInstance } from './azure-helpers';
+import { SessionEnd } from '@/login/SessionEnd';
+import { LOGOUT_PATH } from '@/login/login-helpers';
 
 export function AzureLogout() {
+  return (
+    <MsalProvider instance={msalInstance()}>
+      <UnauthenticatedTemplate>
+        <SessionEnd />
+      </UnauthenticatedTemplate>
+      <AuthenticatedTemplate>
+        <AzureLogoutRedirect />
+      </AuthenticatedTemplate>
+    </MsalProvider>
+  );
+}
+
+function AzureLogoutRedirect() {
   const { instance } = useMsal();
   async function logout() {
     await instance.initialize();
     await instance.logoutRedirect({
-      postLogoutRedirectUri: '/logout',
+      postLogoutRedirectUri: LOGOUT_PATH,
     });
   }
-  // TODO: Do this better. We want to render the termination once the redirection is complete.
   logout();
-  return <div>Logging out</div>;
+  return <></>;
 }

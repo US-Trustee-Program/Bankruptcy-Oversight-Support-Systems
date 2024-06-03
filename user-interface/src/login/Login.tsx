@@ -1,18 +1,20 @@
-import React, { PropsWithChildren, useEffect, useState } from 'react';
-import AzureLogin from './providers/azure/AzureLogin';
+import React, { PropsWithChildren } from 'react';
+import { useLocation } from 'react-router-dom';
+import { AzureLogin } from './providers/azure/AzureLogin';
+import { MockLogin } from './providers/mock/MockLogin';
 import { AccessDenied } from './AccessDenied';
+import { AuthorizedUseOnly } from './AuthorizedUseOnly';
+import { Logout } from './Logout';
 import { Session } from './Session';
 import {
   CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
-  getLoginProviderFromEnv,
   LOGIN_LOCAL_STORAGE_USER_KEY,
+  getLoginProviderFromEnv,
   LoginProvider,
+  LOGOUT_PATH,
+  LOGIN_LOCAL_STORAGE_PROVIDER_KEY,
 } from './login-helpers';
-import MockLogin from './providers/mock/MockLogin';
-import { useLocation } from 'react-router-dom';
-import { Logout } from './Logout';
-import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -21,36 +23,40 @@ export type LoginProps = PropsWithChildren & {
 };
 
 export default function Login(props: LoginProps): React.ReactNode {
+  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
+
+  let user: CamsUser | null = null;
+  if (window.localStorage) {
+    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_USER_KEY);
+    const priorProvider = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_PROVIDER_KEY);
+    if (priorProvider === provider && userJson) {
+      user = JSON.parse(userJson);
+    }
+    if (priorProvider !== provider) {
+      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_USER_KEY);
+      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_PROVIDER_KEY);
+    }
+  }
+
   const location = useLocation();
 
-  const [isLocalStorageRead, setIsLocalStorageRead] = useState<boolean>(false);
-  const [user, setUser] = useState<CamsUser | null>(null);
-
-  useEffect(() => {
-    if (window.localStorage) {
-      const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_USER_KEY);
-      if (userJson) {
-        setUser(JSON.parse(userJson));
-      }
-    }
-    setIsLocalStorageRead(true);
-  }, []);
-
-  if (!isLocalStorageRead) return <></>;
-
-  const children = location.pathname === '/logout' ? <Logout></Logout> : props.children;
+  const isLogout = location.pathname === LOGOUT_PATH;
+  if (isLogout) return <Logout />;
 
   let providerComponent;
-  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
   switch (provider) {
     case 'azure':
-      providerComponent = <AzureLogin>{children}</AzureLogin>;
+      providerComponent = <AzureLogin>{props.children}</AzureLogin>;
       break;
     case 'mock':
-      providerComponent = <MockLogin user={user}>{children}</MockLogin>;
+      providerComponent = <MockLogin user={user}>{props.children}</MockLogin>;
       break;
     case 'none':
-      providerComponent = <Session user={props.user ?? { name: 'Super User' }}>{children}</Session>;
+      providerComponent = (
+        <Session provider={provider} user={props.user ?? { name: 'Super User' }}>
+          {props.children}
+        </Session>
+      );
       break;
     default:
       // TODO: Log this to app insights.
