@@ -64,6 +64,7 @@ const validationMap = new Map<string, ValidationStep>([
     'valid-type',
     {
       label: 'Select a Consolidation Type',
+      className: 'valid-type',
       valid: false,
     },
   ],
@@ -71,6 +72,7 @@ const validationMap = new Map<string, ValidationStep>([
     'valid-count',
     {
       label: 'Include at least 2 cases',
+      className: 'valid-count',
       valid: false,
     },
   ],
@@ -78,6 +80,7 @@ const validationMap = new Map<string, ValidationStep>([
     'valid-lead',
     {
       label: 'Mark a case as the lead',
+      className: 'valid-lead',
       valid: false,
     },
   ],
@@ -130,6 +133,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [leadCaseCourt, setLeadCaseCourt] = useState<string>('');
   const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
   const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
+  const [leadCaseSelectOptions, setLeadCaseSelectOptions] = useState<Record<string, string>[]>([]);
+  const [leadCaseSelectValue, setLeadCaseSelectValue] = useState<string>('');
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
@@ -339,6 +344,16 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void {
     clearLeadCase();
     setShowLeadCaseForm(ev.target.checked);
+    if (ev.target.checked) {
+      setLeadCaseSelectOptions(getOfficeList(filteredOfficesList ?? props.officesList));
+      if (props.order.childCases) {
+        const selection = getUniqueDivisionCodeOrUndefined(props.order.childCases);
+        if (selection) {
+          setLeadCaseCourt(selection);
+          setLeadCaseSelectValue(selection);
+        }
+      }
+    }
   }
 
   //========== USE EFFECTS ==========
@@ -664,11 +679,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                       <CamsSelect
                         id={'lead-case-court'}
                         required={true}
-                        options={getOfficeList(filteredOfficesList ?? props.officesList)}
+                        options={leadCaseSelectOptions}
                         onChange={handleSelectLeadCaseCourt}
                         ref={leadCaseDivisionRef}
                         label="Select a court"
-                        value={getUniqueDivisionCodeOrUndefined(order.childCases)}
+                        value={leadCaseSelectValue}
                         isSearchable={true}
                       />
                     </div>

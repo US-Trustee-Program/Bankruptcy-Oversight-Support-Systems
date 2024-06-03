@@ -408,7 +408,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should correctly disable buttons when there is only 1 child case listed and the same case is marked as the lead in the table', async () => {
+  test('should correctly disable buttons when there is only 1 child case listed and the same case is marked as the lead in the table', async () => {
     const leadCase = MockData.getCaseSummary();
     const order: ConsolidationOrder = MockData.getConsolidationOrder({
       override: {
@@ -423,12 +423,15 @@ describe('ConsolidationOrderAccordion tests', () => {
     const approveButton = findApproveButton(order.id!);
     const rejectButton = findRejectButton(order.id!);
     const invalidCaseNumber = getCaseNumber(order.childCases[0].caseId).replace('-', '');
+    const validTypeCheckitem = document.querySelector('.verification-step.valid-type');
+    const validCountCheckitem = document.querySelector('.verification-step.valid-count');
+    const validLeadCheckitem = document.querySelector('.verification-step.valid-lead');
 
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
-
-    const table = screen.getByTestId(`case-list-${order.id}`);
-    screen.debug(table);
+    expect(validTypeCheckitem).not.toHaveClass('valid');
+    expect(validLeadCheckitem).not.toHaveClass('valid');
+    expect(validCountCheckitem).not.toHaveClass('valid');
 
     clickCaseCheckbox(order.id!, 0);
     selectTypeAndMarkLead(order.id);
@@ -436,9 +439,19 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
+      expect(validCountCheckitem).not.toHaveClass('valid');
     });
 
     await toggleEnableCaseListForm(order.id!);
+
+    await waitFor(() => {
+      expect(validTypeCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).not.toHaveClass('valid');
+      expect(validCountCheckitem).not.toHaveClass('valid');
+    });
+
     const leadCaseForm = document.querySelector(`.lead-case-form-container-${order.id}`);
     expect(leadCaseForm).toBeInTheDocument();
 
@@ -448,12 +461,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
+      expect(validCountCheckitem).not.toHaveClass('valid');
     });
 
     enterCaseNumber(caseNumberInput, leadCase.caseId);
-    console.log('=========== lead case id ' + leadCase.caseId);
 
-    screen.debug(leadCaseForm!);
     await waitFor(() => {
       expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
       expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
@@ -462,6 +476,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
+      expect(validLeadCheckitem).toHaveClass('valid');
+      expect(validCountCheckitem).toHaveClass('valid');
     });
   });
 

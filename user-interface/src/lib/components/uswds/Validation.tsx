@@ -3,6 +3,7 @@ import Alert, { UswdsAlertStyle } from './Alert';
 export type ValidationStep = {
   label: string;
   valid: boolean;
+  className: string;
 };
 
 export type ValidationProps = {
@@ -29,7 +30,7 @@ export function Validation(props: ValidationProps) {
                   return (
                     <li
                       key={idx}
-                      className={`verification-step ${step.valid === true ? ' valid' : ''}`}
+                      className={`verification-step ${step.className} ${step.valid === true ? ' valid' : ''}`}
                     >
                       {step.label}
                     </li>

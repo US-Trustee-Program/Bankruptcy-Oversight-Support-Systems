@@ -24,7 +24,7 @@ type CaseNumberInputProps = Omit<InputProps, 'onChange'> & {
 };
 
 function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
-  const { onChange, allowEnterKey, allowPartialCaseNumber } = props;
+  const { onChange, allowEnterKey, allowPartialCaseNumber, ...otherProps } = props;
   const forwardedRef = useRef<InputRef>(null);
 
   function getValue() {
@@ -72,7 +72,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
 
   return (
     <Input
-      {...props}
+      {...otherProps}
       ref={forwardedRef}
       onChange={handleOnChange}
       onKeyDown={handleEnter}
