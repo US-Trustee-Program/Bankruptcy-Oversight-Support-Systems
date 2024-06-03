@@ -14,25 +14,77 @@ jobs:
       enableSlotDeployment: "true"
       enableBicepDeployment: "true"
       deployVnet: "false"
-  set-cosmos-db-name:
-    needs: [setup]
+  deploy-webapp-slot:
     runs-on: ubuntu-latest
-    environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+    needs: [setup]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
     steps:
+      - uses: actions/checkout@main
+
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.setup.outputs.webappName }}-build
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+
+      - name: Deploy to Azure WebApp Slot
+        id: deploy-webapp-slot-step
+        continue-on-error: true
+        run: |
+          ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
+          --src ./${{ needs.setup.outputs.webappName }}.zip \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.setup.outputs.webappName }} \
+          --slotName ${{ needs.setup.outputs.slotName }}
+
+      - name: Retry Deploy to Azure WebApp slot
+        if: steps.deploy-webapp-slot-step.outcome != 'success'
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
+          --src ./${{ needs.setup.outputs.webappName }}.zip \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.setup.outputs.webappName }} \
+          --slotName ${{ needs.setup.outputs.slotName }}
+
+  deploy-service-slot:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    environment: ${{ needs.setup.outputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.setup.outputs.apiName }}-build
+
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+
       - name: Set E2e CosmosDB Name for Node API
         run: |
           databaseName="${{secrets.AZ_COSMOS_DATABASE_NAME}}-e2e"
-          if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
+          if [[ ${{ needs.setup.outputs.environmentHash }} != 'DOES_NOT_EXIST' ]]; then
               databaseName="$databaseName-${{ needs.setup.outputs.environmentHash }}"
           fi
 
@@ -40,8 +92,30 @@ jobs:
 
           az functionapp config appsettings set -g "${{ steps.rgApp.outputs.out }}" -n "${{ needs.setup.outputs.apiName}}" --slot "${{ needs.setup.outputs.slotName }}" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
 
+      - name: Deploy Azure Functions slot backend
+        id: deploy-backend-slot-step
+        continue-on-error: true
+        run: |
+          ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.setup.outputs.apiName }} \
+          --src ./${{ needs.setup.outputs.apiName }}.zip \
+          --slotName ${{ needs.setup.outputs.slotName }} \
+          --settings "INFO_SHA=${{ github.sha }}"
+
+      - name: Deploy Azure Functions slot backend
+        id: deploy-backend-slot-retry
+        if: steps.deploy-backend-slot-step.outcome != 'success'
+        run: |
+          ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ needs.setup.outputs.apiName }} \
+          --src ./${{ needs.setup.outputs.apiName }}.zip \
+          --slotName ${{ needs.setup.outputs.slotName }} \
+          --settings "INFO_SHA=${{ github.sha }}"
+
   execute-e2e-test:
-    needs: [setup, set-cosmos-db-name]
+    needs: [setup, deploy-service-slot, deploy-webapp-slot]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiName: ${{ needs.setup.outputs.apiName }}
