@@ -1,5 +1,6 @@
 import { createContext, PropsWithChildren } from 'react';
 import { CamsUser } from './login-helpers';
+// import { useNavigate } from 'react-router-dom';
 
 export type SessionContextType = {
   user: CamsUser | null;
@@ -18,8 +19,10 @@ export function Session(props: SessionProps) {
   // if (window.localStorage) {
   //   window.localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(props.user));
   // }
-
-  // TODO: We need to change the '/login' route to go to '/'.
+  // const navigate = useNavigate();
+  // useEffect(() => {
+  //   navigate('/search');
+  // }, []);
   return (
     <SessionContext.Provider value={{ user: props.user }}>{props.children}</SessionContext.Provider>
   );

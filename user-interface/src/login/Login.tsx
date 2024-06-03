@@ -2,7 +2,6 @@ import React, { PropsWithChildren, useEffect, useState } from 'react';
 import AzureLogin from './providers/azure/AzureLogin';
 import { AccessDenied } from './AccessDenied';
 import { Session } from './Session';
-import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import {
   CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
@@ -11,8 +10,9 @@ import {
   LoginProvider,
 } from './login-helpers';
 import MockLogin from './providers/mock/MockLogin';
-import { Route, Routes } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Logout } from './Logout';
+import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -23,6 +23,8 @@ export type LoginProps = PropsWithChildren & {
 export default function Login(props: LoginProps): React.ReactNode {
   const [isLocalStorageRead, setIsLocalStorageRead] = useState<boolean>(false);
   const [user, setUser] = useState<CamsUser | null>(null);
+  const location = useLocation();
+  const children = location.pathname === '/logout' ? <Logout></Logout> : props.children;
 
   useEffect(() => {
     if (window.localStorage) {
@@ -41,15 +43,13 @@ export default function Login(props: LoginProps): React.ReactNode {
   let providerComponent;
   switch (provider) {
     case 'azure':
-      providerComponent = <AzureLogin>{props.children}</AzureLogin>;
+      providerComponent = <AzureLogin>{children}</AzureLogin>;
       break;
     case 'mock':
-      providerComponent = <MockLogin user={user}>{props.children}</MockLogin>;
+      providerComponent = <MockLogin user={user}>{children}</MockLogin>;
       break;
     case 'none':
-      providerComponent = (
-        <Session user={props.user ?? { name: 'Super User' }}>{props.children}</Session>
-      );
+      providerComponent = <Session user={props.user ?? { name: 'Super User' }}>{children}</Session>;
       break;
     default:
       // TODO: Log this to app insights.
@@ -63,18 +63,6 @@ export default function Login(props: LoginProps): React.ReactNode {
   }
 
   return (
-    <>
-      <Routes>
-        <Route path="/logout" element={<Logout />}></Route>
-        <Route
-          path="*"
-          element={
-            <AuthorizedUseOnly skip={!!props.skipAuthorizedUseOnly}>
-              {providerComponent}
-            </AuthorizedUseOnly>
-          }
-        ></Route>
-      </Routes>
-    </>
+    <AuthorizedUseOnly skip={!!props.skipAuthorizedUseOnly}>{providerComponent}</AuthorizedUseOnly>
   );
 }
