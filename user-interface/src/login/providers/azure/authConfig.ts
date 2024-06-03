@@ -13,7 +13,7 @@ export interface CacheConfig {
 }
 
 const partialMsalConfig = {
-  auth: { clientId: '', authority: '', redirectUri: '' },
+  auth: { clientId: '', authority: '', redirectUri: 'http://localhost:3000/login' },
   cache: { cacheLocation: '', storeAuthStateInCookie: false },
   system: {
     loggerOptions: {
