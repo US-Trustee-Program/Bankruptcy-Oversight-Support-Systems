@@ -21,10 +21,10 @@ export type LoginProps = PropsWithChildren & {
 };
 
 export default function Login(props: LoginProps): React.ReactNode {
+  const location = useLocation();
+
   const [isLocalStorageRead, setIsLocalStorageRead] = useState<boolean>(false);
   const [user, setUser] = useState<CamsUser | null>(null);
-  const location = useLocation();
-  const children = location.pathname === '/logout' ? <Logout></Logout> : props.children;
 
   useEffect(() => {
     if (window.localStorage) {
@@ -38,9 +38,10 @@ export default function Login(props: LoginProps): React.ReactNode {
 
   if (!isLocalStorageRead) return <></>;
 
-  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
+  const children = location.pathname === '/logout' ? <Logout></Logout> : props.children;
 
   let providerComponent;
+  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
   switch (provider) {
     case 'azure':
       providerComponent = <AzureLogin>{children}</AzureLogin>;

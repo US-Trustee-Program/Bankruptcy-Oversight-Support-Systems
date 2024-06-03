@@ -8,6 +8,7 @@ export function AzureLogout() {
       postLogoutRedirectUri: '/logout',
     });
   }
+  // TODO: Do this better. We want to render the termination once the redirection is complete.
   logout();
   return <div>Logging out</div>;
 }

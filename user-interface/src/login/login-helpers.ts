@@ -1,5 +1,6 @@
 export const LOGIN_PROVIDER_ENV_VAR_NAME = 'CAMS_LOGIN_PROVIDER';
 export const LOGIN_LOCAL_STORAGE_USER_KEY = 'cams:user';
+export const LOGIN_LOCAL_STORAGE_ACK = 'cams:ack';
 
 export type CamsUser = {
   name: string;

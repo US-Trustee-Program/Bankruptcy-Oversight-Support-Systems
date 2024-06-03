@@ -1,13 +1,15 @@
-import { createContext, PropsWithChildren } from 'react';
-import { CamsUser } from './login-helpers';
-// import { useNavigate } from 'react-router-dom';
+import { createContext, PropsWithChildren, useEffect } from 'react';
+import { CamsUser, LOGIN_LOCAL_STORAGE_USER_KEY } from './login-helpers';
+import { useNavigate } from 'react-router-dom';
 
 export type SessionContextType = {
   user: CamsUser | null;
+  logout: () => void;
 };
 
 export const SessionContext = createContext<SessionContextType>({
   user: null,
+  logout: () => {},
 });
 
 export type SessionProps = PropsWithChildren & {
@@ -15,15 +17,24 @@ export type SessionProps = PropsWithChildren & {
 };
 
 export function Session(props: SessionProps) {
-  // TODO: We need to store the user in local storage.
-  // if (window.localStorage) {
-  //   window.localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(props.user));
-  // }
-  // const navigate = useNavigate();
-  // useEffect(() => {
-  //   navigate('/search');
-  // }, []);
+  const navigate = useNavigate();
+
+  if (window.localStorage) {
+    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_USER_KEY, JSON.stringify(props.user));
+  }
+
+  function logout() {
+    // TODO: Logout things... maybe. Probably should reset the context with a null user.
+    navigate('/logout');
+  }
+
+  useEffect(() => {
+    navigate('/');
+  }, []);
+
   return (
-    <SessionContext.Provider value={{ user: props.user }}>{props.children}</SessionContext.Provider>
+    <SessionContext.Provider value={{ user: props.user, logout }}>
+      {props.children}
+    </SessionContext.Provider>
   );
 }
