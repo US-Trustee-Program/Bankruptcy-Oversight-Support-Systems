@@ -8,10 +8,10 @@ import Login from './login/Login';
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
-    <Login>
-      <BrowserRouter>
+    <BrowserRouter>
+      <Login>
         <App />
-      </BrowserRouter>
-    </Login>
+      </Login>
+    </BrowserRouter>
   </React.StrictMode>,
 );

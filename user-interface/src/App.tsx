@@ -14,7 +14,6 @@ import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
-import { Logout } from './login/Logout';
 import { SessionContext } from './login/Session';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
@@ -56,7 +55,6 @@ function App() {
         <div className="body">
           <Routes>
             <Route path="/" element={<Home />}></Route>
-            <Route path="/logout" element={<Logout />}></Route>
             <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
