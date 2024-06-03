@@ -214,10 +214,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function updateValidationStep(key: string, value: boolean) {
-    const tempStepsCompleted = stepsCompleted;
-    const lead = tempStepsCompleted.get(key);
+    const lead = stepsCompleted.get(key);
     if (lead) lead.valid = value;
-    setStepsCompleted(tempStepsCompleted);
+    setStepsCompleted(stepsCompleted);
   }
 
   function updateValidationSteps() {
