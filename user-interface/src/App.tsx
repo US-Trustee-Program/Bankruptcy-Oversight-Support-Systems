@@ -50,7 +50,9 @@ function App() {
         onScroll={documentScroll}
         data-testid="app-component-test-id"
       >
-        <div>You are logged in as {session.user?.name ?? '<NOBODY>'}</div>
+        <div>
+          You are logged in as {session.user?.name ?? '<NOBODY>'} - <a href="/logout">logout</a>
+        </div>
         <Header />
         <div className="body">
           <Routes>
