@@ -27,8 +27,8 @@ export function Session(props: SessionProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const session: CamsSession = { provider, user };
   if (window.localStorage) {
-    const session: CamsSession = { provider, user };
     window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
   }
 
@@ -36,7 +36,5 @@ export function Session(props: SessionProps) {
     if ([LOGIN_PATH, LOGOUT_PATH].includes(location.pathname)) navigate('/');
   }, []);
 
-  return (
-    <SessionContext.Provider value={{ user: props.user }}>{props.children}</SessionContext.Provider>
-  );
+  return <SessionContext.Provider value={session}>{props.children}</SessionContext.Provider>;
 }
