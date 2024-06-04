@@ -6,7 +6,7 @@ export type BlankPageProps = PropsWithChildren;
 
 export function BlankPage(props: BlankPageProps) {
   return (
-    <>
+    <div className="blank-page">
       <Banner></Banner>
       <div className="usa-overlay"></div>
       <header role="banner" className="cams-header usa-header usa-header--basic">
@@ -42,6 +42,6 @@ export function BlankPage(props: BlankPageProps) {
           <div className="grid-col-1"></div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
