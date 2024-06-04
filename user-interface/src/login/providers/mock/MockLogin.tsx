@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser, LOGIN_LOCAL_STORAGE_USER_KEY } from '@/login/login-helpers';
+import { CamsUser, LOGIN_LOCAL_STORAGE_SESSION_KEY } from '@/login/login-helpers';
 
 type MockRole = {
   key: string;
@@ -26,7 +26,7 @@ export type MockLoginProps = PropsWithChildren & {
 export function MockLogin(props: MockLoginProps): React.ReactNode {
   let storedUser: CamsUser | null = null;
   if (window.localStorage) {
-    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_USER_KEY);
+    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
     if (userJson) {
       storedUser = JSON.parse(userJson);
     }

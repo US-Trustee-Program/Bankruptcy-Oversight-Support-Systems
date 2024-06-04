@@ -1,13 +1,17 @@
 export const LOGIN_PROVIDER_ENV_VAR_NAME = 'CAMS_LOGIN_PROVIDER';
-export const LOGIN_LOCAL_STORAGE_USER_KEY = 'cams:user';
+export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
-export const LOGIN_LOCAL_STORAGE_PROVIDER_KEY = 'cams:provider';
 
 export const LOGIN_PATH = '/login';
 export const LOGOUT_PATH = '/logout';
 
 export type CamsUser = {
   name: string;
+};
+
+export type CamsSession = {
+  user: CamsUser | null;
+  provider: LoginProvider;
 };
 
 export type LoginProvider = 'azure' | 'mock' | 'none';

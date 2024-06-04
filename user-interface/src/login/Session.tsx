@@ -1,8 +1,8 @@
 import { createContext, PropsWithChildren, useEffect } from 'react';
 import {
+  CamsSession,
   CamsUser,
-  LOGIN_LOCAL_STORAGE_PROVIDER_KEY,
-  LOGIN_LOCAL_STORAGE_USER_KEY,
+  LOGIN_LOCAL_STORAGE_SESSION_KEY,
   LOGIN_PATH,
   LoginProvider,
   LOGOUT_PATH,
@@ -23,12 +23,13 @@ export type SessionProps = PropsWithChildren & {
 };
 
 export function Session(props: SessionProps) {
+  const { provider, user } = props;
   const navigate = useNavigate();
   const location = useLocation();
 
   if (window.localStorage) {
-    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_USER_KEY, JSON.stringify(props.user));
-    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_PROVIDER_KEY, props.provider);
+    const session: CamsSession = { provider, user };
+    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
   }
 
   useEffect(() => {
