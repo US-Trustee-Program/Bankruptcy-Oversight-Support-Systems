@@ -1,5 +1,6 @@
 import { Banner } from '@/lib/components/uswds/Banner';
 import { PropsWithChildren } from 'react';
+import './BlankPage.scss';
 
 export type BlankPageProps = PropsWithChildren;
 
@@ -34,7 +35,13 @@ export function BlankPage(props: BlankPageProps) {
           </nav>
         </div>
       </header>
-      {props.children}
+      <div className="case-assignment case-list">
+        <div className="grid-row grid-gap-lg">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10 centered">{props.children}</div>
+          <div className="grid-col-1"></div>
+        </div>
+      </div>
     </>
   );
 }
