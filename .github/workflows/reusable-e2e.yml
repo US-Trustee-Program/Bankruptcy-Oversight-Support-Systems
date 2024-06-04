@@ -24,6 +24,9 @@ on:
       branchHashId:
         required: true
         type: string
+      e2eCosmosDbExists:
+        required: true
+        type: boolean
 
 jobs:
   ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
@@ -57,8 +60,16 @@ jobs:
           --slot-name ${{ inputs.slotName }} \
           --is-cicd
 
-      - name: Seed e2e database
+      - name: Seed e2e database ##If E2E CosmosDB exists and has been seeded, we do not want to seed again
+        if: ${{ inputs.e2eCosmosDbExists == true}}
         run: |
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+            echo "Adding suffix to database name"
+            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+          fi
+
+          echo "Seeding E2E CosmosDB..."
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
       - name: Install Node dependencies
