@@ -84,8 +84,7 @@ jobs:
           --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
           --name "${e2eDatabaseName}" \
           --resource-group  ${{ secrets.AZURE_RG }} \
-          --yes \
-          || true
+          --yes
 
           echo "Finished Removing Database..."
 
