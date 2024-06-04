@@ -187,7 +187,7 @@ jobs:
   initial-slot-resource-deployment: ##setup slot resources on initial deployment
     name: Initial Deployment of Slot Resources
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
-    needs: [setup, deploy]
+    needs: [setup, deploy, deploy-code]
     if: ${{ inputs.initialDeployment == 'true' }}
     with:
       webAppName: ${{ needs.setup.outputs.webappName }}

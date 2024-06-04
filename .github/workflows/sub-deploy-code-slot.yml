@@ -32,7 +32,7 @@ on:
         type: string
       e2eCosmosDbExists:
         required: true
-        type: boolean
+        type: string
       initialDeployment:
         required: true
         type: string
