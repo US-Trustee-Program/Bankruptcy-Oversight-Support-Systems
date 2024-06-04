@@ -33,7 +33,7 @@ on:
           "False for full deployment of Azure resources. True will deploy to existing environment
           with Slots resources."
         required: true
-        default: "true"
+        default: "false"
         type: choice
         options:
           - "false"
