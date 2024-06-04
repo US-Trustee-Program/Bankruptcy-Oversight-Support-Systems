@@ -24,10 +24,16 @@ export type LoginProps = PropsWithChildren & {
 
 export default function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
+  const location = useLocation();
+
+  const isLogout = location.pathname === LOGOUT_PATH;
+  if (isLogout) return <Logout />;
+
+  const isContinuation = location.pathname === '/login-continuation';
 
   let session: CamsSession | null = null;
   let user: CamsUser | null = null;
-  if (window.localStorage) {
+  if (!isContinuation && window.localStorage) {
     const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
     if (sessionJson) {
       session = JSON.parse(sessionJson);
@@ -38,11 +44,6 @@ export default function Login(props: LoginProps): React.ReactNode {
       user = null;
     }
   }
-
-  const location = useLocation();
-
-  const isLogout = location.pathname === LOGOUT_PATH;
-  if (isLogout) return <Logout />;
 
   let providerComponent;
   switch (provider) {

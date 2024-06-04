@@ -3,6 +3,7 @@ export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 
 export const LOGIN_PATH = '/login';
+export const LOGIN_CONTINUE_PATH = '/login-continue';
 export const LOGOUT_PATH = '/logout';
 
 export type CamsUser = {
