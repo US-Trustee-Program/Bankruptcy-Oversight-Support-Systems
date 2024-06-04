@@ -26,7 +26,7 @@ on:
         type: string
       e2eCosmosDbExists:
         required: true
-        type: boolean
+        type: string
 
 jobs:
   ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
