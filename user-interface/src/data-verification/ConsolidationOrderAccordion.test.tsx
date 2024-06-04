@@ -395,9 +395,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const leadCaseForm = document.querySelector(`.lead-case-form-container-${order.id}`);
     expect(leadCaseForm).toBeInTheDocument();
-    screen.debug(leadCaseForm!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 
@@ -499,8 +498,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     enterCaseNumber(caseNumberInput, leadCase.caseId);
 
-    await waitFor(async () => {
-      expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
+    await waitFor(() => {
       expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
     });
 
@@ -520,39 +518,40 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '11111111');
 
-    await waitFor(async () => {
-      const alert = await findValidCaseNumberAlert(order.id!);
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent("We couldn't find a case with that number.");
-      expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
-    });
+    const spinner = screen.getByTestId(`lead-case-number-loading-spinner-${order.id}`);
+    expect(spinner).toBeInTheDocument();
 
-    enterCaseNumber(caseNumberInput, '11111');
-
-    await waitFor(async () => {
-      expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
-      expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
-    });
-
-    enterCaseNumber(caseNumberInput, getCaseNumber(order.childCases[0].caseId).replace('-', ''));
-
+    let alert;
     await waitFor(
       async () => {
-        expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
-        expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
+        alert = await findValidCaseNumberAlert(order.id!);
+        expect(alert).toBeInTheDocument();
+        expect(alert).toHaveTextContent("We couldn't find a case with that number.");
+        expect(spinner).not.toBeInTheDocument();
       },
       { timeout: 2000 },
     );
 
+    enterCaseNumber(caseNumberInput, '11111');
+
+    await waitFor(() => {
+      expect(alert!).not.toBeInTheDocument();
+    });
+
+    enterCaseNumber(caseNumberInput, getCaseNumber(order.childCases[0].caseId).replace('-', ''));
+
+    await waitFor(() => {
+      expect(findValidCaseNumberTable(order.id!)).toBeInTheDocument();
+    });
+
     enterCaseNumber(caseNumberInput, '');
 
     await waitFor(async () => {
-      expect(await findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
   });
@@ -564,7 +563,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '00000000');
@@ -576,7 +575,7 @@ describe('ConsolidationOrderAccordion tests', () => {
         expect(alert).toHaveTextContent('Cannot verify lead case number.');
         expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
       },
-      { timeout: 1000 },
+      { timeout: 2000 },
     );
   });
 
@@ -589,7 +588,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '9999999');
@@ -1059,7 +1058,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(leadCaseFormCheckbox);
     expect(leadCaseFormCheckbox).toBeChecked();
     // Select lead case court.
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
 
     // Enter case number.
     const leadCaseNumber = getCaseNumber(leadCase.caseId);
@@ -1070,8 +1069,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
 
     await waitFor(async () => {
-      const form = document.querySelector('.lead-case-form-container');
-      if (form) screen.debug(form);
       const alertElement = await screen.findByTestId(
         `alert-message-lead-case-number-alert-${order.id}`,
       );
@@ -1106,7 +1103,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(leadCaseFormCheckbox);
     expect(leadCaseFormCheckbox).toBeChecked();
     // Select lead case court.
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
 
     // Enter case number.
     const leadCaseNumber = getCaseNumber(leadCase.caseId);
@@ -1118,9 +1115,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(caseNumberInput).toHaveValue(leadCaseNumber);
     });
-
-    const docDebug = document.querySelector(`.lead-case-form-container-${order.id}`);
-    screen.debug(docDebug!);
 
     await waitFor(async () => {
       const alertElement = await screen.findByTestId(

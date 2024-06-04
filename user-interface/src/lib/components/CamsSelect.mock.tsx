@@ -70,7 +70,7 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
       {props.options.map((option: SingleSelectOption, idx: number) => {
         return (
           <button
-            id={`${props.id}-${idx}`}
+            id={`select-button-${props.id}-${idx}`}
             key={idx}
             onClick={() => handleOnClick(option)}
             data-value={option}
@@ -86,7 +86,7 @@ const CamsSelect = forwardRef(MockCamsSelectComponent);
 export default CamsSelect;
 
 export function selectItemInMockSelect(id: string, index: number) {
-  const selectButton = document.querySelector(`#${id}-${index}`);
+  const selectButton = document.querySelector(`#select-button-${id}-${index}`);
   expect(selectButton).toBeInTheDocument();
   fireEvent.click(selectButton!);
   return selectButton;
