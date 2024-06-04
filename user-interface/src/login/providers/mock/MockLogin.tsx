@@ -65,7 +65,7 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
         heading={'Login'}
         content={
           <>
-            <RadioGroup label="Choose a role to impersonate:">
+            <RadioGroup label="Choose a role:">
               {roles.map((role, idx) => {
                 return (
                   <Radio

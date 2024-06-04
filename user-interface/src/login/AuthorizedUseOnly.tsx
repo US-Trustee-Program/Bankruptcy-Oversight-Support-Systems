@@ -3,6 +3,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
 import { LOGIN_LOCAL_STORAGE_ACK_KEY } from './login-helpers';
+import './AuthorizedUseOnly.scss';
 
 export type AuthorizedUseOnlyProps = PropsWithChildren & {
   skip?: boolean;
@@ -36,17 +37,22 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
 
   return (
     <BlankPage>
-      <Alert show={true} inline={true} type={UswdsAlertStyle.Warning} title="WARNING">
+      <Alert
+        className="measure-6"
+        show={true}
+        inline={true}
+        type={UswdsAlertStyle.Warning}
+        title="WARNING"
+      >
         <p>You are accessing a U.S. Government information system, which includes:</p>
-        <ul>
-          <li>(1) This computer.</li>
-          <li>(2) This computer network.</li>
-          <li>(3) All computers connected to this network.</li>
+        <ol className="parenthesized">
+          <li>This computer.</li>
+          <li>This computer network.</li>
+          <li>All computers connected to this network.</li>
           <li>
-            (4) All devices and storage media attached to this network or to a computer on this
-            network.
+            All devices and storage media attached to this network or to a computer on this network.
           </li>
-        </ul>
+        </ol>
         <p>
           This information system is provided for U.S. Government-authorized use only. Unauthorized
           or improper use of this system may result in disciplinary action, and civil and criminal
