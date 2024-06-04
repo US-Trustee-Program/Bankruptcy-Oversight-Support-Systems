@@ -47,6 +47,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
           cache: "npm"
           cache-dependency-path: user-interface/package-lock.json
+
       - name: Execute Build
         run: |
           pushd ../common
@@ -63,6 +64,7 @@ jobs:
           export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
+
       - name: Package
         run: |
           pushd ./build
@@ -70,6 +72,7 @@ jobs:
           popd
           mkdir ./artifacts
           mv ./build/${{ inputs.webappName }}.zip ./artifacts/
+
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v3
         with:
