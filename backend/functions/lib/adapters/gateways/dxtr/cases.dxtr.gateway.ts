@@ -290,12 +290,24 @@ export default class CasesDxtrGateway implements CasesInterface {
         .join(', ');
       parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
     }
+    const chapters: string[] = [];
+    if (predicate.chapters) {
+      for (const chapter of predicate.chapters) {
+        if (chapter === '11') {
+          if (doChapter11Enable) chapters.push('11');
+        } else if (chapter === '12') {
+          if (doChapter12Enable) chapters.push('12');
+        } else {
+          chapters.push(chapter);
+        }
+      }
+    } else {
+      chapters.push('15');
+    }
 
-    const chapters: string[] = ['15'];
-    if (doChapter12Enable) chapters.push('12');
-    if (doChapter11Enable) chapters.push('11');
     parametersList.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
+    console.log(parametersList);
     const CASE_SEARCH_QUERY_PREDICATE =
       parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
 

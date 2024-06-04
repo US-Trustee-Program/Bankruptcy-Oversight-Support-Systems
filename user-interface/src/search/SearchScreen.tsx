@@ -29,14 +29,26 @@ export default function SearchScreen() {
     offset: DEFAULT_SEARCH_OFFSET,
   });
 
+  const [chapterList, setChapterList] = useState<Record<string, string>[]>([]);
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<SelectMultiRef>(null);
+  const chapterSelectionRef = useRef<SelectMultiRef>(null);
   const errorAlertRef = useRef<AlertRefType>(null);
 
   const api = useApi2();
+
+  function getChapters() {
+    const chapterRecordArray: Record<string, string>[] = [];
+
+    for (const item of ['7', '9', '11', '12', '13', '15']) {
+      chapterRecordArray.push({ label: item, value: item });
+    }
+
+    setChapterList(chapterRecordArray);
+  }
 
   async function getOffices() {
     api
@@ -77,8 +89,20 @@ export default function SearchScreen() {
     setSearchPredicate(newPredicate);
   }
 
+  function handleChapterSelection(selection: MultiSelectOptionList) {
+    const newPredicate = {
+      ...searchPredicate,
+    };
+    delete newPredicate.chapters;
+    if (selection.length) {
+      newPredicate.chapters = selection.map((kv: Record<string, string>) => kv.value);
+    }
+    setSearchPredicate(newPredicate);
+  }
+
   useEffect(() => {
     getOffices();
+    getChapters();
   }, []);
 
   useEffect(() => {}, [searchPredicate]);
@@ -111,7 +135,7 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
-            <div className="case-number-search form-field" data-testid="case-number-search">
+            <div className="case-district-search form-field" data-testid="case-district-search">
               <div className="usa-search usa-search--small">
                 <CamsSelectMulti
                   id={'court-selections-search'}
@@ -123,6 +147,21 @@ export default function SearchScreen() {
                   isSearchable={true}
                   required={false}
                   ref={courtSelectionRef}
+                />
+              </div>
+            </div>
+            <div className="case-chapter-search form-field" data-testid="case-chapter-search">
+              <div className="usa-search usa-search--small">
+                <CamsSelectMulti
+                  id={'case-chapter-search'}
+                  className="case-chapter__select"
+                  closeMenuOnSelect={true}
+                  label="Chapter"
+                  onChange={handleChapterSelection}
+                  options={chapterList}
+                  isSearchable={true}
+                  required={false}
+                  ref={chapterSelectionRef}
                 />
               </div>
             </div>
