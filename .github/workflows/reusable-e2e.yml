@@ -72,6 +72,9 @@ jobs:
           echo "Seeding E2E CosmosDB..."
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
+          echo "Wait for Data to propogate..."
+          sleep 60
+
       - name: Install Node dependencies
         working-directory: test/e2e
         run: |
