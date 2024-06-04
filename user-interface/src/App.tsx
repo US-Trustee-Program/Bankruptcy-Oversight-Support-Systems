@@ -1,4 +1,3 @@
-import './App.scss';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
@@ -16,6 +15,8 @@ import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeature
 import SearchScreen from './search/SearchScreen';
 import { SessionContext } from './login/Session';
 import { LOGOUT_PATH } from './login/login-helpers';
+import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
+import './App.scss';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -73,6 +74,7 @@ function App() {
             data-testid="scroll-to-top-button"
           />
         </div>
+        <PrivacyActFooter></PrivacyActFooter>
       </div>
     </AppInsightsErrorBoundary>
   );
