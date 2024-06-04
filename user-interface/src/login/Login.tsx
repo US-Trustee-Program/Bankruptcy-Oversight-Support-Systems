@@ -9,11 +9,11 @@ import { Session } from './Session';
 import {
   CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
-  LOGIN_LOCAL_STORAGE_USER_KEY,
+  LOGIN_LOCAL_STORAGE_SESSION_KEY,
   getLoginProviderFromEnv,
   LoginProvider,
   LOGOUT_PATH,
-  LOGIN_LOCAL_STORAGE_PROVIDER_KEY,
+  CamsSession,
 } from './login-helpers';
 
 export type LoginProps = PropsWithChildren & {
@@ -25,16 +25,17 @@ export type LoginProps = PropsWithChildren & {
 export default function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
 
+  let session: CamsSession | null = null;
   let user: CamsUser | null = null;
   if (window.localStorage) {
-    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_USER_KEY);
-    const priorProvider = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_PROVIDER_KEY);
-    if (priorProvider === provider && userJson) {
-      user = JSON.parse(userJson);
+    const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+    if (sessionJson) {
+      session = JSON.parse(sessionJson);
+      user = session?.user ?? null;
     }
-    if (priorProvider !== provider) {
-      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_USER_KEY);
-      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_PROVIDER_KEY);
+    if (session?.provider !== provider) {
+      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+      user = null;
     }
   }
 
