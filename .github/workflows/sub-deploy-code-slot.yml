@@ -176,9 +176,6 @@ jobs:
         run: |
           az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
-      - name: Deny traffic
-        run: |
-          az webapp config access-restriction remove --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ env.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0
 
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
@@ -203,9 +200,6 @@ jobs:
         run: |
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
-      - name: Deny traffic
-        run: |
-          az functionapp config access-restriction remove --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --slot ${{ env.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0
 
   endpoint-test-application-post-swap:
     needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
