@@ -48,6 +48,14 @@ on:
         options:
           - "false"
           - "true"
+      initialDeployment:
+        description: "Default: false. If is initial deployment, true value will create slot resources and deploy code to them."
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   setup:
@@ -179,8 +187,8 @@ jobs:
   initial-slot-resource-deployment: ##setup slot resources on initial deployment
     name: Initial Deployment of Slot Resources
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
-    needs: [setup, deploy-code]
-    if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'false' && github.ref != 'refs/heads/main' }}
+    needs: [setup, deploy]
+    if: ${{ inputs.initialDeployment == 'true' }}
     with:
       webAppName: ${{ needs.setup.outputs.webappName }}
       apiName: ${{ needs.setup.outputs.apiName }}
@@ -192,11 +200,11 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
 
-  deploy-code-slot:
+  initial-deploy-code-slot:
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code-slot.yml
-    needs: [setup, deploy]
-    if: needs.setup.outputs.slotDeploymentEnabled == 'true'
+    needs: [setup, deploy, initial-slot-resource-deployment]
+    if: ${{ inputs.initialDeployment == 'true' }}
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
@@ -208,4 +216,24 @@ jobs:
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
+      initialDeployment: ${{ inputs.initialDeployment }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-code-slot:
+    name: Slot Code Deployment
+    uses: ./.github/workflows/sub-deploy-code-slot.yml
+    needs: [setup, deploy]
+    if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'true' && inputs.initialDeployment != 'true' }}
+    with:
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      webAppName: ${{ needs.setup.outputs.webappName }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+      cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
+      initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret

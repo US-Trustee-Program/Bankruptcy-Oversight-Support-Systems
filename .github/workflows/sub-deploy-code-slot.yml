@@ -33,7 +33,9 @@ on:
       e2eCosmosDbExists:
         required: true
         type: boolean
-
+      initialDeployment:
+        required: true
+        type: string
 jobs:
   deploy-webapp-slot:
     runs-on: ubuntu-latest
@@ -155,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ always() && contains(needs.execute-e2e-test.result, 'failure') || contains(needs.execute-e2e-test.result, 'success') }}
+    if: (always() && contains(needs.execute-e2e-test.result, 'failure') || contains(needs.execute-e2e-test.result, 'success')) && (inputs.initialDeployment != 'true')
     env:
       webappName: ${{ inputs.webappName }}
       slotName: ${{ inputs.slotName }}
@@ -182,7 +184,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ always() && contains(needs.execute-e2e-test.result, 'failure') || contains(needs.execute-e2e-test.result, 'success') }}
+    if: (always() && contains(needs.execute-e2e-test.result, 'failure') || contains(needs.execute-e2e-test.result, 'success')) && (inputs.initialDeployment != 'true')
     env:
       apiName: ${{ inputs.apiName }}
       slotName: ${{ inputs.slotName }}
