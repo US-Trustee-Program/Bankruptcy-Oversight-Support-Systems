@@ -2,7 +2,7 @@ import './PrivacyActFooter.scss';
 
 export const PrivacyActFooter = () => {
   return (
-    <footer className="usa-banner privacy-footer centered" data-testid="privacy-footer">
+    <footer className="usa-banner privacy-footer" data-testid="privacy-footer">
       <div>
         <span className="usa-banner__header-text">
           For Internal Use Only. The information is Limited Official Use and is subject to the
