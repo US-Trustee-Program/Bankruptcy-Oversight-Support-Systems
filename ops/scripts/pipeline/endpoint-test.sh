@@ -61,7 +61,7 @@ webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
 apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetApiURL}"
 
-if [[ -z ${slot_name} ]]; then
+if [[ ${slot_name} == "self" ]]; then
   echo "No Slot Provided"
   echo "Checking Webapp endpoint..."
   webStatusCode=$($webCmd)
