@@ -2,7 +2,6 @@ import React, { PropsWithChildren } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AzureLogin } from './providers/azure/AzureLogin';
 import { MockLogin } from './providers/mock/MockLogin';
-import { AccessDenied } from './AccessDenied';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Logout } from './Logout';
 import { Session } from './Session';
@@ -15,6 +14,7 @@ import {
   LOGOUT_PATH,
   CamsSession,
 } from './login-helpers';
+import { BadConfiguration } from './BadConfiguration';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -45,6 +45,12 @@ export default function Login(props: LoginProps): React.ReactNode {
     }
   }
 
+  const errorMessage =
+    'Login provider not specified or not a valid option.\n' +
+    `Valid options are 'azure' | 'mock' | 'none'.\n` +
+    `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
+    `Build variable value: '${provider}'.`;
+
   let providerComponent;
   switch (provider) {
     case 'azure':
@@ -62,13 +68,7 @@ export default function Login(props: LoginProps): React.ReactNode {
       break;
     default:
       // TODO: Log this to app insights.
-      console.error(
-        'Login provider not specified or not a valid option.',
-        `Valid options are 'azure' | 'openid' | 'mock' | 'none'.`,
-        `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.`,
-        `Build variable value: '${provider}'.`,
-      );
-      providerComponent = <AccessDenied />;
+      providerComponent = <BadConfiguration message={errorMessage} />;
   }
 
   return (

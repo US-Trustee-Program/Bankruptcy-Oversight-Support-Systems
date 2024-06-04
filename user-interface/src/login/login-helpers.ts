@@ -29,5 +29,7 @@ export function isLoginProviderType(provider: string): provider is LoginProvider
 }
 
 export function getLoginProviderFromEnv(): string {
-  return import.meta.env[LOGIN_PROVIDER_ENV_VAR_NAME].toLowerCase();
+  const value = import.meta.env[LOGIN_PROVIDER_ENV_VAR_NAME];
+  if (value) return value.toLowerCase();
+  return 'unknown';
 }
