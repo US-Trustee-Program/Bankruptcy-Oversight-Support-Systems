@@ -58,6 +58,7 @@ jobs:
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
           cmd="az cosmosdb sql database exists --account-name ${{ secrets.COSMOS_ACCOUNT_NAME }} -n $e2eDatabaseName -g ${{ secrets.AZURE_RG }} -o tsv"
+          echo $cmd
           e2eCosmosDbExists=$($cmd)
           echo "e2eCosmosDbExists=${e2eCosmosDbExists}" >> $GITHUB_OUTPUT
 
