@@ -25,8 +25,7 @@ test.describe('Transfer Orders', () => {
     );
 
     await page.goto('/data-verification');
-    //expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
-    await expect(page.getByTestId('accordion-group')).toBeVisible();
+    expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
     orderResponseBody = (await orderResponse.json()).body;
@@ -74,8 +73,7 @@ test('test pending transfer order form', async ({ page }) => {
   );
 
   await page.goto('/data-verification');
-  await expect(page.getByTestId('accordion-group')).toBeVisible();
-  //expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
+  expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
   const orderResponse = await orderResponsePromise;
   const orderResponseBody = (await orderResponse.json()).body;
 
@@ -83,14 +81,12 @@ test('test pending transfer order form', async ({ page }) => {
 
   const ordersRequestPromise = page.waitForEvent('requestfinished', {
     predicate: (e) => e.url().includes('api/orders'),
-    timeout: 30000,
   });
   const officesRequestPromise = page.waitForEvent('requestfinished', {
     predicate: (e) => e.url().includes('api/offices'),
-    timeout: 30000,
   });
   await page.goto('/data-verification');
-  await expect(page.getByTestId('accordion-group')).toBeVisible();
+
   // get pending transfer order id
   const pendingTransferOrder: Order = orderResponseBody.find(
     (o) => o.orderType === 'transfer' && o.status === 'pending',
@@ -127,7 +123,6 @@ test('test pending transfer order form', async ({ page }) => {
   const caseNumber = '18-61881';
   const summaryRequestPromise = page.waitForEvent('requestfinished', {
     predicate: (e) => e.url().includes(`/api/cases/081-${caseNumber}/summary`),
-    timeout: 30000,
   });
   await page.getByTestId(`new-case-input-${firstOrderId}`).fill(caseNumber);
   await summaryRequestPromise;

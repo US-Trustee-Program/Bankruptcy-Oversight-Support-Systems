@@ -211,6 +211,7 @@ jobs:
       cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
       slotName: ${{ needs.setup.outputs.slotName }}
+      e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
       initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
 
@@ -229,5 +230,6 @@ jobs:
       cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
       slotName: ${{ needs.setup.outputs.slotName }}
+      e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
       initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret

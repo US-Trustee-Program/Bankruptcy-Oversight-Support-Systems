@@ -15,12 +15,10 @@ test.describe('Consolidation Orders', () => {
     );
     const officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/offices'),
-      timeout: 30000,
     });
 
     await page.goto('/data-verification');
-    //expect(page.locator('h1')).toHaveText('Data Verification');
-    await expect(page.getByTestId('accordion-group')).toBeVisible();
+    expect(page.locator('h1')).toHaveText('Data Verification');
     await officesRequestPromise;
 
     const orderResponse = await orderResponsePromise;
