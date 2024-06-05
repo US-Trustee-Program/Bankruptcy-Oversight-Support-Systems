@@ -14,13 +14,16 @@ export function SessionEnd() {
   function handleLoginRedirect() {
     navigate(LOGIN_PATH);
   }
+
   if (window.localStorage) {
     window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
     window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
   }
+
   return (
     <BlankPage>
       <Alert
+        data-testid="session-end-alert"
         className="measure-6"
         show={true}
         inline={true}

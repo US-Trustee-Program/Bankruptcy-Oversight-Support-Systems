@@ -9,6 +9,7 @@ export function BadConfiguration(props: BadConfigurationProps) {
   return (
     <BlankPage>
       <Alert
+        data-testid="bad-configuration-alert"
         className="measure-6"
         show={true}
         inline={true}

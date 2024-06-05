@@ -38,6 +38,7 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
   return (
     <BlankPage>
       <Alert
+        data-testid="authorized-use-only-alert"
         className="measure-6"
         show={true}
         inline={true}
