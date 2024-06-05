@@ -23,7 +23,6 @@ export function SessionEnd() {
   return (
     <BlankPage>
       <Alert
-        data-testid="session-end-alert"
         className="measure-6"
         show={true}
         inline={true}
