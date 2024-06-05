@@ -66,7 +66,7 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
   });
 
   return (
-    <>
+    <div className={`mock-select-${props.id}`}>
       {props.options.map((option: SingleSelectOption, idx: number) => {
         return (
           <button
@@ -78,7 +78,7 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
           ></button>
         );
       })}
-    </>
+    </div>
   );
 }
 

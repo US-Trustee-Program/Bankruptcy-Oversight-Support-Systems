@@ -77,23 +77,21 @@ export function MockCamsSelectMultiComponent(
   });
 
   return (
-    <>
+    <div className={`mock-multiselect-${props.id}`}>
       {props.options.map((option: Record<string, string>, idx: number) => {
         return (
-          <>
-            <button
-              id={`${props.id}-${idx}`}
-              key={idx}
-              onClick={() => handleOnClick(option)}
-              data-value={option}
-              disabled={isDisabled}
-            >
-              {internalValue.includes(option) ? `Remove ${option.label}` : option.label}
-            </button>
-          </>
+          <button
+            id={`select-button-${props.id}-${idx}`}
+            key={idx}
+            onClick={() => handleOnClick(option)}
+            data-value={option}
+            disabled={isDisabled}
+          >
+            {internalValue.includes(option) ? `Remove ${option.label}` : option.label}
+          </button>
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -101,7 +99,7 @@ const CamsSelectMulti = forwardRef(MockCamsSelectMultiComponent);
 export default CamsSelectMulti;
 
 export function selectItemInMockSelect(id: string, index: number) {
-  const selectButton = document.querySelector(`#${id}-${index}`);
+  const selectButton = document.querySelector(`#select-button-${id}-${index}`);
   expect(selectButton).toBeInTheDocument();
   fireEvent.click(selectButton!);
   return selectButton;

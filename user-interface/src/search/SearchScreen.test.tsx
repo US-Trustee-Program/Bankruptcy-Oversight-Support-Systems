@@ -4,7 +4,7 @@ import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
-import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+import { selectItemInMockSelect } from '../lib/components/CamsSelectMulti.mock';
 import { CasesSearchPredicate } from '@common/api/search';
 import { buildResponseBodySuccess } from '@common/api/response';
 
@@ -84,7 +84,9 @@ describe('search screen', () => {
 
     await waitFor(() => {
       // Infer the office list is loaded from the API.
-      expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
+      expect(
+        document.querySelector('#select-button-court-selections-search-1'),
+      ).toBeInTheDocument();
     });
 
     let table = document.querySelector('#search-results > table');

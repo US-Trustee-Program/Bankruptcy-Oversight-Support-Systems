@@ -512,13 +512,16 @@ describe('ConsolidationOrderAccordion tests', () => {
   });
 
   test('should show alert when no lead case can be found in search field, and case table when search finds a matching value', async () => {
-    renderWithProps();
+    const order: ConsolidationOrder = MockData.getConsolidationOrder({
+      override: { courtDivisionCode: '081' },
+    });
+    renderWithProps({ order });
     openAccordion(order.id!);
     setupApiGetMock({ bCase: order.childCases[0] });
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    selectItemInMockSelect(`lead-case-court`, 1);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '11111111');
@@ -563,7 +566,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    selectItemInMockSelect(`lead-case-court`, 1);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '00000000');
