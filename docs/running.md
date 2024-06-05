@@ -43,6 +43,10 @@ CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for ext
 CAMS_PA11Y={a string: true | false}
 CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly}
 CAMS_INFO_SHA={expect commit sha used to build current version}
+CAMS_LAUNCH_DARKLY_ENV="development"
+CAMS_LOGIN_PROVIDER={"azure" || "mock" || "none"}
+CAMS_MSAL_CONFIG='{"auth":{"clientId":"{AzureB2CClientId}","authority":"https://login.microsoftonline.us/a{AzureB2CClientId}","redirectUri":"http://localhost:3000/login"},"cache":{"cacheLocation":"sessionStorage","storeAuthStateInCookie":false},"scopes":["User.Read"],"graphMeEndpoint":"https://graph.microsoft.us/v1.0/me"}'
+
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.
@@ -92,7 +96,7 @@ APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended
 COSMOS_DATABASE_NAME={the name of the CosmosDb database}
 COSMOS_ENDPOINT={the URI to the CosmosDb endpoint}
 COSMOS_MANAGED_IDENTITY=
-
+SERVER_PORT=7071
 DATABASE_MOCK={a string: true | false}
 
 MSSQL_HOST={the FQDN of the database}
@@ -104,8 +108,6 @@ MSSQL_USER={the SQL Server Admin username}
 MSSQL_PASS={the SQL Server Admin user password}
 # Required for connecting to CAMS SQL server database
 MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
-
-STARTING_MONTH={number of months previous to today to use as a starting month (defaults to 6)}
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.
@@ -126,6 +128,7 @@ access separately. One way to do this is by setting up
 Existing Bicep deployment can automate the creation of the user managed identity and assign the identity to the functionapp instance. The below are some manual steps to handle.
 
 Grant access to a managed identity with the following sql query
+
 ```sql
 CREATE USER [userAssignedIdentityName] FROM EXTERNAL PROVIDER;
 ALTER ROLE db_datareader ADD MEMBER [userAssignedIdentityName];
@@ -163,6 +166,7 @@ contents of that file must be:
 ```
 
 A sufficiently priveleged user can retrieve the `AzureWebJobsStorage` connection string with the following Azure CLI command:
+
 ```sh
 az functionapp config appsettings list -g rg-cams-app -n ustp-cams-node-api --query "[?name=='AzureWebJobsStorage']"
 ```
@@ -172,6 +176,7 @@ az functionapp config appsettings list -g rg-cams-app -n ustp-cams-node-api --qu
 Admin Endpoint Pattern: `http://localhost:{port}/admin/functions/{function_name}`
 
 Use `curl` or your favorite API testing tool to `POST` a HTTP request to following local Azure Function admin endpoints:
+
 ```sh
 # For the `orders-sync` function:
 curl -v -d "{}" -H "Content-Type: application/json" http://localhost:7071/admin/functions/orders-sync
