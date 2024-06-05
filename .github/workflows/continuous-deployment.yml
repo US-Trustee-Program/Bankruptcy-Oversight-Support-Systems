@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       deployBranch:
-        description: "Provision Azure resources for development branch and deploy build."
+        description: "deployBranch: Provision Azure resources for development branch and deploy build."
         required: true
         default: "false"
         type: choice
@@ -21,7 +21,7 @@ on:
           - "false"
           - "true"
       deployVnet:
-        description: "Enable Vnet creation. False is environment already provisioned"
+        description: "deployVnet: Enable Vnet creation. False is environment already provisioned"
         required: true
         default: "false"
         type: choice
@@ -29,7 +29,7 @@ on:
           - "false"
           - "true"
       enableSlotDeployment:
-        description: "Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment. Do not set initialDeployment to true is this is true"
+        description: "enableSlotDeployment: Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment. Do not set initialDeployment to true is this is true"
         required: true
         default: "false"
         type: choice
@@ -37,7 +37,7 @@ on:
           - "false"
           - "true"
       enableBicepDeployment:
-        description: "Execute main.bicep deployment for application component Azure resources"
+        description: "enableBicepDeployment: Execute main.bicep deployment for application component Azure resources"
         required: true
         default: "false"
         type: choice
@@ -45,7 +45,7 @@ on:
           - "false"
           - "true"
       initialDeployment:
-        description: "Set to true if an envrionment has not been setup for the branch"
+        description: "initialDeployment: Set to true if an envrionment has not been setup for the branch"
         required: true
         default: "false"
         type: choice
