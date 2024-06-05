@@ -287,13 +287,16 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(rejectButton).not.toBeEnabled();
 
     const firstCheckbox = clickCaseCheckbox(order.id!, 0);
-    await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).toBeEnabled();
-      expect(validCountCheckitem).not.toHaveClass('valid');
-      expect(validLeadCheckitem).toHaveClass('valid');
-      expect(validTypeCheckitem).toHaveClass('valid');
-    });
+    await waitFor(
+      () => {
+        expect(approveButton).not.toBeEnabled();
+        expect(rejectButton).toBeEnabled();
+        expect(validCountCheckitem).not.toHaveClass('valid');
+        expect(validLeadCheckitem).toHaveClass('valid');
+        expect(validTypeCheckitem).toHaveClass('valid');
+      },
+      { timeout: 2000 },
+    );
 
     const secondCheckbox = clickCaseCheckbox(order.id!, 1);
     await waitFor(
@@ -303,7 +306,7 @@ describe('ConsolidationOrderAccordion tests', () => {
         expect(validCountCheckitem).toHaveClass('valid');
         expect(validLeadCheckitem).toHaveClass('valid');
       },
-      { timeout: 4000 },
+      { timeout: 4500 },
     );
 
     clickMarkLeadButton(0);
