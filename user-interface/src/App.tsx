@@ -1,9 +1,8 @@
-import './App.scss';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from './lib/hooks/UseApplicationInsights';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import Home from './home/Home';
@@ -14,6 +13,10 @@ import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
+import { SessionContext } from './login/Session';
+import { LOGOUT_PATH } from './login/login-helpers';
+import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
+import './App.scss';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -23,6 +26,8 @@ function App() {
   const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();
+
+  const session = useContext(SessionContext);
 
   function documentScroll(ev: React.UIEvent<HTMLElement>) {
     if ((ev.currentTarget as Element).scrollTop > 100) {
@@ -47,6 +52,9 @@ function App() {
         onScroll={documentScroll}
         data-testid="app-component-test-id"
       >
+        <div>
+          You are logged in as {session.user?.name ?? '<NOBODY>'} - <a href={LOGOUT_PATH}>logout</a>
+        </div>
         <Header />
         <div className="body">
           <Routes>
@@ -66,6 +74,7 @@ function App() {
             data-testid="scroll-to-top-button"
           />
         </div>
+        <PrivacyActFooter></PrivacyActFooter>
       </div>
     </AppInsightsErrorBoundary>
   );
@@ -87,4 +96,5 @@ if (featureFlagConfig.useExternalProvider) {
 } else {
   AppToExport = App;
 }
+
 export default AppToExport;

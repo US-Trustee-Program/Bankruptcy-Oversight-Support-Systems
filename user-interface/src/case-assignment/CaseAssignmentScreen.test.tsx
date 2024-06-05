@@ -95,8 +95,6 @@ describe('CaseAssignment Component Tests', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    const alertMessage = screen.getByTestId('alert-message');
-
     await waitFor(
       () => {
         expect(alert).toHaveClass('usa-alert__visible');
@@ -105,7 +103,7 @@ describe('CaseAssignment Component Tests', () => {
     ).then(() => {
       expect(alert).toHaveAttribute('role', 'status');
       expect(alert).toHaveClass('usa-alert--error ');
-      expect(alertMessage).toContainHTML(expectAlertMessage);
+      expect(screen.getByTestId('alert-message')).toContainHTML(expectAlertMessage);
     });
   });
 

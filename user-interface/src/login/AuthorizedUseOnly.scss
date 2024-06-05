@@ -1,0 +1,9 @@
+@counter-style parenthesized {
+  system: extends numeric;
+  prefix: "(";
+  suffix: ") ";
+}
+
+ol {
+  list-style: parenthesized;
+}
