@@ -46,9 +46,6 @@ on:
       cosmosDbPrincipalId:
         description: "CosmosDB Principal ID"
         value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
-      e2eCosmosDbExists:
-        description: "Does E2E Cosmos DB Already Exists before deployment"
-        value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
 
 jobs:
   deploy-infra:

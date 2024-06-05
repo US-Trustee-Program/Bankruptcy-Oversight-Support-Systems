@@ -22,9 +22,6 @@ on:
       cosmosDbPrincipalId:
         description: "CosmosDB Principal ID"
         value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
-      e2eCosmosDbExists:
-        description: "Does E2E Cosmos DB Already Exists before deployment"
-        value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
 
 jobs:
   deploy-db:
@@ -33,7 +30,6 @@ jobs:
     outputs:
       cosmosDbClientId: ${{ steps.set-deploy-params.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ steps.set-deploy-params.outputs.cosmosDbPrincipalId }}
-      e2eCosmosDbExists: ${{ steps.e2eDbExists.outputs.e2eCosmosDbExists }}
     steps:
       - uses: actions/checkout@main
 
@@ -49,18 +45,18 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpNetworkEncrypted }}
 
-      - name: Check if E2E CosmosDb exists ##Check if E2E DB exists determining if the DB needs data seeded downstream
-        id: e2eDbExists
-        run: |
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
-          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
-            echo "Adding suffix to database name"
-            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
-          fi
-          cmd="az cosmosdb sql database exists --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} -n $e2eDatabaseName -g ${{ secrets.AZURE_RG }} -o tsv"
-          echo $cmd
-          e2eCosmosDbExists=$($cmd)
-          echo "e2eCosmosDbExists=${e2eCosmosDbExists}" >> $GITHUB_OUTPUT
+      # - name: Check if E2E CosmosDb exists ##Check if E2E DB exists determining if the DB needs data seeded downstream
+      #   id: e2eDbExists
+      #   run: |
+      #     e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+      #     if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+      #       echo "Adding suffix to database name"
+      #       e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+      #     fi
+      #     cmd="az cosmosdb sql database exists --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} -n $e2eDatabaseName -g ${{ secrets.AZURE_RG }} -o tsv"
+      #     echo $cmd
+      #     e2eCosmosDbExists=$($cmd)
+      #     echo "e2eCosmosDbExists=${e2eCosmosDbExists}" >> $GITHUB_OUTPUT
 
       - name: Deploy database
         id: azure-db-deploy

@@ -30,9 +30,6 @@ on:
       slotName:
         required: true
         type: string
-      e2eCosmosDbExists:
-        required: true
-        type: string
       initialDeployment:
         required: true
         type: string
@@ -150,7 +147,6 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       branchHashId: ${{ inputs.environmentHash }}
-      e2eCosmosDbExists: ${{ inputs.e2eCosmosDbExists }}
     secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
