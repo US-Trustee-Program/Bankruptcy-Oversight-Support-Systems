@@ -72,19 +72,26 @@ jobs:
           echo "Seeding E2E CosmosDB..."
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
-          echo "Wait for Data to propogate..."
-          sleep 60
-
-      - name: Install Node dependencies
+      - name: Restart API and Install Node dependencies
         working-directory: test/e2e
         run: |
+          az functionapp restart --name ${{ inputs.apiName }} --resource-group ${{ steps.rgApp.outputs.out }} & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
           npm ci
           npx playwright install chromium msedge
 
-      - name: Run the test
+      - name: Run E2E Tests
+        id: e2eTests
         working-directory: test/e2e
+        continue-on-error: true
         run: |
           echo "60s buffer time for DB to finalize seeding... "
+          sleep 60 && TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+
+      - name: Retry E2E tests
+        id: retryE2eTests
+        if: ${{ steps.e2eTests.outcome != 'success' }}
+        working-directory: test/e2e
+        run: |
           sleep 60 && TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
 
       - name: Upload report
