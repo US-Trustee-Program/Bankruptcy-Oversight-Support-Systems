@@ -69,7 +69,7 @@ test.describe('Consolidation Orders', () => {
     }
 
     // mark first child case as lead case
-    const markAsLeadButton1 = page.getByTestId(
+    const markAsLeadButton1 = await page.getByTestId(
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );
 
@@ -78,7 +78,6 @@ test.describe('Consolidation Orders', () => {
       `#loading-spinner-case-assignment-${firstChildCaseId}`,
       timeoutOption,
     );
-    await page.waitForSelector(`#case-assignment-${firstChildCaseId}`, timeoutOption);
 
     await markAsLeadButton1.click();
 
