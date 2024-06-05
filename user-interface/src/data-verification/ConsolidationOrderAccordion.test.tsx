@@ -521,7 +521,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '11111111');
@@ -566,7 +566,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '00000000');
