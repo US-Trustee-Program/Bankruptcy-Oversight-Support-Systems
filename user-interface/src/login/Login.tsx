@@ -72,6 +72,8 @@ export default function Login(props: LoginProps): React.ReactNode {
   }
 
   return (
-    <AuthorizedUseOnly skip={!!props.skipAuthorizedUseOnly}>{providerComponent}</AuthorizedUseOnly>
+    <AuthorizedUseOnly skip={!!props.skipAuthorizedUseOnly || provider === 'none'}>
+      {providerComponent}
+    </AuthorizedUseOnly>
   );
 }
