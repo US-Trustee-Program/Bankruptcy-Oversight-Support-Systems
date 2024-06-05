@@ -108,8 +108,6 @@ MSSQL_USER={the SQL Server Admin username}
 MSSQL_PASS={the SQL Server Admin user password}
 # Required for connecting to CAMS SQL server database
 MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
-
-STARTING_MONTH={number of months previous to today to use as a starting month (defaults to 6)}
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.
