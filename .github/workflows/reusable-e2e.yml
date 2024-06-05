@@ -61,7 +61,7 @@ jobs:
           --is-cicd
 
       - name: Seed e2e database ##If E2E CosmosDB exists and has been seeded, we do not want to seed again
-        if: ${{ inputs.e2eCosmosDbExists == false }}
+        if: ${{ inputs.e2eCosmosDbExists == 'false' }}
         run: |
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
