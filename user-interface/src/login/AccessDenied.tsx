@@ -5,6 +5,7 @@ export function AccessDenied() {
   return (
     <BlankPage>
       <Alert
+        data-testid="access-denied-alert"
         show={true}
         inline={true}
         type={UswdsAlertStyle.Error}
