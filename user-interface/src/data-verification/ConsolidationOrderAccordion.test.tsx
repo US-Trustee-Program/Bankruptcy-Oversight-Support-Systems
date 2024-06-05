@@ -283,82 +283,94 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     selectTypeAndMarkLead();
 
-    expect(approveButton).not.toBeEnabled();
-    expect(rejectButton).not.toBeEnabled();
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+      expect(rejectButton).not.toBeEnabled();
+      expect(validLeadCheckitem).toHaveClass('valid');
+      expect(validCountCheckitem).not.toHaveClass('valid');
+      expect(validTypeCheckitem).toHaveClass('valid');
+    });
 
     const firstCheckbox = clickCaseCheckbox(order.id!, 0);
+
     await waitFor(
       () => {
         expect(approveButton).not.toBeEnabled();
         expect(rejectButton).toBeEnabled();
-        expect(validCountCheckitem).not.toHaveClass('valid');
         expect(validLeadCheckitem).toHaveClass('valid');
+        expect(validCountCheckitem).not.toHaveClass('valid');
         expect(validTypeCheckitem).toHaveClass('valid');
       },
-      { timeout: 2000 },
+      { timeout: 1000 },
     );
 
     const secondCheckbox = clickCaseCheckbox(order.id!, 1);
+
     await waitFor(
       () => {
         expect(approveButton).toBeEnabled();
         expect(rejectButton).toBeEnabled();
+        expect(validTypeCheckitem).toHaveClass('valid');
         expect(validCountCheckitem).toHaveClass('valid');
         expect(validLeadCheckitem).toHaveClass('valid');
       },
-      { timeout: 4500 },
+      { timeout: 1000 },
     );
 
     clickMarkLeadButton(0);
+
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
       expect(validCountCheckitem).toHaveClass('valid');
       expect(validLeadCheckitem).not.toHaveClass('valid');
     });
 
     clickMarkLeadButton(0);
-    await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-      expect(rejectButton).toBeEnabled();
-      expect(validCountCheckitem).toHaveClass('valid');
-      expect(validLeadCheckitem).toHaveClass('valid');
-    });
-
     fireEvent.click(firstCheckbox);
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
       expect(validCountCheckitem).toHaveClass('valid');
       expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(secondCheckbox);
+
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).not.toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
       expect(validCountCheckitem).not.toHaveClass('valid');
       expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(includeAllCheckbox!);
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
       expect(validCountCheckitem).toHaveClass('valid');
       expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(includeAllCheckbox!);
+
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
       expect(rejectButton).not.toBeEnabled();
+      expect(validTypeCheckitem).toHaveClass('valid');
       expect(validCountCheckitem).not.toHaveClass('valid');
       expect(validLeadCheckitem).toHaveClass('valid');
     });
 
     fireEvent.click(firstCheckbox);
     fireEvent.click(secondCheckbox);
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
