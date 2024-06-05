@@ -21,7 +21,7 @@ on:
           - "false"
           - "true"
       deployVnet:
-        description: "Enable Vnet creation"
+        description: "Enable Vnet creation. False is environment already provisioned"
         required: true
         default: "false"
         type: choice
@@ -29,9 +29,7 @@ on:
           - "false"
           - "true"
       enableSlotDeployment:
-        description:
-          "False for full deployment of Azure resources. True will deploy to existing environment
-          with Slots resources."
+        description: "Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment. Do not set initialDeployment to true is this is true"
         required: true
         default: "false"
         type: choice
@@ -39,9 +37,7 @@ on:
           - "false"
           - "true"
       enableBicepDeployment:
-        description:
-          "Default: false will not deploy bicep changes unless there are changes to the bicep. True
-          will deploy bicep to Azure."
+        description: "Execute main.bicep deployment for application component Azure resources"
         required: true
         default: "false"
         type: choice
@@ -49,7 +45,7 @@ on:
           - "false"
           - "true"
       initialDeployment:
-        description: "Default: false. If is initial deployment, true value will create slot resources and deploy code to them."
+        description: "Set to true if an envrionment has not been setup for the branch"
         required: true
         default: "false"
         type: choice
