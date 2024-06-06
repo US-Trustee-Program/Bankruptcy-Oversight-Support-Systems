@@ -4,7 +4,7 @@ import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseSummary } from '@common/cams/cases';
-import { CaseTable } from './CaseTable';
+import { CaseTable } from '../CaseTable';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
 import { useApi2 } from '@/lib/hooks/UseApi2';

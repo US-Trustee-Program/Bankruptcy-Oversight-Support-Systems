@@ -5,12 +5,9 @@ import { TransferOrder } from '@common/cams/orders';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
-import {
-  PendingTransferOrder,
-  PendingTransferOrderImperative,
-} from './transfer/PendingTransferOrder';
-import { ApprovedTransferOrder } from './transfer/ApprovedTransferOrder';
-import { RejectedTransferOrder } from './transfer/RejectedTransferOrder';
+import { PendingTransferOrder, PendingTransferOrderImperative } from './PendingTransferOrder';
+import { ApprovedTransferOrder } from './ApprovedTransferOrder';
+import { RejectedTransferOrder } from './RejectedTransferOrder';
 import './TransferOrderAccordion.scss';
 
 export interface TransferOrderAccordionProps {

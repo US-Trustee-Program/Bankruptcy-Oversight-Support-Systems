@@ -10,7 +10,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 
-vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
+vi.mock('../../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);

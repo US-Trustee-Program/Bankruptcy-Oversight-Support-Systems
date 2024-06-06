@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import * as transferOrderAccordionModule from './TransferOrderAccordion';
+import * as transferOrderAccordionModule from './transfer/TransferOrderAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BrowserRouter } from 'react-router-dom';
 import DataVerificationScreen from './DataVerificationScreen';

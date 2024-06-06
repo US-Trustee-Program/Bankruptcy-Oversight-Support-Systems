@@ -2,11 +2,11 @@ import './DataVerificationScreen.scss';
 import Icon from '@/lib/components/uswds/Icon';
 import { useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
-import { TransferOrderAccordion } from './TransferOrderAccordion';
+import { TransferOrderAccordion } from './transfer/TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
-import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
+import { ConsolidationOrderAccordion } from './consolidation/ConsolidationOrderAccordion';
 import {
   ConsolidationOrder,
   Order,

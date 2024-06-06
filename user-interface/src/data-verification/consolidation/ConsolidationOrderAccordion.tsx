@@ -1,6 +1,6 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseTable } from './transfer/CaseTable';
+import { CaseTable } from '../CaseTable';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import {
@@ -16,7 +16,7 @@ import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
   ConfirmActionResults,
-} from '@/data-verification/ConsolidationOrderModal';
+} from '@/data-verification/consolidation/ConsolidationOrderModal';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -38,6 +38,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { Validation, ValidationStep } from '@/lib/components/uswds/Validation';
+import { deepClone } from '@/lib/utils/clone';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
@@ -59,33 +60,6 @@ export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
   return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
 }
 
-const validationMap = new Map<string, ValidationStep>([
-  [
-    'valid-type',
-    {
-      label: 'Select a Consolidation Type',
-      className: 'valid-type',
-      valid: false,
-    },
-  ],
-  [
-    'valid-count',
-    {
-      label: 'Include at least 2 cases',
-      className: 'valid-count',
-      valid: false,
-    },
-  ],
-  [
-    'valid-lead',
-    {
-      label: 'Mark a case as the lead',
-      className: 'valid-lead',
-      valid: false,
-    },
-  ],
-]);
-
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
   statusType: Map<string, string>;
@@ -101,6 +75,24 @@ export interface ConsolidationOrderAccordionProps {
   expandedId?: string;
   hidden?: boolean;
 }
+
+export const defaultValidationSteps = [
+  {
+    label: 'Select a Consolidation Type',
+    className: 'valid-type',
+    valid: false,
+  },
+  {
+    label: 'Include at least 2 cases',
+    className: 'valid-count',
+    valid: false,
+  },
+  {
+    label: 'Mark a case as the lead',
+    className: 'valid-lead',
+    valid: false,
+  },
+] as const;
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   const { hidden, statusType, orderType, officesList, expandedId } = props;
@@ -138,8 +130,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
-  const [stepsCompleted, setStepsCompleted] = useState<Map<string, ValidationStep>>(validationMap);
   const [updateValidation, setUpdateValidation] = useState<boolean>(false);
+  const [stepsCompleted, setStepsCompleted] = useState<ValidationStep[]>(
+    deepClone(defaultValidationSteps),
+  );
 
   const genericApi = useGenericApi();
   const api2 = useApi2();
@@ -188,14 +182,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  function getStepsCompletedArray(steps: Map<string, ValidationStep>) {
-    const stepArray: ValidationStep[] = [];
-    for (const [_key, value] of steps.entries()) {
-      stepArray.push(value);
-    }
-    if (stepArray) return stepArray;
-  }
-
   function selectedCasesAreConsolidationCases() {
     return order.childCases.reduce((itDoes, bCase) => {
       if (!selectedCases.includes(bCase)) {
@@ -214,9 +200,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function updateValidationStep(key: string, value: boolean) {
-    const lead = stepsCompleted.get(key);
-    if (lead) lead.valid = value;
-    setStepsCompleted(stepsCompleted);
+    const steps = stepsCompleted;
+    steps.forEach((lead) => {
+      if (lead.className === key) lead.valid = value;
+    });
+    setStepsCompleted(steps);
   }
 
   function updateValidationSteps() {
@@ -737,7 +725,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   id={`verfication-info-${order.id}`}
                   className="measure-3"
                   title="Verification requirements"
-                  steps={getStepsCompletedArray(stepsCompleted)}
+                  steps={stepsCompleted}
                 ></Validation>
               </div>
               <div className="grid-col-1"></div>

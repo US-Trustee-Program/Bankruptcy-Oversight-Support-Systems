@@ -3,7 +3,7 @@ import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { CaseTable, CaseTableImperative } from './CaseTable';
+import { CaseTable, CaseTableImperative } from '../CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import CamsSelect, { SingleSelectOption } from '@/lib/components/CamsSelect';
