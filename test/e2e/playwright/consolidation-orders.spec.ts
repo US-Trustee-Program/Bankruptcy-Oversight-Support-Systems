@@ -19,7 +19,6 @@ test.describe('Consolidation Orders', () => {
     });
 
     await page.goto('/data-verification');
-    //expect(page.locator('h1')).toHaveText('Data Verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     await officesRequestPromise;
 

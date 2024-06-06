@@ -24,7 +24,6 @@ test.describe('Transfer Orders', () => {
     );
 
     await page.goto('/data-verification');
-    //expect(page.getByRole('heading', { name: 'Data Verification' })).toBeVisible();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
