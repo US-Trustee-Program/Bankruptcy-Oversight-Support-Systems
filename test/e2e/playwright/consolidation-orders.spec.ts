@@ -1,11 +1,11 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
-import { useAuthentication } from './login/login-helpers';
+import { usingAuthenticationProvider } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
 
-const { login, logout } = useAuthentication('foo');
+const { login, logout } = usingAuthenticationProvider();
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
