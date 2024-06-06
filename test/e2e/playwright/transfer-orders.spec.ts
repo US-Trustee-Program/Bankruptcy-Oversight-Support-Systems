@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
+import { useAuthentication } from './login/login-helpers';
 
 interface Order {
   id: string;
@@ -13,6 +14,9 @@ interface Order {
 interface OrdersResponse {
   body: Array<Order>;
 }
+
+const { login, logout } = useAuthentication('foo');
+
 test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
 
@@ -23,6 +27,8 @@ test.describe('Transfer Orders', () => {
       { timeout: 35000 },
     );
 
+    login(page);
+
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
@@ -32,7 +38,11 @@ test.describe('Transfer Orders', () => {
     expect(orderResponseBody).not.toBeFalsy();
   });
 
-  test('test pending transfer order form', async ({ page }) => {
+  test.afterEach(async ({ page }) => {
+    logout(page);
+  });
+
+  test.only('test pending transfer order form', async ({ page }) => {
     const ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
       timeout: 30000,

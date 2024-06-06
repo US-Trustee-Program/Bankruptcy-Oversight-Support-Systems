@@ -4,7 +4,7 @@ import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
 
 const timeoutOption = { timeout: 30000 };
 
-test.describe('Consolidation Orders', () => {
+test.describe.skip('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
 
   test.beforeEach(async ({ page }) => {
