@@ -31,7 +31,9 @@ export function SessionEnd() {
         message="You are now logged out of the application."
       ></Alert>
       <div>
-        <Button onClick={handleLoginRedirect}>Login</Button>
+        <Button id="login" onClick={handleLoginRedirect}>
+          Login
+        </Button>
       </div>
     </BlankPage>
   );

@@ -30,7 +30,12 @@ on:
       slotName:
         required: true
         type: string
-
+      e2eCosmosDbExists:
+        required: true
+        type: string
+      initialDeployment:
+        required: true
+        type: string
 jobs:
   deploy-webapp-slot:
     runs-on: ubuntu-latest
@@ -120,8 +125,22 @@ jobs:
           --slotName ${{ inputs.slotName }} \
           --settings "INFO_SHA=${{ github.sha }}"
 
-  execute-e2e-test-pre-swap:
+  endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-service-slot]
+    uses: ./.github/workflows/reusable-endpoint-test.yml
+    with:
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      branchHashId: ${{ inputs.environmentHash }}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ inputs.slotName }}
+    secrets: inherit # pragma: allowlist secret
+
+  execute-e2e-test:
+    needs:
+      [deploy-webapp-slot, deploy-service-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiName: ${{ inputs.apiName }}
@@ -131,13 +150,14 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       branchHashId: ${{ inputs.environmentHash }}
+      e2eCosmosDbExists: ${{ inputs.e2eCosmosDbExists }}
     secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test-pre-swap]
+    needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ always() && contains(needs.execute-e2e-test-pre-swap.result, 'failure') || contains(needs.execute-e2e-test-pre-swap.result, 'success') }}
+    if: ${{ inputs.initialDeployment != 'true' }}
     env:
       webappName: ${{ inputs.webappName }}
       slotName: ${{ inputs.slotName }}
@@ -156,15 +176,12 @@ jobs:
         run: |
           az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
-      - name: Deny traffic
-        run: |
-          az webapp config access-restriction remove --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ env.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0
 
   swap-nodeapi-deployment-slot:
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test-pre-swap]
+    needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ always() && contains(needs.execute-e2e-test-pre-swap.result, 'failure') || contains(needs.execute-e2e-test-pre-swap.result, 'success') }}
+    if: ${{ inputs.initialDeployment != 'true' }}
     env:
       apiName: ${{ inputs.apiName }}
       slotName: ${{ inputs.slotName }}
@@ -183,55 +200,17 @@ jobs:
         run: |
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
-      - name: Deny traffic
-        run: |
-          az functionapp config access-restriction remove --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --slot ${{ env.slotName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0
 
-  smoke-test-application-post-swap:
+  endpoint-test-application-post-swap:
     needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ always() && contains(needs.swap-nodeapi-deployment-slot.result, 'success') && contains(needs.swap-webapp-deployment-slot.result, 'success')}}
-    env:
+    uses: ./.github/workflows/reusable-endpoint-test.yml
+    if: ${{ inputs.initialDeployment != 'true' }}
+    with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
       apiName: ${{ inputs.apiName }}
       branchHashId: ${{ inputs.environmentHash }}
-      priority: 200
-    steps:
-      - uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-
-      - name: Health check production api
-        run: |
-          ./ops/scripts/pipeline/endpoint-test.sh \
-          --apiName ${{ inputs.apiName }} \
-          --webappName ${{ inputs.webappName }} \
-          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName self \
-          --gitSha ${{ github.sha }}
-
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -r ${name:0:32}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      slotName: "self"
+    secrets: inherit # pragma: allowlist secret

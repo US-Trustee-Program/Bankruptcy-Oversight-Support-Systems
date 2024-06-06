@@ -75,7 +75,9 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
         </p>
       </Alert>
       <div>
-        <Button onClick={onConfirm}>Confirm</Button>
+        <Button id="auo-confirm" onClick={onConfirm}>
+          Confirm
+        </Button>
       </div>
     </BlankPage>
   );

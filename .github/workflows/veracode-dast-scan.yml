@@ -4,12 +4,12 @@ concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on:
   schedule:
-  - cron: '0 3 * * 2,4,6'
+    - cron: "0 3 * * 2,4,6"
   workflow_dispatch:
     inputs:
       dast-profile-name:
-        description: 'Name of dynamic analysis profile'
-        default: 'CAMS Flexion'
+        description: "Name of dynamic analysis profile"
+        default: "CAMS Flexion"
         required: true
         type: string
 
@@ -19,19 +19,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
       - name: Setup Veracode credentials
         run: |
-         pwd
-         mkdir ~/.veracode
-         cat > credentials << EOF
-          [default]
-          veracode_api_key_id = ${{ secrets.VERACODE_API_ID }}
-          veracode_api_key_secret = ${{ secrets.VERACODE_API_KEY }}
-         EOF
-         mv credentials ~/.veracode
+          pwd
+          mkdir ~/.veracode
+          cat > credentials << EOF
+           [default]
+           veracode_api_key_id = ${{ secrets.VERACODE_API_ID }}
+           veracode_api_key_secret = ${{ secrets.VERACODE_API_KEY }}
+          EOF
+          mv credentials ~/.veracode
+
       - name: Install dependencies
         run: pip install veracode-api-signing
+
       - name: Execute DAST Prescan
         run: ./ops/scripts/pipeline/veracode-prescan.py "${{ inputs.dast-profile-name || 'CAMS Flexion' }}"
+
       - name: Schedule DAST Scan
         run: ./ops/scripts/pipeline/veracode-dast-scan.py "${{ inputs.dast-profile-name || 'CAMS Flexion' }}"
