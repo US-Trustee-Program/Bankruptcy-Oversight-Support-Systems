@@ -511,7 +511,6 @@ describe('PendingTransferOrder component', () => {
       fireEvent.click(confirmModal!);
 
       await waitFor(async () => {
-        console.log(onOrderUpdate.mock.calls);
         expect(onOrderUpdate).toHaveBeenCalled();
         expect(onOrderUpdate).toHaveBeenCalledWith({
           message: errorMessage,
