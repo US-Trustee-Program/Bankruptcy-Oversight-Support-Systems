@@ -61,13 +61,7 @@ webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 
 # shellcheck disable=SC1083 # REASON: Wants to quote http_code
 apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetApiURL}"
 
-if [[ ${slot_name} == "self" ]]; then
-  echo "No Slot Provided"
-  echo "Checking Webapp endpoint..."
-  webStatusCode=$($webCmd)
-  echo "Checking API endpoint..."
-  apiStatusCode=$($apiCmd)
-else
+if [[ ${slot_name} == "staging" ]]; then
   webCmd="${webCmd}?x-ms-routing-name=${slot_name}"
   apiCmd="${apiCmd}?x-ms-routing-name=${slot_name}"
   echo "Checking Webapp endpoint..."
@@ -95,8 +89,14 @@ else
       fi
     done
 
-
   fi
+else
+  echo "No Slot Provided"
+  echo "Checking Webapp endpoint..."
+  webStatusCode=$($webCmd)
+  echo "Checking API endpoint..."
+  apiStatusCode=$($apiCmd)
+
 fi
 
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
