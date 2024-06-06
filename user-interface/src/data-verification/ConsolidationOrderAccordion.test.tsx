@@ -19,7 +19,7 @@ import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseAssignment } from '@common/cams/assignments';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { CaseSummary } from '@common/cams/cases';
-import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 
 vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
 
@@ -87,7 +87,9 @@ function setupApiGetMock(options: { bCase?: CaseSummary; associations?: Consolid
 }
 
 describe('ConsolidationOrderAccordion tests', () => {
-  const order: ConsolidationOrder = MockData.getConsolidationOrder();
+  const order: ConsolidationOrder = MockData.getConsolidationOrder({
+    override: { courtDivisionCode: '081' },
+  });
   const offices: OfficeDetails[] = MockData.getOffices();
   const regionMap = new Map();
 
@@ -280,10 +282,9 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
-    // at least 2 cases must be checked before verify button is enabled.
     const firstCheckbox = clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
+      expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
 
@@ -296,7 +297,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     clickMarkLeadButton(0);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     clickMarkLeadButton(0);
@@ -307,7 +308,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     fireEvent.click(firstCheckbox);
     await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
+      expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
 
@@ -361,11 +362,11 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
       expect(markAsLeadButton).toHaveClass('usa-button--outline');
     });
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 
@@ -381,14 +382,14 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     enterCaseNumber(caseNumberInput, '111111');
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     enterCaseNumber(caseNumberInput, validCaseNumber);
@@ -405,7 +406,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
+      expect(rejectButton).toBeEnabled();
       expect(leadCaseForm).not.toBeInTheDocument();
     });
   });
@@ -417,7 +418,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '11111111');
@@ -458,7 +459,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '00000000');
@@ -480,7 +481,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '9999999');
@@ -950,7 +951,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(leadCaseFormCheckbox);
     expect(leadCaseFormCheckbox).toBeChecked();
     // Select lead case court.
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
 
     // Enter case number.
     const leadCaseNumber = getCaseNumber(leadCase.caseId);
@@ -961,8 +962,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
 
     await waitFor(async () => {
-      const form = document.querySelector('.lead-case-form-container');
-      if (form) screen.debug(form);
       const alertElement = await screen.findByTestId(
         `alert-message-lead-case-number-alert-${order.id}`,
       );
@@ -997,7 +996,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     fireEvent.click(leadCaseFormCheckbox);
     expect(leadCaseFormCheckbox).toBeChecked();
     // Select lead case court.
-    selectItemInMockSelect(`lead-case-court`, 1);
+    selectItemInMockSelect(`lead-case-court`, 0);
 
     // Enter case number.
     const leadCaseNumber = getCaseNumber(leadCase.caseId);
@@ -1009,9 +1008,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(caseNumberInput).toHaveValue(leadCaseNumber);
     });
-
-    const docDebug = document.querySelector(`.lead-case-form-container-${order.id}`);
-    screen.debug(docDebug!);
 
     await waitFor(async () => {
       const alertElement = await screen.findByTestId(
