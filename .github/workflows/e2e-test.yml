@@ -14,22 +14,8 @@ jobs:
       enableSlotDeployment: "true"
       enableBicepDeployment: "true"
       deployVnet: "false"
-  set-cosmos-db:
-    needs: [setup]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set CosmosDB Name for Node API
-        run: |
-          databaseName="$databaseName-e2e"
-          if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
-              databaseName="$databaseName-${{ needs.setup.outputs.environmentHash }}"
-          fi
 
-          echo "Database Name :${databaseName}"ß
-
-          az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName"
-
-  execute-e2e-test-pre-swap:
+  execute-e2e-test:
     needs: [setup]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
@@ -40,4 +26,5 @@ jobs:
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
+      e2eCosmosDbExists: true
     secrets: inherit # pragma: allowlist secret

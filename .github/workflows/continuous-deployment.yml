@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       deployBranch:
-        description: "Provision Azure resources for development branch and deploy build."
+        description: "deployBranch: Provision Azure resources for development branch and deploy build."
         required: true
         default: "false"
         type: choice
@@ -21,7 +21,7 @@ on:
           - "false"
           - "true"
       deployVnet:
-        description: "Enable Vnet creation"
+        description: "deployVnet: Enable Vnet creation. False is environment already provisioned"
         required: true
         default: "false"
         type: choice
@@ -29,19 +29,23 @@ on:
           - "false"
           - "true"
       enableSlotDeployment:
-        description:
-          "False for full deployment of Azure resources. True will deploy to existing environment
-          with Slots resources."
+        description: "enableSlotDeployment: Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment. Do not set initialDeployment to true is this is true"
         required: true
-        default: "true"
+        default: "false"
         type: choice
         options:
           - "false"
           - "true"
       enableBicepDeployment:
-        description:
-          "Default: false will not deploy bicep changes unless there are changes to the bicep. True
-          will deploy bicep to Azure."
+        description: "enableBicepDeployment: Execute main.bicep deployment for application component Azure resources"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      initialDeployment:
+        description: "initialDeployment: Set to true if an envrionment has not been setup for the branch"
         required: true
         default: "false"
         type: choice
@@ -181,8 +185,8 @@ jobs:
   initial-slot-resource-deployment: ##setup slot resources on initial deployment
     name: Initial Deployment of Slot Resources
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
-    needs: [setup, deploy-code]
-    if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'false' && github.ref != 'refs/heads/main' }}
+    needs: [setup, deploy, deploy-code]
+    if: ${{ inputs.initialDeployment == 'true' }}
     with:
       webAppName: ${{ needs.setup.outputs.webappName }}
       apiName: ${{ needs.setup.outputs.apiName }}
@@ -194,11 +198,11 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
 
-  deploy-code-slot:
+  initial-deploy-code-slot:
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code-slot.yml
-    needs: [setup, deploy]
-    if: needs.setup.outputs.slotDeploymentEnabled == 'true'
+    needs: [setup, deploy, initial-slot-resource-deployment]
+    if: ${{ inputs.initialDeployment == 'true' }}
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
@@ -209,4 +213,25 @@ jobs:
       cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
       slotName: ${{ needs.setup.outputs.slotName }}
+      e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
+      initialDeployment: ${{ inputs.initialDeployment }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-code-slot:
+    name: Slot Code Deployment
+    uses: ./.github/workflows/sub-deploy-code-slot.yml
+    needs: [setup, deploy]
+    if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'true' && inputs.initialDeployment != 'true' }}
+    with:
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      apiName: ${{ needs.setup.outputs.apiName }}
+      webAppName: ${{ needs.setup.outputs.webappName }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+      cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
+      cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
+      initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret

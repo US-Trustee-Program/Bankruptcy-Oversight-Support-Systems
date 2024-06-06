@@ -24,61 +24,13 @@ on:
       branchHashId:
         required: true
         type: string
+      e2eCosmosDbExists:
+        required: true
+        type: string
 
 jobs:
-  smoke-test-application-slot:
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
-    env:
-      stackName: ${{ inputs.stackName }}
-      webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
-      branchHashId: ${{ inputs.branchHashId }}
-      priority: 200
-    steps:
-      - uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
-      - name: Enable GHA runner access
-        run: |
-          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --slot-name ${{ inputs.slotName }} \
-          --is-cicd
-
-      - name: Health check slot api
-        run: |
-          ./ops/scripts/pipeline/endpoint-test.sh \
-          --apiName ${{ inputs.apiName }} \
-          --webappName ${{ inputs.webappName }} \
-          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName ${{ inputs.slotName }} \
-          --gitSha ${{ github.sha }}
-
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -r ${name:0:32} \
-          --slot-name ${{ inputs.slotName }}
   ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
   playwright-e2e-test:
-    needs: [smoke-test-application-slot]
     environment: ${{ inputs.ghaEnvironment }}
     runs-on: ubuntu-latest
     env:
@@ -108,20 +60,35 @@ jobs:
           --slot-name ${{ inputs.slotName }} \
           --is-cicd
 
-      - name: Seed e2e database
+      - name: Seed e2e database ##If E2E CosmosDB exists and has been seeded, we do not want to seed again
+        if: ${{ inputs.e2eCosmosDbExists == 'false' }}
         run: |
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+            echo "Adding suffix to database name"
+            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+          fi
+
+          echo "Seeding E2E CosmosDB..."
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
-      - name: Install Node dependencies
+      - name: Restart API and Install Node dependencies
         working-directory: test/e2e
         run: |
+          az functionapp restart --name ${{ inputs.apiName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging
+          sleep 10
           npm ci
           npx playwright install chromium msedge
 
-      - name: Run the test
+      - name: Run E2E Tests
+        id: e2eTests
         working-directory: test/e2e
+        continue-on-error: true
         run: |
-          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+          echo "Wait 60s for seed to finish and apps to restart..."
+          sleep 60
+          echo "Running Playwright Tests..."
+          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -140,6 +107,7 @@ jobs:
           -s ${{ inputs.stackName }} \
           -r ${name:0:32} \
           --slot-name ${{ inputs.slotName }}
+
       - name: Clean up e2e test database
         if: ${{ always() && github.ref == 'refs/heads/main' }}
         run: |

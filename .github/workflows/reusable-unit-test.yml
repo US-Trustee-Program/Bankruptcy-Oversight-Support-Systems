@@ -14,12 +14,12 @@ jobs:
   unit-test:
     name: Unit test ${{ inputs.path }}
     defaults:
-        run:
-          working-directory: ${{ inputs.path }}
-          shell: bash
+      run:
+        working-directory: ${{ inputs.path }}
+        shell: bash
     runs-on: ubuntu-latest
     env:
-        CI: true
+      CI: true
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -27,6 +27,7 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: "npm"
           cache-dependency-path: ${{ inputs.path }}/package-lock.json
+
       - name: Run unit tests with code coverage
         run: |
           npm ci

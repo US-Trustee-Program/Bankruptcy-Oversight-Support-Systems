@@ -129,56 +129,22 @@ jobs:
           --identities "${{ inputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
-  smoke-test-application:
+  endpoint-test-application:
     needs: [deploy-webapp, deploy-service]
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
-    env:
+    uses: ./.github/workflows/reusable-endpoint-test.yml
+    with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
       apiName: ${{ inputs.apiName }}
       branchHashId: ${{ inputs.environmentHash }}
-      priority: 200
-    steps:
-      - uses: actions/checkout@v3
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-      - name: Enable GHA runner access
-        run: |
-          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-      - uses: actions/checkout@v3
-      - name: Health check production api
-        run: |
-          ./ops/scripts/pipeline/endpoint-test.sh \
-          --apiName ${{ inputs.apiName }} \
-          --webappName ${{ inputs.webappName }} \
-          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName self \
-          --gitSha ${{ github.sha }}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      slotName: "self"
+    secrets: inherit # pragma: allowlist secret
 
-      - name: Disable GHA runner access
-        if: always()
-        run: |
-          name="gha-${{ env.priority }}-${{ env.stackName }}"
-          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ env.stackName }} \
-          -r ${name:0:32} \
   enable-access:
     runs-on: ubuntu-latest
-    needs: [smoke-test-application]
+    needs: [endpoint-test-application]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
@@ -188,12 +154,14 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
+
       - name: Enable production slot access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

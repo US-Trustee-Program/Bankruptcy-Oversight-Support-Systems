@@ -1,8 +1,11 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
+import { usingAuthenticationProvider } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
+
+const { login, logout } = usingAuthenticationProvider();
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
@@ -15,16 +18,23 @@ test.describe('Consolidation Orders', () => {
     );
     const officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/offices'),
+      timeout: 30000,
     });
 
+    await login(page);
+
     await page.goto('/data-verification');
-    expect(page.locator('h1')).toHaveText('Data Verification');
+    await expect(page.getByTestId('accordion-group')).toBeVisible();
     await officesRequestPromise;
 
     const orderResponse = await orderResponsePromise;
     orderResponseBody = (await orderResponse.json()).body;
 
     expect(orderResponseBody).not.toBeFalsy();
+  });
+
+  test.afterEach(async ({ page }) => {
+    await logout(page);
   });
 
   test('should select correct consolidationType radio when approving a consolidation', async ({
@@ -67,7 +77,7 @@ test.describe('Consolidation Orders', () => {
     }
 
     // mark first child case as lead case
-    const markAsLeadButton1 = page.getByTestId(
+    const markAsLeadButton1 = await page.getByTestId(
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );
 
@@ -76,7 +86,6 @@ test.describe('Consolidation Orders', () => {
       `#loading-spinner-case-assignment-${firstChildCaseId}`,
       timeoutOption,
     );
-    await page.waitForSelector(`#case-assignment-${firstChildCaseId}`, timeoutOption);
 
     await markAsLeadButton1.click();
 

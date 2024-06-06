@@ -1,0 +1,79 @@
+name: Endpoint Tests
+
+on:
+  workflow_call:
+    inputs:
+      apiName:
+        required: true
+        type: string
+      slotName:
+        required: false
+        type: string
+        default: "self"
+      webappName:
+        required: true
+        type: string
+      stackName:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      ghaEnvironment:
+        required: true
+        type: string
+      branchHashId:
+        required: true
+        type: string
+
+jobs:
+  endpoint-test-application:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    env:
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      branchHashId: ${{ inputs.branchHashId }}
+      priority: 200
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Enable GHA runner access
+        run: |
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -p ${{ env.priority }} \
+          --slot-name ${{ inputs.slotName }} \
+          --is-cicd
+
+      - name: Health check App Resources
+        run: |
+          ./ops/scripts/pipeline/endpoint-test.sh \
+          --apiName ${{ inputs.apiName }} \
+          --webappName ${{ inputs.webappName }} \
+          --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
+          --slotName ${{ inputs.slotName }} \
+          --gitSha ${{ github.sha }}
+
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ env.stackName }}"
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ env.stackName }} \
+          -r ${name:0:32} \
+          --slot-name ${{ inputs.slotName }}
