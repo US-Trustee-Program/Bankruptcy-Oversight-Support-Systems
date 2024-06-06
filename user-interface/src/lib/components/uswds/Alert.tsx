@@ -1,4 +1,10 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, {
+  forwardRef,
+  PropsWithChildren,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from 'react';
 import './Alert.scss';
 
 export type AlertDetails = {
@@ -8,9 +14,9 @@ export type AlertDetails = {
   timeOut: number;
 };
 
-export type AlertProps = {
+export type AlertProps = PropsWithChildren & {
   id?: string;
-  message: string;
+  message?: string;
   type: UswdsAlertStyle;
   role?: 'status' | 'alert';
   slim?: boolean;
@@ -95,12 +101,15 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
       >
         <div className="usa-alert__body">
           {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}
-          <p
-            className="usa-alert__text"
-            data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
-          >
-            {props.message}
-          </p>
+          {!!props.message && (
+            <p
+              className="usa-alert__text"
+              data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
+            >
+              {props.message}
+            </p>
+          )}
+          {!props.message && props.children}
         </div>
       </div>
     </div>

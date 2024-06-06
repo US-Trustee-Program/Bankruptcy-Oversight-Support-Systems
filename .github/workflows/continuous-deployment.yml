@@ -134,6 +134,8 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      camsLoginProvider: ${{ vars.CAMS_LOGIN_PROVIDER }}
+      camsMsalConfig: ${{ vars.CAMS_MSAL_CONFIG }}
 
   deploy:
     name: Cloud Resource Deployment
