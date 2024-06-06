@@ -4,7 +4,7 @@ require('dotenv').config();
 const LOGIN_PATH = '/login';
 const LOGOUT_PATH = '/logout';
 
-const provider = process.env.TARGET_HOST ?? 'mock';
+const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
 
 async function noOp() {}
 
@@ -35,7 +35,6 @@ export function usingAuthenticationProvider() {
     default:
       loginFunction = mockLogin;
   }
-
   return {
     login: loginFunction,
     logout: provider.toLowerCase() === 'none' ? noOp : logout,
