@@ -55,7 +55,7 @@ jobs:
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
-            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.environmentHash }}"
           fi
           cmd="az cosmosdb sql database exists --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} -n $e2eDatabaseName -g ${{ secrets.AZURE_RG }} -o tsv"
           echo $cmd
@@ -75,7 +75,7 @@ jobs:
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
 
       - name: Check deployment and set params
         id: set-deploy-params

@@ -85,15 +85,10 @@ jobs:
         working-directory: test/e2e
         continue-on-error: true
         run: |
-          echo "60s buffer time for DB to finalize seeding & restart... "
-          sleep 60 && TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
-
-      - name: Retry E2E tests
-        id: retryE2eTests
-        if: ${{ steps.e2eTests.outcome != 'success' }}
-        working-directory: test/e2e
-        run: |
-          sleep 60 && TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
+          echo "Wait 60s for seed to finish and apps to restart..."
+          sleep 60
+          echo "Running Playwright Tests..."
+          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4
