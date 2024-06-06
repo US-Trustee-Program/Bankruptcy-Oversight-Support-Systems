@@ -24,7 +24,7 @@ test.describe('Transfer Orders', () => {
     // Navigate to Data Verification and capture network responses
     const orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
-      { timeout: 35000 },
+      { timeout: 30000 },
     );
 
     await login(page);
