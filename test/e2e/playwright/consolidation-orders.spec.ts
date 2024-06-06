@@ -1,10 +1,13 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
+import { useAuthentication } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
 
-test.describe.skip('Consolidation Orders', () => {
+const { login, logout } = useAuthentication('foo');
+
+test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
 
   test.beforeEach(async ({ page }) => {
@@ -18,6 +21,8 @@ test.describe.skip('Consolidation Orders', () => {
       timeout: 30000,
     });
 
+    await login(page);
+
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     await officesRequestPromise;
@@ -26,6 +31,10 @@ test.describe.skip('Consolidation Orders', () => {
     orderResponseBody = (await orderResponse.json()).body;
 
     expect(orderResponseBody).not.toBeFalsy();
+  });
+
+  test.afterEach(async ({ page }) => {
+    await logout(page);
   });
 
   test('should select correct consolidationType radio when approving a consolidation', async ({

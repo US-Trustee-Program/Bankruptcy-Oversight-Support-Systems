@@ -27,7 +27,7 @@ test.describe('Transfer Orders', () => {
       { timeout: 35000 },
     );
 
-    login(page);
+    await login(page);
 
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
@@ -39,10 +39,10 @@ test.describe('Transfer Orders', () => {
   });
 
   test.afterEach(async ({ page }) => {
-    logout(page);
+    await logout(page);
   });
 
-  test.only('test pending transfer order form', async ({ page }) => {
+  test('test pending transfer order form', async ({ page }) => {
     const ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
       timeout: 30000,

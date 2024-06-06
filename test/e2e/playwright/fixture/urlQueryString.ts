@@ -15,7 +15,6 @@ export const test = base.extend({
         // TODO: Parameterize this to add flexibility target slot environment. Note that passing 'self' will target production slot
         if (url) url += 'x-ms-routing-name=staging';
       }
-      console.log('inside the urlQueryString plugin.', page.url() ?? 'NOTHING HERE!!', url);
       return goto(url, options);
     }
     page.goto = modifiedGoto; // replace original goto

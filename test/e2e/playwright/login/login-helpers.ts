@@ -1,15 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
-const LOGIN_PATH = 'http://localhost:3000/login';
+const LOGIN_PATH = '/login';
 const LOGOUT_PATH = '/logout';
-
-// function getLoginUrl(baseUrl: string) {
-//   return `${baseUrl}${LOGIN_PATH}`;
-// }
-
-// function getLogoutUrl(baseUrl: string) {
-//   return `${baseUrl}${LOGOUT_PATH}`;
-// }
 
 async function mockLogin(page: Page) {
   await page.goto(LOGIN_PATH);
