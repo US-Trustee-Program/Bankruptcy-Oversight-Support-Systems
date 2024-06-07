@@ -33,6 +33,7 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
   }
   const [user, setUser] = useState<CamsUser | null>(storedUser);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
+  const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
 
   function handleRoleSelection(key: string) {
     setSelectedRole(roles.find((role) => role.key === key) ?? null);
@@ -49,6 +50,11 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
   useEffect(() => {
     modalRef.current?.show(!!storedUser);
   }, []);
+
+  useEffect(() => {
+    if (selectedRole) setSubmitDisabled(false);
+    modalRef.current?.buttons?.current?.disableSubmitButton(submitDisabled);
+  }, [selectedRole, submitDisabled]);
 
   if (user)
     return (
@@ -88,6 +94,7 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
           submitButton: {
             label: 'Login',
             onClick: handleLogin,
+            disabled: submitDisabled,
           },
         }}
       ></Modal>
