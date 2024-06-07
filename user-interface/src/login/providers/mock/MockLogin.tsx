@@ -70,22 +70,20 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
         modalId={modalId}
         heading={'Login'}
         content={
-          <>
-            <RadioGroup label="Choose a role:">
-              {roles.map((role, idx) => {
-                return (
-                  <Radio
-                    key={`radio-role-${idx}`}
-                    id={`radio-role-${idx}`}
-                    name="role"
-                    label={role.label}
-                    value={role.key}
-                    onChange={handleRoleSelection}
-                  />
-                );
-              })}
-            </RadioGroup>
-          </>
+          <RadioGroup label="Choose a role:">
+            {roles.map((role, idx) => {
+              return (
+                <Radio
+                  key={`radio-role-${idx}`}
+                  id={`radio-role-${idx}`}
+                  name="role"
+                  label={role.label}
+                  value={role.key}
+                  onChange={handleRoleSelection}
+                />
+              );
+            })}
+          </RadioGroup>
         }
         forceAction={true}
         actionButtonGroup={{
