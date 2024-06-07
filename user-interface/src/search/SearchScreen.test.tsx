@@ -23,6 +23,10 @@ describe('search screen', () => {
     getCaseSummarySpy.mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
   });
 
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   function renderWithoutProps() {
     render(
       <BrowserRouter>
@@ -75,8 +79,57 @@ describe('search screen', () => {
     expect(getCaseSummarySpy).toHaveBeenCalledWith('/cases', casesSearchPredicate);
   });
 
-  test('should render a list of cases by court division', async () => {
+  test('should only search for full case number', async () => {
     renderWithoutProps();
+
+    let defaultStateAlert = document.querySelector('#default-state-alert');
+    expect(defaultStateAlert).toBeInTheDocument();
+    expect(defaultStateAlert).toBeVisible();
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    expect(caseNumberInput).toBeInTheDocument();
+    expect(caseNumberInput).toBeEnabled();
+
+    let table = document.querySelector('#search-results > table');
+    expect(table).not.toBeInTheDocument();
+    fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
+    await waitFor(() => {
+      // wait for loading to appear and default state alert to be removed
+      defaultStateAlert = document.querySelector('#default-state-alert');
+      expect(defaultStateAlert).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    const caseNumber = '';
+    fireEvent.change(caseNumberInput, { target: { value: caseNumber } });
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-message-default-state-alert')).toBeInTheDocument();
+    });
+
+    expect(getCaseSummarySpy.mock.calls).toHaveLength(2);
+  });
+
+  test('should render a list of cases by court division', async () => {
+    const divisionSearchPredicate = {
+      limit: 25,
+      offset: 0,
+      divisionCodes: expect.any(Array<string>),
+    };
+
+    renderWithoutProps();
+    const localGetSpy = vi
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
 
     let defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
@@ -90,6 +143,7 @@ describe('search screen', () => {
     let table = document.querySelector('#search-results > table');
     expect(table).not.toBeInTheDocument();
 
+    // Make first search request....
     selectItemInMockSelect('court-selections-search', 0);
 
     await waitFor(() => {
@@ -107,16 +161,95 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
+    expect(localGetSpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
+    );
+
+    // Make second search request...
     selectItemInMockSelect('court-selections-search', 1);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('#search-results > table');
       expect(table).not.toBeInTheDocument();
     });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
 
-    expect(getCaseSummarySpy).toHaveBeenCalledWith(
+    expect(localGetSpy).toHaveBeenLastCalledWith(
       '/cases',
-      expect.objectContaining({ limit: 25, offset: 0, divisionCodes: expect.any(Array<string>) }),
+      expect.objectContaining(divisionSearchPredicate),
+    );
+  });
+
+  test('should render a list of cases by chapter number', async () => {
+    const divisionSearchPredicate = {
+      limit: 25,
+      offset: 0,
+      chapters: expect.any(Array<string>),
+    };
+
+    renderWithoutProps();
+    const localGetSpy = vi
+      .spyOn(Chapter15MockApi, 'get')
+      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
+
+    let defaultStateAlert = document.querySelector('#default-state-alert');
+    expect(defaultStateAlert).toBeInTheDocument();
+    expect(defaultStateAlert).toBeVisible();
+
+    await waitFor(() => {
+      // Infer the office list is loaded from the API.
+      expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
+    });
+
+    let table = document.querySelector('#search-results > table');
+    expect(table).not.toBeInTheDocument();
+
+    // Make first search request....
+    selectItemInMockSelect('case-chapter-search', 0);
+
+    await waitFor(() => {
+      // wait for loading to appear and default state alert to be removed
+      defaultStateAlert = document.querySelector('#default-state-alert');
+      expect(defaultStateAlert).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    expect(localGetSpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
+    );
+
+    // Make second search request...
+    selectItemInMockSelect('case-chapter-search', 1);
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+
+    expect(localGetSpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
     );
   });
 
@@ -180,6 +313,23 @@ describe('search screen', () => {
       expect(document.querySelector('#search-results > table')).toBeInTheDocument();
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).not.toBeInTheDocument();
+    });
+  });
+
+  test('should show an error alert if offices cannot be retrieved from API', async () => {
+    vi.spyOn(Chapter15MockApi, 'get')
+      .mockRejectedValueOnce({
+        message: 'some error',
+      })
+      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const searchErrorAlert = screen.getByTestId('alert-message');
+      expect(searchErrorAlert).toBeInTheDocument();
+      expect(searchErrorAlert).toBeVisible();
+      expect(searchErrorAlert).toHaveTextContent('Cannot load office list');
     });
   });
 });

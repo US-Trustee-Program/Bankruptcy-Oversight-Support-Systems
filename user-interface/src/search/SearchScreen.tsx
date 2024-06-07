@@ -73,9 +73,11 @@ export default function SearchScreen() {
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
-    const newPredicate = { ...searchPredicate, caseNumber };
-    if (!caseNumber) delete newPredicate.caseNumber;
-    setSearchPredicate(newPredicate);
+    if (searchPredicate.caseNumber != caseNumber) {
+      const newPredicate = { ...searchPredicate, caseNumber };
+      if (!caseNumber) delete newPredicate.caseNumber;
+      setSearchPredicate(newPredicate);
+    }
   }
 
   function handleCourtSelection(selection: MultiSelectOptionList) {
@@ -131,6 +133,8 @@ export default function SearchScreen() {
                   label="Case Number"
                   autoComplete="off"
                   onChange={handleCaseNumberChange}
+                  allowEnterKey={true}
+                  allowPartialCaseNumber={false}
                   ref={caseNumberInputRef}
                 />
               </div>
