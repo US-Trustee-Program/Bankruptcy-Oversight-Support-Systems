@@ -208,9 +208,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
   ): Promise<CaseBasics[]> {
-    const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
-    const doChapter11Enable = context.featureFlags['chapter-eleven-enabled'];
-
     const CASE_SEARCH_SELECT = `
       SELECT
       cs.CS_DIV as courtDivisionCode,
@@ -293,13 +290,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const chapters: string[] = [];
     if (predicate.chapters) {
       for (const chapter of predicate.chapters) {
-        if (chapter === '11') {
-          if (doChapter11Enable) chapters.push('11');
-        } else if (chapter === '12') {
-          if (doChapter12Enable) chapters.push('12');
-        } else {
-          chapters.push(chapter);
-        }
+        chapters.push(chapter);
       }
     } else {
       chapters.push('15');
