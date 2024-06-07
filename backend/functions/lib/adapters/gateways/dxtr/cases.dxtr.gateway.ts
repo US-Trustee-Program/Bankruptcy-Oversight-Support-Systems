@@ -266,13 +266,14 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: predicate.offset ?? 0,
     });
 
+    console.log(`=============== case number ${predicate.caseNumber}`);
     if (predicate.caseNumber) {
       replacementVariables.push({
         name: 'caseNumber',
         type: mssql.VarChar,
         value: predicate.caseNumber,
       });
-      parametersList.push('cs.CASE_ID = @caseNumber');
+      parametersList.push("cs.CASE_ID LIKE @caseNumber+'%' ");
     }
     if (predicate.divisionCodes) {
       predicate.divisionCodes.forEach((divisionCode, idx) => {
