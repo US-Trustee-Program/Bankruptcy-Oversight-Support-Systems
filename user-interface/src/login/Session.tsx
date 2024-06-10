@@ -27,19 +27,19 @@ export function Session(props: SessionProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  let session: CamsSession = { provider, user };
+  const session: CamsSession = { provider, user };
 
   if (window.localStorage) {
     // TODO: This entire block is suspect. Should we really override the session passed in from the upstream provider mapping??
-    let savedSession: CamsSession | undefined;
-    const savedSessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-    if (savedSessionJson) {
-      savedSession = JSON.parse(savedSessionJson);
-      if (savedSession) {
-        // TODO: We should probably check for differences before assuming savedSession is not stale.
-        session = savedSession;
-      }
-    }
+    // let savedSession: CamsSession | undefined;
+    // const savedSessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+    // if (savedSessionJson) {
+    //   savedSession = JSON.parse(savedSessionJson);
+    //   if (savedSession) {
+    //     // TODO: We should probably check for differences before assuming savedSession is not stale.
+    //     session = savedSession;
+    //   }
+    // }
     window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
   }
 

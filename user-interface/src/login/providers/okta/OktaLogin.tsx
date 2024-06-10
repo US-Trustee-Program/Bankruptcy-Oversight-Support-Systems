@@ -1,28 +1,53 @@
-import { PropsWithChildren, useEffect, useState } from 'react';
-import { Session } from '@/login/Session';
-import { CamsUser, LOGIN_LOCAL_STORAGE_SESSION_KEY } from '@/login/login-helpers';
+import { PropsWithChildren, useEffect } from 'react';
+import OktaAuth from '@okta/okta-auth-js';
+import { Security, useOktaAuth } from '@okta/okta-react';
+import { Route, Routes } from 'react-router-dom';
+import { AccessDenied } from '@/login/AccessDenied';
+import { OktaSession } from './OktaSession';
+import { LOGIN_CONTINUE_PATH, LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME } from '@/login/login-helpers';
+import { BadConfiguration } from '@/login/BadConfiguration';
 
 export type OktaLoginProps = PropsWithChildren;
 
 export function OktaLogin(props: OktaLoginProps): React.ReactNode {
-  let storedUser: CamsUser | null = null;
-  if (window.localStorage) {
-    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-    if (userJson) {
-      storedUser = JSON.parse(userJson);
-    }
+  const authConfigJson = import.meta.env[LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME];
+  if (!authConfigJson) return <BadConfiguration message="Missing authentication configuration" />;
+
+  let authConfig;
+  try {
+    authConfig = JSON.parse(authConfigJson);
+  } catch (e) {
+    return <BadConfiguration message={(e as Error).message} />;
   }
-  const [user, setUser] = useState<CamsUser | null>(storedUser);
-
-  useEffect(() => {
-    setUser({ name: 'Okta User' });
-  }, []);
-
-  if (!user) return <></>;
+  const oktaAuth = new OktaAuth(authConfig);
 
   return (
-    <Session provider="okta" user={user}>
-      {props.children}
-    </Session>
+    <Security oktaAuth={oktaAuth} restoreOriginalUri={() => {}}>
+      <Routes>
+        <Route path={LOGIN_CONTINUE_PATH} element={<OktaSession>{props.children}</OktaSession>} />
+        <Route path="*" element={<OktaUnauthenticated>{props.children}</OktaUnauthenticated>} />
+      </Routes>
+    </Security>
   );
+}
+function OktaUnauthenticated(props: PropsWithChildren) {
+  const { oktaAuth, authState } = useOktaAuth();
+
+  useEffect(() => {
+    if (!authState) {
+      return;
+    }
+
+    if (!authState?.isAuthenticated) {
+      oktaAuth.signInWithRedirect();
+    }
+  }, [oktaAuth, !!authState, authState?.isAuthenticated]);
+
+  if (!authState || !authState?.isAuthenticated) {
+    return <div>Logging in</div>;
+  }
+
+  if (authState && authState.isAuthenticated) return <OktaSession>{props.children}</OktaSession>;
+
+  return <AccessDenied />;
 }

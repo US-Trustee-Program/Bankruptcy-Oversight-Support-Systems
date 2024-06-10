@@ -15,7 +15,7 @@ describe('OktaSession', () => {
     const children = <div data-testid={testId}>{childText}</div>;
     render(
       <BrowserRouter>
-        <OktaSession user={user}>{children}</OktaSession>
+        <OktaSession>{children}</OktaSession>
       </BrowserRouter>,
     );
 

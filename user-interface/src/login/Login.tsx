@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { AzureLogin } from './providers/azure/AzureLogin';
 import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
-import { Logout } from './Logout';
 import { Session } from './Session';
 import {
   CamsUser,
@@ -11,7 +10,6 @@ import {
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
   getLoginProviderFromEnv,
   LoginProvider,
-  LOGOUT_PATH,
   CamsSession,
 } from './login-helpers';
 import { BadConfiguration } from './BadConfiguration';
@@ -26,9 +24,6 @@ export type LoginProps = PropsWithChildren & {
 export default function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
   const location = useLocation();
-
-  const isLogout = location.pathname === LOGOUT_PATH;
-  if (isLogout) return <Logout />;
 
   const isContinuation = location.pathname === '/login-continuation';
 
