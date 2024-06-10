@@ -1,7 +1,7 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { CaseBasics, CaseSummary } from '@common/cams/cases';
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
@@ -14,7 +14,7 @@ describe('SearchResults component tests', () => {
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
-    caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+    caseList = MockData.buildArray(MockData.getCaseSummary, 30);
     vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue(
       buildResponseBodySuccess<CaseBasics[]>(caseList, {
         next: 'next-link',
@@ -124,9 +124,34 @@ describe('SearchResults component tests', () => {
 
     await waitFor(() => {
       const pagination = document.querySelector('.usa-pagination');
-
       expect(pagination).toBeInTheDocument();
       expect(pagination).toBeVisible();
+    });
+
+    const nextPage = screen.getByTestId('pagination-button-next-results');
+    fireEvent.click(nextPage);
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      const pagination = document.querySelector('.usa-pagination');
+      expect(pagination).toBeInTheDocument();
+      expect(pagination).toBeVisible();
+    });
+  });
+
+  test('should not search for an invalid predicate', async () => {
+    renderWithProps({
+      searchPredicate: {
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
   });
 });

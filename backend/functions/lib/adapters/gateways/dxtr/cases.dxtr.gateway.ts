@@ -208,9 +208,6 @@ export default class CasesDxtrGateway implements CasesInterface {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
   ): Promise<CaseBasics[]> {
-    const doChapter12Enable = context.featureFlags['chapter-twelve-enabled'];
-    const doChapter11Enable = context.featureFlags['chapter-eleven-enabled'];
-
     const CASE_SEARCH_SELECT = `
       SELECT
       cs.CS_DIV as courtDivisionCode,
@@ -275,7 +272,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         type: mssql.VarChar,
         value: predicate.caseNumber,
       });
-      parametersList.push('cs.CASE_ID = @caseNumber');
+      parametersList.push("cs.CASE_ID LIKE @caseNumber+'%' ");
     }
     if (predicate.divisionCodes) {
       predicate.divisionCodes.forEach((divisionCode, idx) => {
@@ -290,10 +287,15 @@ export default class CasesDxtrGateway implements CasesInterface {
         .join(', ');
       parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
     }
+    const chapters: string[] = [];
+    if (predicate.chapters) {
+      for (const chapter of predicate.chapters) {
+        chapters.push(chapter);
+      }
+    } else {
+      chapters.push('15');
+    }
 
-    const chapters: string[] = ['15'];
-    if (doChapter12Enable) chapters.push('12');
-    if (doChapter11Enable) chapters.push('11');
     parametersList.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
     const CASE_SEARCH_QUERY_PREDICATE =
