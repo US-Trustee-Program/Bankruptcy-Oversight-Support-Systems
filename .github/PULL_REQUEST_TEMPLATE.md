@@ -2,7 +2,7 @@
 
 Please go the the `Preview` tab and select the appropriate template. **Otherwise, please delete this section.**
 
-- [Bug](?expand=1&template=bug.md)
+* [Bug](?expand=1&template=bug.md)
 
 # Purpose
 
