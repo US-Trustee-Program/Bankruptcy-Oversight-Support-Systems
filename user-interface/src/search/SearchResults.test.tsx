@@ -128,7 +128,6 @@ describe('SearchResults component tests', () => {
       expect(pagination).toBeVisible();
     });
 
-    // TODO: click the next page...
     const nextPage = screen.getByTestId('pagination-button-next-results');
     fireEvent.click(nextPage);
 
