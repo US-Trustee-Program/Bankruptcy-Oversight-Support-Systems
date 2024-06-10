@@ -266,7 +266,6 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: predicate.offset ?? 0,
     });
 
-    console.log(`=============== case number ${predicate.caseNumber}`);
     if (predicate.caseNumber) {
       replacementVariables.push({
         name: 'caseNumber',
@@ -299,7 +298,6 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     parametersList.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
-    console.log(parametersList);
     const CASE_SEARCH_QUERY_PREDICATE =
       parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
 
