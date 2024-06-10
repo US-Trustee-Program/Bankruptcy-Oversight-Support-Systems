@@ -77,20 +77,15 @@ export function SearchResults(props: SearchResultsProps) {
     setAlertInfo(null);
   }
 
-  async function search(uri?: string) {
+  async function search() {
     if (!isValidSearchPredicate(searchPredicate)) return;
     resetAlert();
-
-    // Don't hurt me for the l337 code...
-    const getArgs: [string, CasesSearchPredicate | undefined] = uri
-      ? [uri, undefined]
-      : ['/cases', searchPredicate];
 
     trackSearchEvent(searchPredicate);
     setIsSearching(true);
     onStartSearching();
     api
-      .get<CaseBasics[]>(...getArgs)
+      .get<CaseBasics[]>('/cases', searchPredicate)
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {

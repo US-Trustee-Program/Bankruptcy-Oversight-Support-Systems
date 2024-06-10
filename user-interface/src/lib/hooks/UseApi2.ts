@@ -13,11 +13,11 @@ export function useApi2() {
     },
 
     async getCaseAssignments(caseId: string) {
-      return api.get<Array<CaseAssignment>>(`/case-assignments/${caseId}`);
+      return api.get<CaseAssignment[]>(`/case-assignments/${caseId}`);
     },
 
     async getCaseAssociations(caseId: string) {
-      return api.get<Array<Consolidation>>(`/cases/${caseId}/associated`);
+      return api.get<Consolidation[]>(`/cases/${caseId}/associated`);
     },
 
     async getOffices() {

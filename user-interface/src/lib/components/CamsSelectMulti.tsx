@@ -65,6 +65,16 @@ function _CamsSelectMulti(
       color: '#565C65',
     }),
 
+    menuPortal: (provided: any) => ({
+      ...provided,
+      zIndex: 1000,
+    }),
+
+    menu: (provided: any) => ({
+      ...provided,
+      zIndex: 1000,
+    }),
+
     valueContainer: (provided: any) => ({
       ...provided,
       padding: '0 6px',
@@ -166,6 +176,8 @@ function _CamsSelectMulti(
         isDisabled={isDisabled}
         required={props.required}
         value={internalValue}
+        menuPortalTarget={document.body}
+        menuPosition="fixed"
       ></ReactSelect>
     </div>
   );
