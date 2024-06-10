@@ -36,17 +36,13 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import {
+  getCurrentLeadCaseId,
+  getUniqueDivisionCodeOrUndefined,
+} from '@/data-verification/consolidation/consolidationOrderAccordion';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
-
-export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
-  const divisionCodeSet = cases.reduce((set, bCase) => {
-    set.add(bCase.courtDivisionCode);
-    return set;
-  }, new Set<string>());
-  return divisionCodeSet.size === 1 ? Array.from<string>(divisionCodeSet)[0] : undefined;
-}
 
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
@@ -134,14 +130,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     } else {
       rejectButtonRef.current?.disableButton(true);
       approveButtonRef.current?.disableButton(true);
-    }
-  }
-
-  function getCurrentLeadCaseId(leadCaseNumber: string) {
-    if (leadCaseCourt && leadCaseNumber) {
-      return `${leadCaseCourt}-${leadCaseNumber}`;
-    } else {
-      return '';
     }
   }
 
@@ -287,7 +275,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }, [selectedCases, leadCaseId, isDataEnhanced, consolidationType]);
 
   useEffect(() => {
-    const currentLeadCaseId = getCurrentLeadCaseId(leadCaseNumber);
+    const currentLeadCaseId = getCurrentLeadCaseId({ leadCaseCourt, leadCaseNumber });
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
       disableLeadCaseForm(true);
       setIsValidatingLeadCaseNumber(true);
