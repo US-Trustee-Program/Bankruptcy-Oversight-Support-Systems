@@ -15,11 +15,12 @@ export type CamsSession = {
   provider: LoginProvider;
 };
 
-export type LoginProvider = 'azure' | 'mock' | 'none';
+export type LoginProvider = 'azure' | 'okta' | 'mock' | 'none';
 
 export function isLoginProviderType(provider: string): provider is LoginProvider {
   switch (provider) {
     case 'azure':
+    case 'okta':
     case 'mock':
     case 'none':
       return true;

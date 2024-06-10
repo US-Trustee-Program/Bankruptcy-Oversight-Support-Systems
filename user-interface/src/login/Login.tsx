@@ -15,6 +15,7 @@ import {
   CamsSession,
 } from './login-helpers';
 import { BadConfiguration } from './BadConfiguration';
+import { OktaLogin } from './providers/okta/OktaLogin';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -47,7 +48,7 @@ export default function Login(props: LoginProps): React.ReactNode {
 
   const errorMessage =
     'Login provider not specified or not a valid option.\n' +
-    `Valid options are 'azure' | 'mock' | 'none'.\n` +
+    `Valid options are 'azure' | 'okta' | 'mock' | 'none'.\n` +
     `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
     `Build variable value: '${provider}'.`;
 
@@ -55,6 +56,9 @@ export default function Login(props: LoginProps): React.ReactNode {
   switch (provider) {
     case 'azure':
       providerComponent = <AzureLogin>{props.children}</AzureLogin>;
+      break;
+    case 'okta':
+      providerComponent = <OktaLogin>{props.children}</OktaLogin>;
       break;
     case 'mock':
       providerComponent = <MockLogin user={user}>{props.children}</MockLogin>;
