@@ -38,18 +38,22 @@ export default defineConfig({
   projects: [
     {
       name: 'setup',
-      testMatch: './playwright/auth-steup.ts',
+      testMatch: '*setup.ts',
     },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], storageState: 'playwright/.auth/user.json' },
       dependencies: ['setup'],
     },
 
     /* Test against branded browsers. */
     {
       name: 'Microsoft Edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+        storageState: 'playwright/.auth/user.json',
+      },
       dependencies: ['setup'],
     },
     // {

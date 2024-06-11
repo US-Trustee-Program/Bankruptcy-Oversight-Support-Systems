@@ -82,4 +82,4 @@ cams1.code-workspace
 **/*.zip
 
 #E2E Test Auth file
-*/.auth
+**/.auth
