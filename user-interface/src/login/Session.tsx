@@ -4,8 +4,7 @@ import {
   CamsUser,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
   LoginProvider,
-  LOGIN_PATH,
-  LOGOUT_PATH,
+  AUTHENTICATION_PATHS,
 } from './login-helpers';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -44,7 +43,7 @@ export function Session(props: SessionProps) {
   }
 
   useEffect(() => {
-    if ([LOGIN_PATH, LOGOUT_PATH].includes(location.pathname)) navigate('/');
+    if (AUTHENTICATION_PATHS.includes(location.pathname)) navigate('/');
   }, []);
 
   return <SessionContext.Provider value={session}>{props.children}</SessionContext.Provider>;
