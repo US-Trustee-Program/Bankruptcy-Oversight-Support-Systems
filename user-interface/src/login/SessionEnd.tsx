@@ -4,11 +4,14 @@ import {
   LOGIN_LOCAL_STORAGE_ACK_KEY,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
   LOGIN_PATH,
+  LOGOUT_SESSION_END_PATH,
 } from './login-helpers';
 import Button from '@/lib/components/uswds/Button';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export function SessionEnd() {
+  const location = useLocation();
   const navigate = useNavigate();
 
   function handleLoginRedirect() {
@@ -20,6 +23,12 @@ export function SessionEnd() {
     window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
   }
 
+  useEffect(() => {
+    if (location.pathname !== LOGOUT_SESSION_END_PATH) {
+      navigate(LOGOUT_SESSION_END_PATH);
+    }
+  }, []);
+
   return (
     <BlankPage>
       <Alert
@@ -27,7 +36,7 @@ export function SessionEnd() {
         show={true}
         inline={true}
         type={UswdsAlertStyle.Info}
-        title="Logout"
+        title="Session End"
         message="You are now logged out of the application."
       ></Alert>
       <div>

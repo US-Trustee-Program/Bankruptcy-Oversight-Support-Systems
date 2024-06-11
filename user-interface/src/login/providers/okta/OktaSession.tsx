@@ -18,16 +18,24 @@ export function OktaSession(props: OktaSessionProps) {
     try {
       const user = await oktaAuth.getUser();
       setOktaUser(user);
-      console.log(oktaUser);
     } catch (e) {
       setCallbackError(e as Error);
     }
   }
 
   useEffect(() => {
-    oktaAuth.handleLoginRedirect().then(() => {
-      setRedirectComplete(true);
-    });
+    oktaAuth
+      .handleLoginRedirect()
+      .then(() => {
+        setRedirectComplete(true);
+      })
+      .catch((e) => {
+        const error = e as Error;
+        // Only report if the error is not the parse error during the continuation redirects.
+        if (error.message !== 'Unable to parse a token from the url') {
+          console.error(error.message);
+        }
+      });
   }, [oktaAuth]);
 
   useEffect(() => {
