@@ -1,10 +1,15 @@
+import { useContext } from 'react';
 import './Banner.scss';
+import { SessionContext } from '@/login/Session';
+import { LOGOUT_PATH } from '@/login/login-helpers';
 
 export const Banner = () => {
   const launchDarklyEnvironment = import.meta.env['CAMS_LAUNCH_DARKLY_ENV'];
   const envHeaderClassName =
     'usa-banner__header ' +
     (launchDarklyEnvironment === 'production' ? '' : `${launchDarklyEnvironment}`);
+
+  const session = useContext(SessionContext);
 
   return (
     <section
@@ -32,6 +37,13 @@ export const Banner = () => {
                 <span className="environment-text">{launchDarklyEnvironment} ENVIRONMENT</span>
               </div>
             )}
+            <div className="grid-col-2 usa-banner__header-text">
+              {session.user && (
+                <span className=" environment-text">
+                  {session.user?.name ?? 'UNKNOWN'} <a href={LOGOUT_PATH}>logout</a>
+                </span>
+              )}
+            </div>
           </div>
         </header>
       </div>
