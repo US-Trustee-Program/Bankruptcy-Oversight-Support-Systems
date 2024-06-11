@@ -2,7 +2,7 @@ import { PropsWithChildren, useEffect } from 'react';
 import { useOktaAuth } from '@okta/okta-react';
 import { AccessDenied } from '@/login/AccessDenied';
 import { OktaSession } from './OktaSession';
-import { Interstitial } from '@/login/interstitial';
+import { Interstitial } from '@/login/Interstitial';
 
 export type OktaLoginProps = PropsWithChildren;
 
