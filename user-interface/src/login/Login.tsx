@@ -1,5 +1,4 @@
 import React, { PropsWithChildren } from 'react';
-import { useLocation } from 'react-router-dom';
 import { AzureLogin } from './providers/azure/AzureLogin';
 import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
@@ -7,10 +6,10 @@ import { Session } from './Session';
 import {
   CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
-  LOGIN_LOCAL_STORAGE_SESSION_KEY,
   getLoginProviderFromEnv,
   LoginProvider,
   CamsSession,
+  LOGIN_LOCAL_STORAGE_SESSION_KEY,
 } from './login-helpers';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
@@ -23,22 +22,30 @@ export type LoginProps = PropsWithChildren & {
 
 export default function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
-  const location = useLocation();
 
-  const isContinuation = location.pathname === '/login-continuation';
+  function getCurrentSession() {
+    let session: CamsSession | null = null;
+    if (window.localStorage) {
+      const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+      if (sessionJson) {
+        session = JSON.parse(sessionJson);
+        if (session?.provider !== provider) {
+          window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+          session = null;
+        }
+      }
+    }
+    return session;
+  }
 
-  let session: CamsSession | null = null;
-  let user: CamsUser | null = null;
-  if (!isContinuation && window.localStorage) {
-    const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-    if (sessionJson) {
-      session = JSON.parse(sessionJson);
-      user = session?.user ?? null;
-    }
-    if (session?.provider !== provider) {
-      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-      user = null;
-    }
+  // Skip to session and continue if already logged in.
+  const session = getCurrentSession();
+  if (session && session.provider && session.user) {
+    return (
+      <Session provider={session.provider!} user={session.user!}>
+        {props.children}
+      </Session>
+    );
   }
 
   const errorMessage =
@@ -56,7 +63,7 @@ export default function Login(props: LoginProps): React.ReactNode {
       providerComponent = <OktaLogin>{props.children}</OktaLogin>;
       break;
     case 'mock':
-      providerComponent = <MockLogin user={user}>{props.children}</MockLogin>;
+      providerComponent = <MockLogin user={props.user ?? null}>{props.children}</MockLogin>;
       break;
     case 'none':
       providerComponent = (
@@ -66,7 +73,6 @@ export default function Login(props: LoginProps): React.ReactNode {
       );
       break;
     default:
-      // TODO: Log this to app insights.
       providerComponent = <BadConfiguration message={errorMessage} />;
   }
 
