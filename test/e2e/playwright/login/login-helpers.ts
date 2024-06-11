@@ -16,7 +16,10 @@ async function mockLogin(page: Page) {
   await page.getByTestId('button-login-modal-submit-button').click();
   await expect(page.getByTestId('modal-content-login-modal')).not.toBeVisible();
 }
-
+async function oktaLogin(page: Page) {
+  await page.goto(LOGIN_PATH);
+  await page.getByTestId('button-auo-confirm').click();
+}
 async function logout(page: Page) {
   await page.goto(LOGOUT_PATH);
   await expect(page.getByTestId('alert-message')).toBeVisible();
@@ -31,9 +34,13 @@ export function usingAuthenticationProvider() {
     case 'none':
       loginFunction = noOp;
       break;
+    case 'okta':
+      loginFunction = oktaLogin;
+      break;
     case 'mock':
     default:
       loginFunction = mockLogin;
+      break;
   }
   return {
     login: loginFunction,
