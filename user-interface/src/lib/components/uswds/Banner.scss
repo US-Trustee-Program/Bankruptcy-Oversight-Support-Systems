@@ -13,14 +13,22 @@
     color: black;
   }
 
-  .environment-text {
-    font-weight: bold;
-    text-transform: uppercase;
-    float: inline-end;
-  }
+  .flex-box {
+    display: flex;
+    justify-content: space-between;
 
-  .header-flag-container {
-    width: fit-content;
-    display: inline-block;
+    .header-flag-container {
+      display: inline-block;
+    }
+
+    .environment-text {
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .login-info {
+      text-align: right;
+    }
   }
 }
