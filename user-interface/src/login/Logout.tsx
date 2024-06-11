@@ -3,6 +3,7 @@ import { getLoginProviderFromEnv } from './login-helpers';
 import { MockLogout } from './providers/mock/MockLogout';
 import { SessionEnd } from './SessionEnd';
 import { OktaLogout } from './providers/okta/OktaLogout';
+import { OktaProvider } from './providers/okta/OktaProvider';
 
 export function Logout() {
   const provider = getLoginProviderFromEnv();
@@ -12,7 +13,11 @@ export function Logout() {
       providerComponent = <AzureLogout />;
       break;
     case 'okta':
-      providerComponent = <OktaLogout />;
+      providerComponent = (
+        <OktaProvider>
+          <OktaLogout />
+        </OktaProvider>
+      );
       break;
     case 'mock':
       providerComponent = <MockLogout />;

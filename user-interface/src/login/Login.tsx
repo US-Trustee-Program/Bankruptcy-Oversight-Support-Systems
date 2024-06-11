@@ -13,6 +13,7 @@ import {
 } from './login-helpers';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
+import { OktaProvider } from './providers/okta/OktaProvider';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -60,7 +61,11 @@ export default function Login(props: LoginProps): React.ReactNode {
       providerComponent = <AzureLogin>{props.children}</AzureLogin>;
       break;
     case 'okta':
-      providerComponent = <OktaLogin>{props.children}</OktaLogin>;
+      providerComponent = (
+        <OktaProvider>
+          <OktaLogin>{props.children}</OktaLogin>
+        </OktaProvider>
+      );
       break;
     case 'mock':
       providerComponent = <MockLogin user={props.user ?? null}>{props.children}</MockLogin>;

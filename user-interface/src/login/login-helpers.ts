@@ -5,9 +5,15 @@ export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 
 export const LOGIN_PATH = '/login';
 export const LOGIN_CONTINUE_PATH = '/login-continue';
-export const LOGOUT_PATH = '/logout';
 export const LOGIN_SUCCESS_PATH = '/';
-export const AUTHENTICATION_PATHS = [LOGIN_PATH, LOGIN_CONTINUE_PATH, LOGOUT_PATH];
+export const LOGOUT_PATH = '/logout';
+export const LOGOUT_SESSION_END_PATH = '/session-end';
+export const AUTHENTICATION_PATHS = [
+  LOGIN_PATH,
+  LOGIN_CONTINUE_PATH,
+  LOGOUT_PATH,
+  LOGOUT_SESSION_END_PATH,
+];
 
 export type CamsUser = {
   name: string;
