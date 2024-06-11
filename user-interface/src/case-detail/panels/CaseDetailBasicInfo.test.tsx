@@ -20,6 +20,7 @@ const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
   override: {
     caseId: TEST_CASE_ID,
+    chapter: '15',
     judgeName: TEST_JUDGE_NAME,
     assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
     debtorAttorney: TEST_DEBTOR_ATTORNEY,
