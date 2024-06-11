@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import './Banner.scss';
 import { SessionContext } from '@/login/Session';
 import { LOGOUT_PATH } from '@/login/login-helpers';
+import Icon from './Icon';
 
 export const Banner = () => {
   const launchDarklyEnvironment = import.meta.env['CAMS_LAUNCH_DARKLY_ENV'];
@@ -22,7 +23,7 @@ export const Banner = () => {
             <div className="header-flag-container">
               <img
                 aria-hidden="true"
-                className="usa-banner__header-flag"
+                className="usa-banner__header-flag banner-image"
                 src="/assets/styles/img/us_flag_small.png"
                 alt=""
               />
@@ -38,9 +39,15 @@ export const Banner = () => {
 
             <div className="login-info">
               {session.user && (
-                <span>
-                  {session.user?.name ?? 'UNKNOWN'} <a href={LOGOUT_PATH}>logout</a>
-                </span>
+                <>
+                  <span className="user-icon">
+                    <Icon name="person"></Icon>
+                  </span>
+                  <span className="user-name">{session.user?.name ?? 'UNKNOWN'} </span>
+                  <span className="logout-link">
+                    <a href={LOGOUT_PATH}>logout</a>
+                  </span>
+                </>
               )}
             </div>
           </div>
