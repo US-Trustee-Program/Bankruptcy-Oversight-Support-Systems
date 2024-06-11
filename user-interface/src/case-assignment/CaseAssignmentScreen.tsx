@@ -55,7 +55,7 @@ export const CaseAssignment = () => {
   const fetchCases = async () => {
     isFetching = true;
     await api
-      .get<CaseBasics[]>('/cases', { divisionCodes: ['081'] })
+      .get<CaseBasics[]>('/cases', { divisionCodes: ['081'], chapters: '15' })
       .then((res) => {
         const caseList = res.data;
         caseList.forEach((bCase) => {
