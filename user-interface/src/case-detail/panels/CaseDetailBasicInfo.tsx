@@ -81,16 +81,18 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           <div className="assigned-staff-information padding-bottom-4 case-card">
             <h3>
               Assigned Staff{' '}
-              <ToggleModalButton
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                modalId={'assignmentModalId'}
-                toggleAction={'open'}
-                modalRef={assignmentModalRef}
-                toggleProps={{ bCase: caseDetail }}
-                ariaLabel="Edit assigned staff."
-              >
-                <Icon name="edit" />
-              </ToggleModalButton>
+              {caseDetail.chapter === '15' && (
+                <ToggleModalButton
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  modalId={'assignmentModalId'}
+                  toggleAction={'open'}
+                  modalRef={assignmentModalRef}
+                  toggleProps={{ bCase: caseDetail }}
+                  ariaLabel="Edit assigned staff."
+                >
+                  <Icon name="edit" />
+                </ToggleModalButton>
+              )}
             </h3>
             <div className="assigned-staff-list">
               {caseDetail.regionId && (
