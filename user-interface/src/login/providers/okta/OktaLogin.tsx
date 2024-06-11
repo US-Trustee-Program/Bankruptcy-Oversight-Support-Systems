@@ -9,7 +9,7 @@ import { BadConfiguration } from '@/login/BadConfiguration';
 
 export type OktaLoginProps = PropsWithChildren;
 
-export function OktaLogin(props: OktaLoginProps): React.ReactNode {
+export function OktaLogin(props: OktaLoginProps) {
   const authConfigJson = import.meta.env[LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME];
   if (!authConfigJson) return <BadConfiguration message="Missing authentication configuration" />;
 
@@ -30,6 +30,7 @@ export function OktaLogin(props: OktaLoginProps): React.ReactNode {
     </Security>
   );
 }
+
 function OktaUnauthenticated(props: PropsWithChildren) {
   const { oktaAuth, authState } = useOktaAuth();
 

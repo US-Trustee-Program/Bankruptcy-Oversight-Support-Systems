@@ -9,35 +9,41 @@ export type OktaSessionProps = PropsWithChildren;
 
 export function OktaSession(props: OktaSessionProps) {
   const [oktaUser, setOktaUser] = useState<UserClaims | null>(null);
+  const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
 
   const { oktaAuth, authState } = useOktaAuth();
 
   async function getCurrentUser() {
-    const user = await oktaAuth.getUser();
-    setOktaUser(user);
-    console.log(oktaUser);
+    try {
+      const user = await oktaAuth.getUser();
+      setOktaUser(user);
+      console.log(oktaUser);
+    } catch (e) {
+      setCallbackError(e as Error);
+    }
   }
 
   useEffect(() => {
-    if (location.search) {
-      oktaAuth.handleLoginRedirect().catch((e) => {
-        setCallbackError(e);
-      });
-    } else {
-      getCurrentUser();
-    }
+    oktaAuth.handleLoginRedirect().then(() => {
+      setRedirectComplete(true);
+    });
   }, [oktaAuth]);
+
+  useEffect(() => {
+    if (redirectComplete && authState?.isAuthenticated) getCurrentUser();
+  }, [redirectComplete, authState]);
 
   if (authState?.error || callbackError) {
     return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
   }
 
-  if (!oktaUser) return <></>;
+  if (!redirectComplete && !oktaUser) return <div>Continue from Okta...</div>;
+  if (redirectComplete && !oktaUser) return <div>Get user information...</div>;
 
   // Map Okta user information to CAMS user
   const camsUser: CamsUser = {
-    name: oktaUser.name ?? oktaUser.email ?? 'UNKNOWN',
+    name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN',
   };
 
   return (
