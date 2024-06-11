@@ -2,7 +2,9 @@
   background-color: black;
   color: white;
 }
-
+a.usa-pagination__button.usa-current {
+  cursor: default;
+}
 a.usa-pagination__button {
   cursor: pointer;
 }
