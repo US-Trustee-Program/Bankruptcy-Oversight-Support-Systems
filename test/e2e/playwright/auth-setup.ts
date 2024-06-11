@@ -1,12 +1,12 @@
-import { test as setup } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 
 const authFile = 'playwright/.auth/user.json';
 const userName = process.env.OKTA_USER_NAME;
 const password = process.env.OKTA_PASSWORD;
-const oktaHost = process.env.OKTA_URL;
+const OKTA_HOST = 'https://dev-34608149.okta.com/';
 setup('authenticate', async ({ request }) => {
   // Send authentication request. Replace with your own.
-  await request.post(oktaHost, {
+  await request.post(OKTA_HOST, {
     data: {
       username: userName,
       password: password,
@@ -17,4 +17,5 @@ setup('authenticate', async ({ request }) => {
     },
   });
   await request.storageState({ path: authFile });
+  expect(authFile);
 });

@@ -6,9 +6,11 @@ import { usingAuthenticationProvider } from './login/login-helpers';
 const timeoutOption = { timeout: 30000 };
 
 const { login, logout } = usingAuthenticationProvider();
+const authFile = 'playwright/.auth/user.json';
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
+  test.use({ storageState: authFile });
 
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
@@ -20,7 +22,6 @@ test.describe('Consolidation Orders', () => {
       predicate: (e) => e.url().includes('api/offices'),
       timeout: 30000,
     });
-
     await login(page);
 
     await page.goto('/data-verification');
@@ -37,7 +38,7 @@ test.describe('Consolidation Orders', () => {
     await logout(page);
   });
 
-  test('should select correct consolidationType radio when approving a consolidation', async ({
+  test.only('should select correct consolidationType radio when approving a consolidation', async ({
     page,
   }) => {
     // get pending consolidation order id

@@ -3,6 +3,7 @@ require('dotenv').config();
 
 const LOGIN_PATH = '/login';
 const LOGOUT_PATH = '/logout';
+// const OKTA_HOST = 'https://dev-34608149.okta.com/';
 
 const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
 
@@ -19,6 +20,10 @@ async function mockLogin(page: Page) {
 async function oktaLogin(page: Page) {
   await page.goto(LOGIN_PATH);
   await page.getByTestId('button-auo-confirm').click();
+
+  // await page.getByLabel('Username or email address').fill(userName);
+  // await page.getByLabel('Password').fill(password);
+  // await page.getByRole('button', { name: 'Sign in' }).click();
 }
 async function logout(page: Page) {
   await page.goto(LOGOUT_PATH);
