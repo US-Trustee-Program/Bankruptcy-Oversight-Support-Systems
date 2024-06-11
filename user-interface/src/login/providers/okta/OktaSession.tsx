@@ -1,4 +1,5 @@
 import { AccessDenied } from '@/login/AccessDenied';
+import { Interstitial } from '@/login/interstitial';
 import { CamsUser } from '@/login/login-helpers';
 import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
@@ -46,8 +47,12 @@ export function OktaSession(props: OktaSessionProps) {
     return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
   }
 
-  if (!redirectComplete && !oktaUser) return <div>Continue from Okta...</div>;
-  if (redirectComplete && !oktaUser) return <div>Get user information...</div>;
+  if (!redirectComplete && !oktaUser) {
+    return <Interstitial message="Continue from Okta..."></Interstitial>;
+  }
+  if (redirectComplete && !oktaUser) {
+    return <Interstitial message="Get user information..."></Interstitial>;
+  }
 
   // Map Okta user information to CAMS user
   const camsUser: CamsUser = {
