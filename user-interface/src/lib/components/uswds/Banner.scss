@@ -3,7 +3,15 @@
     max-width: none;
   }
 
-  .development {
+  a, a:visited, a:hover {
+    color: rgb(27, 27, 27);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
+  .development, a.development:visited, a.development:hover {
     background-color: #419ce1;
     color: white;
   }
@@ -13,8 +21,9 @@
     color: black;
   }
 
-  .flex-box {
+  .header-container {
     position: relative;
+    min-height: 1rem;
 
     .header-flag-container {
       display: inline-block;
@@ -65,10 +74,6 @@
       .logout-link {
         position: relative;
         vertical-align: top;
-        a, a:visited, a:hover {
-          color: white;
-          text-decoration: none;
-        }
       }
     }
   }
