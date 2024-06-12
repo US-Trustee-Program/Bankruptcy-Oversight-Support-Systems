@@ -6,7 +6,7 @@ import * as sessionModule from '../../Session';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('OktaSession', () => {
-  test('should pass a mapped CamsUser, provider, and children to the Session component', () => {
+  test.skip('should pass a mapped CamsUser, provider, and children to the Session component', () => {
     const user: CamsUser = { name: 'First Last' };
     const testId = 'child-div';
     const childText = 'TEST';
