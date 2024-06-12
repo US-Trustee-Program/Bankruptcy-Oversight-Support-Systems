@@ -15,7 +15,7 @@ interface OrdersResponse {
   body: Array<Order>;
 }
 
-const { login, logout } = usingAuthenticationProvider();
+const { logout } = usingAuthenticationProvider();
 
 test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
@@ -26,8 +26,6 @@ test.describe('Transfer Orders', () => {
       async (response) => response.url().includes('api/order') && response.ok(),
       { timeout: 30000 },
     );
-
-    await login(page);
 
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();

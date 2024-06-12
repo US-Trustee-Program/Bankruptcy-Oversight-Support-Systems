@@ -5,7 +5,7 @@ import { usingAuthenticationProvider } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
 
-const { login, logout } = usingAuthenticationProvider();
+const { logout } = usingAuthenticationProvider();
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
@@ -20,8 +20,6 @@ test.describe('Consolidation Orders', () => {
       predicate: (e) => e.url().includes('api/offices'),
       timeout: 30000,
     });
-    await login(page);
-
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     await officesRequestPromise;
@@ -36,7 +34,7 @@ test.describe('Consolidation Orders', () => {
     await logout(page);
   });
 
-  test.only('should select correct consolidationType radio when approving a consolidation', async ({
+  test('should select correct consolidationType radio when approving a consolidation', async ({
     page,
   }) => {
     // get pending consolidation order id
