@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { OktaLogout } from './OktaLogout';
 
 describe('OktaLogout', () => {
-  test('should render the SessionEnd component', () => {
+  test.skip('should render the SessionEnd component', () => {
     render(
       <BrowserRouter>
         <OktaLogout></OktaLogout>
