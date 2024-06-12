@@ -19,11 +19,8 @@ async function mockLogin(page: Page) {
 }
 async function oktaLogin(page: Page) {
   await page.goto(LOGIN_PATH);
+  console.log('Storage State: ', page.context().storageState());
   await page.getByTestId('button-auo-confirm').click();
-
-  // await page.getByLabel('Username or email address').fill(userName);
-  // await page.getByLabel('Password').fill(password);
-  // await page.getByRole('button', { name: 'Sign in' }).click();
 }
 async function logout(page: Page) {
   await page.goto(LOGOUT_PATH);

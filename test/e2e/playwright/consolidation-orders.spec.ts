@@ -6,11 +6,9 @@ import { usingAuthenticationProvider } from './login/login-helpers';
 const timeoutOption = { timeout: 30000 };
 
 const { login, logout } = usingAuthenticationProvider();
-const authFile = 'playwright/.auth/user.json';
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
-  test.use({ storageState: authFile });
 
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
