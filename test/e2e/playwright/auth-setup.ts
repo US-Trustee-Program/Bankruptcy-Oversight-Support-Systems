@@ -6,7 +6,6 @@ const authFile = 'playwright/.auth/user.json';
 const OKTA_USER_NAME = process.env.OKTA_USER_NAME;
 const OKTA_PASSWORD = process.env.OKTA_PASSWORD;
 const TARGET_HOST = process.env.TARGET_HOST;
-const OKTA_URL = process.env.OKTA_URL;
 const LOGIN_PATH = '/login';
 
 setup('authenticate', async ({ page }) => {
@@ -28,11 +27,13 @@ async function mockLogin(page: Page) {
 async function oktaLogin(page: Page) {
   await page.goto(TARGET_HOST + LOGIN_PATH);
   await page.getByTestId('button-auo-confirm').click();
-  await page.waitForURL(OKTA_URL);
-  await page.locator('#okta-sign-in');
-  await page.locator('#okta-signin-username').fill(OKTA_USER_NAME);
-  await page.locator('#okta-signin-password').fill(OKTA_PASSWORD);
-  await page.locator('#okta-signin-submit').click();
+  await expect(page.locator('#okta-sign-in')).toBeVisible();
+  await page.locator('#input28').fill(OKTA_USER_NAME); //The selecors changed when we switched tenants?? find a better way for locators
+  await page.locator('#input36').fill(OKTA_PASSWORD);
+  await page.locator('.button-primary').click();
+  // await page.locator('#okta-signin-username').fill(OKTA_USER_NAME);
+  // await page.locator('#okta-signin-password').fill(OKTA_PASSWORD);
+  // await page.locator('#okta-signin-submit').click();
 
   await page.waitForURL(TARGET_HOST);
 
