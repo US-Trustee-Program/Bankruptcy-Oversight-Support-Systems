@@ -1,42 +1,61 @@
 import { test as setup } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
+require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
-const userName = process.env.OKTA_USER_NAME;
-const password = process.env.OKTA_PASSWORD;
-const localUrl = 'http://localhost:3000/';
-const OKTA_HOST = 'https://dev-34608149.okta.com';
+const OKTA_USER_NAME = process.env.OKTA_USER_NAME;
+const OKTA_PASSWORD = process.env.OKTA_PASSWORD;
+const TARGET_HOST = process.env.TARGET_HOST;
+const OKTA_URL = process.env.OKTA_URL;
+const LOGIN_PATH = '/login';
+
 setup('authenticate', async ({ page }) => {
-  // Send authentication request. Replace with your own.
+  const { login } = usingAuthenticationProvider();
+  await login(page);
+});
 
-  await page.goto(localUrl);
+async function noOp() {}
+
+async function mockLogin(page: Page) {
+  await page.goto(TARGET_HOST + LOGIN_PATH);
   await page.getByTestId('button-auo-confirm').click();
-  await page.screenshot();
-  await page.waitForURL(OKTA_HOST);
-  await page.locator('#okta-sign-in');
-  // await page.screenshot();
-  await page.locator('#okta-signin-username').fill(userName);
-  await page.locator('#okta-signin-password').fill(password);
-  await page.locator('#okta-signin-submit').click();
-  // Wait until the page receives the cookies.
-  //
-  // Sometimes login flow sets cookies in the process of several redirects.
-  // Wait for the final URL to ensure that the cookies are actually set.
-  await page.waitForURL(localUrl);
-  // Alternatively, you can wait until the page reaches a state where all cookies are set.
+  await expect(page.getByTestId('modal-content-login-modal')).toBeVisible();
+  await page.getByTestId('radio-role-0-click-target').click();
+  await page.getByTestId('button-login-modal-submit-button').click();
+  await expect(page.getByTestId('modal-content-login-modal')).not.toBeVisible();
+}
 
-  // End of authentication steps.
+async function oktaLogin(page: Page) {
+  await page.goto(TARGET_HOST + LOGIN_PATH);
+  await page.getByTestId('button-auo-confirm').click();
+  await page.waitForURL(OKTA_URL);
+  await page.locator('#okta-sign-in');
+  await page.locator('#okta-signin-username').fill(OKTA_USER_NAME);
+  await page.locator('#okta-signin-password').fill(OKTA_PASSWORD);
+  await page.locator('#okta-signin-submit').click();
+
+  await page.waitForURL(TARGET_HOST);
 
   await page.context().storageState({ path: authFile });
-  // await request.post(OKTA_HOST, {
-  //   data: {
-  //     username: userName,
-  //     password: password,
-  //     options: {
-  //       multiOptionalFactorEnroll: false,
-  //       warnBeforePasswordExpired: false,
-  //     },
-  //   },
-  // });
-  // await request.storageState({ path: authFile });
-  // expect(authFile);
-});
+  await expect(page.context().storageState({ path: authFile })).toBeDefined();
+}
+
+function usingAuthenticationProvider() {
+  let loginFunction;
+  const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
+  // TODO: Add new login functions as we add new providers.
+  switch (provider.toLowerCase()) {
+    case 'none':
+      loginFunction = noOp;
+      break;
+    case 'okta':
+      loginFunction = oktaLogin;
+      break;
+    case 'mock':
+      loginFunction = mockLogin;
+      break;
+  }
+  return {
+    login: loginFunction,
+  };
+}

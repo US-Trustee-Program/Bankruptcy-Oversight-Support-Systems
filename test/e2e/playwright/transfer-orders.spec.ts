@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
-import { usingAuthenticationProvider } from './login/login-helpers';
+import { logout } from './login/login-helpers';
 
 interface Order {
   id: string;
@@ -14,8 +14,6 @@ interface Order {
 interface OrdersResponse {
   body: Array<Order>;
 }
-
-const { logout } = usingAuthenticationProvider();
 
 test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
