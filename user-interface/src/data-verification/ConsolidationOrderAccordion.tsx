@@ -1,7 +1,7 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import {
   ConsolidationOrder,
@@ -11,7 +11,7 @@ import {
   ConsolidationType,
 } from '@common/cams/orders';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
+import { OfficeDetails } from '@common/cams/courts';
 import {
   ConsolidationOrderModal,
   ConfirmationModalImperative,
@@ -40,6 +40,8 @@ import {
   getCurrentLeadCaseId,
   getUniqueDivisionCodeOrUndefined,
 } from '@/data-verification/consolidation/consolidationOrderAccordion';
+import type { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
+import { useConsolidationStoreImpl } from '@/data-verification/consolidation/consolidationStoreImpl';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
@@ -61,7 +63,10 @@ export interface ConsolidationOrderAccordionProps {
 }
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
-  const { hidden, statusType, orderType, officesList, expandedId } = props;
+  // TODO: remove this explicit use of useConsolidationStoreImpl
+  const consolidationStore: ConsolidationStore = useConsolidationStoreImpl(props, []);
+
+  const { hidden, statusType, orderType, expandedId } = props;
 
   //========== REFS ==========
 
@@ -76,39 +81,20 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const substantiveRef = useRef<RadioRef>(null);
   const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
 
-  //========== STATE ==========
-
-  const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
-  const [filteredOfficesList] = useState<OfficeDetails[] | null>(
-    filterCourtByDivision(props.order.courtDivisionCode, officesList),
-  );
-  const [foundValidCaseNumber, setFoundValidCaseNumber] = useState<boolean>(false);
-  const [isConsolidationProcessing, setIsConsolidationProcessing] = useState<boolean>(false);
-  const [isDataEnhanced, setIsDataEnhanced] = useState<boolean>(false);
-  const [isValidatingLeadCaseNumber, setIsValidatingLeadCaseNumber] = useState<boolean>(false);
-  const [leadCaseId, setLeadCaseId] = useState<string>('');
-  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
-  const [leadCaseCourt, setLeadCaseCourt] = useState<string>('');
-  const [leadCaseNumber, setLeadCaseNumber] = useState<string>('');
-  const [leadCaseNumberError, setLeadCaseNumberError] = useState<string>('');
-  const [order, setOrder] = useState<ConsolidationOrder>(props.order);
-  const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
-  const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
-
   const genericApi = useGenericApi();
   const api2 = useApi2();
 
   //========== MISC FUNCTIONS ==========
 
   function clearLeadCase(): void {
-    setLeadCase(null);
-    setLeadCaseId('');
+    consolidationStore.setLeadCase(null);
+    consolidationStore.setLeadCaseId('');
     caseTableRef.current?.clearLeadCase();
     leadCaseNumberRef.current?.clearValue();
   }
 
   function clearSelectedCases(): void {
-    setSelectedCases([]);
+    consolidationStore.setSelectedCases([]);
     caseTableRef.current?.clearAllCheckboxes();
   }
 
@@ -118,13 +104,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function updateSubmitButtonsState() {
-    if (selectedCases.length) {
+    if (consolidationStore.selectedCases.length) {
       rejectButtonRef.current?.disableButton(false);
 
       approveButtonRef.current?.disableButton(
-        !isDataEnhanced ||
-          leadCaseId === '' ||
-          consolidationType === null ||
+        !consolidationStore.isDataEnhanced ||
+          consolidationStore.leadCaseId === '' ||
+          consolidationStore.consolidationType === null ||
           selectedCasesAreConsolidationCases(),
       );
     } else {
@@ -134,8 +120,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function selectedCasesAreConsolidationCases() {
-    return order.childCases.reduce((itDoes, bCase) => {
-      if (!selectedCases.includes(bCase)) {
+    return consolidationStore.order.childCases.reduce((itDoes, bCase) => {
+      if (!consolidationStore.selectedCases.includes(bCase)) {
         return itDoes;
       }
       return itDoes || !!bCase.associations?.length;
@@ -143,11 +129,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function setOrderWithDataEnhancement(order: ConsolidationOrder) {
-    setOrder({ ...order });
+    consolidationStore.setOrder({ ...order });
   }
 
   function updateAllSelections(caseList: ConsolidationOrderCase[]) {
-    setSelectedCases(caseList);
+    consolidationStore.setSelectedCases(caseList);
   }
 
   //========== HANDLERS ==========
@@ -155,19 +141,19 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function handleApproveButtonClick() {
     confirmationModalRef.current?.show({
       status: 'approved',
-      cases: selectedCases,
-      leadCase: leadCase,
-      consolidationType: consolidationType,
+      cases: consolidationStore.selectedCases,
+      leadCase: consolidationStore.leadCase,
+      consolidationType: consolidationStore.consolidationType,
     });
   }
 
   function handleClearInputs(): void {
     clearLeadCase();
     clearSelectedCases();
-    setLeadCaseNumber('');
-    setLeadCaseNumberError('');
-    setFoundValidCaseNumber(false);
-    setShowLeadCaseForm(false);
+    consolidationStore.setLeadCaseNumber('');
+    consolidationStore.setLeadCaseNumberError('');
+    consolidationStore.setFoundValidCaseNumber(false);
+    consolidationStore.setShowLeadCaseForm(false);
     jointAdministrationRef.current?.check(false);
     substantiveRef.current?.check(false);
     toggleLeadCaseFormRef.current?.setChecked(false);
@@ -187,23 +173,23 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   function handleIncludeCase(bCase: ConsolidationOrderCase) {
     let tempSelectedCases: ConsolidationOrderCase[];
-    if (selectedCases.includes(bCase)) {
-      tempSelectedCases = selectedCases.filter((aCase) => bCase !== aCase);
+    if (consolidationStore.selectedCases.includes(bCase)) {
+      tempSelectedCases = consolidationStore.selectedCases.filter((aCase) => bCase !== aCase);
     } else {
-      tempSelectedCases = [...selectedCases, bCase];
+      tempSelectedCases = [...consolidationStore.selectedCases, bCase];
     }
-    setSelectedCases(tempSelectedCases);
+    consolidationStore.setSelectedCases(tempSelectedCases);
     updateSubmitButtonsState();
   }
 
   async function handleLeadCaseInputChange(caseNumber?: string) {
     if (caseNumber) {
-      setLeadCaseNumber(caseNumber);
+      consolidationStore.setLeadCaseNumber(caseNumber);
     } else {
-      setLeadCaseNumber('');
-      setFoundValidCaseNumber(false);
-      setLeadCase(null);
-      setLeadCaseNumberError('');
+      consolidationStore.setLeadCaseNumber('');
+      consolidationStore.setFoundValidCaseNumber(false);
+      consolidationStore.setLeadCase(null);
+      consolidationStore.setLeadCaseNumberError('');
       approveButtonRef.current?.disableButton(true);
     }
   }
@@ -211,24 +197,24 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
     toggleLeadCaseFormRef.current?.setChecked(false);
     leadCaseNumberRef.current?.clearValue();
-    setShowLeadCaseForm(false);
-    setFoundValidCaseNumber(false);
+    consolidationStore.setShowLeadCaseForm(false);
+    consolidationStore.setFoundValidCaseNumber(false);
 
-    if (leadCaseId === bCase.caseId) {
-      setLeadCaseId('');
-      setLeadCase(null);
+    if (consolidationStore.leadCaseId === bCase.caseId) {
+      consolidationStore.setLeadCaseId('');
+      consolidationStore.setLeadCase(null);
     } else {
-      setLeadCaseId(bCase.caseId);
-      setLeadCase(bCase);
+      consolidationStore.setLeadCaseId(bCase.caseId);
+      consolidationStore.setLeadCase(bCase);
     }
   }
 
   async function handleOnExpand() {
     if (props.onExpand) {
-      props.onExpand(`order-list-${order.id}`);
+      props.onExpand(`order-list-${consolidationStore.order.id}`);
     }
-    if (!isDataEnhanced) {
-      for (const bCase of order.childCases) {
+    if (!consolidationStore.isDataEnhanced) {
+      for (const bCase of consolidationStore.order.childCases) {
         try {
           const assignmentsResponse = await api2.getCaseAssignments(bCase.caseId);
           bCase.attorneyAssignments = assignmentsResponse.data;
@@ -241,46 +227,54 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           // and don't set the attorney assignment for this specific case.
         }
       }
-      setOrderWithDataEnhancement(order);
-      setIsDataEnhanced(true);
+      setOrderWithDataEnhancement(consolidationStore.order);
+      consolidationStore.setIsDataEnhanced(true);
     }
   }
 
   function handleSelectConsolidationType(value: string): void {
-    setConsolidationType(value as ConsolidationType);
+    consolidationStore.setConsolidationType(value as ConsolidationType);
   }
 
   function handleSelectLeadCaseCourt(option: CamsSelectOptionList): void {
-    setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
+    consolidationStore.setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
   }
 
   function handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void {
     clearLeadCase();
-    setShowLeadCaseForm(ev.target.checked);
+    consolidationStore.setShowLeadCaseForm(ev.target.checked);
   }
 
   //========== USE EFFECTS ==========
 
   useEffect(() => {
     updateSubmitButtonsState();
-    if (isConsolidationProcessing) {
+    if (consolidationStore.isProcessing) {
       clearButtonRef.current?.disableButton(true);
     } else {
       clearButtonRef.current?.disableButton(false);
     }
-  }, [isConsolidationProcessing]);
+  }, [consolidationStore.isProcessing]);
 
   useEffect(() => {
     updateSubmitButtonsState();
-  }, [selectedCases, leadCaseId, isDataEnhanced, consolidationType]);
+  }, [
+    consolidationStore.selectedCases,
+    consolidationStore.leadCaseId,
+    consolidationStore.isDataEnhanced,
+    consolidationStore.consolidationType,
+  ]);
 
   useEffect(() => {
-    const currentLeadCaseId = getCurrentLeadCaseId({ leadCaseCourt, leadCaseNumber });
+    const currentLeadCaseId = getCurrentLeadCaseId({
+      leadCaseCourt: consolidationStore.leadCaseCourt,
+      leadCaseNumber: consolidationStore.leadCaseNumber,
+    });
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
       disableLeadCaseForm(true);
-      setIsValidatingLeadCaseNumber(true);
-      setLeadCaseNumberError('');
-      setLeadCaseId('');
+      consolidationStore.setIsValidatingLeadCaseNumber(true);
+      consolidationStore.setLeadCaseNumberError('');
+      consolidationStore.setLeadCaseId('');
       api2
         .getCaseSummary(currentLeadCaseId)
         .then((response) => {
@@ -324,29 +318,29 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 const message =
                   `Case ${getCaseNumber(caseSummary.caseId)} is a consolidated ` +
                   `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
-                setLeadCaseNumberError(message);
-                setIsValidatingLeadCaseNumber(false);
+                consolidationStore.setLeadCaseNumberError(message);
+                consolidationStore.setIsValidatingLeadCaseNumber(false);
                 disableLeadCaseForm(false);
-                setFoundValidCaseNumber(false);
+                consolidationStore.setFoundValidCaseNumber(false);
               } else if (previousConsolidationFacts.isAlreadyConsolidated) {
                 const message = `This case is already part of a consolidation.`;
-                setLeadCaseNumberError(message);
-                setIsValidatingLeadCaseNumber(false);
+                consolidationStore.setLeadCaseNumberError(message);
+                consolidationStore.setIsValidatingLeadCaseNumber(false);
                 disableLeadCaseForm(false);
-                setFoundValidCaseNumber(false);
+                consolidationStore.setFoundValidCaseNumber(false);
               } else {
                 api2.getCaseAssignments(currentLeadCaseId).then((response) => {
                   const attorneys = response.data;
-                  setLeadCase({
+                  consolidationStore.setLeadCase({
                     ...caseSummary,
                     docketEntries: [],
-                    orderDate: order.orderDate,
+                    orderDate: consolidationStore.order.orderDate,
                     attorneyAssignments: attorneys,
                     associations,
                   });
-                  setLeadCaseId(currentLeadCaseId);
-                  setIsValidatingLeadCaseNumber(false);
-                  setFoundValidCaseNumber(true);
+                  consolidationStore.setLeadCaseId(currentLeadCaseId);
+                  consolidationStore.setIsValidatingLeadCaseNumber(false);
+                  consolidationStore.setFoundValidCaseNumber(true);
                   disableLeadCaseForm(false);
                 });
               }
@@ -354,10 +348,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             .catch((error) => {
               const message =
                 'Cannot verify lead case is not part of another consolidation. ' + error.message;
-              setLeadCaseNumberError(message);
-              setIsValidatingLeadCaseNumber(false);
+              consolidationStore.setLeadCaseNumberError(message);
+              consolidationStore.setIsValidatingLeadCaseNumber(false);
               disableLeadCaseForm(false);
-              setFoundValidCaseNumber(false);
+              consolidationStore.setFoundValidCaseNumber(false);
             });
         })
         .catch((error) => {
@@ -366,34 +360,40 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           const message = isNotFound
             ? "We couldn't find a case with that number."
             : 'Cannot verify lead case number.';
-          setLeadCaseNumberError(message);
-          setIsValidatingLeadCaseNumber(false);
+          consolidationStore.setLeadCaseNumberError(message);
+          consolidationStore.setIsValidatingLeadCaseNumber(false);
           disableLeadCaseForm(false);
-          setFoundValidCaseNumber(false);
+          consolidationStore.setFoundValidCaseNumber(false);
         });
     }
-  }, [leadCaseNumber, leadCaseCourt]);
+  }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
 
   //========== FORM SUBMISION ==========
 
   function approveConsolidation(action: ConfirmActionResults) {
-    if (action.status === 'approved' && leadCase && consolidationType) {
+    if (
+      action.status === 'approved' &&
+      consolidationStore.leadCase &&
+      consolidationStore.consolidationType
+    ) {
       const data: ConsolidationOrderActionApproval = {
-        ...order,
-        consolidationType,
-        approvedCases: selectedCases
+        ...consolidationStore.order,
+        consolidationType: consolidationStore.consolidationType,
+        approvedCases: consolidationStore.selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => caseId !== leadCase.caseId),
-        leadCase,
+          .filter((caseId) =>
+            consolidationStore.leadCase ? caseId !== consolidationStore.leadCase.caseId : false,
+          ),
+        leadCase: consolidationStore.leadCase,
       };
 
-      setIsConsolidationProcessing(true);
+      consolidationStore.setIsProcessing(true);
       genericApi
         .put<ConsolidationOrder[]>('/consolidations/approve', data)
         .then((response) => {
           const newOrders = response.data;
           const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
-          setIsConsolidationProcessing(false);
+          consolidationStore.setIsProcessing(false);
           props.onOrderUpdate(
             {
               message: `Consolidation to lead case ${getCaseNumber(approvedOrder.leadCase?.caseId)} in ${
@@ -403,11 +403,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               timeOut: 8,
             },
             newOrders,
-            order,
+            consolidationStore.order,
           );
         })
         .catch((_reason) => {
-          setIsConsolidationProcessing(false);
+          consolidationStore.setIsProcessing(false);
           props.onOrderUpdate({
             message: genericErrorMessage,
             type: UswdsAlertStyle.Error,
@@ -420,17 +420,17 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   function rejectConsolidation(action: ConfirmActionResults) {
     if (action.status === 'rejected') {
       const data: ConsolidationOrderActionRejection = {
-        ...order,
-        rejectedCases: selectedCases.map((bCase) => bCase.caseId),
+        ...consolidationStore.order,
+        rejectedCases: consolidationStore.selectedCases.map((bCase) => bCase.caseId),
         reason: action.rejectionReason,
       };
 
-      setIsConsolidationProcessing(true);
+      consolidationStore.setIsProcessing(true);
       genericApi
         .put<ConsolidationOrder[]>('/consolidations/reject', data)
         .then((response) => {
           const newOrders = response.data;
-          setIsConsolidationProcessing(false);
+          consolidationStore.setIsProcessing(false);
           props.onOrderUpdate(
             {
               message: `Rejection of consolidation order was successful.`,
@@ -438,11 +438,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               timeOut: 8,
             },
             newOrders,
-            order,
+            consolidationStore.order,
           );
         })
         .catch((_reason) => {
-          setIsConsolidationProcessing(false);
+          consolidationStore.setIsProcessing(false);
           props.onOrderUpdate({
             message: genericErrorMessage,
             type: UswdsAlertStyle.Error,
@@ -456,8 +456,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   return (
     <Accordion
-      key={order.id}
-      id={`order-list-${order.id}`}
+      key={consolidationStore.order.id}
+      id={`order-list-${consolidationStore.order.id}`}
       expandedId={expandedId}
       onExpand={handleOnExpand}
       onCollapse={handleClearInputs}
@@ -465,37 +465,40 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     >
       <section
         className="accordion-heading grid-row grid-gap-lg"
-        data-testid={`accordion-heading-${order.id}`}
+        data-testid={`accordion-heading-${consolidationStore.order.id}`}
       >
-        <div className="grid-col-6 text-no-wrap" aria-label={`Court district ${order.courtName}`}>
-          {order.courtName}
+        <div
+          className="grid-col-6 text-no-wrap"
+          aria-label={`Court district ${consolidationStore.order.courtName}`}
+        >
+          {consolidationStore.order.courtName}
         </div>
         <div
           className="grid-col-2 text-no-wrap"
           title="Order Filed"
-          aria-label={`Order Filed ${formatDate(order.orderDate)}`}
+          aria-label={`Order Filed ${formatDate(consolidationStore.order.orderDate)}`}
         >
-          {formatDate(order.orderDate)}
+          {formatDate(consolidationStore.order.orderDate)}
         </div>
         <div className="grid-col-2 order-type text-no-wrap">
-          <span aria-label={`Event type ${orderType.get(order.orderType)}`}>
-            {orderType.get(order.orderType)}
+          <span aria-label={`Event type ${orderType.get(consolidationStore.order.orderType)}`}>
+            {orderType.get(consolidationStore.order.orderType)}
           </span>
         </div>
         <div className="grid-col-2 order-status text-no-wrap">
           <span
-            className={order.status}
-            aria-label={`Event status ${statusType.get(order.status)}`}
+            className={consolidationStore.order.status}
+            aria-label={`Event status ${statusType.get(consolidationStore.order.status)}`}
           >
-            {statusType.get(order.status)}
+            {statusType.get(consolidationStore.order.status)}
           </span>
         </div>
       </section>
       <>
-        {order.status === 'pending' && (
+        {consolidationStore.order.status === 'pending' && (
           <section
             className="accordion-content order-form"
-            data-testid={`accordion-content-${order.id}`}
+            data-testid={`accordion-content-${consolidationStore.order.id}`}
           >
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
@@ -513,7 +516,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   required={true}
                 >
                   <Radio
-                    id={`joint-admin-${order.id}`}
+                    id={`joint-admin-${consolidationStore.order.id}`}
                     name="consolidation-type"
                     label="Joint Administration"
                     value="administrative"
@@ -522,7 +525,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     ref={jointAdministrationRef}
                   />
                   <Radio
-                    id={`substantive-${order.id}`}
+                    id={`substantive-${consolidationStore.order.id}`}
                     name="consolidation-type"
                     label="Substantive Consolidation"
                     value="substantive"
@@ -537,12 +540,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <ConsolidationCaseTable
-                  id={`case-list-${order.id}`}
-                  data-testid={`${order.id}-case-list`}
-                  cases={order.childCases}
+                  id={`case-list-${consolidationStore.order.id}`}
+                  data-testid={`${consolidationStore.order.id}-case-list`}
+                  cases={consolidationStore.order.childCases}
                   onSelect={handleIncludeCase}
                   updateAllSelections={updateAllSelections}
-                  isDataEnhanced={isDataEnhanced}
+                  isDataEnhanced={consolidationStore.isDataEnhanced}
                   ref={caseTableRef}
                   onMarkLead={handleMarkLeadCase}
                 ></ConsolidationCaseTable>
@@ -551,39 +554,43 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             </div>
             <div
               className="lead-case-form grid-row grid-gap-lg"
-              data-testid={`lead-case-form-${order.id}`}
+              data-testid={`lead-case-form-${consolidationStore.order.id}`}
             >
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <Checkbox
-                  id={`lead-case-form-checkbox-toggle-${order.id}`}
+                  id={`lead-case-form-checkbox-toggle-${consolidationStore.order.id}`}
                   className="lead-case-form-toggle"
                   onChange={handleToggleLeadCaseForm}
                   value=""
                   ref={toggleLeadCaseFormRef}
                   label="Lead Case Not Listed"
                 ></Checkbox>
-                {showLeadCaseForm && (
+                {consolidationStore.showLeadCaseForm && (
                   <section
-                    className={`lead-case-form-container lead-case-form-container-${order.id}`}
+                    className={`lead-case-form-container lead-case-form-container-${consolidationStore.order.id}`}
                   >
                     <h3>Enter lead case details:</h3>
                     <div className="lead-case-court-container">
                       <CamsSelect
                         id={'lead-case-court'}
                         required={true}
-                        options={getOfficeList(filteredOfficesList ?? props.officesList)}
+                        options={getOfficeList(
+                          consolidationStore.filteredOfficesList ?? props.officesList,
+                        )}
                         onChange={handleSelectLeadCaseCourt}
                         ref={leadCaseDivisionRef}
                         label="Select a court"
-                        value={getUniqueDivisionCodeOrUndefined(order.childCases)}
+                        value={getUniqueDivisionCodeOrUndefined(
+                          consolidationStore.order.childCases,
+                        )}
                         isSearchable={true}
                       />
                     </div>
                     <div className="lead-case-number-container">
                       <CaseNumberInput
-                        id={`lead-case-input-${order.id}`}
-                        data-testid={`lead-case-input-${order.id}`}
+                        id={`lead-case-input-${consolidationStore.order.id}`}
+                        data-testid={`lead-case-input-${consolidationStore.order.id}`}
                         className="usa-input"
                         onChange={handleLeadCaseInputChange}
                         allowPartialCaseNumber={false}
@@ -591,10 +598,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         label="Enter a case number"
                         ref={leadCaseNumberRef}
                       />
-                      {leadCaseNumberError ? (
+                      {consolidationStore.leadCaseNumberError ? (
                         <Alert
-                          id={`lead-case-number-alert-${order.id}`}
-                          message={leadCaseNumberError}
+                          id={`lead-case-number-alert-${consolidationStore.order.id}`}
+                          message={consolidationStore.leadCaseNumberError}
                           type={UswdsAlertStyle.Error}
                           show={true}
                           slim={true}
@@ -602,18 +609,18 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         ></Alert>
                       ) : (
                         <LoadingSpinner
-                          id={`lead-case-number-loading-spinner-${order.id}`}
+                          id={`lead-case-number-loading-spinner-${consolidationStore.order.id}`}
                           caption="Verifying lead case number..."
                           height="40px"
-                          hidden={!isValidatingLeadCaseNumber}
+                          hidden={!consolidationStore.isValidatingLeadCaseNumber}
                         />
                       )}
-                      {foundValidCaseNumber && leadCase && (
+                      {consolidationStore.foundValidCaseNumber && consolidationStore.leadCase && (
                         <>
                           <h4>Selected Lead Case</h4>
                           <CaseTable
-                            id={`valid-case-number-found-${order.id}`}
-                            cases={[leadCase]}
+                            id={`valid-case-number-found-${consolidationStore.order.id}`}
+                            cases={[consolidationStore.leadCase]}
                           ></CaseTable>
                         </>
                       )}
@@ -627,13 +634,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
               <div className="grid-col-10 text-no-wrap float-right">
                 <LoadingSpinner
-                  id={`processing-consolidation-loading-spinner-${order.id}`}
+                  id={`processing-consolidation-loading-spinner-${consolidationStore.order.id}`}
                   caption="Updating..."
                   height="40px"
-                  hidden={!isConsolidationProcessing}
+                  hidden={!consolidationStore.isProcessing}
                 />
                 <Button
-                  id={`accordion-cancel-button-${order.id}`}
+                  id={`accordion-cancel-button-${consolidationStore.order.id}`}
                   onClick={handleClearInputs}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
                   className="unstyled-button"
@@ -642,12 +649,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   Clear
                 </Button>
                 <Button
-                  id={`accordion-reject-button-${order.id}`}
+                  id={`accordion-reject-button-${consolidationStore.order.id}`}
                   onClick={() =>
                     confirmationModalRef.current?.show({
                       status: 'rejected',
-                      cases: selectedCases,
-                      leadCase: leadCase,
+                      cases: consolidationStore.selectedCases,
+                      leadCase: consolidationStore.leadCase,
                     })
                   }
                   uswdsStyle={UswdsButtonStyle.Outline}
@@ -657,7 +664,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   Reject
                 </Button>
                 <Button
-                  id={`accordion-approve-button-${order.id}`}
+                  id={`accordion-approve-button-${consolidationStore.order.id}`}
                   onClick={handleApproveButtonClick}
                   disabled={true}
                   ref={approveButtonRef}
@@ -669,16 +676,16 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             </div>
             <ConsolidationOrderModal
               ref={confirmationModalRef}
-              id={`confirmation-modal-${order.id}`}
+              id={`confirmation-modal-${consolidationStore.order.id}`}
               onCancel={() => {}}
               onConfirm={handleConfirmAction}
             ></ConsolidationOrderModal>
           </section>
         )}
-        {order.status === 'approved' && (
+        {consolidationStore.order.status === 'approved' && (
           <section
             className="accordion-content order-form"
-            data-testid={`accordion-content-${order.id}`}
+            data-testid={`accordion-content-${consolidationStore.order.id}`}
           >
             <div className="grid-row grid-gap-lg consolidation-text">
               <div className="grid-col-1"></div>
@@ -686,11 +693,11 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 Consolidated the following cases to lead case{' '}
                 <CaseNumber
                   data-testid={'lead-case-number'}
-                  caseId={order.leadCase!.caseId}
+                  caseId={consolidationStore.order.leadCase!.caseId}
                   renderAs="link"
                   openLinkIn="new-window"
                 ></CaseNumber>{' '}
-                {order.leadCase?.caseTitle}.
+                {consolidationStore.order.leadCase?.caseTitle}.
               </div>
               <div className="grid-col-1"></div>
             </div>
@@ -698,31 +705,31 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <CaseTable
-                  id={`order-${order.id}-child-cases`}
-                  cases={order.childCases}
+                  id={`order-${consolidationStore.order.id}-child-cases`}
+                  cases={consolidationStore.order.childCases}
                 ></CaseTable>
               </div>
               <div className="grid-col-1"></div>
             </div>
           </section>
         )}
-        {order.status === 'rejected' && (
+        {consolidationStore.order.status === 'rejected' && (
           <section
             className="accordion-content order-form"
-            data-testid={`accordion-content-${order.id}`}
+            data-testid={`accordion-content-${consolidationStore.order.id}`}
           >
             <div className="grid-row grid-gap-lg consolidation-text">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 Rejected the consolidation of the cases below
-                {order.reason && order.reason.length && (
+                {consolidationStore.order.reason && consolidationStore.order.reason.length && (
                   <>
                     {' '}
                     for the following reason:
-                    <blockquote>{order.reason}</blockquote>
+                    <blockquote>{consolidationStore.order.reason}</blockquote>
                   </>
                 )}
-                {!order.reason && <>.</>}
+                {!consolidationStore.order.reason && <>.</>}
               </div>
               <div className="grid-col-1"></div>
             </div>
@@ -730,10 +737,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <ConsolidationCaseTable
-                  id={`${order.id}-case-list`}
-                  data-testid={`${order.id}-case-list`}
-                  cases={order.childCases}
-                  isDataEnhanced={isDataEnhanced}
+                  id={`${consolidationStore.order.id}-case-list`}
+                  data-testid={`${consolidationStore.order.id}-case-list`}
+                  cases={consolidationStore.order.childCases}
+                  isDataEnhanced={consolidationStore.isDataEnhanced}
                 ></ConsolidationCaseTable>
               </div>
               <div className="grid-col-1"></div>
