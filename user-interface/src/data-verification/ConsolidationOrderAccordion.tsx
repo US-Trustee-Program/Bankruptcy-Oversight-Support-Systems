@@ -1,8 +1,8 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
-import { ChangeEvent, useEffect, useRef } from 'react';
-import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
+import { ChangeEvent, useEffect } from 'react';
+import { ConsolidationCaseTable } from './ConsolidationCasesTable';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -10,11 +10,10 @@ import {
   ConsolidationOrderCase,
   ConsolidationType,
 } from '@common/cams/orders';
-import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { OfficeDetails } from '@common/cams/courts';
 import {
   ConsolidationOrderModal,
-  ConfirmationModalImperative,
   ConfirmActionResults,
 } from '@/data-verification/ConsolidationOrderModal';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -24,14 +23,13 @@ import './ConsolidationOrderAccordion.scss';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
-import Checkbox, { CheckboxRef } from '@/lib/components/uswds/Checkbox';
+import Checkbox from '@/lib/components/uswds/Checkbox';
 import CamsSelect, {
   CamsSelectOptionList,
   SearchableSelectOption,
 } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
@@ -42,6 +40,9 @@ import {
 } from '@/data-verification/consolidation/consolidationOrderAccordion';
 import type { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { useConsolidationStoreImpl } from '@/data-verification/consolidation/consolidationStoreImpl';
+import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
+import { useConsolidationControlsImpl } from '@/data-verification/consolidation/consolidationControlsImpl';
+import { consolidationUseCase } from '@/data-verification/consolidation/consolidationsUseCase';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
@@ -65,81 +66,19 @@ export interface ConsolidationOrderAccordionProps {
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   // TODO: remove this explicit use of useConsolidationStoreImpl
   const consolidationStore: ConsolidationStore = useConsolidationStoreImpl(props, []);
+  // TODO: remove this explicit use of useConsolidationControlsImpl
+  const consolidationControls: ConsolidationControls = useConsolidationControlsImpl();
+  const useCase = consolidationUseCase(consolidationStore, consolidationControls);
 
   const { hidden, statusType, orderType, expandedId } = props;
-
-  //========== REFS ==========
-
-  const caseTableRef = useRef<OrderTableImperative>(null);
-  const clearButtonRef = useRef<ButtonRef>(null);
-  const approveButtonRef = useRef<ButtonRef>(null);
-  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
-  const jointAdministrationRef = useRef<RadioRef>(null);
-  const leadCaseDivisionRef = useRef<InputRef>(null);
-  const leadCaseNumberRef = useRef<InputRef>(null);
-  const rejectButtonRef = useRef<ButtonRef>(null);
-  const substantiveRef = useRef<RadioRef>(null);
-  const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
 
   const genericApi = useGenericApi();
   const api2 = useApi2();
 
-  //========== MISC FUNCTIONS ==========
-
-  function clearLeadCase(): void {
-    consolidationStore.setLeadCase(null);
-    consolidationStore.setLeadCaseId('');
-    caseTableRef.current?.clearLeadCase();
-    leadCaseNumberRef.current?.clearValue();
-  }
-
-  function clearSelectedCases(): void {
-    consolidationStore.setSelectedCases([]);
-    caseTableRef.current?.clearAllCheckboxes();
-  }
-
-  function disableLeadCaseForm(disabled: boolean) {
-    leadCaseDivisionRef.current?.disable(disabled);
-    leadCaseNumberRef.current?.disable(disabled);
-  }
-
-  function updateSubmitButtonsState() {
-    if (consolidationStore.selectedCases.length) {
-      rejectButtonRef.current?.disableButton(false);
-
-      approveButtonRef.current?.disableButton(
-        !consolidationStore.isDataEnhanced ||
-          consolidationStore.leadCaseId === '' ||
-          consolidationStore.consolidationType === null ||
-          selectedCasesAreConsolidationCases(),
-      );
-    } else {
-      rejectButtonRef.current?.disableButton(true);
-      approveButtonRef.current?.disableButton(true);
-    }
-  }
-
-  function selectedCasesAreConsolidationCases() {
-    return consolidationStore.order.childCases.reduce((itDoes, bCase) => {
-      if (!consolidationStore.selectedCases.includes(bCase)) {
-        return itDoes;
-      }
-      return itDoes || !!bCase.associations?.length;
-    }, false);
-  }
-
-  function setOrderWithDataEnhancement(order: ConsolidationOrder) {
-    consolidationStore.setOrder({ ...order });
-  }
-
-  function updateAllSelections(caseList: ConsolidationOrderCase[]) {
-    consolidationStore.setSelectedCases(caseList);
-  }
-
   //========== HANDLERS ==========
-
+  // TODO: move more stuff into the use case
   function handleApproveButtonClick() {
-    confirmationModalRef.current?.show({
+    consolidationControls.confirmationModalRef.current?.show({
       status: 'approved',
       cases: consolidationStore.selectedCases,
       leadCase: consolidationStore.leadCase,
@@ -148,16 +87,16 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function handleClearInputs(): void {
-    clearLeadCase();
-    clearSelectedCases();
+    useCase.clearLeadCase();
+    useCase.clearSelectedCases();
     consolidationStore.setLeadCaseNumber('');
     consolidationStore.setLeadCaseNumberError('');
     consolidationStore.setFoundValidCaseNumber(false);
     consolidationStore.setShowLeadCaseForm(false);
-    jointAdministrationRef.current?.check(false);
-    substantiveRef.current?.check(false);
-    toggleLeadCaseFormRef.current?.setChecked(false);
-    updateSubmitButtonsState();
+    consolidationControls.jointAdministrationRef.current?.check(false);
+    consolidationControls.substantiveRef.current?.check(false);
+    consolidationControls.toggleLeadCaseFormRef.current?.setChecked(false);
+    useCase.updateSubmitButtonsState();
   }
 
   function handleConfirmAction(action: ConfirmActionResults): void {
@@ -179,7 +118,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       tempSelectedCases = [...consolidationStore.selectedCases, bCase];
     }
     consolidationStore.setSelectedCases(tempSelectedCases);
-    updateSubmitButtonsState();
+    useCase.updateSubmitButtonsState();
   }
 
   async function handleLeadCaseInputChange(caseNumber?: string) {
@@ -190,13 +129,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       consolidationStore.setFoundValidCaseNumber(false);
       consolidationStore.setLeadCase(null);
       consolidationStore.setLeadCaseNumberError('');
-      approveButtonRef.current?.disableButton(true);
+      consolidationControls.approveButtonRef.current?.disableButton(true);
     }
   }
 
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
-    toggleLeadCaseFormRef.current?.setChecked(false);
-    leadCaseNumberRef.current?.clearValue();
+    consolidationControls.toggleLeadCaseFormRef.current?.setChecked(false);
+    consolidationControls.leadCaseNumberRef.current?.clearValue();
     consolidationStore.setShowLeadCaseForm(false);
     consolidationStore.setFoundValidCaseNumber(false);
 
@@ -227,7 +166,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
           // and don't set the attorney assignment for this specific case.
         }
       }
-      setOrderWithDataEnhancement(consolidationStore.order);
+      useCase.setOrderWithDataEnhancement(consolidationStore.order);
       consolidationStore.setIsDataEnhanced(true);
     }
   }
@@ -241,23 +180,23 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }
 
   function handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void {
-    clearLeadCase();
+    useCase.clearLeadCase();
     consolidationStore.setShowLeadCaseForm(ev.target.checked);
   }
 
   //========== USE EFFECTS ==========
 
   useEffect(() => {
-    updateSubmitButtonsState();
+    useCase.updateSubmitButtonsState();
     if (consolidationStore.isProcessing) {
-      clearButtonRef.current?.disableButton(true);
+      consolidationControls.clearButtonRef.current?.disableButton(true);
     } else {
-      clearButtonRef.current?.disableButton(false);
+      consolidationControls.clearButtonRef.current?.disableButton(false);
     }
   }, [consolidationStore.isProcessing]);
 
   useEffect(() => {
-    updateSubmitButtonsState();
+    useCase.updateSubmitButtonsState();
   }, [
     consolidationStore.selectedCases,
     consolidationStore.leadCaseId,
@@ -271,7 +210,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       leadCaseNumber: consolidationStore.leadCaseNumber,
     });
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
-      disableLeadCaseForm(true);
+      useCase.disableLeadCaseForm(true);
       consolidationStore.setIsValidatingLeadCaseNumber(true);
       consolidationStore.setLeadCaseNumberError('');
       consolidationStore.setLeadCaseId('');
@@ -320,13 +259,13 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
                 consolidationStore.setLeadCaseNumberError(message);
                 consolidationStore.setIsValidatingLeadCaseNumber(false);
-                disableLeadCaseForm(false);
+                useCase.disableLeadCaseForm(false);
                 consolidationStore.setFoundValidCaseNumber(false);
               } else if (previousConsolidationFacts.isAlreadyConsolidated) {
                 const message = `This case is already part of a consolidation.`;
                 consolidationStore.setLeadCaseNumberError(message);
                 consolidationStore.setIsValidatingLeadCaseNumber(false);
-                disableLeadCaseForm(false);
+                useCase.disableLeadCaseForm(false);
                 consolidationStore.setFoundValidCaseNumber(false);
               } else {
                 api2.getCaseAssignments(currentLeadCaseId).then((response) => {
@@ -341,7 +280,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   consolidationStore.setLeadCaseId(currentLeadCaseId);
                   consolidationStore.setIsValidatingLeadCaseNumber(false);
                   consolidationStore.setFoundValidCaseNumber(true);
-                  disableLeadCaseForm(false);
+                  useCase.disableLeadCaseForm(false);
                 });
               }
             })
@@ -350,25 +289,25 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                 'Cannot verify lead case is not part of another consolidation. ' + error.message;
               consolidationStore.setLeadCaseNumberError(message);
               consolidationStore.setIsValidatingLeadCaseNumber(false);
-              disableLeadCaseForm(false);
+              useCase.disableLeadCaseForm(false);
               consolidationStore.setFoundValidCaseNumber(false);
             });
         })
         .catch((error) => {
-          // Brittle way to determine if we have encountred a 404...
+          // Brittle way to determine if we have encountered a 404...
           const isNotFound = (error.message as string).startsWith('404');
           const message = isNotFound
             ? "We couldn't find a case with that number."
             : 'Cannot verify lead case number.';
           consolidationStore.setLeadCaseNumberError(message);
           consolidationStore.setIsValidatingLeadCaseNumber(false);
-          disableLeadCaseForm(false);
+          useCase.disableLeadCaseForm(false);
           consolidationStore.setFoundValidCaseNumber(false);
         });
     }
   }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
 
-  //========== FORM SUBMISION ==========
+  //========== FORM SUBMISSION ==========
 
   function approveConsolidation(action: ConfirmActionResults) {
     if (
@@ -522,7 +461,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     value="administrative"
                     className="text-no-wrap"
                     onChange={handleSelectConsolidationType}
-                    ref={jointAdministrationRef}
+                    ref={consolidationControls.jointAdministrationRef}
                   />
                   <Radio
                     id={`substantive-${consolidationStore.order.id}`}
@@ -530,7 +469,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                     label="Substantive Consolidation"
                     value="substantive"
                     onChange={handleSelectConsolidationType}
-                    ref={substantiveRef}
+                    ref={consolidationControls.substantiveRef}
                   />
                 </RadioGroup>
               </div>
@@ -544,9 +483,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   data-testid={`${consolidationStore.order.id}-case-list`}
                   cases={consolidationStore.order.childCases}
                   onSelect={handleIncludeCase}
-                  updateAllSelections={updateAllSelections}
+                  updateAllSelections={useCase.updateAllSelections}
                   isDataEnhanced={consolidationStore.isDataEnhanced}
-                  ref={caseTableRef}
+                  ref={consolidationControls.caseTableRef}
                   onMarkLead={handleMarkLeadCase}
                 ></ConsolidationCaseTable>
               </div>
@@ -563,7 +502,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   className="lead-case-form-toggle"
                   onChange={handleToggleLeadCaseForm}
                   value=""
-                  ref={toggleLeadCaseFormRef}
+                  ref={consolidationControls.toggleLeadCaseFormRef}
                   label="Lead Case Not Listed"
                 ></Checkbox>
                 {consolidationStore.showLeadCaseForm && (
@@ -579,7 +518,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                           consolidationStore.filteredOfficesList ?? props.officesList,
                         )}
                         onChange={handleSelectLeadCaseCourt}
-                        ref={leadCaseDivisionRef}
+                        ref={consolidationControls.leadCaseDivisionRef}
                         label="Select a court"
                         value={getUniqueDivisionCodeOrUndefined(
                           consolidationStore.order.childCases,
@@ -596,7 +535,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                         allowPartialCaseNumber={false}
                         required={true}
                         label="Enter a case number"
-                        ref={leadCaseNumberRef}
+                        ref={consolidationControls.leadCaseNumberRef}
                       />
                       {consolidationStore.leadCaseNumberError ? (
                         <Alert
@@ -644,14 +583,14 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   onClick={handleClearInputs}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
                   className="unstyled-button"
-                  ref={clearButtonRef}
+                  ref={consolidationControls.clearButtonRef}
                 >
                   Clear
                 </Button>
                 <Button
                   id={`accordion-reject-button-${consolidationStore.order.id}`}
                   onClick={() =>
-                    confirmationModalRef.current?.show({
+                    consolidationControls.confirmationModalRef.current?.show({
                       status: 'rejected',
                       cases: consolidationStore.selectedCases,
                       leadCase: consolidationStore.leadCase,
@@ -659,7 +598,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   }
                   uswdsStyle={UswdsButtonStyle.Outline}
                   className="margin-right-2"
-                  ref={rejectButtonRef}
+                  ref={consolidationControls.rejectButtonRef}
                 >
                   Reject
                 </Button>
@@ -667,7 +606,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
                   id={`accordion-approve-button-${consolidationStore.order.id}`}
                   onClick={handleApproveButtonClick}
                   disabled={true}
-                  ref={approveButtonRef}
+                  ref={consolidationControls.approveButtonRef}
                 >
                   Verify
                 </Button>
@@ -675,7 +614,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
               <div className="grid-col-1"></div>
             </div>
             <ConsolidationOrderModal
-              ref={confirmationModalRef}
+              ref={consolidationControls.confirmationModalRef}
               id={`confirmation-modal-${consolidationStore.order.id}`}
               onCancel={() => {}}
               onConfirm={handleConfirmAction}
