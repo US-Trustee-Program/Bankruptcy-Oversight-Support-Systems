@@ -109,4 +109,3 @@ if [[ ${e2eCosmosDbExists} != 'true' && ${e2eCosmosDbExists} != true ]]; then
         -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
         -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
 fi
-
