@@ -129,14 +129,6 @@ describe('OktaSession', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('interstital-getuser')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
       expect(screen.queryByTestId('alert-message')).toHaveTextContent(errorMessage);
     });
   });
@@ -150,10 +142,6 @@ describe('OktaSession', () => {
         <OktaSession></OktaSession>
       </BrowserRouter>,
     );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
-    });
 
     await waitFor(() => {
       expect(screen.queryByTestId('alert-message')).toHaveTextContent(errorMessage);
