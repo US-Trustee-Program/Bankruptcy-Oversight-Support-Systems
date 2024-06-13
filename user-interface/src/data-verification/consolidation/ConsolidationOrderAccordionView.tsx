@@ -6,8 +6,6 @@ import Radio from '@/lib/components/uswds/Radio';
 import { ConsolidationCaseTable } from '@/data-verification/ConsolidationCasesTable';
 import Checkbox from '@/lib/components/uswds/Checkbox';
 import CamsSelect from '@/lib/components/CamsSelect';
-import { getOfficeList } from '@/data-verification/dataVerificationHelper';
-import { getUniqueDivisionCodeOrUndefined } from '@/data-verification/consolidation/consolidationOrderAccordion';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -139,13 +137,11 @@ export function ConsolidationOrderAccordion(viewModel: ConsolidationViewModel) {
                       <CamsSelect
                         id={'lead-case-court'}
                         required={true}
-                        options={getOfficeList(
-                          viewModel.filteredOfficesList ?? viewModel.officesList,
-                        )}
+                        options={viewModel.filteredOfficeRecords}
                         onChange={viewModel.handleSelectLeadCaseCourt}
                         ref={viewModel.leadCaseDivisionRef}
                         label="Select a court"
-                        value={getUniqueDivisionCodeOrUndefined(viewModel.order.childCases)}
+                        value={viewModel.divisionCode}
                         isSearchable={true}
                       />
                     </div>
