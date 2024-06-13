@@ -2,20 +2,26 @@ import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@
 import { OfficeDetails } from '@common/cams/courts';
 
 interface ConsolidationStore {
+  consolidationType: ConsolidationType | null;
+  setConsolidationType(val: ConsolidationType | null): void;
+
   filteredOfficesList: OfficeDetails[] | null;
-  setFilteredOfficesList(officesList: OfficeDetails[]): void;
+  setFilteredOfficesList(officesList: OfficeDetails[] | null): void;
+
+  foundValidCaseNumber: boolean;
+  setFoundValidCaseNumber(val: boolean): void;
 
   isProcessing: boolean;
   setIsProcessing(val: boolean): void;
 
   isDataEnhanced: boolean;
-  setIsDataEnhances(val: boolean): void;
+  setIsDataEnhanced(val: boolean): void;
 
   isValidatingLeadCaseNumber: boolean;
   setIsValidatingLeadCaseNumber(val: boolean): void;
 
-  leadCase: ConsolidationOrderCase;
-  setLeadCase(val: ConsolidationOrderCase): void;
+  leadCase: ConsolidationOrderCase | null;
+  setLeadCase(val: ConsolidationOrderCase | null): void;
 
   leadCaseCourt: string;
   setLeadCaseCourt(val: string): void;
@@ -32,14 +38,11 @@ interface ConsolidationStore {
   order: ConsolidationOrder;
   setOrder(order: ConsolidationOrder): void;
 
-  selectedCases: ConsolidationOrder[];
-  setSelectedCases(cases: ConsolidationOrder[]): void;
+  selectedCases: ConsolidationOrderCase[];
+  setSelectedCases(cases: ConsolidationOrderCase[]): void;
 
   showLeadCaseForm: boolean;
   setShowLeadCaseForm(val: boolean): void;
-
-  type: ConsolidationType | null;
-  setType(val: ConsolidationType | null): void;
 }
 
 export type { ConsolidationStore };
