@@ -7,6 +7,7 @@ import * as oktaLoginModule from './providers/okta/OktaLogin';
 import * as badConfigurationModule from './BadConfiguration';
 import * as libraryModule from '@/login/login-library';
 import * as mockLoginModule from './providers/mock/MockLogin';
+import * as sessionModule from './Session';
 // import { CamsUser } from '@/login/login-library';
 import Login from './Login';
 
@@ -23,19 +24,26 @@ describe('Login', () => {
     .mockImplementation((props: PropsWithChildren) => {
       return <>{props.children}</>;
     });
+
   const oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin').mockImplementation(() => {
     return <></>;
   });
+
   const mockLoginComponent = vi
     .spyOn(mockLoginModule, 'MockLogin')
     .mockImplementation((props: PropsWithChildren) => {
       return <> {props.children}</>;
     });
+
+  const sessionComponent = vi.spyOn(sessionModule, 'Session');
   const badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  // TODO: Write this test.
+  test('should check for an existing login and skip', () => {});
 
   test('should render OktaProvider for okta provider type', async () => {
     getLoginProviderFromEnv.mockReturnValueOnce('okta');
@@ -46,7 +54,6 @@ describe('Login', () => {
     );
 
     fireEvent.click(screen.getByTestId('button-auo-confirm'));
-    screen.debug();
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(oktaProviderComponent).toHaveBeenCalled();
     expect(oktaLoginComponent).toHaveBeenCalled();
@@ -59,21 +66,20 @@ describe('Login', () => {
         <Login>{children}</Login>
       </BrowserRouter>,
     );
-    screen.debug();
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(mockLoginComponent).toHaveBeenCalled();
   });
 
-  // test('should render Session for none provider type', async () => {
-  //   getLoginProviderFromEnv.mockReturnValueOnce('none');
-  //   render(
-  //     <BrowserRouter>
-  //       <Login></Login>
-  //     </BrowserRouter>,
-  //   );
-  //   expect(getLoginProviderFromEnv).toHaveBeenCalled();
-  //   expect(mockLoginComponent).toHaveBeenCalled();
-  // });
+  test('should render Session for none provider type', async () => {
+    getLoginProviderFromEnv.mockReturnValueOnce('none');
+    render(
+      <BrowserRouter>
+        <Login></Login>
+      </BrowserRouter>,
+    );
+    expect(getLoginProviderFromEnv).toHaveBeenCalled();
+    expect(sessionComponent).toHaveBeenCalled();
+  });
 
   test('should render BadConfiguration for other provider types', async () => {
     getLoginProviderFromEnv.mockReturnValueOnce('bogus');
