@@ -4,6 +4,7 @@ import { ConfirmationModalImperative } from '@/data-verification/ConsolidationOr
 import React from 'react';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
+import { ConsolidationOrderCase } from '@common/cams/orders';
 
 interface ConsolidationControls {
   approveButtonRef: React.RefObject<ButtonRef>;
@@ -16,6 +17,11 @@ interface ConsolidationControls {
   rejectButtonRef: React.RefObject<ButtonRef>;
   substantiveRef: React.RefObject<RadioRef>;
   toggleLeadCaseFormRef: React.RefObject<CheckboxRef>;
+
+  showConfirmationModal: (
+    selectedCases: ConsolidationOrderCase[],
+    leadCase: ConsolidationOrderCase,
+  ) => void;
 }
 
 export type { ConsolidationControls };

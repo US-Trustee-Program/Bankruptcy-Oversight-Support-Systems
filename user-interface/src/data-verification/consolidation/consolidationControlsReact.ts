@@ -5,6 +5,7 @@ import { ButtonRef } from '@/lib/components/uswds/Button';
 import { ConfirmationModalImperative } from '@/data-verification/ConsolidationOrderModal';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
+import { ConsolidationOrderCase } from '@common/cams/orders';
 
 export function useConsolidationControlsReact(): ConsolidationControls {
   const approveButtonRef = useRef<ButtonRef>(null);
@@ -18,6 +19,17 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   const substantiveRef = useRef<RadioRef>(null);
   const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
 
+  const showConfirmationModal = (
+    selectedCases: ConsolidationOrderCase[],
+    leadCase: ConsolidationOrderCase,
+  ) => {
+    confirmationModalRef.current?.show({
+      status: 'rejected',
+      cases: selectedCases,
+      leadCase: leadCase,
+    });
+  };
+
   return {
     approveButtonRef,
     caseTableRef,
@@ -29,5 +41,6 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     rejectButtonRef,
     substantiveRef,
     toggleLeadCaseFormRef,
+    showConfirmationModal,
   };
 }
