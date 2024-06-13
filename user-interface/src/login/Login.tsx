@@ -1,5 +1,4 @@
 import React, { PropsWithChildren } from 'react';
-import { AzureLogin } from './providers/azure/AzureLogin';
 import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
@@ -51,15 +50,12 @@ export default function Login(props: LoginProps): React.ReactNode {
 
   const errorMessage =
     'Login provider not specified or not a valid option.\n' +
-    `Valid options are 'azure' | 'okta' | 'mock' | 'none'.\n` +
+    `Valid options are 'okta' | 'mock' | 'none'.\n` +
     `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
     `Build variable value: '${provider}'.`;
 
   let providerComponent;
   switch (provider) {
-    case 'azure':
-      providerComponent = <AzureLogin>{props.children}</AzureLogin>;
-      break;
     case 'okta':
       providerComponent = (
         <OktaProvider>
