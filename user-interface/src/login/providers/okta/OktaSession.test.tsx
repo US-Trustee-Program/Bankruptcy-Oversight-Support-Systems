@@ -23,6 +23,10 @@ describe('OktaSession', () => {
   });
   vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
 
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('should pass a mapped CamsUser, provider, and children to the Session component', async () => {
     const oktaUser = {
       name: 'First Last',
@@ -57,6 +61,78 @@ describe('OktaSession', () => {
       const childDiv = screen.queryByTestId(testId);
       expect(childDiv).toBeInTheDocument();
       expect(childDiv).toHaveTextContent(childText);
+    });
+
+    expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'okta', user }, {});
+  });
+
+  test('should map Okta user email to CamsUser if Okta user name is not present', async () => {
+    const oktaUser = {
+      email: 'someone@somedomain.com',
+    };
+    const user: CamsUser = { name: oktaUser.email };
+    const testId = 'child-div';
+    const childText = 'TEST';
+
+    getUser.mockResolvedValue(oktaUser);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+
+    const sessionSpy = vi.spyOn(sessionModule, 'Session');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('interstital-getuser')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
+    });
+
+    expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'okta', user }, {});
+  });
+
+  test('should map UNKNOWN to CamsUser if Okta user name and email are not present', async () => {
+    const oktaUser = {};
+    const user: CamsUser = { name: 'UNKNOWN' };
+    const testId = 'child-div';
+    const childText = 'TEST';
+
+    getUser.mockResolvedValue(oktaUser);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+
+    const sessionSpy = vi.spyOn(sessionModule, 'Session');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('interstital-getuser')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
     });
 
     expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'okta', user }, {});
@@ -102,6 +178,31 @@ describe('OktaSession', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('alert-message')).toHaveTextContent(errorMessage);
+    });
+  });
+
+  test('should show an error message if the auth state has an error', async () => {
+    const errorMessage = 'error message';
+    useOktaAuth.mockImplementation(() => {
+      return {
+        oktaAuth: {
+          handleLoginRedirect,
+          getUser,
+        },
+        authState: {
+          error: new Error(errorMessage),
+        },
+      };
+    });
+
+    render(
+      <BrowserRouter>
+        <OktaSession></OktaSession>
+      </BrowserRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.queryByTestId('alert-message')).toHaveTextContent(errorMessage);

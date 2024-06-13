@@ -37,7 +37,7 @@ export function OktaSession(props: OktaSessionProps) {
           setCallbackError(error);
         }
       });
-  }, [oktaAuth]);
+  }, [oktaAuth, !authState?.error]);
 
   useEffect(() => {
     if (redirectComplete && authState?.isAuthenticated) getCurrentUser();
