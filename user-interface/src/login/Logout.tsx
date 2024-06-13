@@ -1,4 +1,4 @@
-import { getLoginProviderFromEnv } from './login-helpers';
+import { getLoginProviderFromEnv } from './login-library';
 import { MockLogout } from './providers/mock/MockLogout';
 import { SessionEnd } from './SessionEnd';
 import { OktaLogout } from './providers/okta/OktaLogout';

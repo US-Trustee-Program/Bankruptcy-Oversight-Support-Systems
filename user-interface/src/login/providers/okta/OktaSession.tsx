@@ -1,6 +1,6 @@
 import { AccessDenied } from '@/login/AccessDenied';
 import { Interstitial } from '@/login/Interstitial';
-import { CamsUser } from '@/login/login-helpers';
+import { CamsUser } from '@/login/login-library';
 import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';

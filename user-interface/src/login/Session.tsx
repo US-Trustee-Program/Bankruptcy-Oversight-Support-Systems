@@ -7,7 +7,7 @@ import {
   LoginProvider,
   AUTHENTICATION_PATHS,
   LOGIN_SUCCESS_PATH,
-} from './login-helpers';
+} from './login-library';
 
 export const SessionContext = createContext<CamsSession>({
   user: null,

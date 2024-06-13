@@ -1,7 +1,7 @@
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import { useNavigate } from 'react-router-dom';
-import { LOGIN_PATH } from './login-helpers';
+import { LOGIN_PATH } from './login-library';
 import Button from '@/lib/components/uswds/Button';
 
 const DEFAULT_MESSAGE = 'Access to this application is denied without successful authentication.';
