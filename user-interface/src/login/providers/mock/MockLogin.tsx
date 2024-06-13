@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsSession, CamsUser, LOGIN_LOCAL_STORAGE_SESSION_KEY } from '@/login/login-helpers';
+import { CamsSession, CamsUser, LOGIN_LOCAL_STORAGE_SESSION_KEY } from '@/login/login-library';
 
 type MockRole = {
   key: string;

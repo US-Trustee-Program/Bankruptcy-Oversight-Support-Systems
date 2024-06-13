@@ -1,4 +1,4 @@
-import { getLoginProviderFromEnv } from './login-helpers';
+import { getLoginProviderFromEnv } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import { OktaSession } from './providers/okta/OktaSession';

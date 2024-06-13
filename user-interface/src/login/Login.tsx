@@ -9,7 +9,7 @@ import {
   LoginProvider,
   CamsSession,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
-} from './login-helpers';
+} from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';

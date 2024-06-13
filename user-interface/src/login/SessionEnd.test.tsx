@@ -3,7 +3,7 @@ import { describe } from 'vitest';
 import { SessionEnd } from './SessionEnd';
 import { BrowserRouter } from 'react-router-dom';
 import * as reactRouter from 'react-router';
-import { LOGIN_PATH } from './login-helpers';
+import { LOGIN_PATH } from './login-library';
 
 describe('SessionEnd', () => {
   test('should render alert', () => {

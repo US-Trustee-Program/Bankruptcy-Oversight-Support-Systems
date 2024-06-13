@@ -1,7 +1,7 @@
 import { PropsWithChildren } from 'react';
 import OktaAuth from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import { LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME } from '@/login/login-helpers';
+import { LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME } from '@/login/login-library';
 import { BadConfiguration } from '@/login/BadConfiguration';
 
 export type OktaProviderProps = PropsWithChildren;

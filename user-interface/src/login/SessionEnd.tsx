@@ -5,7 +5,7 @@ import {
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
   LOGIN_PATH,
   LOGOUT_SESSION_END_PATH,
-} from './login-helpers';
+} from './login-library';
 import Button from '@/lib/components/uswds/Button';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';

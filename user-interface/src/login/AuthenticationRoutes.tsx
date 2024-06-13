@@ -2,7 +2,7 @@ import { PropsWithChildren } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import Login from './Login';
 import { Logout } from './Logout';
-import { LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT_SESSION_END_PATH } from './login-helpers';
+import { LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 import { LoginContinue } from './LoginContinue';
 import { SessionEnd } from './SessionEnd';
 

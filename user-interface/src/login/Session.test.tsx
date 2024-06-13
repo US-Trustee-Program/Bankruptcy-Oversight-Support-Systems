@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Session, SessionProps } from './Session';
-import { CamsUser } from './login-helpers';
+import { CamsUser } from './login-library';
 
 describe('Session', () => {
   const testUser: CamsUser = {

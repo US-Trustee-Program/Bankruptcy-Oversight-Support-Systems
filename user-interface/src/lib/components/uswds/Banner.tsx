@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import './Banner.scss';
 import { SessionContext } from '@/login/Session';
-import { LOGOUT_PATH } from '@/login/login-helpers';
+import { LOGOUT_PATH } from '@/login/login-library';
 import Icon from './Icon';
 
 export const Banner = () => {
