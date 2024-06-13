@@ -96,7 +96,7 @@ az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks=${allowAllNetworks} createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
 
 # Provision and configure e2e CosmosDB databases and containers only if slot deployments occur and it doesnt already eist. Otherwise we do not need an e2e database.
-if [[ ${e2eCosmosDbExists} != 'true' && ${e2eCosmosDbExists} != true ]]; then
+if [[ $e2eCosmosDbExists != 'true' && $e2eCosmosDbExists != true ]]; then
     echo "Deploying Cosmos Database for E2E testing"
     e2eDatabaseName="${database}-e2e"
     if [[ ${environment} != 'Main-Gov' ]]; then
