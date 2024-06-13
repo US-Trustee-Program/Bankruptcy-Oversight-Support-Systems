@@ -14,14 +14,25 @@ describe('SessionEnd', () => {
     );
     expect(screen.queryByTestId('alert-container')).toBeInTheDocument();
   });
+
   test('should clear session from local storage', () => {
     render(
       <BrowserRouter>
         <SessionEnd></SessionEnd>
       </BrowserRouter>,
     );
-    // TODO
+    // TODO: Write the rest of this test.
   });
+
+  test('should change the path to /session-end', () => {
+    render(
+      <BrowserRouter>
+        <SessionEnd></SessionEnd>
+      </BrowserRouter>,
+    );
+    // TODO: Write the rest of this test.
+  });
+
   test('should allow the user to redirect to login', () => {
     const navigate = vi.fn();
     const useNavigate = vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {

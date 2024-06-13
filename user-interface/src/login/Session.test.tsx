@@ -27,11 +27,8 @@ describe('Session', () => {
     renderWithProps();
   });
 
-  test('should redirect to "/" if path is "/login"', () => {
-    renderWithProps();
-  });
-
-  test('should redirect to "/" if path is "/logout"', () => {
+  // TODO: Complete these tests.
+  test('should redirect to "/" if path is "/login", "/logout", or "/logout-continue"', () => {
     renderWithProps();
   });
 });

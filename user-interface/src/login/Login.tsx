@@ -59,7 +59,7 @@ export default function Login(props: LoginProps): React.ReactNode {
     case 'okta':
       providerComponent = (
         <OktaProvider>
-          <OktaLogin>{props.children}</OktaLogin>
+          <OktaLogin />
         </OktaProvider>
       );
       break;
