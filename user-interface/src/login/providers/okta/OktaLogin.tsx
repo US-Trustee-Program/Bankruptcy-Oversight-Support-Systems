@@ -20,7 +20,7 @@ export function OktaLogin(props: PropsWithChildren) {
   }, [oktaAuth, !!authState, authState?.isAuthenticated]);
 
   if (!authState || !authState?.isAuthenticated) {
-    return <Interstitial message="Logging in"></Interstitial>;
+    return <Interstitial caption="Logging in"></Interstitial>;
   }
 
   if (authState && authState.isAuthenticated) return <OktaSession>{props.children}</OktaSession>;
