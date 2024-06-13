@@ -75,7 +75,8 @@ jobs:
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+            --e2eCosmosDbExists ${{ steps.e2eDbExists.outputs.e2eCosmosDbExists }}
 
       - name: Check deployment and set params
         id: set-deploy-params
