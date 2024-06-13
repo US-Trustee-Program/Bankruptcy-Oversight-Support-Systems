@@ -14,6 +14,7 @@ import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSel
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
+import Combobox from '@/lib/components/uswds/Combobox';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -167,6 +168,17 @@ export default function SearchScreen() {
                   required={false}
                   ref={chapterSelectionRef}
                 />
+                <Combobox
+                  id={'case-chapter-search'}
+                  className="case-chapter__select"
+                  label="Chapter"
+                  onChange={() => {}}
+                  options={[
+                    { value: 'hello', label: 'Hello' },
+                    { value: 'goodbye', label: 'Goodbye' },
+                  ]}
+                  required={false}
+                ></Combobox>
               </div>
             </div>
           </div>
