@@ -3,7 +3,9 @@
     max-width: none;
   }
 
-  a, a:visited, a:hover {
+  a,
+  a:visited,
+  a:hover {
     color: rgb(27, 27, 27);
     text-decoration: none;
   }
@@ -11,8 +13,8 @@
     text-decoration: underline;
   }
 
-  .development, a.development:visited, a.development:hover {
-    background-color: #419ce1;
+  .development {
+    background-color: #207bc0;
     color: white;
   }
 
