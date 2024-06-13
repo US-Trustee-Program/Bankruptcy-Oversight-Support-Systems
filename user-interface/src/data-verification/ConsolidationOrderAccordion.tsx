@@ -39,9 +39,9 @@ import {
   getUniqueDivisionCodeOrUndefined,
 } from '@/data-verification/consolidation/consolidationOrderAccordion';
 import type { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
-import { useConsolidationStoreImpl } from '@/data-verification/consolidation/consolidationStoreImpl';
+import { useConsolidationStoreReact } from '@/data-verification/consolidation/consolidationStoreReact';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
-import { useConsolidationControlsImpl } from '@/data-verification/consolidation/consolidationControlsImpl';
+import { useConsolidationControlsReact } from '@/data-verification/consolidation/consolidationControlsReact';
 import { consolidationUseCase } from '@/data-verification/consolidation/consolidationsUseCase';
 
 const genericErrorMessage =
@@ -65,9 +65,9 @@ export interface ConsolidationOrderAccordionProps {
 
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   // TODO: remove this explicit use of useConsolidationStoreImpl
-  const consolidationStore: ConsolidationStore = useConsolidationStoreImpl(props, []);
+  const consolidationStore: ConsolidationStore = useConsolidationStoreReact(props, []);
   // TODO: remove this explicit use of useConsolidationControlsImpl
-  const consolidationControls: ConsolidationControls = useConsolidationControlsImpl();
+  const consolidationControls: ConsolidationControls = useConsolidationControlsReact();
   const useCase = consolidationUseCase(consolidationStore, consolidationControls);
 
   const { hidden, statusType, orderType, expandedId } = props;

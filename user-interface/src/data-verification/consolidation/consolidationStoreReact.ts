@@ -4,7 +4,7 @@ import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
 import { ConsolidationOrderAccordionProps } from '@/data-verification/ConsolidationOrderAccordion';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 
-export function useConsolidationStoreImpl(
+export function useConsolidationStoreReact(
   props: ConsolidationOrderAccordionProps,
   officesList: OfficeDetails[],
 ): ConsolidationStore {

@@ -6,7 +6,7 @@ import { ConfirmationModalImperative } from '@/data-verification/ConsolidationOr
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 
-export function useConsolidationControlsImpl(): ConsolidationControls {
+export function useConsolidationControlsReact(): ConsolidationControls {
   const approveButtonRef = useRef<ButtonRef>(null);
   const caseTableRef = useRef<OrderTableImperative>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
