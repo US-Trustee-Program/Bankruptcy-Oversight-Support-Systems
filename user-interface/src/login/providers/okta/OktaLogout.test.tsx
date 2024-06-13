@@ -1,15 +1,30 @@
 import { describe } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OktaLogout } from './OktaLogout';
+import * as oktaReactModule from '@okta/okta-react';
 
 describe('OktaLogout', () => {
-  test.skip('should render the SessionEnd component', () => {
+  const clearStorage = vi.fn();
+  const useOktaAuth = vi.fn().mockImplementation(() => {
+    return {
+      oktaAuth: {
+        clearStorage,
+      },
+    };
+  });
+  vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
+
+  test('should render the SessionEnd component', async () => {
     render(
       <BrowserRouter>
         <OktaLogout></OktaLogout>
       </BrowserRouter>,
     );
-    expect(screen.queryByTestId('alert-container')).toBeInTheDocument();
+
+    expect(clearStorage).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.queryByTestId('alert-container')).toBeInTheDocument();
+    });
   });
 });
