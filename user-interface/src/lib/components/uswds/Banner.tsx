@@ -44,9 +44,7 @@ export const Banner = () => {
                 </span>
                 <span className="user-name">{session.user?.name ?? 'UNKNOWN'} </span>
                 <span className="logout-link">
-                  <a href={LOGOUT_PATH} className={environmentClass}>
-                    logout
-                  </a>
+                  <a href={LOGOUT_PATH}>logout</a>
                 </span>
               </>
             )}

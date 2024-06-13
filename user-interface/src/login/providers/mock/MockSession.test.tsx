@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { MockSession } from './MockSession';
 import { render, screen } from '@testing-library/react';
-import { CamsUser } from '@/login/login-helpers';
+import { CamsUser } from '../../login-library';
 import * as sessionModule from '../../Session';
 import { BrowserRouter } from 'react-router-dom';
 
