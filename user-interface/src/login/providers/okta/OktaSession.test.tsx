@@ -50,14 +50,6 @@ describe('OktaSession', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('interstital-getuser')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
       const childDiv = screen.queryByTestId(testId);
       expect(childDiv).toBeInTheDocument();
       expect(childDiv).toHaveTextContent(childText);
@@ -89,14 +81,6 @@ describe('OktaSession', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('interstital-getuser')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
       expect(screen.queryByTestId(testId)).toBeInTheDocument();
     });
 
@@ -122,14 +106,6 @@ describe('OktaSession', () => {
         <OktaSession>{children}</OktaSession>
       </BrowserRouter>,
     );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('interstital-continue')).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('interstital-getuser')).toBeInTheDocument();
-    });
 
     await waitFor(() => {
       expect(screen.queryByTestId(testId)).toBeInTheDocument();
