@@ -1,7 +1,6 @@
 import { ConsolidationOrder, ConsolidationOrderCase } from '@common/cams/orders';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { OrderTableImperative } from '@/data-verification/ConsolidationCasesTable';
-import { OfficeDetails } from '@common/cams/courts';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { ButtonRef } from '@/lib/components/uswds/Button';
 import {
@@ -23,7 +22,7 @@ interface ConsolidationViewModel {
   caseTableRef: React.Ref<OrderTableImperative>;
   toggleLeadCaseFormRef: React.Ref<CheckboxRef>;
   showLeadCaseForm: boolean;
-  filteredOfficesList: OfficeDetails[];
+  filteredOfficeRecords: Record<string, string>[];
   leadCaseDivisionRef: React.Ref<InputRef>;
   leadCaseNumberRef: React.Ref<InputRef>;
   leadCaseNumberError: string;
@@ -36,7 +35,7 @@ interface ConsolidationViewModel {
   selectedCases: ConsolidationOrderCase[];
   rejectButtonRef: React.Ref<ButtonRef>;
   approveButtonRef: React.Ref<ButtonRef>;
-  officesList: OfficeDetails[];
+  divisionCode: string | undefined;
 
   handleApproveButtonClick: () => void;
   handleClearInputs: () => void;
