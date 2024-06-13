@@ -42,3 +42,14 @@ export function getLoginProviderFromEnv(): string {
   if (value) return value.toLowerCase();
   return 'unknown';
 }
+
+export function getLoginConfigurationFromEnv<T = unknown>(): T {
+  try {
+    const configJson = import.meta.env[LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME];
+    if (!configJson) throw new Error('Missing authentication configuration');
+    const config = JSON.parse(configJson);
+    return config;
+  } catch (e) {
+    throw e as Error;
+  }
+}
