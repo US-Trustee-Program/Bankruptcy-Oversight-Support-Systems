@@ -1,29 +1,13 @@
-import { PropsWithChildren, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useOktaAuth } from '@okta/okta-react';
-import { AccessDenied } from '@/login/AccessDenied';
-import { OktaSession } from './OktaSession';
 import { Interstitial } from '@/login/Interstitial';
 
-export type OktaLoginProps = PropsWithChildren;
-
-export function OktaLogin(props: PropsWithChildren) {
+export function OktaLogin() {
   const { oktaAuth, authState } = useOktaAuth();
 
   useEffect(() => {
-    if (!authState) {
-      return;
-    }
+    oktaAuth.signInWithRedirect();
+  }, [oktaAuth, authState]);
 
-    if (!authState?.isAuthenticated) {
-      oktaAuth.signInWithRedirect();
-    }
-  }, [oktaAuth, !!authState, authState?.isAuthenticated]);
-
-  if (!authState || !authState?.isAuthenticated) {
-    return <Interstitial caption="Logging in"></Interstitial>;
-  }
-
-  if (authState && authState.isAuthenticated) return <OktaSession>{props.children}</OktaSession>;
-
-  return <AccessDenied />;
+  return <Interstitial id="interstitial-login" caption="Logging in..."></Interstitial>;
 }
