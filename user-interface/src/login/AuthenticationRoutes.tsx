@@ -6,7 +6,7 @@ import { LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT_SESSION_END_PATH } from './log
 import { LoginContinue } from './LoginContinue';
 import { SessionEnd } from './SessionEnd';
 
-export function AuthenticationRouter(props: PropsWithChildren) {
+export function AuthenticationRoutes(props: PropsWithChildren) {
   return (
     <Routes>
       <Route path={LOGIN_CONTINUE_PATH} element={<LoginContinue />} />
