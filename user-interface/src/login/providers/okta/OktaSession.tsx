@@ -34,7 +34,7 @@ export function OktaSession(props: OktaSessionProps) {
         const error = e as Error;
         // Only report if the error is not the parse error during the continuation redirects.
         if (error.message !== 'Unable to parse a token from the url') {
-          console.error(error.message);
+          setCallbackError(error);
         }
       });
   }, [oktaAuth]);
@@ -48,10 +48,11 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   if (!redirectComplete && !oktaUser) {
-    return <Interstitial message="Continue from Okta..."></Interstitial>;
+    return <Interstitial id="interstital-continue" caption="Continue from Okta..."></Interstitial>;
   }
+
   if (redirectComplete && !oktaUser) {
-    return <Interstitial message="Get user information..."></Interstitial>;
+    return <Interstitial id="interstital-getuser" caption="Get user information..."></Interstitial>;
   }
 
   // Map Okta user information to CAMS user

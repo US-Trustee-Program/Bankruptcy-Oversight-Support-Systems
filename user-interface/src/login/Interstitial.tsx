@@ -1,15 +1,13 @@
 import { PropsWithChildren } from 'react';
 import { BlankPage } from './BlankPage';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { LoadingSpinner, LoadingSpinnerProps } from '@/lib/components/LoadingSpinner';
 
-export type InterstitialProps = PropsWithChildren & {
-  message: string;
-};
+export type InterstitialProps = PropsWithChildren & LoadingSpinnerProps;
 
 export function Interstitial(props: InterstitialProps) {
   return (
     <BlankPage>
-      <LoadingSpinner caption={props.message} />
+      <LoadingSpinner id={props.id} caption={props.caption} />
       <div>{props.children}</div>
     </BlankPage>
   );

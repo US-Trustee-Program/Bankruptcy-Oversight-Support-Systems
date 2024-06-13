@@ -1,6 +1,6 @@
 import './LoadingSpinner.scss';
 
-interface LoadingSpinnerProps {
+export interface LoadingSpinnerProps {
   id?: string;
   caption?: string;
   className?: string;
