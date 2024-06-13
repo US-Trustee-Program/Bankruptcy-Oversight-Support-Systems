@@ -25,21 +25,17 @@ async function mockLogin(page: Page) {
 }
 
 async function oktaLogin(page: Page) {
-  await page.goto(TARGET_HOST + LOGIN_PATH);
-  await page.getByTestId('button-auo-confirm').click();
-  await expect(page.locator('#okta-sign-in')).toBeVisible();
-  await page.locator('#input28').fill(OKTA_USER_NAME); //The selecors changed when we switched tenants?? find a better way for locators
-  await page.locator('#input36').fill(OKTA_PASSWORD);
-  await page.locator('.button-primary').click();
+  // await page.goto(TARGET_HOST + LOGIN_PATH); This code works with our Flexion tenant in E2E tests without MFA
+  // await page.getByTestId('button-auo-confirm').click();
+  // await expect(page.locator('#okta-sign-in')).toBeVisible();
+  // await page.locator('#input28').fill(OKTA_USER_NAME); //The selecors changed when we switched tenants?? find a better way for locators
+  // await page.locator('#input36').fill(OKTA_PASSWORD);
+  // await page.locator('.button-primary').click();
+  // await page.waitForURL(TARGET_HOST);
+  // await page.context().storageState({ path: authFile });
+  // await expect(page.context().storageState({ path: authFile })).toBeDefined();
 
-  await page.waitForURL(TARGET_HOST);
-
-  await page.context().storageState({ path: authFile });
-  await expect(page.context().storageState({ path: authFile })).toBeDefined();
-}
-async function oktaUstpLogin(page: Page) {
-  //General mock for USTP testing when we get there
-  await page.goto(TARGET_HOST + LOGIN_PATH);
+  await page.goto(TARGET_HOST + LOGIN_PATH); //Start for USTP login when we get there
   await page.getByTestId('button-auo-confirm').click();
   await expect(page.locator('#okta-sign-in')).toBeVisible();
   await page.locator('#input28').fill(OKTA_USER_NAME);
@@ -64,9 +60,6 @@ function usingAuthenticationProvider() {
       break;
     case 'okta':
       loginFunction = oktaLogin;
-      break;
-    case 'okta-ustp':
-      loginFunction = oktaUstpLogin;
       break;
     case 'mock':
       loginFunction = mockLogin;
