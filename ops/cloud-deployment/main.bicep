@@ -101,6 +101,9 @@ param analyticsWorkspaceId string = ''
 
 param analyticsResourceGroupName string = 'rg-analytics'
 
+@description('Url for our Okta Provider')
+param oktaUrl string = 'https://dev-31938913.okta.com'
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -173,6 +176,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      oktaUrl: oktaUrl
     }
     dependsOn: [
       network
