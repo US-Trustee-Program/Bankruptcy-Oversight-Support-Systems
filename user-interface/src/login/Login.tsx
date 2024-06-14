@@ -20,7 +20,7 @@ export type LoginProps = PropsWithChildren & {
   skipAuthorizedUseOnly?: boolean;
 };
 
-export default function Login(props: LoginProps): React.ReactNode {
+export function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
 
   function getCurrentSession() {

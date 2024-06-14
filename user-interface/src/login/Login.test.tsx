@@ -9,7 +9,7 @@ import * as libraryModule from '@/login/login-library';
 import * as mockLoginModule from './providers/mock/MockLogin';
 import * as sessionModule from './Session';
 // import { CamsUser } from '@/login/login-library';
-import Login from './Login';
+import { Login } from './Login';
 
 describe('Login', () => {
   // const user: CamsUser = { name: 'First Last' };
