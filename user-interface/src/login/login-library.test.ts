@@ -2,9 +2,11 @@ import { describe } from 'vitest';
 import {
   getLoginConfigurationFromEnv,
   getLoginProviderFromEnv,
+  getSessionfromLocalStorage,
   isLoginProviderType,
   LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME,
   LOGIN_PROVIDER_ENV_VAR_NAME,
+  LoginProvider,
 } from './login-library';
 
 const providerTypes = ['okta', 'mock', 'none'];
@@ -51,6 +53,30 @@ describe('Login library', () => {
       const expectedConfiguration = { url: 'http://localhost/' };
       vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, JSON.stringify(expectedConfiguration));
       expect(getLoginConfigurationFromEnv()).toEqual(expectedConfiguration);
+    });
+  });
+  describe('getSessionFromLocalStorage', () => {
+    test('should return session from local storage', () => {
+      const mockProvider: LoginProvider = 'none';
+      const mockSessionString = '{"provider":"none","user":{"name":"Bert"}}';
+      const expectedMockSession = {
+        provider: 'none',
+        user: {
+          name: 'Bert',
+        },
+      };
+      window.localStorage.setItem('cams:session', mockSessionString);
+      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, 'none');
+      const session = getSessionfromLocalStorage(mockProvider);
+      expect(session).toEqual(expectedMockSession);
+    });
+
+    test('should return null from local storage', () => {
+      const mockProvider: LoginProvider = 'mock';
+      const mockSessionString = '{"provider":"none","user":{"name":"Bert"}}';
+      window.localStorage.setItem('cams:session', mockSessionString);
+      const session = getSessionfromLocalStorage(mockProvider);
+      expect(session).toBeNull();
     });
   });
 });
