@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsSession, CamsUser, LOGIN_LOCAL_STORAGE_SESSION_KEY } from '@/login/login-library';
+import { CamsUser } from '@/login/login-library';
 
 type MockRole = {
   key: string;
@@ -24,32 +24,23 @@ export type MockLoginProps = PropsWithChildren & {
 };
 
 export function MockLogin(props: MockLoginProps): React.ReactNode {
-  let storedUser: CamsUser | null = null;
-  if (window.localStorage) {
-    const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-    if (sessionJson) {
-      const session: CamsSession = JSON.parse(sessionJson);
-      storedUser = session.user;
-    }
-  }
-  const [user, setUser] = useState<CamsUser | null>(storedUser);
+  const [user, setUser] = useState<CamsUser | null>(null);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
   const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
 
   function handleRoleSelection(key: string) {
-    setSelectedRole(roles.find((role) => role.key === key) ?? null);
+    setSelectedRole(roles.find((role) => role.key === key)!);
   }
 
   function handleLogin() {
     if (selectedRole) setUser(selectedRole.user);
-    if (selectedRole) storedUser = selectedRole.user;
   }
 
   const modalRef = useRef<ModalRefType>(null);
   const modalId = 'login-modal';
 
   useEffect(() => {
-    modalRef.current?.show(!!storedUser);
+    modalRef.current?.show(!!user);
   }, []);
 
   useEffect(() => {

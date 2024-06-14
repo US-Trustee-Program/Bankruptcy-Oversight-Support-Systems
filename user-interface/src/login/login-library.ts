@@ -53,3 +53,22 @@ export function getLoginConfigurationFromEnv<T = unknown>(): T {
     throw e as Error;
   }
 }
+
+export function getSessionfromLocalStorage(provider: LoginProvider) {
+  try {
+    let session: CamsSession | null = null;
+    if (window.localStorage) {
+      const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+      if (sessionJson) {
+        session = JSON.parse(sessionJson);
+        if (session?.provider !== provider) {
+          window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+          session = null;
+        }
+      }
+    }
+    return session;
+  } catch (e) {
+    return null;
+  }
+}
