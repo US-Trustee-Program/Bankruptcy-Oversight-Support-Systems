@@ -14,7 +14,8 @@ import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSel
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
-import Combobox from '@/lib/components/uswds/Combobox';
+import Combobox, { ComboOption } from '@/lib/components/uswds/Combobox';
+import ComboboxMultiSelectInput from '@/lib/components/uswds/ComboboxMultiSelectInput';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -31,6 +32,8 @@ export default function SearchScreen() {
   });
 
   const [chapterList, setChapterList] = useState<Record<string, string>[]>([]);
+  const [simpleChapterList, setSimpleChapterList] = useState<ComboOption[]>([]);
+  const [chapterSelections, setChapterSelections] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
@@ -43,11 +46,14 @@ export default function SearchScreen() {
 
   function getChapters() {
     const chapterRecordArray: Record<string, string>[] = [];
+    const simpleChapterArray: ComboOption[] = [];
 
     for (const item of ['7', '9', '11', '12', '13', '15']) {
       chapterRecordArray.push({ label: item, value: item });
+      simpleChapterArray.push({ label: item, value: item, selected: false });
     }
 
+    setSimpleChapterList(simpleChapterArray);
     setChapterList(chapterRecordArray);
   }
 
@@ -101,6 +107,14 @@ export default function SearchScreen() {
       newPredicate.chapters = selection.map((kv: Record<string, string>) => kv.value);
     }
     setSearchPredicate(newPredicate);
+  }
+
+  function handleSimpleChapterSelection(selections: ComboOption[]) {
+    setChapterSelections(selections);
+  }
+
+  function handleChapterFilter(ev: React.ChangeEvent<HTMLInputElement>) {
+    console.log(ev);
   }
 
   useEffect(() => {
@@ -157,6 +171,20 @@ export default function SearchScreen() {
             </div>
             <div className="case-chapter-search form-field" data-testid="case-chapter-search">
               <div className="usa-search usa-search--small">
+                <Combobox
+                  id={'case-chapter-search'}
+                  className="case-chapter__select"
+                  label="Chapter"
+                  onChange={handleSimpleChapterSelection}
+                  options={simpleChapterList}
+                  required={false}
+                >
+                  <ComboboxMultiSelectInput
+                    selections={chapterSelections}
+                    onSelectionChange={handleSimpleChapterSelection}
+                    onChange={handleChapterFilter}
+                  ></ComboboxMultiSelectInput>
+                </Combobox>
                 <CamsSelectMulti
                   id={'case-chapter-search'}
                   className="case-chapter__select"
@@ -168,17 +196,6 @@ export default function SearchScreen() {
                   required={false}
                   ref={chapterSelectionRef}
                 />
-                <Combobox
-                  id={'case-chapter-search'}
-                  className="case-chapter__select"
-                  label="Chapter"
-                  onChange={() => {}}
-                  options={[
-                    { value: 'hello', label: 'Hello' },
-                    { value: 'goodbye', label: 'Goodbye' },
-                  ]}
-                  required={false}
-                ></Combobox>
               </div>
             </div>
           </div>
