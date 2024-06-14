@@ -7,8 +7,8 @@ import * as libraryModule from '@/login/login-library';
 
 describe('OktaProvider', () => {
   const mockConfiguration: OktaConfig = {
-    issuer: 'https://dev-43510307.okta.com/oauth2/default',
-    clientId: '0oahmz7ocmJw4uAM15d7',
+    issuer: 'https://dev-00000000.okta.com/oauth2/default',
+    clientId: '00000000000000000000',
     redirectUri: 'http://localhost:3000/login-continue',
   };
 
