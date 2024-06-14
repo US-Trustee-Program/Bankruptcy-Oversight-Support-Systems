@@ -1,12 +1,21 @@
 import { describe } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import * as oktaReactModule from '@okta/okta-react';
-import { OktaProvider } from './OktaProvider';
+import { OktaConfig, OktaProvider } from './OktaProvider';
 import { PropsWithChildren } from 'react';
 import * as libraryModule from '@/login/login-library';
 
 describe('OktaProvider', () => {
-  const getLoginConfigurationFromEnv = vi.spyOn(libraryModule, 'getLoginConfigurationFromEnv');
+  const mockConfiguration: OktaConfig = {
+    issuer: 'https://dev-43510307.okta.com/oauth2/default',
+    clientId: '0oahmz7ocmJw4uAM15d7',
+    redirectUri: 'http://localhost:3000/login-continue',
+  };
+
+  const getLoginConfigurationFromEnv = vi
+    .spyOn(libraryModule, 'getLoginConfigurationFromEnv')
+    .mockReturnValue(mockConfiguration);
+
   const securityComponent = vi
     .spyOn(oktaReactModule, 'Security')
     .mockImplementation((props: PropsWithChildren) => {
