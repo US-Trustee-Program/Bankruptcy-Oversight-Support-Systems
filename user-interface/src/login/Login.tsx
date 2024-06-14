@@ -7,8 +7,8 @@ import {
   LOGIN_PROVIDER_ENV_VAR_NAME,
   getLoginProviderFromEnv,
   LoginProvider,
-  CamsSession,
-  LOGIN_LOCAL_STORAGE_SESSION_KEY,
+  getSessionfromLocalStorage,
+  isLoginProviderType,
 } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
@@ -23,23 +23,17 @@ export type LoginProps = PropsWithChildren & {
 export function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
 
-  function getCurrentSession() {
-    let session: CamsSession | null = null;
-    if (window.localStorage) {
-      const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-      if (sessionJson) {
-        session = JSON.parse(sessionJson);
-        if (session?.provider !== provider) {
-          window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-          session = null;
-        }
-      }
-    }
-    return session;
+  if (!isLoginProviderType(provider)) {
+    const errorMessage =
+      'Login provider not specified or not a valid option.\n' +
+      `Valid options are 'okta' | 'mock' | 'none'.\n` +
+      `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
+      `Build variable value: '${provider}'.`;
+    return <BadConfiguration message={errorMessage} />;
   }
 
   // Skip to session and continue if already logged in.
-  const session = getCurrentSession();
+  const session = getSessionfromLocalStorage(provider);
   if (session && session.provider && session.user) {
     return (
       <Session provider={session.provider!} user={session.user!}>
@@ -47,12 +41,6 @@ export function Login(props: LoginProps): React.ReactNode {
       </Session>
     );
   }
-
-  const errorMessage =
-    'Login provider not specified or not a valid option.\n' +
-    `Valid options are 'okta' | 'mock' | 'none'.\n` +
-    `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
-    `Build variable value: '${provider}'.`;
 
   let providerComponent;
   switch (provider) {
@@ -73,8 +61,6 @@ export function Login(props: LoginProps): React.ReactNode {
         </Session>
       );
       break;
-    default:
-      providerComponent = <BadConfiguration message={errorMessage} />;
   }
 
   return (
