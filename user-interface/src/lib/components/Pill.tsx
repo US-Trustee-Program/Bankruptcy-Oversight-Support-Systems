@@ -1,33 +1,36 @@
-import { useEffect, useState } from 'react';
-import Button, { UswdsButtonStyle } from './uswds/Button';
+import './Pill.scss';
 import Icon from './uswds/Icon';
+import { useEffect, useState } from 'react';
 
 type PillProps = {
-  color?: UswdsButtonStyle;
+  color?: string;
+  backgroundColor?: string;
   label: string;
   value: string;
   onClick: (value: string) => void;
 };
 
 export function Pill(props: PillProps) {
-  const [style, setStyle] = useState<UswdsButtonStyle>(UswdsButtonStyle.Default);
+  const [color, setColor] = useState<string>('black');
+  const [backgroundColor, setBackgroundColor] = useState<string>('#d0d0d0');
 
-  function handleButtonClick(value: string) {
+  function handlePillClick(value: string) {
     props.onClick(value);
   }
 
   useEffect(() => {
-    if (props.color) {
-      setStyle(props.color);
-    }
+    if (props.color) setColor(props.color);
+    if (props.backgroundColor) setBackgroundColor(props.backgroundColor);
   }, []);
 
   return (
-    <div className={`pill`}>
-      <Button uswdsStyle={style} onClick={() => handleButtonClick(props.value)}>
-        {props.label}
-        <Icon name="close"></Icon>
-      </Button>
+    <div
+      className="pill"
+      style={{ backgroundColor, color }}
+      onClick={() => handlePillClick(props.value)}
+    >
+      {props.label}
+      <Icon name="close"></Icon>
     </div>
   );
 }
