@@ -27,8 +27,8 @@ export function Login(props: LoginProps): React.ReactNode {
     const errorMessage =
       'Login provider not specified or not a valid option.\n' +
       `Valid options are 'okta' | 'mock' | 'none'.\n` +
-      `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
-      `Build variable value: '${provider}'.`;
+      `Build variable name: ${LOGIN_PROVIDER_ENV_VAR_NAME}.\n` +
+      `Build variable value: ${provider ?? 'IS BLANK'}.`;
     return <BadConfiguration message={errorMessage} />;
   }
 
