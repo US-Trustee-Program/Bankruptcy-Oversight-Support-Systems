@@ -1,8 +1,5 @@
-import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseTable } from './transfer/CaseTable';
-import { ChangeEvent, useEffect } from 'react';
-import { ConsolidationCaseTable } from './ConsolidationCasesTable';
+import React, { ChangeEvent, useEffect } from 'react';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -10,29 +7,15 @@ import {
   ConsolidationOrderCase,
   ConsolidationType,
 } from '@common/cams/orders';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { OfficeDetails } from '@common/cams/courts';
-import {
-  ConsolidationOrderModal,
-  ConfirmActionResults,
-} from '@/data-verification/ConsolidationOrderModal';
-import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { ConfirmActionResults } from '@/data-verification/ConsolidationOrderModal';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseNumber } from '@/lib/components/CaseNumber';
 import './ConsolidationOrderAccordion.scss';
 import { useGenericApi } from '@/lib/hooks/UseApi';
-import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
-import Radio from '@/lib/components/uswds/Radio';
-import Checkbox from '@/lib/components/uswds/Checkbox';
-import CamsSelect, {
-  CamsSelectOptionList,
-  SearchableSelectOption,
-} from '@/lib/components/CamsSelect';
+import { CamsSelectOptionList, SearchableSelectOption } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
-import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import {
   getCurrentLeadCaseId,
@@ -43,6 +26,8 @@ import { useConsolidationStoreReact } from '@/data-verification/consolidation/co
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { useConsolidationControlsReact } from '@/data-verification/consolidation/consolidationControlsReact';
 import { consolidationUseCase } from '@/data-verification/consolidation/consolidationsUseCase';
+import { ConsolidationOrderAccordionView } from '@/data-verification/consolidation/ConsolidationOrderAccordionView';
+import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
@@ -391,305 +376,49 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     }
   }
 
-  //========== JSX ==========
+  const viewModel: ConsolidationViewModel = {
+    approveButtonRef: consolidationControls.approveButtonRef,
+    caseTableRef: consolidationControls.caseTableRef,
+    clearButtonRef: consolidationControls.clearButtonRef,
+    confirmationModalRef: consolidationControls.confirmationModalRef,
+    divisionCode: getUniqueDivisionCodeOrUndefined(consolidationStore.order.childCases),
+    expandedAccordionId: expandedId!,
+    filteredOfficeRecords: getOfficeList(
+      consolidationStore.filteredOfficesList ?? props.officesList,
+    ),
+    formattedOrderFiledDate: formatDate(consolidationStore.order.orderDate),
+    foundValidCaseNumber: consolidationStore.foundValidCaseNumber,
+    hidden: hidden ?? false,
+    isDataEnhanced: consolidationStore.isDataEnhanced,
+    isProcessing: consolidationStore.isProcessing,
+    isValidatingLeadCaseNumber: consolidationStore.isValidatingLeadCaseNumber,
+    jointAdministrationRef: consolidationControls.jointAdministrationRef,
+    leadCase: consolidationStore.leadCase,
+    leadCaseDivisionRef: consolidationControls.leadCaseDivisionRef,
+    leadCaseNumberError: consolidationStore.leadCaseNumberError,
+    leadCaseNumberRef: consolidationControls.leadCaseNumberRef,
+    order: consolidationStore.order,
+    orderType: orderType, // TODO: why is orderType a Map<string, string>?
+    rejectButtonRef: consolidationControls.rejectButtonRef,
+    selectedCases: consolidationStore.selectedCases,
+    showLeadCaseForm: consolidationStore.showLeadCaseForm,
+    statusType: statusType, // TODO: why is statusType a Map<string, string>?
+    substantiveRef: consolidationControls.substantiveRef,
+    toggleLeadCaseFormRef: consolidationControls.toggleLeadCaseFormRef,
 
-  return (
-    <Accordion
-      key={consolidationStore.order.id}
-      id={`order-list-${consolidationStore.order.id}`}
-      expandedId={expandedId}
-      onExpand={handleOnExpand}
-      onCollapse={handleClearInputs}
-      hidden={hidden}
-    >
-      <section
-        className="accordion-heading grid-row grid-gap-lg"
-        data-testid={`accordion-heading-${consolidationStore.order.id}`}
-      >
-        <div
-          className="grid-col-6 text-no-wrap"
-          aria-label={`Court district ${consolidationStore.order.courtName}`}
-        >
-          {consolidationStore.order.courtName}
-        </div>
-        <div
-          className="grid-col-2 text-no-wrap"
-          title="Order Filed"
-          aria-label={`Order Filed ${formatDate(consolidationStore.order.orderDate)}`}
-        >
-          {formatDate(consolidationStore.order.orderDate)}
-        </div>
-        <div className="grid-col-2 order-type text-no-wrap">
-          <span
-            className="event-type-label"
-            aria-label={`Event type ${orderType.get(consolidationStore.order.orderType)}`}
-          >
-            {orderType.get(consolidationStore.order.orderType)}
-          </span>
-        </div>
-        <div className="grid-col-2 order-status text-no-wrap">
-          <span
-            className={`${consolidationStore.order.status} event-status-label`}
-            aria-label={`Event status ${statusType.get(consolidationStore.order.status)}`}
-          >
-            {statusType.get(consolidationStore.order.status)}
-          </span>
-        </div>
-      </section>
-      <>
-        {consolidationStore.order.status === 'pending' && (
-          <section
-            className="accordion-content order-form"
-            data-testid={`accordion-content-${consolidationStore.order.id}`}
-          >
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <p aria-details="" className="form-instructions measure-6">
-                  Choose a consolidation type. Use the checkboxes to include cases in the
-                  consolidation (at least two cases), and then mark a lead case. If the lead case is
-                  not listed, enter it at the bottom. When finished, click Verify to review your
-                  changes before approving them.
-                </p>
-                <FormRequirementsNotice />
-                <RadioGroup
-                  className="consolidation-type-container"
-                  label="Consolidation Type"
-                  required={true}
-                >
-                  <Radio
-                    id={`joint-admin-${consolidationStore.order.id}`}
-                    name="consolidation-type"
-                    label="Joint Administration"
-                    value="administrative"
-                    className="text-no-wrap"
-                    onChange={handleSelectConsolidationType}
-                    ref={consolidationControls.jointAdministrationRef}
-                  />
-                  <Radio
-                    id={`substantive-${consolidationStore.order.id}`}
-                    name="consolidation-type"
-                    label="Substantive Consolidation"
-                    value="substantive"
-                    onChange={handleSelectConsolidationType}
-                    ref={consolidationControls.substantiveRef}
-                  />
-                </RadioGroup>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <ConsolidationCaseTable
-                  id={`case-list-${consolidationStore.order.id}`}
-                  data-testid={`${consolidationStore.order.id}-case-list`}
-                  cases={consolidationStore.order.childCases}
-                  onSelect={handleIncludeCase}
-                  updateAllSelections={useCase.updateAllSelections}
-                  isDataEnhanced={consolidationStore.isDataEnhanced}
-                  ref={consolidationControls.caseTableRef}
-                  onMarkLead={handleMarkLeadCase}
-                ></ConsolidationCaseTable>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <div
-              className="lead-case-form grid-row grid-gap-lg"
-              data-testid={`lead-case-form-${consolidationStore.order.id}`}
-            >
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <Checkbox
-                  id={`lead-case-form-checkbox-toggle-${consolidationStore.order.id}`}
-                  className="lead-case-form-toggle"
-                  onChange={handleToggleLeadCaseForm}
-                  value=""
-                  ref={consolidationControls.toggleLeadCaseFormRef}
-                  label="Lead Case Not Listed"
-                ></Checkbox>
-                {consolidationStore.showLeadCaseForm && (
-                  <section
-                    className={`lead-case-form-container lead-case-form-container-${consolidationStore.order.id}`}
-                  >
-                    <h3>Enter lead case details:</h3>
-                    <div className="lead-case-court-container">
-                      <CamsSelect
-                        id={'lead-case-court'}
-                        required={true}
-                        options={getOfficeList(
-                          consolidationStore.filteredOfficesList ?? props.officesList,
-                        )}
-                        onChange={handleSelectLeadCaseCourt}
-                        ref={consolidationControls.leadCaseDivisionRef}
-                        label="Select a court"
-                        value={getUniqueDivisionCodeOrUndefined(
-                          consolidationStore.order.childCases,
-                        )}
-                        isSearchable={true}
-                      />
-                    </div>
-                    <div className="lead-case-number-container">
-                      <CaseNumberInput
-                        id={`lead-case-input-${consolidationStore.order.id}`}
-                        data-testid={`lead-case-input-${consolidationStore.order.id}`}
-                        className="usa-input"
-                        onChange={handleLeadCaseInputChange}
-                        allowPartialCaseNumber={false}
-                        required={true}
-                        label="Enter a case number"
-                        ref={consolidationControls.leadCaseNumberRef}
-                      />
-                      {consolidationStore.leadCaseNumberError ? (
-                        <Alert
-                          id={`lead-case-number-alert-${consolidationStore.order.id}`}
-                          message={consolidationStore.leadCaseNumberError}
-                          type={UswdsAlertStyle.Error}
-                          show={true}
-                          slim={true}
-                          inline={true}
-                        ></Alert>
-                      ) : (
-                        <LoadingSpinner
-                          id={`lead-case-number-loading-spinner-${consolidationStore.order.id}`}
-                          caption="Verifying lead case number..."
-                          height="40px"
-                          hidden={!consolidationStore.isValidatingLeadCaseNumber}
-                        />
-                      )}
-                      {consolidationStore.foundValidCaseNumber && consolidationStore.leadCase && (
-                        <>
-                          <h4>Selected Lead Case</h4>
-                          <CaseTable
-                            id={`valid-case-number-found-${consolidationStore.order.id}`}
-                            cases={[consolidationStore.leadCase]}
-                          ></CaseTable>
-                        </>
-                      )}
-                    </div>
-                  </section>
-                )}
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <div className="button-bar grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10 text-no-wrap float-right">
-                <LoadingSpinner
-                  id={`processing-consolidation-loading-spinner-${consolidationStore.order.id}`}
-                  caption="Updating..."
-                  height="40px"
-                  hidden={!consolidationStore.isProcessing}
-                />
-                <Button
-                  id={`accordion-cancel-button-${consolidationStore.order.id}`}
-                  onClick={handleClearInputs}
-                  uswdsStyle={UswdsButtonStyle.Unstyled}
-                  className="unstyled-button"
-                  ref={consolidationControls.clearButtonRef}
-                >
-                  Clear
-                </Button>
-                <Button
-                  id={`accordion-reject-button-${consolidationStore.order.id}`}
-                  onClick={() =>
-                    consolidationControls.confirmationModalRef.current?.show({
-                      status: 'rejected',
-                      cases: consolidationStore.selectedCases,
-                      leadCase: consolidationStore.leadCase,
-                    })
-                  }
-                  uswdsStyle={UswdsButtonStyle.Outline}
-                  className="margin-right-2"
-                  ref={consolidationControls.rejectButtonRef}
-                >
-                  Reject
-                </Button>
-                <Button
-                  id={`accordion-approve-button-${consolidationStore.order.id}`}
-                  onClick={handleApproveButtonClick}
-                  disabled={true}
-                  ref={consolidationControls.approveButtonRef}
-                >
-                  Verify
-                </Button>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <ConsolidationOrderModal
-              ref={consolidationControls.confirmationModalRef}
-              id={`confirmation-modal-${consolidationStore.order.id}`}
-              onCancel={() => {}}
-              onConfirm={handleConfirmAction}
-            ></ConsolidationOrderModal>
-          </section>
-        )}
-        {consolidationStore.order.status === 'approved' && (
-          <section
-            className="accordion-content order-form"
-            data-testid={`accordion-content-${consolidationStore.order.id}`}
-          >
-            <div className="grid-row grid-gap-lg consolidation-text">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                Consolidated the following cases to lead case{' '}
-                <CaseNumber
-                  data-testid={'lead-case-number'}
-                  caseId={consolidationStore.order.leadCase!.caseId}
-                  renderAs="link"
-                  openLinkIn="new-window"
-                ></CaseNumber>{' '}
-                {consolidationStore.order.leadCase?.caseTitle}.
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <CaseTable
-                  id={`order-${consolidationStore.order.id}-child-cases`}
-                  cases={consolidationStore.order.childCases}
-                ></CaseTable>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-          </section>
-        )}
-        {consolidationStore.order.status === 'rejected' && (
-          <section
-            className="accordion-content order-form"
-            data-testid={`accordion-content-${consolidationStore.order.id}`}
-          >
-            <div className="grid-row grid-gap-lg consolidation-text">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                Rejected the consolidation of the cases below
-                {consolidationStore.order.reason && consolidationStore.order.reason.length && (
-                  <>
-                    {' '}
-                    for the following reason:
-                    <blockquote>{consolidationStore.order.reason}</blockquote>
-                  </>
-                )}
-                {!consolidationStore.order.reason && <>.</>}
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <ConsolidationCaseTable
-                  id={`${consolidationStore.order.id}-case-list`}
-                  data-testid={`${consolidationStore.order.id}-case-list`}
-                  cases={consolidationStore.order.childCases}
-                  isDataEnhanced={consolidationStore.isDataEnhanced}
-                ></ConsolidationCaseTable>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-          </section>
-        )}
-      </>
-    </Accordion>
-  );
+    handleApproveButtonClick: handleApproveButtonClick,
+    handleClearInputs: handleClearInputs,
+    handleConfirmAction: handleConfirmAction,
+    handleIncludeCase: handleIncludeCase,
+    handleLeadCaseInputChange: handleLeadCaseInputChange,
+    handleMarkLeadCase: handleMarkLeadCase,
+    handleOnExpand: handleOnExpand,
+    handleSelectConsolidationType: handleSelectConsolidationType,
+    handleSelectLeadCaseCourt: handleSelectLeadCaseCourt,
+    handleToggleLeadCaseForm: handleToggleLeadCaseForm,
+    showConfirmationModal: consolidationControls.showConfirmationModal,
+    updateAllSelections: useCase.updateAllSelections,
+  };
+
+  return <ConsolidationOrderAccordionView viewModel={viewModel}></ConsolidationOrderAccordionView>;
 }

@@ -1,5 +1,4 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
-import { formatDate } from '@/lib/utils/datetime';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
@@ -15,7 +14,12 @@ import { ConsolidationOrderModal } from '@/data-verification/ConsolidationOrderM
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
 
-export function ConsolidationOrderAccordion(viewModel: ConsolidationViewModel) {
+export type ConsolidationOrderAccordionViewProps = {
+  viewModel: ConsolidationViewModel;
+};
+
+export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordionViewProps) {
+  const { viewModel } = props;
   return (
     <Accordion
       key={viewModel.order.id}
@@ -38,9 +42,9 @@ export function ConsolidationOrderAccordion(viewModel: ConsolidationViewModel) {
         <div
           className="grid-col-2 text-no-wrap"
           title="Order Filed"
-          aria-label={`Order Filed ${formatDate(viewModel.order.orderDate)}`}
+          aria-label={`Order Filed ${viewModel.formattedOrderFiledDate}`}
         >
-          {formatDate(viewModel.order.orderDate)}
+          {viewModel.formattedOrderFiledDate}
         </div>
         <div className="grid-col-2 order-type text-no-wrap">
           <span aria-label={`Event type ${viewModel.orderType.get(viewModel.order.orderType)}`}>
@@ -137,7 +141,7 @@ export function ConsolidationOrderAccordion(viewModel: ConsolidationViewModel) {
                       <CamsSelect
                         id={'lead-case-court'}
                         required={true}
-                        options={viewModel.filteredOfficeRecords}
+                        options={viewModel.filteredOfficeRecords!}
                         onChange={viewModel.handleSelectLeadCaseCourt}
                         ref={viewModel.leadCaseDivisionRef}
                         label="Select a court"
@@ -209,7 +213,7 @@ export function ConsolidationOrderAccordion(viewModel: ConsolidationViewModel) {
                 <Button
                   id={`accordion-reject-button-${viewModel.order.id}`}
                   onClick={() =>
-                    viewModel.showConfirmationModal(viewModel.selectedCases, viewModel.leadCase)
+                    viewModel.showConfirmationModal(viewModel.selectedCases, viewModel.leadCase!)
                   }
                   uswdsStyle={UswdsButtonStyle.Outline}
                   className="margin-right-2"
