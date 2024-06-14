@@ -27,7 +27,9 @@ export function AccessDenied(props: AccessDeniedProps) {
         message={props.message ?? DEFAULT_MESSAGE}
       ></Alert>
       <div>
-        <Button onClick={handleLoginRedirect}>Login</Button>
+        <Button id="return-to-login" onClick={handleLoginRedirect}>
+          Login
+        </Button>
       </div>
     </BlankPage>
   );
