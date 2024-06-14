@@ -6,7 +6,7 @@ import { Pill } from '../Pill';
 
 type ComboboxInputProps = JSX.IntrinsicElements['input'] & {
   className?: string;
-  selections: ComboOption[];
+  selections?: ComboOption[];
   onSelectionChange: (selections: ComboOption[]) => void;
 };
 
@@ -24,10 +24,13 @@ function _ComboboxMultiSelectInput(props: ComboboxInputProps, ref: React.Ref<Inp
 
   function onPillClick(value: string) {
     console.log('clicked pill with value ' + value);
-    const newSelections = selections.filter((selection: ComboOption) => {
-      return selection.value !== value;
-    });
+    let newSelections: ComboOption[] = [];
 
+    if (selections) {
+      newSelections = selections.filter((selection: ComboOption) => {
+        return selection.value !== value;
+      });
+    }
     onSelectionChange(newSelections);
   }
 

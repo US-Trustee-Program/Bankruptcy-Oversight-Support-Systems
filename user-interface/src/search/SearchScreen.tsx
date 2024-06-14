@@ -15,7 +15,6 @@ import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import Combobox, { ComboOption } from '@/lib/components/uswds/Combobox';
-import ComboboxMultiSelectInput from '@/lib/components/uswds/ComboboxMultiSelectInput';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -33,7 +32,6 @@ export default function SearchScreen() {
 
   const [chapterList, setChapterList] = useState<Record<string, string>[]>([]);
   const [simpleChapterList, setSimpleChapterList] = useState<ComboOption[]>([]);
-  const [chapterSelections, setChapterSelections] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
@@ -109,14 +107,6 @@ export default function SearchScreen() {
     setSearchPredicate(newPredicate);
   }
 
-  function handleSimpleChapterSelection(selections: ComboOption[]) {
-    setChapterSelections(selections);
-  }
-
-  function handleChapterFilter(ev: React.ChangeEvent<HTMLInputElement>) {
-    console.log(ev);
-  }
-
   useEffect(() => {
     getOffices();
     getChapters();
@@ -175,16 +165,11 @@ export default function SearchScreen() {
                   id={'case-chapter-search'}
                   className="case-chapter__select"
                   label="Chapter"
-                  onChange={handleSimpleChapterSelection}
+                  onChange={() => {}}
                   options={simpleChapterList}
                   required={false}
-                >
-                  <ComboboxMultiSelectInput
-                    selections={chapterSelections}
-                    onSelectionChange={handleSimpleChapterSelection}
-                    onChange={handleChapterFilter}
-                  ></ComboboxMultiSelectInput>
-                </Combobox>
+                  multiSelect={true}
+                ></Combobox>
                 <CamsSelectMulti
                   id={'case-chapter-search'}
                   className="case-chapter__select"

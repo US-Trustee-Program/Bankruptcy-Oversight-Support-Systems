@@ -1,8 +1,6 @@
 import './forms.scss';
 import './Combobox.scss';
 import {
-  Children,
-  cloneElement,
   forwardRef,
   PropsWithChildren,
   ReactElement,
@@ -13,6 +11,7 @@ import {
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
+import ComboboxMultiSelectInput from './ComboboxMultiSelectInput';
 
 // Alias for readability.
 //const debounce = setTimeout;
@@ -37,25 +36,16 @@ interface ComboboxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> 
   includeClearButton?: boolean;
   options: ComboOption[];
   onChange: (options: ComboOption[]) => void;
+  multiSelect: boolean;
 }
 
 function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
-  const { label, includeClearButton, options, value, onChange, ...otherProps } = props;
+  const { label, includeClearButton, options, value, onChange, multiSelect, ...otherProps } = props;
   const [inputDisabled, setInputDisabled] = useState<boolean>(otherProps.disabled ?? false);
   const [selections, setSelections] = useState<ComboOption[]>();
   const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
-
-  const renderChildren = () => {
-    if (!props.children) return;
-    return Children.map(props.children, (child) => {
-      return cloneElement(child, {
-        key: `${child.key}-copy`,
-        selections,
-      });
-    });
-  };
 
   function emitChange(_value: string) {
     /*
@@ -100,7 +90,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
     return result;
   }
 
-  function handleOnChange(option: ComboOption) {
+  function handleDropdownItemSelection(option: ComboOption) {
     let newSelections: ComboOption[] = [];
     let removed = false;
     if (option.selected === true) option.selected = false;
@@ -137,6 +127,14 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
     }
   }
 
+  function handlePillSelection(selections: ComboOption[]) {
+    setSelections(selections);
+  }
+
+  function handleInputFilter(ev: React.ChangeEvent<HTMLInputElement>) {
+    console.log(ev);
+  }
+
   useEffect(() => {
     //setInputValue(value || '');
   }, [value]);
@@ -157,7 +155,13 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
           </div>
         )}
         <div className="input-container usa-input">
-          {renderChildren()}{' '}
+          {multiSelect && (
+            <ComboboxMultiSelectInput
+              selections={selections}
+              onSelectionChange={handlePillSelection}
+              onChange={handleInputFilter}
+            ></ComboboxMultiSelectInput>
+          )}
           <Button
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
@@ -178,7 +182,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
                 className={isSelected(option) ? 'selected' : ''}
                 key={idx}
                 data-value={option.value}
-                onClick={() => handleOnChange(option)}
+                onClick={() => handleDropdownItemSelection(option)}
               >
                 {option.label}
               </li>
