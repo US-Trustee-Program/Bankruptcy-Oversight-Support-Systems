@@ -83,7 +83,6 @@ jobs:
       - name: Run E2E Tests
         id: e2eTests
         working-directory: test/e2e
-        continue-on-error: true
         run: |
           echo "Wait 60s for seed to finish and apps to restart..."
           sleep 60
