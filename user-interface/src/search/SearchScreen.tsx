@@ -30,29 +30,25 @@ export default function SearchScreen() {
     offset: DEFAULT_SEARCH_OFFSET,
   });
 
-  const [chapterList, setChapterList] = useState<Record<string, string>[]>([]);
-  const [simpleChapterList, setSimpleChapterList] = useState<ComboOption[]>([]);
+  const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
   const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<SelectMultiRef>(null);
-  const chapterSelectionRef = useRef<SelectMultiRef>(null);
+  const chapterSelectionRef = useRef<InputRef>(null);
   const errorAlertRef = useRef<AlertRefType>(null);
 
   const api = useApi2();
 
   function getChapters() {
-    const chapterRecordArray: Record<string, string>[] = [];
-    const simpleChapterArray: ComboOption[] = [];
+    const chapterArray: ComboOption[] = [];
 
     for (const item of ['7', '9', '11', '12', '13', '15']) {
-      chapterRecordArray.push({ label: item, value: item });
-      simpleChapterArray.push({ label: item, value: item, selected: false });
+      chapterArray.push({ label: item, value: item, selected: false });
     }
 
-    setSimpleChapterList(simpleChapterArray);
-    setChapterList(chapterRecordArray);
+    setChapterList(chapterArray);
   }
 
   async function getOffices() {
@@ -96,14 +92,16 @@ export default function SearchScreen() {
     setSearchPredicate(newPredicate);
   }
 
-  function handleChapterSelection(selection: MultiSelectOptionList) {
+  function handleChapterSelection(_selection: ComboOption[]) {
     const newPredicate = {
       ...searchPredicate,
     };
     delete newPredicate.chapters;
+    /*
     if (selection.length) {
       newPredicate.chapters = selection.map((kv: Record<string, string>) => kv.value);
     }
+      */
     setSearchPredicate(newPredicate);
   }
 
@@ -165,22 +163,12 @@ export default function SearchScreen() {
                   id={'case-chapter-search'}
                   className="case-chapter__select"
                   label="Chapter"
-                  onChange={() => {}}
-                  options={simpleChapterList}
-                  required={false}
-                  multiSelect={true}
-                ></Combobox>
-                <CamsSelectMulti
-                  id={'case-chapter-search'}
-                  className="case-chapter__select"
-                  closeMenuOnSelect={true}
-                  label="Chapter"
                   onChange={handleChapterSelection}
                   options={chapterList}
-                  isSearchable={true}
                   required={false}
+                  multiSelect={true}
                   ref={chapterSelectionRef}
-                />
+                ></Combobox>
               </div>
             </div>
           </div>
