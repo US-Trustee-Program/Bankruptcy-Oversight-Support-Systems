@@ -4,15 +4,14 @@ import { ComboOption } from './Combobox';
 import { UswdsButtonStyle } from './Button';
 import { Pill } from '../Pill';
 
-type ComboboxInputProps = JSX.IntrinsicElements['input'] & {
+type PillBoxProps = {
   className?: string;
   selections: ComboOption[];
   onSelectionChange: (selections: ComboOption[]) => void;
 };
 
-function _ComboboxMultiSelectInput(props: ComboboxInputProps, ref: React.Ref<InputRef>) {
-  const { id, className, onSelectionChange, onChange, value, disabled, selections, ...otherProps } =
-    props;
+function _PillBox(props: PillBoxProps, ref: React.Ref<InputRef>) {
+  const { onSelectionChange, selections } = props;
 
   function setValue() {}
   function getValue(): string {
@@ -33,7 +32,7 @@ function _ComboboxMultiSelectInput(props: ComboboxInputProps, ref: React.Ref<Inp
   useImperativeHandle(ref, () => ({ resetValue, setValue, getValue, clearValue, disable }));
 
   return (
-    <div className={`combo-box-input-container`}>
+    <div className={`pill-container`}>
       {selections?.map((selection, idx) => (
         <Pill
           key={idx}
@@ -43,17 +42,9 @@ function _ComboboxMultiSelectInput(props: ComboboxInputProps, ref: React.Ref<Inp
           onClick={onPillClick}
         ></Pill>
       ))}
-      <input
-        {...otherProps}
-        className={`usa-tooltip combo-box-input ${className ?? ''}`}
-        onChange={onChange}
-        data-testid={id}
-        disabled={disabled}
-        value={value}
-      />
     </div>
   );
 }
 
-const ComboboxMultiSelectInput = forwardRef(_ComboboxMultiSelectInput);
-export default ComboboxMultiSelectInput;
+const PillBox = forwardRef(_PillBox);
+export default PillBox;
