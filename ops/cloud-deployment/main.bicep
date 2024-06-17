@@ -102,7 +102,7 @@ param analyticsWorkspaceId string = ''
 param analyticsResourceGroupName string = 'rg-analytics'
 
 @description('Url for our Okta Provider')
-param oktaUrl string = 'https://dev-31938913.okta.com'
+param oktaUrl string = 'dev-31938913.okta.com'
 
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
