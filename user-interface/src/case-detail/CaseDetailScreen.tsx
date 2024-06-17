@@ -1,5 +1,5 @@
 import './CaseDetailScreen.scss';
-import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useContext } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import {
   CaseAssignmentHistoryResponseData,
@@ -33,6 +33,7 @@ import AttorneysApi from '@/lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
 import CamsSelectMulti from '@/lib/components/CamsSelectMulti';
+import { SessionContext } from '@/login/Session';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -181,12 +182,14 @@ interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
+  const session = useContext(SessionContext);
+
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
-  const api = useApi();
+  const api = useApi(session);
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(

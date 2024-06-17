@@ -10,21 +10,24 @@ import {
 } from './login-library';
 
 export const SessionContext = createContext<CamsSession>({
-  user: null,
+  apiToken: null,
   provider: null,
+  user: null,
 });
 
 export type SessionProps = PropsWithChildren & {
+  apiToken: string;
   provider: LoginProvider;
   user: CamsUser;
 };
 
 export function Session(props: SessionProps) {
-  const { provider, user } = props;
+  const { apiToken, provider, user } = props;
   const navigate = useNavigate();
   const location = useLocation();
 
-  const session: CamsSession = { provider, user };
+  const session: CamsSession = { apiToken, provider, user };
+  console.log('session', session);
 
   if (window.localStorage) {
     window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));

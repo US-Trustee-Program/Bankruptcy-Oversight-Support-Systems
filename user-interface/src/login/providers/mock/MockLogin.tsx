@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser } from '@/login/login-library';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/login/login-library';
 
 type MockRole = {
   key: string;
@@ -50,7 +50,7 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
 
   if (user)
     return (
-      <Session provider="mock" user={user}>
+      <Session provider="mock" user={user} apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}>
         {props.children}
       </Session>
     );
