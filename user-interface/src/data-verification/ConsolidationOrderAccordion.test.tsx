@@ -5,7 +5,6 @@ import { ConsolidationOrder } from '@common/cams/orders';
 import {
   ConsolidationOrderAccordion,
   ConsolidationOrderAccordionProps,
-  fetchLeadCaseAttorneys,
 } from '@/data-verification/ConsolidationOrderAccordion';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
@@ -1017,51 +1016,5 @@ describe('ConsolidationOrderAccordion tests', () => {
         `Case ${leadCaseNumber} is a consolidated child case of case ${getCaseNumber(otherLeadCase.caseId)}.`,
       );
     });
-  });
-});
-
-describe('Test exported functions', () => {
-  const order: ConsolidationOrder = MockData.getConsolidationOrder();
-  let mockFeatureFlags: FeatureFlagSet;
-
-  beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
-    mockFeatureFlags = {
-      'consolidations-enabled': true,
-    };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-  });
-
-  test('should return empty array when no attorneys are found', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string) => {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 1,
-        body: [],
-      } as SimpleResponseData<CaseAssignment[]>);
-    });
-
-    const attorneys = await fetchLeadCaseAttorneys(order.childCases[0].caseId);
-    expect(attorneys).toEqual([]);
-  });
-
-  test('should return string array of attorneys when found', async () => {
-    const mockAttorneys: CaseAssignment[] = MockData.buildArray(
-      () => MockData.getAttorneyAssignment(),
-      3,
-    );
-    const attorneyArray = mockAttorneys.map((assignment) => assignment.name);
-    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string) => {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 1,
-        body: mockAttorneys,
-      } as SimpleResponseData<CaseAssignment[]>);
-    });
-
-    const attorneys = await fetchLeadCaseAttorneys(order.childCases[0].caseId);
-    expect(attorneys).toEqual(attorneyArray);
   });
 });

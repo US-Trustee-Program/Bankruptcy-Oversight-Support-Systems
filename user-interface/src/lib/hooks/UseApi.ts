@@ -9,6 +9,7 @@ import {
   ResponseBody,
   ResponseBodySuccess,
 } from '@common/api/response';
+import { CamsSession } from '@/login/login-library';
 
 // TODO: Possibly use the React Context API to scope the API context to the DOM rather than the module. Add a provider component to configure the API context.
 let context: ApiClient;
@@ -36,11 +37,14 @@ export function setApiContext(api: ApiClient) {
  *
  * @returns ApiClient
  */
-export function useApi(): ApiClient {
-  return context ?? legacyConfiguration();
+export function useApi(session: CamsSession): ApiClient {
+  const api = context ?? legacyConfiguration();
+  api.headers['Authorization'] = `Bearer ${session.apiToken}`;
+  return api;
 }
 
 export interface ApiClient {
+  headers: Record<string, string>;
   host: string;
   createPath(path: string, params: ObjectKeyVal): string;
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
@@ -91,8 +95,8 @@ function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<
   throw new Error('Cannot map legacy response from API to new response model.');
 }
 
-export function useGenericApi(): GenericApiClient {
-  const api = useApi();
+export function useGenericApi(session: CamsSession): GenericApiClient {
+  const api = useApi(session);
 
   function justThePath(uriOrPath: string): string {
     if (uriOrPath.startsWith(api.host)) {

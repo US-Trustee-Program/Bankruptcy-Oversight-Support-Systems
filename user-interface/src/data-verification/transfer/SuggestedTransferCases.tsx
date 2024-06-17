@@ -2,7 +2,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
@@ -11,6 +11,7 @@ import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import { SessionContext } from '@/login/Session';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;
@@ -53,7 +54,8 @@ function _SuggestedTransferCases(
   const caseNumberRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<InputRef>(null);
 
-  const api = useGenericApi();
+  const session = useContext(SessionContext);
+  const api = useGenericApi(session);
 
   async function validateCaseNumber(caseId: string) {
     if (loadingCaseSummary) return false;

@@ -9,6 +9,8 @@ import {
 import { ResponseBody } from '@common/api/response';
 
 export default class Api {
+  public static headers: Record<string, string> = {};
+
   public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
 
   public static createPath(path: string, params: ObjectKeyVal) {
@@ -31,7 +33,7 @@ export default class Api {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
-      const response = await httpPost({ url: Api.host + pathStr, body });
+      const response = await httpPost({ url: Api.host + pathStr, body, headers: this.headers });
 
       const data = await response.json();
 
@@ -49,7 +51,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpGet({ url: Api.host + pathStr });
+      const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
 
       const data = await response.json();
 
@@ -78,7 +80,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpGet({ url: Api.host + pathStr });
+      const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
 
       const data = await response.json();
 
@@ -103,7 +105,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpPatch({ url: Api.host + pathStr, body });
+      const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
 
       const data = await response.json();
 
@@ -125,7 +127,7 @@ export default class Api {
     try {
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpPut({ url: Api.host + pathStr, body });
+      const response = await httpPut({ url: Api.host + pathStr, body, headers: this.headers });
 
       const data = await response.json();
 

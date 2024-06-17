@@ -1,15 +1,18 @@
 import { describe } from 'vitest';
 import { OktaSession } from './OktaSession';
 import { render, screen, waitFor } from '@testing-library/react';
-import { CamsUser } from '@/login/login-library';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/login/login-library';
 import { BrowserRouter } from 'react-router-dom';
 import * as sessionModule from '../../Session';
 import * as oktaReactModule from '@okta/okta-react';
+
+const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
 
 describe('OktaSession', () => {
   const authState = {
     isAuthenticated: false,
   };
+  const getAccessToken = vi.fn().mockReturnValue(MOCK_AUTHORIZATION_BEARER_TOKEN);
   const getUser = vi.fn();
   const handleLoginRedirect = vi.fn();
   const useOktaAuth = vi.fn().mockImplementation(() => {
@@ -17,6 +20,7 @@ describe('OktaSession', () => {
       oktaAuth: {
         handleLoginRedirect,
         getUser,
+        getAccessToken,
       },
       authState,
     };
@@ -55,7 +59,10 @@ describe('OktaSession', () => {
       expect(childDiv).toHaveTextContent(childText);
     });
 
-    expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'okta', user }, {});
+    expect(sessionSpy).toHaveBeenCalledWith(
+      { children: children, provider: 'okta', user, apiToken },
+      {},
+    );
   });
 
   test('should map Okta user email to CamsUser if Okta user name is not present', async () => {
@@ -84,7 +91,10 @@ describe('OktaSession', () => {
       expect(screen.queryByTestId(testId)).toBeInTheDocument();
     });
 
-    expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'okta', user }, {});
+    expect(sessionSpy).toHaveBeenCalledWith(
+      { children: children, provider: 'okta', user, apiToken },
+      {},
+    );
   });
 
   test('should map UNKNOWN to CamsUser if Okta user name and email are not present', async () => {
@@ -111,7 +121,10 @@ describe('OktaSession', () => {
       expect(screen.queryByTestId(testId)).toBeInTheDocument();
     });
 
-    expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'okta', user }, {});
+    expect(sessionSpy).toHaveBeenCalledWith(
+      { children: children, provider: 'okta', user, apiToken },
+      {},
+    );
   });
 
   test('should show an error message if the user cannot be retrieved from Okta', async () => {

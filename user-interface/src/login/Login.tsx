@@ -9,6 +9,7 @@ import {
   LoginProvider,
   getSessionfromLocalStorage,
   isLoginProviderType,
+  MOCK_AUTHORIZATION_BEARER_TOKEN,
 } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
@@ -34,9 +35,9 @@ export function Login(props: LoginProps): React.ReactNode {
 
   // Skip to session and continue if already logged in.
   const session = getSessionfromLocalStorage(provider);
-  if (session && session.provider && session.user) {
+  if (session && session.provider && session.user && session.apiToken) {
     return (
-      <Session provider={session.provider!} user={session.user!}>
+      <Session provider={session.provider} user={session.user} apiToken={session.apiToken}>
         {props.children}
       </Session>
     );
@@ -56,7 +57,11 @@ export function Login(props: LoginProps): React.ReactNode {
       break;
     case 'none':
       providerComponent = (
-        <Session provider={provider} user={props.user ?? { name: 'Super User' }}>
+        <Session
+          provider={provider}
+          apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
+          user={props.user ?? { name: 'Super User' }}
+        >
           {props.children}
         </Session>
       );

@@ -13,12 +13,13 @@ import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { formatDate } from '@/lib/utils/datetime';
+import { SessionContext } from '@/login/Session';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -52,7 +53,8 @@ export function SearchResults(props: SearchResultsProps) {
     ? searchResults?.meta
     : undefined;
 
-  const api = useGenericApi();
+  const session = useContext(SessionContext);
+  const api = useGenericApi(session);
 
   function handleSearchResults(response: ResponseBodySuccess<CaseBasics[]>) {
     if (isResponseBodySuccess(response)) {
