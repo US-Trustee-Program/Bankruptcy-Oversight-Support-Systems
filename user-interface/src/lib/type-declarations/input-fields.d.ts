@@ -1,10 +1,17 @@
 import { MultiSelectOptionList } from '../components/CamsSelectMulti';
+import { ComboOption } from '../components/Combobox';
+
 export interface InputRef {
   setValue: (value: string) => void;
   disable: (value: boolean) => void;
   clearValue: () => void;
   resetValue: () => void;
   getValue: () => string;
+}
+
+export interface ComboboxRef {
+  getValue: () => ComboOption[];
+  disable: (value: boolean) => void;
 }
 
 export interface RadioRef {
