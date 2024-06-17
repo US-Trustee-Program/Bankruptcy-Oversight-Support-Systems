@@ -4,9 +4,10 @@ import { OfficeDetails } from '@common/cams/courts';
 import { Consolidation } from '@common/cams/events';
 import { useGenericApi } from './UseApi';
 import { Order } from '@common/cams/orders';
+import { CamsSession } from '@/login/login-library';
 
-export function useApi2() {
-  const api = useGenericApi();
+export function useApi2(session: CamsSession) {
+  const api = useGenericApi(session);
   return {
     async getCaseSummary(caseId: string) {
       return api.get<CaseSummary>(`/cases/${caseId}/summary`);

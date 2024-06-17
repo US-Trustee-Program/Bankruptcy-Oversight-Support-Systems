@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { TableRow, TableRowData, TableRowProps } from '@/lib/components/uswds/Table';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -8,6 +8,7 @@ import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseBasics } from '@common/cams/cases';
+import { SessionContext } from '@/login/Session';
 
 export type AssignAttorneyCasesRowProps = TableRowProps & {
   bCase: CaseBasics;
@@ -22,7 +23,8 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
   const [internalCase, setBCase] = useState<CaseBasics>(bCase);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const api = useApi2();
+  const session = useContext(SessionContext);
+  const api = useApi2(session);
 
   useEffect(() => {
     api

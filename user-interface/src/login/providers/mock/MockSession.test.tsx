@@ -1,13 +1,14 @@
 import { describe } from 'vitest';
 import { MockSession } from './MockSession';
 import { render, screen } from '@testing-library/react';
-import { CamsUser } from '../../login-library';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '../../login-library';
 import * as sessionModule from '../../Session';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('MockSession', () => {
   test('should pass a mapped CamsUser, provider, and children to the Session component', () => {
     const user: CamsUser = { name: 'First Last' };
+    const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
     const testId = 'child-div';
     const childText = 'TEST';
 
@@ -23,6 +24,9 @@ describe('MockSession', () => {
     expect(childDiv).toBeInTheDocument();
     expect(childDiv).toHaveTextContent(childText);
 
-    expect(sessionSpy).toHaveBeenCalledWith({ children: children, provider: 'mock', user }, {});
+    expect(sessionSpy).toHaveBeenCalledWith(
+      { children: children, provider: 'mock', user, apiToken },
+      {},
+    );
   });
 });

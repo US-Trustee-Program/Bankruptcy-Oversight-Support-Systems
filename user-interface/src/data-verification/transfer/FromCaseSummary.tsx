@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -8,6 +8,7 @@ import { CaseTable } from './CaseTable';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { SessionContext } from '@/login/Session';
 
 export type FromCaseSummaryProps = {
   order: TransferOrder;
@@ -18,7 +19,8 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
   const { order } = props;
   const [originalCaseSummary, setOriginalCaseSummary] = useState<CaseSummary | null>(null);
 
-  const api = useApi2();
+  const session = useContext(SessionContext);
+  const api = useApi2(session);
 
   async function getCaseSummary(caseId: string) {
     await api
