@@ -31,8 +31,7 @@ async function oktaLogin(page: Page) {
   await page.locator('#input28').fill(OKTA_USER_NAME); //The selecors changed when we switched tenants?? find a better way for locators
   await page.locator('#input36').fill(OKTA_PASSWORD);
   await page.locator('.button-primary').click();
-  await page.waitForURL(TARGET_HOST);
-  await page.context().storageState({ path: authFile });
+  await expect(page).toHaveURL(TARGET_HOST);
   await expect(page.context().storageState({ path: authFile })).toBeDefined();
 }
 

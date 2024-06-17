@@ -88,7 +88,8 @@ jobs:
           sleep 60
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          CAMS_LOGIN_PROVIDER='{"issuer": "${{ vars.OKTA_URL }}/oauth2/default", "clientId": "${{ vars.OKTA_CLIENT_ID }}", "redirectUri": "https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"}'
+          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=$CAMS_LOGIN_PROVIDER npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4
