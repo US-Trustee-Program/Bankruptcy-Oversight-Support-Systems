@@ -6,12 +6,14 @@ import {
   ReactElement,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
-import PillBox from './PillBox';
+import PillBox from '../PillBox';
+import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 
 export type ComboOption = {
   value: string;
@@ -44,6 +46,11 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentSelection, setCurrentSelection] = useState<number>(0);
+
+  const comboboxRef = useRef(null);
+  const pillBoxRef = useRef(null);
+
+  useOutsideClick([comboboxRef], isOutsideClick);
 
   function emitChange(_value: string) {
     // TODO may not need... this came from input component
@@ -129,6 +136,32 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
     }
   }
 
+  function isOutsideClick(ev: MouseEvent) {
+    if (comboboxRef.current) {
+      const boundingRect = (comboboxRef.current as HTMLDivElement).getBoundingClientRect();
+      const containerRight = boundingRect.x + boundingRect.width;
+      const containerBottom = boundingRect.y + boundingRect.height;
+      const targetX = ev.clientX;
+      const targetY = ev.clientY;
+      if (
+        targetX < boundingRect.x ||
+        targetX > containerRight ||
+        targetY < boundingRect.y ||
+        targetY > containerBottom ||
+        selections?.length === 0
+      ) {
+        closeDropdown();
+      }
+    }
+  }
+
+  function closeDropdown() {
+    setExpandIcon('expand_more');
+    setExpanded(false);
+    setExpandedClass('closed');
+    setCurrentSelection(0);
+  }
+
   function toggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
     const screenBottom = window.scrollY + window.innerHeight;
     const inputContainer = document.querySelector(`#${props.id} .input-container`);
@@ -147,9 +180,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
     }
 
     if (expanded) {
-      setExpandIcon('expand_more');
-      setExpanded(false);
-      setExpandedClass('closed');
+      closeDropdown();
     } else {
       setExpandIcon('expand_less');
       setExpanded(true);
@@ -171,10 +202,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
 
     switch (ev.key) {
       case 'Escape':
-        setExpandIcon('expand_more');
-        setExpanded(false);
-        setExpandedClass('closed');
-        setCurrentSelection(0);
+        closeDropdown();
         break;
       case 'ArrowDown':
         if (index >= 0 && index < options.length) {
@@ -217,7 +245,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
 
   return (
-    <div id={props.id} className="usa-form-group combo-box-form-group">
+    <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboboxRef}>
       <div className={`chapter-label ${multiSelect ? 'multi-select' : ''}`}>
         <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
           {label}
@@ -229,7 +257,12 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<InputRef>) {
         )}
       </div>
       {multiSelect && (
-        <PillBox selections={selections ?? []} onSelectionChange={handlePillSelection}></PillBox>
+        <PillBox
+          id={`${props.id}-pill-box`}
+          selections={selections ?? []}
+          onSelectionChange={handlePillSelection}
+          ref={pillBoxRef}
+        ></PillBox>
       )}
       <div className="usa-combo-box">
         <div className="input-container usa-input">

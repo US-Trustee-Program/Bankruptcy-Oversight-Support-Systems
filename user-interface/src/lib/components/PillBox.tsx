@@ -1,16 +1,21 @@
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useImperativeHandle } from 'react';
-import { ComboOption } from './Combobox';
-import { UswdsButtonStyle } from './Button';
-import { Pill } from '../Pill';
+import { ComboOption } from './uswds/Combobox';
+import { Pill } from './Pill';
+import { UswdsButtonStyle } from './uswds/Button';
+
+type PillBoxRef = InputRef & {
+  contains: (el: HTMLElement) => boolean;
+};
 
 type PillBoxProps = {
+  id: string;
   className?: string;
   selections: ComboOption[];
   onSelectionChange: (selections: ComboOption[]) => void;
 };
 
-function _PillBox(props: PillBoxProps, ref: React.Ref<InputRef>) {
+function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   const { onSelectionChange, selections } = props;
 
   function setValue() {}
@@ -29,10 +34,31 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<InputRef>) {
     onSelectionChange(newSelections);
   }
 
-  useImperativeHandle(ref, () => ({ resetValue, setValue, getValue, clearValue, disable }));
+  function contains(el: HTMLElement) {
+    let isContained = false;
+    const pillBox = document.querySelector(`#${props.id}.pill-container`);
+    if (pillBox?.contains(el)) isContained = true;
+    /*
+    const pills = document.querySelectorAll(`#${props.id}.pill-container .pill`);
+    pills.forEach((pill) => {
+      if (pill.contains(el)) isContained = true;
+    });
+    */
+
+    return isContained;
+  }
+
+  useImperativeHandle(ref, () => ({
+    resetValue,
+    setValue,
+    getValue,
+    clearValue,
+    disable,
+    contains,
+  }));
 
   return (
-    <div className={`pill-container`}>
+    <div id={props.id} className={`pill-container`}>
       {selections?.map((selection, idx) => (
         <Pill
           key={idx}
