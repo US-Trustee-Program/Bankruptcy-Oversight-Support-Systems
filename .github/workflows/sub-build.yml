@@ -59,7 +59,7 @@ jobs:
           pushd ../common
           npm ci
           popd
-
+          CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "${{ vars.OKTA_URL }}/oauth2/default", "clientId": "${{ vars.OKTA_CLIENT_ID }}", "redirectUri": "https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"}'
           npm ci
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
@@ -69,7 +69,7 @@ jobs:
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
           export CAMS_LOGIN_PROVIDER=${{ inputs.camsLoginProvider }}
-          export CAMS_LOGIN_PROVIDER_CONFIG=${{ inputs.camsLoginProviderConfig }}
+          export CAMS_LOGIN_PROVIDER_CONFIG=$CAMS_LOGIN_PROVIDER_CONFIG
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
 
