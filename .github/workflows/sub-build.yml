@@ -59,7 +59,7 @@ jobs:
           pushd ../common
           npm ci
           popd
-          CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "${{ vars.OKTA_URL }}/oauth2/default", "clientId": "${{ vars.OKTA_CLIENT_ID }}", "redirectUri": "https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"}'
+          CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://${{ vars.OKTA_URL }}/oauth2/default", "clientId": "${{ vars.OKTA_CLIENT_ID }}", "redirectUri": "https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"}'
           npm ci
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
