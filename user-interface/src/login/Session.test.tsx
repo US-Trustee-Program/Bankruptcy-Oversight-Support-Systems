@@ -8,11 +8,13 @@ describe('Session', () => {
     name: 'Test User',
   };
   const testProvider = 'mock';
+  const testApiToken = 'mockApiToken';
 
   function renderWithProps(props: Partial<SessionProps> = {}) {
     const defaultProps: SessionProps = {
       user: testUser,
       provider: testProvider,
+      apiToken: testApiToken,
     };
 
     render(

@@ -15,12 +15,15 @@ export const AUTHENTICATION_PATHS = [
   LOGOUT_SESSION_END_PATH,
 ];
 
+export const MOCK_AUTHORIZATION_BEARER_TOKEN = 'MOCK_AUTHORIZATION_BEARER_TOKEN';
+
 export type CamsUser = {
   name: string;
 };
 
 export type CamsSession = {
   user: CamsUser | null;
+  apiToken: string | null;
   provider: LoginProvider | null;
 };
 

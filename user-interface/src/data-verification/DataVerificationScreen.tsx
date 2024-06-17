@@ -1,6 +1,6 @@
 import './DataVerificationScreen.scss';
 import Icon from '@/lib/components/uswds/Icon';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -20,6 +20,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { sortDates } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { SessionContext } from '@/login/Session';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -44,7 +45,9 @@ export default function DataVerificationScreen() {
   });
 
   const regionNumber = '02';
-  const api = useApi2();
+
+  const session = useContext(SessionContext);
+  const api = useApi2(session);
 
   async function getOrders() {
     setIsOrderListLoading(true);

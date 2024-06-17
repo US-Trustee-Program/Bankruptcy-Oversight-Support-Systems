@@ -1,7 +1,7 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useContext, useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import {
   ConsolidationOrder,
@@ -34,21 +34,12 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
-import { CaseAssignment } from '@common/cams/assignments';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { SessionContext } from '@/login/Session';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
-
-export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
-  if (caseAssignments.length && caseAssignments[0].name) {
-    return caseAssignments.map((assignment) => assignment.name);
-  } else {
-    return [];
-  }
-}
 
 export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
   const divisionCodeSet = cases.reduce((set, bCase) => {
@@ -109,8 +100,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
-  const genericApi = useGenericApi();
-  const api2 = useApi2();
+  const session = useContext(SessionContext);
+  const genericApi = useGenericApi(session);
+  const api2 = useApi2(session);
 
   //========== MISC FUNCTIONS ==========
 
