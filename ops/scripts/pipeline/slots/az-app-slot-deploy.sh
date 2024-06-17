@@ -63,4 +63,4 @@ az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "
 
 # Gives some extra time for prior management operation to complete before starting deployment
 sleep 10
-az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async false
+az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true
