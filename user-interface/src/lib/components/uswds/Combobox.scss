@@ -70,6 +70,7 @@ $borderColor: #c6cace;
           padding: 0.5rem;
           margin: 1px 0;
           border-bottom: 1px solid $borderColor;
+          cursor: pointer;
         }
         li:last-child {
           border-bottom: none;
@@ -81,6 +82,7 @@ $borderColor: #c6cace;
         li:focus {
           outline-offset: -4px;
         }
+
       }
     }
 
