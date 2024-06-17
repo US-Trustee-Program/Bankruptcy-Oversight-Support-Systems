@@ -30,16 +30,16 @@ export type ButtonProps = JSX.IntrinsicElements['button'] & {
   disabled?: boolean;
 };
 
-const ButtonComponent = (
-  { id, uswdsStyle, buttonState, className, disabled, onClick, title, children }: ButtonProps,
-  ref: React.Ref<ButtonRef>,
-) => {
+const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
+  const { id, uswdsStyle, buttonState, className, disabled, onClick, title, children } = props;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
   const classes = [BUTTON_BASE_CLASS];
 
   if (uswdsStyle) classes.push(uswdsStyle);
   if (buttonState) classes.push(buttonState);
   if (className) classes.push(className);
+
+  const tabIndex = props.tabIndex ?? 0;
 
   function disableButton(state: boolean) {
     setIsDisabled(state);
@@ -59,6 +59,7 @@ const ButtonComponent = (
       aria-disabled={isDisabled}
       disabled={isDisabled}
       title={title}
+      tabIndex={tabIndex}
     >
       {children}
     </button>

@@ -16,4 +16,8 @@
     margin: 0.25rem;
     cursor: pointer;
   }
+
+  .pill:hover {
+    filter: brightness(0.85);
+  }
 }
