@@ -7,6 +7,7 @@ const OKTA_USER_NAME = process.env.OKTA_USER_NAME;
 const OKTA_PASSWORD = process.env.OKTA_PASSWORD;
 const TARGET_HOST = process.env.TARGET_HOST;
 const LOGIN_PATH = '/login';
+const LOGIN_CONTINUE_PATH = '/login-continue';
 
 setup('authenticate', async ({ page }) => {
   const { login } = usingAuthenticationProvider();
@@ -31,20 +32,9 @@ async function oktaLogin(page: Page) {
   await page.locator('#input28').fill(OKTA_USER_NAME); //The selecors changed when we switched tenants?? find a better way for locators
   await page.locator('#input36').fill(OKTA_PASSWORD);
   await page.locator('.button-primary').click();
-  await page.waitForURL(TARGET_HOST);
+  await page.waitForURL(TARGET_HOST + LOGIN_CONTINUE_PATH);
   await page.context().storageState({ path: authFile });
   await expect(page.context().storageState({ path: authFile })).toBeDefined();
-  // await page.goto(TARGET_HOST + LOGIN_PATH); //Start for USTP login when we get there
-  // await page.getByTestId('button-auo-confirm').click();
-  // await expect(page.locator('#okta-sign-in')).toBeVisible();
-  // await page.locator('#input28').fill(OKTA_USER_NAME);
-  // await page.locator('.button-primary').click();
-  // await expect(page.locator('.password-with-toggle')).toBeVisible();
-  // await page.locator('.password-with-toggle').fill(OKTA_PASSWORD);
-  // await page.locator('.button-primary').click();
-  // await page.waitForURL(TARGET_HOST);
-  // await page.context().storageState({ path: authFile });
-  // await expect(page.context().storageState({ path: authFile })).toBeDefined();
 }
 
 function usingAuthenticationProvider() {
