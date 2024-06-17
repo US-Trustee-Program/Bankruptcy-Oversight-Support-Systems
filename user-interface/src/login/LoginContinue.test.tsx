@@ -20,7 +20,7 @@ describe('LoginContinue', () => {
     .spyOn(oktaSessionModule, 'OktaSession')
     .mockImplementation((props: PropsWithChildren) => {
       return (
-        <Session provider="okta" user={{ name: 'Mock User' }}>
+        <Session apiToken={''} provider="okta" user={{ name: 'Mock User' }}>
           {props.children}
         </Session>
       );
