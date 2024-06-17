@@ -63,9 +63,6 @@ export function OktaSession(props: OktaSessionProps) {
   // TODO: Is this correct? Is this the JWT to use for the Okta API or can we use this for the CAMS API?
   const apiToken = oktaAuth.getAccessToken();
 
-  console.log('accesstoken', apiToken);
-  console.log('oktaUser', oktaUser);
-
   if (!apiToken) {
     return <AccessDenied />;
   }
