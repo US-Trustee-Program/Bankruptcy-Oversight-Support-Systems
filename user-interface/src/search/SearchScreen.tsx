@@ -163,7 +163,7 @@ export default function SearchScreen() {
                   id={'case-chapter-search'}
                   className="case-chapter__select"
                   label="Chapter"
-                  onChange={handleChapterSelection}
+                  onUpdateSelection={handleChapterSelection}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
