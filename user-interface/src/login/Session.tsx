@@ -27,7 +27,6 @@ export function Session(props: SessionProps) {
   const location = useLocation();
 
   const session: CamsSession = { apiToken, provider, user };
-  console.log('session', session);
 
   if (window.localStorage) {
     window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
