@@ -17,22 +17,27 @@
   indicator.
 - Once an item is selected, a "pill" with the selected label should appear between the combobox
   label and the combobox element.
-- The pills should be clickable with an "x" icon on the right and should high-light on hover.
-- Clickin on a pill will remove the pill and deselect the associated item in the dropdown list.
+- The pills should be clickable with an "x" icon on the right and should highlight on hover.
+- Clicking on a pill will remove the pill and deselect the associated item in the dropdown list.
 - A clear-all button should appear next to the pills
-- Clicking the clear-all button will should remove all pills and clear all selected items out of the
+- Clicking the clear-all button should remove all pills and clear all selected items out of the
   dropdown list.
 - Clearing all pills should close the dropdown list.
-- Hitting escape key while focused on the input field should close the dropdown list and leave focus
-  on the input field.
-- Clicking outside of combobox should close the dropdown list but should NOT focus on the input
-  field.
+- Hitting escape key while focused on the input field should close the dropdown list, leave focus on
+  the input field, and clear text out of input.
+- Clicking outside of combobox should close the dropdown list and clear the input field but should
+  NOT focus on the input field.
 - Clicking on the toggle button should open or close the dropdown list and put the focus on the
   input field.
 - The arrow icon on the toggle button should change directions depending on whether the dropdown
   list is open or closed. It should be pointing down when closed and pointing up when open.
-- \*\* Tabbing out of the combobox should focus on the next element on the screen but not on the
-  elements within the dropdown list.
+- If the dropdown list is open, and the input field is in focus, then pressing the Tab key should
+  highlight the first item in the dropdown list. Pressing the tab key a second time should close the
+  dropdown and focus on the next element on the screen.
+- If the dropdown is already closed, then pressing the tab key should focus on the next element on
+  the screen and should not open the dropdown list.
+- If the dropdown list is closed, then typing characters on the keyboard should open the dropdown
+  list.
 - Up and down arrow cursor keys should traverse the list and return to the input field, in either
   direction.
 - Pressing Enter key while focused on an element in the dropdown list should select that option,
@@ -46,15 +51,16 @@
   to the first unfiltered item in the list or from the last unfiltered item in the list to the input
   field. Likewise, pressing Up arrow key should move from the first unfiltered item in the list to
   the input field, or from the input field to the last unfiltered item in the list.
-- \*\* When focus leaves the combobox and moves to another element on screen, the input field in the
+- When focus leaves the combobox and moves to another element on screen, the input field in the
   combobox should be cleared.
-- \*\* If items are currently selected, then tabbing out of the input field should take the cursor
-  to the pills, and after traversing the pills, should move on to the clear button, and after the
-  clear button, on to the remaining components on the screen in their normal traversal order.
-- \*\* Pressing Enter key while on the clear button should clear the selections (both the pills and
-  the dropdown list selections).
-- \*\* Pressing Enter key on a pill should remove the pill and clear associated selection out of
-  dropdown list.
-
-// possible hover state for the pills // tab should not traverse the elements in the list but should
-move to the clear button, // and then through the pills. // close dropdown when tabbing out of input
+- Tabbing from another area of the screen to the combo box should first focus on the select item
+  pills, then the clear button, then the actual combo box input. If there are no items currently
+  selected, then focus should go directly to the combo box input. to the pills, and after traversing
+  the pills, should move on to the clear button, and after the clear button, on to the remaining
+  components on the screen in their normal traversal order.
+- Pressing Enter key while on the clear button should clear the selections (both the pills and the
+  dropdown list selections).
+- Pressing Enter key on a pill should remove the pill and clear associated selection out of dropdown
+  list.
+  - If the pill was the last pill in the list, then the focus should go to the previous pill.
+  - If the pill was not the last one in the list, then the focus should go to the next pill.

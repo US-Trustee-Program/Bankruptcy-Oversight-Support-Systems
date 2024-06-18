@@ -3,11 +3,12 @@
   flex-wrap: wrap;
   position: relative;
 
-  .pill {
+  .pill.usa-button--unstyled {
     position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    text-decoration: none;
     height: 1.5rem;
     border: 2px solid #949494;
     border-radius: 0.75rem;
@@ -15,6 +16,9 @@
     padding: 0 0.25rem 0 0.6rem;
     margin: 0.25rem;
     cursor: pointer;
+  }
+  .pill.usa-button--unstyled:visited {
+    color: inherit;
   }
 
   .pill:hover {

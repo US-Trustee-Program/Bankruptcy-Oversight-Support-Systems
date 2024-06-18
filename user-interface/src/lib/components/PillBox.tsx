@@ -1,6 +1,6 @@
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useImperativeHandle } from 'react';
-import { ComboOption } from './uswds/Combobox';
+import { ComboOption } from './combobox/Combobox';
 import { Pill } from './Pill';
 import { UswdsButtonStyle } from './uswds/Button';
 
@@ -10,13 +10,14 @@ type PillBoxRef = InputRef & {
 
 type PillBoxProps = {
   id: string;
+  ariaLabelPrefix?: string;
   className?: string;
   selections: ComboOption[];
   onSelectionChange: (selections: ComboOption[]) => void;
 };
 
 function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
-  const { onSelectionChange, selections } = props;
+  const { onSelectionChange, selections, ariaLabelPrefix } = props;
 
   function setValue() {}
   function getValue(): string {
@@ -27,9 +28,25 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   function disable() {}
 
   function onPillClick(value: string) {
-    const newSelections = selections.filter((selection: ComboOption) => {
-      return selection.value !== value;
-    });
+    const newSelections = [];
+    let removedIndex = 0;
+    for (let i = 0; i < selections.length; i++) {
+      if (selections[i].value !== value) {
+        newSelections.push(selections[i]);
+      } else {
+        removedIndex = i;
+      }
+    }
+
+    if (newSelections.length > 0 && removedIndex > newSelections.length - 1) {
+      const pill = document.querySelector(`#${props.id} button.pill:nth-child(${removedIndex})`);
+      if (pill) (pill as HTMLButtonElement).focus();
+    } else {
+      const pill = document.querySelector(
+        `#${props.id} button.pill:nth-child(${removedIndex + 1})`,
+      );
+      if (pill) (pill as HTMLButtonElement).focus();
+    }
 
     onSelectionChange(newSelections);
   }
@@ -38,12 +55,6 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
     let isContained = false;
     const pillBox = document.querySelector(`#${props.id}.pill-container`);
     if (pillBox?.contains(el)) isContained = true;
-    /*
-    const pills = document.querySelectorAll(`#${props.id}.pill-container .pill`);
-    pills.forEach((pill) => {
-      if (pill.contains(el)) isContained = true;
-    });
-    */
 
     return isContained;
   }
@@ -64,6 +75,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
           key={idx}
           color={UswdsButtonStyle.Cool}
           label={selection.label}
+          ariaLabelPrefix={ariaLabelPrefix}
           value={selection.value}
           onClick={onPillClick}
         ></Pill>
