@@ -1,9 +1,15 @@
 $separatorColor: #c6cace;
 $listItemHoverBorderColor: #333;
 $listItemSelectedBorderColor: #949494;
+@use 'uswds-core';
 
 .combo-box-form-group {
   .chapter-label.multi-select {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .pills-and-clear-all {
     display: flex;
     justify-content: space-between;
   }
@@ -69,11 +75,22 @@ $listItemSelectedBorderColor: #949494;
         padding: 0;
         margin: 0;
         li {
-          padding: 0.5rem;
-          margin: 1px 0;
+          //padding: 0.5rem;
+          //margin: 1px 0;
           border: 1px solid transparent;
           border-bottom-color: $separatorColor;
           cursor: pointer;
+
+          button.usa-button--unstyled {
+            margin: 0 2px;
+            display: flex;
+            justify-content: space-between;
+            color: #1b1b1b;
+            //color: $theme-color-base-ink;
+            text-decoration: none;
+            width: calc(100% - 4px);
+            padding: 0.5rem;
+          }
         }
         li:last-child {
           border-bottom-color: transparent;
@@ -81,13 +98,6 @@ $listItemSelectedBorderColor: #949494;
         li.selected {
           background: #d0d0d0;
           border-color: $listItemSelectedBorderColor;
-        }
-        li.selected::after {
-          content: '\2713';
-          display: inline-block;
-          color: black;
-          position: absolute;
-          right: 1rem;
         }
         li:focus {
           outline-offset: -4px;

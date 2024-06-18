@@ -31,7 +31,17 @@ export type ButtonProps = JSX.IntrinsicElements['button'] & {
 };
 
 const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
-  const { id, uswdsStyle, buttonState, className, disabled, onClick, title, children } = props;
+  const {
+    id,
+    uswdsStyle,
+    buttonState,
+    className,
+    disabled,
+    onClick,
+    title,
+    children,
+    ...otherProps
+  } = props;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
   const classes = [BUTTON_BASE_CLASS];
 
@@ -51,6 +61,7 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
 
   return (
     <button
+      {...otherProps}
       id={id}
       type="button"
       className={classes.join(' ')}
