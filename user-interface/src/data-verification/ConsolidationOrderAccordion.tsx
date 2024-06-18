@@ -1,7 +1,7 @@
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseTable } from './transfer/CaseTable';
-import { ChangeEvent, useContext, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ConsolidationCaseTable, OrderTableImperative } from './ConsolidationCasesTable';
 import {
   ConsolidationOrder,
@@ -36,7 +36,6 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { SessionContext } from '@/login/Session';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
@@ -100,9 +99,8 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
 
-  const session = useContext(SessionContext);
-  const genericApi = useGenericApi(session);
-  const api2 = useApi2(session);
+  const genericApi = useGenericApi();
+  const api2 = useApi2();
 
   //========== MISC FUNCTIONS ==========
 
