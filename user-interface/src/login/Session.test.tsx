@@ -1,21 +1,27 @@
 import { render } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import * as reactRouter from 'react-router';
+import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
+import LocalStorage from '@/lib/utils/local-storage';
+import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { Session, SessionProps } from './Session';
-import { CamsUser } from '@/lib/type-declarations/session';
 
 describe('Session', () => {
-  const testUser: CamsUser = {
-    name: 'Test User',
+  const testSession: CamsSession = {
+    user: {
+      name: 'Mock User',
+    },
+    provider: 'mock',
+    apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
   };
-  const testProvider = 'mock';
-  const testApiToken = 'mockApiToken';
+
+  const navigate = vi.fn();
+  const useNavigate = vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {
+    return navigate;
+  });
 
   function renderWithProps(props: Partial<SessionProps> = {}) {
-    const defaultProps: SessionProps = {
-      user: testUser,
-      provider: testProvider,
-      apiToken: testApiToken,
-    };
+    const defaultProps: SessionProps = testSession;
 
     render(
       <BrowserRouter>
@@ -24,13 +30,19 @@ describe('Session', () => {
     );
   }
 
-  // TODO: Complete these tests.
   test('should write the session to local storage', () => {
+    const setSession = vi.spyOn(LocalStorage, 'setSession');
     renderWithProps();
+    expect(setSession).toHaveBeenCalledWith(testSession);
   });
 
-  // TODO: Complete these tests.
-  test('should redirect to "/" if path is "/login", "/logout", or "/logout-continue"', () => {
-    renderWithProps();
+  test.each(LOGIN_PATHS)('should redirect to "/" if path is "%s"', (path: string) => {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Session {...testSession}></Session>
+      </MemoryRouter>,
+    );
+    expect(useNavigate).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(LOGIN_SUCCESS_PATH);
   });
 });
