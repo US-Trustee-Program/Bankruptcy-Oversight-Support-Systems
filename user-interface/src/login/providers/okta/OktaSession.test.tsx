@@ -1,9 +1,10 @@
+import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
+import * as oktaReactModule from '@okta/okta-react';
 import { OktaSession } from './OktaSession';
 import { render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
 import * as sessionModule from '../../Session';
-import * as oktaReactModule from '@okta/okta-react';
+import * as accessDeniedModule from '../../AccessDenied';
 import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
 
 const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
@@ -13,8 +14,11 @@ describe('OktaSession', () => {
     isAuthenticated: false,
   };
   const getAccessToken = vi.fn().mockReturnValue(MOCK_AUTHORIZATION_BEARER_TOKEN);
-  const getUser = vi.fn();
-  const handleLoginRedirect = vi.fn();
+  const getUser = vi.fn().mockResolvedValue({
+    name: 'Mock User',
+    email: 'mock@user.com',
+  });
+  const handleLoginRedirect = vi.fn().mockResolvedValue({});
   const useOktaAuth = vi.fn().mockImplementation(() => {
     return {
       oktaAuth: {
@@ -183,6 +187,43 @@ describe('OktaSession', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('alert-message')).toHaveTextContent(errorMessage);
+    });
+  });
+
+  test('should render AccessDenied if a JWT cannot be retrieved from Okta', async () => {
+    const oktaUser = {
+      name: 'First Last',
+    };
+    const testId = 'child-div';
+    const childText = 'TEST';
+
+    getAccessToken.mockReturnValue(undefined);
+    getUser.mockResolvedValue(oktaUser);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+    useOktaAuth.mockImplementation(() => {
+      return {
+        oktaAuth: {
+          handleLoginRedirect,
+          getUser,
+          getAccessToken,
+        },
+        authState,
+      };
+    });
+
+    const accessDeniedSpy = vi.spyOn(accessDeniedModule, 'AccessDenied');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(accessDeniedSpy).toHaveBeenCalled();
     });
   });
 });
