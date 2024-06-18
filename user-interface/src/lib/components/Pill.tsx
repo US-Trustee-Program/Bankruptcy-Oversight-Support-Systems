@@ -12,6 +12,7 @@ type PillProps = {
   ariaLabelPrefix?: string;
   value: string;
   onClick: (value: string) => void;
+  disabled?: boolean;
 };
 
 export function Pill(props: PillProps) {
@@ -42,6 +43,7 @@ export function Pill(props: PillProps) {
       onKeyDown={(ev) => handleKeyDown(ev)}
       tabIndex={0}
       aria-label={`${props.ariaLabelPrefix} - ${props.label} is currently selected.`}
+      disabled={props.disabled}
     >
       {props.label}
       <Icon name="close"></Icon>

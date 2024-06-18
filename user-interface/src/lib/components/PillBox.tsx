@@ -10,6 +10,7 @@ type PillBoxRef = InputRef & {
 
 type PillBoxProps = {
   id: string;
+  disabled?: boolean;
   ariaLabelPrefix?: string;
   className?: string;
   selections: ComboOption[];
@@ -17,7 +18,7 @@ type PillBoxProps = {
 };
 
 function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
-  const { onSelectionChange, selections, ariaLabelPrefix } = props;
+  const { onSelectionChange, selections, ariaLabelPrefix, disabled } = props;
 
   function setValue() {}
   function getValue(): string {
@@ -78,6 +79,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
           ariaLabelPrefix={ariaLabelPrefix}
           value={selection.value}
           onClick={onPillClick}
+          disabled={disabled}
         ></Pill>
       ))}
     </div>

@@ -71,6 +71,7 @@ export default function SearchScreen() {
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
     courtSelectionRef.current?.disable(value);
+    chapterSelectionRef.current?.disable(value);
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
@@ -92,16 +93,16 @@ export default function SearchScreen() {
     setSearchPredicate(newPredicate);
   }
 
-  function handleChapterSelection(_selection: ComboOption[]) {
+  function handleChapterSelection(selection: ComboOption[]) {
     const newPredicate = {
       ...searchPredicate,
     };
     delete newPredicate.chapters;
-    /*
+
     if (selection.length) {
-      newPredicate.chapters = selection.map((kv: Record<string, string>) => kv.value);
+      newPredicate.chapters = selection.map((option: ComboOption) => option.value);
     }
-      */
+
     setSearchPredicate(newPredicate);
   }
 
