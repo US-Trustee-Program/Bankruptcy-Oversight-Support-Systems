@@ -83,12 +83,12 @@ jobs:
       - name: Run E2E Tests
         id: e2eTests
         working-directory: test/e2e
-        continue-on-error: true
         run: |
           echo "Wait 60s for seed to finish and apps to restart..."
           sleep 60
           echo "Running Playwright Tests..."
-          TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          mkdir -p playwright/.auth
+          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4

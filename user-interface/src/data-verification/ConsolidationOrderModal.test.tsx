@@ -130,7 +130,6 @@ describe('ConsolidationOrderModalComponent', () => {
 
     let verifyButton = screen.getByTestId(`button-${id}-submit-button`);
     expect(verifyButton).toBeEnabled();
-    screen.debug(modal);
 
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');

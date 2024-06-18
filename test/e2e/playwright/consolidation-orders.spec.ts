@@ -1,11 +1,9 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
-import { usingAuthenticationProvider } from './login/login-helpers';
+import { logout } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
-
-const { login, logout } = usingAuthenticationProvider();
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
@@ -20,9 +18,6 @@ test.describe('Consolidation Orders', () => {
       predicate: (e) => e.url().includes('api/offices'),
       timeout: 30000,
     });
-
-    await login(page);
-
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     await officesRequestPromise;

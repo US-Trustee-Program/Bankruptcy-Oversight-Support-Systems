@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser, LOGIN_LOCAL_STORAGE_SESSION_KEY } from '@/login/login-helpers';
+import { CamsUser } from '@/login/login-library';
 
 type MockRole = {
   key: string;
@@ -24,31 +24,29 @@ export type MockLoginProps = PropsWithChildren & {
 };
 
 export function MockLogin(props: MockLoginProps): React.ReactNode {
-  let storedUser: CamsUser | null = null;
-  if (window.localStorage) {
-    const userJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
-    if (userJson) {
-      storedUser = JSON.parse(userJson);
-    }
-  }
-  const [user, setUser] = useState<CamsUser | null>(storedUser);
+  const [user, setUser] = useState<CamsUser | null>(null);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
+  const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
 
   function handleRoleSelection(key: string) {
-    setSelectedRole(roles.find((role) => role.key === key) ?? null);
+    setSelectedRole(roles.find((role) => role.key === key)!);
   }
 
   function handleLogin() {
     if (selectedRole) setUser(selectedRole.user);
-    if (selectedRole) storedUser = selectedRole.user;
   }
 
   const modalRef = useRef<ModalRefType>(null);
   const modalId = 'login-modal';
 
   useEffect(() => {
-    modalRef.current?.show(!!storedUser);
+    modalRef.current?.show(!!user);
   }, []);
+
+  useEffect(() => {
+    if (selectedRole) setSubmitDisabled(false);
+    modalRef.current?.buttons?.current?.disableSubmitButton(submitDisabled);
+  }, [selectedRole, submitDisabled]);
 
   if (user)
     return (
@@ -64,22 +62,20 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
         modalId={modalId}
         heading={'Login'}
         content={
-          <>
-            <RadioGroup label="Choose a role:">
-              {roles.map((role, idx) => {
-                return (
-                  <Radio
-                    key={`radio-role-${idx}`}
-                    id={`radio-role-${idx}`}
-                    name="role"
-                    label={role.label}
-                    value={role.key}
-                    onChange={handleRoleSelection}
-                  />
-                );
-              })}
-            </RadioGroup>
-          </>
+          <RadioGroup label="Choose a role:">
+            {roles.map((role, idx) => {
+              return (
+                <Radio
+                  key={`radio-role-${idx}`}
+                  id={`radio-role-${idx}`}
+                  name="role"
+                  label={role.label}
+                  value={role.key}
+                  onChange={handleRoleSelection}
+                />
+              );
+            })}
+          </RadioGroup>
         }
         forceAction={true}
         actionButtonGroup={{
@@ -88,6 +84,7 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
           submitButton: {
             label: 'Login',
             onClick: handleLogin,
+            disabled: submitDisabled,
           },
         }}
       ></Modal>

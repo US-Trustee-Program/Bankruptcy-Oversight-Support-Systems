@@ -2,7 +2,7 @@ import { PropsWithChildren, useEffect, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import Button from '@/lib/components/uswds/Button';
-import { LOGIN_LOCAL_STORAGE_ACK_KEY } from './login-helpers';
+import { LOGIN_LOCAL_STORAGE_ACK_KEY } from './login-library';
 import './AuthorizedUseOnly.scss';
 
 export type AuthorizedUseOnlyProps = PropsWithChildren & {
