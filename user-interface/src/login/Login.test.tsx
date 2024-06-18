@@ -150,4 +150,20 @@ describe('Login', () => {
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(badConfigurationComponent).toHaveBeenCalled();
   });
+
+  test('should render BadConfiguration if provider is not configured', async () => {
+    getLoginProviderFromEnv.mockReturnValueOnce('');
+    render(
+      <BrowserRouter>
+        <Login>{children}</Login>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('alert-message')).toBeInTheDocument();
+    });
+
+    expect(getLoginProviderFromEnv).toHaveBeenCalled();
+    expect(badConfigurationComponent).toHaveBeenCalled();
+  });
 });

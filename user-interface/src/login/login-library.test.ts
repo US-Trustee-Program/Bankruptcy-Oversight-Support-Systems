@@ -32,7 +32,7 @@ describe('Login library', () => {
       expect(getLoginProviderFromEnv()).toEqual(bogusType);
 
       vi.stubEnv(LOGIN_PROVIDER_ENV_VAR_NAME, '');
-      expect(getLoginProviderFromEnv()).toEqual('unknown');
+      expect(getLoginProviderFromEnv()).toEqual('');
     });
   });
 

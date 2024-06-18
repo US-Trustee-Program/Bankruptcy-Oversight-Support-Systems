@@ -10,8 +10,7 @@ export const LOGIN_PATHS = [LOGIN_PATH, LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT
 
 export function getLoginProviderFromEnv(): string {
   const value = import.meta.env[LOGIN_PROVIDER_ENV_VAR_NAME];
-  if (value) return value.toLowerCase();
-  return 'unknown';
+  return value.toLowerCase();
 }
 
 export function getLoginConfigurationFromEnv<T = unknown>(): T {
