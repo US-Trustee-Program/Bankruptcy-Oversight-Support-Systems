@@ -30,9 +30,6 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-      camsLoginProvider:
-        required: true
-        type: string
 
 jobs:
   frontend:
