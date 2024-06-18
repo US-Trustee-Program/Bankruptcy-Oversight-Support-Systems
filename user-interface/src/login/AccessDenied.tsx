@@ -1,10 +1,16 @@
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import { useNavigate } from 'react-router-dom';
-import { LOGIN_PATH } from './login-helpers';
+import { LOGIN_PATH } from './login-library';
 import Button from '@/lib/components/uswds/Button';
 
-export function AccessDenied() {
+const DEFAULT_MESSAGE = 'Access to this application is denied without successful authentication.';
+
+export type AccessDeniedProps = {
+  message?: string;
+};
+
+export function AccessDenied(props: AccessDeniedProps) {
   const navigate = useNavigate();
 
   function handleLoginRedirect() {
@@ -18,10 +24,12 @@ export function AccessDenied() {
         inline={true}
         type={UswdsAlertStyle.Error}
         title="Access Denied"
-        message="Access to this application is denied without successful authentication."
+        message={props.message ?? DEFAULT_MESSAGE}
       ></Alert>
       <div>
-        <Button onClick={handleLoginRedirect}>Login</Button>
+        <Button id="return-to-login" onClick={handleLoginRedirect}>
+          Login
+        </Button>
       </div>
     </BlankPage>
   );

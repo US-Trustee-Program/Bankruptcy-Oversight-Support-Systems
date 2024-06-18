@@ -3,8 +3,18 @@
     max-width: none;
   }
 
+  a,
+  a:visited,
+  a:hover {
+    color: rgb(27, 27, 27);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
   .development {
-    background-color: #419ce1;
+    background-color: #207bc0;
     color: white;
   }
 
@@ -13,14 +23,60 @@
     color: black;
   }
 
-  .environment-text {
-    font-weight: bold;
-    text-transform: uppercase;
-    float: inline-end;
-  }
+  .header-container {
+    position: relative;
+    min-height: 1rem;
 
-  .header-flag-container {
-    width: fit-content;
-    display: inline-block;
+    .header-flag-container {
+      display: inline-block;
+      position: absolute;
+      left: 0;
+      top: 0;
+      padding: 0 1rem;
+
+      .banner-image {
+        position: relative;
+      }
+      .banner-text {
+        position: relative;
+        vertical-align: top;
+      }
+    }
+
+    .environment-text-container {
+      position: relative;
+      width: auto;
+      margin: 0 auto;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .login-info {
+      display: inline-block;
+      position: absolute;
+      top: 0;
+      right: 0;
+      text-align: right;
+      padding: 0 1rem;
+
+      .user-icon {
+        position: relative;
+        padding-right: 0.25rem;
+        svg {
+          height: 1rem;
+          width: 1rem;
+        }
+      }
+      .user-name {
+        position: relative;
+        padding-right: 0.5rem;
+        vertical-align: top;
+      }
+      .logout-link {
+        position: relative;
+        vertical-align: top;
+      }
+    }
   }
 }

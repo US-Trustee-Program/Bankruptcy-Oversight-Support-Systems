@@ -56,6 +56,9 @@ var linuxFxVersionMap = {
   php: 'PHP|8.2'
 }
 
+@description('Url for our Okta Provider')
+param oktaUrl string = ''
+
 @description('Filename for nginx server config and must be placed in public folder. Needed for deploying user-interface code when nginx is used.')
 param nginxConfigFilename string = 'nginx.conf'
 var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/wwwroot/${nginxConfigFilename} > /etc/nginx/sites-enabled/default;service nginx restart'
@@ -208,6 +211,10 @@ var applicationSettings = concat(
     {
       name: 'CSP_CAMS_REACT_SELECT_HASH'
       value: camsReactSelectHash
+    }
+    {
+      name: 'OKTA_URL'
+      value: oktaUrl
     }
     {
       name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
