@@ -1,8 +1,7 @@
-import { useContext } from 'react';
-import './Banner.scss';
-import { SessionContext } from '@/login/Session';
 import { LOGOUT_PATH } from '@/login/login-library';
 import Icon from './Icon';
+import './Banner.scss';
+import { LocalStorage } from '@/lib/utils/local-storage';
 
 export const Banner = () => {
   const launchDarklyEnvironment = import.meta.env['CAMS_LAUNCH_DARKLY_ENV'];
@@ -10,7 +9,7 @@ export const Banner = () => {
     launchDarklyEnvironment === 'production' ? '' : `${launchDarklyEnvironment}`;
   const envHeaderClassName = 'usa-banner__header ' + environmentClass;
 
-  const session = useContext(SessionContext);
+  const session = LocalStorage.getSession();
 
   return (
     <section
@@ -37,12 +36,12 @@ export const Banner = () => {
           </div>
 
           <div className="login-info">
-            {session.user && (
+            {session?.user && (
               <>
                 <span className="user-icon">
                   <Icon name="person"></Icon>
                 </span>
-                <span className="user-name">{session.user?.name ?? 'UNKNOWN'} </span>
+                <span className="user-name">{session.user.name} </span>
                 <span className="logout-link">
                   <a href={LOGOUT_PATH}>logout</a>
                 </span>

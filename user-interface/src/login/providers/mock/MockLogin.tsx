@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/login/login-library';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
 
 type MockRole = {
   key: string;

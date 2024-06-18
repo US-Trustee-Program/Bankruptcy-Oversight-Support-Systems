@@ -3,17 +3,16 @@ import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
 import {
-  CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
   getLoginProviderFromEnv,
   LoginProvider,
-  getSessionfromLocalStorage,
   isLoginProviderType,
-  MOCK_AUTHORIZATION_BEARER_TOKEN,
 } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
+import { LocalStorage } from '@/lib/utils/local-storage';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -33,14 +32,13 @@ export function Login(props: LoginProps): React.ReactNode {
     return <BadConfiguration message={errorMessage} />;
   }
 
-  // Skip to session and continue if already logged in.
-  const session = getSessionfromLocalStorage(provider);
-  if (session && session.provider && session.user && session.apiToken) {
-    return (
-      <Session provider={session.provider} user={session.user} apiToken={session.apiToken}>
-        {props.children}
-      </Session>
-    );
+  const session = LocalStorage.getSession();
+  if (session) {
+    if (session.provider === provider) {
+      return <Session {...session}>{props.children}</Session>;
+    } else {
+      LocalStorage.removeSession();
+    }
   }
 
   let providerComponent;
@@ -58,7 +56,7 @@ export function Login(props: LoginProps): React.ReactNode {
     case 'none':
       providerComponent = (
         <Session
-          provider={provider}
+          provider="none"
           apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
           user={props.user ?? { name: 'Super User' }}
         >
