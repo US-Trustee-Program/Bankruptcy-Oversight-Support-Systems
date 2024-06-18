@@ -9,7 +9,7 @@ function getSession(): CamsSession | null {
     if (window.localStorage) {
       const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
       if (sessionJson) {
-        session = JSON.parse(sessionJson) ?? null;
+        session = JSON.parse(sessionJson);
       }
     }
   } catch {
@@ -43,7 +43,11 @@ function getAck(): boolean {
 
 function setAck(ack: boolean) {
   if (window.localStorage) {
-    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK_KEY, ack.toString());
+    if (ack.toString() === 'true') {
+      window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK_KEY, ack.toString());
+    } else {
+      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
+    }
   }
 }
 
