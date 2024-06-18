@@ -33,9 +33,6 @@ on:
       camsLoginProvider:
         required: true
         type: string
-      camsLoginProviderConfig:
-        required: true
-        type: string
 
 jobs:
   frontend:
