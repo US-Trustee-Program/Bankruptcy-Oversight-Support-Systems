@@ -1,4 +1,4 @@
-import { forwardRef, useContext, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { CaseSummary } from '@common/cams/cases';
 import { OrderStatus, TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -13,7 +13,6 @@ import { OfficeDetails } from '@common/cams/courts';
 import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';
 import './PendingTransferOrder.scss';
-import { SessionContext } from '@/login/Session';
 
 export type PendingTransferOrderImperative = {
   cancel: () => void;
@@ -52,8 +51,7 @@ function _PendingTransferOrder(
   const approveButtonRef = useRef<ButtonRef>(null);
   const suggestedCasesRef = useRef<SuggestedTransferCasesImperative>(null);
 
-  const session = useContext(SessionContext);
-  const api = useApi(session);
+  const api = useApi();
 
   function confirmOrderApproval(): void {
     orderTransfer.status = 'approved';

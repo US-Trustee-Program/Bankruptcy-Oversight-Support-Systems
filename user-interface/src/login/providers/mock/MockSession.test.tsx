@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import { MockSession } from './MockSession';
 import { render, screen } from '@testing-library/react';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '../../login-library';
 import * as sessionModule from '../../Session';
 import { BrowserRouter } from 'react-router-dom';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
 
 describe('MockSession', () => {
   test('should pass a mapped CamsUser, provider, and children to the Session component', () => {
