@@ -1,11 +1,4 @@
-// TODO items for ComboBox
-// tab should not traverse the elements in the list but should move to the clear button,
-// and then through the pills.
-// close dropdown when tabbing out of input
-//
-// See https://mobti.me/cams-search
-
-import './forms.scss';
+import '../uswds/forms.scss';
 import './Combobox.scss';
 import {
   forwardRef,
@@ -16,8 +9,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import Icon from './Icon';
-import Button, { UswdsButtonStyle } from './Button';
+import Icon from '../uswds/Icon';
+import Button, { UswdsButtonStyle } from '../uswds/Button';
 import PillBox from '../PillBox';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboboxRef } from '@/lib/type-declarations/input-fields';
@@ -36,6 +29,7 @@ type InputProps = JSX.IntrinsicElements['input'] &
 interface ComboboxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> {
   children?: ReactElement | Array<ReactElement>;
   label?: string;
+  ariaLabelPrefix?: string;
   autoComplete?: 'off';
   position?: 'left' | 'right';
   value?: string;
@@ -52,7 +46,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
   // ========== STATE ==========
 
   const [inputDisabled, setInputDisabled] = useState<boolean>(otherProps.disabled ?? false);
-  const [selections, setSelections] = useState<ComboOption[]>();
+  const [selections, setSelections] = useState<ComboOption[]>([]);
   const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
@@ -79,6 +73,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
     setExpanded(false);
     setExpandedClass('closed');
     setCurrentSelection(0);
+    if (filterRef.current) filterRef.current.value = '';
     if (shouldFocusOnInput) filterRef.current?.focus();
   }
 
@@ -204,12 +199,30 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
     if (onUpdateFilter) onUpdateFilter(ev.target.value);
   }
 
-  function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
+  function handleKeyDown(ev: React.KeyboardEvent, index: number, _option?: ComboOption) {
     const list = document.querySelector(`#${props.id} .item-list-container ul`);
-    //const input = document.querySelector(`#${props.id} .input-container input`);
     const input = filterRef.current;
 
     switch (ev.key) {
+      case 'Tab':
+        if (expanded && (ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
+          if (list?.children.length === filteredOptions.length) {
+            closeDropdown();
+          } else {
+            if (list && index < filteredOptions.length) {
+              while (
+                list.children[index].classList.contains('hidden') &&
+                index < filteredOptions.length
+              ) {
+                ++index;
+              }
+            }
+            setCurrentSelection(index + 1);
+          }
+        } else {
+          closeDropdown();
+        }
+        break;
       case 'Escape':
         closeDropdown();
         ev.preventDefault();
@@ -226,7 +239,8 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
         }
         if (index >= 0 && index < filteredOptions.length) {
           setCurrentSelection(index + 1);
-          if (list) focusAndHandleScroll(ev, list.children[index]);
+          const button = list?.children[index].querySelector('button');
+          if (list && button) focusAndHandleScroll(ev, button);
         } else {
           setCurrentSelection(0);
           if (input) focusAndHandleScroll(ev, input);
@@ -241,21 +255,15 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
         }
         if (index > 1 && index <= filteredOptions.length) {
           setCurrentSelection(index - 1);
-          if (list) focusAndHandleScroll(ev, list.children[index - 2]);
+          const button = list?.children[index - 2].querySelector('button');
+          if (list && button) focusAndHandleScroll(ev, button);
         } else if (index === 1) {
           setCurrentSelection(0);
           if (input) focusAndHandleScroll(ev, input);
         } else if (index === 0) {
           setCurrentSelection(filteredOptions.length);
-          if (list) focusAndHandleScroll(ev, list.children[list.children.length - 1]);
-        }
-        break;
-      case 'Enter':
-      case ' ':
-        // TODO: we need to add code here to select an item in the list
-        if (option) {
-          handleDropdownItemSelection(option);
-          ev.preventDefault();
+          const button = list?.children[list.children.length - 1].querySelector('button');
+          if (list && button) focusAndHandleScroll(ev, button);
         }
         break;
     }
@@ -293,10 +301,6 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    //setInputValue(value || '');
-  }, [value]);
-
-  useEffect(() => {
     setFilteredOptions(props.options);
   }, [props.options]);
 
@@ -307,34 +311,43 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
   return (
     <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboboxRef}>
       <div className={`chapter-label ${multiSelect ? 'multi-select' : ''}`}>
-        <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+        <label className="usa-label" id={props.id + '-label'}>
           {label}
         </label>
-        {multiSelect && selections && selections.length > 0 && (
-          <Button uswdsStyle={UswdsButtonStyle.Unstyled} onClick={clearAll}>
-            clear
-          </Button>
-        )}
       </div>
       {multiSelect && (
-        <PillBox
-          id={`${props.id}-pill-box`}
-          selections={selections ?? []}
-          onSelectionChange={handlePillSelection}
-          ref={pillBoxRef}
-        ></PillBox>
+        <div className="pills-and-clear-all">
+          <PillBox
+            id={`${props.id}-pill-box`}
+            ariaLabelPrefix={props.ariaLabelPrefix}
+            selections={selections ?? []}
+            onSelectionChange={handlePillSelection}
+            ref={pillBoxRef}
+          ></PillBox>
+          {selections && selections.length > 0 && (
+            <Button
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              onClick={clearAll}
+              aria-label="clear all selections"
+            >
+              clear
+            </Button>
+          )}
+        </div>
       )}
       <div className="usa-combo-box">
         <div className="input-container usa-input">
           <div className="combo-box-input-container">
             <input
               {...otherProps}
+              id={`${props.id}-combo-box-input`}
               className={`usa-tooltip combo-box-input`}
               onChange={handleInputFilter}
               onKeyDown={(ev) => handleKeyDown(ev, 0)}
               onClick={openDropdown}
               value={value}
               disabled={inputDisabled}
+              aria-label={`${props.ariaLabelPrefix}: Enter text to filter options. Use up and down arrows to open dropdown list.`}
               ref={filterRef}
             />
           </div>
@@ -358,15 +371,22 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
         >
           <ul>
             {filteredOptions.map((option, idx) => (
-              <li
-                className={setListItemClass(idx, option)}
-                key={idx}
-                data-value={option.value}
-                onClick={() => handleDropdownItemSelection(option)}
-                onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
-                tabIndex={expanded ? 0 : -1}
-              >
-                {option.label}
+              <li className={setListItemClass(idx, option)} key={idx}>
+                <button
+                  className="usa-button--unstyled"
+                  data-value={option.value}
+                  onClick={() => handleDropdownItemSelection(option)}
+                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                  tabIndex={expanded ? 0 : -1}
+                  aria-label={`multi-select option: ${props.ariaLabelPrefix} ${option.label} ${selections.includes(option)! ? 'selected' : 'unselected'}`}
+                >
+                  {
+                    <>
+                      {option.label}
+                      {selections.includes(option) && <Icon name="check"></Icon>}
+                    </>
+                  }
+                </button>
               </li>
             ))}
           </ul>

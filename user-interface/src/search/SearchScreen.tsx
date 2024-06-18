@@ -7,14 +7,14 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
+import { ComboboxRef, InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
-import Combobox, { ComboOption } from '@/lib/components/uswds/Combobox';
+import Combobox, { ComboOption } from '@/lib/components/combobox/Combobox';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -36,7 +36,7 @@ export default function SearchScreen() {
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<SelectMultiRef>(null);
-  const chapterSelectionRef = useRef<InputRef>(null);
+  const chapterSelectionRef = useRef<ComboboxRef>(null);
   const errorAlertRef = useRef<AlertRefType>(null);
 
   const api = useApi2();
@@ -163,66 +163,13 @@ export default function SearchScreen() {
                   id={'case-chapter-search'}
                   className="case-chapter__select"
                   label="Chapter"
+                  ariaLabelPrefix="Chapter"
                   onUpdateSelection={handleChapterSelection}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
                 ></Combobox>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
-                <br></br>
               </div>
             </div>
           </div>
