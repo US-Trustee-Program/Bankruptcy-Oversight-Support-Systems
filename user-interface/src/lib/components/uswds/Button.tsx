@@ -1,4 +1,4 @@
-import React, { JSX, forwardRef, useImperativeHandle, useState } from 'react';
+import React, { JSX, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export const BUTTON_BASE_CLASS = 'usa-button';
 
@@ -31,18 +31,9 @@ export type ButtonProps = JSX.IntrinsicElements['button'] & {
 };
 
 const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
-  const {
-    id,
-    uswdsStyle,
-    buttonState,
-    className,
-    disabled,
-    onClick,
-    title,
-    children,
-    ...otherProps
-  } = props;
-  const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
+  const { id, uswdsStyle, buttonState, className, onClick, title, children, ...otherProps } = props;
+
+  const [isDisabled, setIsDisabled] = useState<boolean>(!!otherProps.disabled);
   const classes = [BUTTON_BASE_CLASS];
 
   if (uswdsStyle) classes.push(uswdsStyle);
@@ -54,6 +45,10 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   function disableButton(state: boolean) {
     setIsDisabled(state);
   }
+
+  useEffect(() => {
+    setIsDisabled(!!otherProps.disabled);
+  }, [otherProps.disabled]);
 
   useImperativeHandle(ref, () => ({
     disableButton,
@@ -67,7 +62,6 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
       className={classes.join(' ')}
       onClick={onClick}
       data-testid={`button-${id}`}
-      aria-disabled={isDisabled}
       disabled={isDisabled}
       title={title}
       tabIndex={tabIndex}

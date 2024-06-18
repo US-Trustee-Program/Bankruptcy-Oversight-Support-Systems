@@ -41,11 +41,12 @@ interface ComboboxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> 
 }
 
 function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
-  const { label, value, onUpdateSelection, onUpdateFilter, multiSelect, ...otherProps } = props;
+  const { label, value, disabled, onUpdateSelection, onUpdateFilter, multiSelect, ...otherProps } =
+    props;
 
   // ========== STATE ==========
 
-  const [inputDisabled, setInputDisabled] = useState<boolean>(otherProps.disabled ?? false);
+  const [inputDisabled, setInputDisabled] = useState<boolean>(disabled ?? false);
   const [selections, setSelections] = useState<ComboOption[]>([]);
   const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -68,12 +69,17 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
     setSelections([]);
   }
 
+  function clearFilter() {
+    if (filterRef.current) filterRef.current.value = '';
+    filterDropdown('');
+  }
+
   function closeDropdown(shouldFocusOnInput: boolean = true) {
     setExpandIcon('expand_more');
     setExpanded(false);
     setExpandedClass('closed');
     setCurrentSelection(0);
-    if (filterRef.current) filterRef.current.value = '';
+    clearFilter();
     if (shouldFocusOnInput) filterRef.current?.focus();
   }
 
@@ -271,6 +277,9 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
 
   function handlePillSelection(selections: ComboOption[]) {
     setSelections(selections);
+    if (onUpdateSelection && selections) {
+      onUpdateSelection(selections);
+    }
   }
 
   function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
@@ -322,6 +331,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
             ariaLabelPrefix={props.ariaLabelPrefix}
             selections={selections ?? []}
             onSelectionChange={handlePillSelection}
+            disabled={inputDisabled}
             ref={pillBoxRef}
           ></PillBox>
           {selections && selections.length > 0 && (
@@ -329,6 +339,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={clearAll}
               aria-label="clear all selections"
+              disabled={inputDisabled}
             >
               clear
             </Button>
@@ -362,35 +373,37 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
             <Icon name={expandIcon}></Icon>
           </Button>
         </div>
-        <div
-          className={`item-list-container ${expandedClass}`}
-          id={`${props.id}-item-list`}
-          aria-hidden={`${expanded}`}
-          tabIndex={-1}
-          style={dropdownLocation ?? undefined}
-        >
-          <ul>
-            {filteredOptions.map((option, idx) => (
-              <li className={setListItemClass(idx, option)} key={idx}>
-                <button
-                  className="usa-button--unstyled"
-                  data-value={option.value}
-                  onClick={() => handleDropdownItemSelection(option)}
-                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
-                  tabIndex={expanded ? 0 : -1}
-                  aria-label={`multi-select option: ${props.ariaLabelPrefix} ${option.label} ${selections.includes(option)! ? 'selected' : 'unselected'}`}
-                >
-                  {
-                    <>
-                      {option.label}
-                      {selections.includes(option) && <Icon name="check"></Icon>}
-                    </>
-                  }
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {!inputDisabled && (
+          <div
+            className={`item-list-container ${expandedClass}`}
+            id={`${props.id}-item-list`}
+            aria-hidden={`${expanded}`}
+            tabIndex={-1}
+            style={dropdownLocation ?? undefined}
+          >
+            <ul>
+              {filteredOptions.map((option, idx) => (
+                <li className={setListItemClass(idx, option)} key={idx}>
+                  <button
+                    className="usa-button--unstyled"
+                    data-value={option.value}
+                    onClick={() => handleDropdownItemSelection(option)}
+                    onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                    tabIndex={expanded ? 0 : -1}
+                    aria-label={`multi-select option: ${props.ariaLabelPrefix} ${option.label} ${selections.includes(option)! ? 'selected' : 'unselected'}`}
+                  >
+                    {
+                      <>
+                        {option.label}
+                        {selections.includes(option) && <Icon name="check"></Icon>}
+                      </>
+                    }
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
