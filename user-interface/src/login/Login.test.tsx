@@ -17,8 +17,6 @@ describe('Login', () => {
   const childText = 'TEST';
   const children = <div data-testid={testId}>{childText}</div>;
 
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
-
   const oktaProviderComponent = vi
     .spyOn(oktaProviderModule, 'OktaProvider')
     .mockImplementation((props: PropsWithChildren) => {
@@ -46,6 +44,7 @@ describe('Login', () => {
   });
 
   test('should check for an existing login and continue if a session does not exist', () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('mock');
     render(
       <BrowserRouter>
@@ -58,6 +57,7 @@ describe('Login', () => {
   });
 
   test('should check for an existing login and skip if a session exists', () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('mock');
     getSession.mockReturnValueOnce({
       apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
@@ -77,6 +77,7 @@ describe('Login', () => {
   });
 
   test('should clear an existing session if the provider changed', () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('okta');
     getSession.mockReturnValue({
       apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
@@ -96,6 +97,7 @@ describe('Login', () => {
   });
 
   test('should render OktaProvider for okta provider type', async () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('okta');
     render(
       <BrowserRouter>
@@ -110,6 +112,7 @@ describe('Login', () => {
   });
 
   test('should render MockProvider for mock provider type', async () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('mock');
     render(
       <BrowserRouter>
@@ -125,6 +128,7 @@ describe('Login', () => {
   });
 
   test('should render Session for none provider type', async () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('none');
     render(
       <BrowserRouter>
@@ -135,7 +139,20 @@ describe('Login', () => {
     expect(sessionComponent).toHaveBeenCalled();
   });
 
+  test('should render Session for none provider type if passed to Login component directly', async () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+    getLoginProviderFromEnv.mockReturnValueOnce('none');
+    render(
+      <BrowserRouter>
+        <Login provider="none"></Login>
+      </BrowserRouter>,
+    );
+    expect(getLoginProviderFromEnv).not.toHaveBeenCalled();
+    expect(sessionComponent).toHaveBeenCalled();
+  });
+
   test('should render BadConfiguration for other provider types', async () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('bogus');
     render(
       <BrowserRouter>
@@ -152,6 +169,7 @@ describe('Login', () => {
   });
 
   test('should render BadConfiguration if provider is not configured', async () => {
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
     getLoginProviderFromEnv.mockReturnValueOnce('');
     render(
       <BrowserRouter>
