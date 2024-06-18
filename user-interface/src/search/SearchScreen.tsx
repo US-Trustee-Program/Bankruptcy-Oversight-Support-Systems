@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -14,7 +14,6 @@ import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSel
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
-import { SessionContext } from '@/login/Session';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -39,8 +38,7 @@ export default function SearchScreen() {
   const chapterSelectionRef = useRef<SelectMultiRef>(null);
   const errorAlertRef = useRef<AlertRefType>(null);
 
-  const session = useContext(SessionContext);
-  const api = useApi2(session);
+  const api = useApi2();
 
   function getChapters() {
     const chapterRecordArray: Record<string, string>[] = [];

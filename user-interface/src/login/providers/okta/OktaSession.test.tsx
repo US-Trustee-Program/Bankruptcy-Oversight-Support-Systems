@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
 import { OktaSession } from './OktaSession';
 import { render, screen, waitFor } from '@testing-library/react';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/login/login-library';
 import { BrowserRouter } from 'react-router-dom';
 import * as sessionModule from '../../Session';
 import * as oktaReactModule from '@okta/okta-react';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
 
 const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
 

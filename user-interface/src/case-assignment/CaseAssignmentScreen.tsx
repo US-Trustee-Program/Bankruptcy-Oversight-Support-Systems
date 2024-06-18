@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AssignAttorneyModal, { AssignAttorneyModalRef, CallBackProps } from './AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
@@ -8,18 +8,15 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { AssignAttorneyCasesTable } from './AssignAttorneyCasesTable';
 import { CaseBasics } from '@common/cams/cases';
-import { SessionContext } from '@/login/Session';
 
 const modalId = 'assign-attorney-modal';
 
 const TABLE_TRANSFER_TIMEOUT = 10;
 
 export const CaseAssignment = () => {
-  const session = useContext(SessionContext);
-
   const modalRef = useRef<AssignAttorneyModalRef>(null);
   const alertRef = useRef<AlertRefType>(null);
-  const api = useGenericApi(session);
+  const api = useGenericApi();
   const screenTitle = 'Bankruptcy Cases';
   const regionId = 2;
   const officeName = 'Manhattan';
