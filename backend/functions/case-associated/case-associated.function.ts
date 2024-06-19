@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import {
   applicationContextCreator,
-  getSession,
+  getApplicationContextSession,
 } from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
@@ -20,7 +20,7 @@ const httpTrigger: AzureFunction = async function (
   const applicationContext = await applicationContextCreator(functionContext);
   const controller = new CaseAssociatedController(applicationContext);
   try {
-    applicationContext.session = await getSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext.req);
 
     const responseBody = await controller.getAssociatedCases(applicationContext, {
       caseId: request.params.caseId,
