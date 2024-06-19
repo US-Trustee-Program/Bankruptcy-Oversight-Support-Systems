@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as reactRouter from 'react-router';
-import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
+import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { Session, SessionProps } from './Session';

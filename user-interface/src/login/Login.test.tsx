@@ -10,7 +10,7 @@ import * as mockLoginModule from './providers/mock/MockLogin';
 import * as sessionModule from './Session';
 import { Login } from './Login';
 import { LocalStorage } from '@/lib/utils/local-storage';
-import { MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
+import { MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 
 describe('Login', () => {
   const testId = 'child-div';
