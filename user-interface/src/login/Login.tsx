@@ -34,6 +34,7 @@ export function Login(props: LoginProps): React.ReactNode {
 
   const session = LocalStorage.getSession();
   if (session) {
+    // TODO: We need to also be checking that the issuer did not change.
     if (session.provider === provider) {
       return <Session {...session}>{props.children}</Session>;
     } else {
