@@ -33,6 +33,8 @@ import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repo
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
+import { OpenIdConnectGateway } from './adapters/types/authorization';
+import OktaGateway from './adapters/gateways/okta/okta-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -133,4 +135,15 @@ export const getCosmosDbCrudRepository = <T>(
   moduleName: string,
 ): DocumentRepository<T> => {
   return new CosmosDbRepository<T>(context, containerName, moduleName);
+};
+
+export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway | null => {
+  if (provider === 'okta') return OktaGateway;
+
+  const hardStop: OpenIdConnectGateway = {
+    verifyToken: (_token: string) => {
+      throw new Error('Bad gateway');
+    },
+  };
+  return hardStop;
 };

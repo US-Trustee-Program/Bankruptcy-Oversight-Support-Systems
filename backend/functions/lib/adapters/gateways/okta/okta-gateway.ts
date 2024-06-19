@@ -1,12 +1,13 @@
 import OktaJwtVerifier = require('@okta/jwt-verifier');
 import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
+import { Jwt, OpenIdConnectGateway } from '../../types/authorization';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
 
 let oktaJwtVerifier = null;
 
-export async function oktaVerifyToken(token: string) {
+async function verifyToken(token: string): Promise<Jwt> {
   const { issuer, audience, provider } = getAuthorizationConfig();
   if (provider !== 'okta') {
     throw new ForbiddenError(MODULE_NAME, { message: 'Invalid provider.' });
@@ -26,3 +27,9 @@ export async function oktaVerifyToken(token: string) {
     throw new ForbiddenError(MODULE_NAME, { originalError });
   }
 }
+
+const OktaGateway: OpenIdConnectGateway = {
+  verifyToken,
+};
+
+export default OktaGateway;
