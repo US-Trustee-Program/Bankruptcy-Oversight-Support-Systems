@@ -5,7 +5,7 @@ import { OktaSession } from './OktaSession';
 import { render, screen, waitFor } from '@testing-library/react';
 import * as sessionModule from '../../Session';
 import * as accessDeniedModule from '../../AccessDenied';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 
 const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
 

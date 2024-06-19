@@ -1,4 +1,4 @@
-import { MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
+import { MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 import { Session, SessionProps } from '@/login/Session';
 
 export type MockSessionProps = Omit<SessionProps, 'provider' | 'apiToken'>;

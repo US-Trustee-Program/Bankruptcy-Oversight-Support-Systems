@@ -12,7 +12,7 @@ import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import { LocalStorage } from '@/lib/utils/local-storage';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@/lib/type-declarations/session';
+import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
