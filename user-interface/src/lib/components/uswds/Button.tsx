@@ -63,6 +63,7 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
       onClick={onClick}
       data-testid={`button-${id}`}
       disabled={isDisabled}
+      aria-disabled={isDisabled}
       title={title}
       tabIndex={tabIndex}
     >

@@ -363,6 +363,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
             />
           </div>
           <Button
+            id={`${props.id}-expand`}
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={handleToggleDropdown}
@@ -383,10 +384,11 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
           >
             <ul>
               {filteredOptions.map((option, idx) => (
-                <li className={setListItemClass(idx, option)} key={idx}>
+                <li className={setListItemClass(idx, option)} key={`${props.id}-${idx}`}>
                   <button
                     className="usa-button--unstyled"
                     data-value={option.value}
+                    data-testid={`combo-box-option-${option.label}`}
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}

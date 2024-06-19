@@ -4,7 +4,7 @@ import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
-import { selectItemInMockSelect } from '../lib/components/CamsSelect.mock';
+import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import { CasesSearchPredicate } from '@common/api/search';
 import { buildResponseBodySuccess } from '@common/api/response';
 
@@ -211,7 +211,12 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
 
     // Make first search request....
-    selectItemInMockSelect('case-chapter-search', 0);
+    // selectItemInMockSelect('case-chapter-search', 0);
+    const comboBoxExpandButton = screen.getByTestId('button-case-chapter-search-expand');
+    fireEvent.click(comboBoxExpandButton!);
+    const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');
+    fireEvent.click(chapterElevenOptionButton);
+    fireEvent.click(comboBoxExpandButton!);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -234,7 +239,10 @@ describe('search screen', () => {
     );
 
     // Make second search request...
-    selectItemInMockSelect('case-chapter-search', 1);
+    fireEvent.click(comboBoxExpandButton!);
+    const chapterTwelveOptionButton = screen.getByTestId('combo-box-option-12');
+    fireEvent.click(chapterTwelveOptionButton);
+    fireEvent.click(comboBoxExpandButton!);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('#search-results > table');
