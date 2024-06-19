@@ -3,7 +3,7 @@ import {
   LOGIN_LOCAL_STORAGE_ACK_KEY,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
 } from './local-storage';
-import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '../type-declarations/session';
+import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 
 const testSession: CamsSession = {
   apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,

@@ -1,4 +1,4 @@
-import { CamsUser } from '@/lib/type-declarations/session';
+import { CamsUser } from '@common/cams/session';
 import { AccessDenied } from '@/login/AccessDenied';
 import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';

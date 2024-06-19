@@ -3,7 +3,7 @@ import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { setApiContext, useApi } from './UseApi';
 import { LocalStorage } from '../utils/local-storage';
-import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '../type-declarations/session';
+import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 
 describe('UseApi Hook', () => {
   const mockSession: CamsSession = {

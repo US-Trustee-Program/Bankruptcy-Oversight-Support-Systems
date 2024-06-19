@@ -2,7 +2,7 @@ import { PropsWithChildren, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { LocalStorage } from '@/lib/utils/local-storage';
-import { CamsSession } from '@/lib/type-declarations/session';
+import { CamsSession } from '@common/cams/session';
 
 export type SessionProps = CamsSession & PropsWithChildren;
 

@@ -1,4 +1,4 @@
-import { CamsSession } from '../type-declarations/session';
+import { CamsSession } from '@common/cams/session';
 
 export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
