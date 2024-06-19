@@ -3,7 +3,7 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import {
   applicationContextCreator,
-  getSession,
+  getApplicationContextSession,
 } from '../lib/adapters/utils/application-context-creator';
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
@@ -29,7 +29,7 @@ const httpTrigger: AzureFunction = async function (
     officeId = attorneysRequest.body.office_id;
 
   try {
-    applicationContext.session = await getSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext.req);
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
     functionContext.res = httpSuccess(attorneysList);
   } catch (originalError) {
