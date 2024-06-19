@@ -1,29 +1,28 @@
-import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import OktaJwtVerifier = require('@okta/jwt-verifier');
+import { ForbiddenError } from '../../../common-errors/forbidden-error';
+import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
 
-// TODO: Externalize the issuer. Add this to the app configuration.
-const issuer = `https://dev-31938913.okta.com/oauth2/default`;
-const audience = getAudienceFromIssuer(issuer);
+const MODULE_NAME = 'OKTA-GATEWAY';
 
-const oktaJwtVerifier = new OktaJwtVerifier({ issuer });
-
-console.log('issuer', issuer);
-console.log('audience', audience);
-
-function getAudienceFromIssuer(issuer: string) {
-  const serverName = issuer.slice(issuer.lastIndexOf('/') + 1);
-  return `api://${serverName}`;
-}
+let oktaJwtVerifier = null;
 
 export async function oktaVerifyToken(token: string) {
+  const { issuer, audience, provider } = getAuthorizationConfig();
+  if (provider !== 'okta') {
+    throw new ForbiddenError(MODULE_NAME, { message: 'Invalid provider.' });
+  }
+  if (!issuer) {
+    throw new ForbiddenError(MODULE_NAME, { message: 'Issuer not provided.' });
+  }
+  if (!audience) {
+    throw new ForbiddenError(MODULE_NAME, { message: 'Audience not provided.' });
+  }
   try {
-    console.log('inside verifyToken', token);
-    const verification = await oktaJwtVerifier.verifyAccessToken(token, audience);
-    console.log('verification', verification);
-
-    return verification;
+    if (!oktaJwtVerifier) {
+      oktaJwtVerifier = new OktaJwtVerifier({ issuer });
+    }
+    return oktaJwtVerifier.verifyAccessToken(token, audience);
   } catch (originalError) {
-    console.error('OKTA ERROR', originalError);
-    throw new ForbiddenError('AUTHORIZATION', { originalError });
+    throw new ForbiddenError(MODULE_NAME, { originalError });
   }
 }

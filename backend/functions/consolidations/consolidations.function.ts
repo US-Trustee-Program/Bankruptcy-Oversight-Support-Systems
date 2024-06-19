@@ -3,7 +3,7 @@ import { initializeApplicationInsights } from '../azure/app-insights';
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import {
   applicationContextCreator,
-  getSession,
+  getApplicationContextSession,
 } from '../lib/adapters/utils/application-context-creator';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
@@ -28,7 +28,7 @@ const httpTrigger: AzureFunction = async function (
   let response;
 
   try {
-    applicationContext.session = await getSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext.req);
 
     if (procedure === 'reject') {
       response = await consolidationsController.rejectConsolidation(applicationContext, body);
