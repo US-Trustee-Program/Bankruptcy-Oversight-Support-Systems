@@ -7,14 +7,14 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ComboboxRef, InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef, InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
-import Combobox, { ComboOption } from '@/lib/components/combobox/Combobox';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -36,7 +36,7 @@ export default function SearchScreen() {
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<SelectMultiRef>(null);
-  const chapterSelectionRef = useRef<ComboboxRef>(null);
+  const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const errorAlertRef = useRef<AlertRefType>(null);
 
   const api = useApi2();
@@ -160,7 +160,7 @@ export default function SearchScreen() {
             </div>
             <div className="case-chapter-search form-field" data-testid="case-chapter-search">
               <div className="usa-search usa-search--small">
-                <Combobox
+                <ComboBox
                   id={'case-chapter-search'}
                   className="case-chapter__select"
                   label="Chapter"
@@ -170,7 +170,7 @@ export default function SearchScreen() {
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
-                ></Combobox>
+                ></ComboBox>
               </div>
             </div>
           </div>
