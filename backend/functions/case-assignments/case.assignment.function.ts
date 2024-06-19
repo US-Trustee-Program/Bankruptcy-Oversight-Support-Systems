@@ -4,7 +4,10 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import {
+  applicationContextCreator,
+  getSession,
+} from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
@@ -17,6 +20,8 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   try {
+    applicationContext.session = await getSession(applicationContext.req);
+
     if (request.method === 'POST') {
       const listOfAttorneyNames = request.body.attorneyList;
       const role = request.body.role;

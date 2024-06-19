@@ -1,7 +1,10 @@
 import * as dotenv from 'dotenv';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import {
+  applicationContextCreator,
+  getSession,
+} from '../lib/adapters/utils/application-context-creator';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
 import { isCamsError } from '../lib/common-errors/cams-error';
@@ -25,6 +28,8 @@ const httpTrigger: AzureFunction = async function (
   let response;
 
   try {
+    applicationContext.session = await getSession(applicationContext.req);
+
     if (procedure === 'reject') {
       response = await consolidationsController.rejectConsolidation(applicationContext, body);
     } else if (procedure === 'approve') {
