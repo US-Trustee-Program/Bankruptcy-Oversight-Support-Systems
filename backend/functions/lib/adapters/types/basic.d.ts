@@ -2,6 +2,7 @@ import { ApplicationConfiguration } from '../../configs/application-configuratio
 import { Context } from '@azure/functions';
 import { IDbConfig } from './database';
 import { CamsError } from '../../common-errors/cams-error';
+import { CamsSession } from '../../../../../common/src/cams/session';
 
 export interface AppConfig {
   dbMock: boolean;
@@ -22,6 +23,7 @@ export interface ApplicationContext extends Context {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
   logger: LoggerHelper;
+  session?: CamsSession;
 }
 
 export interface ObjectKeyVal {

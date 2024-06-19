@@ -1,7 +1,10 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import {
+  applicationContextCreator,
+  getSession,
+} from '../lib/adapters/utils/application-context-creator';
 import * as dotenv from 'dotenv';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
@@ -26,6 +29,7 @@ const httpTrigger: AzureFunction = async function (
     officeId = attorneysRequest.body.office_id;
 
   try {
+    applicationContext.session = await getSession(applicationContext.req);
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
     functionContext.res = httpSuccess(attorneysList);
   } catch (originalError) {
