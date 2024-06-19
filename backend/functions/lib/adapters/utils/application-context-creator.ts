@@ -7,6 +7,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsHttpRequest } from '../types/http';
 import { oktaVerifyToken } from '../gateways/okta/okta-verify-token';
+import { getAuthorizationConfig } from '../../configs/authorization-configuration';
 
 export async function applicationContextCreator(
   functionContext: Context,
@@ -23,14 +24,9 @@ export async function applicationContextCreator(
   } satisfies ApplicationContext;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
+export async function getApplicationContextSession(request: CamsHttpRequest) {
+  const { provider } = getAuthorizationConfig();
 
-function getProviderFromIssuer(issuer: string) {
-  if (issuer.includes('okta.com')) return 'okta';
-  return null;
-}
-
-export async function getSession(request: CamsHttpRequest) {
   const authorizationHeader = request.headers['authorization'];
   const match = authorizationHeader.match(/Bearer (.+)/);
 
@@ -48,11 +44,6 @@ export async function getSession(request: CamsHttpRequest) {
   }
 
   // TODO: We need to check the "cache" in Cosmos for the token. If it exists just return the CamsSession from Cosmos.
-
-  // TODO: Get the issuer from a configuration rather than a module scoped variable.
-  // TODO: Get this from the app configuration.
-  const issuer = `https://dev-31938913.okta.com/oauth2/default`;
-  const provider = getProviderFromIssuer(issuer);
 
   let verification = null;
   switch (provider) {

@@ -6,7 +6,7 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import {
   applicationContextCreator,
-  getSession,
+  getApplicationContextSession,
 } from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
@@ -20,7 +20,7 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   try {
-    applicationContext.session = await getSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext.req);
 
     if (request.method === 'POST') {
       const listOfAttorneyNames = request.body.attorneyList;
