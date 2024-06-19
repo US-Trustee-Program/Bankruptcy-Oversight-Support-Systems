@@ -6,8 +6,8 @@ import { LoggerImpl } from '../services/logger.service';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsHttpRequest } from '../types/http';
-import { oktaVerifyToken } from '../gateways/okta/okta-verify-token';
 import { getAuthorizationConfig } from '../../configs/authorization-configuration';
+import { getAuthorizationGateway } from '../../factory';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -47,18 +47,17 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
 
   // TODO: We need to check the "cache" in Cosmos for the token. If it exists just return the CamsSession from Cosmos.
 
-  let verification = null;
-  switch (provider) {
-    case 'okta':
-      verification = await oktaVerifyToken(apiToken);
-      break;
-    default:
-      throw new ForbiddenError(MODULE_NAME, {
-        message: 'Authorization provider not supported.',
-      });
+  const gateway = getAuthorizationGateway(provider);
+
+  if (!gateway) {
+    throw new ForbiddenError(MODULE_NAME, {
+      message: 'Unsupported authenication provider.',
+    });
   }
 
-  if (!verification) {
+  const jwt = gateway.verifyToken(apiToken);
+
+  if (!jwt) {
     throw new ForbiddenError(MODULE_NAME, {
       message: 'Unable to verify token.',
     });
@@ -66,11 +65,11 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
 
   // TODO: If we are here then we need to cache the CamsSession in Cosmos with an appropriate TTL calculated from the token expiration timestamp.
 
-  // TODO: We need to call Okta to get the profile and email scopes.
+  // TODO: We need to call Okta to get the profile and email scopes.!!!!
   const session: CamsSession = {
     provider,
     user: {
-      name: verification.name,
+      name: 'TO BE MAPPED FROM ID TOKEN',
     },
     apiToken,
   };
