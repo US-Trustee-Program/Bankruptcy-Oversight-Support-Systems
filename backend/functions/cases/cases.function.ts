@@ -2,7 +2,10 @@ import * as dotenv from 'dotenv';
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import {
+  applicationContextCreator,
+  getSession,
+} from '../lib/adapters/utils/application-context-creator';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CaseDetailsDbResult } from '../lib/adapters/types/cases';
@@ -27,6 +30,8 @@ const httpTrigger: AzureFunction = async function (
   type SearchResults = ResponseBody<CaseBasics[]>;
 
   try {
+    applicationContext.session = await getSession(applicationContext.req);
+
     let responseBody: CaseDetailsDbResult | SearchResults;
 
     if (request.method === 'GET' && request.params.caseId) {
