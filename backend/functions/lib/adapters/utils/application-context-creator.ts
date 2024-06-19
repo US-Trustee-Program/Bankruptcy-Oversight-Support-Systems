@@ -9,6 +9,8 @@ import { CamsHttpRequest } from '../types/http';
 import { oktaVerifyToken } from '../gateways/okta/okta-verify-token';
 import { getAuthorizationConfig } from '../../configs/authorization-configuration';
 
+const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
+
 export async function applicationContextCreator(
   functionContext: Context,
 ): Promise<ApplicationContext> {
@@ -31,14 +33,14 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
   const match = authorizationHeader.match(/Bearer (.+)/);
 
   if (!match) {
-    throw new ForbiddenError('AUTHORIZATION', {
+    throw new ForbiddenError(MODULE_NAME, {
       message: 'Bearer token not found in authorization header',
     });
   }
 
   const apiToken = match[1];
   if (!apiToken) {
-    throw new ForbiddenError('AUTHORIZATION', {
+    throw new ForbiddenError(MODULE_NAME, {
       message: 'Unable to get token from authorization header',
     });
   }
@@ -51,13 +53,13 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
       verification = await oktaVerifyToken(apiToken);
       break;
     default:
-      throw new ForbiddenError('AUTHORIZATION', {
+      throw new ForbiddenError(MODULE_NAME, {
         message: 'Authorization provider not supported.',
       });
   }
 
   if (!verification) {
-    throw new ForbiddenError('AUTHORIZATION', {
+    throw new ForbiddenError(MODULE_NAME, {
       message: 'Unable to verify token.',
     });
   }
