@@ -211,7 +211,6 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
 
     // Make first search request....
-    // selectItemInMockSelect('case-chapter-search', 0);
     const comboBoxExpandButton = screen.getByTestId('button-case-chapter-search-expand');
     fireEvent.click(comboBoxExpandButton!);
     const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');

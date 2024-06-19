@@ -9,7 +9,7 @@ export interface InputRef {
   getValue: () => string;
 }
 
-export interface ComboboxRef {
+export interface ComboBoxRef {
   getValue: () => ComboOption[];
   disable: (value: boolean) => void;
 }

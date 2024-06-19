@@ -1,6 +1,6 @@
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useImperativeHandle } from 'react';
-import { ComboOption } from './combobox/Combobox';
+import { ComboOption } from './combobox/ComboBox';
 import { Pill } from './Pill';
 import { UswdsButtonStyle } from './uswds/Button';
 
