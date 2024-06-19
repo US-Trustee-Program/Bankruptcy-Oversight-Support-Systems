@@ -1,5 +1,5 @@
 import '../uswds/forms.scss';
-import './Combobox.scss';
+import './ComboBox.scss';
 import {
   forwardRef,
   PropsWithChildren,
@@ -13,7 +13,7 @@ import Icon from '../uswds/Icon';
 import Button, { UswdsButtonStyle } from '../uswds/Button';
 import PillBox from '../PillBox';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
-import { ComboboxRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
 export type ComboOption = {
   value: string;
@@ -26,7 +26,7 @@ type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
 
-interface ComboboxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> {
+interface ComboBoxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> {
   children?: ReactElement | Array<ReactElement>;
   label?: string;
   ariaLabelPrefix?: string;
@@ -40,7 +40,7 @@ interface ComboboxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> 
   multiSelect: boolean;
 }
 
-function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
+function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const { label, value, disabled, onUpdateSelection, onUpdateFilter, multiSelect, ...otherProps } =
     props;
 
@@ -57,11 +57,11 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
 
   // ========== REFS ==========
 
-  const comboboxRef = useRef(null);
+  const comboBoxRef = useRef(null);
   const pillBoxRef = useRef(null);
   const filterRef = useRef<HTMLInputElement>(null);
 
-  useOutsideClick([comboboxRef], isOutsideClick);
+  useOutsideClick([comboBoxRef], isOutsideClick);
 
   // ========== MISC FUNCTIONS ==========
 
@@ -130,8 +130,8 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
   }
 
   function isOutsideClick(ev: MouseEvent) {
-    if (comboboxRef.current) {
-      const boundingRect = (comboboxRef.current as HTMLDivElement).getBoundingClientRect();
+    if (comboBoxRef.current) {
+      const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
       const containerRight = boundingRect.x + boundingRect.width;
       const containerBottom = boundingRect.y + boundingRect.height;
       const targetX = ev.clientX;
@@ -318,7 +318,7 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
   // ========== JSX ==========
 
   return (
-    <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboboxRef}>
+    <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
       <div className={`chapter-label ${multiSelect ? 'multi-select' : ''}`}>
         <label className="usa-label" id={props.id + '-label'}>
           {label}
@@ -411,5 +411,5 @@ function ComboboxComponent(props: ComboboxProps, ref: React.Ref<ComboboxRef>) {
   );
 }
 
-const Combobox = forwardRef(ComboboxComponent);
-export default Combobox;
+const ComboBox = forwardRef(ComboBoxComponent);
+export default ComboBox;
