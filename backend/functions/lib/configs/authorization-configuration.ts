@@ -18,6 +18,7 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 }
 
 function getProviderFromIssuer(issuer: string) {
+  // TODO: Use regex to better guard against unintended substring matches.
   if (issuer.includes('okta.com')) return 'okta';
   return null;
 }
