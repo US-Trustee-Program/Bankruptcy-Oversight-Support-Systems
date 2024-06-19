@@ -59,8 +59,6 @@ export function OktaSession(props: OktaSessionProps) {
   const camsUser: CamsUser = {
     name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN',
   };
-
-  // TODO: Is this correct? Is this the JWT to use for the Okta API or can we use this for the CAMS API?
   const apiToken = oktaAuth.getAccessToken();
 
   if (!apiToken) {
