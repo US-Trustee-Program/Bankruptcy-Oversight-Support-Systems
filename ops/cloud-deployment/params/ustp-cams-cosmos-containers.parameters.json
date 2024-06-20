@@ -36,8 +36,8 @@
         },
         {
           "name": "user-session-cache",
-          "partitionKey1": "/signature",
-          "partitionKeys": ["/signature"],
+          "partitionKey1": "/id",
+          "partitionKeys": ["/id"],
           "ttl": 1800
         }
       ]

@@ -51,7 +51,7 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
 
   if (!gateway) {
     throw new ForbiddenError(MODULE_NAME, {
-      message: 'Unsupported authenication provider.',
+      message: 'Unsupported authentication provider.',
     });
   }
 
@@ -70,6 +70,7 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
     provider,
     user,
     apiToken: accessToken,
+    validatedClaims: jwt.claims,
   };
 
   return session;
