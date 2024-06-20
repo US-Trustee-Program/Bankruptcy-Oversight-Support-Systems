@@ -38,8 +38,8 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
     });
   }
 
-  const apiToken = match[1];
-  if (!apiToken) {
+  const accessToken = match[1];
+  if (!accessToken) {
     throw new ForbiddenError(MODULE_NAME, {
       message: 'Unable to get token from authorization header',
     });
@@ -55,7 +55,8 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
     });
   }
 
-  const jwt = gateway.verifyToken(apiToken);
+  const jwt = await gateway.verifyToken(accessToken);
+  const user = await gateway.getUser(accessToken);
 
   if (!jwt) {
     throw new ForbiddenError(MODULE_NAME, {
@@ -65,13 +66,10 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
 
   // TODO: If we are here then we need to cache the CamsSession in Cosmos with an appropriate TTL calculated from the token expiration timestamp.
 
-  // TODO: We need to call Okta to get the profile and email scopes.!!!!
   const session: CamsSession = {
     provider,
-    user: {
-      name: 'TO BE MAPPED FROM ID TOKEN',
-    },
-    apiToken,
+    user,
+    apiToken: accessToken,
   };
 
   return session;

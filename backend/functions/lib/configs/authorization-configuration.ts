@@ -6,11 +6,13 @@ dotenv.config();
 const issuer = process.env.AUTH_ISSUER;
 const audience = getAudienceFromIssuer(issuer);
 const provider = getProviderFromIssuer(issuer);
+const userInfoUri = getUserInfoUriFromIssuer(issuer);
 
 const authorizationConfig = {
   issuer,
   audience,
   provider,
+  userInfoUri,
 };
 
 export function getAuthorizationConfig(): AuthorizationConfig {
@@ -26,4 +28,8 @@ function getProviderFromIssuer(issuer: string) {
 function getAudienceFromIssuer(issuer: string) {
   const serverName = issuer.slice(issuer.lastIndexOf('/') + 1);
   return `api://${serverName}`;
+}
+
+function getUserInfoUriFromIssuer(issuer: string) {
+  return issuer + '/v1/userinfo';
 }
