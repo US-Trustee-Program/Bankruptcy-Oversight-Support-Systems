@@ -35,6 +35,8 @@ import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
 import { OpenIdConnectGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
+import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
+import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -150,4 +152,10 @@ export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway 
     },
   };
   return hardStop;
+};
+
+export const getUserSessionCacheRepository = (
+  context: ApplicationContext,
+): UserSessionCacheRepository => {
+  return new UserSessionCacheCosmosDbRepository(context);
 };
