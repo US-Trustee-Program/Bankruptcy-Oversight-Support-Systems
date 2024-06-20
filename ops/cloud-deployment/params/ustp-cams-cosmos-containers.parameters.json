@@ -7,44 +7,38 @@
         {
           "name": "healthcheck",
           "partitionKey1": "/id",
-          "partitionKeys": [
-            "/id"
-          ]
+          "partitionKeys": ["/id"]
         },
         {
           "name": "assignments",
           "partitionKey1": "/caseId",
-          "partitionKeys": [
-            "/caseId"
-          ]
+          "partitionKeys": ["/caseId"]
         },
         {
           "name": "cases",
           "partitionKey1": "/caseId",
-          "partitionKeys": [
-            "/caseId"
-          ]
+          "partitionKeys": ["/caseId"]
         },
         {
           "name": "orders",
           "partitionKey1": "/caseId",
-          "partitionKeys": [
-            "/caseId"
-          ]
+          "partitionKeys": ["/caseId"]
         },
         {
           "name": "consolidations",
           "partitionKey1": "/consolidationId",
-          "partitionKeys": [
-            "/consolidationId"
-          ]
+          "partitionKeys": ["/consolidationId"]
         },
         {
           "name": "runtime-state",
           "partitionKey1": "/documentType",
-          "partitionKeys": [
-            "/documentType"
-          ]
+          "partitionKeys": ["/documentType"]
+        },
+        {
+          "name": "user-session-cache",
+          "partitionKey1": "/signature",
+          "partitionKeys": ["/signature"],
+          "ttl": 1800
         }
       ]
     }
