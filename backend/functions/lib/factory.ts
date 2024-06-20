@@ -140,9 +140,13 @@ export const getCosmosDbCrudRepository = <T>(
 export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway | null => {
   if (provider === 'okta') return OktaGateway;
 
+  const error = new Error('Bad OIDC provider.');
   const hardStop: OpenIdConnectGateway = {
-    verifyToken: (_token: string) => {
-      throw new Error('Bad gateway');
+    verifyToken: (_: string) => {
+      return Promise.reject(error);
+    },
+    getUser: (_: string) => {
+      return Promise.reject(error);
     },
   };
   return hardStop;

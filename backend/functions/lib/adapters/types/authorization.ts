@@ -1,11 +1,15 @@
+import { CamsUser } from '../../../../../common/src/cams/session';
+
 export type AuthorizationConfig = {
+  provider: string;
   issuer: string;
   audience: string;
-  provider: string;
+  userInfoUri: string;
 };
 
 export interface OpenIdConnectGateway {
-  verifyToken: (token: string) => Promise<Jwt>;
+  verifyToken: (accessToken: string) => Promise<Jwt>;
+  getUser: (accessToken: string) => Promise<CamsUser>;
 }
 
 export type Algorithm =
