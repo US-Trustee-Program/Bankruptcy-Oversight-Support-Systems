@@ -14,9 +14,11 @@ describe('user-session.gateway test', () => {
     iat: 0,
     exp: 1,
   };
+  const provider = 'okta';
   let token: string;
   let mockGetValue: CamsSession;
   let context: ApplicationContext;
+
   beforeEach(async () => {
     context = await createMockApplicationContext({
       DATABASE_MOCK: 'true',
@@ -31,25 +33,23 @@ describe('user-session.gateway test', () => {
     mockGetValue = {
       user: { name: '' },
       apiToken: token,
-      provider: 'okta',
+      provider,
       validatedClaims: jwtClaims,
     };
     jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue({
       claims: jwtClaims,
       header: jwtHeader as JwtHeader,
-      toString: () => {
-        return '';
-      },
-      isExpired: () => {
-        return false;
-      },
-      isNotBefore: () => {
-        return false;
-      },
+      toString: jest.fn(),
+      isExpired: jest.fn(),
+      isNotBefore: jest.fn(),
     });
     jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: mockGetValue,
     });
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
   test('should return valid session and add to cache when cache miss is encountered', async () => {
@@ -58,7 +58,7 @@ describe('user-session.gateway test', () => {
     });
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const gateway = new UserSessionGateway();
-    const session = await gateway.lookup(context, token);
+    const session = await gateway.lookup(context, token, provider);
     expect(session).toEqual(mockGetValue);
     expect(createSpy).toHaveBeenCalled();
   });
@@ -66,8 +66,10 @@ describe('user-session.gateway test', () => {
   test('should return valid session on cache hit', async () => {
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const gateway = new UserSessionGateway();
-    const session = await gateway.lookup(context, token);
+    const session = await gateway.lookup(context, token, provider);
     expect(session).toEqual(mockGetValue);
     expect(createSpy).not.toHaveBeenCalled();
   });
+
+  test('should not add anything to cache if token is invalid', () => {});
 });

@@ -16,7 +16,7 @@ const httpTrigger: AzureFunction = async function (
 
   // get the offices from region 2 and return
   try {
-    applicationContext.session = await getApplicationContextSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext);
 
     const camsRequest = httpRequestToCamsHttpRequest(request);
     const responseBody = await officesController.getOffices(camsRequest);
