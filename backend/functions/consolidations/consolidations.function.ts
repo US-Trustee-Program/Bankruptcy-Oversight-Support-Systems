@@ -28,7 +28,7 @@ const httpTrigger: AzureFunction = async function (
   let response;
 
   try {
-    applicationContext.session = await getApplicationContextSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext);
 
     if (procedure === 'reject') {
       response = await consolidationsController.rejectConsolidation(applicationContext, body);
