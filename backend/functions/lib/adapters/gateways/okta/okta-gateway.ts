@@ -2,8 +2,25 @@ import OktaJwtVerifier = require('@okta/jwt-verifier');
 import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
 import { Jwt, OpenIdConnectGateway } from '../../types/authorization';
+import { CamsUser } from '../../../../../../common/src/cams/session';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
+
+// TODO: Remove this VERY temporary in memory cache
+const cache = new Map<string, CamsUser>();
+
+type OktaUserInfo = {
+  sub: string;
+  name: string;
+  locale: string;
+  email: string;
+  preferred_username: string;
+  given_name: string;
+  family_name: string;
+  zoneinfo: string;
+  updated_at: number;
+  email_verified: boolean;
+};
 
 let oktaJwtVerifier = null;
 
@@ -28,8 +45,34 @@ async function verifyToken(token: string): Promise<Jwt> {
   }
 }
 
+async function getUser(accessToken): Promise<CamsUser> {
+  const { userInfoUri } = getAuthorizationConfig();
+
+  if (cache.has(accessToken)) return cache.get(accessToken);
+
+  try {
+    const response = await fetch(userInfoUri, {
+      method: 'GET',
+      headers: { authorization: 'Bearer ' + accessToken },
+    });
+    if (response.ok) {
+      const userInfo = (await response.json()) as OktaUserInfo;
+      const camsUser: CamsUser = {
+        name: userInfo.name,
+      };
+      cache.set(accessToken, camsUser);
+      return camsUser;
+    } else {
+      throw new ForbiddenError(MODULE_NAME, { message: 'Failed to retrieve user info from Okta.' });
+    }
+  } catch (originalError) {
+    throw new ForbiddenError(MODULE_NAME, { originalError });
+  }
+}
+
 const OktaGateway: OpenIdConnectGateway = {
   verifyToken,
+  getUser,
 };
 
 export default OktaGateway;
