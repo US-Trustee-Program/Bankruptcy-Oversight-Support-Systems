@@ -29,7 +29,7 @@ const httpTrigger: AzureFunction = async function (
     officeId = attorneysRequest.body.office_id;
 
   try {
-    applicationContext.session = await getApplicationContextSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext);
     const attorneysList = await attorneysController.getAttorneyList({ officeId });
     functionContext.res = httpSuccess(attorneysList);
   } catch (originalError) {

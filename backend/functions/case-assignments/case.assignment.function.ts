@@ -20,7 +20,7 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext);
   try {
-    applicationContext.session = await getApplicationContextSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext);
 
     if (request.method === 'POST') {
       const listOfAttorneyNames = request.body.attorneyList;

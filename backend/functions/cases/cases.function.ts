@@ -30,7 +30,7 @@ const httpTrigger: AzureFunction = async function (
   type SearchResults = ResponseBody<CaseBasics[]>;
 
   try {
-    applicationContext.session = await getApplicationContextSession(applicationContext.req);
+    applicationContext.session = await getApplicationContextSession(applicationContext);
 
     let responseBody: CaseDetailsDbResult | SearchResults;
 

@@ -4,10 +4,8 @@ import { ApplicationConfiguration } from '../../configs/application-configuratio
 import { getFeatureFlags } from './feature-flag';
 import { LoggerImpl } from '../services/logger.service';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { CamsSession } from '../../../../../common/src/cams/session';
-import { CamsHttpRequest } from '../types/http';
 import { getAuthorizationConfig } from '../../configs/authorization-configuration';
-import { getAuthorizationGateway } from '../../factory';
+import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -26,10 +24,10 @@ export async function applicationContextCreator(
   } satisfies ApplicationContext;
 }
 
-export async function getApplicationContextSession(request: CamsHttpRequest) {
+export async function getApplicationContextSession(context: ApplicationContext) {
   const { provider } = getAuthorizationConfig();
 
-  const authorizationHeader = request.headers['authorization'];
+  const authorizationHeader = context.req.headers['authorization'];
   const match = authorizationHeader.match(/Bearer (.+)/);
 
   if (!match) {
@@ -45,8 +43,6 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
     });
   }
 
-  // TODO: We need to check the "cache" in Cosmos for the token. If it exists just return the CamsSession from Cosmos.
-
   const gateway = getAuthorizationGateway(provider);
 
   if (!gateway) {
@@ -55,8 +51,12 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
     });
   }
 
+  // TODO: handle user before we store in cache
+  const cache = getUserSessionCacheRepository(context);
+  const session = await cache.get(context, accessToken);
+
   const jwt = await gateway.verifyToken(accessToken);
-  const user = await gateway.getUser(accessToken);
+  session.user = await gateway.getUser(accessToken);
 
   if (!jwt) {
     throw new ForbiddenError(MODULE_NAME, {
@@ -66,12 +66,12 @@ export async function getApplicationContextSession(request: CamsHttpRequest) {
 
   // TODO: If we are here then we need to cache the CamsSession in Cosmos with an appropriate TTL calculated from the token expiration timestamp.
 
-  const session: CamsSession = {
-    provider,
-    user,
-    apiToken: accessToken,
-    validatedClaims: jwt.claims,
-  };
+  // const session: CamsSession = {
+  //   provider,
+  //   user,
+  //   apiToken: accessToken,
+  //   validatedClaims: jwt.claims,
+  // };
 
   return session;
 }
