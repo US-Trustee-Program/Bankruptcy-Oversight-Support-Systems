@@ -51,27 +51,6 @@ export async function getApplicationContextSession(context: ApplicationContext) 
     });
   }
 
-  // TODO: handle user before we store in cache
   const cache = getUserSessionCacheRepository(context);
-  const session = await cache.get(context, accessToken);
-
-  const jwt = await gateway.verifyToken(accessToken);
-  session.user = await gateway.getUser(accessToken);
-
-  if (!jwt) {
-    throw new ForbiddenError(MODULE_NAME, {
-      message: 'Unable to verify token.',
-    });
-  }
-
-  // TODO: If we are here then we need to cache the CamsSession in Cosmos with an appropriate TTL calculated from the token expiration timestamp.
-
-  // const session: CamsSession = {
-  //   provider,
-  //   user,
-  //   apiToken: accessToken,
-  //   validatedClaims: jwt.claims,
-  // };
-
-  return session;
+  return await cache.get(context, accessToken);
 }
