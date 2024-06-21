@@ -1,5 +1,6 @@
 import { CamsError } from '../../common-errors/cams-error';
 import { LoggerImpl } from '../services/logger.service';
+import { randomUUID } from 'crypto';
 
 const log = jest.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -7,22 +8,25 @@ const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR-TEST';
 
 describe('Application Context Creator tests', () => {
   let logger;
+  const invocationId = randomUUID();
 
   beforeEach(() => {
-    logger = new LoggerImpl();
+    logger = new LoggerImpl(invocationId);
   });
 
   test('Should properly log message when calling info without data defined', () => {
     const msg = 'info test';
     logger.info(MODULE_NAME, msg);
-    expect(log).toHaveBeenCalledWith(`[INFO] [APPLICATION-CONTEXT-CREATOR-TEST] ${msg}`);
+    expect(log).toHaveBeenCalledWith(
+      `[INFO] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg}`,
+    );
   });
 
   test('Should properly log message when calling info with data defined', () => {
     const msg = 'info test';
     logger.info(MODULE_NAME, msg, { testMessage: msg });
     expect(log).toHaveBeenCalledWith(
-      `[INFO] [APPLICATION-CONTEXT-CREATOR-TEST] ${msg} {"testMessage":"${msg}"}`,
+      `[INFO] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
     );
   });
 
@@ -30,7 +34,7 @@ describe('Application Context Creator tests', () => {
     const msg = 'warning test';
     logger.warn(MODULE_NAME, msg, { testMessage: msg });
     expect(log).toHaveBeenCalledWith(
-      `[WARN] [APPLICATION-CONTEXT-CREATOR-TEST] ${msg} {"testMessage":"${msg}"}`,
+      `[WARN] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
     );
   });
 
@@ -38,7 +42,7 @@ describe('Application Context Creator tests', () => {
     const msg = 'error test';
     logger.error(MODULE_NAME, msg, { testMessage: msg });
     expect(log).toHaveBeenCalledWith(
-      `[ERROR] [APPLICATION-CONTEXT-CREATOR-TEST] ${msg} {"testMessage":"${msg}"}`,
+      `[ERROR] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
     );
   });
 
@@ -46,7 +50,7 @@ describe('Application Context Creator tests', () => {
     const msg = 'debug test';
     logger.debug(MODULE_NAME, msg, { testMessage: msg });
     expect(log).toHaveBeenCalledWith(
-      `[DEBUG] [APPLICATION-CONTEXT-CREATOR-TEST] ${msg} {"testMessage":"${msg}"}`,
+      `[DEBUG] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
     );
   });
 
@@ -54,7 +58,7 @@ describe('Application Context Creator tests', () => {
     const error = new CamsError(MODULE_NAME);
     logger.camsError(error);
     expect(log).toHaveBeenCalledWith(
-      `[ERROR] [APPLICATION-CONTEXT-CREATOR-TEST] Unknown CAMS Error {"message":"Unknown CAMS Error","status":500,"module":"APPLICATION-CONTEXT-CREATOR-TEST"}`,
+      `[ERROR] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] Unknown CAMS Error {"message":"Unknown CAMS Error","status":500,"module":"APPLICATION-CONTEXT-CREATOR-TEST","isCamsError":true}`,
     );
   });
 });

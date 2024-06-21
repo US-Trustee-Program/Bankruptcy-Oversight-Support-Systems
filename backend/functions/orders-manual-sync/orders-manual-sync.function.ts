@@ -20,17 +20,17 @@ initializeApplicationInsights();
  * curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
  *
  * @param functionContext
- * @param ordersRequest
+ * @param request
  */
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  ordersRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const context = await applicationContextCreator(functionContext);
+  const context = await applicationContextCreator(functionContext, request);
 
   const ordersController = new OrdersController(context);
   try {
-    const results = await ordersController.syncOrders(context, ordersRequest.body);
+    const results = await ordersController.syncOrders(context, request.body);
     functionContext.res = httpSuccess(results);
   } catch (camsError) {
     context.logger.camsError(camsError);

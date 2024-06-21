@@ -37,6 +37,9 @@ import { OpenIdConnectGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
 import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
+import { SessionCache } from './adapters/utils/sessionCache';
+import { UserSessionGateway } from './adapters/gateways/user-session.gateway';
+import { MockUserSessionGateway } from './testing/mock-gateways/mock-user-session-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -152,6 +155,13 @@ export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway 
     },
   };
   return hardStop;
+};
+
+export const getUserSessionGateway = (context: ApplicationContext): SessionCache => {
+  if (context.config.mockAuth) {
+    return new MockUserSessionGateway();
+  }
+  return new UserSessionGateway();
 };
 
 export const getUserSessionCacheRepository = (

@@ -15,15 +15,15 @@ initializeApplicationInsights();
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  caseDocketRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const caseDocketController = new CaseDocketController(applicationContext);
   try {
     applicationContext.session = await getApplicationContextSession(applicationContext);
 
     const responseBody = await caseDocketController.getCaseDocket(applicationContext, {
-      caseId: caseDocketRequest.params.caseId,
+      caseId: request.params.caseId,
     });
     functionContext.res = httpSuccess(responseBody);
   } catch (camsError) {

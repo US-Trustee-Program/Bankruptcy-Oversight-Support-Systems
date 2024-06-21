@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
-import { CamsError } from '../../common-errors/cams-error';
+import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsResponse } from '../controller-types';
 import { CaseHistory } from '../../../../../common/src/cams/history';
@@ -31,7 +31,7 @@ export class CaseHistoryController {
         body: caseHistory,
       };
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }

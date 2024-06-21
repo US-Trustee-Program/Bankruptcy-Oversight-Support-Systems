@@ -7,13 +7,11 @@ import {
   isResponseBodySuccess,
 } from '../../../../../common/src/api/response';
 import { CaseBasics } from '../../../../../common/src/cams/cases';
-import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
 import {
   mockCamsHttpRequest,
   mockRequestUrl,
 } from '../../testing/mock-data/cams-http-request-helper';
-
-const context = require('azure-function-context-mock');
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 
 const limit = '25';
 const offset = '25';
@@ -35,7 +33,7 @@ describe('cases controller test', () => {
   beforeAll(async () => {
     jest.spyOn(CaseManagement.prototype, 'getCaseDetail').mockResolvedValue(expectedDetailResult);
 
-    applicationContext = await applicationContextCreator(context);
+    applicationContext = await createMockApplicationContext();
     controller = new CasesController(applicationContext);
   });
 

@@ -1,8 +1,8 @@
 import httpTrigger from '../offices/offices.function';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { mockCamsHttpRequest } from '../lib/testing/mock-data/cams-http-request-helper';
-
-const context = require('azure-function-context-mock');
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 
 let getOffices;
 
@@ -17,6 +17,12 @@ jest.mock('../lib/controllers/offices/offices.controller', () => {
 });
 
 describe('offices Function tests', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+  });
+
   test('should set successful response', async () => {
     getOffices = jest.fn().mockImplementation(() => {
       return Promise.resolve({ success: true, body: [] });

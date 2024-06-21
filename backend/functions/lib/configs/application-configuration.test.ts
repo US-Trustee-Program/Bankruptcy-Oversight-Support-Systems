@@ -1,15 +1,15 @@
 import { ApplicationConfiguration } from './application-configuration';
 
 describe('Testing that database configuration is loaded correctly based on environment variables', () => {
-  const env = process.env;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
     jest.resetModules();
-    process.env = { ...env };
+    process.env = {};
   });
 
   afterEach(() => {
-    process.env = env;
+    process.env = originalEnv;
   });
 
   test('should default dbMock to false', () => {

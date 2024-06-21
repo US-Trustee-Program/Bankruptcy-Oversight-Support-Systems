@@ -1,6 +1,5 @@
-const context = require('azure-function-context-mock');
 import { ApplicationContext } from '../adapters/types/basic';
-import { applicationContextCreator } from '../adapters/utils/application-context-creator';
+import { createMockApplicationContext } from '../testing/testing-utilities';
 import AttorneysList from './attorneys';
 import { CaseAssignmentUseCase } from './case.assignment';
 
@@ -26,7 +25,7 @@ describe('Test attorneys use-case', () => {
       ) => mockResult,
     };
 
-    const mockContext = await applicationContextCreator(context);
+    const mockContext = await createMockApplicationContext();
     const caseList = new AttorneysList(gateway);
     const results = await caseList.getAttorneyList(mockContext, {});
 
@@ -54,7 +53,7 @@ describe('Test attorneys use-case', () => {
       ) => mockResult,
     };
 
-    const mockContext = await applicationContextCreator(context);
+    const mockContext = await createMockApplicationContext();
     const loggerSpy = jest.spyOn(mockContext.logger, 'error');
 
     const assignmentUseCaseSpy = jest

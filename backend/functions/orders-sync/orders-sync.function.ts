@@ -12,7 +12,7 @@ dotenv.config();
 initializeApplicationInsights();
 
 export default async function timerTrigger(invocationContext: Context): Promise<void> {
-  const context = await applicationContextCreator(invocationContext);
+  const context = await applicationContextCreator(invocationContext, undefined);
 
   const ordersController = new OrdersController(context);
   try {

@@ -11,6 +11,7 @@ import {
 } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
+import { ApplicationContext } from '../lib/adapters/types/basic';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 
@@ -20,15 +21,15 @@ initializeApplicationInsights();
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  ordersRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const context = await applicationContextCreator(functionContext);
+  const context = await applicationContextCreator(functionContext, request);
   let response;
   try {
-    if (ordersRequest.method === 'GET') {
-      response = await getOrders(functionContext);
-    } else if (ordersRequest.method === 'PATCH') {
-      response = await updateOrder(functionContext, ordersRequest);
+    if (request.method === 'GET') {
+      response = await getOrders(context);
+    } else if (request.method === 'PATCH') {
+      response = await updateOrder(context);
     }
     functionContext.res = httpSuccess(response);
   } catch (camsError) {
@@ -37,21 +38,16 @@ const httpTrigger: AzureFunction = async function (
   }
 };
 
-async function getOrders(functionContext: Context): Promise<GetOrdersResponse> {
-  const context = await applicationContextCreator(functionContext);
+async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
   const ordersController = new OrdersController(context);
   const responseBody = await ordersController.getOrders(context);
   return responseBody;
 }
 
-async function updateOrder(
-  functionContext: Context,
-  ordersRequest: HttpRequest,
-): Promise<PatchOrderResponse> {
-  const context = await applicationContextCreator(functionContext);
+async function updateOrder(context: ApplicationContext): Promise<PatchOrderResponse> {
   const ordersController = new OrdersController(context);
-  const data = ordersRequest.body;
-  const id = ordersRequest.params['id'];
+  const data = context.req.body;
+  const id = context.req.params['id'];
   if (id !== data.id) {
     const camsError = new BadRequestError(MODULE_NAME, {
       message: 'Cannot update order. ID of order does not match ID of request.',

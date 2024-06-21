@@ -11,7 +11,7 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const officesController = new OfficesController(applicationContext);
 
   // get the offices from region 2 and return

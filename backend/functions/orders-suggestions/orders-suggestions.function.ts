@@ -12,15 +12,13 @@ initializeApplicationInsights();
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  ordersRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const context = await applicationContextCreator(functionContext);
-  let response;
+  const context = await applicationContextCreator(functionContext, request);
   try {
-    const context = await applicationContextCreator(functionContext);
     const ordersController = new OrdersController(context);
-    const caseId = ordersRequest.params['caseId'];
-    response = await ordersController.getSuggestedCases(context, caseId);
+    const caseId = request.params['caseId'];
+    const response = await ordersController.getSuggestedCases(context, caseId);
     functionContext.res = httpSuccess(response);
   } catch (camsError) {
     context.logger.camsError(camsError);

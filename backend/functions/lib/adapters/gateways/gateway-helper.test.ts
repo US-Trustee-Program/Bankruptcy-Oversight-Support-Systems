@@ -1,14 +1,17 @@
 import { QueryResults } from '../types/database';
 import { handleQueryResult } from './gateway-helper';
 import { CamsError } from '../../common-errors/cams-error';
-
-const context = require('azure-function-context-mock');
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { ApplicationContext } from '../types/basic';
 
 const moduleName = 'gateway-helper-test';
 describe('Gateway helper test', () => {
   const callback = jest.fn();
 
-  beforeEach(() => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
     callback.mockClear();
   });
 
