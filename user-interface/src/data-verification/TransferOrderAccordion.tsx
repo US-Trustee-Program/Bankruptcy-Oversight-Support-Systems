@@ -67,13 +67,16 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           {formatDate(order.orderDate)}
         </div>
         <div className="grid-col-2 order-type text-no-wrap">
-          <span aria-label={`Event type ${orderType.get(order.orderType)}`}>
+          <span
+            className="event-type-label"
+            aria-label={`Event type ${orderType.get(order.orderType)}`}
+          >
             {orderType.get(order.orderType)}
           </span>
         </div>
         <div className="grid-col-2 order-status text-no-wrap">
           <span
-            className={order.status}
+            className={`${order.status} event-status-label`}
             aria-label={`Event status ${statusType.get(order.status)}`}
           >
             {statusType.get(order.status)}
