@@ -1,4 +1,4 @@
-export const MOCK_AUTHORIZATION_BEARER_TOKEN = 'MOCK_AUTHORIZATION_BEARER_TOKEN';
+export const MOCK_AUTHORIZATION_BEARER_TOKEN = 'MOCK_ACCESS_TOKEN_JWT';
 
 export type CamsUser = {
   name: string;
