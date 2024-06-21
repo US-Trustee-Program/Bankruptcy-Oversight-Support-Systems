@@ -17,13 +17,14 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const controller = new CaseAssociatedController(applicationContext);
+
   try {
     applicationContext.session = await getApplicationContextSession(applicationContext);
 
     const responseBody = await controller.getAssociatedCases(applicationContext, {
-      caseId: request.params.caseId,
+      caseId: applicationContext.req.params.caseId,
     });
     functionContext.res = httpSuccess(responseBody);
   } catch (camsError) {

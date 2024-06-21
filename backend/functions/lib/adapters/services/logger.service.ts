@@ -9,14 +9,19 @@ const disallowedProperties = ['ssn', 'taxId'];
 
 export class LoggerImpl implements LoggerHelper {
   private readonly provider: LoggerProvider;
-  constructor(provider: LoggerProvider = console.log) {
+  private readonly invocationId: string;
+
+  constructor(invocationId: string, provider: LoggerProvider = console.log) {
     this.provider = provider;
+    this.invocationId = invocationId;
   }
+
   private sanitize(input: string): string {
     return input.replace(/[\r\n]+/g, ' ').trim();
   }
+
   private logMessage(logType: LogType, moduleName: string, message: string, data?: unknown) {
-    const logString = `[${logType.toUpperCase()}] [${moduleName}] ${message} ${
+    const logString = `[${logType.toUpperCase()}] [${moduleName}] [INVOCATION ${this.invocationId}] ${message} ${
       undefined != data
         ? JSON.stringify(data, (key, value) => {
             let disallowed = false;

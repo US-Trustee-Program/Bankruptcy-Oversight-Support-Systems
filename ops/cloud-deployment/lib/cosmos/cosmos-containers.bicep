@@ -27,6 +27,8 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
           c.partitionKey1
         ]
       }
+      defaultTtl: c.name == 'user-session-cache' ? -1 : 0
+      uniqueKeyPolicy: { uniqueKeys: c.name == 'user-session-cache' ? [{ paths: ['/signature'] }]: []}
     }
   }
 }]

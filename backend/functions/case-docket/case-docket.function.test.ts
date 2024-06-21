@@ -1,10 +1,16 @@
 import httpTrigger from './case-docket.function';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
-
-const context = require('azure-function-context-mock');
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 
 describe('Case docket function', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+  });
+
   test('Should return a docket consisting of a list of docket entries an existing case ID', async () => {
     const caseId = NORMAL_CASE_ID;
     const request = {
@@ -16,9 +22,6 @@ describe('Case docket function', () => {
       success: true,
       body: DXTR_CASE_DOCKET_ENTRIES,
     };
-    process.env = {
-      DATABASE_MOCK: 'true',
-    };
     await httpTrigger(context, request);
     expect(context.res.body).toEqual(expectedResponseBody);
   });
@@ -28,9 +31,6 @@ describe('Case docket function', () => {
       params: {
         caseId: bogusCaseId,
       },
-    };
-    process.env = {
-      DATABASE_MOCK: 'true',
     };
     const expectedErrorResponse = {
       success: false,

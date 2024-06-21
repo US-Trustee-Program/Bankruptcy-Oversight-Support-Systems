@@ -1,9 +1,9 @@
 import { buildResponseBodySuccess, ResponseBodySuccess } from '../../../common/src/api/response';
 import { CaseBasics } from '../../../common/src/cams/cases';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import httpTrigger from './cases.function';
-
-const context = require('azure-function-context-mock');
 
 const searchCasesResults = [MockData.getCaseBasics(), MockData.getCaseBasics()];
 
@@ -67,10 +67,12 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
 });
 
 describe('Standard case list tests without class mocks', () => {
-  beforeEach(() => {
-    process.env = {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext({
       FEATURE_FLAG_SDK_KEY: undefined,
-    };
+    });
   });
 
   test('Should return 1 case when called with a caseId', async () => {

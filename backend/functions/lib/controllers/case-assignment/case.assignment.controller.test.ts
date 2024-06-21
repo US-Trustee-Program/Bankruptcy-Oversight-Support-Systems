@@ -1,23 +1,17 @@
 import { CaseAssignmentController } from './case.assignment.controller';
-import { applicationContextCreator } from '../../adapters/utils/application-context-creator';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 import { CamsError } from '../../common-errors/cams-error';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-
-const functionContext = require('azure-function-context-mock');
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 
 describe('Case Assignment Creation Tests', () => {
-  const env = process.env;
   const trialAttorneyRole = 'TrialAttorney';
   let applicationContext;
+
   beforeEach(async () => {
-    process.env = {
-      ...env,
-      DATABASE_MOCK: 'true',
-    };
-    applicationContext = await applicationContextCreator(functionContext);
+    applicationContext = await createMockApplicationContext();
   });
 
   afterEach(() => {

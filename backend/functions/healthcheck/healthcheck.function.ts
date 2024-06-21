@@ -12,9 +12,9 @@ const MODULE_NAME = 'HEALTHCHECK';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  _req: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
   const healthchechSqlDbClient = new HealthcheckSqlDb(applicationContext);
 

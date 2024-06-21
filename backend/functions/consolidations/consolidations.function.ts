@@ -19,12 +19,12 @@ const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  consolidationsRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const consolidationsController = new OrdersController(applicationContext);
-  const procedure = consolidationsRequest.params.procedure;
-  const body = consolidationsRequest.body;
+  const procedure = request.params.procedure;
+  const body = request.body;
   let response;
 
   try {

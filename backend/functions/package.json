@@ -42,7 +42,7 @@
     "prestart": "npm run build",
     "start": "func start --typescript",
     "start:dev": "nodemon --esm src/server.ts",
-    "test": "DATABASE_MOCK='true' jest -c jest.config.js",
+    "test": "MOCK_AUTH='true' DATABASE_MOCK='true' jest -c jest.config.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",

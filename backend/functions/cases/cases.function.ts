@@ -6,7 +6,7 @@ import {
   applicationContextCreator,
   getApplicationContextSession,
 } from '../lib/adapters/utils/application-context-creator';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { isCamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CaseDetailsDbResult } from '../lib/adapters/types/cases';
 import { initializeApplicationInsights } from '../azure/app-insights';
@@ -24,7 +24,7 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const casesController = new CasesController(applicationContext);
 
   type SearchResults = ResponseBody<CaseBasics[]>;
@@ -45,10 +45,9 @@ const httpTrigger: AzureFunction = async function (
 
     functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
-    const error =
-      originalError instanceof CamsError
-        ? originalError
-        : new UnknownError(MODULE_NAME, { originalError });
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
     functionContext.res = httpError(error);
   }

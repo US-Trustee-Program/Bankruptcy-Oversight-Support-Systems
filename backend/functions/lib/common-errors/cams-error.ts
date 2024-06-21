@@ -8,6 +8,7 @@ export interface CamsErrorOptions {
 }
 
 export class CamsError extends Error {
+  isCamsError: true;
   status: number;
   module: string;
   originalError?: Error;
@@ -20,9 +21,10 @@ export class CamsError extends Error {
     this.module = module;
     this.originalError = options.originalError;
     this.data = options.data;
+    this.isCamsError = true;
   }
 }
 
 export function isCamsError(error: unknown): error is CamsError {
-  return error instanceof CamsError;
+  return error instanceof Object && 'isCamsError' in error;
 }

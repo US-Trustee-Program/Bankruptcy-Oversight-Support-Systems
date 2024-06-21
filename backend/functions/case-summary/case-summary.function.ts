@@ -17,7 +17,7 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const caseSummaryController = new CaseSummaryController(applicationContext);
   try {
     applicationContext.session = await getApplicationContextSession(applicationContext);

@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsError } from '../../common-errors/cams-error';
+import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsResponse } from '../controller-types';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
@@ -31,7 +31,7 @@ export class CaseSummaryController {
         body: caseSummary,
       };
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }
