@@ -18,6 +18,7 @@ import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import { ConsolidationFrom, ConsolidationTo } from '../events';
 import { CaseAssignment } from '../assignments';
+import { CamsSession } from '../session';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -324,6 +325,15 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
+function getCamsSession(): CamsSession {
+  return {
+    user: { name: '' },
+    apiToken: '',
+    provider: '',
+    validatedClaims: { claimOne: '' },
+  };
+}
+
 export const MockData = {
   randomCaseId,
   getAttorneyAssignment,
@@ -339,6 +349,7 @@ export const MockData = {
   getConsolidatedOrderCase,
   getConsolidationReference,
   getRawConsolidationOrder,
+  getCamsSession,
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,

@@ -1,6 +1,6 @@
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsError } from '../../common-errors/cams-error';
+import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import { ResponseBody, buildResponseBodySuccess } from '../../../../../common/src/api/response';
@@ -26,7 +26,7 @@ export class OfficesController {
         self: request.url,
       });
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }

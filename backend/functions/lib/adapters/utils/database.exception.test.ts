@@ -1,8 +1,7 @@
 import { executeQuery } from '../utils/database';
 import { QueryResults, IDbConfig } from '../types/database';
-const functionContext = require('azure-function-context-mock');
-import { applicationContextCreator } from '../utils/application-context-creator';
 import { ConnectionError, MSSQLError, RequestError } from 'mssql';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 
 // Setting default Jest mocks for mssql
 // eslint-disable-next-line no-var
@@ -45,7 +44,7 @@ describe('Tests database client exceptions', () => {
 
   test('should handle known mssql MSSQLError exceptions', async () => {
     const expectedErrorMessage = 'Test MSSQLError exception';
-    const context = await applicationContextCreator(functionContext);
+    const context = await createMockApplicationContext();
     const requestError = new RequestError(expectedErrorMessage);
     requestError.name = 'RequestError';
     requestError.code = '';
@@ -68,7 +67,7 @@ describe('Tests database client exceptions', () => {
 
   test('should handle known mssql ConnectionError exceptions', async () => {
     const expectedErrorMessage = 'Test ConnectionError exception';
-    const context = await applicationContextCreator(functionContext);
+    const context = await createMockApplicationContext();
     const connectionError = new ConnectionError(expectedErrorMessage);
     connectionError.code = '';
     connectionError.name = 'ConnectionError';
@@ -118,7 +117,7 @@ describe('Tests database client exceptions', () => {
       throw connectionError;
     });
 
-    const context = await applicationContextCreator(functionContext);
+    const context = await createMockApplicationContext();
     // method under test
     const queryResult: QueryResults = await executeQuery(
       context,

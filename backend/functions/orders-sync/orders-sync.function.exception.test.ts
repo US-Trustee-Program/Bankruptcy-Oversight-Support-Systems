@@ -1,7 +1,5 @@
 import { CamsError } from '../lib/common-errors/cams-error';
 
-// const context = require('azure-function-context-mock');
-
 jest.mock('../lib/controllers/orders/orders.controller', () => {
   return {
     OrdersController: jest.fn().mockImplementation(() => {

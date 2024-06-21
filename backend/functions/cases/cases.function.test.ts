@@ -4,7 +4,8 @@ import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CamsError } from '../lib/common-errors/cams-error';
 import clearAllMocks = jest.clearAllMocks;
-const context = require('azure-function-context-mock');
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 
 jest.mock('../lib/controllers/cases/cases.controller', () => {
   return {
@@ -22,7 +23,10 @@ jest.mock('../lib/controllers/cases/cases.controller', () => {
 });
 
 describe('Mocking CasesController to get error handling', () => {
-  beforeEach(() => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
     clearAllMocks();
   });
 

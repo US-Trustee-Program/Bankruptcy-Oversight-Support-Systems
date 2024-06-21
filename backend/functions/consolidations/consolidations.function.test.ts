@@ -1,7 +1,7 @@
 import httpTrigger from './consolidations.function';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-
-const context = require('azure-function-context-mock');
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 
 const rejectConsolidation = jest
   .fn()
@@ -22,6 +22,12 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 });
 
 describe('Consolidations Function tests', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -43,17 +49,11 @@ describe('Consolidations Function tests', () => {
       success: true,
       body: [mockConsolidationOrder],
     };
-    process.env = {
-      DATABASE_MOCK: 'true',
-    };
     await httpTrigger(context, request);
     expect(context.res.body).toEqual(expectedResponseBody);
   });
 
   test('should approve consolidation when procedure == "Approve"', async () => {
-    process.env = {
-      DATABASE_MOCK: 'true',
-    };
     const mockConsolidationOrder = [MockData.getConsolidationOrder()];
     approveConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
     const expectedResponseBody = {

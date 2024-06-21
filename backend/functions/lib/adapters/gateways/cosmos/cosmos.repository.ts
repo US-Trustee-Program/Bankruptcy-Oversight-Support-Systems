@@ -40,7 +40,7 @@ export class CosmosDbRepository<T> implements DocumentRepository<T> {
     }
   }
 
-  protected async query(context: ApplicationContext, querySpec: object): Promise<T[]> {
+  public async query(context: ApplicationContext, querySpec: object): Promise<T[]> {
     const lambdaToExecute = async <T>(): Promise<T[]> => {
       const { resources } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)

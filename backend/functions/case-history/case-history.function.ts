@@ -15,15 +15,15 @@ initializeApplicationInsights();
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  caseHistoryRequest: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await applicationContextCreator(functionContext, request);
   const caseHistoryController = new CaseHistoryController(applicationContext);
   try {
     applicationContext.session = await getApplicationContextSession(applicationContext);
 
     const responseBody = await caseHistoryController.getCaseHistory(applicationContext, {
-      caseId: caseHistoryRequest.params.caseId,
+      caseId: request.params.caseId,
     });
     functionContext.res = httpSuccess(responseBody);
   } catch (camsError) {

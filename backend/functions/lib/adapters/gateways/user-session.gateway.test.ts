@@ -15,7 +15,7 @@ describe('user-session.gateway test', () => {
     sub: 'user@fake.com',
     aud: 'api://default',
     iat: 0,
-    exp: 1,
+    exp: Math.floor(Date.now() / 1000) + 600,
   };
   const provider = 'okta';
   const mockUserName = 'Mock User';
@@ -25,23 +25,24 @@ describe('user-session.gateway test', () => {
     provider,
     validatedClaims: jwtClaims,
   };
+  const mockGetValue = {
+    user: { name: 'Wrong Name' },
+    apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
+    provider,
+    validatedClaims: jwtClaims,
+    signature: '',
+    ttl: 0,
+  };
   let context: ApplicationContext;
 
   beforeEach(async () => {
     context = await createMockApplicationContext({
-      DATABASE_MOCK: 'true',
       AUTH_ISSUER: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
     });
     const jwtHeader = {
       alg: 'RS256',
       typ: undefined,
       kid: '',
-    };
-    const mockGetValue = {
-      user: { name: 'Wrong Name' },
-      apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
-      provider,
-      validatedClaims: jwtClaims,
     };
     jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue({
       claims: jwtClaims,
@@ -64,7 +65,9 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: undefined,
     });
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
+    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create').mockResolvedValue({
+      resource: mockGetValue,
+    });
     const gateway = new UserSessionGateway();
     const session = await gateway.lookup(context, MOCK_AUTHORIZATION_BEARER_TOKEN, provider);
     expect(session).toEqual(expectedSession);

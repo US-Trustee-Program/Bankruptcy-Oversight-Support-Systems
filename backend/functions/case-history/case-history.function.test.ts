@@ -3,10 +3,16 @@ import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-
 import httpTrigger from './case-history.function';
 import { MockHumbleQuery } from '../lib/testing/mock.cosmos-client-humble';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
-
-const context = require('azure-function-context-mock');
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 
 describe('Case docket function', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+  });
+
   test('Should return case history for an existing case ID', async () => {
     jest
       .spyOn(MockHumbleQuery.prototype, 'fetchAll')
@@ -22,9 +28,6 @@ describe('Case docket function', () => {
       success: true,
       body: CASE_HISTORY,
     };
-    process.env = {
-      DATABASE_MOCK: 'true',
-    };
     await httpTrigger(context, request);
     expect(context.res.body).toEqual(expectedResponseBody);
   });
@@ -37,9 +40,6 @@ describe('Case docket function', () => {
       params: {
         caseId: NOT_FOUND_ERROR_CASE_ID,
       },
-    };
-    process.env = {
-      DATABASE_MOCK: 'true',
     };
     const expectedErrorResponse = {
       success: false,

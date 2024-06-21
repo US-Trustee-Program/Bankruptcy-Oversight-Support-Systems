@@ -1,8 +1,9 @@
 import OktaJwtVerifier = require('@okta/jwt-verifier');
-import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
 import { Jwt, OpenIdConnectGateway } from '../../types/authorization';
 import { CamsUser } from '../../../../../../common/src/cams/session';
+import { ServerConfigError } from '../../../common-errors/server-config-error';
+import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
 
@@ -27,13 +28,13 @@ let oktaJwtVerifier = null;
 async function verifyToken(token: string): Promise<Jwt> {
   const { issuer, audience, provider } = getAuthorizationConfig();
   if (provider !== 'okta') {
-    throw new ForbiddenError(MODULE_NAME, { message: 'Invalid provider.' });
+    throw new ServerConfigError(MODULE_NAME, { message: 'Invalid provider.' });
   }
   if (!issuer) {
-    throw new ForbiddenError(MODULE_NAME, { message: 'Issuer not provided.' });
+    throw new ServerConfigError(MODULE_NAME, { message: 'Issuer not provided.' });
   }
   if (!audience) {
-    throw new ForbiddenError(MODULE_NAME, { message: 'Audience not provided.' });
+    throw new ServerConfigError(MODULE_NAME, { message: 'Audience not provided.' });
   }
   try {
     if (!oktaJwtVerifier) {
@@ -41,7 +42,7 @@ async function verifyToken(token: string): Promise<Jwt> {
     }
     return oktaJwtVerifier.verifyAccessToken(token, audience);
   } catch (originalError) {
-    throw new ForbiddenError(MODULE_NAME, { originalError });
+    throw new UnauthorizedError(MODULE_NAME, { originalError });
   }
 }
 
@@ -63,10 +64,10 @@ async function getUser(accessToken): Promise<CamsUser> {
       cache.set(accessToken, camsUser);
       return camsUser;
     } else {
-      throw new ForbiddenError(MODULE_NAME, { message: 'Failed to retrieve user info from Okta.' });
+      throw new Error('Failed to retrieve user info from Okta.');
     }
   } catch (originalError) {
-    throw new ForbiddenError(MODULE_NAME, { originalError });
+    throw new UnauthorizedError(MODULE_NAME, { originalError });
   }
 }
 
