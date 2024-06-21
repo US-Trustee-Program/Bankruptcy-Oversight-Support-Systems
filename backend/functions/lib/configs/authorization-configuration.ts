@@ -4,16 +4,12 @@ import { AuthorizationConfig } from '../adapters/types/authorization';
 dotenv.config();
 
 const issuer = process.env.AUTH_ISSUER;
-const audience = getAudienceFromIssuer(issuer);
-const provider = getProviderFromIssuer(issuer);
-const userInfoUri = getUserInfoUriFromIssuer(issuer);
-
 const authorizationConfig = {
   issuer,
-  audience,
-  provider,
-  userInfoUri,
-};
+  audience: getAudienceFromIssuer(issuer),
+  provider: getProviderFromIssuer(issuer),
+  userInfoUri: getUserInfoUriFromIssuer(issuer),
+} as const;
 
 export function getAuthorizationConfig(): AuthorizationConfig {
   return authorizationConfig;
@@ -21,7 +17,7 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 
 function getProviderFromIssuer(issuer: string) {
   // TODO: Use regex to better guard against unintended substring matches.
-  if (issuer.includes('okta.com')) return 'okta';
+  if (issuer.includes('.okta.com/')) return 'okta';
   return null;
 }
 
