@@ -25,6 +25,7 @@ module.exports = {
     'lib/testing/local-data/',
     'lib/testing/testing-utilities.ts',
     'jest.*config.js',
+    'lib/adapters/gateways/okta/HumbleVerifier.ts',
   ],
   testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)'],
 };
