@@ -41,6 +41,7 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
   }
 
   public async put(context: ApplicationContext, session: CamsSession): Promise<CamsSession> {
+    // TODO: handle input that cannot possibly be a jwt?
     const tokenParts = session.apiToken.split('.');
     const signature = tokenParts[2];
     const tokenBody = tokenParts[1];

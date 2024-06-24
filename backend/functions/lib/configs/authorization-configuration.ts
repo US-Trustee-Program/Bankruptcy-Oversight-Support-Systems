@@ -16,8 +16,10 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 }
 
 function getProviderFromIssuer(issuer: string) {
-  // TODO: Use regex to better guard against unintended substring matches.
-  if (issuer.includes('.okta.com/')) return 'okta';
+  console.log('issuer--------', issuer);
+  const regex = /^https?:\/{2}[^/]+.okta.com/gm;
+  const domainName = issuer.match(regex);
+  if (domainName) return 'okta';
   return null;
 }
 

@@ -8,10 +8,7 @@ export interface ApiResponse {
 }
 
 export interface HttpResponse extends Response {
-  data: {
-    content?: [];
-    status?: number;
-  };
+  data: unknown;
   status: number;
 }
 

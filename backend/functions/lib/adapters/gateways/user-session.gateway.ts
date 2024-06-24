@@ -3,8 +3,31 @@ import { SessionCache } from '../utils/sessionCache';
 import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
 import { ApplicationContext } from '../types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { isCamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
+
+export interface ConflictError {
+  code: 409;
+  body: {
+    code: 'Conflict';
+    message: string;
+  };
+  headers: {
+    [key: string]: unknown;
+  };
+  activityId: string;
+}
+
+export function isConflictError(error: ConflictError | unknown): error is ConflictError {
+  return (
+    (<ConflictError>error).code === 409 &&
+    (<ConflictError>error).body.code === 'Conflict' &&
+    (<ConflictError>error).body.code.includes(
+      'Entity with the specified id already exists in the system.',
+    )
+  );
+}
 
 export class UserSessionGateway implements SessionCache {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
@@ -34,12 +57,14 @@ export class UserSessionGateway implements SessionCache {
 
       return session;
     } catch (originalError) {
-      // TODO: Correct the error handling here to look for conflict error and retry and catch any other error from the GET otherwise throw the ForbiddenError(originalError)
-      const cached = await cacheGateway.get(context, token);
-
-      if (cached) {
-        return cached;
+      if (isConflictError(originalError)) {
+        return await cacheGateway.get(context, token);
       }
+
+      if (isCamsError(originalError)) {
+        throw originalError;
+      }
+
       throw new UnauthorizedError(MODULE_NAME, {
         message:
           'Yeah this was a retry and we failed again. Oh and the GET could have cause and error so the original Error may not be true...',
