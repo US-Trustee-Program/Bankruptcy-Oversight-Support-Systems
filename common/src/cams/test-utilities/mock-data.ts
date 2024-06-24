@@ -334,6 +334,17 @@ function getCamsSession(): CamsSession {
   };
 }
 
+function getJwt(): string {
+  const header = '{"typ":"JWT","alg":"HS256"}';
+  const payload =
+    '{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":1719241960}';
+  const signature = 'fake-signature-text';
+  const encodedHeader = Buffer.from(header, 'binary').toString('base64');
+  const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
+  const encodedSignature = Buffer.from(signature, 'binary').toString('base64');
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+}
+
 export const MockData = {
   randomCaseId,
   getAttorneyAssignment,
@@ -349,9 +360,10 @@ export const MockData = {
   getConsolidatedOrderCase,
   getConsolidationReference,
   getRawConsolidationOrder,
-  getCamsSession,
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,
   getDateBeforeToday,
+  getCamsSession,
+  getJwt,
 };

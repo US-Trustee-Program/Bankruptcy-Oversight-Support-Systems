@@ -1,14 +1,11 @@
-import OktaJwtVerifier = require('@okta/jwt-verifier');
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
 import { Jwt, OpenIdConnectGateway } from '../../types/authorization';
 import { CamsUser } from '../../../../../../common/src/cams/session';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
+import { verifyAccessToken } from './HumbleVerifier';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
-
-// TODO: Remove this VERY temporary in memory cache
-const cache = new Map<string, CamsUser>();
 
 type OktaUserInfo = {
   sub: string;
@@ -23,8 +20,6 @@ type OktaUserInfo = {
   email_verified: boolean;
 };
 
-let oktaJwtVerifier = null;
-
 async function verifyToken(token: string): Promise<Jwt> {
   const { issuer, audience, provider } = getAuthorizationConfig();
   if (provider !== 'okta') {
@@ -37,10 +32,7 @@ async function verifyToken(token: string): Promise<Jwt> {
     throw new ServerConfigError(MODULE_NAME, { message: 'Audience not provided.' });
   }
   try {
-    if (!oktaJwtVerifier) {
-      oktaJwtVerifier = new OktaJwtVerifier({ issuer });
-    }
-    return oktaJwtVerifier.verifyAccessToken(token, audience);
+    return await verifyAccessToken(issuer, token, audience);
   } catch (originalError) {
     throw new UnauthorizedError(MODULE_NAME, { originalError });
   }
@@ -49,9 +41,11 @@ async function verifyToken(token: string): Promise<Jwt> {
 async function getUser(accessToken): Promise<CamsUser> {
   const { userInfoUri } = getAuthorizationConfig();
 
-  if (cache.has(accessToken)) return cache.get(accessToken);
-
   try {
+    // const response = await httpGet({
+    //   url: userInfoUri,
+    //   headers: { authorization: 'Bearer ' + accessToken },
+    // });
     const response = await fetch(userInfoUri, {
       method: 'GET',
       headers: { authorization: 'Bearer ' + accessToken },
@@ -61,7 +55,6 @@ async function getUser(accessToken): Promise<CamsUser> {
       const camsUser: CamsUser = {
         name: userInfo.name,
       };
-      cache.set(accessToken, camsUser);
       return camsUser;
     } else {
       throw new Error('Failed to retrieve user info from Okta.');
