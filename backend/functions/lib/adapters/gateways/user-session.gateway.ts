@@ -23,7 +23,7 @@ export function isConflictError(error: ConflictError | unknown): error is Confli
   return (
     (<ConflictError>error).code === 409 &&
     (<ConflictError>error).body.code === 'Conflict' &&
-    (<ConflictError>error).body.code.includes(
+    (<ConflictError>error).body.message.includes(
       'Entity with the specified id already exists in the system.',
     )
   );
