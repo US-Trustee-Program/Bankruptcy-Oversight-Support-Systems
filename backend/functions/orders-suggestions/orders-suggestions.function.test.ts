@@ -1,8 +1,6 @@
 import httpTrigger from './orders-suggestions.function';
 import { CASE_SUMMARIES } from '../lib/testing/mock-data/case-summaries.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
-import { ApplicationContext } from '../lib/adapters/types/basic';
 
 let getSuggestedCases;
 
@@ -17,11 +15,7 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 });
 
 describe('Orders suggestions function tests', () => {
-  let context: ApplicationContext;
-
-  beforeEach(async () => {
-    context = await createMockApplicationContext();
-  });
+  const context = require('azure-function-context-mock');
 
   test('should return a list of suggested cases', async () => {
     getSuggestedCases = jest.fn().mockImplementation(() => {

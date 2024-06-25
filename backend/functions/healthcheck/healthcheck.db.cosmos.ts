@@ -17,6 +17,7 @@ export default class HealthcheckCosmosDb {
 
   constructor(applicationContext: ApplicationContext) {
     try {
+      console.log('In healthcheck try');
       this.applicationContext = applicationContext;
       this.cosmosDbClient = getAssignmentsCosmosDbClient(this.applicationContext);
     } catch (e) {
