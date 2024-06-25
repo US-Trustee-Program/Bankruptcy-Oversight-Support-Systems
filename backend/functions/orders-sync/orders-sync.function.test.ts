@@ -1,8 +1,6 @@
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
-import { ApplicationContext } from '../lib/adapters/types/basic';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';
 import timerTrigger from './orders-sync.function';
 
@@ -26,11 +24,7 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('Orders Sync Function tests', () => {
-  let context: ApplicationContext;
-
-  beforeEach(async () => {
-    context = await createMockApplicationContext();
-  });
+  const context = require('azure-function-context-mock');
 
   test('Should call orders controller method syncOrders', async () => {
     const syncOrders = jest

@@ -16,7 +16,7 @@ const httpTrigger: AzureFunction = async function (
 ): Promise<void> {
   const applicationContext = await applicationContextCreator(functionContext, request);
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
-  const healthchechSqlDbClient = new HealthcheckSqlDb(applicationContext);
+  const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);
 
   applicationContext.logger.debug(MODULE_NAME, 'Health check endpoint invoked');
 
@@ -26,7 +26,7 @@ const httpTrigger: AzureFunction = async function (
   applicationContext.logger.debug(MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
   const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
 
-  const checkSqlDbReadAccess = await healthchechSqlDbClient.checkDxtrDbRead();
+  const checkSqlDbReadAccess = await healthCheckSqlDbClient.checkDxtrDbRead();
   applicationContext.logger.debug(
     MODULE_NAME,
     'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,

@@ -20,15 +20,20 @@ export async function createMockApplicationContextSession() {
   return MockData.getCamsSession();
 }
 
-export function createMockRequest(): HttpRequest {
+export function createMockRequest(request: Partial<HttpRequest> = {}): HttpRequest {
+  const { headers, ...other } = request;
   return {
     method: 'GET',
     url: 'http://localhost:3000',
-    headers: { authorization: 'Bearer test.testSecondString.testThirdString' },
+    headers: {
+      authorization: 'Bearer ' + MockData.getJwt(),
+      ...headers,
+    },
     query: {},
     params: {},
     user: null,
     get: jest.fn(),
     parseFormBody: jest.fn(),
+    ...other,
   };
 }

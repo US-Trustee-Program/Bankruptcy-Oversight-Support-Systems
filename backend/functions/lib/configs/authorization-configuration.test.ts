@@ -1,8 +1,8 @@
 describe('Authorization config tests', () => {
   const originalEnv = process.env;
 
-  beforeAll(() => {
-    process.env = { ...process.env };
+  beforeEach(() => {
+    process.env = { ...process.env, AUTH_ISSUER: undefined };
   });
 
   afterAll(() => {
@@ -32,7 +32,6 @@ describe('Authorization config tests', () => {
   });
 
   test('module should not fail to parse and initialize config', () => {
-    delete process.env.AUTH_ISSUER;
     let configModule;
     jest.isolateModules(() => {
       configModule = require('./authorization-configuration');
