@@ -325,12 +325,13 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
-function getCamsSession(): CamsSession {
+function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
-    user: { name: '' },
-    apiToken: '',
-    provider: '',
+    user: { name: 'Mock Name' },
+    apiToken: getJwt(),
+    provider: 'mock',
     validatedClaims: { claimOne: '' },
+    ...override,
   };
 }
 

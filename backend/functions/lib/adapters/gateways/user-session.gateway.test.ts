@@ -8,13 +8,12 @@ import {
   MockHumbleItems,
   MockHumbleQuery,
 } from '../../testing/mock.cosmos-client-humble';
-import { CamsSession } from '../../../../../common/src/cams/session';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 describe('user-session.gateway test', () => {
   const jwt = MockData.getJwt();
-  const jwtClaims = {
+  const validatedClaims = {
     iss: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
     sub: 'user@fake.com',
     aud: 'api://default',
@@ -23,17 +22,17 @@ describe('user-session.gateway test', () => {
   };
   const provider = 'okta';
   const mockName = 'Mock User';
-  const expectedSession: CamsSession = {
+  const expectedSession = MockData.getCamsSession({
     user: { name: mockName },
     apiToken: jwt,
     provider,
-    validatedClaims: jwtClaims,
-  };
+    validatedClaims,
+  });
   const mockGetValue = {
     user: { name: 'Wrong Name' },
     apiToken: jwt,
     provider,
-    validatedClaims: jwtClaims,
+    validatedClaims,
     signature: '',
     ttl: 0,
   };
@@ -51,7 +50,7 @@ describe('user-session.gateway test', () => {
       kid: '',
     };
     jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue({
-      claims: jwtClaims,
+      claims: validatedClaims,
       header: jwtHeader as JwtHeader,
       toString: jest.fn(),
       isExpired: jest.fn(),

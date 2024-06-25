@@ -65,6 +65,7 @@ describe('Login', () => {
       user: {
         name: 'Mock User',
       },
+      validatedClaims: {},
     });
     render(
       <BrowserRouter>
@@ -85,6 +86,7 @@ describe('Login', () => {
       user: {
         name: 'Mock User',
       },
+      validatedClaims: {},
     });
     render(
       <BrowserRouter>

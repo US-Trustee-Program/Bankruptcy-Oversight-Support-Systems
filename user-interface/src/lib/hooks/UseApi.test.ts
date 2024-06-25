@@ -3,14 +3,10 @@ import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { setApiContext, useApi } from './UseApi';
 import { LocalStorage } from '../utils/local-storage';
-import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('UseApi Hook', () => {
-  const mockSession: CamsSession = {
-    provider: 'mock',
-    user: { name: 'Mock User' },
-    apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
-  };
+  const mockSession = MockData.getCamsSession();
   vi.spyOn(LocalStorage, 'getSession').mockReturnValue(mockSession);
 
   test('should return the concrete API by default', () => {

@@ -25,6 +25,7 @@ describe('LoginContinue', () => {
           apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
           provider="okta"
           user={{ name: 'Mock User' }}
+          validatedClaims={{}}
         >
           {props.children}
         </Session>

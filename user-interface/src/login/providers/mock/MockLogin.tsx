@@ -50,7 +50,12 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
 
   if (user)
     return (
-      <Session provider="mock" user={user} apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}>
+      <Session
+        provider="mock"
+        user={user}
+        apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
+        validatedClaims={{}}
+      >
         {props.children}
       </Session>
     );

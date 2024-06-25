@@ -25,7 +25,7 @@ describe('MockSession', () => {
     expect(childDiv).toHaveTextContent(childText);
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'mock', user, apiToken },
+      { children: children, provider: 'mock', user, apiToken, validatedClaims: {} },
       {},
     );
   });
