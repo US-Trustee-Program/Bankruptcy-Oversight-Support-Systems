@@ -3,7 +3,7 @@ import { AuthorizationConfig } from '../adapters/types/authorization';
 
 dotenv.config();
 
-const issuer = process.env.AUTH_ISSUER;
+const issuer = process.env.AUTH_ISSUER ?? null;
 const authorizationConfig = {
   issuer,
   audience: getAudienceFromIssuer(issuer),
@@ -16,7 +16,7 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 }
 
 function getProviderFromIssuer(issuer: string) {
-  console.log('issuer--------', issuer);
+  if (!issuer) return null;
   const regex = /^https?:\/{2}[^/]+.okta.com/gm;
   const domainName = issuer.match(regex);
   if (domainName) return 'okta';
@@ -24,10 +24,16 @@ function getProviderFromIssuer(issuer: string) {
 }
 
 function getAudienceFromIssuer(issuer: string) {
-  const serverName = issuer.slice(issuer.lastIndexOf('/') + 1);
-  return `api://${serverName}`;
+  if (!issuer) return null;
+  try {
+    const serverName = issuer.slice(issuer.lastIndexOf('/') + 1);
+    return `api://${serverName}`;
+  } catch {
+    return null;
+  }
 }
 
 function getUserInfoUriFromIssuer(issuer: string) {
+  if (!issuer) return null;
   return issuer + '/v1/userinfo';
 }
