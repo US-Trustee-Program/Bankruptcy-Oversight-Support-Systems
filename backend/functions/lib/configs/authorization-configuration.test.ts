@@ -1,24 +1,33 @@
-import * as dotenv from 'dotenv';
-import { getAuthorizationConfig } from './authorization-configuration';
+describe('Authorization config tests', () => {
+  const originalEnv = process.env;
 
-describe.skip('Authorization config tests', () => {
-  afterEach(() => {
-    jest.resetAllMocks();
+  beforeAll(() => {
+    process.env = { ...process.env };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   test('should not get provider from path', () => {
-    jest.spyOn(dotenv, 'config').mockReturnValue({
-      parsed: { AUTH_ISSUER: 'https://fake.provider.com/malicious-okta/default' },
+    process.env.AUTH_ISSUER = 'https://fake.provider.com/malicious-okta/default';
+
+    let configModule;
+    jest.isolateModules(() => {
+      configModule = require('./authorization-configuration');
     });
-    const config = getAuthorizationConfig();
+    const config = configModule.getAuthorizationConfig();
     expect(config.provider).toBeNull();
   });
 
   test('should get okta.com from domain name', () => {
-    jest.spyOn(dotenv, 'config').mockReturnValue({
-      parsed: { AUTH_ISSUER: 'https://valid.okta.com/oauth2/default' },
+    process.env.AUTH_ISSUER = 'https://valid.okta.com/oauth2/default';
+
+    let configModule;
+    jest.isolateModules(() => {
+      configModule = require('./authorization-configuration');
     });
-    const config = getAuthorizationConfig();
+    const config = configModule.getAuthorizationConfig();
     expect(config.provider).toEqual('okta');
   });
 });
