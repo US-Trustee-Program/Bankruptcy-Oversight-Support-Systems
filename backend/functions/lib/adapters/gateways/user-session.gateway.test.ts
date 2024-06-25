@@ -22,9 +22,9 @@ describe('user-session.gateway test', () => {
     exp: Math.floor(Date.now() / 1000) + 600,
   };
   const provider = 'okta';
-  const mockUserName = 'Mock User';
+  const mockName = 'Mock User';
   const expectedSession: CamsSession = {
-    user: { name: mockUserName },
+    user: { name: mockName },
     apiToken: jwt,
     provider,
     validatedClaims: jwtClaims,
@@ -57,7 +57,7 @@ describe('user-session.gateway test', () => {
       isExpired: jest.fn(),
       isNotBefore: jest.fn(),
     });
-    jest.spyOn(OktaGateway, 'getUser').mockResolvedValue({ name: mockUserName });
+    jest.spyOn(OktaGateway, 'getUser').mockResolvedValue({ name: mockName });
     jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: mockGetValue,
     });
