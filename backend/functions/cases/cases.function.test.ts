@@ -4,8 +4,7 @@ import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CamsError } from '../lib/common-errors/cams-error';
 import clearAllMocks = jest.clearAllMocks;
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import { createMockAzureFunctionRequest } from '../azure/functions';
 
 jest.mock('../lib/controllers/cases/cases.controller', () => {
   return {
@@ -23,20 +22,14 @@ jest.mock('../lib/controllers/cases/cases.controller', () => {
 });
 
 describe('Mocking CasesController to get error handling', () => {
-  let context: ApplicationContext;
+  const request = createMockAzureFunctionRequest();
+  const context = require('azure-function-context-mock');
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
     clearAllMocks();
   });
 
   test('error should be properly handled if httpTrigger throws an error', async () => {
-    const request = {
-      params: {},
-      query: {},
-      method: 'GET',
-    };
-
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(context, request);
 
@@ -47,13 +40,13 @@ describe('Mocking CasesController to get error handling', () => {
 
   // TODO rethink how to trigger a CAMS error for this test
   test('should call httpError if a CamsError is caught getting a case', async () => {
-    const request = {
+    const requestOverride = {
+      ...request,
       params: { caseId: '00000' },
-      method: 'GET',
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, request);
+    await httpTrigger(context, requestOverride);
 
     expect(context.res.statusCode).toEqual(INTERNAL_SERVER_ERROR);
     expect(context.res.body.message).toEqual('Unknown CAMS Error');
@@ -62,11 +55,6 @@ describe('Mocking CasesController to get error handling', () => {
   });
 
   test('should call httpError if a CamsError is caught getting all cases', async () => {
-    const request = {
-      params: {},
-      method: 'GET',
-    };
-
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     await httpTrigger(context, request);
 

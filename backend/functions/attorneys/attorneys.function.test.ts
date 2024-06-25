@@ -5,37 +5,25 @@ import { AttorneysController } from '../lib/controllers/attorneys/attorneys.cont
 import { CamsError } from '../lib/common-errors/cams-error';
 import * as ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
-import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockAzureFunctionRequest } from '../azure/functions';
 
 describe('Attorneys Azure Function tests', () => {
-  let request;
   const officeId = '123';
-  let context: ApplicationContext;
+  const request = createMockAzureFunctionRequest({
+    query: {
+      office_id: officeId,
+    },
+  });
+  const context = require('azure-function-context-mock');
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
-    request = {
-      query: {
-        office_id: officeId,
-      },
-    };
-    context.req = {
-      ...context.req,
-      ...request,
-    };
-
     jest
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getCamsSession());
   });
 
   it('Should call getAttorneyList with office id if parameter was passed in URL', async () => {
-    const attorneysController = new AttorneysController(context);
-    const attorneysListSpy = jest.spyOn(
-      Object.getPrototypeOf(attorneysController),
-      'getAttorneyList',
-    );
+    const attorneysListSpy = jest.spyOn(AttorneysController.prototype, 'getAttorneyList');
 
     await httpTrigger(context, request);
 
@@ -50,16 +38,8 @@ describe('Attorneys Azure Function tests', () => {
         office_id: officeId,
       },
     };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
-    };
 
-    const attorneysController = new AttorneysController(context);
-    const attorneysListSpy = jest.spyOn(
-      Object.getPrototypeOf(attorneysController),
-      'getAttorneyList',
-    );
+    const attorneysListSpy = jest.spyOn(AttorneysController.prototype, 'getAttorneyList');
 
     await httpTrigger(context, requestOverride);
 
@@ -82,12 +62,9 @@ describe('Attorneys Azure Function tests', () => {
   });
 
   it('Should return an HTTP Error if getAttorneyList() throws a CamsError error', async () => {
-    const attorneysController = new AttorneysController(context);
     jest
-      .spyOn(Object.getPrototypeOf(attorneysController), 'getAttorneyList')
-      .mockImplementation(() => {
-        throw new CamsError('fake-module');
-      });
+      .spyOn(AttorneysController.prototype, 'getAttorneyList')
+      .mockRejectedValue(new CamsError('fake-module'));
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
 

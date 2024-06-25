@@ -18,13 +18,12 @@ export async function applicationContextCreator(
   const featureFlags = await getFeatureFlags(config);
   const logger = new LoggerImpl(functionContext.invocationId, functionContext.log);
 
-  if (!functionContext.req) functionContext.req = request;
-
   return {
     ...functionContext,
     config,
     featureFlags,
     logger,
+    req: { ...functionContext.req, ...request },
   } satisfies ApplicationContext;
 }
 

@@ -3,32 +3,25 @@ import { CaseAssignmentController } from '../lib/controllers/case-assignment/cas
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import * as ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../lib/adapters/types/basic';
+import { createMockAzureFunctionRequest } from '../azure/functions';
 
 describe('Case Assignment Function Tests', () => {
-  let request;
-  let context: ApplicationContext;
+  //TODO?: process.env does not set properly in IntelliJ. why?
+  const request = createMockAzureFunctionRequest({
+    method: 'POST',
+    query: {},
+    body: {
+      caseId: '001-67-89123',
+      attorneyList: ['Bob Bob'],
+      role: 'TrialAttorney',
+    },
+  });
+  const context = require('azure-function-context-mock');
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
-    request = {
-      method: 'POST',
-      query: {},
-      body: {
-        caseId: '001-67-89123',
-        attorneyList: ['Bob Bob'],
-        role: 'TrialAttorney',
-      },
-    };
-    context.req = {
-      ...context.req,
-      ...request,
-    };
-
     jest
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getCamsSession());
@@ -40,22 +33,19 @@ describe('Case Assignment Function Tests', () => {
       message: 'Trial attorney assignments created.',
       count: 1,
     };
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, request);
     expect(context.res.body).toEqual(expect.objectContaining(expectedResponse));
     expect(context.res.body.body.length).toEqual(1);
   });
 
   test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
     const requestOverride = {
+      ...request,
       body: {
         caseId: '001-67-89123',
         attorneyList: ['John', 'Rachel'],
         role: 'TrialAttorney',
       },
-    };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
     };
     const expectedResponse = {
       success: true,
@@ -63,22 +53,19 @@ describe('Case Assignment Function Tests', () => {
       count: 2,
     };
 
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
     expect(context.res.body).toEqual(expect.objectContaining(expectedResponse));
     expect(context.res.body.body.length).toEqual(2);
   });
 
   test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
     const requestOverride = {
+      ...request,
       body: {
         caseId: '001-67-89123',
         attorneyList: ['Jane', 'Jane'],
         role: 'TrialAttorney',
       },
-    };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
     };
 
     const expectedResponse = {
@@ -87,22 +74,19 @@ describe('Case Assignment Function Tests', () => {
       count: 1,
     };
 
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
     expect(context.res.body).toEqual(expect.objectContaining(expectedResponse));
     expect(context.res.body.body.length).toEqual(1);
   });
 
   test('returns bad request 400 when a caseId is not passed in the request', async () => {
     const requestOverride = {
+      ...request,
       body: {
         caseId: '',
         attorneyList: ['Bob', 'Denise'],
         role: 'TrialAttorney',
       },
-    };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
     };
 
     const expectedResponse = {
@@ -111,7 +95,7 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
     expect(context.res.body).toEqual(expectedResponse);
     expect(context.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
@@ -120,20 +104,17 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a caseId is invalid format', async () => {
     const requestOverride = {
+      ...request,
       body: {
         caseId: '123',
         attorneyList: ['Bob', 'Denise'],
         role: 'TrialAttorney',
       },
     };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
-    };
     const expectedResponse = { message: 'caseId must be formatted like 01-12345.', success: false };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
     expect(context.res.body).toEqual(expectedResponse);
     expect(context.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
@@ -142,16 +123,14 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a role is not passed in the request', async () => {
     const requestOverride = {
+      ...request,
       body: {
         caseId: '001-90-90123',
         attorneyList: ['John Doe'],
         role: '',
       },
     };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
-    };
+
     const expectedResponse = {
       message:
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
@@ -159,7 +138,7 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
     expect(context.res.body).toEqual(expectedResponse);
     expect(context.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
@@ -168,16 +147,14 @@ describe('Case Assignment Function Tests', () => {
 
   test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
     const requestOverride = {
+      ...request,
       body: {
         caseId: '001-90-90123',
         attorneyList: ['John Doe'],
         role: 'TrialDragon',
       },
     };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
-    };
+
     const expectedResponse = {
       message:
         'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
@@ -185,7 +162,7 @@ describe('Case Assignment Function Tests', () => {
     };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
     expect(context.res.body).toEqual(expectedResponse);
     expect(context.res.statusCode).toEqual(400);
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
@@ -201,19 +178,16 @@ describe('Case Assignment Function Tests', () => {
       });
 
     const requestOverride = {
+      ...request,
       body: {
         caseId: '001-67-89123',
         attorneyList: ['John Doe'],
         role: 'TrialAttorney',
       },
     };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
-    };
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
 
     expect(httpErrorSpy).toHaveBeenCalled();
     expect(context.res.statusCode).toEqual(500);
@@ -224,18 +198,16 @@ describe('Case Assignment Function Tests', () => {
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
     const caseId = '001-67-89012';
     const requestOverride = {
+      ...request,
       body: { caseId: caseId, attorneyList: ['Jane Doe'], role: 'TrialAttorney' },
     };
-    context.req = {
-      ...context.req,
-      ...requestOverride,
-    };
+
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
     const createAssignmentRequestSpy = jest.spyOn(
       Object.getPrototypeOf(assignmentController),
       'createTrialAttorneyAssignments',
     );
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
 
     expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
   });
@@ -243,16 +215,14 @@ describe('Case Assignment Function Tests', () => {
   test('Should return a list of assignments when valid caseId is supplied for GET request', async () => {
     const caseId = '001-67-89012';
     const requestOverride = {
+      ...request,
+      method: 'GET',
       params: {
         id: caseId,
       },
       body: undefined,
     };
-    context.req = {
-      ...context.req,
-      method: 'GET',
-      ...requestOverride,
-    };
+
     const assignments: CaseAssignment[] = MockData.buildArray(MockData.getAttorneyAssignment, 3);
 
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
@@ -260,7 +230,7 @@ describe('Case Assignment Function Tests', () => {
     const getAssignmentRequestSpy = jest
       .spyOn(Object.getPrototypeOf(assignmentController), 'getTrialAttorneyAssignments')
       .mockReturnValue(assignments);
-    await httpTrigger(context, context.req);
+    await httpTrigger(context, requestOverride);
 
     expect(getAssignmentRequestSpy).toHaveBeenCalledWith(caseId);
     expect(getAssignmentRequestSpy).toHaveReturnedWith(assignments);
