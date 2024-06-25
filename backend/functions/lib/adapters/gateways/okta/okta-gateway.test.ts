@@ -3,6 +3,7 @@ import * as AuthConfig from '../../../configs/authorization-configuration';
 import { JwtHeader } from '../../types/authorization';
 import * as Verifier from './HumbleVerifier';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
+import MockFetch from '../../../testing/mock-fetch';
 
 describe('Okta gateway tests', () => {
   beforeEach(() => {
@@ -90,15 +91,7 @@ describe('Okta gateway tests', () => {
       name: 'Test Name',
       testAttribute: '',
     };
-    const mockFetchResponse = (
-      _input: string | URL | Request,
-      _init?: RequestInit,
-    ): Promise<Response> => {
-      return Promise.resolve({
-        ok: true,
-        json: jest.fn().mockResolvedValue(userInfo),
-      } as unknown as Response);
-    };
+    const mockFetchResponse = MockFetch.ok(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
     const gateway = getAuthorizationGateway('okta');
     const actualResponse = await gateway.getUser('testAccessToken');
@@ -112,22 +105,15 @@ describe('Okta gateway tests', () => {
       name: 'Test Name',
       testAttribute: '',
     };
-    const mockFetchResponse = (
-      _input: string | URL | Request,
-      _init?: RequestInit,
-    ): Promise<Response> => {
-      return Promise.resolve({
-        ok: false,
-        json: jest.fn().mockResolvedValue(userInfo),
-      } as unknown as Response);
-    };
-    jest.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
+    const mockFetch = MockFetch.notOk(userInfo);
+    jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
     const gateway = getAuthorizationGateway('okta');
     await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
 
   test('getUser should throw UnauthorizedError if fetch errors', async () => {
-    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Some unknown error'));
+    const mockFetch = MockFetch.throws(new Error('Some unknown error'));
+    jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
     const gateway = getAuthorizationGateway('okta');
     await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
