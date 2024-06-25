@@ -42,4 +42,17 @@ describe('Authorization config tests', () => {
     expect(config.issuer).toBeNull();
     expect(config.provider).toBeNull();
   });
+
+  test('module should not fail to parse and initialize config with nonsense env var', () => {
+    process.env.AUTH_ISSUER = 'nonsense';
+
+    let configModule;
+    jest.isolateModules(() => {
+      configModule = require('./authorization-configuration');
+    });
+    const config = configModule.getAuthorizationConfig();
+    expect(config.audience).toBeNull();
+    expect(config.issuer).toBeNull();
+    expect(config.provider).toBeNull();
+  });
 });

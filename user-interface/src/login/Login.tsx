@@ -60,6 +60,7 @@ export function Login(props: LoginProps): React.ReactNode {
           provider="none"
           apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
           user={props.user ?? { name: 'Super User' }}
+          validatedClaims={{}}
         >
           {props.children}
         </Session>

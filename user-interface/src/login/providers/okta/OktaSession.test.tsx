@@ -64,7 +64,7 @@ describe('OktaSession', () => {
     });
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'okta', user, apiToken },
+      { children: children, provider: 'okta', user, apiToken, validatedClaims: {} },
       {},
     );
   });
@@ -96,7 +96,7 @@ describe('OktaSession', () => {
     });
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'okta', user, apiToken },
+      { children: children, provider: 'okta', user, apiToken, validatedClaims: {} },
       {},
     );
   });
@@ -126,7 +126,7 @@ describe('OktaSession', () => {
     });
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'okta', user, apiToken },
+      { children: children, provider: 'okta', user, apiToken, validatedClaims: {} },
       {},
     );
   });

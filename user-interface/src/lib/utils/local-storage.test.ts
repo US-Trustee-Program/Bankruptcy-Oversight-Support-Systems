@@ -1,17 +1,11 @@
+import { MockData } from '@common/cams/test-utilities/mock-data';
 import {
   LocalStorage,
   LOGIN_LOCAL_STORAGE_ACK_KEY,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
 } from './local-storage';
-import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
 
-const testSession: CamsSession = {
-  apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
-  provider: 'mock',
-  user: {
-    name: 'Test User',
-  },
-};
+const testSession = MockData.getCamsSession();
 
 describe('Local storage', () => {
   describe('getAck', () => {

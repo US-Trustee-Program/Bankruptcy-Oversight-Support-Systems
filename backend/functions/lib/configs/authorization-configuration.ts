@@ -3,7 +3,7 @@ import { AuthorizationConfig } from '../adapters/types/authorization';
 
 dotenv.config();
 
-const issuer = process.env.AUTH_ISSUER ?? null;
+const issuer = URL.canParse(process.env.AUTH_ISSUER) ? process.env.AUTH_ISSUER : null;
 const authorizationConfig = {
   issuer,
   audience: getAudienceFromIssuer(issuer),
@@ -26,6 +26,7 @@ function getProviderFromIssuer(issuer: string) {
 function getAudienceFromIssuer(issuer: string) {
   if (!issuer) return null;
   try {
+    // TODO: isolate the path and get the end
     const serverName = issuer.slice(issuer.lastIndexOf('/') + 1);
     return `api://${serverName}`;
   } catch {
