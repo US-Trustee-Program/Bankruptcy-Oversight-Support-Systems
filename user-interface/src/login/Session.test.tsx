@@ -13,6 +13,7 @@ describe('Session', () => {
     },
     provider: 'mock',
     apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
+    validatedClaims: {},
   };
 
   const navigate = vi.fn();

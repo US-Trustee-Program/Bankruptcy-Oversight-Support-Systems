@@ -7,11 +7,11 @@ import { CamsSession } from '@common/cams/session';
 export type SessionProps = CamsSession & PropsWithChildren;
 
 export function Session(props: SessionProps) {
-  const { apiToken, provider, user } = props;
+  const { apiToken, provider, user, validatedClaims } = props;
   const navigate = useNavigate();
   const location = useLocation();
 
-  const session: CamsSession = { apiToken, provider, user };
+  const session: CamsSession = { apiToken, provider, user, validatedClaims };
 
   LocalStorage.setSession(session);
 

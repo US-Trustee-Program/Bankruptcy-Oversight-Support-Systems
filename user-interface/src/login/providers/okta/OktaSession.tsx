@@ -66,7 +66,12 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   return (
-    <Session provider="okta" user={camsUser} apiToken={apiToken}>
+    <Session
+      provider="okta"
+      user={camsUser}
+      apiToken={apiToken}
+      validatedClaims={authState?.accessToken?.claims ?? {}}
+    >
       {props.children}
     </Session>
   );
