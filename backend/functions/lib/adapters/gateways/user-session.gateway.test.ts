@@ -117,10 +117,7 @@ describe('user-session.gateway test', () => {
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
   });
 
-  test.skip('should return valid session and NOT add to cache when Conflict error is received', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
+  test('should return valid session and NOT add to cache when Conflict error is received', async () => {
     const conflictError: ConflictError = {
       code: 409,
       body: {
@@ -134,14 +131,22 @@ describe('user-session.gateway test', () => {
       },
       activityId: 'activity',
     };
+    jest
+      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
+      .mockResolvedValueOnce({
+        resources: [],
+      })
+      .mockResolvedValue({
+        resources: [expectedSession],
+      });
     jest.spyOn(OktaGateway, 'verifyToken').mockRejectedValue(conflictError);
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const session = await gateway.lookup(context, jwt, provider);
     expect(session).toEqual(expectedSession);
-    expect(createSpy).toHaveBeenCalled();
+    expect(createSpy).not.toHaveBeenCalled();
   });
 
-  test.skip('should properly identify Conflict error', () => {
+  test('should properly identify Conflict error', () => {
     const error: ConflictError = {
       code: 409,
       body: {
