@@ -42,10 +42,6 @@ async function getUser(accessToken): Promise<CamsUser> {
   const { userInfoUri } = getAuthorizationConfig();
 
   try {
-    // const response = await httpGet({
-    //   url: userInfoUri,
-    //   headers: { authorization: 'Bearer ' + accessToken },
-    // });
     const response = await fetch(userInfoUri, {
       method: 'GET',
       headers: { authorization: 'Bearer ' + accessToken },
