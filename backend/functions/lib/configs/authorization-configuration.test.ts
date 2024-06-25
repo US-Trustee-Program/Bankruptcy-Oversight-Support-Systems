@@ -30,4 +30,16 @@ describe('Authorization config tests', () => {
     const config = configModule.getAuthorizationConfig();
     expect(config.provider).toEqual('okta');
   });
+
+  test('module should not fail to parse and initialize config', () => {
+    delete process.env.AUTH_ISSUER;
+    let configModule;
+    jest.isolateModules(() => {
+      configModule = require('./authorization-configuration');
+    });
+    const config = configModule.getAuthorizationConfig();
+    expect(config.audience).toBeNull();
+    expect(config.issuer).toBeNull();
+    expect(config.provider).toBeNull();
+  });
 });
