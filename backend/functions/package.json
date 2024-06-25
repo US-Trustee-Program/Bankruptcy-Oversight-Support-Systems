@@ -27,6 +27,7 @@
     "@azure/identity": "^4.3.0",
     "@azure/keyvault-secrets": "^4.8.0",
     "@launchdarkly/node-server-sdk": "^9.4.6",
+    "@okta/jwt-verifier": "^3.2.2",
     "applicationinsights": "^3.1.0",
     "dotenv": "^16.4.5",
     "mssql": "^10.0.4"
