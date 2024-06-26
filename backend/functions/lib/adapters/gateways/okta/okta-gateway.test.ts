@@ -1,6 +1,6 @@
 import { getAuthorizationGateway } from '../../../factory';
 import * as AuthConfig from '../../../configs/authorization-configuration';
-import { JwtHeader } from '../../types/authorization';
+import { CamsJwtHeader } from '../../types/authorization';
 import * as Verifier from './HumbleVerifier';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import MockFetch from '../../../testing/mock-fetch';
@@ -68,7 +68,7 @@ describe('Okta gateway tests', () => {
     };
     const jwt = {
       claims: jwtClaims,
-      header: jwtHeader as JwtHeader,
+      header: jwtHeader as CamsJwtHeader,
       toString: jest.fn(),
       isExpired: jest.fn(),
       isNotBefore: jest.fn(),

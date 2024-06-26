@@ -337,8 +337,15 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
 
 function getJwt(): string {
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload =
-    '{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":1719241960}';
+  const now = new Date();
+  const futureExpirationDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    now.getHours() + 1,
+    now.getMinutes(),
+  );
+  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${futureExpirationDate.valueOf()}}`;
   const signature = 'fake-signature-text';
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');

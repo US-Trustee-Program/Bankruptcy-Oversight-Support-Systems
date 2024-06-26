@@ -2,7 +2,7 @@ import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 
@@ -26,7 +26,7 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const context = await applicationContextCreator(functionContext, request);
+  const context = await ContextCreator.applicationContextCreator(functionContext, request);
 
   const ordersController = new OrdersController(context);
   try {

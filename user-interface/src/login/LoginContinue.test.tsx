@@ -8,7 +8,7 @@ import * as badConfigurationModule from './BadConfiguration';
 import * as libraryModule from '@/login/login-library';
 import { LoginContinue } from './LoginContinue';
 import { Session } from './Session';
-import { MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('LoginContinue', () => {
   const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
@@ -22,7 +22,7 @@ describe('LoginContinue', () => {
     .mockImplementation((props: PropsWithChildren) => {
       return (
         <Session
-          apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
+          apiToken={MockData.getJwt()}
           provider="okta"
           user={{ name: 'Mock User' }}
           validatedClaims={{}}

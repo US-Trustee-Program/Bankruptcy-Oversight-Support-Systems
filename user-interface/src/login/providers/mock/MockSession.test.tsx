@@ -3,12 +3,13 @@ import { MockSession } from './MockSession';
 import { render, screen } from '@testing-library/react';
 import * as sessionModule from '../../Session';
 import { BrowserRouter } from 'react-router-dom';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { CamsUser } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('MockSession', () => {
   test('should pass a mapped CamsUser, provider, and children to the Session component', () => {
     const user: CamsUser = { name: 'First Last' };
-    const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
+    const apiToken = MockData.getJwt();
     const testId = 'child-div';
     const childText = 'TEST';
 

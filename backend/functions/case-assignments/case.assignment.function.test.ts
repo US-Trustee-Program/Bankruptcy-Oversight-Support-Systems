@@ -3,7 +3,7 @@ import { CaseAssignmentController } from '../lib/controllers/case-assignment/cas
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import * as ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
