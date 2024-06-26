@@ -8,32 +8,16 @@ export type AuthorizationConfig = {
 };
 
 export interface OpenIdConnectGateway {
-  verifyToken: (accessToken: string) => Promise<Jwt>;
+  verifyToken: (accessToken: string) => Promise<CamsJwt>;
   getUser: (accessToken: string) => Promise<CamsUser>;
 }
 
-export type Algorithm =
-  | 'HS256'
-  | 'HS384'
-  | 'HS512'
-  | 'RS256'
-  | 'RS384'
-  | 'RS512'
-  | 'ES256'
-  | 'ES384'
-  | 'ES512'
-  | 'none';
-
-export type JwtHeader = {
-  alg: Algorithm;
+export type CamsJwtHeader = {
   typ: string;
-  kid?: string;
-  jku?: string;
-  x5u?: string;
-  x5t?: string;
+  [key: string]: unknown;
 };
 
-export type JwtClaims = {
+export type CamsJwtClaims = {
   iss: string;
   sub: string;
   aud: string;
@@ -41,15 +25,10 @@ export type JwtClaims = {
   nbf?: number;
   iat?: number;
   jti?: string;
-  nonce?: string;
-  scp?: string[];
   [key: string]: unknown;
 };
 
-export type Jwt = {
-  claims: JwtClaims;
-  header: JwtHeader;
-  toString(): string;
-  isExpired(): boolean;
-  isNotBefore(): boolean;
+export type CamsJwt = {
+  claims: CamsJwtClaims;
+  header: CamsJwtHeader;
 };

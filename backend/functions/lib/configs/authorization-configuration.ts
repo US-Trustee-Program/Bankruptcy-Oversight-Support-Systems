@@ -25,13 +25,9 @@ function getProviderFromIssuer(issuer: string) {
 
 function getAudienceFromIssuer(issuer: string) {
   if (!issuer) return null;
-  try {
-    // TODO: isolate the path and get the end
-    const serverName = issuer.slice(issuer.lastIndexOf('/') + 1);
-    return `api://${serverName}`;
-  } catch {
-    return null;
-  }
+  const issuerUrl = new URL(issuer);
+  const serverName = issuerUrl.pathname.slice(issuerUrl.pathname.lastIndexOf('/') + 1);
+  return `api://${serverName}`;
 }
 
 function getUserInfoUriFromIssuer(issuer: string) {

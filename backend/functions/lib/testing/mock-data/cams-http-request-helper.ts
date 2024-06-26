@@ -1,4 +1,4 @@
-import { MOCK_AUTHORIZATION_BEARER_TOKEN } from '../../../../../common/src/cams/session';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../adapters/types/http';
 
 export const mockRequestUrl = 'http://mockhost/api';
@@ -9,7 +9,7 @@ export function mockCamsHttpRequest(override: Partial<CamsHttpRequest> = {}): Ca
     method: 'GET',
     url: mockRequestUrl,
     headers: {
-      authorization: 'Bearer ' + MOCK_AUTHORIZATION_BEARER_TOKEN,
+      authorization: 'Bearer ' + MockData.getJwt(),
     },
     params: {},
   };

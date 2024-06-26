@@ -1,10 +1,11 @@
 import { render } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as reactRouter from 'react-router';
-import { CamsSession, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { CamsSession } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { Session, SessionProps } from './Session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('Session', () => {
   const testSession: CamsSession = {
@@ -12,7 +13,7 @@ describe('Session', () => {
       name: 'Mock User',
     },
     provider: 'mock',
-    apiToken: MOCK_AUTHORIZATION_BEARER_TOKEN,
+    apiToken: MockData.getJwt(),
     validatedClaims: {},
   };
 

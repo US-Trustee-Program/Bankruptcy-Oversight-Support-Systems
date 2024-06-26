@@ -1,5 +1,5 @@
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
-import { Jwt, OpenIdConnectGateway } from '../../types/authorization';
+import { CamsJwt, OpenIdConnectGateway } from '../../types/authorization';
 import { CamsUser } from '../../../../../../common/src/cams/session';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
@@ -20,7 +20,7 @@ type OktaUserInfo = {
   email_verified: boolean;
 };
 
-async function verifyToken(token: string): Promise<Jwt> {
+async function verifyToken(token: string): Promise<CamsJwt> {
   const { issuer, audience, provider } = getAuthorizationConfig();
   if (provider !== 'okta') {
     throw new ServerConfigError(MODULE_NAME, { message: 'Invalid provider.' });

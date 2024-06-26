@@ -1,4 +1,4 @@
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
@@ -14,7 +14,10 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext, request);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
   const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);
 

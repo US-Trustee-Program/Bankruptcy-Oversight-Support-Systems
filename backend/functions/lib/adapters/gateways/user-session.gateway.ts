@@ -4,6 +4,7 @@ import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../fa
 import { ApplicationContext } from '../types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
+import { ServerConfigError } from '../../common-errors/server-config-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -31,8 +32,8 @@ export function isConflictError(error: ConflictError | unknown): error is Confli
 
 export class UserSessionGateway implements SessionCache {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
-    const cacheGateway = getUserSessionCacheRepository(context);
-    const cached = await cacheGateway.get(context, token);
+    const caseRepository = getUserSessionCacheRepository(context);
+    const cached = await caseRepository.get(context, token);
 
     if (cached) {
       return cached;
@@ -40,6 +41,11 @@ export class UserSessionGateway implements SessionCache {
 
     try {
       const authGateway = getAuthorizationGateway(provider);
+      if (!authGateway) {
+        throw new ServerConfigError(MODULE_NAME, {
+          message: 'Unsupported authentication provider.',
+        });
+      }
       const jwt = await authGateway.verifyToken(token);
       if (!jwt) {
         throw new UnauthorizedError(MODULE_NAME, {
@@ -53,12 +59,12 @@ export class UserSessionGateway implements SessionCache {
         provider: provider,
         validatedClaims: jwt.claims,
       };
-      await cacheGateway.put(context, session);
+      await caseRepository.put(context, session);
 
       return session;
     } catch (originalError) {
       if (isConflictError(originalError)) {
-        return await cacheGateway.get(context, token);
+        return await caseRepository.get(context, token);
       }
 
       if (isCamsError(originalError)) {
@@ -66,8 +72,7 @@ export class UserSessionGateway implements SessionCache {
       }
 
       throw new UnauthorizedError(MODULE_NAME, {
-        message:
-          'Yeah this was a retry and we failed again. Oh and the GET could have cause and error so the original Error may not be true...',
+        message: originalError.message,
         originalError,
       });
     }

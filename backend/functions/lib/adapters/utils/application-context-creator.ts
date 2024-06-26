@@ -4,13 +4,13 @@ import { ApplicationConfiguration } from '../../configs/application-configuratio
 import { getFeatureFlags } from './feature-flag';
 import { LoggerImpl } from '../services/logger.service';
 import { getAuthorizationConfig } from '../../configs/authorization-configuration';
-import { getAuthorizationGateway, getUserSessionGateway } from '../../factory';
+import { getUserSessionGateway } from '../../factory';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { ServerConfigError } from '../../common-errors/server-config-error';
+import { SessionCache } from './sessionCache';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
-export async function applicationContextCreator(
+async function applicationContextCreator(
   functionContext: Context,
   request: HttpRequest,
 ): Promise<ApplicationContext> {
@@ -27,7 +27,7 @@ export async function applicationContextCreator(
   } satisfies ApplicationContext;
 }
 
-export async function getApplicationContextSession(context: ApplicationContext) {
+async function getApplicationContextSession(context: ApplicationContext) {
   const { provider } = getAuthorizationConfig();
 
   const authorizationHeader = context.req.headers['authorization'];
@@ -40,27 +40,19 @@ export async function getApplicationContextSession(context: ApplicationContext) 
 
   const match = authorizationHeader.match(/Bearer (.+)/);
 
-  if (!match) {
+  if (!match || match.length !== 2) {
     throw new UnauthorizedError(MODULE_NAME, {
       message: 'Bearer token not found in authorization header',
     });
   }
-
   const accessToken = match[1];
-  if (!accessToken) {
-    throw new UnauthorizedError(MODULE_NAME, {
-      message: 'Unable to get token from authorization header',
-    });
-  }
-
-  const gateway = getAuthorizationGateway(provider);
-
-  if (!gateway) {
-    throw new ServerConfigError(MODULE_NAME, {
-      message: 'Unsupported authentication provider.',
-    });
-  }
-
-  const sessionGateway = getUserSessionGateway(context);
+  const sessionGateway: SessionCache = getUserSessionGateway(context);
   return await sessionGateway.lookup(context, accessToken, provider);
 }
+
+const ContextCreator = {
+  applicationContextCreator,
+  getApplicationContextSession,
+};
+
+export default ContextCreator;
