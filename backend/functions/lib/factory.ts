@@ -142,19 +142,9 @@ export const getCosmosDbCrudRepository = <T>(
   return new CosmosDbRepository<T>(context, containerName, moduleName);
 };
 
-export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway | null => {
+export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway => {
   if (provider === 'okta') return OktaGateway;
-
-  const error = new Error('Bad OIDC provider.');
-  const hardStop: OpenIdConnectGateway = {
-    verifyToken: (_: string) => {
-      return Promise.reject(error);
-    },
-    getUser: (_: string) => {
-      return Promise.reject(error);
-    },
-  };
-  return hardStop;
+  return null;
 };
 
 export const getUserSessionGateway = (context: ApplicationContext): SessionCache => {

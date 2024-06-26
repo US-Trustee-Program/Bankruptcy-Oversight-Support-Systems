@@ -3,7 +3,7 @@ import httpTrigger from './attorneys.function';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import { CamsError } from '../lib/common-errors/cams-error';
-import * as ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 

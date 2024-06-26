@@ -2,10 +2,7 @@ import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import {
-  applicationContextCreator,
-  getApplicationContextSession,
-} from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
@@ -17,10 +14,14 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext, request);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   const caseSummaryController = new CaseSummaryController(applicationContext);
   try {
-    applicationContext.session = await getApplicationContextSession(applicationContext);
+    applicationContext.session =
+      await ContextCreator.getApplicationContextSession(applicationContext);
 
     const responseBody = await caseSummaryController.getCaseSummary(applicationContext, {
       caseId: request.params.caseId,

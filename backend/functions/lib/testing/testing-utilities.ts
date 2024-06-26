@@ -1,10 +1,9 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { applicationContextCreator } from '../adapters/utils/application-context-creator';
+import ContextCreator from '../adapters/utils/application-context-creator';
 import { HttpRequest } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 const functionContext = require('azure-function-context-mock');
 
-// TODO: Need to refactor each test that needs an application context to use this convenience function.
 export async function createMockApplicationContext(
   env: Record<string, string> = {},
 ): Promise<ApplicationContext> {
@@ -13,7 +12,7 @@ export async function createMockApplicationContext(
     MOCK_AUTH: 'true',
     ...env,
   };
-  return await applicationContextCreator(functionContext, createMockRequest());
+  return await ContextCreator.applicationContextCreator(functionContext, createMockRequest());
 }
 
 export async function createMockApplicationContextSession() {

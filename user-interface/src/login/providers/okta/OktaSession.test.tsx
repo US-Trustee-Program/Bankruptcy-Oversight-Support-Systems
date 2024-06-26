@@ -5,15 +5,16 @@ import { OktaSession } from './OktaSession';
 import { render, screen, waitFor } from '@testing-library/react';
 import * as sessionModule from '../../Session';
 import * as accessDeniedModule from '../../AccessDenied';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { CamsUser } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
-const apiToken = MOCK_AUTHORIZATION_BEARER_TOKEN;
+const apiToken = MockData.getJwt();
 
 describe('OktaSession', () => {
   const authState = {
     isAuthenticated: false,
   };
-  const getAccessToken = vi.fn().mockReturnValue(MOCK_AUTHORIZATION_BEARER_TOKEN);
+  const getAccessToken = vi.fn().mockReturnValue(apiToken);
   const getUser = vi.fn().mockResolvedValue({
     name: 'Mock User',
     email: 'mock@user.com',

@@ -1,6 +1,6 @@
 import { ConflictError, isConflictError, UserSessionGateway } from './user-session.gateway';
 import OktaGateway from './okta/okta-gateway';
-import { JwtHeader } from '../types/authorization';
+import { CamsJwtHeader } from '../types/authorization';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
@@ -10,6 +10,8 @@ import {
 } from '../../testing/mock.cosmos-client-humble';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import * as factoryModule from '../../factory';
+import { ServerConfigError } from '../../common-errors/server-config-error';
 
 describe('user-session.gateway test', () => {
   const jwt = MockData.getJwt();
@@ -51,10 +53,7 @@ describe('user-session.gateway test', () => {
     };
     jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue({
       claims: validatedClaims,
-      header: jwtHeader as JwtHeader,
-      toString: jest.fn(),
-      isExpired: jest.fn(),
-      isNotBefore: jest.fn(),
+      header: jwtHeader as CamsJwtHeader,
     });
     jest.spyOn(OktaGateway, 'getUser').mockResolvedValue({ name: mockName });
     jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
@@ -170,5 +169,13 @@ describe('user-session.gateway test', () => {
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
     expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  test('should throw ServerConfigError if factory does not return an OidcConnectGateway', async () => {
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
+      resources: [],
+    });
+    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
+    await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(ServerConfigError);
   });
 });

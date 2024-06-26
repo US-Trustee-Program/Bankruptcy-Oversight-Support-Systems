@@ -1,10 +1,10 @@
 import * as dotenv from 'dotenv';
-import { ServerType, AppConfig } from '../adapters/types/basic';
+import { ServerType } from '../adapters/types/basic';
 import { CosmosConfig, IDbConfig } from '../adapters/types/database';
 
 dotenv.config();
 
-export class ApplicationConfiguration implements AppConfig {
+export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;

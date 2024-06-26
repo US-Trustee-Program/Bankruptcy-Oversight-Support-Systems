@@ -2,12 +2,13 @@ import { ApplicationContext } from '../types/basic';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { UserSessionCacheRepository } from './user-session-cache.repository';
-import { JwtClaims } from '../types/authorization';
+import { CamsJwtClaims } from '../types/authorization';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_USER_SESSION_CACHE';
 const CONTAINER_NAME: string = 'user-session-cache';
 
-type CachedCamsSession = CamsSession & {
+export type CachedCamsSession = CamsSession & {
   id?: string;
   signature: string;
   ttl: number;
@@ -20,7 +21,11 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
   }
 
   public async get(context: ApplicationContext, token: string): Promise<CamsSession | null> {
-    const signature = token.split('.')[2];
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
+    }
+    const signature = tokenParts[2];
     const query = 'SELECT * FROM c WHERE c.signature = @signature';
     const querySpec = {
       query,
@@ -41,11 +46,15 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
   }
 
   public async put(context: ApplicationContext, session: CamsSession): Promise<CamsSession> {
-    // TODO: handle input that cannot possibly be a jwt?
     const tokenParts = session.apiToken.split('.');
+    if (tokenParts.length !== 3) {
+      throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
+    }
     const signature = tokenParts[2];
     const tokenBody = tokenParts[1];
-    const claims = JSON.parse(Buffer.from(tokenBody, 'base64').toString()) as unknown as JwtClaims;
+    const claims = JSON.parse(
+      Buffer.from(tokenBody, 'base64').toString(),
+    ) as unknown as CamsJwtClaims;
     const ttl = Math.floor(claims.exp - Date.now() / 1000);
     const cached: CachedCamsSession = {
       ...session,

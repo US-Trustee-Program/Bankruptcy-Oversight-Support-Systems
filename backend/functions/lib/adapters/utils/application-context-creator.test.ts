@@ -1,64 +1,62 @@
-import { CamsError } from '../../common-errors/cams-error';
-import { LoggerImpl } from '../services/logger.service';
-import { randomUUID } from 'crypto';
+import { MockUserSessionGateway } from '../../testing/mock-gateways/mock-user-session-gateway';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { ApplicationContext } from '../types/basic';
+import ContextCreator from './application-context-creator';
+import {
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../../../azure/functions';
+import { ApplicationConfiguration } from '../../configs/application-configuration';
+import * as FeatureFlags from './feature-flag';
 
-const log = jest.spyOn(console, 'log').mockImplementation(() => {});
-
-const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR-TEST';
-
-describe('Application Context Creator tests', () => {
-  let logger;
-  const invocationId = randomUUID();
-
-  beforeEach(() => {
-    logger = new LoggerImpl(invocationId);
+describe('Application Context Creator', () => {
+  describe('applicationContextCreator', () => {
+    test('should create an application context', async () => {
+      const functionContext = createMockAzureFunctionContext();
+      const featureFlagsSpy = jest.spyOn(FeatureFlags, 'getFeatureFlags');
+      const request = createMockAzureFunctionRequest();
+      const context = await ContextCreator.applicationContextCreator(functionContext, request);
+      expect(context.logger instanceof Object && 'camsError' in context.logger).toBeTruthy();
+      expect(context.config instanceof ApplicationConfiguration).toBeTruthy();
+      expect(context.featureFlags instanceof Object).toBeTruthy();
+      expect(featureFlagsSpy).toHaveBeenCalled();
+      expect(context.req).toEqual(request);
+    });
   });
 
-  test('Should properly log message when calling info without data defined', () => {
-    const msg = 'info test';
-    logger.info(MODULE_NAME, msg);
-    expect(log).toHaveBeenCalledWith(
-      `[INFO] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg}`,
-    );
-  });
+  describe('getApplicationContextSession', () => {
+    let context: ApplicationContext;
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+    });
 
-  test('Should properly log message when calling info with data defined', () => {
-    const msg = 'info test';
-    logger.info(MODULE_NAME, msg, { testMessage: msg });
-    expect(log).toHaveBeenCalledWith(
-      `[INFO] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
-    );
-  });
+    test('should throw an UnauthorizedError if authorization header is missing', async () => {
+      delete context.req.headers.authorization;
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Authorization header missing.',
+      );
+    });
 
-  test('Should properly log message when calling warn', () => {
-    const msg = 'warning test';
-    logger.warn(MODULE_NAME, msg, { testMessage: msg });
-    expect(log).toHaveBeenCalledWith(
-      `[WARN] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
-    );
-  });
+    test('should throw an UnauthorizedError if authorization header is not a bearer token', async () => {
+      context.req.headers.authorization = 'shouldthrowError';
 
-  test('Should properly log message when calling error', () => {
-    const msg = 'error test';
-    logger.error(MODULE_NAME, msg, { testMessage: msg });
-    expect(log).toHaveBeenCalledWith(
-      `[ERROR] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
-    );
-  });
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Bearer token not found in authorization header',
+      );
+    });
 
-  test('Should properly log message when calling debug', () => {
-    const msg = 'debug test';
-    logger.debug(MODULE_NAME, msg, { testMessage: msg });
-    expect(log).toHaveBeenCalledWith(
-      `[DEBUG] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] ${msg} {"testMessage":"${msg}"}`,
-    );
-  });
+    test('should throw an UnauthorizedError if authorization header contains Bearer but no token', async () => {
+      context.req.headers.authorization = 'Bearer ';
 
-  test('Should properly log message when calling camsError', () => {
-    const error = new CamsError(MODULE_NAME);
-    logger.camsError(error);
-    expect(log).toHaveBeenCalledWith(
-      `[ERROR] [APPLICATION-CONTEXT-CREATOR-TEST] [INVOCATION ${invocationId}] Unknown CAMS Error {"message":"Unknown CAMS Error","status":500,"module":"APPLICATION-CONTEXT-CREATOR-TEST","isCamsError":true}`,
-    );
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Bearer token not found in authorization header',
+      );
+    });
+
+    test('should call user session gateway lookup', async () => {
+      const lookupSpy = jest.spyOn(MockUserSessionGateway.prototype, 'lookup');
+      await ContextCreator.getApplicationContextSession(context);
+      expect(lookupSpy).toHaveBeenCalled();
+    });
   });
 });

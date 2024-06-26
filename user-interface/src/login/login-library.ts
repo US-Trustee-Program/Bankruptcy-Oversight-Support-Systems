@@ -13,6 +13,11 @@ export function getLoginProviderFromEnv(): string {
   return value.toLowerCase();
 }
 
+export function getAuthIssuerFromEnv(): string | undefined {
+  const config = getLoginConfigurationFromEnv<object>();
+  return 'issuer' in config && typeof config.issuer === 'string' ? config.issuer : undefined;
+}
+
 export function getLoginConfigurationFromEnv<T = unknown>(): T {
   try {
     const configJson = import.meta.env[LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME];
@@ -27,12 +32,5 @@ export function getLoginConfigurationFromEnv<T = unknown>(): T {
 export type LoginProvider = 'okta' | 'mock' | 'none';
 
 export function isLoginProviderType(provider: string): provider is LoginProvider {
-  switch (provider) {
-    case 'okta':
-    case 'mock':
-    case 'none':
-      return true;
-    default:
-      return false;
-  }
+  return ['okta', 'mock', 'none'].includes(provider);
 }

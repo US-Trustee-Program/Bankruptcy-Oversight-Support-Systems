@@ -1,5 +1,3 @@
-export const MOCK_AUTHORIZATION_BEARER_TOKEN = 'MOCK_ACCESS_TOKEN_JWT_HEADER.PAYLOAD.SIGNATURE';
-
 export type CamsUser = {
   name: string;
 };

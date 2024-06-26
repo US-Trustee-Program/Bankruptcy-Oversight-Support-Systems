@@ -5,7 +5,8 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { CamsUser } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 type MockRole = {
   key: string;
@@ -23,7 +24,7 @@ export type MockLoginProps = PropsWithChildren & {
   user: CamsUser | null;
 };
 
-export function MockLogin(props: MockLoginProps): React.ReactNode {
+export function MockLogin(props: MockLoginProps) {
   const [user, setUser] = useState<CamsUser | null>(null);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
   const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
@@ -50,12 +51,7 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
 
   if (user)
     return (
-      <Session
-        provider="mock"
-        user={user}
-        apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
-        validatedClaims={{}}
-      >
+      <Session provider="mock" user={user} apiToken={MockData.getJwt()} validatedClaims={{}}>
         {props.children}
       </Session>
     );

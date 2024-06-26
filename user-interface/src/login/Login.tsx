@@ -7,12 +7,14 @@ import {
   getLoginProviderFromEnv,
   LoginProvider,
   isLoginProviderType,
+  getAuthIssuerFromEnv,
 } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import { LocalStorage } from '@/lib/utils/local-storage';
-import { CamsUser, MOCK_AUTHORIZATION_BEARER_TOKEN } from '@common/cams/session';
+import { CamsSession, CamsUser } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -21,6 +23,7 @@ export type LoginProps = PropsWithChildren & {
 };
 
 export function Login(props: LoginProps): React.ReactNode {
+  const issuer = getAuthIssuerFromEnv();
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
 
   if (!isLoginProviderType(provider)) {
@@ -32,10 +35,9 @@ export function Login(props: LoginProps): React.ReactNode {
     return <BadConfiguration message={errorMessage} />;
   }
 
-  const session = LocalStorage.getSession();
+  const session: CamsSession | null = LocalStorage.getSession();
   if (session) {
-    // TODO: We need to also be checking that the issuer did not change.
-    if (session.provider === provider) {
+    if (session.provider === provider && issuer === session.validatedClaims['iss']) {
       return <Session {...session}>{props.children}</Session>;
     } else {
       LocalStorage.removeSession();
@@ -58,7 +60,7 @@ export function Login(props: LoginProps): React.ReactNode {
       providerComponent = (
         <Session
           provider="none"
-          apiToken={MOCK_AUTHORIZATION_BEARER_TOKEN}
+          apiToken={MockData.getJwt()}
           user={props.user ?? { name: 'Super User' }}
           validatedClaims={{}}
         >
