@@ -11,6 +11,7 @@ import * as sessionModule from './Session';
 import { Login } from './Login';
 import localStorage, { LocalStorage } from '@/lib/utils/local-storage';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { randomUUID } from 'node:crypto';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -44,6 +45,10 @@ describe('Login', () => {
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
     vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(true);
+    vi.spyOn(libraryModule, 'getLoginConfigurationFromEnv').mockReturnValue({
+      issuer,
+      clientId: randomUUID(),
+    });
   });
 
   afterEach(() => {
@@ -51,6 +56,11 @@ describe('Login', () => {
   });
 
   test('should load provider and issuer from environment vars', () => {
+    vi.stubEnv('CAMS_LOGIN_PROVIDER', 'okta');
+    vi.stubEnv(
+      'CAMS_LOGIN_PROVIDER_CONFIG',
+      '{"issuer": "https://fake.okta.com/oauth2/default", "clientId": "000000000000"}',
+    );
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -58,6 +68,7 @@ describe('Login', () => {
     );
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(getAuthIssuerFromEnv).toHaveBeenCalled();
+    vi.unstubAllEnvs();
   });
 
   test('should check for an existing login and continue if a session does not exist', () => {
