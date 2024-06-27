@@ -20,7 +20,7 @@ export type CamsJwtHeader = {
 export type CamsJwtClaims = {
   iss: string;
   sub: string;
-  aud: string;
+  aud: string | string[];
   exp: number;
   nbf?: number;
   iat?: number;

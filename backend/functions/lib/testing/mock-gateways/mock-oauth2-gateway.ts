@@ -2,54 +2,72 @@ import * as jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsUser } from '../../../../../common/src/cams/session';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
+import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-auth';
+import {
+  CamsJwt,
+  CamsJwtClaims,
+  CamsJwtHeader,
+  OpenIdConnectGateway,
+} from '../../adapters/types/authorization';
 
 dotenv.config();
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 
-// TODO: This is a terrible type name...
-type MockUser = {
-  sub: string;
-  label: string;
-  user: CamsUser;
-};
-
 const authIssuer = process.env.AUTH_ISSUER;
-const mockUsersJson = process.env.MOCK_USERS;
-const mockUsers: MockUser[] = mockUsersJson ? JSON.parse(mockUsersJson) : [];
+const mockRoles: MockRole[] = usersWithRole;
 const secretKey = randomUUID();
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
-  if (!authIssuer || !mockUsersJson || authIssuer !== context.req.url) {
+  if (!authIssuer || !mockRoles || authIssuer !== context.req.url) {
     throw new ForbiddenError(MODULE_NAME);
   }
 
-  const requestedSubject = context.req.body as MockUser;
-  console.log('requested subject', requestedSubject);
+  const requestedSubject = context.req.body as Pick<MockRole, 'sub'>;
+  const validMockRole = mockRoles.find((role) => role.sub === requestedSubject.sub);
 
-  const validMockUser = mockUsers.find((user) => user.sub === requestedSubject.sub);
+  const ONE_DAY = 60 * 60 * 24;
+  const SECONDS_SINCE_EPOCH = Date.now() / 1000;
 
-  const payload = {
+  const claims: CamsJwtClaims = {
     aud: 'api://default',
-    sub: validMockUser.sub,
+    sub: validMockRole.sub,
     iss: context.req.url,
+    exp: SECONDS_SINCE_EPOCH + ONE_DAY,
   };
 
-  console.log('payload', payload);
-
-  const token = jwt.sign(payload, secretKey);
+  const token = jwt.sign(claims, secretKey);
   return token;
 }
 
-export function mockVerifyToken(token: string) {
-  return jwt.verify(token, secretKey);
+export async function verifyToken(accessToken: string): Promise<CamsJwt> {
+  const payload = jwt.verify(accessToken, secretKey) as jwt.JwtPayload;
+  const claims: CamsJwtClaims = {
+    iss: payload.iss!,
+    sub: payload.sub!,
+    aud: payload.aud!,
+    exp: payload.exp!,
+    ...payload,
+  };
+
+  const header: CamsJwtHeader = { typ: '' };
+  const camsJwt: CamsJwt = {
+    claims,
+    header,
+  };
+  return camsJwt;
 }
 
-const MockOauth2Gateway = {
-  mockAuthentication,
-  mockVerifyToken,
+export async function getUser(accessToken: string) {
+  const decodedToken = jwt.decode(accessToken);
+  const role = mockRoles.find((role) => role.sub === decodedToken.sub);
+  return role.user;
+}
+
+const MockOpenIdConnectGateway: OpenIdConnectGateway = {
+  verifyToken,
+  getUser,
 };
 
-export default MockOauth2Gateway;
+export default MockOpenIdConnectGateway;
