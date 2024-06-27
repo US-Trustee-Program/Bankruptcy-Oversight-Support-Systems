@@ -9,15 +9,16 @@ import { CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 
 type MockRole = {
-  key: string;
+  sub: string;
   label: string;
   user: CamsUser;
 };
 
+//TODO: This needs to be loaded from MOCK_USERS env var
 const roles: MockRole[] = [
-  { key: 'trial-attorney', label: 'Trial Attorney', user: { name: 'Abe' } },
-  { key: 'paralegal', label: 'Paralegal', user: { name: 'Bert' } },
-  { key: 'aust', label: 'Assistant US Trustee', user: { name: 'Charlie' } },
+  { sub: 'trial-attorney', label: 'Trial Attorney', user: { name: 'Abe' } },
+  { sub: 'paralegal', label: 'Paralegal', user: { name: 'Bert' } },
+  { sub: 'aust', label: 'Assistant US Trustee', user: { name: 'Charlie' } },
 ];
 
 export type MockLoginProps = PropsWithChildren & {
@@ -29,8 +30,8 @@ export function MockLogin(props: MockLoginProps) {
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
   const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
 
-  function handleRoleSelection(key: string) {
-    setSelectedRole(roles.find((role) => role.key === key)!);
+  function handleRoleSelection(sub: string) {
+    setSelectedRole(roles.find((role) => role.sub === sub)!);
   }
 
   function handleLogin() {
@@ -71,7 +72,7 @@ export function MockLogin(props: MockLoginProps) {
                   id={`radio-role-${idx}`}
                   name="role"
                   label={role.label}
-                  value={role.key}
+                  value={role.sub}
                   onChange={handleRoleSelection}
                 />
               );
