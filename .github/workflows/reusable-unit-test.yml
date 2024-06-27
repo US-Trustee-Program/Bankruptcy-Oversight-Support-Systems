@@ -31,4 +31,9 @@ jobs:
       - name: Run unit tests with code coverage
         run: |
           npm ci
-          export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://localhost:3000/oauth2/default", "clientId": ""}' npm run coverage:ci
+
+          if[[ ${{ inputs.path }} == 'user-interface' ]]; then
+            export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://localhost:3000/oauth2/default", "clientId": ""}' && npm run coverage:ci
+          else
+            npm run coverage:ci
+          fi
