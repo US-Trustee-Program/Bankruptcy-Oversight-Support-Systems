@@ -33,7 +33,7 @@ jobs:
           npm ci
           projectPath=${{ inputs.path }}
           if [[ ${projectPath} == 'user-interface' ]]; then
-            export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://localhost:3000/oauth2/default", "clientId": ""}' && npm run coverage:ci
+            export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}' && npm run coverage:ci
           else
             npm run coverage:ci
           fi
