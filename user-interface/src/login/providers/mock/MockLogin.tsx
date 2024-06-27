@@ -6,7 +6,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
 import { CamsSession, CamsUser } from '@common/cams/session';
-import { usersWithRole, MockRole } from '../../../../../common/src/cams/mock-auth';
+import { usersWithRole, MockRole } from '../../../../../common/src/cams/mock-role';
 import { getAuthIssuerFromEnv } from '@/login/login-library';
 
 export type MockLoginProps = PropsWithChildren & {

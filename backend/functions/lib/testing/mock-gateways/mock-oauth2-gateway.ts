@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-auth';
+import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-role';
 import {
   CamsJwt,
   CamsJwtClaims,
