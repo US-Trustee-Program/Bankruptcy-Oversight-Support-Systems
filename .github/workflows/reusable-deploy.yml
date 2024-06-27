@@ -90,4 +90,4 @@ jobs:
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --deployFunctions ${{ inputs.slotDeploymentEnabled == 'false' }} \
             --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }} \
-            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }}'
+            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }} issuer=https://${{ vars.OKTA_URL }}/oauth2/default'
