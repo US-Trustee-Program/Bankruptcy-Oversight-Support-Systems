@@ -40,6 +40,7 @@ import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-ses
 import { SessionCache } from './adapters/utils/sessionCache';
 import { UserSessionGateway } from './adapters/gateways/user-session.gateway';
 import { MockUserSessionGateway } from './testing/mock-gateways/mock-user-session-gateway';
+import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -144,6 +145,7 @@ export const getCosmosDbCrudRepository = <T>(
 
 export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway => {
   if (provider === 'okta') return OktaGateway;
+  if (provider === 'mock') return MockOpenIdConnectGateway;
   return null;
 };
 
