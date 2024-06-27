@@ -23,9 +23,8 @@ export type LoginProps = PropsWithChildren & {
 };
 
 export function Login(props: LoginProps): React.ReactNode {
-  const issuer = getAuthIssuerFromEnv();
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
-
+  let issuer;
   if (!isLoginProviderType(provider)) {
     const errorMessage =
       'Login provider not specified or not a valid option.\n' +
@@ -34,7 +33,9 @@ export function Login(props: LoginProps): React.ReactNode {
       `Build variable value: '${provider}'.`;
     return <BadConfiguration message={errorMessage} />;
   }
-
+  if (provider == 'okta') {
+    issuer = getAuthIssuerFromEnv();
+  }
   const session: CamsSession | null = LocalStorage.getSession();
   if (session) {
     if (session.provider === provider && issuer === session.validatedClaims['iss']) {
