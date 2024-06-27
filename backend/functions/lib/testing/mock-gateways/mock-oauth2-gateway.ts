@@ -3,10 +3,11 @@ import * as dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsUser } from '../../../../../common/src/cams/session';
-
-export const secretKey = randomUUID();
+import { ForbiddenError } from '../../common-errors/forbidden-error';
 
 dotenv.config();
+
+const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 
 // TODO: This is a terrible type name...
 type MockUser = {
@@ -15,19 +16,20 @@ type MockUser = {
   user: CamsUser;
 };
 
+const authIssuer = process.env.AUTH_ISSUER;
 const mockUsersJson = process.env.MOCK_USERS;
 const mockUsers: MockUser[] = mockUsersJson ? JSON.parse(mockUsersJson) : [];
+const secretKey = randomUUID();
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
-  // TODO: Need to load server side secrets
-  // TODO: If the issuer is not self return HTTP 403 status for all requests.
+  if (!authIssuer || !mockUsersJson || authIssuer !== context.req.url) {
+    throw new ForbiddenError(MODULE_NAME);
+  }
 
-  const bodyJson = context.req.body;
-  // const requestedUser = JSON.parse(bodyJson) as MockUser;
-  const requestedUser = bodyJson as MockUser;
-  console.log('mockUser', requestedUser);
+  const requestedSubject = context.req.body as MockUser;
+  console.log('requested subject', requestedSubject);
 
-  const validMockUser = mockUsers.find((user) => user.sub === requestedUser.sub);
+  const validMockUser = mockUsers.find((user) => user.sub === requestedSubject.sub);
 
   const payload = {
     aud: 'api://default',
