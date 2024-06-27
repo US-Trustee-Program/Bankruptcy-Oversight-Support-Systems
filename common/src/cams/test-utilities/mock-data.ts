@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { Buffer } from 'buffer';
 import {
   CaseBasics,
   CaseDetail,
