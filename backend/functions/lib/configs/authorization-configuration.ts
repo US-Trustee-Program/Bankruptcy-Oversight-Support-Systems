@@ -17,6 +17,14 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 
 function getProviderFromIssuer(issuer: string) {
   if (!issuer) return null;
+
+  const mockIssuers = [
+    'http://localhost:7071/api/oauth2/default',
+    'https://ustp-cams-stg-node-api.azurewebsites.us/oauth2/default',
+    'https://ustp-cams-dev-eaf2eb-node-api.azurewebsites.us/oauth2/default',
+  ];
+  if (mockIssuers.includes(issuer)) return 'mock';
+
   const regex = /^https?:\/{2}[^/]+.okta.com/gm;
   const domainName = issuer.match(regex);
   if (domainName) return 'okta';
