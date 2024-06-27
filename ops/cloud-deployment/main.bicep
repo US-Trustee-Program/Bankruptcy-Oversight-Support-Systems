@@ -57,7 +57,6 @@ param functionSubnetAddressPrefix string = '10.10.11.0/28'
 ])
 param functionPlanType string = 'P1v2'
 
-
 param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
 param privateDnsZoneResourceGroup string = networkResourceGroupName
@@ -102,7 +101,7 @@ param analyticsWorkspaceId string = ''
 param analyticsResourceGroupName string = 'rg-analytics'
 
 @description('Url for our Okta Provider')
-param oktaUrl string = 'dev-31938913.okta.com'
+param oktaUrl string = ''
 
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
@@ -213,6 +212,7 @@ if (deployFunctions) {
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      issuer: 'https://${oktaUrl}/oatuh2/default'
     }
     dependsOn: [
       network
