@@ -16,7 +16,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15
   name: databaseName
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = [for c in databaseContainers: {
+resource dataContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = [for c in databaseContainers: {
   parent: database
   name: c.name
   properties: {
@@ -32,3 +32,19 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
     }
   }
 }]
+resource sessionContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  parent: database
+  name: 'user-session-cache'
+  properties: {
+    resource: {
+      id: 'user-session-cache'
+      partitionKey: {
+        paths: [
+          '/signature'
+        ]
+      }
+      defaultTtl: -1
+      uniqueKeyPolicy: { uniqueKeys: [{ paths: ['/signature'] }] }
+    }
+  }
+}
