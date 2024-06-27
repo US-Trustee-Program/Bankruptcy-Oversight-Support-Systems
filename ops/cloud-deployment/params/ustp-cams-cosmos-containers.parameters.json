@@ -33,11 +33,6 @@
           "name": "runtime-state",
           "partitionKey1": "/documentType",
           "partitionKeys": ["/documentType"]
-        },
-        {
-          "name": "user-session-cache",
-          "partitionKey1": "/signature",
-          "partitionKeys": ["/signature"]
         }
       ]
     }
