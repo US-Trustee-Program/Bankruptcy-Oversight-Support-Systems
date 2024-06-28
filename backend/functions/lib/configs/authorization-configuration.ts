@@ -36,6 +36,8 @@ function getAudienceFromIssuer(issuer: string) {
   if (!issuer) return null;
   const issuerUrl = new URL(issuer);
   const serverName = issuerUrl.pathname.slice(issuerUrl.pathname.lastIndexOf('/') + 1);
+  if (!serverName) return null;
+
   return `api://${serverName}`;
 }
 

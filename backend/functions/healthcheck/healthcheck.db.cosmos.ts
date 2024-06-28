@@ -1,6 +1,5 @@
-import { ApplicationContext } from '../lib/adapters/types/basic';
-
 import * as dotenv from 'dotenv';
+import { ApplicationContext } from '../lib/adapters/types/basic';
 import { getAssignmentsCosmosDbClient } from '../lib/factory';
 
 dotenv.config();
@@ -10,14 +9,13 @@ const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
 export default class HealthcheckCosmosDb {
   private readonly databaseName = process.env.COSMOS_DATABASE_NAME;
 
-  private CONTAINER_NAME = 'healthcheck'; // NOTE: Expect a container named 'healthcheck' with one item
+  private CONTAINER_NAME = 'healthcheck';
 
   private readonly applicationContext: ApplicationContext;
   private readonly cosmosDbClient;
 
   constructor(applicationContext: ApplicationContext) {
     try {
-      console.log('In healthcheck try');
       this.applicationContext = applicationContext;
       this.cosmosDbClient = getAssignmentsCosmosDbClient(this.applicationContext);
     } catch (e) {
@@ -33,7 +31,6 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbRead() {
     try {
-      // Check read access
       const { resources: results } = await this.cosmosDbClient
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
@@ -48,7 +45,6 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbWrite() {
     try {
-      // Check write access
       const { resource } = await this.cosmosDbClient
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)
@@ -63,7 +59,6 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbDelete() {
     try {
-      // Check read access
       const { resources: results } = await this.cosmosDbClient
         .database(this.databaseName)
         .container(this.CONTAINER_NAME)

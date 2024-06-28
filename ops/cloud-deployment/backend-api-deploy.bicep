@@ -61,7 +61,6 @@ var linuxFxVersionMap = {
 @description('Authentication Issuer URL')
 param issuer string
 
-
 @description('Azure functions version')
 param functionsVersion string = '~4'
 

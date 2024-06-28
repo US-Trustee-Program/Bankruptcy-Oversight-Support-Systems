@@ -1,6 +1,6 @@
 import httpTrigger from './consolidations.function';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest } from '../azure/functions';
+import { createMockAzureFunctionRequest, createMockAzureFunctionContext } from '../azure/functions';
 
 const rejectConsolidation = jest
   .fn()
@@ -29,7 +29,7 @@ describe('Consolidations Function tests', () => {
     body: {},
   });
 
-  const context = require('azure-function-context-mock');
+  const context = createMockAzureFunctionContext();
 
   afterEach(() => {
     jest.clearAllMocks();
