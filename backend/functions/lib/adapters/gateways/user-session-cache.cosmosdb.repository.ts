@@ -47,20 +47,24 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
   }
 
   public async put(context: ApplicationContext, session: CamsSession): Promise<CamsSession> {
+    const claims = jwt.decode(session.apiToken) as CamsJwtClaims;
+
+    let signature;
+    let ttl;
     try {
       const tokenParts = session.apiToken.split('.');
-      const signature = tokenParts[2];
-      const claims = jwt.decode(session.apiToken) as CamsJwtClaims;
-      const ttl = Math.floor(claims.exp - Date.now() / 1000);
-      const cached: CachedCamsSession = {
-        ...session,
-        signature,
-        ttl,
-      };
-      return toCamsSession(await this.repo.put(context, cached));
+      ttl = Math.floor(claims.exp - Date.now() / 1000);
+      signature = tokenParts[2];
     } catch {
       throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
     }
+
+    const cached: CachedCamsSession = {
+      ...session,
+      signature,
+      ttl,
+    };
+    return toCamsSession(await this.repo.put(context, cached));
   }
 }
 
