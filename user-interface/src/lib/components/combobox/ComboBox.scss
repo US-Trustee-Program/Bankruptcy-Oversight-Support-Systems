@@ -91,6 +91,10 @@ $listItemSelectedBorderColor: #949494;
             width: calc(100% - 4px);
             padding: 0.5rem;
           }
+          button:focus {
+            border-color: $listItemHoverBorderColor;
+            background: #b0b0b0;
+          }
         }
         li:last-child {
           border-bottom-color: transparent;
@@ -109,7 +113,6 @@ $listItemSelectedBorderColor: #949494;
         li.hidden {
           display: none;
         }
-
       }
     }
 
