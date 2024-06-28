@@ -337,20 +337,17 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
 }
 
 function getJwt(): string {
+  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
+  const ONE_HOUR = 3600;
+
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const now = new Date();
-  const futureExpirationDate = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    now.getHours() + 1,
-    now.getMinutes(),
-  );
-  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${futureExpirationDate.valueOf()}}`;
-  const signature = 'fake-signature-text';
+  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR}}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
-  const encodedSignature = Buffer.from(signature, 'binary').toString('base64');
+
+  // The prior implementation of the signature failed decoding by JWT.io and by the `jsonwebtoken` library.
+  // This is a stop gap, valid signature, but not valid for the payload above.
+  const encodedSignature = 'uo8vHLYnkLiN4xHccj8buiaFugq1y4qPRbdJN_dyv_E'; // pragma: allowlist secret
   return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
 }
 

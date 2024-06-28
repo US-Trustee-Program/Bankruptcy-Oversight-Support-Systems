@@ -1,6 +1,5 @@
 import * as jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
-import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-role';
@@ -17,7 +16,7 @@ const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 
 const authIssuer = process.env.AUTH_ISSUER;
 const mockRoles: MockRole[] = usersWithRole;
-const secretKey = randomUUID();
+const secretKey = authIssuer; //Do we want to lock this down further?
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
   if (!authIssuer || !mockRoles || authIssuer !== context.req.url) {
@@ -28,7 +27,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   const validMockRole = mockRoles.find((role) => role.sub === requestedSubject.sub);
 
   const ONE_DAY = 60 * 60 * 24;
-  const SECONDS_SINCE_EPOCH = Date.now() / 1000;
+  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
 
   const claims: CamsJwtClaims = {
     aud: 'api://default',

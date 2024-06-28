@@ -38,7 +38,11 @@ export function Login(props: LoginProps): React.ReactNode {
   }
   const session: CamsSession | null = LocalStorage.getSession();
   if (session) {
-    if (session.provider === provider && issuer === session.validatedClaims['iss']) {
+    if (
+      session.provider === provider &&
+      session.validatedClaims &&
+      issuer === session.validatedClaims['iss']
+    ) {
       return <Session {...session}>{props.children}</Session>;
     } else {
       LocalStorage.removeSession();

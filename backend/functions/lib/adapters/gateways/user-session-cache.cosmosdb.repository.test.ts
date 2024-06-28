@@ -1,3 +1,4 @@
+import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
@@ -54,9 +55,7 @@ describe('User session cache Cosmos repository tests', () => {
 
   test('put should return CamsSession and create valid ttl on success', async () => {
     const newSession = { ...expected };
-    const camsJwtClaims = JSON.parse(
-      Buffer.from(newSession.apiToken.split('.')[1], 'base64').toString(),
-    ) as unknown as CamsJwtClaims;
+    const camsJwtClaims = jwt.decode(newSession.apiToken) as CamsJwtClaims;
     const createSpy = jest
       .spyOn(MockHumbleItems.prototype, 'create')
       .mockResolvedValue({ resource: expected });
