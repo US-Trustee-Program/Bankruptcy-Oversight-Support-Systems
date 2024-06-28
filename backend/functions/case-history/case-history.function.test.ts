@@ -24,7 +24,7 @@ describe('Case docket function', () => {
     const requestOverride = {
       ...request,
       params: {
-        caseId: caseId,
+        caseId,
       },
     };
 
