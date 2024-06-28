@@ -1,10 +1,9 @@
-import { InputRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { ComboOption } from './combobox/ComboBox';
 import { Pill } from './Pill';
 import { UswdsButtonStyle } from './uswds/Button';
 
-type PillBoxRef = InputRef & {
+export type PillBoxRef = {
   contains: (el: HTMLElement) => boolean;
 };
 
@@ -18,15 +17,9 @@ type PillBoxProps = {
 };
 
 function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
-  const { onSelectionChange, selections, ariaLabelPrefix, disabled } = props;
+  const { onSelectionChange, ariaLabelPrefix, disabled } = props;
 
-  function setValue() {}
-  function getValue(): string {
-    return '';
-  }
-  function resetValue() {}
-  function clearValue() {}
-  function disable() {}
+  const [selections, setSelections] = useState<ComboOption[]>([]);
 
   function onPillClick(value: string) {
     const newSelections = [];
@@ -50,6 +43,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
     }
 
     onSelectionChange(newSelections);
+    setSelections(newSelections);
   }
 
   function contains(el: HTMLElement) {
@@ -61,18 +55,18 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   }
 
   useImperativeHandle(ref, () => ({
-    resetValue,
-    setValue,
-    getValue,
-    clearValue,
-    disable,
     contains,
   }));
+
+  useEffect(() => {
+    setSelections(props.selections);
+  }, [props.selections]);
 
   return (
     <div id={props.id} className={`pill-container`}>
       {selections?.map((selection, idx) => (
         <Pill
+          id={`pill-${props.id}-${idx}`}
           key={idx}
           color={UswdsButtonStyle.Cool}
           label={selection.label}

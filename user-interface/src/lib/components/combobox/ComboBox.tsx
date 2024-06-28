@@ -26,7 +26,7 @@ type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
 
-interface ComboBoxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> {
+export interface ComboBoxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> {
   children?: ReactElement | Array<ReactElement>;
   label?: string;
   ariaLabelPrefix?: string;
@@ -35,14 +35,26 @@ interface ComboBoxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> 
   value?: string;
   icon?: string;
   options: ComboOption[];
-  onUpdateSelection: (options: ComboOption[]) => void;
+  onUpdateSelection?: (options: ComboOption[]) => void;
+  onPillSelection?: (options: ComboOption[]) => void;
   onUpdateFilter?: (value: string) => void;
+  onClose?: (options: ComboOption[]) => void;
   multiSelect: boolean;
 }
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
-  const { label, value, disabled, onUpdateSelection, onUpdateFilter, multiSelect, ...otherProps } =
-    props;
+  const {
+    label,
+    value,
+    disabled,
+    onUpdateSelection,
+    onPillSelection,
+    onUpdateFilter,
+    onClose,
+    multiSelect,
+    ariaLabelPrefix,
+    ...otherProps
+  } = props;
 
   // ========== STATE ==========
 
@@ -52,7 +64,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
-  const [currentSelection, setCurrentSelection] = useState<number>(0);
   const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(props.options);
 
   // ========== REFS ==========
@@ -78,9 +89,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setExpandIcon('expand_more');
     setExpanded(false);
     setExpandedClass('closed');
-    setCurrentSelection(0);
     clearFilter();
     if (shouldFocusOnInput) filterRef.current?.focus();
+    if (onClose) onClose(selections);
   }
 
   function openDropdown() {
@@ -167,7 +178,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       classNames.push('hidden');
     } else {
       if (isSelected(option)) classNames.push('selected');
-      if (currentSelection === index) classNames.push('highlighted');
     }
     return classNames.join(' ');
   }
@@ -212,8 +222,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     switch (ev.key) {
       case 'Tab':
         if (expanded && (ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          if (list?.children.length === filteredOptions.length) {
-            closeDropdown();
+          let index = 0;
+          if (filteredOptions.length === 0) {
+            closeDropdown(false);
           } else {
             if (list && index < filteredOptions.length) {
               while (
@@ -223,10 +234,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 ++index;
               }
             }
-            setCurrentSelection(index + 1);
+            const button = list?.children[index].querySelector('button');
+            if (list && button) {
+              focusAndHandleScroll(ev, button);
+              ev.preventDefault();
+            }
           }
         } else {
-          closeDropdown();
+          closeDropdown(false);
         }
         break;
       case 'Escape':
@@ -244,11 +259,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           }
         }
         if (index >= 0 && index < filteredOptions.length) {
-          setCurrentSelection(index + 1);
           const button = list?.children[index].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
         } else {
-          setCurrentSelection(0);
           if (input) focusAndHandleScroll(ev, input);
         }
         break;
@@ -260,14 +273,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           }
         }
         if (index > 1 && index <= filteredOptions.length) {
-          setCurrentSelection(index - 1);
           const button = list?.children[index - 2].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
         } else if (index === 1) {
-          setCurrentSelection(0);
           if (input) focusAndHandleScroll(ev, input);
         } else if (index === 0) {
-          setCurrentSelection(filteredOptions.length);
           const button = list?.children[list.children.length - 1].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
         }
@@ -279,6 +289,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setSelections(selections);
     if (onUpdateSelection && selections) {
       onUpdateSelection(selections);
+    } else if (onPillSelection && selections) {
+      onPillSelection(selections);
     }
   }
 
@@ -287,8 +299,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     const inputContainer = document.querySelector(`#${props.id} .input-container`);
     const topYPos = inputContainer?.getBoundingClientRect().top;
     const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
+    const heightOfAllListItems = filteredOptions.length * 43;
 
-    if (bottomYPos && filteredOptions.length * 43 > screenBottom - bottomYPos) {
+    if (bottomYPos && heightOfAllListItems > screenBottom - bottomYPos) {
       if (topYPos && bottomYPos) {
         const inputHeight = bottomYPos - topYPos;
         setDropdownLocation({ bottom: inputHeight });
@@ -328,7 +341,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         <div className="pills-and-clear-all">
           <PillBox
             id={`${props.id}-pill-box`}
-            ariaLabelPrefix={props.ariaLabelPrefix}
+            ariaLabelPrefix={ariaLabelPrefix}
             selections={selections ?? []}
             onSelectionChange={handlePillSelection}
             disabled={inputDisabled}
@@ -336,6 +349,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           ></PillBox>
           {selections && selections.length > 0 && (
             <Button
+              className="pill-clear-button"
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={clearAll}
               aria-label="clear all selections"

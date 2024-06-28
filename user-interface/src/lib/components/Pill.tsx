@@ -6,6 +6,8 @@ const defaultColor = 'black';
 const defaultBackgroundColor = '#d0d0d0';
 
 type PillProps = {
+  id?: string;
+  className?: string;
   color?: string;
   backgroundColor?: string;
   label: string;
@@ -19,13 +21,9 @@ export function Pill(props: PillProps) {
   const [color, setColor] = useState<string>(defaultColor);
   const [backgroundColor, setBackgroundColor] = useState<string>(defaultBackgroundColor);
 
-  function handlePillClick(value: string) {
-    props.onClick(value);
-  }
-
   function handleKeyDown(ev: React.KeyboardEvent) {
     if (ev.key === 'Enter' || ev.key === ' ') {
-      handlePillClick(props.value);
+      props.onClick(props.value);
       ev.preventDefault();
     }
   }
@@ -37,9 +35,11 @@ export function Pill(props: PillProps) {
 
   return (
     <button
+      id={props.id ?? ''}
+      data-testid={props.id ? `pill-${props.id}` : ''}
       className="pill usa-button--unstyled"
       style={{ backgroundColor, color }}
-      onClick={() => handlePillClick(props.value)}
+      onClick={() => props.onClick(props.value)}
       onKeyDown={(ev) => handleKeyDown(ev)}
       tabIndex={0}
       aria-label={`${props.ariaLabelPrefix} - ${props.label} is currently selected.`}

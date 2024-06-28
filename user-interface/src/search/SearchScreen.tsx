@@ -165,7 +165,8 @@ export default function SearchScreen() {
                   className="case-chapter__select"
                   label="Chapter"
                   ariaLabelPrefix="Chapter"
-                  onUpdateSelection={handleChapterSelection}
+                  onClose={handleChapterSelection}
+                  onPillSelection={handleChapterSelection}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
