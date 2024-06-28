@@ -27,7 +27,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   const validMockRole = mockRoles.find((role) => role.sub === requestedSubject.sub);
 
   const ONE_DAY = 60 * 60 * 24;
-  const SECONDS_SINCE_EPOCH = Date.now() / 1000;
+  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
 
   const claims: CamsJwtClaims = {
     aud: 'api://default',

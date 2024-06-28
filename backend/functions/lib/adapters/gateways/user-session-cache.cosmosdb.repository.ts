@@ -1,3 +1,4 @@
+import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../types/basic';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { CamsSession } from '../../../../../common/src/cams/session';
@@ -46,22 +47,20 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
   }
 
   public async put(context: ApplicationContext, session: CamsSession): Promise<CamsSession> {
-    const tokenParts = session.apiToken.split('.');
-    if (tokenParts.length !== 3) {
+    try {
+      const tokenParts = session.apiToken.split('.');
+      const signature = tokenParts[2];
+      const claims = jwt.decode(session.apiToken) as CamsJwtClaims;
+      const ttl = Math.floor(claims.exp - Date.now() / 1000);
+      const cached: CachedCamsSession = {
+        ...session,
+        signature,
+        ttl,
+      };
+      return toCamsSession(await this.repo.put(context, cached));
+    } catch {
       throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
     }
-    const signature = tokenParts[2];
-    const tokenBody = tokenParts[1];
-    const claims = JSON.parse(
-      Buffer.from(tokenBody, 'base64').toString(),
-    ) as unknown as CamsJwtClaims;
-    const ttl = Math.floor(claims.exp - Date.now() / 1000);
-    const cached: CachedCamsSession = {
-      ...session,
-      signature,
-      ttl,
-    };
-    return toCamsSession(await this.repo.put(context, cached));
   }
 }
 
