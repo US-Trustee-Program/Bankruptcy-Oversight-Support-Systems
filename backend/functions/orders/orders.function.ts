@@ -26,6 +26,8 @@ const httpTrigger: AzureFunction = async function (
   const context = await ContextCreator.applicationContextCreator(functionContext, request);
   let response;
   try {
+    context.session = await ContextCreator.getApplicationContextSession(context);
+
     if (request.method === 'GET') {
       response = await getOrders(context);
     } else if (request.method === 'PATCH') {

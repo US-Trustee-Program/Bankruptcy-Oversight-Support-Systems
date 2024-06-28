@@ -30,6 +30,8 @@ const httpTrigger: AzureFunction = async function (
 
   const ordersController = new OrdersController(context);
   try {
+    context.session = await ContextCreator.getApplicationContextSession(context);
+
     const results = await ordersController.syncOrders(context, request.body);
     functionContext.res = httpSuccess(results);
   } catch (camsError) {
