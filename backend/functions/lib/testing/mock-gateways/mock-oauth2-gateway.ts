@@ -1,6 +1,5 @@
 import * as jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
-import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-role';
@@ -17,7 +16,7 @@ const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 
 const authIssuer = process.env.AUTH_ISSUER;
 const mockRoles: MockRole[] = usersWithRole;
-const secretKey = randomUUID();
+const secretKey = authIssuer; //Do we want to lock this down further?
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
   if (!authIssuer || !mockRoles || authIssuer !== context.req.url) {
