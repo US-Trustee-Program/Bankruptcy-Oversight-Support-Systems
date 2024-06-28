@@ -9,7 +9,6 @@ import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 
 describe('Case Assignment Function Tests', () => {
-  //TODO?: process.env does not set properly in IntelliJ. why?
   const request = createMockAzureFunctionRequest({
     method: 'POST',
     query: {},
