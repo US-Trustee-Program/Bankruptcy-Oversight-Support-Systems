@@ -24,9 +24,12 @@ function getProviderFromIssuer(issuer: string) {
   ];
   if (mockIssuers.includes(issuer)) return 'mock';
 
-  const regex = /^https?:\/{2}[^/]+.okta.com/gm;
-  const domainName = issuer.match(regex);
-  if (domainName) return 'okta';
+  const issuerHost = new URL(issuer).hostname;
+  const domainParts = issuerHost.split('.');
+  const assembledDomain = domainParts.slice(-2).join('.');
+  const acceptedDomains = ['okta.com', 'okta-gov.com'];
+  if (acceptedDomains.includes(assembledDomain)) return 'okta';
+
   return null;
 }
 
