@@ -36,6 +36,9 @@ on:
       initialDeployment:
         required: true
         type: string
+      mockAuth:
+        required: false
+        type: string
 jobs:
   deploy-webapp-slot:
     runs-on: ubuntu-latest
@@ -112,7 +115,7 @@ jobs:
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
           --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }}"
+          --settings "INFO_SHA=${{ github.sha }} MOCK_AUTH=${{ inputs.mockAuth }}"
 
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-retry
@@ -123,7 +126,7 @@ jobs:
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
           --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }}"
+          --settings "INFO_SHA=${{ github.sha }} MOCK_AUTH=${{ inputs.mockAuth }}"
 
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-service-slot]
