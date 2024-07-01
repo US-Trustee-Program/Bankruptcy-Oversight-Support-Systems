@@ -137,7 +137,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function isOutsideClick(ev: MouseEvent) {
-    if (comboBoxRef.current) {
+    if (comboBoxRef.current && expanded) {
       const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
       const containerRight = boundingRect.x + boundingRect.width;
       const containerBottom = boundingRect.y + boundingRect.height;
@@ -299,6 +299,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Enter':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           handleDropdownItemSelection(option as ComboOption);
+          ev.preventDefault();
         }
         break;
     }
