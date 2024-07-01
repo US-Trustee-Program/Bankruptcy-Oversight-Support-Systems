@@ -47,13 +47,16 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
           {viewModel.formattedOrderFiledDate}
         </div>
         <div className="grid-col-2 order-type text-no-wrap">
-          <span aria-label={`Event type ${viewModel.orderType.get(viewModel.order.orderType)}`}>
+          <span
+            className="event-type-label"
+            aria-label={`Event type ${viewModel.orderType.get(viewModel.order.orderType)}`}
+          >
             {viewModel.orderType.get(viewModel.order.orderType)}
           </span>
         </div>
         <div className="grid-col-2 order-status text-no-wrap">
           <span
-            className={viewModel.order.status}
+            className={`${viewModel.order.status} event-status-label`}
             aria-label={`Event status ${viewModel.statusType.get(viewModel.order.status)}`}
           >
             {viewModel.statusType.get(viewModel.order.status)}

@@ -19,6 +19,7 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   const substantiveRef = useRef<RadioRef>(null);
   const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
 
+  // TODO: modify this signature to handle approval as well
   const showConfirmationModal = (
     selectedCases: ConsolidationOrderCase[],
     leadCase: ConsolidationOrderCase,
