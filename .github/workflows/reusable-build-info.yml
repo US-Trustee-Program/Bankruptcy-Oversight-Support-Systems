@@ -93,6 +93,7 @@ jobs:
           echo "Environment: ${{ inputs.environment }}"
           echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
+          echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
 
           # Generate resource group name(s)
           echo "Env Hash: ${{ steps.check-env.outputs.environmentHash }}"
