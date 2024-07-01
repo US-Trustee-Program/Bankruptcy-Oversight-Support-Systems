@@ -3,16 +3,18 @@ import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
 import {
-  CamsUser,
   LOGIN_PROVIDER_ENV_VAR_NAME,
   getLoginProviderFromEnv,
   LoginProvider,
-  getSessionfromLocalStorage,
   isLoginProviderType,
+  getAuthIssuerFromEnv,
 } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
+import { LocalStorage } from '@/lib/utils/local-storage';
+import { CamsSession, CamsUser } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -22,24 +24,29 @@ export type LoginProps = PropsWithChildren & {
 
 export function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
-
+  let issuer;
   if (!isLoginProviderType(provider)) {
     const errorMessage =
       'Login provider not specified or not a valid option.\n' +
       `Valid options are 'okta' | 'mock' | 'none'.\n` +
-      `Build variable name: ${LOGIN_PROVIDER_ENV_VAR_NAME}.\n` +
-      `Build variable value: ${provider ?? 'IS BLANK'}.`;
+      `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
+      `Build variable value: '${provider}'.`;
     return <BadConfiguration message={errorMessage} />;
   }
-
-  // Skip to session and continue if already logged in.
-  const session = getSessionfromLocalStorage(provider);
-  if (session && session.provider && session.user) {
-    return (
-      <Session provider={session.provider!} user={session.user!}>
-        {props.children}
-      </Session>
-    );
+  if (provider == 'okta') {
+    issuer = getAuthIssuerFromEnv();
+  }
+  const session: CamsSession | null = LocalStorage.getSession();
+  if (session) {
+    if (
+      session.provider === provider &&
+      session.validatedClaims &&
+      issuer === session.validatedClaims['iss']
+    ) {
+      return <Session {...session}>{props.children}</Session>;
+    } else {
+      LocalStorage.removeSession();
+    }
   }
 
   let providerComponent;
@@ -56,7 +63,12 @@ export function Login(props: LoginProps): React.ReactNode {
       break;
     case 'none':
       providerComponent = (
-        <Session provider={provider} user={props.user ?? { name: 'Super User' }}>
+        <Session
+          provider="none"
+          apiToken={MockData.getJwt()}
+          user={props.user ?? { name: 'Super User' }}
+          validatedClaims={{}}
+        >
           {props.children}
         </Session>
       );

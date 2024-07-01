@@ -3,7 +3,6 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';
 import timerTrigger from './orders-sync.function';
-const context = require('azure-function-context-mock');
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -25,6 +24,8 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('Orders Sync Function tests', () => {
+  const context = require('azure-function-context-mock');
+
   test('Should call orders controller method syncOrders', async () => {
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')

@@ -8,6 +8,7 @@ import * as badConfigurationModule from './BadConfiguration';
 import * as libraryModule from '@/login/login-library';
 import { LoginContinue } from './LoginContinue';
 import { Session } from './Session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('LoginContinue', () => {
   const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
@@ -20,7 +21,12 @@ describe('LoginContinue', () => {
     .spyOn(oktaSessionModule, 'OktaSession')
     .mockImplementation((props: PropsWithChildren) => {
       return (
-        <Session provider="okta" user={{ name: 'Mock User' }}>
+        <Session
+          apiToken={MockData.getJwt()}
+          provider="okta"
+          user={{ name: 'Mock User' }}
+          validatedClaims={{}}
+        >
           {props.children}
         </Session>
       );

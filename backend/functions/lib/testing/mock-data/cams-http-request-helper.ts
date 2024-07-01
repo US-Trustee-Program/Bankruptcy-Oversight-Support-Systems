@@ -1,3 +1,4 @@
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../adapters/types/http';
 
 export const mockRequestUrl = 'http://mockhost/api';
@@ -7,7 +8,9 @@ export function mockCamsHttpRequest(override: Partial<CamsHttpRequest> = {}): Ca
     query: {},
     method: 'GET',
     url: mockRequestUrl,
-    headers: {},
+    headers: {
+      authorization: 'Bearer ' + MockData.getJwt(),
+    },
     params: {},
   };
   return {

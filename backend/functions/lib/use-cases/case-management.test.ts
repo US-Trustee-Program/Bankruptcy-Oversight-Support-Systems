@@ -1,5 +1,4 @@
 import { CaseManagement } from './case-management';
-import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
@@ -7,8 +6,7 @@ import { describe } from 'node:test';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CaseDetail } from '../../../../common/src/cams/cases';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-
-const functionContext = require('azure-function-context-mock');
+import { createMockApplicationContext } from '../testing/testing-utilities';
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
@@ -56,11 +54,10 @@ describe('Case management tests', () => {
   let useCase;
 
   beforeAll(async () => {
-    process.env = {
+    applicationContext = await createMockApplicationContext({
       STARTING_MONTH: '-6',
       DATABASE_MOCK: 'true',
-    };
-    applicationContext = await applicationContextCreator(functionContext);
+    });
     useCase = new CaseManagement(applicationContext);
   });
 
@@ -70,7 +67,7 @@ describe('Case management tests', () => {
 
   describe('Case detail tests', () => {
     test('Should return a properly formatted case when a case number is supplied', async () => {
-      const applicationContext = await applicationContextCreator(functionContext);
+      const applicationContext = await createMockApplicationContext();
       const caseId = caseIdWithAssignments;
       const dateFiled = '2018-11-16';
       const closedDate = '2019-06-21';
@@ -102,7 +99,7 @@ describe('Case management tests', () => {
       const caseSummary = MockData.getCaseSummary({ override: { caseId: '000-00-00000' } });
       const officeName = 'OfficeName';
 
-      const context = await applicationContextCreator(functionContext);
+      const context = await createMockApplicationContext();
       jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
       jest.spyOn(useCase.officesGateway, 'getOffice').mockReturnValue(officeName);
 

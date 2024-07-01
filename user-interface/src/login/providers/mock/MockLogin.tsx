@@ -5,42 +5,51 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import { CamsUser } from '@/login/login-library';
-
-type MockRole = {
-  key: string;
-  label: string;
-  user: CamsUser;
-};
-
-const roles: MockRole[] = [
-  { key: 'trial-attorney', label: 'Trial Attorney', user: { name: 'Abe' } },
-  { key: 'paralegal', label: 'Paralegal', user: { name: 'Bert' } },
-  { key: 'aust', label: 'Assistant US Trustee', user: { name: 'Charlie' } },
-];
+import { CamsSession, CamsUser } from '@common/cams/session';
+import { usersWithRole, MockRole } from '../../../../../common/src/cams/mock-role';
+import { getAuthIssuerFromEnv } from '@/login/login-library';
 
 export type MockLoginProps = PropsWithChildren & {
   user: CamsUser | null;
 };
 
-export function MockLogin(props: MockLoginProps): React.ReactNode {
-  const [user, setUser] = useState<CamsUser | null>(null);
+export function MockLogin(props: MockLoginProps) {
+  const [session, setSession] = useState<CamsSession | null>(null);
   const [selectedRole, setSelectedRole] = useState<MockRole | null>(null);
   const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
 
-  function handleRoleSelection(key: string) {
-    setSelectedRole(roles.find((role) => role.key === key)!);
+  function handleRoleSelection(sub: string) {
+    const role = usersWithRole.find((role) => role.sub === sub);
+    if (role) setSelectedRole(role);
   }
 
-  function handleLogin() {
-    if (selectedRole) setUser(selectedRole.user);
+  async function handleLogin() {
+    if (!selectedRole) return;
+    const issuer = getAuthIssuerFromEnv();
+
+    if (!selectedRole || !issuer) return;
+
+    const response = await fetch(issuer, {
+      method: 'POST',
+      body: JSON.stringify({ sub: selectedRole.sub }),
+    });
+    const payload = await response.json();
+    if (!payload) return;
+
+    const newSession: CamsSession = {
+      apiToken: payload.token,
+      user: selectedRole.user,
+      provider: 'mock',
+      validatedClaims: {},
+    };
+    setSession(newSession);
   }
 
   const modalRef = useRef<ModalRefType>(null);
   const modalId = 'login-modal';
 
   useEffect(() => {
-    modalRef.current?.show(!!user);
+    modalRef.current?.show(!!session);
   }, []);
 
   useEffect(() => {
@@ -48,9 +57,14 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
     modalRef.current?.buttons?.current?.disableSubmitButton(submitDisabled);
   }, [selectedRole, submitDisabled]);
 
-  if (user)
+  if (session)
     return (
-      <Session provider="mock" user={user}>
+      <Session
+        provider="mock"
+        user={session.user}
+        apiToken={session.apiToken}
+        validatedClaims={session.validatedClaims}
+      >
         {props.children}
       </Session>
     );
@@ -63,14 +77,14 @@ export function MockLogin(props: MockLoginProps): React.ReactNode {
         heading={'Login'}
         content={
           <RadioGroup label="Choose a role:">
-            {roles.map((role, idx) => {
+            {usersWithRole.map((role, idx) => {
               return (
                 <Radio
                   key={`radio-role-${idx}`}
                   id={`radio-role-${idx}`}
                   name="role"
                   label={role.label}
-                  value={role.key}
+                  value={role.sub}
                   onChange={handleRoleSelection}
                 />
               );

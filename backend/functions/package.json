@@ -27,8 +27,10 @@
     "@azure/identity": "^4.3.0",
     "@azure/keyvault-secrets": "^4.8.0",
     "@launchdarkly/node-server-sdk": "^9.4.6",
+    "@okta/jwt-verifier": "^3.2.2",
     "applicationinsights": "^3.1.0",
     "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
     "mssql": "^10.0.4"
   },
   "overrides": {
@@ -42,13 +44,13 @@
     "prestart": "npm run build",
     "start": "func start --typescript",
     "start:dev": "nodemon --esm src/server.ts",
-    "test": "DATABASE_MOCK='true' jest -c jest.config.js",
+    "test": "MOCK_AUTH='true' DATABASE_MOCK='true' jest -c jest.config.js --detectOpenHandles",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
     "pack": "mkdir -p /tmp/build && zip -q -r /tmp/build/$OUT.zip . --exclude @.funcignore --exclude .funcignore && mv /tmp/build/$OUT.zip .",
-    "coverage": "DATABASE_MOCK='true' jest -c jest.config.js --coverage",
-    "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && DATABASE_MOCK='true' jest -c jest.config.js --coverage",
+    "coverage": "npm test -- --coverage",
+    "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && npm test -- --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_api_${current_time}.svg",
     "dependency-cruiser:ci": "npx depcruise --output-type err-long attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib "
   }

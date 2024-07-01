@@ -2,7 +2,7 @@ import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
 
@@ -14,11 +14,18 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   const controller = new CaseAssociatedController(applicationContext);
+
   try {
+    applicationContext.session =
+      await ContextCreator.getApplicationContextSession(applicationContext);
+
     const responseBody = await controller.getAssociatedCases(applicationContext, {
-      caseId: request.params.caseId,
+      caseId: applicationContext.req.params.caseId,
     });
     functionContext.res = httpSuccess(responseBody);
   } catch (camsError) {

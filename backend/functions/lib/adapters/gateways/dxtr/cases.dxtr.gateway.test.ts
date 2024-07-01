@@ -1,5 +1,4 @@
 import CasesDxtrGateway from './cases.dxtr.gateway';
-import { applicationContextCreator } from '../../utils/application-context-creator';
 import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
 import { CaseDetail } from '../../../../../../common/src/cams/cases';
@@ -9,8 +8,8 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
 import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
 
-const context = require('azure-function-context-mock');
 const dxtrDatabaseName = 'some-database-name';
 
 describe('Test DXTR Gateway', () => {
@@ -23,7 +22,7 @@ describe('Test DXTR Gateway', () => {
     featureFlagSpy.mockImplementation(async () => {
       return {};
     });
-    applicationContext = await applicationContextCreator(context);
+    applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
     testCasesDxtrGateway = new CasesDxtrGateway();
 

@@ -1,7 +1,5 @@
 import { getFeatureFlags } from './feature-flag';
-import { ApplicationConfiguration } from '../../configs/application-configuration';
-
-let config;
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 
 jest.mock('@launchdarkly/node-server-sdk', () => {
   return {
@@ -19,17 +17,10 @@ jest.mock('@launchdarkly/node-server-sdk', () => {
 });
 
 describe('Tests for feature flags', () => {
-  const env = process.env;
-  beforeAll(() => {
-    process.env = {
-      ...env,
-      FEATURE_FLAG_SDK_KEY: 'fake-key',
-    };
-    config = new ApplicationConfiguration();
-  });
-
   test('Should test a known feature flag with known set value', async () => {
-    const flags = await getFeatureFlags(config);
+    const context = await createMockApplicationContext({ FEATURE_FLAG_SDK_KEY: 'fake-key' });
+
+    const flags = await getFeatureFlags(context.config);
     expect(flags['chapter-twelve-enabled']).toEqual(true);
   });
 });

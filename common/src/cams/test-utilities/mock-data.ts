@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { Buffer } from 'buffer';
 import {
   CaseBasics,
   CaseDetail,
@@ -18,6 +19,7 @@ import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import { ConsolidationFrom, ConsolidationTo } from '../events';
 import { CaseAssignment } from '../assignments';
+import { CamsSession } from '../session';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -324,6 +326,31 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
+function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
+  return {
+    user: { name: 'Mock Name' },
+    apiToken: getJwt(),
+    provider: 'mock',
+    validatedClaims: { claimOne: '' },
+    ...override,
+  };
+}
+
+function getJwt(): string {
+  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
+  const ONE_HOUR = 3600;
+
+  const header = '{"typ":"JWT","alg":"HS256"}';
+  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR}}`;
+  const encodedHeader = Buffer.from(header, 'binary').toString('base64');
+  const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
+
+  // The prior implementation of the signature failed decoding by JWT.io and by the `jsonwebtoken` library.
+  // This is a stop gap, valid signature, but not valid for the payload above.
+  const encodedSignature = 'uo8vHLYnkLiN4xHccj8buiaFugq1y4qPRbdJN_dyv_E'; // pragma: allowlist secret
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+}
+
 export const MockData = {
   randomCaseId,
   getAttorneyAssignment,
@@ -343,4 +370,6 @@ export const MockData = {
   getTrialAttorneys,
   getConsolidationHistory,
   getDateBeforeToday,
+  getCamsSession,
+  getJwt,
 };

@@ -3,9 +3,19 @@ import { describe } from 'vitest';
 import { SessionEnd } from './SessionEnd';
 import { BrowserRouter } from 'react-router-dom';
 import * as reactRouter from 'react-router';
-import { LOGIN_PATH } from './login-library';
+import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
+import LocalStorage from '@/lib/utils/local-storage';
 
 describe('SessionEnd', () => {
+  const navigate = vi.fn();
+  const useNavigate = vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {
+    return navigate;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('should render alert', () => {
     render(
       <BrowserRouter>
@@ -16,12 +26,15 @@ describe('SessionEnd', () => {
   });
 
   test('should clear session from local storage', () => {
+    const removeSession = vi.spyOn(LocalStorage, 'removeSession');
+    const removeAck = vi.spyOn(LocalStorage, 'removeAck');
     render(
       <BrowserRouter>
         <SessionEnd></SessionEnd>
       </BrowserRouter>,
     );
-    // TODO: Write the rest of this test.
+    expect(removeSession).toHaveBeenCalled();
+    expect(removeAck).toHaveBeenCalled();
   });
 
   test('should change the path to /session-end', () => {
@@ -30,14 +43,11 @@ describe('SessionEnd', () => {
         <SessionEnd></SessionEnd>
       </BrowserRouter>,
     );
-    // TODO: Write the rest of this test.
+    expect(useNavigate).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(LOGOUT_SESSION_END_PATH);
   });
 
   test('should allow the user to redirect to login', () => {
-    const navigate = vi.fn();
-    const useNavigate = vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {
-      return navigate;
-    });
     render(
       <BrowserRouter>
         <SessionEnd></SessionEnd>

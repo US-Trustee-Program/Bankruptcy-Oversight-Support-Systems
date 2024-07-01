@@ -2,8 +2,6 @@ import httpTrigger from './orders-suggestions.function';
 import { CASE_SUMMARIES } from '../lib/testing/mock-data/case-summaries.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
 
-const context = require('azure-function-context-mock');
-
 let getSuggestedCases;
 
 jest.mock('../lib/controllers/orders/orders.controller', () => {
@@ -17,6 +15,8 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 });
 
 describe('Orders suggestions function tests', () => {
+  const context = require('azure-function-context-mock');
+
   test('should return a list of suggested cases', async () => {
     getSuggestedCases = jest.fn().mockImplementation(() => {
       return Promise.resolve({ success: true, body: CASE_SUMMARIES });
@@ -28,9 +28,6 @@ describe('Orders suggestions function tests', () => {
     const expectedResponseBody = {
       success: true,
       body: CASE_SUMMARIES,
-    };
-    process.env = {
-      DATABASE_MOCK: 'true',
     };
     await httpTrigger(context, request);
     expect(context.res.body).toEqual(expectedResponseBody);

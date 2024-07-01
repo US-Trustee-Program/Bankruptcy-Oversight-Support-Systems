@@ -1,4 +1,3 @@
-import './CaseDetailScreen.scss';
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import {
@@ -33,6 +32,7 @@ import AttorneysApi from '@/lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
 import CamsSelectMulti from '@/lib/components/CamsSelectMulti';
+import './CaseDetailScreen.scss';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));

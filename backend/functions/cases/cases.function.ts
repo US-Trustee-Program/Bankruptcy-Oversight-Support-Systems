@@ -2,8 +2,8 @@ import * as dotenv from 'dotenv';
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
-import { CamsError } from '../lib/common-errors/cams-error';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { isCamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { CaseDetailsDbResult } from '../lib/adapters/types/cases';
 import { initializeApplicationInsights } from '../azure/app-insights';
@@ -21,12 +21,18 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   const casesController = new CasesController(applicationContext);
 
   type SearchResults = ResponseBody<CaseBasics[]>;
 
   try {
+    applicationContext.session =
+      await ContextCreator.getApplicationContextSession(applicationContext);
+
     let responseBody: CaseDetailsDbResult | SearchResults;
 
     if (request.method === 'GET' && request.params.caseId) {
@@ -40,10 +46,9 @@ const httpTrigger: AzureFunction = async function (
 
     functionContext.res = httpSuccess(responseBody);
   } catch (originalError) {
-    const error =
-      originalError instanceof CamsError
-        ? originalError
-        : new UnknownError(MODULE_NAME, { originalError });
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
     functionContext.res = httpError(error);
   }

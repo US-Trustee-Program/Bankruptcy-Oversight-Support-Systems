@@ -44,6 +44,7 @@ export default function DataVerificationScreen() {
   });
 
   const regionNumber = '02';
+
   const api = useApi2();
 
   async function getOrders() {
