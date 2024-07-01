@@ -3,13 +3,16 @@ import { AuthorizationConfig } from '../adapters/types/authorization';
 
 dotenv.config();
 
+const doMockAuth = process.env.MOCK_AUTH === 'true';
 const issuer = URL.canParse(process.env.AUTH_ISSUER) ? process.env.AUTH_ISSUER : null;
-const authorizationConfig = {
-  issuer,
-  audience: getAudienceFromIssuer(issuer),
-  provider: getProviderFromIssuer(issuer),
-  userInfoUri: getUserInfoUriFromIssuer(issuer),
-} as const;
+const authorizationConfig = doMockAuth
+  ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null } as const)
+  : ({
+      issuer,
+      audience: getAudienceFromIssuer(issuer),
+      provider: getProviderFromIssuer(issuer),
+      userInfoUri: getUserInfoUriFromIssuer(issuer),
+    } as const);
 
 export function getAuthorizationConfig(): AuthorizationConfig {
   return authorizationConfig;
@@ -17,9 +20,6 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 
 function getProviderFromIssuer(issuer: string) {
   if (!issuer) return null;
-
-  const mockIssuer = process.env.CAMS_MOCK_LOGIN_ISSUER;
-  if (mockIssuer.includes(issuer)) return 'mock';
 
   const issuerHost = new URL(issuer).hostname;
   const domainParts = issuerHost.split('.');

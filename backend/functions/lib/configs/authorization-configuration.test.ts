@@ -2,7 +2,7 @@ describe('Authorization config tests', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    process.env = { ...process.env, AUTH_ISSUER: undefined };
+    process.env = { ...process.env, AUTH_ISSUER: undefined, MOCK_AUTH: 'false' };
   });
 
   afterAll(() => {
@@ -76,5 +76,18 @@ describe('Authorization config tests', () => {
     expect(config.audience).toBeNull();
     expect(config.issuer).toBeNull();
     expect(config.provider).toBeNull();
+  });
+
+  test('should get mock config if MOCK_AUTH is true', () => {
+    process.env.MOCK_AUTH = 'true';
+
+    let configModule;
+    jest.isolateModules(() => {
+      configModule = require('./authorization-configuration');
+    });
+    const config = configModule.getAuthorizationConfig();
+    expect(config.audience).toBeNull();
+    expect(config.issuer).toBeNull();
+    expect(config.provider).toEqual('mock');
   });
 });
