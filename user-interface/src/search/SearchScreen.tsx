@@ -93,17 +93,31 @@ export default function SearchScreen() {
     setSearchPredicate(newPredicate);
   }
 
-  function handleChapterSelection(selection: ComboOption[]) {
-    const newPredicate = {
-      ...searchPredicate,
-    };
-    delete newPredicate.chapters;
+  function handleChapterSelection(selections: ComboOption[]) {
+    let performSearch = false;
 
-    if (selection.length) {
-      newPredicate.chapters = selection.map((option: ComboOption) => option.value);
+    if (searchPredicate.chapters && searchPredicate.chapters.length == selections.length) {
+      selections.forEach((chapter) => {
+        if (searchPredicate.chapters && !searchPredicate.chapters.includes(chapter.value)) {
+          performSearch = true;
+        }
+      });
+    } else {
+      performSearch = true;
     }
 
-    setSearchPredicate(newPredicate);
+    if (performSearch) {
+      const newPredicate = {
+        ...searchPredicate,
+      };
+      delete newPredicate.chapters;
+
+      if (selections.length) {
+        newPredicate.chapters = selections.map((option: ComboOption) => option.value);
+      }
+
+      setSearchPredicate(newPredicate);
+    }
   }
 
   useEffect(() => {
@@ -111,7 +125,7 @@ export default function SearchScreen() {
     getChapters();
   }, []);
 
-  useEffect(() => {}, [searchPredicate]);
+  //useEffect(() => {}, [searchPredicate]);
 
   return (
     <div className="search-screen" data-testid="search">
