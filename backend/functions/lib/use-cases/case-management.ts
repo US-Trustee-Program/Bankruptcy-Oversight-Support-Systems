@@ -5,7 +5,7 @@ import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../facto
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
-import { CamsError } from '../common-errors/cams-error';
+import { isCamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
 import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 import { CasesRepository } from './gateways.types';
@@ -39,7 +39,7 @@ export class CaseManagement {
       const cases = await this.casesGateway.searchCases(context, predicate);
       return cases;
     } catch (originalError) {
-      if (!(originalError instanceof CamsError)) {
+      if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {
           message:
             'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',

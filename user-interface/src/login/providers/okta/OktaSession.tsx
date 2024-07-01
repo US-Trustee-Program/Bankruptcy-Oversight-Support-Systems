@@ -1,6 +1,6 @@
+import { CamsUser } from '@common/cams/session';
 import { AccessDenied } from '@/login/AccessDenied';
 import { Interstitial } from '@/login/Interstitial';
-import { CamsUser } from '@/login/login-library';
 import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
@@ -59,9 +59,19 @@ export function OktaSession(props: OktaSessionProps) {
   const camsUser: CamsUser = {
     name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN',
   };
+  const apiToken = oktaAuth.getAccessToken();
+
+  if (!apiToken) {
+    return <AccessDenied />;
+  }
 
   return (
-    <Session provider="okta" user={camsUser}>
+    <Session
+      provider="okta"
+      user={camsUser}
+      apiToken={apiToken}
+      validatedClaims={authState?.accessToken?.claims ?? {}}
+    >
       {props.children}
     </Session>
   );

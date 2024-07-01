@@ -34,21 +34,11 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
-import { CaseAssignment } from '@common/cams/assignments';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 
 const genericErrorMessage =
   'An unknown error has occurred and has been logged.  Please try again later.';
-
-export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
-  if (caseAssignments.length && caseAssignments[0].name) {
-    return caseAssignments.map((assignment) => assignment.name);
-  } else {
-    return [];
-  }
-}
 
 export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {
   const divisionCodeSet = cases.reduce((set, bCase) => {

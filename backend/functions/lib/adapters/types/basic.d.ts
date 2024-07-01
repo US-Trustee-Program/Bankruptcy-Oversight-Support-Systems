@@ -1,13 +1,7 @@
 import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { Context } from '@azure/functions';
-import { IDbConfig } from './database';
 import { CamsError } from '../../common-errors/cams-error';
-
-export interface AppConfig {
-  dbMock: boolean;
-  dxtrDbConfig: IDbConfig;
-  server: ServerType;
-}
+import { CamsSession } from '../../../../../common/src/cams/session';
 
 export interface LoggerHelper {
   debug: (moduleName: string, message: string, data?: unknown) => void;
@@ -22,6 +16,7 @@ export interface ApplicationContext extends Context {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
   logger: LoggerHelper;
+  session?: CamsSession;
 }
 
 export interface ObjectKeyVal {

@@ -1,9 +1,7 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { applicationContextCreator } from '../adapters/utils/application-context-creator';
 import { CaseAssignmentUseCase } from './case.assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
-
-const functionContext = require('azure-function-context-mock');
+import { createMockApplicationContext } from '../testing/testing-utilities';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -30,11 +28,9 @@ jest.mock('../adapters/gateways/case.assignment.cosmosdb.repository', () => {
 describe('Case assignment tests', () => {
   let applicationContext: ApplicationContext;
   beforeEach(async () => {
-    applicationContext = await applicationContextCreator(functionContext);
-    process.env = {
+    applicationContext = await createMockApplicationContext({
       STARTING_MONTH: '-6',
-      DATABASE_MOCK: 'true',
-    };
+    });
   });
 
   describe('findAssignmentsByCaseId', () => {

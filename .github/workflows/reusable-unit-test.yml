@@ -31,4 +31,5 @@ jobs:
       - name: Run unit tests with code coverage
         run: |
           npm ci
-          npm run coverage:ci
+
+          export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}' && npm run coverage:ci

@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
 import { getCaseDocketUseCase } from '../../factory';
 import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
-import { CamsError } from '../../common-errors/cams-error';
+import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsResponse } from '../controller-types';
 
@@ -32,7 +32,7 @@ export class CaseDocketController {
         body: caseDocket,
       };
     } catch (originalError) {
-      throw originalError instanceof CamsError
+      throw isCamsError(originalError)
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     }

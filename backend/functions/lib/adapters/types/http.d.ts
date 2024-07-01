@@ -7,14 +7,6 @@ export interface ApiResponse {
   body: object;
 }
 
-export interface HttpResponse extends Response {
-  data: {
-    content?: [];
-    status?: number;
-  };
-  status: number;
-}
-
 type CamsDict = { [name: string]: string };
 export type CamsHttpRequest<B = unknown> = {
   method: 'GET' | 'POST' | 'DELETE' | 'HEAD' | 'PATCH' | 'PUT' | 'OPTIONS' | 'TRACE' | 'CONNECT';

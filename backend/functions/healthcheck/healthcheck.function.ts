@@ -1,4 +1,4 @@
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
@@ -12,11 +12,14 @@ const MODULE_NAME = 'HEALTHCHECK';
 
 const httpTrigger: AzureFunction = async function (
   functionContext: Context,
-  _req: HttpRequest,
+  request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
-  const healthchechSqlDbClient = new HealthcheckSqlDb(applicationContext);
+  const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);
 
   applicationContext.logger.debug(MODULE_NAME, 'Health check endpoint invoked');
 
@@ -26,7 +29,7 @@ const httpTrigger: AzureFunction = async function (
   applicationContext.logger.debug(MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
   const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
 
-  const checkSqlDbReadAccess = await healthchechSqlDbClient.checkDxtrDbRead();
+  const checkSqlDbReadAccess = await healthCheckSqlDbClient.checkDxtrDbRead();
   applicationContext.logger.debug(
     MODULE_NAME,
     'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,

@@ -1,9 +1,8 @@
 import { buildResponseBodySuccess, ResponseBodySuccess } from '../../../common/src/api/response';
 import { CaseBasics } from '../../../common/src/cams/cases';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
+import { createMockAzureFunctionRequest } from '../azure/functions';
 import httpTrigger from './cases.function';
-
-const context = require('azure-function-context-mock');
 
 const searchCasesResults = [MockData.getCaseBasics(), MockData.getCaseBasics()];
 
@@ -67,19 +66,33 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
 });
 
 describe('Standard case list tests without class mocks', () => {
-  beforeEach(() => {
+  const request = createMockAzureFunctionRequest({
+    query: {},
+    params: {
+      caseId: '',
+    },
+  });
+  const originalEnv = process.env;
+  const context = require('azure-function-context-mock');
+
+  beforeAll(() => {
     process.env = {
+      ...process.env,
       FEATURE_FLAG_SDK_KEY: undefined,
     };
   });
 
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
   test('Should return 1 case when called with a caseId', async () => {
     const caseId = '081-11-06541';
-    const request = {
+    const requestOverride = {
+      ...request,
       params: {
         caseId,
       },
-      method: 'GET',
     };
 
     const expectedResponseBody = {
@@ -95,24 +108,24 @@ describe('Standard case list tests without class mocks', () => {
       },
     };
 
-    await httpTrigger(context, request);
+    await httpTrigger(context, requestOverride);
 
     expect(expectedResponseBody).toEqual(context.res.body);
   });
 
   test('should perform search', async () => {
     const caseNumber = '00-12345';
-    const request = {
+    const requestOverride = {
+      ...request,
       params: {},
       query: {
         caseNumber,
       },
-      method: 'GET',
     };
 
     const expectedResponseBody = buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
 
-    await httpTrigger(context, request);
+    await httpTrigger(context, requestOverride);
 
     expect(context.res.body).toEqual(expectedResponseBody);
   });

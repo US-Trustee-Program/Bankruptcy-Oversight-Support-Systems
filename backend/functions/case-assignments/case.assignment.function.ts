@@ -1,10 +1,10 @@
 import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { isCamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import { applicationContextCreator } from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
@@ -15,8 +15,14 @@ const httpTrigger: AzureFunction = async function (
   functionContext: Context,
   request: HttpRequest,
 ): Promise<void> {
-  const applicationContext = await applicationContextCreator(functionContext);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   try {
+    applicationContext.session =
+      await ContextCreator.getApplicationContextSession(applicationContext);
+
     if (request.method === 'POST') {
       const listOfAttorneyNames = request.body.attorneyList;
       const role = request.body.role;
@@ -26,10 +32,9 @@ const httpTrigger: AzureFunction = async function (
     }
     functionContext.res = applicationContext.res;
   } catch (originalError) {
-    const error =
-      originalError instanceof CamsError
-        ? originalError
-        : new UnknownError(MODULE_NAME, { originalError });
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
     functionContext.res = httpError(error);
   }

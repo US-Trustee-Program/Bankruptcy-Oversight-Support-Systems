@@ -33,6 +33,14 @@ import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repo
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
+import { OpenIdConnectGateway } from './adapters/types/authorization';
+import OktaGateway from './adapters/gateways/okta/okta-gateway';
+import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
+import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
+import { SessionCache } from './adapters/utils/sessionCache';
+import { UserSessionGateway } from './adapters/gateways/user-session.gateway';
+import { MockUserSessionGateway } from './testing/mock-gateways/mock-user-session-gateway';
+import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -133,4 +141,23 @@ export const getCosmosDbCrudRepository = <T>(
   moduleName: string,
 ): DocumentRepository<T> => {
   return new CosmosDbRepository<T>(context, containerName, moduleName);
+};
+
+export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway => {
+  if (provider === 'okta') return OktaGateway;
+  if (provider === 'mock') return MockOpenIdConnectGateway;
+  return null;
+};
+
+export const getUserSessionGateway = (context: ApplicationContext): SessionCache => {
+  if (context.config.mockAuth) {
+    return new MockUserSessionGateway();
+  }
+  return new UserSessionGateway();
+};
+
+export const getUserSessionCacheRepository = (
+  context: ApplicationContext,
+): UserSessionCacheRepository => {
+  return new UserSessionCacheCosmosDbRepository(context);
 };

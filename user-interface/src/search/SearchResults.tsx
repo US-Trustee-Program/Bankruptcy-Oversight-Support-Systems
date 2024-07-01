@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { isResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
 import {
@@ -11,9 +13,7 @@ import {
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { useEffect, useState } from 'react';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';

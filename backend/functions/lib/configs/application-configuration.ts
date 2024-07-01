@@ -1,15 +1,16 @@
 import * as dotenv from 'dotenv';
-import { ServerType, AppConfig } from '../adapters/types/basic';
+import { ServerType } from '../adapters/types/basic';
 import { CosmosConfig, IDbConfig } from '../adapters/types/database';
 
 dotenv.config();
 
-export class ApplicationConfiguration implements AppConfig {
+export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly cosmosConfig: CosmosConfig;
   public readonly featureFlagKey: string;
+  public readonly mockAuth: boolean;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -17,6 +18,7 @@ export class ApplicationConfiguration implements AppConfig {
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.cosmosConfig = this.getCosmosConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
+    this.mockAuth = !!process.env.MOCK_AUTH;
   }
 
   private getAppServerConfig(): ServerType {
