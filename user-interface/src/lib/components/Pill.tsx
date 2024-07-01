@@ -44,6 +44,7 @@ export function Pill(props: PillProps) {
       tabIndex={0}
       aria-label={`${props.ariaLabelPrefix} - ${props.label} is currently selected.`}
       disabled={props.disabled}
+      data-value={props.value}
     >
       {props.label}
       <Icon name="close"></Icon>
