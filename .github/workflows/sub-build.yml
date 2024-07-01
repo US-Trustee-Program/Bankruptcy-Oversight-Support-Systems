@@ -30,6 +30,9 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
+      mockIssuer:
+        required: false
+        type: string
 
 jobs:
   frontend:
@@ -106,6 +109,10 @@ jobs:
           popd
 
           npm ci
+          if [[ ${{ inputs.mockIssuer == ''}} ]]; then
+            export CAMS_MOCK_LOGIN_ISSUER=${{ inputs.mockIssuer }}
+          fi
+
           npm run build
 
       - name: Package Application

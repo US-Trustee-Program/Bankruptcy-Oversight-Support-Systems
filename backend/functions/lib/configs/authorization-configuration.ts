@@ -18,11 +18,8 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 function getProviderFromIssuer(issuer: string) {
   if (!issuer) return null;
 
-  const mockIssuers = [
-    'http://localhost:7071/api/oauth2/default',
-    'https://ustp-cams-node-api.azurewebsites.us/api/oauth2/default',
-  ];
-  if (mockIssuers.includes(issuer)) return 'mock';
+  const mockIssuer = process.env.CAMS_MOCK_LOGIN_ISSUER;
+  if (mockIssuer.includes(issuer)) return 'mock';
 
   const issuerHost = new URL(issuer).hostname;
   const domainParts = issuerHost.split('.');
