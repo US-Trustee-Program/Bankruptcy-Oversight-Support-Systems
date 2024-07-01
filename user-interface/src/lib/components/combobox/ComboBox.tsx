@@ -76,10 +76,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== MISC FUNCTIONS ==========
 
-  function clearAll() {
-    setSelections([]);
-  }
-
   function clearFilter() {
     if (filterRef.current) filterRef.current.value = '';
     filterDropdown('');
@@ -184,6 +180,19 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== HANDLERS ==========
 
+  function handleClearAllClick() {
+    setSelections([]);
+    if (props.onUpdateSelection) {
+      props.onUpdateSelection([]);
+    }
+  }
+
+  function handleClearAllKeyDown(ev: React.KeyboardEvent) {
+    if (ev.key === 'Enter') {
+      handleClearAllClick();
+    }
+  }
+
   function handleDropdownItemSelection(option: ComboOption) {
     let newSelections: ComboOption[] = [];
     let removed = false;
@@ -215,7 +224,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (onUpdateFilter) onUpdateFilter(ev.target.value);
   }
 
-  function handleKeyDown(ev: React.KeyboardEvent, index: number, _option?: ComboOption) {
+  function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
     const list = document.querySelector(`#${props.id} .item-list-container ul`);
     const input = filterRef.current;
 
@@ -228,16 +237,21 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           } else {
             if (list && index < filteredOptions.length) {
               while (
+                list.children[index] &&
                 list.children[index].classList.contains('hidden') &&
                 index < filteredOptions.length
               ) {
                 ++index;
               }
             }
-            const button = list?.children[index].querySelector('button');
-            if (list && button) {
-              focusAndHandleScroll(ev, button);
-              ev.preventDefault();
+            if (index === filteredOptions.length) {
+              closeDropdown(false);
+            } else {
+              const button = list?.children[index].querySelector('button');
+              if (list && button) {
+                focusAndHandleScroll(ev, button);
+                ev.preventDefault();
+              }
             }
           }
         } else {
@@ -280,6 +294,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         } else if (index === 0) {
           const button = list?.children[list.children.length - 1].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
+        }
+        break;
+      case 'Enter':
+        if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
+          handleDropdownItemSelection(option as ComboOption);
         }
         break;
     }
@@ -326,6 +345,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setFilteredOptions(props.options);
   }, [props.options]);
 
+  useEffect(() => {
+    console.log('=============== SELECTIONS CHANGED!!!');
+    if (props.onUpdateSelection) {
+      props.onUpdateSelection([]);
+    }
+  }, [selections]);
+
   useImperativeHandle(ref, () => ({ getValue, disable }));
 
   // ========== JSX ==========
@@ -351,7 +377,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             <Button
               className="pill-clear-button"
               uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={clearAll}
+              onClick={handleClearAllClick}
+              onKeyDown={handleClearAllKeyDown}
               aria-label="clear all selections"
               disabled={inputDisabled}
             >
