@@ -21,8 +21,8 @@ function getProviderFromIssuer(issuer: string) {
   const mockIssuers = [
     'http://localhost:7071/api/oauth2/default',
     'https://ustp-cams-stg-node-api.azurewebsites.us/api/oauth2/default',
+    'https://ustp-cams-prd-node-api.azurewebsites.us/api/oauth2/default',
     'https://ustp-cams-node-api.azurewebsites.us/api/oauth2/default',
-    'https://ustp-cams-dev-e0baaf-node-api.azurewebsites.us/api/oauth2/default',
   ];
   if (mockIssuers.includes(issuer)) return 'mock';
 
