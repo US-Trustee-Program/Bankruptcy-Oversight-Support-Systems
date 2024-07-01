@@ -43,6 +43,7 @@ param functionSubnetId string
 
 param privateEndpointSubnetId string
 
+
 @description('Azure functions runtime environment')
 @allowed([
   'java'
@@ -61,6 +62,9 @@ var linuxFxVersionMap = {
 param loginProviderConfig string
 
 param loginProvider string
+
+@description('Is ustp deployment')
+param ustpDeployment bool
 
 @description('Azure functions version')
 param functionsVersion string = '~4'
@@ -82,6 +86,9 @@ param sqlServerIdentityResourceGroupName string = ''
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
+@description('Resource group name of the app config KeyVault')
+param kvAppConfigName string
+
 param sqlServerName string = ''
 
 @description('Flag to enable Vercode access')
@@ -94,6 +101,13 @@ param idKeyvaultAppConfiguration string
 @description('Name of the managed identity with read/write access to CosmosDB')
 @secure()
 param cosmosIdentityName string
+
+param cosmosAccountName string
+
+param cosmosDatabaseName string
+
+@description('Hash of Git commit for the changes deployed')
+param infoSha string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -280,10 +294,57 @@ var applicationSettings = concat(
       name: 'CAMS_LOGIN_PROVIDER'
       value: loginProvider
     }
+    {
+      name: 'STARTING_MONTH'
+      value: '-70'
+    }
+    {
+      name: 'COSMOS_ENDPOINT'
+      value: 'https://${cosmosAccountName}.documents.azure.us:443/'
+    }
+    {
+      name: 'COSMOS_DATABASE_NAME'
+      value: cosmosDatabaseName
+    }
+    {
+      name: 'COSMOS_MANAGED_IDENTITY'
+      value: cosmosIdentity.id
+    }
+    {
+      name: 'INFO_SHA'
+      value: infoSha
+    }
+    {
+      name: 'MSSQL_HOST'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
+    }
+    {
+      name: 'MSSQL_DATABASE_DXTR'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
+    }
+    {
+      name: 'MSSQL_CLIENT_ID'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+    }
+    {
+      name: 'MSSQL_ENCRYPT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
+    }
+    {
+      name: 'MSSQL_TRUST_UNSIGNED_CERT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
+    }
+    {
+      name: 'FEATURE_FLAG_SDK_KEY'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
+    }
   ],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
-    : []
+    : [],
+  ustpDeployment
+    ? [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }, { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL_PASS)' }]
+    : [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
 )
 
 var ipSecurityRestrictionsRules = concat(
