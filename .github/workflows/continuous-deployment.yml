@@ -178,6 +178,7 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
+      mockAuth: ${{ vars.MOCK_AUTH }}
     secrets: inherit # pragma: allowlist secret
 
   initial-slot-resource-deployment: ##setup slot resources on initial deployment

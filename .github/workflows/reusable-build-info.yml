@@ -67,7 +67,6 @@ jobs:
       slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-      mockIssuer: ${{ steps.build-info.outputs.mockIssuer }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -116,9 +115,6 @@ jobs:
           execVnetDeploy=${{ inputs.deployVnet=='true' || 'false' }} # Set to true to attempt to create a new virtual network
           echo "Execute virtual network deployment: ${execVnetDeploy}"
 
-
-
-
           # Expected job output values
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
@@ -128,13 +124,6 @@ jobs:
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
           echo "slotDeploymentEnabled=${{ inputs.enableSlotDeployment != 'false' }}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
-
-          # Set Mock Issuer URL
-          mockIssuer=''
-          if [[ ${{vars.CAMS_LOGIN_PROVIDER == 'mock'}} ]]; then
-            mockIssuer=https://${apiName}.azurewebsites.us/api/oauth2/default
-          fi
-          echo "mockIssuer=${mockIssuer}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
