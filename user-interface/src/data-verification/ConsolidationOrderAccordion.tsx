@@ -48,6 +48,9 @@ export interface ConsolidationOrderAccordionProps {
   hidden?: boolean;
 }
 
+type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
+type PreviousConsolidationFacts = { isAlreadyConsolidated: boolean; childCase?: CaseSummary };
+
 export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionProps) {
   // TODO: remove this explicit use of useConsolidationStoreImpl
   const consolidationStore: ConsolidationStore = useConsolidationStoreReact(props, []);
@@ -63,12 +66,18 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   //========== HANDLERS ==========
   // TODO: move more stuff into the use case
   function handleApproveButtonClick() {
-    consolidationControls.confirmationModalRef.current?.show({
-      status: 'approved',
-      cases: consolidationStore.selectedCases,
-      leadCase: consolidationStore.leadCase,
-      consolidationType: consolidationStore.consolidationType,
-    });
+    // TODO: modify this to match signature when it changes
+    // const params: ShowOptionParams = {
+    //   status: 'approved',
+    //   cases: consolidationStore.selectedCases,
+    //   leadCase: consolidationStore.leadCase!,
+    //   consolidationType: consolidationStore.consolidationType!,
+    // };
+    // consolidationControls.confirmationModalRef.current?.show(params);
+    consolidationControls.showConfirmationModal(
+      consolidationStore.selectedCases!,
+      consolidationStore.leadCase!,
+    );
   }
 
   function handleClearInputs(): void {
@@ -207,36 +216,36 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
             .getCaseAssociations(caseSummary.caseId)
             .then((response) => {
               const associations = response.data;
-              type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
-              const childCaseFacts = associations
+              const childCaseFactsList = associations
                 .filter((reference) => reference.caseId === caseSummary.caseId)
-                .reduce(
-                  (acc: ChildCaseFacts, reference) => {
-                    if (reference.documentType === 'CONSOLIDATION_TO') {
-                      acc.isConsolidationChildCase = true;
-                      acc.leadCase = reference.otherCase;
-                    }
-                    return acc || reference.documentType === 'CONSOLIDATION_TO';
-                  },
-                  { isConsolidationChildCase: false },
-                );
+                .filter((reference) => reference.consolidationType === 'CONSOLIDATION_TO')
+                .map((reference) => {
+                  return {
+                    isConsolidationChildCase: true,
+                    leadCase: reference.otherCase,
+                  } as ChildCaseFacts;
+                });
+              if (childCaseFactsList.length > 1) {
+                throw new Error('Case is improperly consolidated to multiple leads.');
+              }
+              const childCaseFacts: ChildCaseFacts =
+                childCaseFactsList.length === 1
+                  ? childCaseFactsList[0]
+                  : { isConsolidationChildCase: false };
 
-              type PreviousConsolidationFacts = {
-                isAlreadyConsolidated: boolean;
-                leadCase?: CaseSummary;
-              };
-              const previousConsolidationFacts = associations
+              const previousConsolidationFactsList = associations
                 .filter((reference) => reference.caseId === caseSummary.caseId)
-                .reduce(
-                  (acc: PreviousConsolidationFacts, reference) => {
-                    if (reference.documentType === 'CONSOLIDATION_FROM') {
-                      acc.isAlreadyConsolidated = true;
-                      acc.leadCase = reference.otherCase;
-                    }
-                    return acc || reference.documentType === 'CONSOLIDATION_FROM';
-                  },
-                  { isAlreadyConsolidated: false },
-                );
+                .filter((reference) => reference.consolidationType === 'CONSOLIDATION_FROM')
+                .map((reference) => {
+                  return {
+                    isAlreadyConsolidated: true,
+                    childCase: reference.otherCase,
+                  } as PreviousConsolidationFacts;
+                });
+              const previousConsolidationFacts: PreviousConsolidationFacts =
+                previousConsolidationFactsList.length > 0
+                  ? previousConsolidationFactsList[0]
+                  : { isAlreadyConsolidated: false };
 
               if (childCaseFacts.isConsolidationChildCase) {
                 const message =
@@ -346,7 +355,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
       const data: ConsolidationOrderActionRejection = {
         ...consolidationStore.order,
         rejectedCases: consolidationStore.selectedCases.map((bCase) => bCase.caseId),
-        reason: action.rejectionReason,
+        reason: action.rejectionReason ?? '',
       };
 
       consolidationStore.setIsProcessing(true);
