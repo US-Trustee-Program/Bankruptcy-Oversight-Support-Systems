@@ -134,6 +134,7 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      loginProviderConfig: ${{ needs.setup.outputs.loginProviderConfig }}
 
   deploy:
     name: Cloud Resource Deployment
@@ -178,7 +179,6 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       cosmosDbClientId: ${{ needs.deploy.outputs.cosmosDbClientId }}
       cosmosDbPrincipalId: ${{ needs.deploy.outputs.cosmosDbPrincipalId }}
-      mockAuth: ${{ vars.MOCK_AUTH }}
     secrets: inherit # pragma: allowlist secret
 
   initial-slot-resource-deployment: ##setup slot resources on initial deployment

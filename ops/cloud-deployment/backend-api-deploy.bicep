@@ -58,8 +58,9 @@ var linuxFxVersionMap = {
   node: 'NODE|20'
 }
 
-@description('Authentication Issuer URL')
-param issuer string
+param loginProviderConfig string
+
+param loginProvider string
 
 @description('Azure functions version')
 param functionsVersion string = '~4'
@@ -272,8 +273,12 @@ var applicationSettings = concat(
       value: functionsRuntime
     }
     {
-      name: 'AUTH_ISSUER'
-      value: issuer
+      name: 'AUTH_CONFIG'
+      value: loginProviderConfig
+    }
+    {
+      name: 'AUTH_PROVIDER'
+      value: loginProvider
     }
   ],
   createApplicationInsights

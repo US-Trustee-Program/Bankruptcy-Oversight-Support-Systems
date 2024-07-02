@@ -110,8 +110,7 @@ jobs:
           COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ inputs.cosmosDbClientId }} \
-          INFO_SHA=${{ github.sha }} \
-          MOCK_AUTH=${{ inputs.mockAuth }}" \
+          INFO_SHA=${{ github.sha }}" \
           --identities "${{ inputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
@@ -129,8 +128,7 @@ jobs:
           COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
           COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           COSMOS_MANAGED_IDENTITY=${{ inputs.cosmosDbClientId }} \
-          INFO_SHA=${{ github.sha }} \
-          MOCK_AUTH=${{ inputs.mockAuth }}" \
+          INFO_SHA=${{ github.sha }}" \
           --identities "${{ inputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 

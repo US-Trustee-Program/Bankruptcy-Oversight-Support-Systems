@@ -30,7 +30,9 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-
+      loginProviderConfig:
+        required: true
+        type: string
 jobs:
   frontend:
     defaults:
@@ -53,13 +55,6 @@ jobs:
           pushd ../common
           npm ci
           popd
-          provider=${{ vars.CAMS_LOGIN_PROVIDER }}
-
-          if [[ ${provider} == 'okta' ]]; then
-            CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://${{ vars.OKTA_URL }}/oauth2/default", "clientId": "${{ vars.OKTA_CLIENT_ID }}", "redirectUri": "https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"}'
-          else
-            CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/oauth2/default", "clientId": "", "redirectUri": "https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}"}'
-          fi
 
           npm ci
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
@@ -70,7 +65,7 @@ jobs:
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
           export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
-          export CAMS_LOGIN_PROVIDER_CONFIG=$CAMS_LOGIN_PROVIDER_CONFIG
+          export CAMS_LOGIN_PROVIDER_CONFIG=${{ inputs.loginProviderConfig }}
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
 

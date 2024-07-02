@@ -1,10 +1,24 @@
 import * as dotenv from 'dotenv';
 import { AuthorizationConfig } from '../adapters/types/authorization';
+import { EnvLoginConfig } from '../../../../common/src/cams/login';
 
 dotenv.config();
 
-const doMockAuth = process.env.MOCK_AUTH === 'true';
-const issuer = URL.canParse(process.env.AUTH_ISSUER) ? process.env.AUTH_ISSUER : null;
+function safeParseConfig(configJson: string): EnvLoginConfig {
+  try {
+    return JSON.parse(configJson) as EnvLoginConfig;
+  } catch {
+    return {} as EnvLoginConfig;
+  }
+}
+
+const doMockAuth = process.env.CAMS_LOGIN_PROVIDER === 'mock';
+const config = doMockAuth
+  ? ({} as EnvLoginConfig)
+  : safeParseConfig(process.env.CAMS_LOGIN_PROVIDER_CONFIG);
+
+const issuer = URL.canParse(config.issuer) ? config.issuer : null;
+
 const authorizationConfig = doMockAuth
   ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null } as const)
   : ({
