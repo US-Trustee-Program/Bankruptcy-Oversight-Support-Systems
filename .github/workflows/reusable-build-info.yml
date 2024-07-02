@@ -130,7 +130,7 @@ jobs:
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
           # Set Login Provider Config
-          loginProviderConfig=$(./ops/scripts/pipeline/set-login-provider.sh ${{ vars.CAMS_LOGIN_PROVIDER }} ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }} ${apiName})
+          loginProviderConfig=$(./ops/scripts/pipeline/set-login-provider-config.sh ${{ vars.CAMS_LOGIN_PROVIDER }} ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }} ${apiName})
           echo "loginProviderConfig=$loginProviderConfig" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
