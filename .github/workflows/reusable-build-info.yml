@@ -142,8 +142,8 @@ jobs:
             loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
           fi
 
-          echo "Login Provider Config: ${loginProviderConfig}"
-          echo "loginProviderConfig=${loginProviderConfig}" >> $GITHUB_OUTPUT
+          echo "Login Provider Config: $loginProviderConfig"
+          echo "loginProviderConfig=$loginProviderConfig" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
