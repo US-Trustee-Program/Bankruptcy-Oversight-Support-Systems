@@ -39,9 +39,6 @@ on:
       deployBicep:
         required: true
         type: string
-      loginProviderConfig:
-        required: true
-        type: string
     outputs:
       cosmosDbClientId:
         description: "CosmosDB Principal ID"
@@ -68,7 +65,6 @@ jobs:
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
-      loginProviderConfig: ${{ inputs.loginProviderConfig }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-db:
