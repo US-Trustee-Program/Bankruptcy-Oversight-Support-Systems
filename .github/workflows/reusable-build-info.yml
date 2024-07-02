@@ -138,8 +138,6 @@ jobs:
             echo "loginProviderConfig='${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}'" >> $GITHUB_OUTPUT
           fi
 
-          exit 1
-
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
