@@ -12,7 +12,7 @@ loginProviderConfigOutput=$camsLoginProviderConfig
 
 if [[ $camsLoginProvider == 'mock' ]]; then
     # shellcheck disable=SC2089 # REASON: We need to retain the single quotes
-    loginProviderConfigOutput='{ "issuer": "https://'$apiName'.azurewebsites.us/api/oauth2/default" }'
+    loginProviderConfigOutput='{ "issuer": "https://'$apiName'.azurewebsites.us/api/oauth2/default", "clientId": ""}'
 fi
 
 echo "$loginProviderConfigOutput"
