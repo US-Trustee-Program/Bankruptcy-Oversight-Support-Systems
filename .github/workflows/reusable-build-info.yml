@@ -132,11 +132,14 @@ jobs:
           # Set Login Provider Config
           echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
 
-          if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" = "mock" ]]; then
-            echo "loginProviderConfig='{"issuer": "http://${apiName}.azurewebsites.us/api/oauth2/default", "clientId": ""}'" >> $GITHUB_OUTPUT
+          if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" == "mock" ]]; then
+            loginProviderConfig='{"issuer": "http://${apiName}.azurewebsites.us/api/oauth2/default", "clientId": ""}'
           else
-            echo "loginProviderConfig='${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}'" >> $GITHUB_OUTPUT
+            loginProviderConfig='${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}'
           fi
+
+          echo "Login Provider Config: ${loginProviderConfig}"
+          echo "loginProviderConfig=${loginProviderConfig}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
