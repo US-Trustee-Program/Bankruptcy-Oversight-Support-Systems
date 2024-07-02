@@ -6,8 +6,8 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
 import { CamsSession, CamsUser } from '@common/cams/session';
-import { usersWithRole, MockRole } from '../../../../../common/src/cams/mock-role';
-import { getAuthIssuerFromEnv } from '@/login/login-library';
+import { usersWithRole, MockRole } from '@common/cams/mock-role';
+import apiConfiguration from '@/configuration/apiConfiguration';
 
 export type MockLoginProps = PropsWithChildren & {
   user: CamsUser | null;
@@ -24,10 +24,15 @@ export function MockLogin(props: MockLoginProps) {
   }
 
   async function handleLogin() {
+    const { protocol, server, port, basePath } = apiConfiguration;
     if (!selectedRole) return;
-    const issuer = getAuthIssuerFromEnv();
+    const portString = port ? ':' + port : '';
+    const issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
 
-    if (!selectedRole || !issuer) return;
+    if (!URL.canParse(issuer)) {
+      console.error('Mock issuer is not a valid URL. Check values in GitHub Actions variables.');
+      return;
+    }
 
     const response = await fetch(issuer, {
       method: 'POST',

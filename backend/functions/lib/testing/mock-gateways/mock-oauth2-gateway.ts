@@ -1,5 +1,4 @@
 import * as jwt from 'jsonwebtoken';
-import * as dotenv from 'dotenv';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-role';
@@ -10,19 +9,15 @@ import {
   OpenIdConnectGateway,
 } from '../../adapters/types/authorization';
 
-dotenv.config();
-
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
-
-const authIssuer = process.env.AUTH_ISSUER;
 const mockRoles: MockRole[] = usersWithRole;
-const secretKey = authIssuer; //Do we want to lock this down further?
+// TODO: Do we want to lock this down further?
+const key = 'mock-secret'; //pragma: allowlist secret
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
-  if (!authIssuer || !mockRoles || authIssuer !== context.req.url) {
+  if (context.config.authConfig.provider !== 'mock') {
     throw new ForbiddenError(MODULE_NAME);
   }
-
   const requestedSubject = context.req.body as Pick<MockRole, 'sub'>;
   const validMockRole = mockRoles.find((role) => role.sub === requestedSubject.sub);
 
@@ -36,12 +31,12 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
     exp: SECONDS_SINCE_EPOCH + ONE_DAY,
   };
 
-  const token = jwt.sign(claims, secretKey);
+  const token = jwt.sign(claims, key);
   return token;
 }
 
 export async function verifyToken(accessToken: string): Promise<CamsJwt> {
-  const payload = jwt.verify(accessToken, secretKey) as jwt.JwtPayload;
+  const payload = jwt.verify(accessToken, key) as jwt.JwtPayload;
   const claims: CamsJwtClaims = {
     iss: payload.iss!,
     sub: payload.sub!,

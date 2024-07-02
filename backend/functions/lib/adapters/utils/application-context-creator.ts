@@ -3,7 +3,6 @@ import { ApplicationContext } from '../types/basic';
 import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { getFeatureFlags } from './feature-flag';
 import { LoggerImpl } from '../services/logger.service';
-import { getAuthorizationConfig } from '../../configs/authorization-configuration';
 import { getUserSessionGateway } from '../../factory';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { SessionCache } from './sessionCache';
@@ -28,8 +27,6 @@ async function applicationContextCreator(
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {
-  const { provider } = getAuthorizationConfig();
-
   const authorizationHeader = context.req.headers['authorization'];
 
   if (!authorizationHeader) {
@@ -47,7 +44,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
   }
   const accessToken = match[1];
   const sessionGateway: SessionCache = getUserSessionGateway(context);
-  return await sessionGateway.lookup(context, accessToken, provider);
+  return await sessionGateway.lookup(context, accessToken, context.config.authConfig.provider);
 }
 
 const ContextCreator = {

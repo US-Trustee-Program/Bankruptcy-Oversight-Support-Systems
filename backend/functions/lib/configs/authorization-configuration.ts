@@ -1,15 +1,32 @@
 import * as dotenv from 'dotenv';
 import { AuthorizationConfig } from '../adapters/types/authorization';
+import { EnvLoginConfig } from '../../../../common/src/cams/login';
 
 dotenv.config();
 
-const issuer = URL.canParse(process.env.AUTH_ISSUER) ? process.env.AUTH_ISSUER : null;
-const authorizationConfig = {
-  issuer,
-  audience: getAudienceFromIssuer(issuer),
-  provider: getProviderFromIssuer(issuer),
-  userInfoUri: getUserInfoUriFromIssuer(issuer),
-} as const;
+function safeParseConfig(configJson: string): EnvLoginConfig {
+  try {
+    return JSON.parse(configJson) as EnvLoginConfig;
+  } catch {
+    return {} as EnvLoginConfig;
+  }
+}
+
+const doMockAuth = process.env.CAMS_LOGIN_PROVIDER === 'mock';
+const config = doMockAuth
+  ? ({} as EnvLoginConfig)
+  : safeParseConfig(process.env.CAMS_LOGIN_PROVIDER_CONFIG);
+
+const issuer = URL.canParse(config.issuer) ? config.issuer : null;
+
+const authorizationConfig = doMockAuth
+  ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null } as const)
+  : ({
+      issuer,
+      audience: getAudienceFromIssuer(issuer),
+      provider: getProviderFromIssuer(issuer),
+      userInfoUri: getUserInfoUriFromIssuer(issuer),
+    } as const);
 
 export function getAuthorizationConfig(): AuthorizationConfig {
   return authorizationConfig;
@@ -18,17 +35,12 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 function getProviderFromIssuer(issuer: string) {
   if (!issuer) return null;
 
-  const mockIssuers = [
-    'http://localhost:7071/api/oauth2/default',
-    'https://ustp-cams-stg-node-api.azurewebsites.us/api/oauth2/default',
-    'https://ustp-cams-prd-node-api.azurewebsites.us/api/oauth2/default',
-    'https://ustp-cams-node-api.azurewebsites.us/api/oauth2/default',
-  ];
-  if (mockIssuers.includes(issuer)) return 'mock';
+  const issuerHost = new URL(issuer).hostname;
+  const domainParts = issuerHost.split('.');
+  const assembledDomain = domainParts.slice(-2).join('.');
+  const acceptedDomains = ['okta.com', 'okta-gov.com'];
+  if (acceptedDomains.includes(assembledDomain)) return 'okta';
 
-  const regex = /^https?:\/{2}[^/]+.okta.com/gm;
-  const domainName = issuer.match(regex);
-  if (domainName) return 'okta';
   return null;
 }
 

@@ -40,7 +40,7 @@ export class UserSessionGateway implements SessionCache {
     }
 
     try {
-      const authGateway = getAuthorizationGateway(provider);
+      const authGateway = getAuthorizationGateway(context);
       if (!authGateway) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Unsupported authentication provider.',

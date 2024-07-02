@@ -67,24 +67,10 @@ jobs:
             --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch }}' \
             -l ${{ secrets.AZ_LOCATION }}
 
-      - name: Set Auth Issuer
-        id: set-auth-issuer
-        if: inputs.deployBicep == 'true'
-        run: |
-          provider=${{ vars.CAMS_LOGIN_PROVIDER }}
-
-          if [[ ${provider} == 'okta' ]]; then
-            issuer=https://${{ vars.OKTA_URL }}/oauth2/default
-          else
-            issuer=https://${{ inputs.stackName }}-node-api.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/oauth2/default
-          fi
-          echo "authIssuer=${issuer}" >> $GITHUB_OUTPUT
-
       - name: Deploy Azure resources
         id: azure-deploy
         if: inputs.deployBicep == 'true'
         run: |
-
           ./ops/scripts/pipeline/azure-deploy.sh \
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
@@ -104,4 +90,4 @@ jobs:
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --deployFunctions ${{ inputs.slotDeploymentEnabled == 'false' }} \
             --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }} \
-            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }} issuer=${{ steps.set-auth-issuer.outputs.authIssuer }}'
+            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }} loginProvider=${{ vars.CAMS_LOGIN_PROVIDER }} loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
