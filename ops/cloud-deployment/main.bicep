@@ -103,8 +103,9 @@ param analyticsResourceGroupName string = 'rg-analytics'
 @description('Url for our Okta Provider')
 param oktaUrl string = ''
 
-@description('Auth Issuer URL')
-param issuer string = ''
+param loginProviderConfig string = ''
+
+param loginProvider string = ''
 
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
@@ -215,7 +216,8 @@ if (deployFunctions) {
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      issuer: issuer
+      loginProviderConfig: loginProviderConfig
+      loginProvider: loginProvider
     }
     dependsOn: [
       network

@@ -1,5 +1,4 @@
 import * as jwt from 'jsonwebtoken';
-import * as dotenv from 'dotenv';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-role';
@@ -10,19 +9,15 @@ import {
   OpenIdConnectGateway,
 } from '../../adapters/types/authorization';
 
-dotenv.config();
-
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
-
-const authIssuer = process.env.AUTH_ISSUER;
 const mockRoles: MockRole[] = usersWithRole;
-const secretKey = authIssuer; //Do we want to lock this down further?
+// TODO: Do we want to lock this down further?
+const secretKey = 'mock-secret'; //pragma: allowlist secret
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
-  if (!authIssuer || !mockRoles || authIssuer !== context.req.url) {
+  if (context.config.authConfig.provider !== 'mock') {
     throw new ForbiddenError(MODULE_NAME);
   }
-
   const requestedSubject = context.req.body as Pick<MockRole, 'sub'>;
   const validMockRole = mockRoles.find((role) => role.sub === requestedSubject.sub);
 

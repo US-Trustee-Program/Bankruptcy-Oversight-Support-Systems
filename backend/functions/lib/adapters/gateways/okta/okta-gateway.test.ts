@@ -1,18 +1,24 @@
-import { getAuthorizationGateway } from '../../../factory';
-import * as AuthConfig from '../../../configs/authorization-configuration';
 import { CamsJwtHeader } from '../../types/authorization';
 import * as Verifier from './HumbleVerifier';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import MockFetch from '../../../testing/mock-fetch';
+import { ApplicationContext } from '../../types/basic';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import OktaGateway from './okta-gateway';
 
 describe('Okta gateway tests', () => {
-  beforeEach(() => {
-    jest.spyOn(AuthConfig, 'getAuthorizationConfig').mockReturnValue({
-      issuer: 'https://fake.okta.com/oauth2/default',
-      audience: 'api://default',
-      provider: 'okta',
-      userInfoUri: 'https://fake.provider.com/oauth2/default/v1/userinfo',
+  let context: ApplicationContext;
+  const gateway = OktaGateway;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext({
+      AUTH_ISSUER: undefined,
+      MOCK_AUTH: undefined,
     });
+    context.config.authConfig.provider = null;
+    context.config.authConfig.issuer = null;
+    context.config.authConfig.audience = null;
+    context.config.authConfig.userInfoUri = null;
   });
 
   afterEach(() => {
@@ -20,35 +26,20 @@ describe('Okta gateway tests', () => {
   });
 
   test('Should receive invalid provider error', async () => {
-    jest.spyOn(AuthConfig, 'getAuthorizationConfig').mockReturnValue({
-      issuer: 'https://fake.provider.com/oauth2/default',
-      audience: 'api://default',
-      provider: null,
-      userInfoUri: 'https://fake.provider.com/oauth2/default/v1/userinfo',
-    });
-    const gateway = getAuthorizationGateway('okta');
+    context.config.authConfig.provider = 'mock';
     await expect(gateway.verifyToken('test')).rejects.toThrow('Invalid provider.');
   });
 
   test('Should receive invalid issuer error', async () => {
-    jest.spyOn(AuthConfig, 'getAuthorizationConfig').mockReturnValue({
-      issuer: undefined,
-      audience: 'api://default',
-      provider: 'okta',
-      userInfoUri: 'https://fake.provider.com/oauth2/default/v1/userinfo',
-    });
-    const gateway = getAuthorizationGateway('okta');
+    context.config.authConfig.issuer = null;
+    context.config.authConfig.provider = 'okta';
     await expect(gateway.verifyToken('test')).rejects.toThrow('Issuer not provided.');
   });
 
   test('Should receive invalid audience error', async () => {
-    jest.spyOn(AuthConfig, 'getAuthorizationConfig').mockReturnValue({
-      issuer: 'https://fake.okta.com/oauth2/default',
-      audience: undefined,
-      provider: 'okta',
-      userInfoUri: 'https://fake.provider.com/oauth2/default/v1/userinfo',
-    });
-    const gateway = getAuthorizationGateway('okta');
+    context.config.authConfig.audience = null;
+    context.config.authConfig.provider = 'okta';
+    context.config.authConfig.issuer = 'https://fake.okta.com/';
     await expect(gateway.verifyToken('test')).rejects.toThrow('Audience not provided.');
   });
 
@@ -74,7 +65,9 @@ describe('Okta gateway tests', () => {
       isNotBefore: jest.fn(),
     };
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
-    const gateway = getAuthorizationGateway('okta');
+    context.config.authConfig.provider = 'okta';
+    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
+    context.config.authConfig.audience = 'api://default';
     const actual = await gateway.verifyToken(token);
     expect(actual).toEqual(jwt);
   });
@@ -82,7 +75,9 @@ describe('Okta gateway tests', () => {
   test('Should throw UnauthorizedError if not given valid input ', async () => {
     const token = 'testToken';
     jest.spyOn(Verifier, 'verifyAccessToken').mockRejectedValue(new Error('Test error'));
-    const gateway = getAuthorizationGateway('okta');
+    context.config.authConfig.provider = 'okta';
+    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
+    context.config.authConfig.audience = 'api://default';
     await expect(gateway.verifyToken(token)).rejects.toThrow('Unauthorized');
   });
 
@@ -93,7 +88,6 @@ describe('Okta gateway tests', () => {
     };
     const mockFetchResponse = MockFetch.ok(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
-    const gateway = getAuthorizationGateway('okta');
     const actualResponse = await gateway.getUser('testAccessToken');
 
     expect(actualResponse).not.toEqual(expect.objectContaining({ testAttribute: '' }));
@@ -107,14 +101,12 @@ describe('Okta gateway tests', () => {
     };
     const mockFetch = MockFetch.notOk(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
-    const gateway = getAuthorizationGateway('okta');
     await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
 
   test('getUser should throw UnauthorizedError if fetch errors', async () => {
     const mockFetch = MockFetch.throws(new Error('Some unknown error'));
     jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
-    const gateway = getAuthorizationGateway('okta');
     await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
 });

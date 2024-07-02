@@ -143,14 +143,14 @@ export const getCosmosDbCrudRepository = <T>(
   return new CosmosDbRepository<T>(context, containerName, moduleName);
 };
 
-export const getAuthorizationGateway = (provider: string): OpenIdConnectGateway => {
-  if (provider === 'okta') return OktaGateway;
-  if (provider === 'mock') return MockOpenIdConnectGateway;
+export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
+  if (context.config.authConfig.provider === 'okta') return OktaGateway;
+  if (context.config.authConfig.provider === 'mock') return MockOpenIdConnectGateway;
   return null;
 };
 
 export const getUserSessionGateway = (context: ApplicationContext): SessionCache => {
-  if (context.config.mockAuth) {
+  if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionGateway();
   }
   return new UserSessionGateway();

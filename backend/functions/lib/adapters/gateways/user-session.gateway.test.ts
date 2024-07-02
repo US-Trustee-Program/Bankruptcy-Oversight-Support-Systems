@@ -46,6 +46,11 @@ describe('user-session.gateway test', () => {
     context = await createMockApplicationContext({
       AUTH_ISSUER: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
     });
+
+    context.config.authConfig.provider = 'okta';
+    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
+    context.config.authConfig.audience = 'api://default';
+
     const jwtHeader = {
       alg: 'RS256',
       typ: undefined,
