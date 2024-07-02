@@ -67,29 +67,10 @@ jobs:
             --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch }}' \
             -l ${{ secrets.AZ_LOCATION }}
 
-      - name: Set Login Provider Config
-        id: set-login-config
-        if: inputs.deployBicep == 'true'
-        run: |
-          provider=${{ vars.CAMS_LOGIN_PROVIDER }}
-          CAMS_LOGIN_PROVIDER_CONFIG=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
-
-          if [[ ${provider} == 'mock' ]]; then
-            CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/oauth2/default"}'
-          fi
-          echo "CAMS_LOGIN_PROVIDER_CONFIG=$CAMS_LOGIN_PROVIDER_CONFIG" >> $GITHUB_OUTPUT
       - name: Deploy Azure resources
         id: azure-deploy
         if: inputs.deployBicep == 'true'
         run: |
-
-          provider=${{ vars.CAMS_LOGIN_PROVIDER }}
-          CAMS_LOGIN_PROVIDER_CONFIG=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
-
-          if [[ ${provider} == 'mock' ]]; then
-            CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/oauth2/default"}'
-          fi
-
           ./ops/scripts/pipeline/azure-deploy.sh \
             --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
@@ -109,4 +90,4 @@ jobs:
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --deployFunctions ${{ inputs.slotDeploymentEnabled == 'false' }} \
             --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }} \
-            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }} loginProvider=${{ vars.CAMS_LOGIN_PROVIDER }} loginProviderConfig=${{ steps.set-login-config.outputs.CAMS_LOGIN_PROVIDER_CONFIG }}'
+            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }} loginProvider=${{ vars.CAMS_LOGIN_PROVIDER }} loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
