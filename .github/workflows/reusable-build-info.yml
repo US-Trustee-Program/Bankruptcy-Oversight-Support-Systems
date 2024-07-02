@@ -133,7 +133,7 @@ jobs:
           echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
 
           if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" == "mock" ]]; then
-            loginProviderConfig="{\"issuer\": \"http://$apiName.azurewebsites.us/api/oauth2/default\", \"clientId\": \"\"}"
+            loginProviderConfig="\{\"issuer\": \"http://$apiName.azurewebsites.us/api/oauth2/default\", \"clientId\": \"\"\}"
           else
             loginProviderConfig=${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}
           fi
