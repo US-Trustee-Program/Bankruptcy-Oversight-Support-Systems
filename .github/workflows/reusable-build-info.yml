@@ -70,7 +70,7 @@ jobs:
       slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-      loginProviderConfig: ${{ steps.build-info.outputs.loginProviderConfig }}
+      loginProviderConfig: ${{ steps.set-login-provider-config.outputs.loginProviderConfig }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -130,12 +130,16 @@ jobs:
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
           # Set Login Provider Config
+
+      - name: Set Login Provider Config
+        id: set-login-provider-config
+        run: |
           echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
 
           if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" == "mock" ]]; then
-            loginProviderConfig="\{\"issuer\": \"http://$apiName.azurewebsites.us/api/oauth2/default\", \"clientId\": \"\"\}"
+            loginProviderConfig='{"issuer": "https://${{ steps.build-info.outputs.apiName }}.azurewebsites.us/api/oauth2/default", "clientId": ""}'
           else
-            loginProviderConfig=${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}
+            loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
           fi
 
           echo "Login Provider Config: ${loginProviderConfig}"
