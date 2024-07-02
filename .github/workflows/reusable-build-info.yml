@@ -135,7 +135,7 @@ jobs:
           if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" = "mock" ]]; then
             echo "loginProviderConfig='{"issuer": "http://${apiName}.azurewebsites.us/api/oauth2/default", "clientId": ""}'" >> $GITHUB_OUTPUT
           else
-            echo "loginProviderConfig=${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}" >> $GITHUB_OUTPUT
+            echo "loginProviderConfig='${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}'" >> $GITHUB_OUTPUT
           fi
 
           exit 1
