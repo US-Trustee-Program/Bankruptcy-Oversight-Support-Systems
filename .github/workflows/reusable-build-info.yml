@@ -70,7 +70,7 @@ jobs:
       slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-      loginProviderConfig: ${{ steps.set-login-provider-config.outputs.loginProviderConfig }}
+      loginProviderConfig: ${{ steps.build-info.outputs.loginProviderConfig }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
