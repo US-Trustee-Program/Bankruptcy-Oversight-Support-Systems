@@ -12,7 +12,7 @@ import {
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockRoles: MockRole[] = usersWithRole;
 // TODO: Do we want to lock this down further?
-const secretKey = 'mock-secret'; //pragma: allowlist secret
+const key = 'mock-secret'; //pragma: allowlist secret
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
   if (context.config.authConfig.provider !== 'mock') {
@@ -31,12 +31,12 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
     exp: SECONDS_SINCE_EPOCH + ONE_DAY,
   };
 
-  const token = jwt.sign(claims, secretKey);
+  const token = jwt.sign(claims, key);
   return token;
 }
 
 export async function verifyToken(accessToken: string): Promise<CamsJwt> {
-  const payload = jwt.verify(accessToken, secretKey) as jwt.JwtPayload;
+  const payload = jwt.verify(accessToken, key) as jwt.JwtPayload;
   const claims: CamsJwtClaims = {
     iss: payload.iss!,
     sub: payload.sub!,
