@@ -130,19 +130,7 @@ jobs:
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
           # Set Login Provider Config
-
-      - name: Set Login Provider Config
-        id: set-login-provider-config
-        run: |
-          echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
-
-          if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" == "mock" ]]; then
-            loginProviderConfig='{"issuer": "https://${{ steps.build-info.outputs.apiName }}.azurewebsites.us/api/oauth2/default", "clientId": ""}'
-          else
-            loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
-          fi
-
-          echo "Login Provider Config: $loginProviderConfig"
+          loginProviderConfig=$(./ops/scripts/pipeline/set-login-provider.sh ${{ vars.CAMS_LOGIN_PROVIDER }} ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }} ${apiName})
           echo "loginProviderConfig=$loginProviderConfig" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
