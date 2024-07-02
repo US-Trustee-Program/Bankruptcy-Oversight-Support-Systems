@@ -194,23 +194,19 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleDropdownItemSelection(option: ComboOption) {
-    let newSelections: ComboOption[] = [];
+    const newSelections: ComboOption[] = [];
     let removed = false;
     if (option.selected === true) option.selected = false;
     else option.selected = true;
 
-    if (selections) {
-      for (const item of selections) {
-        if (item.value === option.value) {
-          removed = true;
-        } else {
-          newSelections.push(item);
-        }
+    for (const item of selections) {
+      if (item.value === option.value) {
+        removed = true;
+      } else {
+        newSelections.push(item);
       }
-      if (!removed) newSelections.push(option);
-    } else {
-      newSelections = [option];
     }
+    if (!removed) newSelections.push(option);
 
     setSelections(newSelections);
     if (onUpdateSelection && newSelections) {
@@ -232,26 +228,22 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Tab':
         if (expanded && (ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           let index = 0;
-          if (filteredOptions.length === 0) {
+          if (list && index < filteredOptions.length) {
+            while (
+              list.children[index] &&
+              list.children[index].classList.contains('hidden') &&
+              index < filteredOptions.length
+            ) {
+              ++index;
+            }
+          }
+          if (index === filteredOptions.length) {
             closeDropdown(false);
           } else {
-            if (list && index < filteredOptions.length) {
-              while (
-                list.children[index] &&
-                list.children[index].classList.contains('hidden') &&
-                index < filteredOptions.length
-              ) {
-                ++index;
-              }
-            }
-            if (index === filteredOptions.length) {
-              closeDropdown(false);
-            } else {
-              const button = list?.children[index].querySelector('button');
-              if (list && button) {
-                focusAndHandleScroll(ev, button);
-                ev.preventDefault();
-              }
+            const button = list?.children[index].querySelector('button');
+            if (list && button) {
+              focusAndHandleScroll(ev, button);
+              ev.preventDefault();
             }
           }
         } else {

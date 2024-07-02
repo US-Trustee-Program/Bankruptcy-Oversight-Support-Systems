@@ -224,7 +224,6 @@ describe('test cams combobox', () => {
     renderWithProps();
 
     const comboboxInputField = focusComboInputField(comboboxId);
-    focusComboInputField(comboboxId);
     expect(isDropdownClosed()).toBeFalsy();
 
     fireEvent.keyDown(comboboxInputField!, { key: 'Tab' });
@@ -261,6 +260,25 @@ describe('test cams combobox', () => {
 
     await userEvent.tab();
     expect(otherInput!).toHaveFocus();
+  });
+
+  test('If the dropdown is open, and gibberish is typed into input field, the filtered results should have length of 0, and pressing tab should tab out of the combobox to the next input field.', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    renderWithProps({}, ref);
+
+    const otherInput = document.querySelector('.input1');
+    const comboboxInputField = focusComboInputField(comboboxId);
+
+    fireEvent.change(comboboxInputField!, { target: { value: 'this is gibberish' } });
+    (comboboxInputField! as HTMLInputElement).focus();
+    const result = ref.current?.getValue();
+    expect(result).toEqual([]);
+
+    await userEvent.tab();
+    await waitFor(() => {
+      expect(otherInput!).toHaveFocus();
+    });
+    expect(isDropdownClosed()).toBeTruthy();
   });
 
   test('If the dropdown list is closed, then typing characters on the keyboard should open the dropdown list', async () => {
