@@ -404,6 +404,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             onKeyDown={(ev) => handleKeyDown(ev, 0)}
             disabled={inputDisabled}
             tabIndex={-1}
+            aria-label="expand dropdown of select box"
           >
             <Icon name={expandIcon}></Icon>
           </Button>
