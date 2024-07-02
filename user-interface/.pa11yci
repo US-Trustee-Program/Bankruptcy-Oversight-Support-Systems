@@ -53,7 +53,13 @@
         "set field [data-testid='basic-search-field'] to 11-00000",
         "wait for element #no-results-alert to be visible",
         "set field [data-testid='basic-search-field'] to 99-99999",
-        "wait for element #search-error-alert to be visible"
+        "wait for element #search-error-alert to be visible",
+        "click element [data-testid='button-undefined']",
+        "wait for element [data-testid='alert-message-default-state-alert'] to be visible",
+        "click element [data-testid='button-case-chapter-search-expand']",
+        "click element [data-testid='combo-box-option-11']",
+        "click element [data-testid='button-case-chapter-search-expand']",
+        "wait for element #search-results > table to be visible"
       ]
     },
     {
