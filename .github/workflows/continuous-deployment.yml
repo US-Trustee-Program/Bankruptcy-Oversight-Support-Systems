@@ -163,6 +163,7 @@ jobs:
       slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
+      loginProviderConfig: ${{ needs.setup.outputs.loginProviderConfig }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code:
