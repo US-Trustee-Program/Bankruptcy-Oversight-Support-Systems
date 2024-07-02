@@ -88,6 +88,23 @@ describe('test cams combobox', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  test('Should deselect the item when you click on a selected item', async () => {
+    renderWithProps();
+
+    toggleDropdown(comboboxId);
+
+    const firstListItemButton = document.querySelector('li button');
+    fireEvent.click(firstListItemButton!);
+
+    let selectedListItem = document.querySelectorAll('li.selected');
+    expect(selectedListItem!.length).toBe(1);
+
+    fireEvent.click(firstListItemButton!);
+
+    selectedListItem = document.querySelectorAll('li.selected');
+    expect(selectedListItem!.length).toEqual(0);
+  });
+
   test('After selecting an item in the dropdown list, a pill should appear, and after clicking the pill it should remove pill and deselect item in dropdown', async () => {
     renderWithProps();
 
@@ -483,9 +500,8 @@ describe('test cams combobox', () => {
     if (clearButton) {
       expect(clearButton).toBeInTheDocument();
       (clearButton as HTMLButtonElement).focus();
-      // TODO: We should be able to use KeyDown on the button, but it's not working
-      //fireEvent.keyPress(clearButton, { key: 'Enter', keyCode: 13 });
-      fireEvent.click(clearButton);
+
+      fireEvent.keyDown(clearButton, { key: 'Enter', keyCode: 13 });
       expect(updateSelection).toHaveBeenCalledWith([]);
     } else {
       throw new Error('clear button not found');
@@ -594,5 +610,32 @@ describe('test cams combobox', () => {
         expect(listItems[i]).not.toHaveClass('hidden');
       }
     }
+  });
+
+  test('Should return list of currewnt selections when calling ref.getValue.', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    const options = [
+      {
+        label: 'option 0',
+        value: 'o0',
+        selected: false,
+        hidden: false,
+      },
+      {
+        label: 'option 1',
+        value: 'o1',
+        selected: false,
+        hidden: true,
+      },
+    ];
+
+    renderWithProps({ options }, ref);
+
+    const listButtons = document.querySelectorAll('li button');
+    fireEvent.click(listButtons![0]);
+    fireEvent.click(listButtons![1]);
+
+    const result = ref.current?.getValue();
+    expect(result).toEqual(options);
   });
 });
