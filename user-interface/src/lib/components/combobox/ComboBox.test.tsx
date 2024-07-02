@@ -2,6 +2,7 @@ import { LegacyRef } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { fireEvent, render, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 const comboboxId = 'test-combobox';
@@ -60,6 +61,7 @@ describe('test cams combobox', () => {
           tabIndex={0}
           value="Some text"
           onChange={() => {}}
+          onFocus={() => console.log('========== WE JUST FOCUSED ON THE OTHER INPUT')}
         ></input>
       </div>,
     );
@@ -201,47 +203,46 @@ describe('test cams combobox', () => {
     });
   });
 
-  // TODO:  broken test
-  test.skip('If the dropdown list is open, and the input field is in focus, then pressing the Tab key should highlight the first item in the dropdown list. Pressing the tab key a second time should close the dropdown and focus on the next element on the screen.', async () => {
+  test('If the dropdown list is open, and the input field is in focus, then pressing the Tab key should highlight the first item in the dropdown list. Pressing the tab key a second time should close the dropdown and focus on the next element on the screen.', async () => {
     renderWithProps();
 
-    // const otherInput = document.querySelector('.input1');
-    const inputField = focusComboInputField(comboboxId);
+    const comboboxInputField = focusComboInputField(comboboxId);
+    focusComboInputField(comboboxId);
     expect(isDropdownClosed()).toBeFalsy();
 
+    fireEvent.keyDown(comboboxInputField!, { key: 'Tab' });
+
     const listItem = document.querySelector('li button');
-
-    fireEvent.keyDown(inputField!, { key: 'Tab' });
-
     await waitFor(() => {
       expect(listItem).toHaveFocus();
     });
     expect(isDropdownClosed()).toBeFalsy();
-    fireEvent.keyDown(listItem!, { key: 'Tab' });
+
+    await userEvent.tab();
+
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
-      // TODO: Focus isn't moving to otherInputs during tests, it cycles back to the combobox input.
-      // expect(otherInput).toHaveFocus();
+      const input1 = document.querySelector('.input1');
+      expect(input1).toHaveFocus();
     });
   });
 
+  // TODO: tab key doesn't seem to be working (in the test)
   test.skip('If the dropdown is already closed, then pressing the tab key should focus on the next element on the screen and should not open the dropdown list.', async () => {
     renderWithProps();
 
     const otherButton = document.querySelector('.button1');
     const otherInput = document.querySelector('.input1');
-    const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
+    const comboboxInputField = document.querySelector(`#${comboboxId}-combo-box-input`);
     fireEvent.click(otherButton!);
+    //fireEvent.keyDown(otherButton!, { key: 'Tab', code: 'Tab', charCode: 9 });
+    await userEvent.tab();
     await waitFor(() => {
-      expect(otherButton!).toHaveFocus();
+      expect(comboboxInputField!).toHaveFocus();
     });
-    fireEvent.keyDown(otherButton!, { key: 'Tab', code: 'Tab' });
-    await waitFor(() => {
-      expect(inputField!).toHaveFocus();
-    });
-    expect(isDropdownClosed()).toBeFalsy();
+    expect(isDropdownClosed()).toBeTruthy();
 
-    fireEvent.keyDown(inputField!, { key: 'Tab' });
+    fireEvent.keyDown(comboboxInputField!, { key: 'Tab', code: 'Tab', charCode: 9 });
     expect(otherInput!).toHaveFocus();
   });
 
