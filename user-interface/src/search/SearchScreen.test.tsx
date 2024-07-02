@@ -79,6 +79,7 @@ describe('search screen', () => {
     expect(getCaseSummarySpy).toHaveBeenCalledWith('/cases', casesSearchPredicate);
   });
 
+  // TODO: this is passing but throwing some Unknown Error
   test('should only search for full case number', async () => {
     renderWithoutProps();
 
