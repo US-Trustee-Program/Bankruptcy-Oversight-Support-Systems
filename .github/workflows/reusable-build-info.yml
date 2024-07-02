@@ -131,7 +131,7 @@ jobs:
 
           # Set Login Provider Config
           echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
-          loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER == 'mock' && "{\"issuer\": \"http://${apiName}.azurewebsites.us/api/oauth2/default\", \"clientId\": \"\"}" || vars.CAMS_LOGIN_PROVIDER_CONFIG }}
+          loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER == 'mock' && '\{"issuer": "http://hello-test.azurewebsites.us/api/oauth2/default", "clientId": ""\}' || vars.CAMS_LOGIN_PROVIDER_CONFIG }}
           echo "loginProviderConfig=${loginProviderConfig}" >> $GITHUB_OUTPUT
           exit 1
 
