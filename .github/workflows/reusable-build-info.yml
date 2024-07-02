@@ -49,6 +49,9 @@ on:
       ghaEnvironment:
         description: ""
         value: ${{ inputs.environment }}
+      loginProviderConfig:
+        description: ""
+        value: ${{ jobs.build-info.outputs.loginProviderConfig }}
 
 jobs:
   build-info:
@@ -67,6 +70,7 @@ jobs:
       slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
+      loginProviderConfig: ${{ steps.build-info.outputs.loginProviderConfig }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -93,7 +97,7 @@ jobs:
           echo "Environment: ${{ inputs.environment }}"
           echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
           echo "Git SHA: ${{ github.sha }}"
-          echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
+
 
           # Generate resource group name(s)
           echo "Env Hash: ${{ steps.check-env.outputs.environmentHash }}"
@@ -124,6 +128,11 @@ jobs:
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
           echo "slotDeploymentEnabled=${{ inputs.enableSlotDeployment != 'false' }}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
+
+          # Set Login Provider Config
+          echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
+          loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER == 'mock' && '{"issuer": "http://${apiname).azurewebsites.us/api/oauth2/default", "clientId": ""}' || vars.CAMS_LOGIN_PROVIDER_CONFIG }}
+          echo "loginProviderConfig=${loginProviderConfig}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp

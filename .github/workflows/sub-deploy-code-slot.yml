@@ -115,7 +115,7 @@ jobs:
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
           --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }} MOCK_AUTH=${{ inputs.mockAuth }}"
+          --settings "INFO_SHA=${{ github.sha }}"
 
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-retry
@@ -126,7 +126,7 @@ jobs:
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
           --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }} MOCK_AUTH=${{ inputs.mockAuth }}"
+          --settings "INFO_SHA=${{ github.sha }}"
 
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-service-slot]
