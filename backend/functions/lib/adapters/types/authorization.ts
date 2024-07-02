@@ -1,10 +1,10 @@
 import { CamsUser } from '../../../../../common/src/cams/session';
 
 export type AuthorizationConfig = {
-  provider: string;
-  issuer: string;
-  audience: string;
-  userInfoUri: string;
+  provider: string | null;
+  issuer: string | null;
+  audience: string | null;
+  userInfoUri: string | null;
 };
 
 export interface OpenIdConnectGateway {
