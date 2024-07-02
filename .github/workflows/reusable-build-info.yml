@@ -131,8 +131,13 @@ jobs:
 
           # Set Login Provider Config
           echo "Login Provider: ${{ vars.CAMS_LOGIN_PROVIDER }}"
-          loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER == 'mock' && '{"issuer": "http://${apiName}.azurewebsites.us/api/oauth2/default", "clientId": ""}' || vars.CAMS_LOGIN_PROVIDER_CONFIG }}
-          echo "loginProviderConfig=${loginProviderConfig}" >> $GITHUB_OUTPUT
+
+          if [[ "${{ vars.CAMS_LOGIN_PROVIDER }}" = "mock" ]]; then
+            echo "loginProviderConfig='{"issuer": "http://${apiName}.azurewebsites.us/api/oauth2/default", "clientId": ""}'" >> $GITHUB_OUTPUT
+          else
+            echo "loginProviderConfig=${{vars.CAMS_LOGIN_PROVIDER_CONFIG}}" >> $GITHUB_OUTPUT
+          fi
+
           exit 1
 
       - uses: cloudposse/github-action-secret-outputs@main
