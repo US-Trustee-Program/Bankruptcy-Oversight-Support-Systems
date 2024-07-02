@@ -134,7 +134,6 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      loginProviderConfig: ${{ needs.setup.outputs.loginProviderConfig }}
 
   deploy:
     name: Cloud Resource Deployment
@@ -163,7 +162,6 @@ jobs:
       slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
-      loginProviderConfig: ${{ needs.setup.outputs.loginProviderConfig }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code:
