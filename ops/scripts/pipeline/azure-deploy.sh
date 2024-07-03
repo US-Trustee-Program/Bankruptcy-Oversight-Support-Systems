@@ -149,7 +149,7 @@ while [[ $# -gt 0 ]]; do
         ;;
     --loginProviderConfig)
         login_provider_config="${2}"
-        login_provider_config_param="loginProviderConfig='['${2}']'"
+        login_provider_config_param="loginProviderConfig='${2}'"
         shift 2
         ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
