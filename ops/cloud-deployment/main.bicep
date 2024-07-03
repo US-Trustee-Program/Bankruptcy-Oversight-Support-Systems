@@ -103,7 +103,7 @@ param analyticsResourceGroupName string = 'rg-analytics'
 @description('Url for our Okta Provider')
 param oktaUrl string = ''
 
-param loginProviderConfig string = ''
+param loginProviderConfig array = [{}]
 
 param loginProvider string = ''
 
@@ -216,7 +216,7 @@ if (deployFunctions) {
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-      loginProviderConfig: loginProviderConfig
+      loginProviderConfig: loginProviderConfig[0]
       loginProvider: loginProvider
     }
     dependsOn: [
