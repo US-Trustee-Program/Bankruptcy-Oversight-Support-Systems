@@ -77,8 +77,7 @@ jobs:
       - name: Clean up e2e test database
         run: |
           echo "Adding suffix to database name.."
-          target=${{ needs.check.outputs.targetBranchHashId }}
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e-${target}"
+          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e-${{ needs.check.outputs.targetBranchHashId }}"
 
           az cosmosdb sql database delete \
           --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
