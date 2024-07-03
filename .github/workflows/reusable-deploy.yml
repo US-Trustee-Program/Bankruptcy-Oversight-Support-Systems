@@ -90,4 +90,6 @@ jobs:
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --deployFunctions ${{ inputs.slotDeploymentEnabled == 'false' }} \
             --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }} \
-            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }} loginProvider=${{ vars.CAMS_LOGIN_PROVIDER }} loginProviderConfig=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
+            --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
+            --loginProviderConfig ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }} \
+            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }}'
