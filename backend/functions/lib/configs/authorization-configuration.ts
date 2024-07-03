@@ -34,6 +34,7 @@ export function getAuthorizationConfig(): AuthorizationConfig {
 
 function getProviderFromIssuer(issuer: string) {
   if (!issuer) return null;
+  if (issuer === 'https://dojlogin-test.usdoj.gov/oauth2/default') return 'okta';
 
   const issuerHost = new URL(issuer).hostname;
   const domainParts = issuerHost.split('.');
