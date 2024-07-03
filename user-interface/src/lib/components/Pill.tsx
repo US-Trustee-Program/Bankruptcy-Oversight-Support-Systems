@@ -1,6 +1,5 @@
 import './Pill.scss';
 import Icon from './uswds/Icon';
-import { useEffect, useState } from 'react';
 
 const defaultColor = 'black';
 const defaultBackgroundColor = '#d0d0d0';
@@ -18,8 +17,8 @@ type PillProps = {
 };
 
 export function Pill(props: PillProps) {
-  const [color, setColor] = useState<string>(defaultColor);
-  const [backgroundColor, setBackgroundColor] = useState<string>(defaultBackgroundColor);
+  const color = props.color ?? defaultColor;
+  const backgroundColor = props.backgroundColor ?? defaultBackgroundColor;
 
   function handleKeyDown(ev: React.KeyboardEvent) {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -27,11 +26,6 @@ export function Pill(props: PillProps) {
       ev.preventDefault();
     }
   }
-
-  useEffect(() => {
-    setColor(props.color ?? defaultColor);
-    setBackgroundColor(props.backgroundColor ?? defaultBackgroundColor);
-  }, []);
 
   return (
     <button

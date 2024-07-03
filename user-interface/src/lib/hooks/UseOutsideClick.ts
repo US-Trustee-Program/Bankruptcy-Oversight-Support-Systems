@@ -4,8 +4,6 @@ export default function useOutsideClick(
   refs: Array<React.RefObject<HTMLElement>>,
   callback: (event: MouseEvent) => void,
 ) {
-  //const ref = React.useRef<HTMLDivElement>(null);
-
   React.useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       let fireCallback = true;
