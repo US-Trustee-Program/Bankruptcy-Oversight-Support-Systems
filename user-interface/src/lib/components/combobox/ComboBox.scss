@@ -4,6 +4,7 @@ $listItemSelectedBorderColor: #949494;
 @use 'uswds-core';
 
 .combo-box-form-group {
+  max-width: 100%;
   .chapter-label.multi-select {
     display: flex;
     justify-content: space-between;
@@ -12,6 +13,9 @@ $listItemSelectedBorderColor: #949494;
   .pills-and-clear-all {
     display: flex;
     justify-content: space-between;
+    .pill-box {
+      max-width: calc(100% - 3rem);
+    }
   }
 
   .usa-combo-box {
