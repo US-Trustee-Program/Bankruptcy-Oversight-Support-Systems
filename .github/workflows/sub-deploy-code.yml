@@ -27,9 +27,6 @@ on:
       cosmosDbPrincipalId:
         required: true
         type: string
-      mockAuth:
-        required: false
-        type: string
 
 jobs:
   deploy-webapp:

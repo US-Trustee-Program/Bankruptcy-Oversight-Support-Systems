@@ -36,9 +36,6 @@ on:
       initialDeployment:
         required: true
         type: string
-      mockAuth:
-        required: false
-        type: string
 jobs:
   deploy-webapp-slot:
     runs-on: ubuntu-latest
