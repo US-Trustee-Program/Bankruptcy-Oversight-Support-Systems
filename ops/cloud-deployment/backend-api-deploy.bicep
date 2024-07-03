@@ -35,6 +35,8 @@ var planTypeToSkuMap = {
   }
 }
 
+param stackName string = 'ustp-cams'
+
 param functionName string
 
 param virtualNetworkResourceGroupName string
@@ -64,7 +66,7 @@ param loginProviderConfig string
 param loginProvider string
 
 @description('Is ustp deployment')
-param ustpDeployment bool
+param isUstpDeployment bool
 
 @description('Azure functions version')
 param functionsVersion string = '~4'
@@ -86,8 +88,8 @@ param sqlServerIdentityResourceGroupName string = ''
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
-@description('Resource group name of the app config KeyVault')
-param kvAppConfigName string
+@description('name of the app config KeyVault')
+param kvAppConfigName string = 'kv-${stackName}'
 
 param sqlServerName string = ''
 
@@ -342,7 +344,7 @@ var applicationSettings = concat(
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
     : [],
-  ustpDeployment
+  isUstpDeployment
     ? [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }, { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL_PASS)' }]
     : [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
 )
