@@ -1,7 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { ComboOption } from './combobox/ComboBox';
 import { Pill } from './Pill';
-import { UswdsButtonStyle } from './uswds/Button';
 
 export type PillBoxRef = {
   contains: (el: HTMLElement) => boolean;
@@ -68,7 +67,6 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
         <Pill
           id={`pill-${props.id}-${idx}`}
           key={idx}
-          color={UswdsButtonStyle.Cool}
           label={selection.label}
           ariaLabelPrefix={ariaLabelPrefix}
           value={selection.value}
