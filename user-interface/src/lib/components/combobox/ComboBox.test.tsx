@@ -183,18 +183,14 @@ describe('test cams combobox', () => {
 
     const inputField = focusComboInputField(comboboxId);
 
-    if (inputField) {
-      fireEvent.change(inputField, { target: { value: 'test input' } });
-      expect((inputField as HTMLInputElement).value).toEqual('test input');
-      expect(isDropdownClosed()).toBeFalsy();
+    fireEvent.change(inputField!, { target: { value: 'test input' } });
+    expect((inputField as HTMLInputElement).value).toEqual('test input');
+    expect(isDropdownClosed()).toBeFalsy();
 
-      fireEvent.keyDown(inputField, { key: 'Escape' });
-      expect((inputField as HTMLInputElement).value).toEqual('');
-      expect(isDropdownClosed()).toBeTruthy();
-      expect(inputField).toHaveFocus();
-    } else {
-      throw new Error('No input field');
-    }
+    fireEvent.keyDown(inputField!, { key: 'Escape' });
+    expect((inputField as HTMLInputElement).value).toEqual('');
+    expect(isDropdownClosed()).toBeTruthy();
+    expect(inputField).toHaveFocus();
   });
 
   test('should close dropdown list, clear input field, but NOT focus on input field when clicking outside of combobox', () => {
@@ -203,18 +199,14 @@ describe('test cams combobox', () => {
     const comboboxInputField = focusComboInputField(comboboxId);
     const otherInput = document.querySelector('.input1');
 
-    if (comboboxInputField) {
-      fireEvent.change(comboboxInputField, { target: { value: 'test input' } });
-      expect(isDropdownClosed()).toBeFalsy();
+    fireEvent.change(comboboxInputField!, { target: { value: 'test input' } });
+    expect(isDropdownClosed()).toBeFalsy();
 
-      fireEvent.click(otherInput!);
+    fireEvent.click(otherInput!);
 
-      expect((comboboxInputField as HTMLInputElement).value).toEqual('');
-      expect(isDropdownClosed()).toBeTruthy();
-      expect(comboboxInputField).not.toHaveFocus();
-    } else {
-      throw new Error('No input field');
-    }
+    expect((comboboxInputField! as HTMLInputElement).value).toEqual('');
+    expect(isDropdownClosed()).toBeTruthy();
+    expect(comboboxInputField!).not.toHaveFocus();
   });
 
   test('The arrow icon on the toggle button should change directions depending on whether the dropdown list is open or closed.', async () => {
@@ -306,15 +298,11 @@ describe('test cams combobox', () => {
     renderWithProps();
 
     const inputField = focusComboInputField(comboboxId);
-    if (inputField) {
-      fireEvent.keyDown(inputField, { key: 'Escape' });
-      expect(isDropdownClosed()).toBeTruthy();
+    fireEvent.keyDown(inputField!, { key: 'Escape' });
+    expect(isDropdownClosed()).toBeTruthy();
 
-      fireEvent.change(inputField, { target: { value: 'test input' } });
-      expect(isDropdownClosed()).toBeFalsy();
-    } else {
-      throw new Error('input field not found');
-    }
+    fireEvent.change(inputField!, { target: { value: 'test input' } });
+    expect(isDropdownClosed()).toBeFalsy();
   });
 
   test('Up and down arrow cursor keys should traverse the list and return to the input field, in either direction, skipping list items with the hidden class', async () => {
@@ -548,15 +536,11 @@ describe('test cams combobox', () => {
     expect(pillBox?.children.length).toEqual(3);
 
     const clearButton = document.querySelector('.pill-clear-button');
-    if (clearButton) {
-      expect(clearButton).toBeInTheDocument();
-      (clearButton as HTMLButtonElement).focus();
+    expect(clearButton!).toBeInTheDocument();
+    (clearButton! as HTMLButtonElement).focus();
 
-      fireEvent.keyDown(clearButton, { key: 'Enter', keyCode: 13 });
-      expect(updateSelection).toHaveBeenCalledWith([]);
-    } else {
-      throw new Error('clear button not found');
-    }
+    fireEvent.keyDown(clearButton!, { key: 'Enter', keyCode: 13 });
+    expect(updateSelection).toHaveBeenCalledWith([]);
 
     await waitFor(() => {
       const listItems = document.querySelectorAll('li');
