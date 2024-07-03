@@ -62,7 +62,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   }, [props.selections]);
 
   return (
-    <div id={props.id} className={`pill-container`}>
+    <div id={props.id} className={`pill-container ${props.className}`}>
       {selections?.map((selection, idx) => (
         <Pill
           id={`pill-${props.id}-${idx}`}

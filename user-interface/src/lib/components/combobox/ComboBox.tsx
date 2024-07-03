@@ -356,6 +356,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         <div className="pills-and-clear-all">
           <PillBox
             id={`${props.id}-pill-box`}
+            className="pill-box"
             ariaLabelPrefix={ariaLabelPrefix}
             selections={selections ?? []}
             onSelectionChange={handlePillSelection}

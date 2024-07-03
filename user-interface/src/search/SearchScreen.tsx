@@ -7,10 +7,9 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ComboBoxRef, InputRef, SelectMultiRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
-import CamsSelectMulti, { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
@@ -35,7 +34,7 @@ export default function SearchScreen() {
   const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
   const caseNumberInputRef = useRef<InputRef>(null);
-  const courtSelectionRef = useRef<SelectMultiRef>(null);
+  const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const errorAlertRef = useRef<AlertRefType>(null);
 
@@ -82,13 +81,13 @@ export default function SearchScreen() {
     }
   }
 
-  function handleCourtSelection(selection: MultiSelectOptionList) {
+  function handleCourtSelection(selection: ComboOption[]) {
     const newPredicate = {
       ...searchPredicate,
     };
     delete newPredicate.divisionCodes;
     if (selection.length) {
-      newPredicate.divisionCodes = selection.map((kv: Record<string, string>) => kv.value);
+      newPredicate.divisionCodes = selection.map((kv: ComboOption) => kv.value);
     }
     setSearchPredicate(newPredicate);
   }
@@ -157,15 +156,16 @@ export default function SearchScreen() {
             </div>
             <div className="case-district-search form-field" data-testid="case-district-search">
               <div className="usa-search usa-search--small">
-                <CamsSelectMulti
+                <ComboBox
                   id={'court-selections-search'}
                   className="new-court__select"
-                  closeMenuOnSelect={true}
                   label="District (Division)"
-                  onChange={handleCourtSelection}
+                  ariaLabelPrefix="District (Division)"
+                  onClose={handleCourtSelection}
+                  onPillSelection={handleCourtSelection}
                   options={getOfficeList(officesList)}
-                  isSearchable={true}
                   required={false}
+                  multiSelect={true}
                   ref={courtSelectionRef}
                 />
               </div>
@@ -183,7 +183,7 @@ export default function SearchScreen() {
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
-                ></ComboBox>
+                />
               </div>
             </div>
           </div>

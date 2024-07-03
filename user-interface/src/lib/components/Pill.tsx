@@ -39,8 +39,9 @@ export function Pill(props: PillProps) {
       aria-label={`${props.ariaLabelPrefix} - ${props.label} is currently selected.`}
       disabled={props.disabled}
       data-value={props.value}
+      title={`${props.label}`}
     >
-      {props.label}
+      <div className="pill-text">{props.label}</div>
       <Icon name="close"></Icon>
     </button>
   );
