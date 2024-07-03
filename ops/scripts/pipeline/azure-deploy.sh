@@ -142,6 +142,16 @@ while [[ $# -gt 0 ]]; do
         deploy_webapp_param="deployWebapp=${2}"
         shift 2
         ;;
+    --loginProvider)
+        login_provider="${2}"
+        login_provider_param="loginProvider=${2}"
+        shift 2
+        ;;
+    --loginProviderConfig)
+        login_provider_config="${2}"
+        login_provider_config_param="loginProviderConfig=${2}"
+        shift 2
+        ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --environmentParameters)
         deployment_parameters="${2}"
@@ -227,9 +237,16 @@ if [[ -z "${create_alerts}" ]]; then
     echo "Error: Missing createAlerts "
     exit 10
 fi
+if [[ -z "${login_provider}" ]]; then
+    echo "Error: Missing loginProvider"
+    exit 10
+fi
+if [[ -z "${login_provider_config}" ]]; then
+    echo "Error: Missing loginProviderConfig"
+    exit 10
+fi
 
-
-deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param}"
+deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param} ${login_provider_param} ${login_provider_config_param}"
 # Check and add conditional parameters
 if [[ "${create_alerts}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${create_alerts_param}"
