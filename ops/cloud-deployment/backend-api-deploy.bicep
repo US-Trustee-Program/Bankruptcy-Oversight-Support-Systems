@@ -273,11 +273,11 @@ var applicationSettings = concat(
       value: functionsRuntime
     }
     {
-      name: 'AUTH_CONFIG'
+      name: 'CAMS_LOGIN_PROVIDER_CONFIG'
       value: loginProviderConfig
     }
     {
-      name: 'AUTH_PROVIDER'
+      name: 'CAMS_LOGIN_PROVIDER'
       value: loginProvider
     }
   ],
