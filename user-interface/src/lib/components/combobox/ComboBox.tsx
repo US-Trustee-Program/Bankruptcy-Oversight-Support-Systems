@@ -3,7 +3,6 @@ import './ComboBox.scss';
 import {
   forwardRef,
   PropsWithChildren,
-  ReactElement,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -26,13 +25,10 @@ type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
 
-export interface ComboBoxProps extends PropsWithChildren, Omit<InputProps, 'onChange'> {
-  children?: ReactElement | Array<ReactElement>;
+export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
   label?: string;
   ariaLabelPrefix?: string;
   autoComplete?: 'off';
-  position?: 'left' | 'right';
-  value?: string;
   icon?: string;
   options: ComboOption[];
   onUpdateSelection?: (options: ComboOption[]) => void;
@@ -133,7 +129,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function getValue() {
-    return selections ?? [];
+    return selections;
   }
 
   function isOutsideClick(ev: MouseEvent) {
@@ -341,7 +337,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   useEffect(() => {
     if (props.onUpdateSelection) {
-      props.onUpdateSelection([]);
+      props.onUpdateSelection(selections);
     }
   }, [selections]);
 

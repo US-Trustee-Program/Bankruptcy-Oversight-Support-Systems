@@ -125,8 +125,6 @@ export default function SearchScreen() {
     getChapters();
   }, []);
 
-  //useEffect(() => {}, [searchPredicate]);
-
   return (
     <div className="search-screen" data-testid="search">
       <Alert ref={errorAlertRef} inline={false} {...errorAlert}></Alert>
