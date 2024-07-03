@@ -75,8 +75,6 @@ $listItemSelectedBorderColor: #949494;
         padding: 0;
         margin: 0;
         li {
-          //padding: 0.5rem;
-          //margin: 1px 0;
           border: 1px solid transparent;
           border-bottom-color: $separatorColor;
           cursor: pointer;
@@ -86,7 +84,6 @@ $listItemSelectedBorderColor: #949494;
             display: flex;
             justify-content: space-between;
             color: #1b1b1b;
-            //color: $theme-color-base-ink;
             text-decoration: none;
             width: calc(100% - 4px);
             padding: 0.5rem;

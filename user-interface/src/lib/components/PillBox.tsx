@@ -22,15 +22,15 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   const [selections, setSelections] = useState<ComboOption[]>([]);
 
   function onPillClick(value: string) {
-    const newSelections = [];
+    const newSelections: ComboOption[] = [];
     let removedIndex = 0;
-    for (let i = 0; i < selections.length; i++) {
-      if (selections[i].value !== value) {
-        newSelections.push(selections[i]);
+    selections.forEach((selection, index) => {
+      if (selection.value !== value) {
+        newSelections.push(selection);
       } else {
-        removedIndex = i;
+        removedIndex = index;
       }
-    }
+    });
 
     if (newSelections.length > 0 && removedIndex > newSelections.length - 1) {
       const pill = document.querySelector(`#${props.id} button.pill:nth-child(${removedIndex})`);

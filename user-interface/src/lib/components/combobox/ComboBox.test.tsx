@@ -1,7 +1,7 @@
 import { LegacyRef } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import { fireEvent, render, waitFor, screen } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
@@ -26,17 +26,17 @@ function isDropdownClosed() {
 }
 
 describe('test cams combobox', () => {
-  function renderWithProps(props?: Partial<ComboBoxProps>, ref?: LegacyRef<ComboBoxRef>) {
-    const defaultOptions: ComboOption[] = [];
-    for (let i = 0; i < 25; i++) {
-      defaultOptions.push({
-        label: 'option ' + i,
-        value: 'o' + i,
-        selected: false,
-        hidden: false,
-      });
-    }
+  const defaultOptions: ComboOption[] = [];
+  for (let i = 0; i < 25; i++) {
+    defaultOptions.push({
+      label: 'option ' + i,
+      value: 'o' + i,
+      selected: false,
+      hidden: false,
+    });
+  }
 
+  function renderWithProps(props?: Partial<ComboBoxProps>, ref?: LegacyRef<ComboBoxRef>) {
     const defaultProps: ComboBoxProps = {
       id: comboboxId,
       label: 'Test Combobox',
@@ -275,7 +275,6 @@ describe('test cams combobox', () => {
     expect(otherButton!).toHaveFocus();
     await userEvent.tab();
     await waitFor(() => {
-      screen.debug(document.activeElement as Element);
       expect(comboboxInputField!).toHaveFocus();
     });
     expect(isDropdownClosed()).toBeTruthy();
@@ -521,6 +520,18 @@ describe('test cams combobox', () => {
     await waitFor(() => {
       expect(input1).toHaveFocus();
     });
+  });
+
+  test('should return selections in onUpdateSelection when a selection is made', async () => {
+    const updateSelection = vi.fn();
+    const results = [defaultOptions[0]];
+    renderWithProps({ onUpdateSelection: updateSelection });
+
+    focusComboInputField(comboboxId);
+    const listButtons = document.querySelectorAll('li button');
+    fireEvent.click(listButtons![0]);
+
+    expect(updateSelection).toHaveBeenCalledWith(results);
   });
 
   test('Pressing Enter key while on the clear button should clear the selections (both the pills and the dropdown list selections).', async () => {
