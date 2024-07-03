@@ -9,15 +9,20 @@ const comboboxId = 'test-combobox';
 
 function toggleDropdown(id: string) {
   const toggleButton = document.querySelector(`#${id}-expand`);
-  fireEvent.click(toggleButton!);
-  const dropdownList = document.querySelector('ul');
-  return dropdownList;
+  document.querySelector('ul');
+
+  if (!toggleButton) throw new Error('Toggle button could not be found');
+
+  fireEvent.click(toggleButton);
 }
 
-function focusComboInputField(id: string) {
+function getFocusedComboInputField(id: string): HTMLInputElement {
   const inputField = document.querySelector(`#${id}-combo-box-input`);
-  fireEvent.click(inputField!);
-  return inputField;
+
+  if (!inputField) throw new Error('ComboBox Input field could not be found');
+
+  fireEvent.click(inputField);
+  return inputField as HTMLInputElement;
 }
 
 function isDropdownClosed() {
@@ -181,14 +186,14 @@ describe('test cams combobox', () => {
   test('should close dropdown list, clear input field, and focus on input field when escape key is pressed inside the input field', () => {
     renderWithProps();
 
-    const inputField = focusComboInputField(comboboxId);
+    const inputField = getFocusedComboInputField(comboboxId);
 
-    fireEvent.change(inputField!, { target: { value: 'test input' } });
-    expect((inputField as HTMLInputElement).value).toEqual('test input');
+    fireEvent.change(inputField, { target: { value: 'test input' } });
+    expect(inputField.value).toEqual('test input');
     expect(isDropdownClosed()).toBeFalsy();
 
-    fireEvent.keyDown(inputField!, { key: 'Escape' });
-    expect((inputField as HTMLInputElement).value).toEqual('');
+    fireEvent.keyDown(inputField, { key: 'Escape' });
+    expect(inputField.value).toEqual('');
     expect(isDropdownClosed()).toBeTruthy();
     expect(inputField).toHaveFocus();
   });
@@ -196,17 +201,17 @@ describe('test cams combobox', () => {
   test('should close dropdown list, clear input field, but NOT focus on input field when clicking outside of combobox', () => {
     renderWithProps();
 
-    const comboboxInputField = focusComboInputField(comboboxId);
+    const comboboxInputField = getFocusedComboInputField(comboboxId);
     const otherInput = document.querySelector('.input1');
 
-    fireEvent.change(comboboxInputField!, { target: { value: 'test input' } });
+    fireEvent.change(comboboxInputField, { target: { value: 'test input' } });
     expect(isDropdownClosed()).toBeFalsy();
 
     fireEvent.click(otherInput!);
 
-    expect((comboboxInputField! as HTMLInputElement).value).toEqual('');
+    expect(comboboxInputField.value).toEqual('');
     expect(isDropdownClosed()).toBeTruthy();
-    expect(comboboxInputField!).not.toHaveFocus();
+    expect(comboboxInputField).not.toHaveFocus();
   });
 
   test('The arrow icon on the toggle button should change directions depending on whether the dropdown list is open or closed.', async () => {
@@ -237,10 +242,10 @@ describe('test cams combobox', () => {
   test('If the dropdown list is open, and the input field is in focus, then pressing the Tab key should highlight the first item in the dropdown list. Pressing the tab key a second time should close the dropdown and focus on the next element on the screen.', async () => {
     renderWithProps();
 
-    const comboboxInputField = focusComboInputField(comboboxId);
+    const comboboxInputField = getFocusedComboInputField(comboboxId);
     expect(isDropdownClosed()).toBeFalsy();
 
-    fireEvent.keyDown(comboboxInputField!, { key: 'Tab' });
+    fireEvent.keyDown(comboboxInputField, { key: 'Tab' });
 
     const listItem = document.querySelector('li button');
     await waitFor(() => {
@@ -280,10 +285,10 @@ describe('test cams combobox', () => {
     renderWithProps({}, ref);
 
     const otherInput = document.querySelector('.input1');
-    const comboboxInputField = focusComboInputField(comboboxId);
+    const comboboxInputField = getFocusedComboInputField(comboboxId);
 
-    fireEvent.change(comboboxInputField!, { target: { value: 'this is gibberish' } });
-    (comboboxInputField! as HTMLInputElement).focus();
+    fireEvent.change(comboboxInputField, { target: { value: 'this is gibberish' } });
+    comboboxInputField.focus();
     const result = ref.current?.getValue();
     expect(result).toEqual([]);
 
@@ -297,11 +302,11 @@ describe('test cams combobox', () => {
   test('If the dropdown list is closed, then typing characters on the keyboard should open the dropdown list', async () => {
     renderWithProps();
 
-    const inputField = focusComboInputField(comboboxId);
-    fireEvent.keyDown(inputField!, { key: 'Escape' });
+    const inputField = getFocusedComboInputField(comboboxId);
+    fireEvent.keyDown(inputField, { key: 'Escape' });
     expect(isDropdownClosed()).toBeTruthy();
 
-    fireEvent.change(inputField!, { target: { value: 'test input' } });
+    fireEvent.change(inputField, { target: { value: 'test input' } });
     expect(isDropdownClosed()).toBeFalsy();
   });
 
@@ -315,8 +320,8 @@ describe('test cams combobox', () => {
     ];
     renderWithProps({ options });
 
-    const inputField = focusComboInputField(comboboxId);
-    fireEvent.keyDown(inputField!, { key: 'ArrowDown' });
+    const inputField = getFocusedComboInputField(comboboxId);
+    fireEvent.keyDown(inputField, { key: 'ArrowDown' });
 
     const listItems = document.querySelectorAll('li button');
     expect(listItems[0]).toHaveFocus();
@@ -333,7 +338,7 @@ describe('test cams combobox', () => {
     fireEvent.keyDown(listItems[4]!, { key: 'ArrowDown' });
     expect(inputField).toHaveFocus();
 
-    fireEvent.keyDown(inputField!, { key: 'ArrowUp' });
+    fireEvent.keyDown(inputField, { key: 'ArrowUp' });
     expect(listItems[4]).toHaveFocus();
 
     fireEvent.keyDown(listItems[4]!, { key: 'ArrowUp' });
@@ -356,8 +361,8 @@ describe('test cams combobox', () => {
     const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     expect(pillBox!.children.length).toEqual(0);
 
-    const inputField = focusComboInputField(comboboxId);
-    fireEvent.keyDown(inputField!, { key: 'ArrowDown' });
+    const inputField = getFocusedComboInputField(comboboxId);
+    fireEvent.keyDown(inputField, { key: 'ArrowDown' });
 
     const listItems = document.querySelectorAll('li');
     const listItem0Button = listItems![0].children[0];
@@ -383,8 +388,8 @@ describe('test cams combobox', () => {
     ];
     renderWithProps({ options });
 
-    const inputField = focusComboInputField(comboboxId);
-    fireEvent.keyDown(inputField!, { key: 'ArrowDown' });
+    const inputField = getFocusedComboInputField(comboboxId);
+    fireEvent.keyDown(inputField, { key: 'ArrowDown' });
     expect(isDropdownClosed()).toBeFalsy();
 
     const listItems = document.querySelectorAll('li');
@@ -406,8 +411,8 @@ describe('test cams combobox', () => {
     ];
     renderWithProps({ options });
 
-    const inputField = focusComboInputField(comboboxId);
-    fireEvent.change(inputField!, { target: { value: 'blue' } });
+    const inputField = getFocusedComboInputField(comboboxId);
+    fireEvent.change(inputField, { target: { value: 'blue' } });
 
     const listItems = document.querySelectorAll('li');
     expect(listItems[0]).toHaveClass('hidden');
@@ -416,16 +421,13 @@ describe('test cams combobox', () => {
       expect(listItems[i]).not.toHaveClass('hidden');
     }
 
-    fireEvent.change(inputField!, { target: { value: 'everything' } });
+    fireEvent.change(inputField, { target: { value: 'everything' } });
     for (let i = 0; i < listItems.length - 1; i++) {
       expect(listItems[i]).toHaveClass('hidden');
     }
     expect(listItems[4]).not.toHaveClass('hidden');
   });
 
-  // When focus leaves the combobox and moves to another element on screen, the input field in the
-  // combobox should be cleared.
-  // TODO: broken - element is not focused after tab.
   test('When focus leaves the combobox and moves to another element on screen, the input field in the combobox should be cleared.', async () => {
     const options = [
       { label: 'option1', value: 'option1', selected: false },
@@ -433,23 +435,24 @@ describe('test cams combobox', () => {
     ];
     renderWithProps({ options });
 
-    // const input1 = document.querySelector('.input1');
-    const inputField = focusComboInputField(comboboxId);
+    const input1 = document.querySelector('.input1');
+    const inputField = getFocusedComboInputField(comboboxId);
 
-    fireEvent.change(inputField!, { target: { value: 'test test' } });
+    fireEvent.change(inputField, { target: { value: 'test test' } });
 
-    fireEvent.keyDown(inputField!, { key: 'Tab' });
+    inputField.focus();
+    userEvent.tab();
 
     await waitFor(() => {
-      expect((inputField! as HTMLInputElement).value).toEqual('');
-      // expect(input1!).toHaveFocus();
+      expect(inputField.value).toEqual('');
+      expect(input1!).toHaveFocus();
     });
   });
 
   test('Tabbing from another area of the screen to the combo box should first focus on the pills, then the clear button, then the actual combo box input.', async () => {
     renderWithProps();
 
-    const comboInput = focusComboInputField(comboboxId);
+    const comboInput = getFocusedComboInputField(comboboxId);
     const expandButton = document.querySelector('.expand-button');
     const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     const button1 = document.querySelector('.button1');
@@ -515,7 +518,7 @@ describe('test cams combobox', () => {
     const results = [defaultOptions[0]];
     renderWithProps({ onUpdateSelection: updateSelection });
 
-    focusComboInputField(comboboxId);
+    getFocusedComboInputField(comboboxId);
     const listButtons = document.querySelectorAll('li button');
     fireEvent.click(listButtons![0]);
 
@@ -526,7 +529,7 @@ describe('test cams combobox', () => {
     const updateSelection = vi.fn();
     renderWithProps({ onUpdateSelection: updateSelection });
 
-    focusComboInputField(comboboxId);
+    getFocusedComboInputField(comboboxId);
     const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     const listButtons = document.querySelectorAll('li button');
     fireEvent.click(listButtons![0]);
