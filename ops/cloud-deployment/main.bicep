@@ -2,6 +2,8 @@ param stackName string
 
 param location string = resourceGroup().location
 
+param infoSha string
+
 param appResourceGroup string = resourceGroup().name
 
 @description('Flag: determines deployment of vnet. Determined at workflow runtime. True on initial deployment outside of USTP.')
@@ -87,6 +89,9 @@ param idKeyvaultAppConfiguration string
 
 param kvAppConfigResourceGroupName string = sqlServerResourceGroupName
 
+@description('name of the app config KeyVault')
+param kvAppConfigName string = 'kv-${stackName}'
+
 @description('Flag: Determines creation and configuration of Alerts.')
 param createAlerts bool = false
 
@@ -107,6 +112,8 @@ param loginProviderConfig string = ''
 
 param loginProvider string = ''
 
+param isUstpDeployment bool = false
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -118,6 +125,10 @@ param camsReactSelectHash string
 @description('Name of the managed identity with read/write access to CosmosDB.')
 @secure()
 param cosmosIdentityName string
+
+param cosmosDatabaseName string
+
+param cosmosAccountName string
 
 //TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
@@ -218,6 +229,11 @@ if (deployFunctions) {
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
+      cosmosAccountName: cosmosAccountName
+      cosmosDatabaseName: cosmosDatabaseName
+      infoSha: infoSha
+      kvAppConfigName: kvAppConfigName
+      isUstpDeployment: isUstpDeployment
     }
     dependsOn: [
       network
