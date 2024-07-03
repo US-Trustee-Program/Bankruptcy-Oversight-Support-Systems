@@ -46,6 +46,24 @@ describe('Key Value utils', () => {
       const actual = keyValuesToRecord(encoded);
       expect(actual).toEqual(expected);
     });
+
+    test('should handle blank values', () => {
+      const encoded = 'ONE=';
+      const expected = {
+        ONE: '',
+      };
+      const actual = keyValuesToRecord(encoded);
+      expect(actual).toEqual(expected);
+    });
+
+    test('should handle values with equal signs', () => {
+      const encoded = 'ONE=Config=Foo';
+      const expected = {
+        ONE: 'Config=Foo',
+      };
+      const actual = keyValuesToRecord(encoded);
+      expect(actual).toEqual(expected);
+    });
   });
 
   describe('keyValuesToMap', () => {
@@ -86,6 +104,20 @@ describe('Key Value utils', () => {
         ['ONE', '1'],
         ['TWO', '2'],
       ]);
+      const actual = keyValuesToMap(encoded);
+      expect(actual).toEqual(expected);
+    });
+
+    test('should handle blank values', () => {
+      const encoded = 'ONE=';
+      const expected = new Map<string, string>([['ONE', '']]);
+      const actual = keyValuesToMap(encoded);
+      expect(actual).toEqual(expected);
+    });
+
+    test('should handle values with equal signs', () => {
+      const encoded = 'ONE=Config=Foo';
+      const expected = new Map<string, string>([['ONE', 'Config=Foo']]);
       const actual = keyValuesToMap(encoded);
       expect(actual).toEqual(expected);
     });
