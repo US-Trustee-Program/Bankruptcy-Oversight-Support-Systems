@@ -15,7 +15,7 @@ describe('Authorization config tests', () => {
 
   test('should not get provider from hostname', () => {
     process.env.CAMS_LOGIN_PROVIDER_CONFIG =
-      '{"issuer": "https://fake.provider.com/malicious-okta/default"}';
+      'issuer=https://fake.provider.com/malicious-okta/default';
 
     let configModule;
     jest.isolateModules(() => {
@@ -27,7 +27,7 @@ describe('Authorization config tests', () => {
 
   test('should not get provider from path with hyphenated subdomain containing okta', () => {
     process.env.CAMS_LOGIN_PROVIDER_CONFIG =
-      '{"issuer": "https://malicious-okta.provider.com/malicious-okta/defaultt"}';
+      'issuer=https://malicious-okta.provider.com/malicious-okta/defaultt}';
 
     let configModule;
     jest.isolateModules(() => {
@@ -38,7 +38,7 @@ describe('Authorization config tests', () => {
   });
 
   test('should get okta.com from domain name', () => {
-    process.env.CAMS_LOGIN_PROVIDER_CONFIG = '{"issuer": "https://valid.okta.com/oauth2/default"}';
+    process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=https://valid.okta.com/oauth2/default';
 
     let configModule;
     jest.isolateModules(() => {
@@ -50,7 +50,7 @@ describe('Authorization config tests', () => {
   });
 
   test('should return null audience from domain name', () => {
-    process.env.CAMS_LOGIN_PROVIDER_CONFIG = '{"issuer": "https://valid.okta.com/"}';
+    process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=https://valid.okta.com/';
 
     let configModule;
     jest.isolateModules(() => {
