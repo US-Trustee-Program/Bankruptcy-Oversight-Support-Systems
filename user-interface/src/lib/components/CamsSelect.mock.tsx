@@ -85,6 +85,7 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
 const CamsSelect = forwardRef(MockCamsSelectComponent);
 export default CamsSelect;
 
+// TODO Remove this once combobox select replaces multiselect in all instances.
 export function selectItemInMockSelect(id: string, index: number) {
   const selectButton = document.querySelector(`#${id}-${index}`);
   expect(selectButton).toBeInTheDocument();

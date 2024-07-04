@@ -4,7 +4,6 @@ import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
-import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import { CasesSearchPredicate } from '@common/api/search';
 import { buildResponseBodySuccess } from '@common/api/response';
 
@@ -34,6 +33,182 @@ describe('search screen', () => {
       </BrowserRouter>,
     );
   }
+  test('should render a list of cases by chapter number', async () => {
+    const divisionSearchPredicate = {
+      limit: 25,
+      offset: 0,
+      chapters: expect.any(Array<string>),
+    };
+
+    renderWithoutProps();
+
+    const loadingSpinner = document.querySelector('.loading-spinner');
+    let defaultStateAlert = document.querySelector('#default-state-alert');
+    expect(defaultStateAlert).toBeInTheDocument();
+    expect(defaultStateAlert).toBeVisible();
+
+    let table = document.querySelector('#search-results > table');
+    expect(table).not.toBeInTheDocument();
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+
+    await waitFor(() => {
+      // Infer the office list is loaded from the API.
+      expect(document.querySelector('#case-chapter-search-item-list')).toBeInTheDocument();
+    });
+
+    // Make first search request....
+    fireEvent.click(expandButton!);
+    const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');
+    fireEvent.click(chapterElevenOptionButton);
+    fireEvent.click(expandButton!);
+
+    await waitFor(() => {
+      // wait for loading to appear and default state alert to be removed
+      defaultStateAlert = document.querySelector('#default-state-alert');
+      expect(defaultStateAlert).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(loadingSpinner).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    expect(getCaseSummarySpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
+    );
+
+    // Make second search request...
+    fireEvent.click(expandButton!);
+    const chapterTwelveOptionButton = screen.getByTestId('combo-box-option-12');
+    fireEvent.click(chapterTwelveOptionButton);
+    fireEvent.click(expandButton!);
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+
+    expect(getCaseSummarySpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
+    );
+  });
+
+  test('should render a list of cases by court division', async () => {
+    const divisionSearchPredicate = {
+      limit: 25,
+      offset: 0,
+      divisionCodes: expect.any(Array<string>),
+    };
+
+    renderWithoutProps();
+
+    const loadingSpinner = document.querySelector('.loading-spinner');
+    const defaultStateAlert = document.querySelector('#default-state-alert');
+    expect(defaultStateAlert).toBeInTheDocument();
+    expect(defaultStateAlert).toBeVisible();
+
+    let table = document.querySelector('#search-results > table');
+    expect(table).not.toBeInTheDocument();
+    const expandButton = screen.getByTestId('button-court-selections-search-expand');
+
+    await waitFor(() => {
+      expect(expandButton).toBeInTheDocument();
+      fireEvent.click(expandButton);
+    });
+    // Infer the office list is loaded from the API.
+
+    let divisionItemLi: HTMLElement;
+    let divisionText: string;
+    let divisionItemBtn: HTMLElement;
+
+    // Make first search request....
+    await waitFor(() => {
+      divisionItemLi = screen.getByTestId('court-selections-search-item-0');
+      divisionText = divisionItemLi.textContent!;
+      divisionItemBtn = screen.getByTestId(`combo-box-option-${divisionText}`);
+      expect(divisionItemLi).toBeInTheDocument();
+      expect(divisionItemBtn).toBeInTheDocument();
+      fireEvent.click(divisionItemBtn);
+    });
+
+    await waitFor(() => {
+      expect(divisionItemLi).toHaveClass('selected');
+    });
+    fireEvent.click(expandButton);
+    await waitFor(() => {
+      const expandedList = document.querySelector('.item-list-container .expanded');
+      expect(expandedList).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      // wait for loading to appear and default state alert to be removed
+      expect(defaultStateAlert).not.toBeVisible();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    expect(getCaseSummarySpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
+    );
+
+    // Make second search request...
+
+    await waitFor(() => {
+      fireEvent.click(expandButton);
+    });
+
+    // Infer the office list is loaded from the API.
+    divisionItemLi = screen.getByTestId('court-selections-search-item-1'); // select second option
+
+    divisionText = divisionItemLi.textContent!;
+    divisionItemBtn = screen.getByTestId(`combo-box-option-${divisionText}`);
+
+    // Make first search request....
+    await waitFor(() => {
+      expect(divisionItemLi).toBeInTheDocument();
+      expect(divisionItemBtn).toBeInTheDocument();
+      fireEvent.click(divisionItemBtn);
+    });
+
+    await waitFor(() => {
+      expect(divisionItemLi).toHaveClass('selected');
+    });
+    fireEvent.click(expandButton);
+    await waitFor(() => {
+      const expandedList = document.querySelector('.item-list-container .expanded');
+      expect(expandedList).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(loadingSpinner).not.toBeInTheDocument();
+      table = document.querySelector('#search-results > table');
+      expect(table).toBeVisible();
+    });
+
+    expect(getCaseSummarySpy).toHaveBeenLastCalledWith(
+      '/cases',
+      expect.objectContaining(divisionSearchPredicate),
+    );
+  });
 
   test('should render a list of cases by case number', async () => {
     renderWithoutProps();
@@ -117,147 +292,6 @@ describe('search screen', () => {
     });
 
     expect(getCaseSummarySpy.mock.calls).toHaveLength(2);
-  });
-
-  test('should render a list of cases by court division', async () => {
-    const divisionSearchPredicate = {
-      limit: 25,
-      offset: 0,
-      divisionCodes: expect.any(Array<string>),
-    };
-
-    renderWithoutProps();
-    const localGetSpy = vi
-      .spyOn(Chapter15MockApi, 'get')
-      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
-
-    let defaultStateAlert = document.querySelector('#default-state-alert');
-    expect(defaultStateAlert).toBeInTheDocument();
-    expect(defaultStateAlert).toBeVisible();
-
-    await waitFor(() => {
-      // Infer the office list is loaded from the API.
-      expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
-    });
-
-    let table = document.querySelector('#search-results > table');
-    expect(table).not.toBeInTheDocument();
-
-    // Make first search request....
-    selectItemInMockSelect('court-selections-search', 0);
-
-    await waitFor(() => {
-      // wait for loading to appear and default state alert to be removed
-      defaultStateAlert = document.querySelector('#default-state-alert');
-      expect(defaultStateAlert).not.toBeInTheDocument();
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      // wait for loading to disappear
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).toBeVisible();
-    });
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
-    expect(rows).toHaveLength(caseList.length);
-
-    expect(localGetSpy).toHaveBeenLastCalledWith(
-      '/cases',
-      expect.objectContaining(divisionSearchPredicate),
-    );
-
-    // Make second search request...
-    selectItemInMockSelect('court-selections-search', 1);
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).not.toBeInTheDocument();
-    });
-    await waitFor(() => {
-      // wait for loading to disappear
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).toBeVisible();
-    });
-
-    expect(localGetSpy).toHaveBeenLastCalledWith(
-      '/cases',
-      expect.objectContaining(divisionSearchPredicate),
-    );
-  });
-
-  test('should render a list of cases by chapter number', async () => {
-    const divisionSearchPredicate = {
-      limit: 25,
-      offset: 0,
-      chapters: expect.any(Array<string>),
-    };
-
-    renderWithoutProps();
-    const localGetSpy = vi
-      .spyOn(Chapter15MockApi, 'get')
-      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
-
-    let defaultStateAlert = document.querySelector('#default-state-alert');
-    expect(defaultStateAlert).toBeInTheDocument();
-    expect(defaultStateAlert).toBeVisible();
-
-    await waitFor(() => {
-      // Infer the office list is loaded from the API.
-      expect(document.querySelector('#court-selections-search-1')).toBeInTheDocument();
-    });
-
-    let table = document.querySelector('#search-results > table');
-    expect(table).not.toBeInTheDocument();
-
-    // Make first search request....
-    const comboBoxExpandButton = screen.getByTestId('button-case-chapter-search-expand');
-    fireEvent.click(comboBoxExpandButton!);
-    const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');
-    fireEvent.click(chapterElevenOptionButton);
-    fireEvent.click(comboBoxExpandButton!);
-
-    await waitFor(() => {
-      // wait for loading to appear and default state alert to be removed
-      defaultStateAlert = document.querySelector('#default-state-alert');
-      expect(defaultStateAlert).not.toBeInTheDocument();
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      // wait for loading to disappear
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).toBeVisible();
-    });
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
-    expect(rows).toHaveLength(caseList.length);
-
-    expect(localGetSpy).toHaveBeenLastCalledWith(
-      '/cases',
-      expect.objectContaining(divisionSearchPredicate),
-    );
-
-    // Make second search request...
-    fireEvent.click(comboBoxExpandButton!);
-    const chapterTwelveOptionButton = screen.getByTestId('combo-box-option-12');
-    fireEvent.click(chapterTwelveOptionButton);
-    fireEvent.click(comboBoxExpandButton!);
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).not.toBeInTheDocument();
-    });
-    await waitFor(() => {
-      // wait for loading to disappear
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
-      expect(table).toBeVisible();
-    });
-
-    expect(localGetSpy).toHaveBeenLastCalledWith(
-      '/cases',
-      expect.objectContaining(divisionSearchPredicate),
-    );
   });
 
   test('should show the no results alert when no results are available', async () => {

@@ -416,7 +416,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           >
             <ul>
               {filteredOptions.map((option, idx) => (
-                <li className={setListItemClass(idx, option)} key={`${props.id}-${idx}`}>
+                <li
+                  className={setListItemClass(idx, option)}
+                  data-testid={`${props.id}-item-${idx}`}
+                  key={`${props.id}-${idx}`}
+                >
                   <button
                     className="usa-button--unstyled"
                     data-value={option.value}
