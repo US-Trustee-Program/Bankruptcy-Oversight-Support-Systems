@@ -105,7 +105,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function filterDropdown(value: string) {
     const newOptions = [...filteredOptions];
     newOptions?.forEach((option) => {
-      if (!value || option.label.includes(value)) {
+      if (!value || option.label.toLowerCase().includes(value.toLowerCase())) {
         option.hidden = false;
       } else {
         option.hidden = true;
@@ -155,7 +155,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     let result = false;
     if (selections) {
       for (const item of selections) {
-        if (item.value === option.value) {
+        if (item.value === option.value && item.label === option.label) {
           result = true;
           break;
         }
@@ -424,12 +424,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={`multi-select option: ${props.ariaLabelPrefix} ${option.label} ${selections.includes(option)! ? 'selected' : 'unselected'}`}
+                    aria-label={`multi-select option: ${props.ariaLabelPrefix} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
                   >
                     {
                       <>
                         {option.label}
-                        {selections.includes(option) && <Icon name="check"></Icon>}
+                        {isSelected(option) && <Icon name="check"></Icon>}
                       </>
                     }
                   </button>
