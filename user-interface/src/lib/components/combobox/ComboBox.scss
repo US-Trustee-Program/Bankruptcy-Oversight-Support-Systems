@@ -16,6 +16,9 @@ $listItemSelectedBorderColor: #949494;
     .pill-box {
       max-width: calc(100% - 3rem);
     }
+    .pill-clear-button {
+      height: 1rem;
+    }
   }
 
   .usa-combo-box {
@@ -91,6 +94,11 @@ $listItemSelectedBorderColor: #949494;
             text-decoration: none;
             width: calc(100% - 4px);
             padding: 0.5rem;
+
+            svg.usa-icon {
+              min-width: 1em;
+              min-height: 1em;
+            }
           }
           button:focus {
             border-color: $listItemHoverBorderColor;
