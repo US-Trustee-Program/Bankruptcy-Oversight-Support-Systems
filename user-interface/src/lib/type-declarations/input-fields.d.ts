@@ -1,4 +1,3 @@
-import { MultiSelectOptionList } from '../components/CamsSelectMulti';
 import { ComboOption } from '../components/Combobox';
 
 export interface InputRef {
@@ -11,6 +10,7 @@ export interface InputRef {
 
 export interface ComboBoxRef {
   getValue: () => ComboOption[];
+  clearValue: () => void;
   disable: (value: boolean) => void;
 }
 
@@ -31,9 +31,4 @@ export interface DateRangePickerRef extends Omit<InputRef, 'setValue'> {
 
 export interface SelectRef extends Omit<InputRef, 'getValue'> {
   getValue: () => SingleSelectOptionList;
-}
-
-export interface SelectMultiRef extends Omit<InputRef, 'getValue' | 'setValue'> {
-  getValue: () => MultiSelectOptionList;
-  setValue: (records) => void;
 }

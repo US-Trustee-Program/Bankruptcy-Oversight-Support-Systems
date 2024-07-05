@@ -132,6 +132,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return selections;
   }
 
+  function clearValue() {
+    setSelections([]);
+  }
+
   function isOutsideClick(ev: MouseEvent) {
     if (comboBoxRef.current && expanded) {
       const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
@@ -341,7 +345,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }, [selections]);
 
-  useImperativeHandle(ref, () => ({ getValue, disable }));
+  useImperativeHandle(ref, () => ({ getValue, clearValue, disable }));
 
   // ========== JSX ==========
 
@@ -383,6 +387,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             <input
               {...otherProps}
               id={`${props.id}-combo-box-input`}
+              data-testid="combo-box-input"
               className={`usa-tooltip combo-box-input`}
               onChange={handleInputFilter}
               onKeyDown={(ev) => handleKeyDown(ev, 0)}

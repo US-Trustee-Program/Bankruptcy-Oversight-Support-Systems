@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent, within } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import CaseDetailScreen, {
   applySortAndFilters,
   findDocketLimits,
@@ -630,8 +630,13 @@ describe('Case Detail sort, search, and filter tests', () => {
       sortButton = screen.queryByTestId('docket-entry-sort');
       expect(sortButton).not.toBeInTheDocument();
 
-      const docketEntryLink = screen.getByTestId('court-docket-link');
-      fireEvent.click(docketEntryLink as Element);
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        expect(docketEntryLink).toBeInTheDocument();
+      });
+
+      fireEvent.click(docketEntryLink! as Element);
       await waitFor(() => {
         sortButton = screen.queryByTestId('docket-entry-sort');
         expect(sortButton).toBeInTheDocument();
@@ -655,8 +660,7 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
       expect(docketFacetContainer).toBeInTheDocument();
-      // test id does not work for the multi-select react component.  Quite a bummer.
-      let docketFacetInput = within(docketFacetContainer).getByRole('combobox');
+      let docketFacetInput = screen.getByTestId('combo-box-input');
       expect(docketFacetInput).toBeInTheDocument();
 
       const clearFiltersButton = screen.getByTestId('clear-filters');
@@ -684,7 +688,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       searchInput = screen.getByTestId('document-number-search-field');
       expect(searchInput.textContent).toBe('');
 
-      docketFacetInput = within(docketFacetContainer).getByRole('combobox');
+      docketFacetInput = screen.getByTestId('combo-box-input');
       expect(docketFacetInput.textContent).toBe('');
 
       startDateText = screen.getByTestId('docket-date-range-date-start');
