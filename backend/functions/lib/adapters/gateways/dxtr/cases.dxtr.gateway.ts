@@ -122,7 +122,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         cs.CS_CHAPTER as chapter,
         cs.COURT_ID as courtId,
         court.COURT_NAME as courtName,
-        office.OFFICE_NAME as courtDivisionName,
+        office.OFFICE_NAME_DISPLAY as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
         TRIM(CONCAT(
           PY_FIRST_NAME,
@@ -218,7 +218,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       cs.CS_CHAPTER as chapter,
       cs.COURT_ID as courtId,
       court.COURT_NAME as courtName,
-      office.OFFICE_NAME as courtDivisionName,
+      office.OFFICE_NAME_DISPLAY as courtDivisionName,
       TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
       TRIM(CONCAT(
         PY_FIRST_NAME,
@@ -370,7 +370,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         cs.CS_CHAPTER as chapter,
         cs.COURT_ID as courtId,
         court.COURT_NAME as courtName,
-        office.OFFICE_NAME as courtDivisionName,
+        office.OFFICE_NAME_DISPLAY as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
         grp_des.REGION_ID as regionId,
         R.REGION_NAME AS regionName,

@@ -28,7 +28,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
       ,a.[OFFICE_CODE] AS officeCode
       ,a.[STATE] AS state
       ,c.COURT_NAME AS courtName
-      ,b.OFFICE_NAME AS courtDivisionName
+      ,b.OFFICE_NAME_DISPLAY AS courtDivisionName
       ,d.REGION_ID AS regionId
       ,r.REGION_NAME AS regionName
     FROM [dbo].[AO_CS_DIV] a
