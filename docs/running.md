@@ -41,11 +41,11 @@ CAMS_SERVER_PORT={the port the backend is served on}
 CAMS_SERVER_PROTOCOL=http[s]
 CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 CAMS_PA11Y={a string: true | false}
-CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly}
+CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly
 CAMS_INFO_SHA={expect commit sha used to build current version}
 CAMS_LAUNCH_DARKLY_ENV="development"
-CAMS_LOGIN_PROVIDER={"azure" || "mock" || "none"}
-CAMS_MSAL_CONFIG='{"auth":{"clientId":"{AzureB2CClientId}","authority":"https://login.microsoftonline.us/a{AzureB2CClientId}","redirectUri":"http://localhost:3000/login"},"cache":{"cacheLocation":"sessionStorage","storeAuthStateInCookie":false},"scopes":["User.Read"],"graphMeEndpoint":"https://graph.microsoft.us/v1.0/me"}'
+CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
+CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
 
 ```
 
@@ -97,8 +97,11 @@ COSMOS_DATABASE_NAME={the name of the CosmosDb database}
 COSMOS_ENDPOINT={the URI to the CosmosDb endpoint}
 COSMOS_MANAGED_IDENTITY=
 SERVER_PORT=7071
+## LOGIN_PROVIDER and CONFIG must match the frontend to function locally
+CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
+CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
 DATABASE_MOCK={a string: true | false}
-
+CAMS_INFO_SHA=''
 MSSQL_HOST={the FQDN of the database}
 MSSQL_DATABASE_DXTR={the name of the DXTR database}
 MSSQL_ENCRYPT={a string: true | false}
@@ -123,9 +126,9 @@ access separately. One way to do this is by setting up
 
 ##### SQL Server Database
 
-###### Passwordless connection (via Azure User Managed Identity)
+###### Password-less connection (via Azure User Managed Identity)
 
-Existing Bicep deployment can automate the creation of the user managed identity and assign the identity to the functionapp instance. The below are some manual steps to handle.
+Existing Bicep deployment can automate the creation of the user managed identity and assign the identity to the Function App instance. The below are some manual steps to handle.
 
 Grant access to a managed identity with the following sql query
 
@@ -138,7 +141,7 @@ ALTER ROLE db_datareader ADD MEMBER [userAssignedIdentityName];
 GO
 ```
 
-Also ensure to set the environment variable for the functionapp, MSSQL_CLIENT_ID. This is stored as a secret in Keyvault.
+Also ensure to set the MSSQL_CLIENT_ID environment variable for the Function App. This is stored as a secret in Key Vault.
 
 ##### Azure Functions Core
 
@@ -165,7 +168,7 @@ contents of that file must be:
 }
 ```
 
-A sufficiently priveleged user can retrieve the `AzureWebJobsStorage` connection string with the following Azure CLI command:
+A sufficiently privileged user can retrieve the `AzureWebJobsStorage` connection string with the following Azure CLI command:
 
 ```sh
 az functionapp config appsettings list -g rg-cams-app -n ustp-cams-node-api --query "[?name=='AzureWebJobsStorage']"
