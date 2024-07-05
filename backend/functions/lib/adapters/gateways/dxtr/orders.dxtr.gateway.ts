@@ -333,7 +333,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         CS.CS_DIV as courtDivisionCode,
         CS.CS_CHAPTER AS chapter,
         C.COURT_NAME AS courtName,
-        O.OFFICE_NAME AS courtDivisionName,
+        O.OFFICE_NAME_DISPLAY AS courtDivisionName,
         G.REGION_ID AS regionId,
         R.REGION_NAME AS regionName,
         FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
@@ -409,7 +409,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         CS.CS_SHORT_TITLE AS caseTitle,
         CS.CS_CHAPTER AS chapter,
         C.COURT_NAME AS courtName,
-        O.OFFICE_NAME AS courtDivisionName,
+        O.OFFICE_NAME_DISPLAY AS courtDivisionName,
         G.REGION_ID AS regionId,
         R.REGION_NAME AS regionName,
         FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate
