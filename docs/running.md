@@ -44,7 +44,7 @@ CAMS_PA11Y=(a string: true | false)
 CAMS_FEATURE_FLAG_CLIENT_ID=(Client-side ID obtained from Launch Darkly)
 CAMS_INFO_SHA={expect commit sha used to build current version}
 CAMS_LAUNCH_DARKLY_ENV="development"
-CAMS_LOGIN_PROVIDER='mock' ("okta" || "mock" || "none")
+CAMS_LOGIN_PROVIDER=("okta" || "mock" || "none")
 CAMS_LOGIN_PROVIDER_CONFIG='{"issuer":"http://localhost:7071/api/oauth2/default","clientId":""}' (Replace issuer and clientid with proper okta config for okta)
 
 ```
