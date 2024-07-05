@@ -5,7 +5,7 @@ const defaultColor = 'black';
 const defaultBackgroundColor = '#d0d0d0';
 
 type PillProps = {
-  id?: string;
+  id: string;
   className?: string;
   color?: string;
   backgroundColor?: string;
@@ -29,8 +29,8 @@ export function Pill(props: PillProps) {
 
   return (
     <button
-      id={props.id ?? ''}
-      data-testid={props.id ? `pill-${props.id}` : ''}
+      id={props.id}
+      data-testid={`pill-${props.id}`}
       className="pill usa-button--unstyled"
       style={{ backgroundColor, color }}
       onClick={() => props.onClick(props.value)}
