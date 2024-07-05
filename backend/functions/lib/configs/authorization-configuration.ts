@@ -5,7 +5,10 @@ import { keyValuesToRecord } from '../../../../common/src/cams/utilities';
 
 dotenv.config();
 
-const doMockAuth = process.env.CAMS_LOGIN_PROVIDER === 'mock';
+const provider = ['okta', 'mock', 'none'].includes(process.env.CAMS_LOGIN_PROVIDER)
+  ? process.env.CAMS_LOGIN_PROVIDER
+  : null;
+const doMockAuth = provider === 'mock';
 const config = doMockAuth
   ? ({} as EnvLoginConfig)
   : keyValuesToRecord(process.env.CAMS_LOGIN_PROVIDER_CONFIG);
@@ -16,26 +19,13 @@ const authorizationConfig = doMockAuth
   ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null } as const)
   : ({
       issuer,
+      provider,
       audience: getAudienceFromIssuer(issuer),
-      provider: getProviderFromIssuer(issuer),
       userInfoUri: getUserInfoUriFromIssuer(issuer),
     } as const);
 
 export function getAuthorizationConfig(): AuthorizationConfig {
   return authorizationConfig;
-}
-
-function getProviderFromIssuer(issuer: string) {
-  if (!issuer) return null;
-  if (issuer === 'https://dojlogin-test.usdoj.gov/oauth2/default') return 'okta';
-
-  const issuerHost = new URL(issuer).hostname;
-  const domainParts = issuerHost.split('.');
-  const assembledDomain = domainParts.slice(-2).join('.');
-  const acceptedDomains = ['okta.com', 'okta-gov.com'];
-  if (acceptedDomains.includes(assembledDomain)) return 'okta';
-
-  return null;
 }
 
 function getAudienceFromIssuer(issuer: string) {

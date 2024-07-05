@@ -13,9 +13,19 @@ describe('Authorization config tests', () => {
     process.env = originalEnv;
   });
 
-  test('should not get provider from hostname', () => {
-    process.env.CAMS_LOGIN_PROVIDER_CONFIG =
-      'issuer=https://fake.provider.com/malicious-okta/default';
+  test.each(['mock', 'okta', 'none'])('should get %s provider from environment', (expected) => {
+    process.env.CAMS_LOGIN_PROVIDER = expected;
+
+    let configModule;
+    jest.isolateModules(() => {
+      configModule = require('./authorization-configuration');
+    });
+    const config = configModule.getAuthorizationConfig();
+    expect(config.provider).toEqual(expected);
+  });
+
+  test('should return null for an invalid provider read from the environment', () => {
+    process.env.CAMS_LOGIN_PROVIDER = 'bogus';
 
     let configModule;
     jest.isolateModules(() => {
@@ -25,19 +35,7 @@ describe('Authorization config tests', () => {
     expect(config.provider).toBeNull();
   });
 
-  test('should not get provider from path with hyphenated subdomain containing okta', () => {
-    process.env.CAMS_LOGIN_PROVIDER_CONFIG =
-      'issuer=https://malicious-okta.provider.com/malicious-okta/defaultt}';
-
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
-    const config = configModule.getAuthorizationConfig();
-    expect(config.provider).toBeNull();
-  });
-
-  test('should get okta.com from domain name', () => {
+  test('should return audience from issuer', () => {
     process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=https://valid.okta.com/oauth2/default';
 
     let configModule;
@@ -45,11 +43,10 @@ describe('Authorization config tests', () => {
       configModule = require('./authorization-configuration');
     });
     const config = configModule.getAuthorizationConfig();
-    expect(config.provider).toEqual('okta');
     expect(config.audience).toEqual('api://default');
   });
 
-  test('should return null audience from domain name', () => {
+  test('should return null audience from issuer if not path is provided', () => {
     process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=https://valid.okta.com/';
 
     let configModule;
@@ -72,6 +69,7 @@ describe('Authorization config tests', () => {
   });
 
   test('module should not fail to parse and initialize config with nonsense env var', () => {
+    process.env.CAMS_LOGIN_PROVIDER = 'bogus';
     process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'nonsense';
 
     let configModule;
