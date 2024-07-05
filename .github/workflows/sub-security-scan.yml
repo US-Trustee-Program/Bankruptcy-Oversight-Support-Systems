@@ -77,7 +77,7 @@ jobs:
   sast-scan-and-upload:
     name: SAST Scan Uploaded
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' || true }}
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
 
