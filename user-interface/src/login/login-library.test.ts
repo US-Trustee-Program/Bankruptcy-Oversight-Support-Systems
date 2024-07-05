@@ -45,11 +45,8 @@ describe('Login library', () => {
       vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, '');
       expect(functionExpectedToThrow).toThrow();
 
-      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, '{bogus json}');
-      expect(functionExpectedToThrow).toThrow();
-
       const expectedConfiguration = { url: 'http://localhost/' };
-      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, JSON.stringify(expectedConfiguration));
+      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, 'url=http://localhost/');
       expect(getLoginConfigurationFromEnv()).toEqual(expectedConfiguration);
     });
   });

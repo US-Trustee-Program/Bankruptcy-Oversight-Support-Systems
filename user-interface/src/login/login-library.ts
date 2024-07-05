@@ -1,3 +1,5 @@
+import { keyValuesToRecord } from '@common/cams/utilities';
+
 export const LOGIN_PROVIDER_ENV_VAR_NAME = 'CAMS_LOGIN_PROVIDER';
 export const LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME = 'CAMS_LOGIN_PROVIDER_CONFIG';
 
@@ -20,9 +22,9 @@ export function getAuthIssuerFromEnv(): string | undefined {
 
 export function getLoginConfigurationFromEnv<T = unknown>(): T {
   try {
-    const configJson = import.meta.env[LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME];
-    if (!configJson) throw new Error('Missing authentication configuration');
-    const config = JSON.parse(configJson);
+    const kvString = import.meta.env[LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME];
+    if (!kvString) throw new Error('Missing authentication configuration');
+    const config = keyValuesToRecord(kvString) as T;
     return config;
   } catch (e) {
     throw e as Error;
