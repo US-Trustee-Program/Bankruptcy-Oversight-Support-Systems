@@ -9,17 +9,16 @@ import {
   CaseAssociatedCasesResponseData,
 } from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
-import { MultiSelectOptionList } from '@/lib/components/CamsSelectMulti';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
 import {
+  ComboBoxRef,
   DateRange,
   DateRangePickerRef,
   InputRef,
-  SelectMultiRef,
 } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
 import { CaseDetail } from '@common/cams/cases';
@@ -31,8 +30,8 @@ import { CaseHistory } from '@common/cams/history';
 import AttorneysApi from '@/lib/models/attorneys-api';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
-import CamsSelectMulti from '@/lib/components/CamsSelectMulti';
 import './CaseDetailScreen.scss';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -164,7 +163,7 @@ function showReopenDate(reOpenDate: string | undefined, closedDate: string | und
 }
 
 export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
-  const facetOptions = [...facets.entries()].map<Record<string, string>>(([key, facet]) => {
+  const facetOptions = [...facets.entries()].map<ComboOption>(([key, facet]) => {
     return { value: key, label: `${key} (${facet.count})` };
   });
   return facetOptions.sort((a, b) => {
@@ -207,7 +206,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
-  const facetPickerRef = useRef<SelectMultiRef>(null);
+  const facetPickerRef = useRef<ComboBoxRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
   async function fetchCaseBasicInfo() {
@@ -313,8 +312,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     return;
   }
 
-  function handleSelectedFacet(newValue: MultiSelectOptionList) {
-    const selected = (newValue as MultiSelectOptionList).map((value: Record<string, string>) => {
+  function handleSelectedFacet(newValue: ComboOption[]) {
+    const selected = (newValue as ComboOption[]).map((value: ComboOption) => {
       const { value: selection } = value;
       return selection;
     });
@@ -477,14 +476,15 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         className="docket-summary-facets form-field"
                         data-testid="facet-multi-select-container-test-id"
                       >
-                        <CamsSelectMulti
+                        <ComboBox
                           id="facet-multi-select"
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
-                          closeMenuOnSelect={false}
-                          onChange={handleSelectedFacet}
+                          onClose={handleSelectedFacet}
+                          onPillSelection={handleSelectedFacet}
                           label="Filter by Summary"
+                          multiSelect={true}
                           ref={facetPickerRef}
-                        ></CamsSelectMulti>
+                        />
                       </div>
                       <div className="in-docket-search form-field" data-testid="docket-date-range">
                         <DateRangePicker

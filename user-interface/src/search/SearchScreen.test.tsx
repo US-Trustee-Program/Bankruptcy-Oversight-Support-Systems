@@ -7,11 +7,6 @@ import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate } from '@common/api/search';
 import { buildResponseBodySuccess } from '@common/api/response';
 
-vi.mock(
-  '../lib/components/CamsSelectMulti',
-  () => import('../lib/components/CamsSelectMulti.mock'),
-);
-
 describe('search screen', () => {
   let caseList: CaseSummary[];
   const getCaseSummarySpy = vi.spyOn(Chapter15MockApi, 'get');
