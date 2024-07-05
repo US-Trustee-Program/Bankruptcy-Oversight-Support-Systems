@@ -28,6 +28,13 @@ describe('Key Value utils', () => {
       expect(actual).toEqual(expected);
     });
 
+    test('should omit a pair without a key', () => {
+      const encoded = '=value';
+      const expected = {};
+      const actual = keyValuesToRecord(encoded);
+      expect(actual).toEqual(expected);
+    });
+
     test('should omit empty pairs', () => {
       const encoded = '||ONE=1|||||';
       const expected = {
@@ -87,6 +94,13 @@ describe('Key Value utils', () => {
     test('should omit a pair without a equal sign delimiter', () => {
       const encoded = 'foo|ONE=1|bad';
       const expected = new Map<string, string>([['ONE', '1']]);
+      const actual = keyValuesToMap(encoded);
+      expect(actual).toEqual(expected);
+    });
+
+    test('should omit a pair without a key', () => {
+      const encoded = '=value';
+      const expected = new Map<string, string>();
       const actual = keyValuesToMap(encoded);
       expect(actual).toEqual(expected);
     });
