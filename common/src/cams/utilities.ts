@@ -4,7 +4,7 @@ function keyValuesToArray(kvString: string): string[][] {
   const pairs = kvString.split('|');
   pairs.forEach((pair) => {
     const delimiterPosition = pair.indexOf('=');
-    if (delimiterPosition >= 0) {
+    if (delimiterPosition > 0) {
       const key = pair.slice(0, delimiterPosition).trim();
       const value = pair.slice(delimiterPosition + 1).trim();
       array.push([key, value]);
