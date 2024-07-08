@@ -17,11 +17,8 @@ import Api from '@/lib/models/chapter15-mock.api.cases';
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
-
-vi.mock('../../lib/components/CamsSelect', () => import('../../lib/components/CamsSelect.mock'));
 
 const testOffices: OfficeDetails[] = [
   {
@@ -149,8 +146,8 @@ async function fillCaseNotListedForm(
   const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
   expect(newCaseCourtSelect).toBeVisible();
 
-  const selectButtonQuery = `court-selection-${order.id}`;
-  selectItemInMockSelect(selectButtonQuery, 1);
+  const courtComboboxFirstItem = document.querySelector(`#court-selection-${order.id} li button`);
+  fireEvent.click(courtComboboxFirstItem!);
 
   const caseNumber = getCaseNumber(suggestedCases[0].caseId);
   const input = findCaseNumberInput(order.id);
@@ -335,8 +332,8 @@ describe('SuggestedTransferCases component', () => {
       expect(alert).toHaveClass('visible');
     });
 
-    const selectButtonQuery = `court-selection-${order.id}`;
-    selectItemInMockSelect(selectButtonQuery, 0);
+    const courtComboboxFirstItem = document.querySelector(`#court-selection-${order.id} li button`);
+    fireEvent.click(courtComboboxFirstItem!);
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-container-validation-not-found');
