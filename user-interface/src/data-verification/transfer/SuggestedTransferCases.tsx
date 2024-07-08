@@ -6,11 +6,11 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
-import CamsSelect, { SingleSelectOption } from '@/lib/components/CamsSelect';
 import { getOfficeList } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;
@@ -51,7 +51,7 @@ function _SuggestedTransferCases(
 
   const suggestedCasesRef = useRef<CaseTableImperative>(null);
   const caseNumberRef = useRef<InputRef>(null);
-  const courtSelectionRef = useRef<InputRef>(null);
+  const courtSelectionRef = useRef<ComboBoxRef>(null);
 
   const api = useGenericApi();
 
@@ -80,11 +80,14 @@ function _SuggestedTransferCases(
     courtSelectionRef.current?.disable(value);
   }
 
-  function handleCourtSelection(selection: SingleSelectOption) {
+  function handleCourtSelection(selections: ComboOption[]) {
     setValidationState(ValidationStates.notValidated);
-    const office =
-      officesList.find((o) => o.courtDivisionCode === (selection as SingleSelectOption)?.value) ||
-      null;
+    let office = null;
+    if (selections.length > 0) {
+      office =
+        officesList.find((o) => o.courtDivisionCode === (selections[0] as ComboOption)?.value) ||
+        null;
+    }
     setNewCaseDivision(office);
     if (!office) {
       setValidationState(ValidationStates.notValidated);
@@ -234,15 +237,13 @@ function _SuggestedTransferCases(
                       className="usa-combo-box"
                       data-testid={`court-selection-usa-combo-box-${order.id}`}
                     >
-                      <CamsSelect
+                      <ComboBox
                         id={`court-selection-${order.id}`}
                         className="new-court__select"
-                        closeMenuOnSelect={true}
                         label="New Court"
                         ref={courtSelectionRef}
-                        onChange={handleCourtSelection}
+                        onUpdateSelection={handleCourtSelection}
                         options={getOfficeList(officesList)}
-                        isSearchable={true}
                         required={true}
                       />
                     </div>

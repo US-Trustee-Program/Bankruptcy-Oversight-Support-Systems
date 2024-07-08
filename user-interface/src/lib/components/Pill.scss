@@ -2,48 +2,48 @@
   display: flex;
   flex-wrap: wrap;
   position: relative;
+}
 
-  .pill.usa-button--unstyled {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-decoration: none;
-    height: 1.5rem;
-    border: 2px solid #949494;
-    border-radius: 0.75rem;
-    max-width: 100%;
-    min-width: 4rem;
-    padding: 0 0.25rem 0 0.6rem;
-    margin: 0.25rem;
-    cursor: pointer;
+.pill.usa-button--unstyled {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  height: 1.5rem;
+  border: 2px solid #949494;
+  border-radius: calc(1.5rem / 4);
+  max-width: 100%;
+  min-width: 4rem;
+  padding: 0 0.25rem 0 0.6rem;
+  margin: 0.25rem;
+  cursor: pointer;
 
-    .pill-text {
-      display: inline-block;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      max-width: calc(100% - 1em);
-    }
+  .pill-text {
+    display: inline-block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: calc(100% - 1em);
   }
+}
 
-  .pill.usa-button--unstyled.wrap-text {
-    height: auto;
-    padding: 0.25rem 0.25rem 0.25rem 0.6rem;
-
-    .pill-text {
-      display: block;
-      white-space: wrap;
-      text-overflow: inherit;
-      overflow: visible;
-    }
+.pill.usa-button--unstyled.wrap-text {
+  height: auto;
+  padding: 0.25rem 0.25rem 0.25rem 0.6rem;
+    
+  .pill-text {
+    display: block;
+    white-space: wrap;
+    text-overflow: inherit;
+    overflow: visible;
   }
+}
 
-  .pill.usa-button--unstyled:visited {
-    color: inherit;
-  }
+.pill.usa-button--unstyled:visited {
+  color: inherit;
+}
 
-  .pill:hover {
-    filter: brightness(0.85);
-  }
+.pill:hover {
+  filter: brightness(0.85);
 }

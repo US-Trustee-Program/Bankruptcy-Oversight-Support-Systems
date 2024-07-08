@@ -13,6 +13,7 @@ import Button, { UswdsButtonStyle } from '../uswds/Button';
 import PillBox from '../PillBox';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import { Pill } from '../Pill';
 
 export type ComboOption = {
   value: string;
@@ -201,11 +202,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (option.selected === true) option.selected = false;
     else option.selected = true;
 
-    for (const item of selections) {
-      if (item.value === option.value) {
-        removed = true;
-      } else {
-        newSelections.push(item);
+    if (multiSelect === true) {
+      for (const item of selections) {
+        if (item.value === option.value) {
+          removed = true;
+        } else {
+          newSelections.push(item);
+        }
       }
     }
     if (!removed) newSelections.push(option);
@@ -309,6 +312,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
+  function handleSingleSelectPillClick() {
+    handleClearAllClick();
+    closeDropdown();
+    if (onPillSelection) {
+      onPillSelection([]);
+    }
+  }
+
   function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
     const screenBottom = window.scrollY + window.innerHeight;
     const inputContainer = document.querySelector(`#${props.id} .input-container`);
@@ -353,12 +364,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   return (
     <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
-      <div className={`combo-box-label ${multiSelect ? 'multi-select' : ''}`}>
+      <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
         <label className="usa-label" id={props.id + '-label'}>
           {label}
         </label>
       </div>
-      {multiSelect && (
+      {multiSelect === true && (
         <div className="pills-and-clear-all">
           <PillBox
             id={`${props.id}-pill-box`}
@@ -387,19 +398,31 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       <div className="usa-combo-box">
         <div className="input-container usa-input">
           <div className="combo-box-input-container">
-            <input
-              {...otherProps}
-              id={`${props.id}-combo-box-input`}
-              data-testid="combo-box-input"
-              className={`usa-tooltip combo-box-input`}
-              onChange={handleInputFilter}
-              onKeyDown={(ev) => handleKeyDown(ev, 0)}
-              onClick={openDropdown}
-              value={value}
-              disabled={inputDisabled}
-              aria-label={`${props.ariaLabelPrefix}: Enter text to filter options. Use up and down arrows to open dropdown list.`}
-              ref={filterRef}
-            />
+            {multiSelect !== true && selections.length > 0 && (
+              <Pill
+                id={`pill-${props.id}`}
+                label={selections[0].label}
+                ariaLabelPrefix={ariaLabelPrefix}
+                value={selections[0].value}
+                onClick={handleSingleSelectPillClick}
+                disabled={disabled}
+              ></Pill>
+            )}
+            {!(multiSelect !== true && selections.length) && (
+              <input
+                {...otherProps}
+                id={`${props.id}-combo-box-input`}
+                data-testid="combo-box-input"
+                className={`usa-tooltip combo-box-input`}
+                onChange={handleInputFilter}
+                onKeyDown={(ev) => handleKeyDown(ev, 0)}
+                onClick={openDropdown}
+                value={value}
+                disabled={inputDisabled}
+                aria-label={`${props.ariaLabelPrefix}: Enter text to filter options. Use up and down arrows to open dropdown list.`}
+                ref={filterRef}
+              />
+            )}
           </div>
           <Button
             id={`${props.id}-expand`}
