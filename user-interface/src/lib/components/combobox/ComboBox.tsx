@@ -57,7 +57,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== STATE ==========
 
-  const [inputDisabled, setInputDisabled] = useState<boolean>(disabled ?? false);
+  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(disabled ?? false);
   const [selections, setSelections] = useState<ComboOption[]>([]);
   const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -96,7 +96,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function disable(value: boolean) {
-    setInputDisabled(value);
+    setComboboxDisabled(value);
   }
 
   function elementIsVerticallyScrollable(parent: Element, child: Element) {
@@ -185,6 +185,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleClearAllClick() {
     setSelections([]);
+    clearFilter();
     if (props.onUpdateSelection) {
       props.onUpdateSelection([]);
     }
@@ -314,7 +315,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleSingleSelectPillClick() {
     handleClearAllClick();
-    closeDropdown();
     if (onPillSelection) {
       onPillSelection([]);
     }
@@ -378,7 +378,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             ariaLabelPrefix={ariaLabelPrefix}
             selections={selections ?? []}
             onSelectionChange={handlePillSelection}
-            disabled={inputDisabled}
+            disabled={comboboxDisabled}
             ref={pillBoxRef}
           ></PillBox>
           {selections && selections.length > 0 && (
@@ -388,7 +388,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               onClick={handleClearAllClick}
               onKeyDown={handleClearAllKeyDown}
               aria-label="clear all selections"
-              disabled={inputDisabled}
+              disabled={comboboxDisabled}
             >
               clear
             </Button>
@@ -418,7 +418,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 onKeyDown={(ev) => handleKeyDown(ev, 0)}
                 onClick={openDropdown}
                 value={value}
-                disabled={inputDisabled}
+                disabled={comboboxDisabled}
                 aria-label={`${props.ariaLabelPrefix}: Enter text to filter options. Use up and down arrows to open dropdown list.`}
                 ref={filterRef}
               />
@@ -430,14 +430,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={handleToggleDropdown}
             onKeyDown={(ev) => handleKeyDown(ev, 0)}
-            disabled={inputDisabled}
+            disabled={comboboxDisabled}
             tabIndex={-1}
             aria-label="expand dropdown of select box"
           >
             <Icon name={expandIcon}></Icon>
           </Button>
         </div>
-        {!inputDisabled && (
+        {!comboboxDisabled && (
           <div
             className={`item-list-container ${expandedClass}`}
             id={`${props.id}-item-list`}

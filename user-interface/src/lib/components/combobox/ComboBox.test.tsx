@@ -525,6 +525,54 @@ describe('test cams combobox', () => {
     expect(updateSelection).toHaveBeenCalledWith(results);
   });
 
+  test('clicking or selecting pill when in single-select mode, should clear the selections', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    const updateSelection = vi.fn();
+    const pillSelection = vi.fn();
+    renderWithProps(
+      {
+        multiSelect: false,
+        onUpdateSelection: updateSelection,
+        onPillSelection: pillSelection,
+      },
+      ref,
+    );
+
+    getFocusedComboInputField(comboboxId);
+    const listButtons = document.querySelectorAll('li button');
+    fireEvent.click(listButtons![0]);
+    fireEvent.click(listButtons![1]);
+    fireEvent.click(listButtons![2]);
+
+    await waitFor(() => {
+      const selections = ref.current?.getValue();
+      expect(selections!.length).toEqual(1);
+
+      const listItems = document.querySelectorAll('li');
+      expect(listItems[0]!).not.toHaveClass('selected');
+      expect(listItems[1]!).not.toHaveClass('selected');
+      expect(listItems[2]!).toHaveClass('selected');
+    });
+
+    const pill = document.querySelector('#pill-test-combobox');
+    expect(pill!).toBeInTheDocument();
+    (pill! as HTMLButtonElement).focus();
+
+    fireEvent.keyDown(pill!, { key: 'Enter', keyCode: 13 });
+    expect(updateSelection).toHaveBeenCalledWith([]);
+    expect(pillSelection).toHaveBeenCalledWith([]);
+
+    await waitFor(() => {
+      const listItems = document.querySelectorAll('li');
+      expect(listItems[0]!).not.toHaveClass('selected');
+      expect(listItems[1]!).not.toHaveClass('selected');
+      expect(listItems[2]!).not.toHaveClass('selected');
+
+      const selections = ref.current?.getValue();
+      expect(selections!.length).toEqual(0);
+    });
+  });
+
   test('Pressing Enter key while on the clear button should clear the selections (both the pills and the dropdown list selections).', async () => {
     const updateSelection = vi.fn();
     renderWithProps({ onUpdateSelection: updateSelection });
@@ -650,7 +698,7 @@ describe('test cams combobox', () => {
     }
   });
 
-  test('Should return list of currewnt selections when calling ref.getValue.', async () => {
+  test('Should return list of current selections when calling ref.getValue and clear all values when calling ref.clearValue.', async () => {
     const ref = React.createRef<ComboBoxRef>();
     const options = [
       {
@@ -673,7 +721,86 @@ describe('test cams combobox', () => {
     fireEvent.click(listButtons![0]);
     fireEvent.click(listButtons![1]);
 
-    const result = ref.current?.getValue();
-    expect(result).toEqual(options);
+    const setResult = ref.current?.getValue();
+    expect(setResult).toEqual(options);
+
+    const clearedResult = ref.current?.clearValue();
+    expect(clearedResult).toEqual(undefined);
+  });
+
+  test('should disable component when ref.disable is called and in single-select mode', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    renderWithProps({ multiSelect: false }, ref);
+
+    const pill = document.querySelector('.pill');
+    const input = document.querySelector('.combo-box-input');
+    const expandButton = document.querySelector('.expand-button');
+
+    expect(input).toBeInTheDocument();
+
+    const listButtons = document.querySelectorAll('li button');
+    fireEvent.click(listButtons![0]);
+
+    expect(input).not.toBeInTheDocument();
+    expect(expandButton).toBeEnabled();
+    expect(pill).toBeEnabled;
+
+    ref.current?.disable(true);
+
+    await waitFor(() => {
+      expect(expandButton).not.toBeEnabled();
+      expect(pill).not.toBeEnabled;
+    });
+
+    ref.current?.disable(false);
+
+    await waitFor(() => {
+      expect(expandButton).toBeEnabled();
+      expect(pill).toBeEnabled;
+    });
+  });
+
+  test('should disable component when ref.disable is called and in multi-select mode', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    renderWithProps({ multiSelect: true }, ref);
+
+    const listButtons = document.querySelectorAll('li button');
+    fireEvent.click(listButtons![0]);
+    fireEvent.click(listButtons![1]);
+
+    // pillbox, pills, clear all button, single-select pill, input, expand button
+    const pills = document.querySelectorAll('.pill');
+    const clearAllButton = document.querySelector('.pill-clear-button');
+    const input = document.querySelector('.combo-box-input');
+    const expandButton = document.querySelector('.expand-button');
+
+    expect(clearAllButton).toBeEnabled();
+    expect(input).toBeEnabled();
+    expect(expandButton).toBeEnabled();
+    pills.forEach((pill) => {
+      expect(pill).toBeEnabled;
+    });
+
+    ref.current?.disable(true);
+
+    await waitFor(() => {
+      expect(clearAllButton).not.toBeEnabled();
+      expect(input).not.toBeEnabled();
+      expect(expandButton).not.toBeEnabled();
+      pills.forEach((pill) => {
+        expect(pill).not.toBeEnabled;
+      });
+    });
+
+    ref.current?.disable(false);
+
+    await waitFor(() => {
+      expect(clearAllButton).toBeEnabled();
+      expect(input).toBeEnabled();
+      expect(expandButton).toBeEnabled();
+      pills.forEach((pill) => {
+        expect(pill).toBeEnabled;
+      });
+    });
   });
 });
