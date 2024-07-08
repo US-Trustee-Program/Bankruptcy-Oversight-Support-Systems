@@ -351,7 +351,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   return (
     <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
-      <div className={`chapter-label ${multiSelect ? 'multi-select' : ''}`}>
+      <div className={`combo-box-label ${multiSelect ? 'multi-select' : ''}`}>
         <label className="usa-label" id={props.id + '-label'}>
           {label}
         </label>
