@@ -8,15 +8,12 @@ import {
 } from '@/data-verification/transfer/PendingTransferOrder';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseSummary } from '@common/cams/cases';
 
 import Api from '@/lib/models/chapter15-mock.api.cases';
-
-vi.mock('../../lib/components/CamsSelect', () => import('../../lib/components/CamsSelect.mock'));
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -199,6 +196,11 @@ describe('PendingTransferOrder component', () => {
       };
     }
 
+    function selectItemInCombobox(orderId: string, index: number) {
+      const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li button`);
+      fireEvent.click(courtComboboxItems[index]!);
+    }
+
     function findCaseNumberInput(id: string) {
       const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
       expect(caseIdInput).toBeInTheDocument();
@@ -257,8 +259,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitForAlert();
 
-      const selectButtonQuery = `court-selection-${order.id}`;
-      selectItemInMockSelect(selectButtonQuery, 1);
+      selectItemInCombobox(order.id, 1);
 
       const caseNumber = '24-12345';
       const input = findCaseNumberInput(order.id);
@@ -313,7 +314,7 @@ describe('PendingTransferOrder component', () => {
       const { onOrderUpdate } = renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -380,7 +381,7 @@ describe('PendingTransferOrder component', () => {
       renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -446,7 +447,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitForAlert();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -489,7 +490,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitForAlert();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -511,7 +512,6 @@ describe('PendingTransferOrder component', () => {
       fireEvent.click(confirmModal!);
 
       await waitFor(async () => {
-        console.log(onOrderUpdate.mock.calls);
         expect(onOrderUpdate).toHaveBeenCalled();
         expect(onOrderUpdate).toHaveBeenCalledWith({
           message: errorMessage,
@@ -530,7 +530,7 @@ describe('PendingTransferOrder component', () => {
       renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       const newUserInput = '24-12345';
       const caseIdInput = findCaseNumberInput(order.id);
@@ -591,7 +591,7 @@ describe('PendingTransferOrder component', () => {
       fireEvent.click(radio);
       await waitForCaseEntryForm();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       let caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
       expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
@@ -632,7 +632,7 @@ describe('PendingTransferOrder component', () => {
       renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInMockSelect(`court-selection-${order.id}`, 1);
+      selectItemInCombobox(order.id, 1);
 
       let caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
       expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
