@@ -123,6 +123,11 @@ function enterCaseNumber(caseIdInput: Element | null | undefined, value: string)
   return caseIdInput;
 }
 
+function selectItemInCombobox(orderId: string, index: number) {
+  const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li button`);
+  fireEvent.click(courtComboboxItems[index]!);
+}
+
 async function fillCaseNotListedForm(
   order: CaseSummary & {
     id: string;
@@ -146,8 +151,7 @@ async function fillCaseNotListedForm(
   const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
   expect(newCaseCourtSelect).toBeVisible();
 
-  const courtComboboxFirstItem = document.querySelector(`#court-selection-${order.id} li button`);
-  fireEvent.click(courtComboboxFirstItem!);
+  selectItemInCombobox(order.id, 0);
 
   const caseNumber = getCaseNumber(suggestedCases[0].caseId);
   const input = findCaseNumberInput(order.id);
@@ -332,8 +336,7 @@ describe('SuggestedTransferCases component', () => {
       expect(alert).toHaveClass('visible');
     });
 
-    const courtComboboxFirstItem = document.querySelector(`#court-selection-${order.id} li button`);
-    fireEvent.click(courtComboboxFirstItem!);
+    selectItemInCombobox(order.id, 0);
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-container-validation-not-found');
