@@ -98,7 +98,7 @@ if [[ -n "${expected_git_sha}" ]]; then
     if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
       apiStatusCode=$("${apiCmd[@]}")
     else
-      apiStatusCode=500 # if version does not match set to a non 200 status code
+      apiStatusCode=0 # if version does not match set to a non 200 status code
       sleep 60
     fi
   done
