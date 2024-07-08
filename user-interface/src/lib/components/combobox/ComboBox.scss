@@ -47,7 +47,7 @@ $listItemSelectedBorderColor: #949494;
         display: flex;
         flex-wrap: wrap;
         position: relative;
-        width: calc(100% - 2.125rem);
+        width: 100%;
 
         .combo-box-input {
           border: none;
