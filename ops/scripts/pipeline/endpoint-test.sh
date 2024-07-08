@@ -81,9 +81,9 @@ fi
 webCmd=(curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetWebAppURL}")
 apiCmd=(curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetApiURL}")
 
-echo "Checking Webapp endpoint..."
+echo "Checking Webapp endpoint: ${targetWebAppURL}"
 webStatusCode=$("${webCmd[@]}")
-echo "Checking API endpoint..."
+echo "Checking API endpoint: ${targetApiURL}"
 apiStatusCode=$("${apiCmd[@]}")
 
 if [[ -n "${expected_git_sha}" ]]; then
