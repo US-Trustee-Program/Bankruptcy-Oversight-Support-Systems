@@ -14,6 +14,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 slot_name=''
 expected_git_sha=''
+isLocalRun=''
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
