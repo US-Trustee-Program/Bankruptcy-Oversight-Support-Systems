@@ -245,6 +245,7 @@ function _SuggestedTransferCases(
                         ref={courtSelectionRef}
                         onUpdateSelection={handleCourtSelection}
                         options={getOfficeList(officesList)}
+                        ariaLabelPrefix="Select a Court and Division"
                         required={true}
                       />
                     </div>
