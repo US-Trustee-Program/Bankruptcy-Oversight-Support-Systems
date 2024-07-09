@@ -76,8 +76,10 @@ test.describe('Transfer Orders', () => {
     // Start testing the UI
     await page.getByTestId('suggested-cases-radio-empty').click();
 
-    await page.getByLabel(`New court`).locator('visible=true').fill('manhattan');
-    await page.getByLabel(`New court`).locator('visible=true').press('Enter');
+    await page.locator(`#court-selection-${orderId}-expand`).click();
+    const court = 'manhattan';
+    await page.locator(`#court-selection-${orderId}-combo-box-input`).fill(court);
+    await page.getByTestId(`combo-box-option-Southern District of New York (Manhattan)`).click();
 
     await page.getByTestId(`new-case-input-${firstOrderId}`).fill('11-11111');
     await expect(page.getByTestId('alert-container-validation-not-found')).toBeVisible();
@@ -124,7 +126,7 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId('suggested-cases-radio-empty').click();
 
     const courtInputValue = (
-      await page.getByLabel(`New court`).locator('visible=true').inputValue()
+      await page.locator(`#court-selection-${orderId}-combo-box-input`).inputValue()
     ).toString();
     expect(courtInputValue).toBe('');
 
@@ -144,10 +146,10 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId('suggested-cases-radio-empty').click();
 
     // fill in inputs
-    await page.locator(`#court-selection-${orderId}`).click();
+    await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
-    await page.getByLabel(`New court`).locator('visible=true').fill(court);
-    await page.getByLabel(`New court`).locator('visible=true').press('Enter');
+    await page.locator(`#court-selection-${orderId}-combo-box-input`).fill(court);
+    await page.getByTestId(`combo-box-option-Southern District of New York (Manhattan)`).click();
 
     await page.getByTestId(`new-case-input-${orderId}`).isEnabled();
 
