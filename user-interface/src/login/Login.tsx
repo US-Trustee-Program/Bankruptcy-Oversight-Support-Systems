@@ -15,6 +15,7 @@ import { OktaProvider } from './providers/okta/OktaProvider';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { OktaRefreshToken } from './providers/okta/OktaRefreshToken';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -43,7 +44,16 @@ export function Login(props: LoginProps): React.ReactNode {
       session.validatedClaims &&
       issuer === session.validatedClaims['iss']
     ) {
-      return <Session {...session}>{props.children}</Session>;
+      const sessionComponent = <Session {...session}>{props.children}</Session>;
+      if (provider == 'okta') {
+        return (
+          <OktaProvider>
+            <OktaRefreshToken>{sessionComponent}</OktaRefreshToken>
+          </OktaProvider>
+        );
+      } else {
+        return sessionComponent;
+      }
     } else {
       LocalStorage.removeSession();
     }

@@ -15,7 +15,10 @@ let context: ApiClient;
 const beforeHooks: (() => Promise<void>)[] = [];
 
 export function addApiBeforeHook(hook: () => Promise<void>) {
-  if (!beforeHooks.includes(hook)) {
+  const hookExists = beforeHooks.reduce((doesExist, registeredHook) => {
+    return doesExist || registeredHook === hook;
+  }, false);
+  if (!hookExists) {
     beforeHooks.push(hook);
   }
 }

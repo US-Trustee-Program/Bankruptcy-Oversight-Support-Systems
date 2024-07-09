@@ -26,7 +26,9 @@ export default class Api {
   }
 
   private static executeBeforeHooks() {
-    return Promise.all(this.beforeHooks);
+    for (const hook of this.beforeHooks) {
+      hook();
+    }
   }
 
   public static async post(

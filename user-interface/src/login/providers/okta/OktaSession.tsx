@@ -5,6 +5,7 @@ import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
+import { OktaRefreshToken } from './OktaRefreshToken';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -66,13 +67,15 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   return (
-    <Session
-      provider="okta"
-      user={camsUser}
-      apiToken={apiToken}
-      validatedClaims={authState?.accessToken?.claims ?? {}}
-    >
-      {props.children}
-    </Session>
+    <OktaRefreshToken>
+      <Session
+        provider="okta"
+        user={camsUser}
+        apiToken={apiToken}
+        validatedClaims={authState?.accessToken?.claims ?? {}}
+      >
+        {props.children}
+      </Session>
+    </OktaRefreshToken>
   );
 }
