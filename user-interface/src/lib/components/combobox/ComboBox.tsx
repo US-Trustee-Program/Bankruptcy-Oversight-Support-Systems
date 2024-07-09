@@ -365,7 +365,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   return (
     <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
-        <label className="usa-label" id={props.id + '-label'}>
+        <label
+          className="usa-label"
+          id={props.id + '-label'}
+          htmlFor={`${props.id}-combo-box-input`}
+        >
           {label}
         </label>
       </div>
@@ -460,7 +464,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={`multi-select option: ${props.ariaLabelPrefix} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
+                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${props.ariaLabelPrefix} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
                   >
                     {
                       <>
