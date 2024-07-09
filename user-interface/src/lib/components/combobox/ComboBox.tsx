@@ -36,6 +36,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
   onUpdateFilter?: (value: string) => void;
   onClose?: (options: ComboOption[]) => void;
   multiSelect: boolean;
+  wrapPills?: boolean;
 }
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -48,6 +49,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     onUpdateFilter,
     onClose,
     multiSelect,
+    wrapPills,
     ariaLabelPrefix,
     ...otherProps
   } = props;
@@ -361,6 +363,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           <PillBox
             id={`${props.id}-pill-box`}
             className="pill-box"
+            wrapPills={wrapPills}
             ariaLabelPrefix={ariaLabelPrefix}
             selections={selections ?? []}
             onSelectionChange={handlePillSelection}

@@ -12,6 +12,7 @@ type PillProps = {
   label: string;
   ariaLabelPrefix?: string;
   value: string;
+  wrapText?: boolean;
   onClick: (value: string) => void;
   disabled?: boolean;
 };
@@ -27,11 +28,13 @@ export function Pill(props: PillProps) {
     }
   }
 
+  const wrapTextClass = props.wrapText === true ? 'wrap-text' : '';
+
   return (
     <button
       id={props.id}
       data-testid={`pill-${props.id}`}
-      className="pill usa-button--unstyled"
+      className={`pill usa-button--unstyled ${wrapTextClass}`}
       style={{ backgroundColor, color }}
       onClick={() => props.onClick(props.value)}
       onKeyDown={(ev) => handleKeyDown(ev)}

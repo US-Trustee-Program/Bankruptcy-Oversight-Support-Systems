@@ -12,11 +12,12 @@ type PillBoxProps = {
   ariaLabelPrefix?: string;
   className?: string;
   selections: ComboOption[];
+  wrapPills?: boolean;
   onSelectionChange: (selections: ComboOption[]) => void;
 };
 
 function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
-  const { onSelectionChange, ariaLabelPrefix, disabled } = props;
+  const { onSelectionChange, ariaLabelPrefix, disabled, wrapPills } = props;
 
   const [selections, setSelections] = useState<ComboOption[]>([]);
 
@@ -72,6 +73,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
           value={selection.value}
           onClick={onPillClick}
           disabled={disabled}
+          wrapText={wrapPills}
         ></Pill>
       ))}
     </div>
