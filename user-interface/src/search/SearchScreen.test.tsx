@@ -47,7 +47,6 @@ describe('search screen', () => {
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
     await waitFor(() => {
-      // Infer the office list is loaded from the API.
       expect(document.querySelector('#case-chapter-search-item-list')).toBeInTheDocument();
     });
 
@@ -122,7 +121,6 @@ describe('search screen', () => {
       expect(expandButton).toBeInTheDocument();
       fireEvent.click(expandButton);
     });
-    // Infer the office list is loaded from the API.
 
     let divisionItemLi: HTMLElement;
     let divisionText: string;
@@ -171,7 +169,6 @@ describe('search screen', () => {
       fireEvent.click(expandButton);
     });
 
-    // Infer the office list is loaded from the API.
     divisionItemLi = screen.getByTestId('court-selections-search-item-1'); // select second option
 
     divisionText = divisionItemLi.textContent!;

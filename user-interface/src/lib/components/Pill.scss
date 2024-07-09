@@ -26,6 +26,19 @@
       max-width: calc(100% - 1em);
     }
   }
+
+  .pill.usa-button--unstyled.wrap-text {
+    height: auto;
+    padding: 0.25rem 0.25rem 0.25rem 0.6rem;
+
+    .pill-text {
+      display: block;
+      white-space: wrap;
+      text-overflow: inherit;
+      overflow: visible;
+    }
+  }
+
   .pill.usa-button--unstyled:visited {
     color: inherit;
   }
