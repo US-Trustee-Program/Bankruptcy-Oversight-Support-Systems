@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto';
-
 // TODO: Maybe this should be delegated to local storage... WHat happens if the map is scoped to unique tabs/windows if modules are not shared between tabs/windows?
 const allLocks = new Map<string, string[]>();
 
@@ -16,7 +14,7 @@ export function useSemaphore(name: string) {
   const locks = allLocks.get(name)!;
 
   function lock() {
-    const receipt = randomUUID();
+    const receipt = crypto.randomUUID();
     locks.push(receipt);
 
     if (locks[0] === receipt) {
