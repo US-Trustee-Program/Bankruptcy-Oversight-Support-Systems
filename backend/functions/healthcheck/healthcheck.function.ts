@@ -47,7 +47,6 @@ const httpTrigger: AzureFunction = async function (
       sqlDbReadStatus: checkSqlDbReadAccess,
     },
     info,
-    timestamp: Date.now(),
   };
 
   // Add boolean flag for any other checks here
