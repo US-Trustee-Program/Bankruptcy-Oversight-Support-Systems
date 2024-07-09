@@ -11,8 +11,14 @@ import {
 } from '@common/api/response';
 import { LocalStorage } from '../utils/local-storage';
 
-// TODO: Possibly use the React Context API to scope the API context to the DOM rather than the module. Add a provider component to configure the API context.
 let context: ApiClient;
+const beforeHooks: (() => Promise<void>)[] = [];
+
+export function addApiBeforeHook(hook: () => Promise<void>) {
+  if (!beforeHooks.includes(hook)) {
+    beforeHooks.push(hook);
+  }
+}
 
 /**
  * Factory function returning an API client instance based on legacy environment variable setting.
@@ -20,7 +26,9 @@ let context: ApiClient;
  * @returns ApiClient
  */
 function legacyConfiguration(): ApiClient {
-  return import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
+  api.beforeHooks = beforeHooks;
+  return api;
 }
 
 /**

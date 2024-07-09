@@ -9,6 +9,7 @@ import {
 import { ResponseBody } from '@common/api/response';
 
 export default class Api {
+  public static beforeHooks: (() => Promise<void>)[];
   public static headers: Record<string, string> = {};
 
   public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
@@ -24,12 +25,17 @@ export default class Api {
     return path;
   }
 
+  private static executeBeforeHooks() {
+    return Promise.all(this.beforeHooks);
+  }
+
   public static async post(
     path: string,
     body: object,
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
+      this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
@@ -49,6 +55,7 @@ export default class Api {
 
   public static async list(path: string, options: ObjectKeyVal = {}): Promise<ResponseData> {
     try {
+      this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
@@ -78,6 +85,7 @@ export default class Api {
     | ResponseBody
   > {
     try {
+      this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
@@ -103,6 +111,7 @@ export default class Api {
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
+      this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
@@ -125,6 +134,7 @@ export default class Api {
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
+      this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPut({ url: Api.host + pathStr, body, headers: this.headers });
