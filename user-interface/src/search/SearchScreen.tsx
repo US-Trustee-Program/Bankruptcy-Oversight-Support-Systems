@@ -166,6 +166,7 @@ export default function SearchScreen() {
                   options={getOfficeList(officesList)}
                   required={false}
                   multiSelect={true}
+                  wrapPills={true}
                   ref={courtSelectionRef}
                 />
               </div>
