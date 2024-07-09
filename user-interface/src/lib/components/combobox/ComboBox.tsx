@@ -36,7 +36,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
   onPillSelection?: (options: ComboOption[]) => void;
   onUpdateFilter?: (value: string) => void;
   onClose?: (options: ComboOption[]) => void;
-  multiSelect: boolean;
+  multiSelect?: boolean;
   wrapPills?: boolean;
 }
 
@@ -404,6 +404,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 label={selections[0].label}
                 ariaLabelPrefix={ariaLabelPrefix}
                 value={selections[0].value}
+                wrapText={wrapPills}
                 onClick={handleSingleSelectPillClick}
                 disabled={disabled}
               ></Pill>

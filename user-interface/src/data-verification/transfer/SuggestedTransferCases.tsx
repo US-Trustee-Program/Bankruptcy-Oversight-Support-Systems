@@ -241,6 +241,7 @@ function _SuggestedTransferCases(
                         id={`court-selection-${order.id}`}
                         className="new-court__select"
                         label="New Court"
+                        wrapPills={true}
                         ref={courtSelectionRef}
                         onUpdateSelection={handleCourtSelection}
                         options={getOfficeList(officesList)}
