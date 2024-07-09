@@ -14,6 +14,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 slot_name=''
 expected_git_sha=''
+isLocalRun=''
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
@@ -45,6 +46,14 @@ while [[ $# -gt 0 ]]; do
     expected_git_sha="${2}"
     shift 2
     ;;
+
+  --local)
+    isLocalRun="true"
+    api_name=""
+    webapp_name=""
+    host_suffix=""
+    shift
+    ;;
   *)
     exit 2 # error on unknown flag/switch
     ;;
@@ -56,46 +65,43 @@ apiStatusCode=""
 targetApiURL="https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
 targetWebAppURL="https://${webapp_name}.azurewebsites${host_suffix}"
 
-# shellcheck disable=SC1083 # REASON: Wants to quote http_code
-webCmd="curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetWebAppURL}"
-# shellcheck disable=SC1083 # REASON: Wants to quote http_code
-apiCmd="curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f ${targetApiURL}"
-
 if [[ ${slot_name} == "staging" ]]; then
-  webCmd="${webCmd}?x-ms-routing-name=${slot_name}"
-  apiCmd="${apiCmd}?x-ms-routing-name=${slot_name}"
-  echo "Checking Webapp endpoint..."
-  webStatusCode=$($webCmd)
-  echo "Checking API endpoint..."
-  apiStatusCode=$($apiCmd)
-  targetApiURL+="?x-ms-routing-name=${slot_name}"
-
-  if [[ -n "${expected_git_sha}" ]]; then
-    echo "Expect sha ${expected_git_sha}"
-    retry=0
-    currentGitSha=""
-    while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
-      retry=$((retry+1))
-      # shellcheck disable=SC2086 # REASON: Wants to quote targetApiURL
-      curl ${targetApiURL} | tee api_response.json
-      # shellcheck disable=SC2002
-      currentGitSha=$(cat api_response.json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['sha'])")
-      echo "Current sha ${currentGitSha}"
-      if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
-        apiStatusCode=$($apiCmd)
-      else
-        apiStatusCode=500 # if version does not match set to a non 200 status code
-        sleep 60
-      fi
-    done
-
-  fi
+  targetApiURL="${targetApiURL}?x-ms-routing-name=${slot_name}"
+  targetWebAppURL="${targetWebAppURL}?x-ms-routing-name=${slot_name}"
 else
   echo "No Slot Provided"
-  echo "Checking Webapp endpoint..."
-  webStatusCode=$($webCmd)
-  echo "Checking API endpoint..."
-  apiStatusCode=$($apiCmd)
+fi
+
+if [[ ${isLocalRun} == "true" ]]; then
+  echo "Running against local"
+  targetApiURL="http://localhost:7071/api/healthcheck"
+  targetWebAppURL="http://localhost:3000"
+fi
+
+webCmd=(curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetWebAppURL}")
+apiCmd=(curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetApiURL}")
+
+echo "Checking Webapp endpoint: ${targetWebAppURL}"
+webStatusCode=$("${webCmd[@]}")
+echo "Checking API endpoint: ${targetApiURL}"
+apiStatusCode=$("${apiCmd[@]}")
+
+if [[ -n "${expected_git_sha}" ]]; then
+  echo "Expect sha ${expected_git_sha}"
+  retry=0
+  currentGitSha=""
+  while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
+    retry=$((retry+1))
+    curl "${targetApiURL}" | tee api_response.json
+    currentGitSha=$(python3 -c "import sys, json; print(json.load(open('api_response.json'))['info']['sha'])")
+    echo "Current sha ${currentGitSha}"
+    if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
+      apiStatusCode=$("${apiCmd[@]}")
+    else
+      apiStatusCode=0 # if version does not match set to a non 200 status code
+      sleep 60
+    fi
+  done
 
 fi
 
