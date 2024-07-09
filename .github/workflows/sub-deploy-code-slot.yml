@@ -142,7 +142,6 @@ jobs:
     needs:
       [deploy-webapp-slot, deploy-service-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
-    if: false
     with:
       apiName: ${{ inputs.apiName }}
       slotName: ${{ inputs.slotName }}
